@@ -21,7 +21,11 @@ security definer
 stable
 set search_path = public
 as $$
-  select id from public.profiles where auth_user_id = auth.uid() limit 1;
+  select id
+    from public.profiles
+   where auth_user_id = auth.uid()
+     and status = 'active'
+   limit 1;
 $$;
 
 create or replace function public.auth_role()
@@ -31,7 +35,11 @@ security definer
 stable
 set search_path = public
 as $$
-  select role from public.profiles where auth_user_id = auth.uid() limit 1;
+  select role
+    from public.profiles
+   where auth_user_id = auth.uid()
+     and status = 'active'
+   limit 1;
 $$;
 
 create or replace function public.auth_is_admin()
@@ -71,10 +79,16 @@ security definer
 stable
 set search_path = public
 as $$
+  -- auth_profile_id() already filters on profiles.status = 'active',
+  -- so deactivated users automatically lose leader-scoped access.
+  -- Restrict to actual leadership roles in case a non-leader row is ever
+  -- inserted into group_leaders (the column type allows the broader
+  -- role_in_group enum, including 'member').
   select exists (
     select 1 from public.group_leaders gl
     where gl.group_id = p_group_id
       and gl.active
+      and gl.role in ('leader', 'co_leader')
       and gl.profile_id = public.auth_profile_id()
   );
 $$;

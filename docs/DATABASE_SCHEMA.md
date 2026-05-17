@@ -66,14 +66,18 @@ All SQL helpers live in the `public` schema, are `security definer` + `stable`,
 and are only executable by the `authenticated` role.
 
 - `auth_profile_id()` — the caller's `profiles.id` (lookup by
-  `auth_user_id = auth.uid()`).
-- `auth_role()` — the caller's `user_role`.
+  `auth_user_id = auth.uid()` **and** `status = 'active'`, so deactivated
+  accounts get NULL).
+- `auth_role()` — the caller's `user_role` (also gated on
+  `status = 'active'`).
 - `auth_is_admin()` — `super_admin` or `ministry_admin`.
 - `auth_is_staff_viewer()` — `staff_viewer`.
 - `auth_is_admin_or_staff()` — convenience for read policies that allow either
   admins or staff.
 - `auth_is_leader_of(p_group_id uuid)` — true iff the caller has an
-  `active = true` row in `group_leaders` for that group.
+  `active = true` row in `group_leaders` for that group with
+  `role in ('leader','co_leader')`. Inherits the active-profile gate via
+  `auth_profile_id()`.
 
 ### Policy intent
 
