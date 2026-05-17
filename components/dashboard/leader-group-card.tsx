@@ -120,7 +120,7 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
       <div className="space-y-3">
         <SectionHeader
           title="Member roster"
-          description="Member check-in workflows arrive in Phase 5 once write paths ship."
+          description="Member check-in arrives in Phase 5B once attendance write paths ship."
         />
         {group.members.length === 0 ? (
           <EmptyState
@@ -128,20 +128,21 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
             description="Add members in Supabase or via admin tools to populate this list."
           />
         ) : (
-          <ul className="surface-subtle space-y-2 p-4">
+          <ul className="surface-subtle space-y-2 p-3 sm:p-4">
             {group.members.map((member) => (
               <li
                 key={member.id}
-                className="flex items-center justify-between rounded-md bg-background px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-background px-3 py-2 text-sm"
               >
-                <span>{member.displayName}</span>
+                <span className="min-w-0 truncate">{member.displayName}</span>
                 <button
                   type="button"
                   disabled
-                  className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground disabled:opacity-60"
-                  aria-label={`Mark ${member.displayName} present (write actions arrive in Phase 5)`}
+                  title="Arrives in Phase 5B"
+                  className="inline-flex min-h-9 items-center gap-2 rounded-md border px-3 py-1.5 text-xs text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={`Mark ${member.displayName} present (arrives in Phase 5B)`}
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
                   Present
                 </button>
               </li>

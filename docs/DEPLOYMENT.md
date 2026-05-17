@@ -1,6 +1,6 @@
 # Deployment Notes
 
-## Current (Phase 4 security foundation + Phase 4.1 docs/dev-helper patch)
+## Current (Phase 5A.0.1 — launch polish, read-only)
 - Deploy to Vercel as a standard Next.js app.
 - Supabase environment variables are **optional** for build. Without them, the
   public preview pages render demo data and the protected routes redirect to
@@ -8,10 +8,15 @@
 - With env vars configured, the protected routes (`/admin`, `/leader`,
   `/staff`) read through the cookie-authenticated server client and Row Level
   Security.
+- `/admin/people` is an admin-only preview of the upcoming people / role
+  management workflows. Every action card is intentionally disabled and the
+  server-action stubs throw immediately — no Supabase writes happen here.
 - `/admin-preview` and `/leader-preview` are permanently public demo pages
   that always render fallback data; they do not call Supabase.
-- All operational tables have RLS enabled. Only SELECT policies exist in this
-  phase — write workflows ship in Phase 5.
+- All operational tables have RLS enabled. Only SELECT policies exist today.
+  Phase 5A.1 introduces narrow INSERT/UPDATE policies for admin people / role
+  / group-assignment writes. Phase 5B introduces operational writes
+  (attendance, guest capture, follow-up updates).
 
 ## Environment variables
 ```
@@ -50,15 +55,15 @@ behave as a backend admin.
    `supabase/dev/README.md`.
 8. Visit `/login` and sign in.
 
-## What lands next (Phase 5A → Phase 5B)
-After RLS SELECT policies are verified end-to-end in Phase 4 and the role
-model is documented in Phase 4.1:
+## What lands next (Phase 5A.1 → Phase 5B)
+After live Supabase verification of the existing SELECT policies:
 
-- **Phase 5A — admin people & role management.** Narrow, allowlisted
-  workflows for `super_admin` / `ministry_admin` to create and update
-  admin, leader, and member records. Each workflow gets a dedicated server
-  action and a matching narrow INSERT/UPDATE RLS policy. See
-  `docs/PHASE_5A_ADMIN_MANAGEMENT.md`.
+- **Phase 5A.1 — admin people & role management writes.** Narrow,
+  allowlisted server actions for `super_admin` / `ministry_admin` to create
+  and update admin, leader, and member records. Each workflow gets a
+  dedicated server action and a matching narrow INSERT/UPDATE RLS policy.
+  See `docs/PHASE_5A_ADMIN_MANAGEMENT.md` and
+  `docs/PHASE_5A_ACTION_CONTRACTS.md`.
 - **Phase 5B — operational writes.** Attendance submission, guest capture,
   follow-up updates, and admin review queues. These arrive alongside the
   broader operational INSERT / UPDATE / DELETE RLS policies.

@@ -13,7 +13,7 @@ export default async function AdminPeoplePage() {
   return (
     <AppShell
       title="Manage People"
-      subtitle="Phase 5A.0 scaffold. UI/UX preview of the admin workflows that ship in Phase 5A.1 after write policies and server actions are verified against a live Supabase project."
+      subtitle="Preview of admin people and role management. Real writes unlock in Phase 5A.1 once narrow write policies and server actions are verified against live Supabase. Operational writes — attendance, guests, follow-ups — unlock in Phase 5B."
       phaseLabel="Phase 5A.0"
       navItems={navItemsForRole(session.profile.role)}
       headerSlot={

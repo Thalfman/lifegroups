@@ -18,7 +18,7 @@ export default async function HomePage() {
   return (
     <AppShell
       title="Life Group Operations Dashboard"
-      subtitle="A warm, focused command center for ministry admins and life group leaders."
+      subtitle="A ministry command center: admin visibility into group health, a weekly leader workflow, guest follow-up, and capacity-aware decisions — all in one place."
       headerSlot={
         signedIn && session?.profile ? (
           <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
@@ -32,26 +32,39 @@ export default async function HomePage() {
       }
     >
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard title="Leader check-ins" value="Weekly" meta="Simple, mobile-first check-in flow" />
-        <MetricCard title="Guest follow-up" value="Pipeline" meta="Visibility from new to placed" />
-        <MetricCard title="Capacity awareness" value="At a glance" meta="Highlights groups approaching full" />
+        <MetricCard
+          title="Leader workflow"
+          value="Weekly"
+          meta="Mobile-first check-ins, roster, and group pulse"
+        />
+        <MetricCard
+          title="Guest follow-up"
+          value="Pipeline"
+          meta="Track every guest from first visit to placed"
+        />
+        <MetricCard
+          title="Capacity awareness"
+          value="At a glance"
+          meta="Spot near-full groups before they overflow"
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <StatusCard title="What this app delivers">
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Leader check-ins and member roster visibility.</li>
-            <li>• Admin visibility into attendance trends and group health.</li>
-            <li>• Planned pause handling and restart readiness status.</li>
-            <li>• Guest follow-up and capacity-first decisions.</li>
+            <li>• A ministry command center for admins and life group leaders.</li>
+            <li>• Admin visibility into attendance trends, group health, and follow-up load.</li>
+            <li>• A simple weekly workflow for leaders: roster, pulse, and check-in.</li>
+            <li>• Guest follow-up from first visit through placement in a group.</li>
+            <li>• Capacity awareness so planned pauses and restarts stay on the radar.</li>
           </ul>
         </StatusCard>
         <ActionCard
           title={signedIn ? "Open your dashboard" : "Sign in to see live data"}
           description={
             signedIn
-              ? "Your dashboard is scoped by Row Level Security to the data your role can see."
-              : "Phase 4 adds Supabase Auth, role-aware dashboards, and Row Level Security. Without sign-in, only the public design previews are visible."
+              ? "Your dashboard is scoped by your role and protected by Row Level Security."
+              : "Sign in to see live data scoped to your role. The admin and leader design previews below stay public and use demo data."
           }
           action={
             <div className="flex flex-wrap gap-2">
