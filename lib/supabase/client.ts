@@ -11,7 +11,8 @@ export function getReadClient(): ReadClient | null {
   const env = getSupabaseEnv();
   if (!env) return null;
 
-  if (memoizedClient && memoizedFor === env.url) {
+  const fingerprint = `${env.url}|${env.anonKey}`;
+  if (memoizedClient && memoizedFor === fingerprint) {
     return memoizedClient;
   }
 
@@ -19,6 +20,6 @@ export function getReadClient(): ReadClient | null {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-application-name": "lifegroups-dashboard" } },
   });
-  memoizedFor = env.url;
+  memoizedFor = fingerprint;
   return memoizedClient;
 }

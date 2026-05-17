@@ -143,7 +143,16 @@ export const LEADER_FALLBACK: LeaderDashboardData = {
     capacity: 12,
     activeMembers: 8,
     weekLabel: "Week of May 17",
-    memberNames: ["Jordan K.", "Priya M.", "Noah B.", "Grace T.", "Elijah R.", "Avery L.", "Sam W.", "Riley T."],
+    members: [
+      { id: "fallback-m-1", displayName: "Jordan K." },
+      { id: "fallback-m-2", displayName: "Priya M." },
+      { id: "fallback-m-3", displayName: "Noah B." },
+      { id: "fallback-m-4", displayName: "Grace T." },
+      { id: "fallback-m-5", displayName: "Elijah R." },
+      { id: "fallback-m-6", displayName: "Avery L." },
+      { id: "fallback-m-7", displayName: "Sam W." },
+      { id: "fallback-m-8", displayName: "Riley T." },
+    ],
   },
   recentSessions: [
     { meetingWeek: "2026-05-11", status: "submitted", presentCount: 7, absentCount: 1, excusedCount: 0 },

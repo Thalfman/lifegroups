@@ -39,17 +39,30 @@ export async function fetchActiveGroupCount(client: ReadClient): Promise<ReadRes
 
 export async function fetchAttendanceSessions(
   client: ReadClient,
-  options: { groupId?: string; limit?: number } = {},
+  options: { groupId?: string; meetingWeek?: string; limit?: number } = {},
 ): Promise<ReadResult<AttendanceSessionsRow[]>> {
   let query = client
     .from("attendance_sessions")
     .select("*")
     .order("meeting_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
+  if (options.meetingWeek) query = query.eq("meeting_week", options.meetingWeek);
   if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchAttendanceSessions", error) };
   return { data: data ?? [], error: null };
+}
+
+export async function fetchLatestMeetingWeek(client: ReadClient): Promise<ReadResult<string | null>> {
+  const { data, error } = await client
+    .from("attendance_sessions")
+    .select("meeting_week")
+    .order("meeting_week", { ascending: false })
+    .limit(1)
+    .returns<{ meeting_week: string }[]>();
+  if (error) return { data: null, error: wrapError("fetchLatestMeetingWeek", error) };
+  if (!data || data.length === 0) return { data: null, error: null };
+  return { data: data[0].meeting_week, error: null };
 }
 
 export async function fetchAttendanceRecordsForSessions(
@@ -65,11 +78,18 @@ export async function fetchAttendanceRecordsForSessions(
   return { data: data ?? [], error: null };
 }
 
+// Supabase REST responses default-cap rows at ~1000. Free-tier dashboards stay well
+// below this, but we widen the cap with an explicit range so pipeline counts stop
+// silently truncating once a project crosses the default. Beyond ~10k guests this
+// should switch to per-stage `count: exact` queries instead of row reads.
+const GUEST_PAGE_LIMIT = 10000;
+
 export async function fetchGuests(client: ReadClient): Promise<ReadResult<GuestsRow[]>> {
   const { data, error } = await client
     .from("guests")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, GUEST_PAGE_LIMIT - 1);
   if (error) return { data: null, error: wrapError("fetchGuests", error) };
   return { data: data ?? [], error: null };
 }

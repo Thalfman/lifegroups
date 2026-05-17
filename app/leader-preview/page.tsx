@@ -119,24 +119,24 @@ export default async function LeaderPreviewPage() {
               title="Member checklist preview"
               description="Leaders will tap names to mark present in a future write-enabled phase."
             />
-            {group.memberNames.length === 0 ? (
+            {group.members.length === 0 ? (
               <EmptyState
                 title="No active members yet"
                 description="Add members in Supabase or via Phase 4 admin tools to populate this list."
               />
             ) : (
               <ul className="surface-subtle space-y-2 p-4">
-                {group.memberNames.map((name) => (
+                {group.members.map((member) => (
                   <li
-                    key={name}
+                    key={member.id}
                     className="flex items-center justify-between rounded-md bg-background px-3 py-2 text-sm"
                   >
-                    <span>{name}</span>
+                    <span>{member.displayName}</span>
                     <button
                       type="button"
                       disabled
                       className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-muted-foreground disabled:opacity-60"
-                      aria-label={`Mark ${name} present (disabled in read-only phase)`}
+                      aria-label={`Mark ${member.displayName} present (disabled in read-only phase)`}
                     >
                       <Check className="h-3.5 w-3.5" />
                       Present

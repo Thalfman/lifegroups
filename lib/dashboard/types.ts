@@ -67,6 +67,11 @@ export interface AdminDashboardData {
   weekLabel: string;
 }
 
+export interface LeaderGroupMember {
+  id: string;
+  displayName: string;
+}
+
 export interface LeaderGroupSummary {
   groupId: string;
   name: string;
@@ -77,7 +82,7 @@ export interface LeaderGroupSummary {
   capacity: number | null;
   activeMembers: number;
   weekLabel: string;
-  memberNames: string[];
+  members: LeaderGroupMember[];
 }
 
 export interface LeaderSessionStatusRow {

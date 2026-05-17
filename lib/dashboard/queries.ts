@@ -9,6 +9,7 @@ import {
   fetchFirstAssignedGroupForAnyLeader,
   fetchGuests,
   fetchLatestHealthUpdates,
+  fetchLatestMeetingWeek,
   fetchMembersByIds,
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
@@ -26,7 +27,6 @@ import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 import { pipelineStageLabel } from "./labels";
 import type {
   AttendanceRecordsRow,
-  AttendanceSessionsRow,
   FollowUpsRow,
   GroupHealthUpdatesRow,
   GroupMembershipsRow,
@@ -56,13 +56,6 @@ function fallback<T>(data: T, error?: string): DashboardResult<T> {
 
 function live<T>(data: T): DashboardResult<T> {
   return { source: "live", data };
-}
-
-function pickLatestSessionWeek(sessions: AttendanceSessionsRow[]): string | null {
-  if (sessions.length === 0) return null;
-  return sessions.reduce((latest, current) => {
-    return current.meeting_week > latest ? current.meeting_week : latest;
-  }, sessions[0].meeting_week);
 }
 
 function countPipeline(stages: GuestPipelineStage[], all: { pipeline_stage: GuestPipelineStage }[]): PipelineStageCount[] {
@@ -96,7 +89,7 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
     const [
       groupsResult,
       activeGroupCountResult,
-      sessionsResult,
+      latestWeekResult,
       guestsResult,
       followUpsResult,
       membershipsResult,
@@ -104,7 +97,7 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
     ] = await Promise.all([
       fetchAllGroups(client),
       fetchActiveGroupCount(client),
-      fetchAttendanceSessions(client, { limit: 200 }),
+      fetchLatestMeetingWeek(client),
       fetchGuests(client),
       fetchOpenFollowUps(client, { limit: 8 }),
       fetchActiveMemberships(client),
@@ -114,7 +107,7 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
     const firstError =
       groupsResult.error ||
       activeGroupCountResult.error ||
-      sessionsResult.error ||
+      latestWeekResult.error ||
       guestsResult.error ||
       followUpsResult.error ||
       membershipsResult.error ||
@@ -122,16 +115,20 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
     if (firstError) return fallback(ADMIN_FALLBACK, firstError.message);
 
     const groups = groupsResult.data ?? [];
-    const sessions = sessionsResult.data ?? [];
     const guests = guestsResult.data ?? [];
     const followUps = followUpsResult.data ?? [];
     const memberships = membershipsResult.data ?? [];
     const healthUpdates = healthUpdatesResult.data ?? [];
 
     const groupsById = new Map(groups.map((g) => [g.id, g] as const));
+    const activeGroups = groups.filter((g) => g.lifecycle_status === "active");
+    const activeGroupIds = new Set(activeGroups.map((g) => g.id));
 
-    const latestWeek = pickLatestSessionWeek(sessions) ?? isoWeekStart(new Date());
-    const sessionsThisWeek = sessions.filter((s) => s.meeting_week === latestWeek);
+    const latestWeek = latestWeekResult.data ?? isoWeekStart(new Date());
+
+    const sessionsThisWeekResult = await fetchAttendanceSessions(client, { meetingWeek: latestWeek });
+    if (sessionsThisWeekResult.error) return fallback(ADMIN_FALLBACK, sessionsThisWeekResult.error.message);
+    const sessionsThisWeek = sessionsThisWeekResult.data ?? [];
 
     let attendanceThisWeek = 0;
     if (sessionsThisWeek.length > 0) {
@@ -143,9 +140,9 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
       ).length;
     }
 
-    const activeGroups = groups.filter((g) => g.lifecycle_status === "active");
-    const notSubmittedSessions = sessionsThisWeek.filter((s) => s.status === "not_submitted").length;
-    const groupsWithoutSession = Math.max(0, activeGroups.length - sessionsThisWeek.length);
+    const sessionsThisWeekForActive = sessionsThisWeek.filter((s) => activeGroupIds.has(s.group_id));
+    const notSubmittedSessions = sessionsThisWeekForActive.filter((s) => s.status === "not_submitted").length;
+    const groupsWithoutSession = Math.max(0, activeGroups.length - sessionsThisWeekForActive.length);
     const missingCheckInsCount = notSubmittedSessions + groupsWithoutSession;
 
     const pipelineBreakdown = countPipeline(GUEST_PIPELINE_STAGES, guests);
@@ -296,8 +293,9 @@ export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDa
 
     const latestHealth = healthUpdates[0];
     const latestWeekIso = sessions[0]?.meeting_week ?? isoWeekStart(new Date());
+    const currentWeekIso = isoWeekStart(new Date());
 
-    const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, latestWeekIso);
+    const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, currentWeekIso);
     if (newGuestsResult.error) throw newGuestsResult.error;
     const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
 
@@ -305,9 +303,9 @@ export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDa
       toFollowUpItem(row, new Map([[group.id, group]])),
     );
 
-    const memberNames = members
-      .map((m) => shortenName(m.full_name))
-      .sort((a, b) => a.localeCompare(b));
+    const memberList = members
+      .map((m) => ({ id: m.id, displayName: shortenName(m.full_name) }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     const rhythm = computeAttendanceRhythm(recentSessions);
 
@@ -322,7 +320,7 @@ export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDa
         capacity: group.capacity,
         activeMembers: memberships.length,
         weekLabel: `Week of ${describeWeek(latestWeekIso)}`,
-        memberNames,
+        members: memberList,
       },
       recentSessions,
       healthPulse: {
