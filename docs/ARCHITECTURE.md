@@ -39,9 +39,13 @@
 - Supabase client is **read-only**; no inserts, updates, deletes, RPC writes, or
   server actions exist.
 - No auth/session integration; the leader dashboard picks the first active group
-  as a stand-in until Phase 4 wires auth + assignment.
+  as a stand-in until Phase 4 wires Supabase Auth, protected routes, role-aware
+  access, and assigned-leader scoping.
 - No Row Level Security policy enforcement. Live mode reads with the public anon
   key — Phase 4 introduces RLS-bound reads scoped to the authenticated leader or
   admin.
+- Phase 4 is a security foundation only — it does not add write paths. The first
+  write workflows (attendance submission, guest capture, follow-up updates, and
+  admin review queues) arrive in Phase 5 once RLS has been verified end-to-end.
 - The Vercel build remains independent from Supabase environment variables; pages
   render demo data when env vars are missing.
