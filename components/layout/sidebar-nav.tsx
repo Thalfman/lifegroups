@@ -5,14 +5,30 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { AppShellNavItem } from "@/components/layout/shell";
 
-function isActive(pathname: string | null, href: string): boolean {
-  if (!pathname) return false;
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(`${href}/`);
+function bestMatchHref(pathname: string | null, items: AppShellNavItem[]): string | null {
+  if (!pathname) return null;
+  let bestHref: string | null = null;
+  let bestScore = -1;
+  for (const item of items) {
+    let score = -1;
+    if (item.href === "/") {
+      if (pathname === "/") score = 1;
+    } else if (pathname === item.href) {
+      score = item.href.length + 1;
+    } else if (pathname.startsWith(`${item.href}/`)) {
+      score = item.href.length;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestHref = item.href;
+    }
+  }
+  return bestHref;
 }
 
 export function SidebarNav({ items }: { items: AppShellNavItem[] }) {
   const pathname = usePathname();
+  const activeHref = bestMatchHref(pathname, items);
 
   return (
     <nav
@@ -20,7 +36,7 @@ export function SidebarNav({ items }: { items: AppShellNavItem[] }) {
       className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:mt-4 lg:flex-col lg:gap-0 lg:space-y-1 lg:overflow-visible lg:pb-0"
     >
       {items.map((item) => {
-        const active = isActive(pathname, item.href);
+        const active = item.href === activeHref;
         return (
           <Link
             key={item.href}
