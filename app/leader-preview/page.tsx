@@ -4,11 +4,7 @@ import { AppShell, SectionHeader } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
-import {
-  ConfiguredDataNotice,
-  DashboardErrorNotice,
-  FallbackDataNotice,
-} from "@/components/dashboard/notices";
+import { PublicPreviewNotice } from "@/components/dashboard/notices";
 import { getLeaderDashboardData } from "@/lib/dashboard/queries";
 import { mapHealthToBadge, mapLifecycleToBadge } from "@/lib/dashboard/badge-map";
 import {
@@ -20,19 +16,18 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function LeaderPreviewPage() {
-  const { source, data, error } = await getLeaderDashboardData();
-  const group = data.group;
+  const { data } = await getLeaderDashboardData(null, { assignedGroupIds: [] });
+  const dashboard = data.groups[0] ?? null;
 
   return (
     <AppShell
       title="Leader Workflow Preview"
-      subtitle="Weekly check-in flow connected to the assigned group's read-only Supabase data."
-      headerSlot={<DataSourceBadge source={source} />}
+      subtitle="Public design preview of a leader's weekly workflow, rendered from demo data."
+      headerSlot={<DataSourceBadge source="fallback" />}
     >
-      {source === "live" ? <ConfiguredDataNotice /> : <FallbackDataNotice />}
-      {error ? <DashboardErrorNotice message={error} /> : null}
+      <PublicPreviewNotice />
 
-      {!group ? (
+      {!dashboard ? (
         <EmptyState
           title="No assigned group yet"
           description="When a leader has an active group assignment, their workflow will load here."
@@ -42,28 +37,30 @@ export default async function LeaderPreviewPage() {
           <section className="grid gap-4 lg:grid-cols-2">
             <ActionCard
               title="This week's check-in"
-              description={`${group.name} · ${group.weekLabel}`}
+              description={`${dashboard.group.name} · ${dashboard.group.weekLabel}`}
               action={
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button>Submit check-in</Button>
-                  <Button variant="outline">Did not meet</Button>
-                  <LifecycleBadge {...mapLifecycleToBadge(group.lifecycleStatus)} />
+                  <Button disabled>Submit check-in</Button>
+                  <Button variant="outline" disabled>
+                    Did not meet
+                  </Button>
+                  <LifecycleBadge {...mapLifecycleToBadge(dashboard.group.lifecycleStatus)} />
                 </div>
               }
             />
             <StatusCard title="Quick group pulse">
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Attendance rhythm: {data.healthPulse.attendanceRhythm}</p>
+                <p>Attendance rhythm: {dashboard.healthPulse.attendanceRhythm}</p>
                 <p>
-                  New guest{data.healthPulse.newGuestsThisWeek === 1 ? "" : "s"} this week:{" "}
-                  {data.healthPulse.newGuestsThisWeek}
+                  New guest{dashboard.healthPulse.newGuestsThisWeek === 1 ? "" : "s"} this week:{" "}
+                  {dashboard.healthPulse.newGuestsThisWeek}
                 </p>
                 <p className="flex items-center gap-2">
-                  Current health: <HealthBadge {...mapHealthToBadge(data.healthPulse.currentHealth)} />
+                  Current health: <HealthBadge {...mapHealthToBadge(dashboard.healthPulse.currentHealth)} />
                 </p>
-                {data.healthPulse.leaderNote ? (
+                {dashboard.healthPulse.leaderNote ? (
                   <p className="rounded-md bg-background px-3 py-2 text-foreground">
-                    “{data.healthPulse.leaderNote}”
+                    “{dashboard.healthPulse.leaderNote}”
                   </p>
                 ) : null}
               </div>
@@ -76,28 +73,28 @@ export default async function LeaderPreviewPage() {
                 <li>
                   Meeting:{" "}
                   <span className="text-foreground">
-                    {group.meetingDay ?? "TBD"}
-                    {group.meetingTime ? ` at ${group.meetingTime}` : ""}
+                    {dashboard.group.meetingDay ?? "TBD"}
+                    {dashboard.group.meetingTime ? ` at ${dashboard.group.meetingTime}` : ""}
                   </span>
                 </li>
                 <li>
                   Active members:{" "}
                   <span className="text-foreground">
-                    {group.activeMembers}
-                    {group.capacity ? ` / ${group.capacity}` : ""}
+                    {dashboard.group.activeMembers}
+                    {dashboard.group.capacity ? ` / ${dashboard.group.capacity}` : ""}
                   </span>
                 </li>
               </ul>
             </StatusCard>
             <StatusCard title="Recent attendance">
-              {data.recentSessions.length === 0 ? (
+              {dashboard.recentSessions.length === 0 ? (
                 <EmptyState
                   title="No sessions yet"
                   description="Once a session is recorded, recent check-ins will appear here."
                 />
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {data.recentSessions.map((session) => (
+                  {dashboard.recentSessions.map((session) => (
                     <li
                       key={session.meetingWeek}
                       className="flex items-center justify-between rounded-md bg-background px-3 py-2"
@@ -119,14 +116,14 @@ export default async function LeaderPreviewPage() {
               title="Member checklist preview"
               description="Leaders will tap names to mark present in a future write-enabled phase."
             />
-            {group.members.length === 0 ? (
+            {dashboard.group.members.length === 0 ? (
               <EmptyState
                 title="No active members yet"
-                description="Add members in Supabase or via Phase 4 admin tools to populate this list."
+                description="Add members in Supabase or via admin tools to populate this list."
               />
             ) : (
               <ul className="surface-subtle space-y-2 p-4">
-                {group.members.map((member) => (
+                {dashboard.group.members.map((member) => (
                   <li
                     key={member.id}
                     className="flex items-center justify-between rounded-md bg-background px-3 py-2 text-sm"
@@ -150,7 +147,7 @@ export default async function LeaderPreviewPage() {
           <section className="grid gap-4 md:grid-cols-2">
             <ActionCard
               title="Add guest"
-              description="Guest capture moves to Phase 4 once write-enabled flows arrive."
+              description="Guest capture arrives in Phase 5 once write-enabled flows ship."
               action={
                 <Button variant="outline" disabled>
                   Add guest
@@ -158,14 +155,14 @@ export default async function LeaderPreviewPage() {
               }
             />
             <StatusCard title="Next follow-ups">
-              {data.followUps.length === 0 ? (
+              {dashboard.followUps.length === 0 ? (
                 <EmptyState
                   title="No open follow-ups"
                   description="When admins assign follow-ups for this group, they'll appear here."
                 />
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {data.followUps.map((item) => (
+                  {dashboard.followUps.map((item) => (
                     <li key={item.id} className="rounded-md bg-background px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate">{item.title}</span>

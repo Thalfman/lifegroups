@@ -3,16 +3,33 @@ import { ActionCard, MetricCard, StatusCard } from "@/components/dashboard/cards
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
 import { AppShell, SectionHeader } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
-import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getCurrentSession } from "@/lib/auth/session";
+import { defaultLandingPathForRole, ROLE_LABELS } from "@/lib/auth/roles";
 
-export default function HomePage() {
-  const source = isSupabaseConfigured() ? "live" : "fallback";
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const session = await getCurrentSession();
+  const signedIn = !!session?.profile;
+  const landingPath = session?.profile
+    ? defaultLandingPathForRole(session.profile.role)
+    : null;
+
   return (
     <AppShell
       title="Life Group Operations Dashboard"
       subtitle="A warm, focused command center for ministry admins and life group leaders."
-      headerSlot={<DataSourceBadge source={source} />}
+      headerSlot={
+        signedIn && session?.profile ? (
+          <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
+            Signed in as {session.profile.full_name} · {ROLE_LABELS[session.profile.role]}
+          </span>
+        ) : (
+          <Button asChild>
+            <Link href="/login">Sign in</Link>
+          </Button>
+        )
+      }
     >
       <section className="grid gap-4 md:grid-cols-3">
         <MetricCard title="Leader check-ins" value="Weekly" meta="Simple, mobile-first check-in flow" />
@@ -21,24 +38,37 @@ export default function HomePage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <StatusCard title="What this preview demonstrates">
+        <StatusCard title="What this app delivers">
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Leader check-ins and member checklist flow.</li>
+            <li>• Leader check-ins and member roster visibility.</li>
             <li>• Admin visibility into attendance trends and group health.</li>
             <li>• Planned pause handling and restart readiness status.</li>
             <li>• Guest follow-up and capacity-first decisions.</li>
           </ul>
         </StatusCard>
         <ActionCard
-          title="Explore preview dashboards"
-          description="Phase 3 reads from Supabase when env vars are configured, and falls back to demo data otherwise. No auth, no writes yet."
+          title={signedIn ? "Open your dashboard" : "Sign in to see live data"}
+          description={
+            signedIn
+              ? "Your dashboard is scoped by Row Level Security to the data your role can see."
+              : "Phase 4 adds Supabase Auth, role-aware dashboards, and Row Level Security. Without sign-in, only the public design previews are visible."
+          }
           action={
             <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href="/admin-preview">Open admin preview</Link>
+              {signedIn && landingPath ? (
+                <Button asChild>
+                  <Link href={landingPath}>Open my dashboard</Link>
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link href="/login">Sign in</Link>
+                </Button>
+              )}
+              <Button asChild variant="outline">
+                <Link href="/admin-preview">Admin design preview</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/leader-preview">Open leader preview</Link>
+                <Link href="/leader-preview">Leader design preview</Link>
               </Button>
             </div>
           }

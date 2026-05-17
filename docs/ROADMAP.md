@@ -5,8 +5,9 @@
 - **Phase 2**: database schema + enums + seed data + docs. ✅
 - **Phase 3**: safe Supabase read integration, fallback-aware dashboard data flow, real
   capacity and pipeline visualizations. ✅
-- **Phase 4 (next)**: security foundation — Supabase Auth, protected routes,
+- **Phase 4**: security foundation — Supabase Auth, protected routes,
   role-aware access, assigned leader scoping, and Row Level Security policy
-  enforcement. No write paths land in this phase.
-- **Phase 5**: first write workflows after RLS is verified — attendance
-  submission, guest capture, follow-up updates, and admin review queues.
+  enforcement. ✅
+- **Phase 5 (next)**: first write workflows after RLS is verified — attendance
+  submission, guest capture, follow-up updates, and admin review queues. This
+  is where INSERT / UPDATE / DELETE RLS policies first arrive.

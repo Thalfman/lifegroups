@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-const navItems = [
+export type AppShellNavItem = { href: string; label: string };
+
+export const PUBLIC_NAV_ITEMS: AppShellNavItem[] = [
   { href: "/", label: "Home" },
   { href: "/admin-preview", label: "Admin Preview" },
   { href: "/leader-preview", label: "Leader Preview" },
@@ -10,14 +12,16 @@ const navItems = [
 export function AppShell({
   title,
   subtitle,
-  phaseLabel = "Phase 3 Preview",
+  phaseLabel = "Phase 4",
   headerSlot,
+  navItems = PUBLIC_NAV_ITEMS,
   children,
 }: {
   title: string;
   subtitle: string;
   phaseLabel?: string;
   headerSlot?: ReactNode;
+  navItems?: AppShellNavItem[];
   children: ReactNode;
 }) {
   return (
@@ -45,7 +49,7 @@ export function AppShell({
                 <h1 className="mt-2 text-2xl font-semibold md:text-3xl">{title}</h1>
                 <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
               </div>
-              {headerSlot ? <div className="flex flex-wrap items-center gap-2">{headerSlot}</div> : null}
+              {headerSlot ? <div className="flex flex-wrap items-center gap-3">{headerSlot}</div> : null}
             </div>
           </header>
           {children}

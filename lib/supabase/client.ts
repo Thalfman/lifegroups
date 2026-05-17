@@ -1,8 +1,9 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "./config";
+import type { AppSupabaseClient } from "./types";
 
-export type ReadClient = SupabaseClient<Database>;
+export type ReadClient = AppSupabaseClient;
 
 let memoizedClient: ReadClient | null = null;
 let memoizedFor: string | null = null;
