@@ -1,7 +1,7 @@
 # Roadmap
 
-- Phase 0: bootstrap, structure, docs, UI foundation.
-- Phase 1: auth and role-aware navigation.
-- Phase 2: group and member management.
-- Phase 3: attendance + guest flow.
-- Phase 4: health indicators + reporting.
+- **Phase 0**: bootstrap, docs, and UI foundation. ✅
+- **Phase 1**: design system and preview app scaffolding. ✅
+- **Phase 2**: database schema + enums + seed data + docs. ✅
+- **Phase 3**: safe Supabase integration (read paths), dashboard queries, and operational flows.
+- **Phase 4**: auth and Row Level Security policy enforcement.

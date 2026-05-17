@@ -1,9 +1,13 @@
 # Life Group Operations Dashboard
 
-Phase 0 bootstrap for a ministry-focused operations app built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui-style components.
+This repository contains the Life Group Operations Dashboard web app built with Next.js, TypeScript, and Tailwind.
+
+## Phase status
+- Phase 0/1: app foundation and preview UI.
+- **Phase 2 (this update): Supabase schema, enums, seed data, and docs only.**
+- No live Supabase authentication or production data access yet.
 
 ## Local development
-
 1. Install dependencies:
    ```bash
    npm install
@@ -18,20 +22,13 @@ Phase 0 bootstrap for a ministry-focused operations app built with Next.js, Type
    ```
 
 ## Scripts
-- `npm run dev` - start local app
-- `npm run lint` - lint project
-- `npm run typecheck` - TypeScript checks
-- `npm run build` - production build
+- `npm run dev`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
 
-## Vercel setup (future)
-- Import repository in Vercel.
-- Set environment variables from `.env.example`.
-- Keep on Hobby plan for Phase 0/1.
-
-## Supabase setup (future)
-- Create a free Supabase project.
-- Populate `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Save `SUPABASE_SERVICE_ROLE_KEY` in Vercel project env only.
-
-## Phase status
-This phase intentionally excludes authentication, schema, business logic, attendance workflows, and dashboards.
+## Supabase notes
+- Migration files: `supabase/migrations`
+- Seed files: `supabase/seed`
+- Build remains Vercel-compatible without Supabase env vars in Phase 2.
+- Supabase runtime integration lands in later phases.
