@@ -1,25 +1,41 @@
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { ActionCard, MetricCard, StatusCard } from "@/components/dashboard/cards";
+import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
+import { AppShell, SectionHeader } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto min-h-screen max-w-6xl p-6 md:p-10">
-      <section className="space-y-6">
-        <Badge>Phase 0 Foundation</Badge>
-        <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Life Group Operations Dashboard</h1>
-        <p className="max-w-3xl text-muted-foreground">A calm, modern operations hub for ministry admins and life group leaders. This starter focuses on clean architecture and deployment readiness for Vercel + Supabase free tier.</p>
-        <div className="flex gap-3"><Button>Phase 1: Auth + Roles</Button><Button variant="outline">View Roadmap</Button></div>
+    <AppShell title="Life Group Operations Dashboard" subtitle="A warm, focused command center preview for ministry admins and life group leaders.">
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard title="Leader check-ins" value="34 / 40" meta="Simple weekly workflow in leader preview" />
+        <MetricCard title="Guest follow-up" value="12 pending" meta="Pipeline visibility for ministry admin" />
+        <MetricCard title="Capacity awareness" value="81%" meta="Highlights groups approaching full capacity" />
       </section>
-      <section className="mt-10 grid gap-4 md:grid-cols-3">
-        {[
-          ["Admin Visibility", "Cross-group insights, health, follow-ups, and weekly rhythm management."],
-          ["Leader Simplicity", "Single-group workflows designed to reduce admin overhead for leaders."],
-          ["Free-tier Ready", "Structured for Vercel Hobby + Supabase Free with no paid dependencies."],
-        ].map(([title, description]) => (
-          <Card key={title}><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{description}</CardContent></Card>
-        ))}
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <StatusCard title="What this preview demonstrates">
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>• Leader check-ins and member checklist flow.</li>
+            <li>• Admin visibility into attendance trends and group health.</li>
+            <li>• Planned pause handling and restart readiness status.</li>
+            <li>• Guest follow-up and capacity-first decisions.</li>
+          </ul>
+        </StatusCard>
+        <ActionCard
+          title="Explore preview dashboards"
+          description="Static sample content only—no auth, no Supabase runtime integration, and no live attendance submission in this phase."
+          action={<div className="flex flex-wrap gap-2"><Button asChild><Link href="/admin-preview">Open admin preview</Link></Button><Button asChild variant="outline"><Link href="/leader-preview">Open leader preview</Link></Button></div>}
+        />
       </section>
-    </main>
+
+      <section className="space-y-4">
+        <SectionHeader title="Shared status language" description="Phase 1 introduces reusable badge styling that future dashboards can reuse." />
+        <div className="flex flex-wrap gap-2">
+          <LifecycleBadge status="Active" /><LifecycleBadge status="Planned Pause" /><LifecycleBadge status="Seasonal Break" /><LifecycleBadge status="Restart Soon" /><LifecycleBadge status="Overdue Restart" />
+          <HealthBadge tone="healthy" label="Healthy" /><HealthBadge tone="watch" label="Watch" /><HealthBadge tone="followup" label="Needs Follow-up" />
+        </div>
+      </section>
+    </AppShell>
   );
 }

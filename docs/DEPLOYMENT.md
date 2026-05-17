@@ -1,8 +1,9 @@
 # Deployment Notes
 
-## Current (through Phase 2)
+## Current (through Phase 2 schema + restored Phase 1 UI)
 - Deploy to Vercel as a standard Next.js app.
 - Supabase environment variables are **not required** for build/runtime yet.
+- UI preview pages are static and safe for Vercel Hobby.
 - Do not import live Supabase query paths into pages until later phases.
 
 ## When Supabase is introduced (future phases)
