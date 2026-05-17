@@ -10,6 +10,7 @@ import {
   fetchGuests,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
+  fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
 } from "@/lib/supabase/read-models";
 import type { ReadClient } from "@/lib/supabase/client";
@@ -133,7 +134,6 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
     const sessionsThisWeek = sessions.filter((s) => s.meeting_week === latestWeek);
 
     let attendanceThisWeek = 0;
-    let missingCheckInsCount = sessionsThisWeek.filter((s) => s.status === "not_submitted").length;
     if (sessionsThisWeek.length > 0) {
       const ids = sessionsThisWeek.map((s) => s.id);
       const recordsResult = await fetchAttendanceRecordsForSessions(client, ids);
@@ -143,10 +143,10 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
       ).length;
     }
 
-    if (missingCheckInsCount === 0 && sessionsThisWeek.length < groups.filter((g) => g.lifecycle_status === "active").length) {
-      missingCheckInsCount =
-        groups.filter((g) => g.lifecycle_status === "active").length - sessionsThisWeek.length;
-    }
+    const activeGroups = groups.filter((g) => g.lifecycle_status === "active");
+    const notSubmittedSessions = sessionsThisWeek.filter((s) => s.status === "not_submitted").length;
+    const groupsWithoutSession = Math.max(0, activeGroups.length - sessionsThisWeek.length);
+    const missingCheckInsCount = notSubmittedSessions + groupsWithoutSession;
 
     const pipelineBreakdown = countPipeline(GUEST_PIPELINE_STAGES, guests);
     const guestPipelineCount = guests.filter(
@@ -191,7 +191,9 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
       })
       .sort((a, b) => (b.utilization ?? 0) - (a.utilization ?? 0));
 
-    const fullGroups = capacityRows.filter((r) => r.healthStatus === "capacity_full" || r.utilization === 1).length;
+    const fullGroups = capacityRows.filter(
+      (r) => r.healthStatus === "capacity_full" || (r.utilization !== null && r.utilization >= 1),
+    ).length;
     const nearCapacityGroups = capacityRows.filter(
       (r) => r.utilization !== null && r.utilization >= NEAR_CAPACITY_THRESHOLD && r.utilization < 1,
     ).length;
@@ -295,6 +297,10 @@ export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDa
     const latestHealth = healthUpdates[0];
     const latestWeekIso = sessions[0]?.meeting_week ?? isoWeekStart(new Date());
 
+    const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, latestWeekIso);
+    if (newGuestsResult.error) throw newGuestsResult.error;
+    const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
+
     const followUpItems = followUps.map((row: FollowUpsRow) =>
       toFollowUpItem(row, new Map([[group.id, group]])),
     );
@@ -321,7 +327,7 @@ export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDa
       recentSessions,
       healthPulse: {
         attendanceRhythm: rhythm,
-        newGuestsThisWeek: 0,
+        newGuestsThisWeek,
         currentHealth: latestHealth?.pulse ?? group.health_status,
         leaderNote: latestHealth?.leader_note ?? null,
       },

@@ -136,11 +136,27 @@ export async function fetchFirstAssignedGroupForAnyLeader(
     .from("group_leaders")
     .select("*")
     .eq("active", true)
+    .order("assigned_at", { ascending: true })
+    .order("id", { ascending: true })
     .limit(1)
     .returns<GroupLeadersRow[]>();
   if (error) return { data: null, error: wrapError("fetchFirstAssignedGroupForAnyLeader", error) };
   if (!data || data.length === 0) return { data: null, error: null };
   return { data: { groupId: data[0].group_id }, error: null };
+}
+
+export async function fetchNewGuestsForGroupSince(
+  client: ReadClient,
+  groupId: string,
+  sinceIsoDate: string,
+): Promise<ReadResult<GuestsRow[]>> {
+  const { data, error } = await client
+    .from("guests")
+    .select("*")
+    .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
+    .gte("first_attended_date", sinceIsoDate);
+  if (error) return { data: null, error: wrapError("fetchNewGuestsForGroupSince", error) };
+  return { data: data ?? [], error: null };
 }
 
 export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
