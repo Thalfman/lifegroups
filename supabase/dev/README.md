@@ -1,10 +1,17 @@
-# Supabase dev helpers (Phase 4)
+# Supabase dev helpers (Phase 4 + Phase 4.1)
 
 This directory holds **local-only** helpers for wiring Supabase Auth users to
-the seed `profiles` rows so you can exercise the role-based dashboards and
-verify Row Level Security policies. None of these files contain production
-data and **nothing in this directory should ever be committed with real UUIDs,
-real emails, or passwords**.
+`profiles` rows so you can exercise the role-based dashboards and verify Row
+Level Security policies. None of these files contain production data and
+**nothing in this directory should ever be committed with real UUIDs, real
+emails, or passwords**.
+
+There are two bootstrap workflows here:
+
+- **Super admin bootstrap** (Phase 4.1) — link your own Supabase Auth user
+  to a `super_admin` profile so you (the owner/operator) can sign in.
+- **Seed test users** (Phase 4) — link the five demo profiles in
+  `phase2_seed.sql` to Supabase Auth users so you can exercise every role.
 
 ## Bootstrap steps
 
@@ -71,8 +78,76 @@ Expected:
 - Leader Casey → 2.
 - Ministry admin → 5.
 
+## Super admin bootstrap (Phase 4.1)
+
+`super_admin` is the top-level owner/operator role. It is **not** seeded —
+the owner brings their own Supabase Auth user and links it to a
+`super_admin` profile via the helper below. Future write workflows
+(Phase 5A) will let `super_admin` manage other admin and leader profiles
+from inside the app, but for the very first owner, this is the only
+bootstrap path.
+
+1. **Create your own Supabase Auth user manually.** In the Supabase
+   dashboard, go to **Authentication → Users → Add user** and create an
+   account with your real email and a development-only password. Do not
+   commit the password anywhere.
+2. **Copy the Auth user UUID** from the user's detail panel.
+3. **Copy the bootstrap helper to a git-ignored local file:**
+   ```bash
+   cp supabase/dev/link_super_admin.sql.example supabase/dev/link_super_admin.sql
+   ```
+   (`supabase/dev/link_super_admin.sql` is git-ignored.)
+4. **Edit the local copy.** Replace the placeholder UUID
+   (`00000000-0000-0000-0000-000000000000`), the placeholder name
+   (`Owner Admin`), and the placeholder email (`owner@example.org`) with
+   your real values.
+5. **Run it in the Supabase SQL Editor.** The statement uses
+   `INSERT … ON CONFLICT (email) DO UPDATE`, so it works whether or not a
+   placeholder profile already exists for that email.
+6. **Verify:**
+   ```sql
+   select email, full_name, role, auth_user_id
+     from public.profiles
+    where role = 'super_admin';
+   ```
+   You should see exactly one row, with your real `auth_user_id` populated.
+
+After this, sign in at `/login` with the email + password you set in
+step 1.
+
+## Manual test checklist (Phase 4.1)
+
+Run this checklist after the seed test users and at least one
+`super_admin` are linked. Each item is a manual sign-in test against the
+deployed app or a local `npm run dev` instance.
+
+- [ ] `super_admin` can access `/admin` and `/staff`.
+- [ ] `super_admin` **cannot** access `/leader` unless that profile is also
+      assigned an active `group_leaders` row. This is expected:
+      `requireLeader()` (in `lib/auth/session.ts`) checks for active leader
+      assignments, not the `user_role`. The owner can assign themselves to
+      a group via the Phase 5A admin workflows once those ship.
+- [ ] `ministry_admin` can access `/admin` and `/staff`.
+- [ ] `staff_viewer` can access `/staff` only and is redirected to
+      `/unauthorized` from `/admin`.
+- [ ] `leader` can access `/leader` only and sees their assigned groups
+      only.
+- [ ] A signed-in Auth user with **no** linked `profiles` row is sent to
+      `/unauthorized`.
+- [ ] A logged-out visitor of `/admin`, `/leader`, or `/staff` is sent to
+      `/login`.
+- [ ] In the Supabase SQL editor, the `anon` database role sees zero
+      operational rows after RLS (`select count(*) from groups;` → 0).
+- [ ] Casey leader (`casey.morgan@example.org`) still sees exactly two
+      assigned groups in seed data (Northside Young Adults and South
+      Campus Women).
+
 ## What's intentionally excluded
 
 - No service role usage anywhere in the app code.
-- No real church data, no real people, no real passwords.
-- No INSERT / UPDATE / DELETE policies; those ship in Phase 5.
+- No real church data beyond the operator's own auth account.
+- No real passwords committed; passwords stay in a password manager or a
+  local-only note.
+- No INSERT / UPDATE / DELETE policies for app workflows; the first narrow
+  set ships in Phase 5A (`docs/PHASE_5A_ADMIN_MANAGEMENT.md`), and the
+  broader operational write workflows ship in Phase 5B.

@@ -1,0 +1,42 @@
+-- ============================================================================
+-- !! DO NOT COMMIT REAL UUIDs, REAL EMAILS, OR PASSWORDS !!
+-- ============================================================================
+-- Bootstrap helper for linking the owner/operator's Supabase Auth user to a
+-- `super_admin` profile. This file is an EXAMPLE -- copy it to a git-ignored
+-- local file before editing:
+--   cp supabase/dev/link_super_admin.sql.example supabase/dev/link_super_admin.sql
+--
+-- Prerequisites:
+-- 1. Apply Phase 2 schema + Phase 4 RLS (see supabase/dev/README.md).
+-- 2. In the Supabase dashboard, Authentication -> Users -> Add user, create
+--    your own auth user with a development-only password.
+-- 3. Copy that auth user's UUID from the dashboard.
+-- 4. Replace the placeholder UUID and email below with your real values.
+--
+-- The statement uses INSERT ... ON CONFLICT (email) DO UPDATE so it works
+-- whether or not a placeholder profile row already exists for the email:
+--   * If no row exists, a fresh `super_admin` profile is inserted.
+--   * If a row already exists for that email, its `auth_user_id`, `role`,
+--     and `status` are updated to link the new auth user as super_admin.
+--
+-- Placeholders intentionally use 00000000-... and example.org so the file
+-- fails loudly if copy/pasted unedited.
+-- ============================================================================
+
+insert into public.profiles (auth_user_id, full_name, email, role, status)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  'Owner Admin',
+  'owner@example.org',
+  'super_admin',
+  'active'
+)
+on conflict (email) do update
+   set auth_user_id = excluded.auth_user_id,
+       role         = 'super_admin',
+       status       = 'active';
+
+-- Sanity check:
+-- select email, full_name, role, auth_user_id
+--   from public.profiles
+--  where role = 'super_admin';
