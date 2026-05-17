@@ -11,12 +11,12 @@ export function getReadClient(): ReadClient | null {
   const env = getSupabaseEnv();
   if (!env) return null;
 
-  const fingerprint = `${env.url}|${env.anonKey}`;
+  const fingerprint = `${env.url}|${env.key}`;
   if (memoizedClient && memoizedFor === fingerprint) {
     return memoizedClient;
   }
 
-  memoizedClient = createClient<Database>(env.url, env.anonKey, {
+  memoizedClient = createClient<Database>(env.url, env.key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-application-name": "lifegroups-dashboard" } },
   });

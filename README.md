@@ -17,7 +17,8 @@ This repository contains the Life Group Operations Dashboard web app built with 
 2. (Optional) connect to a real Supabase project to see live data:
    ```bash
    cp .env.example .env.local
-   # then fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+   # then fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+   # (legacy NEXT_PUBLIC_SUPABASE_ANON_KEY is still accepted as a fallback)
    ```
    Without env vars, the app renders typed fallback demo data on every page.
 3. Run dev server:
