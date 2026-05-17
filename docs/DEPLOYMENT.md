@@ -31,7 +31,15 @@ or runtime.
 4. From Project Settings → API, copy the project URL and **publishable** key
    into the Vercel env vars above. Do not paste the service role key.
 
-## What lands in Phase 4
-- Supabase auth, RLS policies, and assigned-leader scoping.
-- The first write paths: attendance submission, guest capture, follow-up state
-  changes.
+## What lands in Phase 4 (security foundation)
+- Supabase Auth and protected routes.
+- Role-aware access and assigned-leader scoping.
+- Row Level Security policy enforcement on all read paths.
+- No write paths land in this phase.
+
+## What lands in Phase 5 (first write workflows)
+After RLS is verified end-to-end in Phase 4:
+- Attendance submission.
+- Guest capture.
+- Follow-up updates.
+- Admin review queues.

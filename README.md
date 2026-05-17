@@ -7,7 +7,8 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 1: visual design system + admin/leader preview experiences. ✅
 - Phase 2: Supabase schema, enums, seed data, and docs. ✅
 - **Phase 3 (current): safe Supabase read integration with fallback demo data.**
-- Phase 4 (next): Supabase auth, Row Level Security, and the first write workflows.
+- Phase 4 (next): Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement.
+- Phase 5: first write workflows after RLS is verified — attendance submission, guest capture, follow-up updates, and admin review queues.
 
 ## Local development
 1. Install dependencies:
@@ -48,4 +49,4 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
 - Env vars are **optional** for build; required only for live data.
-- Auth, RLS, and write workflows are intentionally deferred to Phase 4.
+- Auth, protected routes, role-aware access, and RLS are deferred to Phase 4. Write workflows (attendance, guests, follow-up, admin review queues) are deferred to Phase 5, after RLS is verified.
