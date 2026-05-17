@@ -147,7 +147,7 @@ export default async function LeaderPreviewPage() {
           <section className="grid gap-4 md:grid-cols-2">
             <ActionCard
               title="Add guest"
-              description="Guest capture arrives in Phase 5 once write-enabled flows ship."
+              description="Guest capture arrives in Phase 5B once write-enabled flows ship."
               action={
                 <Button variant="outline" disabled>
                   Add guest

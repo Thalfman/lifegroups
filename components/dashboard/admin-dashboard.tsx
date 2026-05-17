@@ -11,79 +11,108 @@ import { cn } from "@/lib/utils";
 
 export function AdminDashboard({ data }: { data: AdminDashboardData }) {
   const totalPipeline = data.guestPipelineBreakdown.reduce((sum, row) => sum + row.count, 0);
+  const largestStage = data.guestPipelineBreakdown.reduce<{
+    label: string;
+    count: number;
+  } | null>((acc, row) => (acc && acc.count >= row.count ? acc : { label: row.label, count: row.count }), null);
 
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Active groups"
-          value={String(data.activeGroupCount)}
-          meta={`${data.capacity.nearCapacityGroups} near capacity, ${data.capacity.fullGroups} full`}
-        />
-        <MetricCard
-          title="Attendance this week"
-          value={String(data.attendanceThisWeek)}
-          meta={`Present check-ins for ${data.weekLabel}`}
-        />
-        <MetricCard
-          title="Guests in pipeline"
-          value={String(data.guestPipelineCount)}
-          meta={`${totalPipeline} guests tracked across all stages`}
-        />
-        <MetricCard
-          title="Missing check-ins"
-          value={String(data.missingCheckInsCount)}
-          meta="Sessions not submitted for the latest week"
-        />
+      <section aria-labelledby="weekly-overview" className="space-y-3">
+        <h2 id="weekly-overview" className="sr-only">
+          Weekly overview
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Active groups"
+            value={String(data.activeGroupCount)}
+            meta={`${data.capacity.nearCapacityGroups} near capacity, ${data.capacity.fullGroups} full`}
+          />
+          <MetricCard
+            title="Attendance this week"
+            value={String(data.attendanceThisWeek)}
+            meta={`Present check-ins for ${data.weekLabel}`}
+          />
+          <MetricCard
+            title="Guests in pipeline"
+            value={String(data.guestPipelineCount)}
+            meta={`${totalPipeline} guests tracked across all stages`}
+          />
+          <MetricCard
+            title="Missing check-ins"
+            value={String(data.missingCheckInsCount)}
+            meta="Sessions not submitted for the latest week"
+          />
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <StatusCard title="Active group health">
           {data.groupHealth.length === 0 ? (
-            <EmptyState title="No groups yet" description="Group health rows will appear here once groups exist." />
+            <EmptyState
+              title="No groups yet"
+              description="Group health rows will appear here once groups exist."
+            />
           ) : (
-            <div className="space-y-3 text-sm">
+            <ul className="space-y-3 text-sm">
               {data.groupHealth.map((row) => {
                 const lifecycle = mapLifecycleToBadge(row.lifecycleStatus);
                 const health = mapHealthToBadge(row.healthStatus);
                 return (
-                  <p key={row.groupId} className="flex items-center justify-between gap-3">
-                    <span className="truncate">{row.name}</span>
-                    <span className="flex shrink-0 gap-2">
+                  <li
+                    key={row.groupId}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span className="min-w-0 truncate">{row.name}</span>
+                    <span className="flex shrink-0 flex-wrap gap-2">
                       <LifecycleBadge status={lifecycle.status} label={lifecycle.label} />
                       <HealthBadge tone={health.tone} label={health.label} />
                     </span>
-                  </p>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </StatusCard>
 
         <StatusCard title="Capacity overview">
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              <strong className="text-foreground">{data.capacity.nearCapacityGroups}</strong> groups near full capacity.
+              <strong className="text-foreground">{data.capacity.nearCapacityGroups}</strong>{" "}
+              groups near full capacity.
             </p>
             <p>
-              <strong className="text-foreground">{data.capacity.fullGroups}</strong> groups marked Capacity Full.
+              <strong className="text-foreground">{data.capacity.fullGroups}</strong> groups
+              marked Capacity Full.
             </p>
             {data.capacity.rows.length === 0 ? (
-              <p>No active groups yet.</p>
+              <EmptyState
+                title="No active groups yet"
+                description="Capacity usage will appear here once groups exist."
+              />
             ) : (
               <ul className="space-y-2">
                 {data.capacity.rows.map((row) => {
-                  const pct = row.utilization === null ? null : Math.min(1, Math.max(0, row.utilization));
+                  const pct =
+                    row.utilization === null
+                      ? null
+                      : Math.min(1, Math.max(0, row.utilization));
+                  const pctLabel = pct === null ? "capacity unknown" : `${Math.round(pct * 100)}%`;
+                  const ariaLabel = `${row.name}: ${row.activeMembers}${row.capacity ? ` of ${row.capacity}` : ""} active members (${pctLabel})`;
                   return (
                     <li key={row.groupId} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-foreground">{row.name}</span>
-                        <span>
+                        <span className="tabular-nums">
                           {row.activeMembers}
                           {row.capacity ? ` / ${row.capacity}` : ""}
                         </span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-2 overflow-hidden rounded-full bg-muted"
+                        role="img"
+                        aria-label={ariaLabel}
+                      >
                         <div
                           className={cn(
                             "h-full rounded-full",
@@ -111,10 +140,17 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
       <section className="grid gap-4 lg:grid-cols-3">
         <StatusCard title="Guest pipeline">
           {totalPipeline === 0 ? (
-            <EmptyState title="No guests yet" description="Guests added in Supabase will appear in this pipeline." />
+            <EmptyState
+              title="No guests yet"
+              description="Guests added in Supabase will appear in this pipeline."
+            />
           ) : (
             <div className="space-y-3">
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
+                role="img"
+                aria-label={`Guest pipeline: ${totalPipeline} guest${totalPipeline === 1 ? "" : "s"} tracked${largestStage && largestStage.count > 0 ? `, most in ${largestStage.label}` : ""}.`}
+              >
                 {data.guestPipelineBreakdown.map((row, idx) => {
                   if (row.count === 0) return null;
                   const width = Math.round((row.count / totalPipeline) * 100);
@@ -132,7 +168,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                       key={row.stage}
                       className={cn("h-full", palette[idx % palette.length])}
                       style={{ width: `${width}%` }}
-                      aria-label={`${row.label}: ${row.count}`}
+                      aria-hidden="true"
                     />
                   );
                 })}
@@ -141,7 +177,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                 {data.guestPipelineBreakdown.map((row) => (
                   <li key={row.stage} className="flex items-center justify-between gap-2">
                     <span>{row.label}</span>
-                    <span className="font-mono text-foreground">{row.count}</span>
+                    <span className="font-mono tabular-nums text-foreground">{row.count}</span>
                   </li>
                 ))}
               </ul>
@@ -174,25 +210,29 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
         </StatusCard>
 
         <StatusCard title="Pipeline snapshot">
-          <ul className="space-y-2 text-sm">
-            {data.guestPipelineBreakdown
-              .filter((row) => row.count > 0)
-              .slice(0, 6)
-              .map((row) => (
-                <li
-                  key={row.stage}
-                  className="flex items-center justify-between rounded-md bg-background px-3 py-2"
-                >
-                  <span>{row.label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {row.count} guest{row.count === 1 ? "" : "s"}
-                  </span>
-                </li>
-              ))}
-            {data.guestPipelineBreakdown.every((row) => row.count === 0) ? (
-              <li className="text-xs text-muted-foreground">No active pipeline data yet.</li>
-            ) : null}
-          </ul>
+          {data.guestPipelineBreakdown.every((row) => row.count === 0) ? (
+            <EmptyState
+              title="No active pipeline data yet"
+              description="Stage-by-stage totals will appear once guests are tracked."
+            />
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {data.guestPipelineBreakdown
+                .filter((row) => row.count > 0)
+                .slice(0, 6)
+                .map((row) => (
+                  <li
+                    key={row.stage}
+                    className="flex items-center justify-between rounded-md bg-background px-3 py-2"
+                  >
+                    <span>{row.label}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {row.count} guest{row.count === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          )}
         </StatusCard>
       </section>
 
@@ -202,9 +242,11 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
           description="Lifecycle-focused oversight across all ministry groups."
         />
         <div className="surface-subtle p-4 text-sm text-muted-foreground">
-          Groups marked <strong className="text-foreground">Planned Pause</strong> or{" "}
-          <strong className="text-foreground">Seasonal Break</strong> stay visible above so restart planning remains on
-          the radar.
+          Groups marked{" "}
+          <strong className="text-foreground">Planned Pause</strong>,{" "}
+          <strong className="text-foreground">Seasonal Break</strong>, or{" "}
+          <strong className="text-foreground">Overdue Restart</strong> stay visible in the
+          group health list above, so restart planning never falls off the radar.
         </div>
       </section>
     </>
