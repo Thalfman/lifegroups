@@ -128,11 +128,15 @@ Run this checklist after the seed test users and at least one
 deployed app or a local `npm run dev` instance.
 
 - [ ] `super_admin` can access `/admin` and `/staff`.
-- [ ] `super_admin` **cannot** access `/leader` unless that profile is also
-      assigned an active `group_leaders` row. This is expected:
-      `requireLeader()` (in `lib/auth/session.ts`) checks for active leader
-      assignments, not the `user_role`. The owner can assign themselves to
-      a group via the Phase 5A admin workflows once those ship.
+- [ ] `super_admin` **cannot** access `/leader` at all — they are
+      redirected to `/unauthorized`. This is expected: `requireLeader()`
+      in `lib/auth/session.ts` calls `requireRole(["leader", "co_leader"])`,
+      which rejects on role *before* any `group_leaders` assignments are
+      considered. Adding a `group_leaders` row to a super_admin profile
+      does **not** grant `/leader` access. If the owner needs to see the
+      leader view in practice, that is a Phase 5A design question (e.g.
+      an explicit "view as leader" affordance) and not a bug in the
+      current role gating.
 - [ ] `ministry_admin` can access `/admin` and `/staff`.
 - [ ] `staff_viewer` can access `/staff` only and is redirected to
       `/unauthorized` from `/admin`.
