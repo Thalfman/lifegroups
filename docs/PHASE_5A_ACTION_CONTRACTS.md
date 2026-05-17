@@ -74,7 +74,10 @@ Every action below ships with:
 - **RLS policy needed later:** narrow `INSERT` on `members` gated by
   `auth_is_admin()`, with `WITH CHECK` pinning `status = 'active'`.
 - **Validation rules:** `validateCreateMemberPayload` — `full_name`
-  non-empty, optional `email`/`phone` validated when present.
+  non-empty (trimmed); optional `email`/`phone` are normalized first
+  (empty / whitespace-only treated as absent) and validated only when
+  a real value is present. Phone values must contain at least one
+  digit, so whitespace-only inputs are rejected.
 - **Self-escalation protections:** members are non-auth records and
   cannot grant the caller any new privilege; no extra guard required.
 
@@ -102,22 +105,23 @@ Every action below ships with:
 ## `adminAssignMemberToGroup`
 
 - **Allowed caller roles:** `super_admin`, `ministry_admin`.
-- **Allowed input fields:** `group_id`, `member_id`,
-  `role_in_group`.
+- **Allowed input fields:** `group_id`, `member_id`, `role`. The
+  payload field name matches the `group_memberships.role` column
+  (typed as the `role_in_group` enum) so the allowlisted insert can
+  use the payload directly with no remapping.
 - **Forbidden fields:** `status` (server forces `active`),
   `joined_at` (server forces `now()`), `id`, `created_at`. INSERT-only.
 - **Expected audit event:**
   `action = "admin.assign_member_to_group"`,
   `target = <new group_memberships id>`, `before = null`,
-  `after = { group_id, member_id, role_in_group, status, joined_at }`.
+  `after = { group_id, member_id, role, status, joined_at }`.
 - **RLS policy needed later:** narrow `INSERT` on
   `group_memberships` gated by `auth_is_admin()`, `WITH CHECK`
   pinning `status = 'active'`.
 - **Validation rules:** `validateAssignMemberToGroupPayload` — both
-  ids are UUIDs, `role_in_group` is one of `member | leader |
-  co_leader`.
+  ids are UUIDs, `role` is one of `member | leader | co_leader`.
 - **Self-escalation protections:** none required — members are
-  non-auth records and `role_in_group` is scoped to a single group.
+  non-auth records and `role` is scoped to a single group.
 
 ## `adminDeactivateProfile`
 
