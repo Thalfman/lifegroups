@@ -1,1 +1,12 @@
-export { Dialog, DialogContent, DialogTrigger } from "@radix-ui/react-dialog";
+"use client";
+
+export {
+  Root as Dialog,
+  Trigger as DialogTrigger,
+  Portal as DialogPortal,
+  Overlay as DialogOverlay,
+  Content as DialogContent,
+  Title as DialogTitle,
+  Description as DialogDescription,
+  Close as DialogClose,
+} from "@radix-ui/react-dialog";
