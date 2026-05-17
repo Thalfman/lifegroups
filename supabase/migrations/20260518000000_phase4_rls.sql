@@ -109,15 +109,21 @@ grant execute on function public.auth_is_leader_of(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- profiles
+-- All read policies below are scoped `to authenticated`. Without that clause,
+-- policies apply to PUBLIC (including the anon role), which would invoke the
+-- helper functions above — but those are only granted to `authenticated`,
+-- producing `permission denied for function ...` instead of a clean zero-row
+-- deny. Anon callers fall through to the default "no policy matches" deny,
+-- which is exactly what we want.
 -- ---------------------------------------------------------------------------
 alter table public.profiles enable row level security;
 
 -- Self read uses auth.uid() directly to avoid recursion through auth_profile_id().
 create policy profiles_self_read on public.profiles
-  for select using (auth_user_id = auth.uid());
+  for select to authenticated using (auth_user_id = auth.uid());
 
 create policy profiles_admin_staff_read on public.profiles
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 -- ---------------------------------------------------------------------------
 -- groups
@@ -125,10 +131,10 @@ create policy profiles_admin_staff_read on public.profiles
 alter table public.groups enable row level security;
 
 create policy groups_admin_staff_read on public.groups
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy groups_leader_read on public.groups
-  for select using (public.auth_is_leader_of(id));
+  for select to authenticated using (public.auth_is_leader_of(id));
 
 -- ---------------------------------------------------------------------------
 -- group_leaders
@@ -136,13 +142,13 @@ create policy groups_leader_read on public.groups
 alter table public.group_leaders enable row level security;
 
 create policy group_leaders_admin_staff_read on public.group_leaders
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy group_leaders_self_read on public.group_leaders
-  for select using (profile_id = public.auth_profile_id());
+  for select to authenticated using (profile_id = public.auth_profile_id());
 
 create policy group_leaders_peer_read on public.group_leaders
-  for select using (public.auth_is_leader_of(group_id));
+  for select to authenticated using (public.auth_is_leader_of(group_id));
 
 -- ---------------------------------------------------------------------------
 -- members
@@ -151,10 +157,10 @@ create policy group_leaders_peer_read on public.group_leaders
 alter table public.members enable row level security;
 
 create policy members_admin_staff_read on public.members
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy members_leader_read on public.members
-  for select using (
+  for select to authenticated using (
     exists (
       select 1
       from public.group_memberships gm
@@ -170,10 +176,10 @@ create policy members_leader_read on public.members
 alter table public.group_memberships enable row level security;
 
 create policy group_memberships_admin_staff_read on public.group_memberships
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy group_memberships_leader_read on public.group_memberships
-  for select using (public.auth_is_leader_of(group_id));
+  for select to authenticated using (public.auth_is_leader_of(group_id));
 
 -- ---------------------------------------------------------------------------
 -- attendance_sessions
@@ -181,10 +187,10 @@ create policy group_memberships_leader_read on public.group_memberships
 alter table public.attendance_sessions enable row level security;
 
 create policy attendance_sessions_admin_staff_read on public.attendance_sessions
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy attendance_sessions_leader_read on public.attendance_sessions
-  for select using (public.auth_is_leader_of(group_id));
+  for select to authenticated using (public.auth_is_leader_of(group_id));
 
 -- ---------------------------------------------------------------------------
 -- attendance_records (no group_id column; gate via the parent session).
@@ -192,10 +198,10 @@ create policy attendance_sessions_leader_read on public.attendance_sessions
 alter table public.attendance_records enable row level security;
 
 create policy attendance_records_admin_staff_read on public.attendance_records
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy attendance_records_leader_read on public.attendance_records
-  for select using (
+  for select to authenticated using (
     exists (
       select 1
       from public.attendance_sessions s
@@ -211,10 +217,10 @@ create policy attendance_records_leader_read on public.attendance_records
 alter table public.guests enable row level security;
 
 create policy guests_admin_staff_read on public.guests
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy guests_leader_read on public.guests
-  for select using (
+  for select to authenticated using (
     (first_attended_group_id is not null and public.auth_is_leader_of(first_attended_group_id))
     or (assigned_group_id is not null and public.auth_is_leader_of(assigned_group_id))
   );
@@ -226,10 +232,10 @@ create policy guests_leader_read on public.guests
 alter table public.follow_ups enable row level security;
 
 create policy follow_ups_admin_staff_read on public.follow_ups
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy follow_ups_leader_read on public.follow_ups
-  for select using (
+  for select to authenticated using (
     (related_group_id is not null and public.auth_is_leader_of(related_group_id))
     or assigned_to = public.auth_profile_id()
   );
@@ -240,10 +246,10 @@ create policy follow_ups_leader_read on public.follow_ups
 alter table public.group_health_updates enable row level security;
 
 create policy group_health_updates_admin_staff_read on public.group_health_updates
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy group_health_updates_leader_read on public.group_health_updates
-  for select using (public.auth_is_leader_of(group_id));
+  for select to authenticated using (public.auth_is_leader_of(group_id));
 
 -- ---------------------------------------------------------------------------
 -- group_status_history
@@ -251,10 +257,10 @@ create policy group_health_updates_leader_read on public.group_health_updates
 alter table public.group_status_history enable row level security;
 
 create policy group_status_history_admin_staff_read on public.group_status_history
-  for select using (public.auth_is_admin_or_staff());
+  for select to authenticated using (public.auth_is_admin_or_staff());
 
 create policy group_status_history_leader_read on public.group_status_history
-  for select using (public.auth_is_leader_of(group_id));
+  for select to authenticated using (public.auth_is_leader_of(group_id));
 
 -- ---------------------------------------------------------------------------
 -- audit_events: admin only.
@@ -262,7 +268,7 @@ create policy group_status_history_leader_read on public.group_status_history
 alter table public.audit_events enable row level security;
 
 create policy audit_events_admin_read on public.audit_events
-  for select using (public.auth_is_admin());
+  for select to authenticated using (public.auth_is_admin());
 
 -- ---------------------------------------------------------------------------
 -- app_settings: any authenticated user can read.
@@ -270,7 +276,7 @@ create policy audit_events_admin_read on public.audit_events
 alter table public.app_settings enable row level security;
 
 create policy app_settings_auth_read on public.app_settings
-  for select using (auth.uid() is not null);
+  for select to authenticated using (auth.uid() is not null);
 
 -- ---------------------------------------------------------------------------
 -- No insert / update / delete policies are created in Phase 4. Write workflows
