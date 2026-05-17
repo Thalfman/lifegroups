@@ -6,7 +6,25 @@ const buttonVariants = cva("inline-flex items-center justify-center rounded-md p
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {}
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, ...props }, ref) => (
-  <button className={cn(buttonVariants({ variant }), className)} ref={ref} {...props} />
-));
+type ButtonComponentProps = ButtonProps & {
+  asChild?: boolean;
+  children?: React.ReactNode;
+};
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonComponentProps>(({ className, variant, asChild = false, children, ...props }, ref) => {
+  const classes = cn(buttonVariants({ variant }), className);
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      ...props,
+      className: cn(classes, (children.props as { className?: string }).className),
+    });
+  }
+
+  return (
+    <button className={classes} ref={ref} {...props}>
+      {children}
+    </button>
+  );
+});
 Button.displayName = "Button";
