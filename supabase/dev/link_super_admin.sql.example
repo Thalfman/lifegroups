@@ -1,0 +1,55 @@
+-- ============================================================================
+-- !! DO NOT COMMIT REAL UUIDs, REAL EMAILS, OR PASSWORDS !!
+-- ============================================================================
+-- Bootstrap helper for linking the owner/operator's Supabase Auth user to a
+-- `super_admin` profile. This file is an EXAMPLE -- copy it to a git-ignored
+-- local file before editing:
+--   cp supabase/dev/link_super_admin.sql.example supabase/dev/link_super_admin.sql
+--
+-- Prerequisites:
+-- 1. Apply Phase 2 schema + Phase 4 RLS (see supabase/dev/README.md).
+-- 2. In the Supabase dashboard, Authentication -> Users -> Add user, create
+--    your own auth user with a development-only password.
+-- 3. Copy that auth user's UUID from the dashboard.
+-- 4. Replace the THREE placeholder values in the DO block below
+--    (v_auth_user_id, v_full_name, v_email) with your real values.
+--
+-- The DO block hard-aborts with a raise exception if ANY of the three
+-- placeholder values is still present, so running this file unedited
+-- never creates a bogus super_admin row. You must edit all three (UUID,
+-- name, and email) before the insert/upsert will run.
+--
+-- The insert uses ON CONFLICT (email) DO UPDATE so it works whether or
+-- not a placeholder profile row already exists for the email:
+--   * If no row exists, a fresh `super_admin` profile is inserted.
+--   * If a row already exists for that email, its `auth_user_id`, `role`,
+--     and `status` are updated to link the new auth user as super_admin.
+-- ============================================================================
+
+do $$
+declare
+  -- !! REPLACE ALL THREE VALUES BEFORE RUNNING !!
+  v_auth_user_id uuid := '00000000-0000-0000-0000-000000000000';
+  v_full_name    text := 'Owner Admin';
+  v_email        text := 'owner@example.org';
+begin
+  if v_auth_user_id = '00000000-0000-0000-0000-000000000000'::uuid
+     or v_full_name = 'Owner Admin'
+     or v_email     = 'owner@example.org' then
+    raise exception
+      'Refusing to run supabase/dev/link_super_admin.sql: placeholder values still present. Replace v_auth_user_id, v_full_name, and v_email with your real owner/operator values first.';
+  end if;
+
+  insert into public.profiles (auth_user_id, full_name, email, role, status)
+  values (v_auth_user_id, v_full_name, v_email, 'super_admin', 'active')
+  on conflict (email) do update
+     set auth_user_id = excluded.auth_user_id,
+         role         = 'super_admin',
+         status       = 'active';
+end
+$$;
+
+-- Sanity check:
+-- select email, full_name, role, auth_user_id
+--   from public.profiles
+--  where role = 'super_admin';

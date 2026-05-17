@@ -30,6 +30,24 @@
 - Typed read helpers live in `lib/supabase/read-models.ts` and accept either
   the anon publishable client or the cookie-authenticated server client.
 
+## Role model (canonical)
+- `profiles.role` uses the `user_role` enum and is the **app-login role**:
+  - `super_admin` — top-level owner/operator. Treated as a superset of
+    `ministry_admin` for read access. Bootstrapped via the helper in
+    `supabase/dev/README.md` (Phase 4.1).
+  - `ministry_admin` — ministry operations admin.
+  - `staff_viewer` — read-only ministry-wide view.
+  - `leader`, `co_leader` — app-login roles scoped to assigned groups only
+    through `group_leaders.active = true`.
+- `group_memberships.role` uses the **separate** `role_in_group` enum
+  (`member | leader | co_leader`) describing a person's role *within a
+  specific group*, not an app-login role.
+- **Members are non-auth participant records.** They live in `members` and
+  are linked to groups through `group_memberships`. They do not have
+  `auth.users` rows and they do not sign in. `profiles.role` does not
+  include `member`. A future phase that introduces member login would have
+  to revisit this explicitly.
+
 ## Phase 4 authentication & RLS
 - **Supabase auth helpers** live under `lib/supabase/`:
   - `server.ts` — cookie-aware `createSupabaseServerClient()` for Server
@@ -75,6 +93,15 @@
 - **No write policies are added in this phase.** Inserts/updates/deletes will
   arrive in Phase 5 alongside the first write workflows.
 
+## Phase 4.1 (docs-only patch)
+- Adds the canonical role model documentation above and the super_admin
+  bootstrap workflow in `supabase/dev/README.md` +
+  `supabase/dev/link_super_admin.sql.example`.
+- Introduces `docs/PHASE_5A_ADMIN_MANAGEMENT.md` to pre-commit to a narrow,
+  allowlisted scope for the first admin write workflows so they cannot
+  drift into a generic database editor.
+- No app code, no migrations, no new RLS policies.
+
 ## Runtime boundaries for this phase
 - Supabase clients only run **select** queries from the app.
 - No service role key is referenced, imported, or expected in any client or
@@ -82,5 +109,7 @@
 - The Vercel build remains independent from Supabase environment variables;
   preview pages render demo data when env vars are missing and protected
   pages compile cleanly (the redirect to `/login` runs at request time).
-- Write workflows (attendance submission, guest capture, follow-up updates,
-  admin review queues) ship in Phase 5 once RLS has been verified end-to-end.
+- The first narrow write workflows (admin people & role management) ship in
+  Phase 5A (`docs/PHASE_5A_ADMIN_MANAGEMENT.md`). The broader operational
+  write workflows (attendance submission, guest capture, follow-up updates,
+  admin review queues) ship in Phase 5B once Phase 5A is verified.

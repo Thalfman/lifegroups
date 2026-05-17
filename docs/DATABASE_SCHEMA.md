@@ -5,14 +5,23 @@ The base schema (Phase 2) lives at
 foundation lives at `supabase/migrations/20260518000000_phase4_rls.sql`.
 
 ## Core model
-- **profiles**: user records mapped to Supabase Auth users via nullable
-  `auth_user_id`. Phase 4 reads this column when resolving the signed-in
-  session.
+- **profiles**: app-login user records mapped to Supabase Auth users via
+  nullable `auth_user_id`. Phase 4 reads this column when resolving the
+  signed-in session. `profiles.role` uses the `user_role` enum with five
+  values: `super_admin`, `ministry_admin`, `staff_viewer`, `leader`,
+  `co_leader`. `member` is intentionally **not** present here — members
+  are non-auth participant records (see `members` below).
 - **groups**: life groups with both lifecycle and health dimensions.
 - **group_leaders**: links profiles to groups as leader/co-leader roles. The
-  `active = true` rows drive Phase 4 leader scoping.
+  `active = true` rows drive Phase 4 leader scoping. The `role` column uses
+  the `role_in_group` enum (`leader | co_leader` here; `member` is reserved
+  for `group_memberships`).
 - **members** + **group_memberships**: people and their participation in
-  specific groups.
+  specific groups. Members are **non-auth participant records** — they live
+  in `members`, are linked to groups through `group_memberships`, and do
+  not have `auth.users` rows. `group_memberships.role` uses the
+  `role_in_group` enum (`member | leader | co_leader`) and describes the
+  person's role *within that specific group*, not an app-login role.
 - **attendance_sessions** + **attendance_records**: one session per week per
   group, then per-member attendance rows.
 - **guests**: visitor pipeline.
@@ -21,6 +30,24 @@ foundation lives at `supabase/migrations/20260518000000_phase4_rls.sql`.
   status-change history.
 - **audit_events**: immutable operational log.
 - **app_settings**: lightweight JSON settings.
+
+## Auth identity vs. participant identity
+The schema deliberately separates two kinds of people:
+
+- **App-login users** live in `profiles` and are linked to a Supabase Auth
+  user through `profiles.auth_user_id`. Their `profiles.role` determines
+  which dashboard they see. The owner/operator bootstraps their own
+  `super_admin` profile via `supabase/dev/link_super_admin.sql.example`
+  (see `supabase/dev/README.md`); seed test users in
+  `phase2_seed.sql` cover the remaining four `user_role` values.
+- **Non-auth participants** live in `members`. They are the people groups
+  serve, with no sign-in capability. They are joined to groups through
+  `group_memberships`. A `members` row never has, or needs, an
+  `auth.users` row in the current design.
+
+Phase 5A will introduce narrow admin workflows for creating and updating
+both kinds of records (see `docs/PHASE_5A_ADMIN_MANAGEMENT.md`). Neither
+write path exists today — Phase 4.1 only documents the model.
 
 ## Key relationships
 - `profiles.auth_user_id -> auth.users.id` (Supabase Auth, set manually

@@ -7,8 +7,10 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 1: visual design system + admin/leader preview experiences. ✅
 - Phase 2: Supabase schema, enums, seed data, and docs. ✅
 - Phase 3: safe Supabase read integration with fallback demo data. ✅
-- **Phase 4 (current): security foundation — Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement.**
-- Phase 5 (next): first write workflows after RLS is verified — attendance submission, guest capture, follow-up updates, and admin review queues.
+- Phase 4: security foundation — Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement. ✅
+- **Phase 4.1 (current): docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code.**
+- Phase 5A (next): narrow admin people & role management workflows — see `docs/PHASE_5A_ADMIN_MANAGEMENT.md`.
+- Phase 5B (after 5A): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
 
 ## Local development
 1. Install dependencies:
@@ -42,12 +44,31 @@ This repository contains the Life Group Operations Dashboard web app built with 
   its own role gate and reads through Supabase Auth / RLS.
 
 ## Role model
-Roles live on `profiles.role` (the existing `user_role` enum):
-- `super_admin`, `ministry_admin` → admin dashboards.
-- `staff_viewer` → ministry-wide read-only view.
-- `leader`, `co_leader` → only their assigned groups.
+App-login roles live on `profiles.role` (the `user_role` enum). The five
+values, in order from most to least privileged:
 
-`super_admin` is treated as a superset of `ministry_admin`.
+- `super_admin` — top-level owner/operator. Treated as a superset of
+  `ministry_admin` for read access. Bootstrapped manually (see Sign-in setup
+  below); future workflows for managing other admins live in Phase 5A.
+- `ministry_admin` — ministry operations admin. Sees `/admin` and `/staff`.
+- `staff_viewer` — read-only ministry-wide view. Sees `/staff` only.
+- `leader` — app-login role scoped to assigned groups only via active
+  `group_leaders` rows. Sees `/leader`.
+- `co_leader` — same scoping as `leader`.
+
+Two clarifications worth calling out:
+
+- **`member` is not an app-login role.** Members are non-auth participant
+  records in the `members` table and are linked to groups through
+  `group_memberships`. They never sign in. `profiles.role` does not contain
+  `member`.
+- **`group_memberships.role` is a separate enum** (`role_in_group`:
+  `member | leader | co_leader`) describing a person's role *within a
+  specific group*, not their app-login role.
+
+Phase 5A will introduce narrow admin workflows for creating and updating
+admin, leader, and member records — see
+`docs/PHASE_5A_ADMIN_MANAGEMENT.md`.
 
 ## Sign-in setup
 1. Apply `supabase/migrations/20260517040000_phase2_schema.sql`,
@@ -58,7 +79,10 @@ Roles live on `profiles.role` (the existing `user_role` enum):
    `casey.morgan@example.org`, etc.) with a development-only password.
 3. Link each auth user to its profile row by following
    `supabase/dev/README.md`.
-4. Visit `/login` and sign in with the email + password you set.
+4. **Super admin bootstrap (Phase 4.1):** create your own Supabase Auth
+   user and link it to a `super_admin` profile by following the "Super
+   admin bootstrap" section of `supabase/dev/README.md`.
+5. Visit `/login` and sign in with the email + password you set.
 
 ## How data loads
 - Protected routes use a cookie-authenticated server client built with
@@ -75,6 +99,8 @@ Roles live on `profiles.role` (the existing `user_role` enum):
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
+- Phase 5A scope outline: `docs/PHASE_5A_ADMIN_MANAGEMENT.md`
 - Env vars are **optional** for build; required only for sign-in and live data.
-- No service role key is used or expected anywhere in app code. Write
-  workflows are deferred to Phase 5 once RLS is verified end-to-end.
+- No service role key is used or expected anywhere in app code. The first
+  narrow write workflows ship in Phase 5A (admin people & role management);
+  broader operational write workflows ship in Phase 5B.

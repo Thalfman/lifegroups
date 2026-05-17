@@ -1,6 +1,6 @@
 # Deployment Notes
 
-## Current (Phase 4 — security foundation)
+## Current (Phase 4 security foundation + Phase 4.1 docs/dev-helper patch)
 - Deploy to Vercel as a standard Next.js app.
 - Supabase environment variables are **optional** for build. Without them, the
   public preview pages render demo data and the protected routes redirect to
@@ -42,16 +42,26 @@ behave as a backend admin.
 5. Create one Supabase Auth user per seed profile email
    (`avery.bennett@example.org`, `jordan.hayes@example.org`,
    `casey.morgan@example.org`, etc.) with a development-only password.
-6. Link each auth user to its profile row by following
+6. **Bootstrap your `super_admin`:** see "Super admin bootstrap" in
+   `supabase/dev/README.md` and use
+   `supabase/dev/link_super_admin.sql.example` to link your own Supabase
+   Auth user to a `super_admin` profile.
+7. Link each seed auth user to its profile row by following
    `supabase/dev/README.md`.
-7. Visit `/login` and sign in.
+8. Visit `/login` and sign in.
 
-## What lands in Phase 5 (first write workflows)
-After RLS is verified end-to-end in Phase 4:
-- Attendance submission.
-- Guest capture.
-- Follow-up updates.
-- Admin review queues.
+## What lands next (Phase 5A → Phase 5B)
+After RLS SELECT policies are verified end-to-end in Phase 4 and the role
+model is documented in Phase 4.1:
 
-These will arrive alongside the INSERT / UPDATE / DELETE RLS policies that
-Phase 4 intentionally does not introduce.
+- **Phase 5A — admin people & role management.** Narrow, allowlisted
+  workflows for `super_admin` / `ministry_admin` to create and update
+  admin, leader, and member records. Each workflow gets a dedicated server
+  action and a matching narrow INSERT/UPDATE RLS policy. See
+  `docs/PHASE_5A_ADMIN_MANAGEMENT.md`.
+- **Phase 5B — operational writes.** Attendance submission, guest capture,
+  follow-up updates, and admin review queues. These arrive alongside the
+  broader operational INSERT / UPDATE / DELETE RLS policies.
+
+Neither phase introduces a service role key. The cookie-authenticated
+server client remains the only path for writes.
