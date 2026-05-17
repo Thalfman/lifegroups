@@ -97,11 +97,17 @@ bootstrap path.
    cp supabase/dev/link_super_admin.sql.example supabase/dev/link_super_admin.sql
    ```
    (`supabase/dev/link_super_admin.sql` is git-ignored.)
-4. **Edit the local copy.** Replace the placeholder UUID
-   (`00000000-0000-0000-0000-000000000000`), the placeholder name
-   (`Owner Admin`), and the placeholder email (`owner@example.org`) with
-   your real values.
-5. **Run it in the Supabase SQL Editor.** The statement uses
+4. **Edit the local copy.** Inside the `do $$ … $$` block, replace all
+   three placeholder values with your real ones:
+   - `v_auth_user_id` (`00000000-0000-0000-0000-000000000000`)
+   - `v_full_name` (`Owner Admin`)
+   - `v_email` (`owner@example.org`)
+
+   The block hard-aborts with a `raise exception` if any of the three
+   placeholders is still present, so running the file unedited never
+   creates a bogus super_admin row — you must edit all three before the
+   insert/upsert will execute.
+5. **Run it in the Supabase SQL Editor.** The insert uses
    `INSERT … ON CONFLICT (email) DO UPDATE`, so it works whether or not a
    placeholder profile already exists for that email.
 6. **Verify:**
