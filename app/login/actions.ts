@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { defaultLandingPathForRole, type UserRole } from "@/lib/auth/roles";
+import { isSafeNextPath } from "./next-path";
+import type { ProfileStatus } from "@/types/enums";
 
 export type LoginFormState = { error?: string };
 
@@ -13,7 +15,7 @@ export async function loginAction(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const nextRaw = formData.get("next");
-  const next = typeof nextRaw === "string" && nextRaw.startsWith("/") ? nextRaw : null;
+  const next = typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -38,12 +40,20 @@ export async function loginAction(
 
   const profileQuery = await client
     .from("profiles")
-    .select("role")
+    .select("role, status")
     .eq("auth_user_id", user.id)
     .maybeSingle();
-  const profile = profileQuery.data as { role: UserRole } | null;
+
+  if (profileQuery.error) {
+    return { error: "Sign-in succeeded but we couldn't load your profile. Please try again." };
+  }
+
+  const profile = profileQuery.data as { role: UserRole; status: ProfileStatus } | null;
 
   if (!profile) {
+    redirect("/unauthorized");
+  }
+  if (profile.status !== "active") {
     redirect("/unauthorized");
   }
 

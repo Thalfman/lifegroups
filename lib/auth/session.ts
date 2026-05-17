@@ -24,6 +24,9 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
     .select("*")
     .eq("auth_user_id", user.id)
     .maybeSingle();
+  if (profileQuery.error) {
+    throw new Error(`Failed to load profile for session: ${profileQuery.error.message}`);
+  }
   const profile = profileQuery.data as ProfilesRow | null;
 
   if (!profile) {
@@ -41,6 +44,9 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
       .select("group_id")
       .eq("profile_id", profile.id)
       .eq("active", true);
+    if (leaderRows.error) {
+      throw new Error(`Failed to load leader assignments: ${leaderRows.error.message}`);
+    }
     const rows = (leaderRows.data ?? []) as { group_id: string }[];
     assignedGroupIds = rows.map((row) => row.group_id);
   }
@@ -52,10 +58,13 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
   };
 });
 
-export async function requireRole(allowed: readonly UserRole[]): Promise<CurrentSession & { profile: ProfilesRow }> {
+export async function requireRole(
+  allowed: readonly UserRole[],
+): Promise<CurrentSession & { profile: ProfilesRow }> {
   const session = await getCurrentSession();
   if (!session) redirect("/login");
   if (!session.profile) redirect("/unauthorized");
+  if (session.profile.status !== "active") redirect("/unauthorized");
   if (!allowed.includes(session.profile.role)) redirect("/unauthorized");
   return session as CurrentSession & { profile: ProfilesRow };
 }

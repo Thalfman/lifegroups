@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "./login-form";
+import { isSafeNextPath } from "./next-path";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const nextRaw = params.next;
   const nextValue = Array.isArray(nextRaw) ? nextRaw[0] : nextRaw;
-  const next = nextValue && nextValue.startsWith("/") ? nextValue : null;
+  const next = nextValue && isSafeNextPath(nextValue) ? nextValue : null;
   const configured = isSupabaseConfigured();
 
   return (
