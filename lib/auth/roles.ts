@@ -41,6 +41,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
   const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
+    items.push({ href: "/admin/people", label: "Manage People" });
     items.push({ href: "/staff", label: "Staff View" });
   } else if (role === "staff_viewer") {
     items.push({ href: "/staff", label: "Staff View" });
