@@ -3,8 +3,9 @@
 This repository contains the Life Group Operations Dashboard web app built with Next.js, TypeScript, and Tailwind.
 
 ## Phase status
-- Phase 0/1: app foundation and preview UI.
-- **Phase 2 (this update): Supabase schema, enums, seed data, and docs only.**
+- Phase 0: app foundation.
+- **Phase 1 (current): visual design system + admin/leader preview experiences.**
+- Phase 2: Supabase schema, enums, seed data, and docs.
 - No live Supabase authentication or production data access yet.
 
 ## Local development
@@ -12,7 +13,7 @@ This repository contains the Life Group Operations Dashboard web app built with 
    ```bash
    npm install
    ```
-2. Copy env template:
+2. Copy env template (optional for current phase):
    ```bash
    cp .env.example .env.local
    ```
@@ -30,5 +31,6 @@ This repository contains the Life Group Operations Dashboard web app built with 
 ## Supabase notes
 - Migration files: `supabase/migrations`
 - Seed files: `supabase/seed`
-- Build remains Vercel-compatible without Supabase env vars in Phase 2.
-- Supabase runtime integration lands in later phases.
+- Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
+- Build remains Vercel-compatible **without** Supabase env vars in this phase.
+- Runtime Supabase integration, auth, and RLS land in later phases.

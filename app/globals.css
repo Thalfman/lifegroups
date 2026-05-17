@@ -3,15 +3,63 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 33% 98%;
-  --foreground: 220 28% 12%;
+  --background: 40 45% 98%;
+  --foreground: 222 30% 16%;
   --card: 0 0% 100%;
-  --card-foreground: 220 28% 12%;
-  --primary: 156 34% 34%;
+  --card-foreground: 222 30% 16%;
+  --primary: 154 38% 35%;
   --primary-foreground: 0 0% 100%;
-  --muted: 42 25% 94%;
-  --muted-foreground: 220 10% 40%;
-  --border: 42 20% 86%;
+  --secondary: 41 34% 92%;
+  --secondary-foreground: 222 28% 22%;
+  --muted: 40 25% 94%;
+  --muted-foreground: 220 12% 42%;
+  --accent: 153 25% 89%;
+  --accent-foreground: 155 42% 24%;
+  --destructive: 0 68% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 20% 85%;
+  --ring: 154 38% 35%;
+
+  --radius: 0.875rem;
 }
 
-body { @apply bg-background text-foreground antialiased; }
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply min-h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight text-balance;
+  }
+
+  p {
+    @apply text-pretty;
+  }
+
+  a,
+  button,
+  [role="button"],
+  input,
+  textarea,
+  select {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+}
+
+@layer components {
+  .surface-subtle {
+    @apply rounded-xl border border-border bg-muted/45;
+  }
+}
