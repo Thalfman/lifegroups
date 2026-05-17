@@ -22,7 +22,7 @@ export function FallbackDataNotice({ className }: { className?: string }) {
       )}
     >
       Showing fallback demo content. Set <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-      <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to read live data.
+      <code className="font-mono">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to read live data.
     </div>
   );
 }
