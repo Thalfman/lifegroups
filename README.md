@@ -8,9 +8,10 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 2: Supabase schema, enums, seed data, and docs. ✅
 - Phase 3: safe Supabase read integration with fallback demo data. ✅
 - Phase 4: security foundation — Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement. ✅
-- **Phase 4.1 (current): docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code.**
-- Phase 5A (next): narrow admin people & role management workflows — see `docs/PHASE_5A_ADMIN_MANAGEMENT.md`.
-- Phase 5B (after 5A): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
+- Phase 4.1: docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code. ✅
+- **Phase 5A.0 (current): admin people & role management UI/UX scaffold — protected `/admin/people` route, disabled action cards, polished empty states, validation helpers, and throwing server-action stubs. No mock data, no real writes, no new RLS policies. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md` and `docs/PHASE_5A_ACTION_CONTRACTS.md`.**
+- Phase 5A.1 (pending): write policies + real admin actions — landed once Phase 4 RLS is verified against a live Supabase project.
+- Phase 5B (after 5A.1): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
 
 ## Local development
 1. Install dependencies:
@@ -100,6 +101,7 @@ admin, leader, and member records — see
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
 - Phase 5A scope outline: `docs/PHASE_5A_ADMIN_MANAGEMENT.md`
+- Phase 5A action contracts (forward-looking, used by Phase 5A.1): `docs/PHASE_5A_ACTION_CONTRACTS.md`
 - Env vars are **optional** for build; required only for sign-in and live data.
 - No service role key is used or expected anywhere in app code. The first
   narrow write workflows ship in Phase 5A (admin people & role management);

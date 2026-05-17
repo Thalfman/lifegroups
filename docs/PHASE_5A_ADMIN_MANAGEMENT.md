@@ -7,6 +7,36 @@ write paths, and it is intentionally narrow: it covers only admin-managed
 people and roles. Operational writes (attendance, guests, follow-ups,
 review queues) ship in Phase 5B once Phase 5A is verified end-to-end.
 
+## Phase 5A.0 status (current)
+
+Phase 5A is split into two sub-phases because live Supabase access is
+not yet available to verify write policies end-to-end:
+
+- **Phase 5A.0 — UI/UX scaffold only (this state).**
+  - No mock data anywhere. No fake people, profiles, members, group
+    rows, role assignments, or audit events are rendered or seeded.
+  - No real writes. The route at `/admin/people` displays disabled
+    action cards and polished empty states only.
+  - No write RLS policies. Phase 4's SELECT-only policies are
+    unchanged.
+  - The server action stubs in
+    `app/(protected)/admin/people/actions.ts` throw a "not enabled"
+    error and never reach Supabase.
+  - Validation helpers in `lib/admin/validation.ts` are pure
+    TypeScript and perform no I/O. They will be reused by Phase 5A.1.
+  - Action contracts are documented in
+    `docs/PHASE_5A_ACTION_CONTRACTS.md` as the spec for Phase 5A.1.
+- **Phase 5A.1 — write policies + real admin actions (pending).**
+  - Lands the narrow `INSERT`/`UPDATE` RLS policies described in
+    `PHASE_5A_ACTION_CONTRACTS.md`.
+  - Wires the server actions to the Supabase server client with the
+    same narrow column allowlists.
+  - Records `audit_events` rows from inside each write transaction.
+  - Requires live Supabase verification of Phase 4 RLS first.
+
+Supabase verification of Phase 4 RLS is still required before
+Phase 5A.1 may ship.
+
 ## Goal
 
 Give `super_admin` and `ministry_admin` users a small, allowlisted set of
@@ -68,3 +98,7 @@ created through the app rather than seeded by hand.
 - RLS helper functions: `supabase/migrations/20260518000000_phase4_rls.sql`.
 - Phase 4 session helpers used to gate admin actions:
   `lib/auth/session.ts`, `lib/auth/roles.ts`.
+- Phase 5A.0 scaffold: `app/(protected)/admin/people/page.tsx`,
+  `components/admin/*`, `lib/admin/validation.ts`.
+- Action contracts (forward-looking, for Phase 5A.1):
+  `docs/PHASE_5A_ACTION_CONTRACTS.md`.
