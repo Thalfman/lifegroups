@@ -100,9 +100,13 @@ export interface LeaderHealthPulse {
   leaderNote: string | null;
 }
 
-export interface LeaderDashboardData {
-  group: LeaderGroupSummary | null;
+export interface LeaderGroupDashboard {
+  group: LeaderGroupSummary;
   recentSessions: LeaderSessionStatusRow[];
   healthPulse: LeaderHealthPulse;
   followUps: FollowUpItem[];
+}
+
+export interface LeaderDashboardData {
+  groups: LeaderGroupDashboard[];
 }

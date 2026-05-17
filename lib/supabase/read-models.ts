@@ -1,4 +1,4 @@
-import type { ReadClient } from "./client";
+import type { AppSupabaseClient } from "./types";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
@@ -11,6 +11,8 @@ import type {
   MembersRow,
 } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
+
+type ReadClient = AppSupabaseClient;
 
 export type ReadResult<T> = { data: T; error: null } | { data: null; error: Error };
 
@@ -25,6 +27,20 @@ export async function fetchAllGroups(client: ReadClient): Promise<ReadResult<Gro
     .select("*")
     .order("name", { ascending: true });
   if (error) return { data: null, error: wrapError("fetchAllGroups", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchGroupsByIds(
+  client: ReadClient,
+  ids: string[],
+): Promise<ReadResult<GroupsRow[]>> {
+  if (ids.length === 0) return { data: [], error: null };
+  const { data, error } = await client
+    .from("groups")
+    .select("*")
+    .in("id", ids)
+    .order("name", { ascending: true });
+  if (error) return { data: null, error: wrapError("fetchGroupsByIds", error) };
   return { data: data ?? [], error: null };
 }
 
@@ -149,20 +165,18 @@ export async function fetchMembersByIds(
   return { data: data ?? [], error: null };
 }
 
-export async function fetchFirstAssignedGroupForAnyLeader(
+export async function fetchAssignedGroupIdsForProfile(
   client: ReadClient,
-): Promise<ReadResult<{ groupId: string } | null>> {
+  profileId: string,
+): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("group_leaders")
-    .select("*")
+    .select("group_id")
+    .eq("profile_id", profileId)
     .eq("active", true)
-    .order("assigned_at", { ascending: true })
-    .order("id", { ascending: true })
-    .limit(1)
-    .returns<GroupLeadersRow[]>();
-  if (error) return { data: null, error: wrapError("fetchFirstAssignedGroupForAnyLeader", error) };
-  if (!data || data.length === 0) return { data: null, error: null };
-  return { data: { groupId: data[0].group_id }, error: null };
+    .returns<Pick<GroupLeadersRow, "group_id">[]>();
+  if (error) return { data: null, error: wrapError("fetchAssignedGroupIdsForProfile", error) };
+  return { data: (data ?? []).map((row) => row.group_id), error: null };
 }
 
 export async function fetchNewGuestsForGroupSince(

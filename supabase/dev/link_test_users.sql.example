@@ -1,0 +1,35 @@
+-- ============================================================================
+-- !! DO NOT COMMIT REAL UUIDs OR PASSWORDS !!
+-- ============================================================================
+-- Copy this file to `link_test_users.sql` (which is git-ignored), then
+-- replace the placeholder UUIDs with the auth.users IDs of the test users
+-- you created in the Supabase dashboard. Run it once via the SQL editor or
+-- psql to link each seed profile to its auth user.
+--
+-- Placeholders intentionally use 00000000-... so the file fails loudly if
+-- copy/pasted without edits.
+-- ============================================================================
+
+update public.profiles
+   set auth_user_id = '00000000-0000-0000-0000-000000000001'
+ where email = 'avery.bennett@example.org';
+
+update public.profiles
+   set auth_user_id = '00000000-0000-0000-0000-000000000002'
+ where email = 'jordan.hayes@example.org';
+
+update public.profiles
+   set auth_user_id = '00000000-0000-0000-0000-000000000003'
+ where email = 'casey.morgan@example.org';
+
+update public.profiles
+   set auth_user_id = '00000000-0000-0000-0000-000000000004'
+ where email = 'riley.cruz@example.org';
+
+update public.profiles
+   set auth_user_id = '00000000-0000-0000-0000-000000000005'
+ where email = 'taylor.kim@example.org';
+
+-- Sanity check:
+-- select email, full_name, role, auth_user_id from public.profiles
+--   order by role, email;

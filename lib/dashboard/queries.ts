@@ -1,4 +1,3 @@
-import { getReadClient } from "@/lib/supabase/client";
 import {
   GUEST_PIPELINE_STAGES,
   fetchActiveGroupCount,
@@ -6,7 +5,7 @@ import {
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
-  fetchFirstAssignedGroupForAnyLeader,
+  fetchGroupsByIds,
   fetchGuests,
   fetchLatestHealthUpdates,
   fetchLatestMeetingWeek,
@@ -14,13 +13,14 @@ import {
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
 } from "@/lib/supabase/read-models";
-import type { ReadClient } from "@/lib/supabase/client";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   AdminDashboardData,
   CapacityRow,
   DashboardResult,
   FollowUpItem,
   LeaderDashboardData,
+  LeaderGroupDashboard,
   PipelineStageCount,
 } from "./types";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
@@ -38,10 +38,14 @@ import type { GuestPipelineStage } from "@/types/enums";
 const NEAR_CAPACITY_THRESHOLD = 0.8;
 
 function isoWeekStart(date: Date): string {
+  // attendance_sessions.meeting_week is stored as the Monday-of-week date
+  // (see supabase/seed/phase2_seed.sql), so this helper returns the Monday
+  // that contains `date`. JS getUTCDay returns Sun=0..Sat=6; map to a
+  // Monday-anchored offset so Mon→0, Tue→1, ..., Sun→6.
   const copy = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayOfWeek = copy.getUTCDay();
-  const sundayOffset = dayOfWeek; // attendance_sessions.meeting_week is stored as the meeting week's Sunday date in seed data
-  copy.setUTCDate(copy.getUTCDate() - sundayOffset);
+  const mondayOffset = (dayOfWeek + 6) % 7;
+  copy.setUTCDate(copy.getUTCDate() - mondayOffset);
   return copy.toISOString().slice(0, 10);
 }
 
@@ -81,8 +85,25 @@ function toFollowUpItem(
   };
 }
 
-export async function getAdminDashboardData(): Promise<DashboardResult<AdminDashboardData>> {
-  const client = getReadClient();
+function shortenName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const last = parts[parts.length - 1];
+  return `${parts[0]} ${last.charAt(0)}.`;
+}
+
+function computeAttendanceRhythm(rows: { presentCount: number; absentCount: number; excusedCount: number }[]): string {
+  if (rows.length === 0) return "No recent sessions";
+  const presentTotals = rows.map((r) => r.presentCount);
+  const avg = presentTotals.reduce((sum, n) => sum + n, 0) / presentTotals.length;
+  const latest = presentTotals[0];
+  if (Math.abs(latest - avg) <= 1) return "Steady";
+  return latest > avg ? "Growing" : "Dipping";
+}
+
+export async function getAdminDashboardData(
+  client: AppSupabaseClient | null,
+): Promise<DashboardResult<AdminDashboardData>> {
   if (!client) return fallback(ADMIN_FALLBACK);
 
   try {
@@ -219,136 +240,114 @@ export async function getAdminDashboardData(): Promise<DashboardResult<AdminDash
   }
 }
 
-async function loadGroupForLeader(client: ReadClient): Promise<GroupsRow | null> {
-  const assignedResult = await fetchFirstAssignedGroupForAnyLeader(client);
-  if (assignedResult.error) throw assignedResult.error;
-  const assigned = assignedResult.data;
+async function buildLeaderGroupDashboard(
+  client: AppSupabaseClient,
+  group: GroupsRow,
+): Promise<LeaderGroupDashboard> {
+  const [sessionsResult, membershipsResult, healthUpdatesResult, followUpsResult] = await Promise.all([
+    fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
+    fetchActiveMemberships(client, { groupId: group.id }),
+    fetchLatestHealthUpdates(client, { groupId: group.id }),
+    fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
+  ]);
 
-  const groupsResult = await fetchAllGroups(client);
-  if (groupsResult.error) throw groupsResult.error;
-  const groups = groupsResult.data ?? [];
-  if (groups.length === 0) return null;
+  const firstError =
+    sessionsResult.error ||
+    membershipsResult.error ||
+    healthUpdatesResult.error ||
+    followUpsResult.error;
+  if (firstError) throw firstError;
 
-  if (assigned) {
-    const found = groups.find((g) => g.id === assigned.groupId);
-    if (found) return found;
+  const sessions = sessionsResult.data ?? [];
+  const memberships = membershipsResult.data ?? [];
+  const healthUpdates = healthUpdatesResult.data ?? [];
+  const followUps = followUpsResult.data ?? [];
+
+  const memberIds = memberships.map((m: GroupMembershipsRow) => m.member_id);
+  const membersResult = await fetchMembersByIds(client, memberIds);
+  if (membersResult.error) throw membersResult.error;
+  const members = (membersResult.data ?? []) as MembersRow[];
+
+  let recordsByMember: AttendanceRecordsRow[] = [];
+  if (sessions.length > 0) {
+    const recordsResult = await fetchAttendanceRecordsForSessions(
+      client,
+      sessions.map((s) => s.id),
+    );
+    if (recordsResult.error) throw recordsResult.error;
+    recordsByMember = recordsResult.data ?? [];
   }
-  return groups.find((g) => g.lifecycle_status === "active") ?? groups[0];
+
+  const recentSessions = sessions.slice(0, 4).map((session) => {
+    const recs = recordsByMember.filter((r) => r.session_id === session.id);
+    return {
+      meetingWeek: session.meeting_week,
+      status: session.status,
+      presentCount: recs.filter((r) => r.attendance_status === "present").length,
+      absentCount: recs.filter((r) => r.attendance_status === "absent").length,
+      excusedCount: recs.filter((r) => r.attendance_status === "excused").length,
+    };
+  });
+
+  const latestHealth = healthUpdates[0];
+  const latestWeekIso = sessions[0]?.meeting_week ?? isoWeekStart(new Date());
+  const currentWeekIso = isoWeekStart(new Date());
+
+  const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, currentWeekIso);
+  if (newGuestsResult.error) throw newGuestsResult.error;
+  const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
+
+  const followUpItems = followUps.map((row: FollowUpsRow) =>
+    toFollowUpItem(row, new Map([[group.id, group]])),
+  );
+
+  const memberList = members
+    .map((m) => ({ id: m.id, displayName: shortenName(m.full_name) }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  const rhythm = computeAttendanceRhythm(recentSessions);
+
+  return {
+    group: {
+      groupId: group.id,
+      name: group.name,
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      lifecycleStatus: group.lifecycle_status,
+      healthStatus: latestHealth?.pulse ?? group.health_status,
+      capacity: group.capacity,
+      activeMembers: memberships.length,
+      weekLabel: `Week of ${describeWeek(latestWeekIso)}`,
+      members: memberList,
+    },
+    recentSessions,
+    healthPulse: {
+      attendanceRhythm: rhythm,
+      newGuestsThisWeek,
+      currentHealth: latestHealth?.pulse ?? group.health_status,
+      leaderNote: latestHealth?.leader_note ?? null,
+    },
+    followUps: followUpItems,
+  };
 }
 
-export async function getLeaderDashboardData(): Promise<DashboardResult<LeaderDashboardData>> {
-  const client = getReadClient();
+export async function getLeaderDashboardData(
+  client: AppSupabaseClient | null,
+  options: { assignedGroupIds: readonly string[] },
+): Promise<DashboardResult<LeaderDashboardData>> {
   if (!client) return fallback(LEADER_FALLBACK);
+  if (options.assignedGroupIds.length === 0) return live({ groups: [] });
 
   try {
-    const group = await loadGroupForLeader(client);
-    if (!group) {
-      return live({ group: null, recentSessions: [], healthPulse: LEADER_FALLBACK.healthPulse, followUps: [] });
-    }
+    const groupsResult = await fetchGroupsByIds(client, [...options.assignedGroupIds]);
+    if (groupsResult.error) return fallback(LEADER_FALLBACK, groupsResult.error.message);
+    const groups = groupsResult.data ?? [];
+    if (groups.length === 0) return live({ groups: [] });
 
-    const [sessionsResult, membershipsResult, healthUpdatesResult, followUpsResult] = await Promise.all([
-      fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
-      fetchActiveMemberships(client, { groupId: group.id }),
-      fetchLatestHealthUpdates(client, { groupId: group.id }),
-      fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
-    ]);
-
-    const firstError =
-      sessionsResult.error ||
-      membershipsResult.error ||
-      healthUpdatesResult.error ||
-      followUpsResult.error;
-    if (firstError) throw firstError;
-
-    const sessions = sessionsResult.data ?? [];
-    const memberships = membershipsResult.data ?? [];
-    const healthUpdates = healthUpdatesResult.data ?? [];
-    const followUps = followUpsResult.data ?? [];
-
-    const memberIds = memberships.map((m: GroupMembershipsRow) => m.member_id);
-    const membersResult = await fetchMembersByIds(client, memberIds);
-    if (membersResult.error) throw membersResult.error;
-    const members = (membersResult.data ?? []) as MembersRow[];
-
-    let recordsByMember: AttendanceRecordsRow[] = [];
-    if (sessions.length > 0) {
-      const recordsResult = await fetchAttendanceRecordsForSessions(
-        client,
-        sessions.map((s) => s.id),
-      );
-      if (recordsResult.error) throw recordsResult.error;
-      recordsByMember = recordsResult.data ?? [];
-    }
-
-    const recentSessions = sessions.slice(0, 4).map((session) => {
-      const recs = recordsByMember.filter((r) => r.session_id === session.id);
-      return {
-        meetingWeek: session.meeting_week,
-        status: session.status,
-        presentCount: recs.filter((r) => r.attendance_status === "present").length,
-        absentCount: recs.filter((r) => r.attendance_status === "absent").length,
-        excusedCount: recs.filter((r) => r.attendance_status === "excused").length,
-      };
-    });
-
-    const latestHealth = healthUpdates[0];
-    const latestWeekIso = sessions[0]?.meeting_week ?? isoWeekStart(new Date());
-    const currentWeekIso = isoWeekStart(new Date());
-
-    const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, currentWeekIso);
-    if (newGuestsResult.error) throw newGuestsResult.error;
-    const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
-
-    const followUpItems = followUps.map((row: FollowUpsRow) =>
-      toFollowUpItem(row, new Map([[group.id, group]])),
-    );
-
-    const memberList = members
-      .map((m) => ({ id: m.id, displayName: shortenName(m.full_name) }))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-
-    const rhythm = computeAttendanceRhythm(recentSessions);
-
-    return live({
-      group: {
-        groupId: group.id,
-        name: group.name,
-        meetingDay: group.meeting_day,
-        meetingTime: group.meeting_time,
-        lifecycleStatus: group.lifecycle_status,
-        healthStatus: latestHealth?.pulse ?? group.health_status,
-        capacity: group.capacity,
-        activeMembers: memberships.length,
-        weekLabel: `Week of ${describeWeek(latestWeekIso)}`,
-        members: memberList,
-      },
-      recentSessions,
-      healthPulse: {
-        attendanceRhythm: rhythm,
-        newGuestsThisWeek,
-        currentHealth: latestHealth?.pulse ?? group.health_status,
-        leaderNote: latestHealth?.leader_note ?? null,
-      },
-      followUps: followUpItems,
-    });
+    const dashboards = await Promise.all(groups.map((g) => buildLeaderGroupDashboard(client, g)));
+    return live({ groups: dashboards });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return fallback(LEADER_FALLBACK, message);
   }
-}
-
-function shortenName(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  const last = parts[parts.length - 1];
-  return `${parts[0]} ${last.charAt(0)}.`;
-}
-
-function computeAttendanceRhythm(rows: { presentCount: number; absentCount: number; excusedCount: number }[]): string {
-  if (rows.length === 0) return "No recent sessions";
-  const presentTotals = rows.map((r) => r.presentCount);
-  const avg = presentTotals.reduce((sum, n) => sum + n, 0) / presentTotals.length;
-  const latest = presentTotals[0];
-  if (Math.abs(latest - avg) <= 1) return "Steady";
-  return latest > avg ? "Growing" : "Dipping";
 }

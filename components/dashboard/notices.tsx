@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function ConfiguredDataNotice({ className }: { className?: string }) {
@@ -8,7 +9,20 @@ export function ConfiguredDataNotice({ className }: { className?: string }) {
         className,
       )}
     >
-      Reading live data from Supabase. No writes or auth in Phase 3.
+      Reading live data from Supabase, scoped by Row Level Security to your role.
+    </div>
+  );
+}
+
+export function ReadOnlyDataNotice({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800",
+        className,
+      )}
+    >
+      Ministry-wide read-only view. No write actions are wired up in this phase.
     </div>
   );
 }
@@ -23,6 +37,23 @@ export function FallbackDataNotice({ className }: { className?: string }) {
     >
       Showing fallback demo content. Set <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
       <code className="font-mono">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to read live data.
+    </div>
+  );
+}
+
+export function PublicPreviewNotice({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900",
+        className,
+      )}
+    >
+      Public design preview — demo data only.{" "}
+      <Link href="/login" className="font-medium underline">
+        Sign in
+      </Link>{" "}
+      to see your real ministry data.
     </div>
   );
 }
