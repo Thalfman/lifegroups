@@ -1,25 +1,30 @@
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto min-h-screen max-w-6xl p-6 md:p-10">
-      <section className="space-y-6">
-        <Badge>Phase 0 Foundation</Badge>
-        <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Life Group Operations Dashboard</h1>
-        <p className="max-w-3xl text-muted-foreground">A calm, modern operations hub for ministry admins and life group leaders. This starter focuses on clean architecture and deployment readiness for Vercel + Supabase free tier.</p>
-        <div className="flex gap-3"><Button>Phase 1: Auth + Roles</Button><Button variant="outline">View Roadmap</Button></div>
-      </section>
-      <section className="mt-10 grid gap-4 md:grid-cols-3">
-        {[
-          ["Admin Visibility", "Cross-group insights, health, follow-ups, and weekly rhythm management."],
-          ["Leader Simplicity", "Single-group workflows designed to reduce admin overhead for leaders."],
-          ["Free-tier Ready", "Structured for Vercel Hobby + Supabase Free with no paid dependencies."],
-        ].map(([title, description]) => (
-          <Card key={title}><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{description}</CardContent></Card>
-        ))}
-      </section>
+    <main className="min-h-screen muted-grid">
+      <div className="container space-y-8 py-10 md:py-16">
+        <section className="app-surface p-8">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Phase 1 Preview</p>
+          <h1 className="mt-3 text-4xl font-semibold md:text-5xl">Life Group Operations Dashboard</h1>
+          <p className="mt-4 max-w-2xl text-muted-foreground">A calm, modern ministry operations command center for admins and life group leaders. This phase delivers deployment-safe foundations, reusable UI patterns, and polished preview workflows.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild><Link href="/admin-preview">Open Admin Preview</Link></Button>
+            <Button asChild variant="outline"><Link href="/leader-preview">Open Leader Preview</Link></Button>
+          </div>
+        </section>
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            ["Warm & Trustworthy", "Balanced tones, clear hierarchy, and people-first language for ministry teams."],
+            ["Operational Clarity", "Purpose-built cards and badges to surface status without dashboard clutter."],
+            ["Built for Vercel Hobby", "No required runtime env vars or paid services for Phase 1 deployment."],
+          ].map(([title, description]) => (
+            <Card key={title} className="app-surface"><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">{description}</CardContent></Card>
+          ))}
+        </section>
+      </div>
     </main>
   );
 }

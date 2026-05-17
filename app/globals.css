@@ -3,15 +3,60 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 33% 98%;
-  --foreground: 220 28% 12%;
+  --background: 42 35% 98%;
+  --foreground: 222 34% 14%;
   --card: 0 0% 100%;
-  --card-foreground: 220 28% 12%;
-  --primary: 156 34% 34%;
+  --card-foreground: 222 34% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 34% 14%;
+  --primary: 155 34% 34%;
   --primary-foreground: 0 0% 100%;
-  --muted: 42 25% 94%;
-  --muted-foreground: 220 10% 40%;
-  --border: 42 20% 86%;
+  --secondary: 40 28% 93%;
+  --secondary-foreground: 223 30% 20%;
+  --muted: 38 24% 94%;
+  --muted-foreground: 219 12% 38%;
+  --accent: 33 49% 90%;
+  --accent-foreground: 222 34% 14%;
+  --destructive: 0 67% 43%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 36 22% 84%;
+  --input: 36 22% 84%;
+  --ring: 155 34% 34%;
+  --radius: 0.8rem;
+
+  --status-healthy: 149 53% 33%;
+  --status-watch: 36 92% 45%;
+  --status-followup: 0 63% 45%;
+  --status-paused: 220 10% 45%;
+  --status-restart: 214 78% 44%;
 }
 
-body { @apply bg-background text-foreground antialiased; }
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  @apply tracking-tight text-balance;
+}
+
+p {
+  @apply leading-relaxed;
+}
+
+@layer components {
+  .app-surface {
+    @apply rounded-xl border bg-card/95 shadow-sm;
+  }
+
+  .muted-grid {
+    background-image: linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}

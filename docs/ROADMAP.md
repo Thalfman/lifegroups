@@ -1,7 +1,16 @@
 # Roadmap
 
-- Phase 0: bootstrap, structure, docs, UI foundation.
-- Phase 1: auth and role-aware navigation.
-- Phase 2: group and member management.
-- Phase 3: attendance + guest flow.
-- Phase 4: health indicators + reporting.
+## Phase 1 (current)
+- Vercel deployment compatibility fixes.
+- Design system tokens and reusable shell/card components.
+- Static preview pages for admin and leader flows.
+
+## Phase 2
+- Safe Supabase wiring using env vars.
+- Authentication and role-aware navigation.
+- Initial data model for groups/members.
+
+## Phase 3+
+- Attendance workflows and guest pipeline.
+- Health scoring and reporting.
+- Follow-up automation and notifications.

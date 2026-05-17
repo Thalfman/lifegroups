@@ -1,37 +1,26 @@
 # Life Group Operations Dashboard
 
-Phase 0 bootstrap for a ministry-focused operations app built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui-style components.
+Phase 1 MVP foundation for a ministry-focused operations dashboard built with Next.js App Router, TypeScript, Tailwind CSS, and shadcn/ui-style components.
 
-## Local development
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Copy env template:
-   ```bash
-   cp .env.example .env.local
-   ```
-3. Run dev server:
-   ```bash
-   npm run dev
-   ```
+## Phase 1 outcomes
+- Vercel-safe baseline build setup (no required runtime env vars).
+- Reusable layout and dashboard preview component system.
+- Static preview pages for Home, Admin, and Leader experiences.
 
 ## Scripts
-- `npm run dev` - start local app
-- `npm run lint` - lint project
-- `npm run typecheck` - TypeScript checks
-- `npm run build` - production build
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npm run lint`
+- `npm run typecheck`
 
-## Vercel setup (future)
-- Import repository in Vercel.
-- Set environment variables from `.env.example`.
-- Keep on Hobby plan for Phase 0/1.
+## Pages
+- `/` — Product preview landing page.
+- `/admin-preview` — Admin dashboard style preview.
+- `/leader-preview` — Leader weekly workflow preview.
 
-## Supabase setup (future)
-- Create a free Supabase project.
-- Populate `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Save `SUPABASE_SERVICE_ROLE_KEY` in Vercel project env only.
-
-## Phase status
-This phase intentionally excludes authentication, schema, business logic, attendance workflows, and dashboards.
+## Docs
+- `docs/ARCHITECTURE.md`
+- `docs/ROADMAP.md`
+- `docs/FREE_TIER_NOTES.md`
+- `docs/DEPLOYMENT.md`
