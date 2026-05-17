@@ -3,14 +3,21 @@ import { ActionCard, MetricCard, StatusCard } from "@/components/dashboard/cards
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
 import { AppShell, SectionHeader } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
+import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export default function HomePage() {
+  const source = isSupabaseConfigured() ? "live" : "fallback";
   return (
-    <AppShell title="Life Group Operations Dashboard" subtitle="A warm, focused command center preview for ministry admins and life group leaders.">
+    <AppShell
+      title="Life Group Operations Dashboard"
+      subtitle="A warm, focused command center for ministry admins and life group leaders."
+      headerSlot={<DataSourceBadge source={source} />}
+    >
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard title="Leader check-ins" value="34 / 40" meta="Simple weekly workflow in leader preview" />
-        <MetricCard title="Guest follow-up" value="12 pending" meta="Pipeline visibility for ministry admin" />
-        <MetricCard title="Capacity awareness" value="81%" meta="Highlights groups approaching full capacity" />
+        <MetricCard title="Leader check-ins" value="Weekly" meta="Simple, mobile-first check-in flow" />
+        <MetricCard title="Guest follow-up" value="Pipeline" meta="Visibility from new to placed" />
+        <MetricCard title="Capacity awareness" value="At a glance" meta="Highlights groups approaching full" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -24,16 +31,34 @@ export default function HomePage() {
         </StatusCard>
         <ActionCard
           title="Explore preview dashboards"
-          description="Static sample content only—no auth, no Supabase runtime integration, and no live attendance submission in this phase."
-          action={<div className="flex flex-wrap gap-2"><Button asChild><Link href="/admin-preview">Open admin preview</Link></Button><Button asChild variant="outline"><Link href="/leader-preview">Open leader preview</Link></Button></div>}
+          description="Phase 3 reads from Supabase when env vars are configured, and falls back to demo data otherwise. No auth, no writes yet."
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/admin-preview">Open admin preview</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/leader-preview">Open leader preview</Link>
+              </Button>
+            </div>
+          }
         />
       </section>
 
       <section className="space-y-4">
-        <SectionHeader title="Shared status language" description="Phase 1 introduces reusable badge styling that future dashboards can reuse." />
+        <SectionHeader
+          title="Shared status language"
+          description="Reusable lifecycle and health badges so admin and leader views stay consistent."
+        />
         <div className="flex flex-wrap gap-2">
-          <LifecycleBadge status="Active" /><LifecycleBadge status="Planned Pause" /><LifecycleBadge status="Seasonal Break" /><LifecycleBadge status="Restart Soon" /><LifecycleBadge status="Overdue Restart" />
-          <HealthBadge tone="healthy" label="Healthy" /><HealthBadge tone="watch" label="Watch" /><HealthBadge tone="followup" label="Needs Follow-up" />
+          <LifecycleBadge status="Active" />
+          <LifecycleBadge status="Planned Pause" />
+          <LifecycleBadge status="Seasonal Break" />
+          <LifecycleBadge status="Restart Soon" />
+          <LifecycleBadge status="Overdue Restart" />
+          <HealthBadge tone="healthy" label="Healthy" />
+          <HealthBadge tone="watch" label="Watch" />
+          <HealthBadge tone="followup" label="Needs Follow-up" />
         </div>
       </section>
     </AppShell>

@@ -1,12 +1,32 @@
 # Deployment Notes
 
-## Current (through Phase 2 schema + restored Phase 1 UI)
+## Current (Phase 3 — safe Supabase read integration)
 - Deploy to Vercel as a standard Next.js app.
-- Supabase environment variables are **not required** for build/runtime yet.
-- UI preview pages are static and safe for Vercel Hobby.
-- Do not import live Supabase query paths into pages until later phases.
+- Supabase environment variables are **optional** for build. Without them, the
+  preview pages render typed fallback demo data.
+- With env vars configured, the same pages run read-only Supabase queries via
+  `lib/supabase/client.ts::getReadClient()`.
+- `/admin-preview` and `/leader-preview` are marked `dynamic = "force-dynamic"`
+  so deploys never bake stale data into the build output.
+- No auth, no RLS, no write paths. The anon key alone is used for reads.
 
-## When Supabase is introduced (future phases)
-- Add required `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to Vercel.
-- Apply migrations then seed data in Supabase.
-- Roll out auth and RLS in Phase 4.
+## Environment variables
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+Set these in the Vercel project settings (Production + Preview). Local dev uses
+`.env.local`; copy from `.env.example` and fill in values to read live data.
+
+## Supabase project setup
+1. Create a free Supabase project.
+2. Apply `supabase/migrations/20260517040000_phase2_schema.sql`.
+3. Apply `supabase/seed/phase2_seed.sql` to populate sample data.
+4. From Project Settings → API, copy the project URL and **anon public** key
+   into the Vercel env vars above. Do not paste the service role key.
+
+## What lands in Phase 4
+- Supabase auth, RLS policies, and assigned-leader scoping.
+- The first write paths: attendance submission, guest capture, follow-up state
+  changes.
