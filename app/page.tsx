@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
@@ -11,8 +12,8 @@ export default function HomePage() {
           <h1 className="mt-3 text-4xl font-semibold md:text-5xl">Life Group Operations Dashboard</h1>
           <p className="mt-4 max-w-2xl text-muted-foreground">A calm, modern ministry operations command center for admins and life group leaders. This phase delivers deployment-safe foundations, reusable UI patterns, and polished preview workflows.</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild><Link href="/admin-preview">Open Admin Preview</Link></Button>
-            <Button asChild variant="outline"><Link href="/leader-preview">Open Leader Preview</Link></Button>
+            <Link className={cn(buttonVariants({ variant: "default" }))} href="/admin-preview">Open Admin Preview</Link>
+            <Link className={cn(buttonVariants({ variant: "outline" }))} href="/leader-preview">Open Leader Preview</Link>
           </div>
         </section>
         <section className="grid gap-4 md:grid-cols-3">
