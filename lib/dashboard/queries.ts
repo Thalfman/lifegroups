@@ -38,9 +38,14 @@ import type { GuestPipelineStage } from "@/types/enums";
 const NEAR_CAPACITY_THRESHOLD = 0.8;
 
 function isoWeekStart(date: Date): string {
+  // attendance_sessions.meeting_week is stored as the Monday-of-week date
+  // (see supabase/seed/phase2_seed.sql), so this helper returns the Monday
+  // that contains `date`. JS getUTCDay returns Sun=0..Sat=6; map to a
+  // Monday-anchored offset so Mon→0, Tue→1, ..., Sun→6.
   const copy = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayOfWeek = copy.getUTCDay();
-  copy.setUTCDate(copy.getUTCDate() - dayOfWeek);
+  const mondayOffset = (dayOfWeek + 6) % 7;
+  copy.setUTCDate(copy.getUTCDate() - mondayOffset);
   return copy.toISOString().slice(0, 10);
 }
 

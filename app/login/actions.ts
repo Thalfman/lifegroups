@@ -48,7 +48,9 @@ export async function loginAction(
     // Sign the user back out so the browser doesn't end up with an active
     // session while the form is telling them the login failed. Without this
     // they could refresh into protected routes despite the error message.
-    await client.auth.signOut();
+    // Scope `local` so we only revoke the session we just created, not every
+    // session the user has across other devices.
+    await client.auth.signOut({ scope: "local" });
     return { error: "Sign-in succeeded but we couldn't load your profile. Please try again." };
   }
 
