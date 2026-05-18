@@ -126,10 +126,19 @@ export function effectiveCapacity(
   return defaults.default_group_capacity;
 }
 
-export function unknownCapacity(group: GroupRef, override: OverrideRef): boolean {
-  if (override?.capacity_override != null) return false;
-  if (group.capacity != null) return false;
-  return true;
+// Returns true only when no effective capacity is available -- that is,
+// the per-group override, the per-group capacity, AND the global default
+// are all null. If a default is configured, the dashboard treats the
+// group as "Default capacity (N)" rather than "Unknown", so this helper
+// must consult defaults too. Earlier versions ignored defaults, which
+// caused a group to display "/ Unknown" while capacityStatus still
+// coloured it warning/full from the configured default.
+export function unknownCapacity(
+  group: GroupRef,
+  override: OverrideRef,
+  defaults: MetricDefaults,
+): boolean {
+  return effectiveCapacity(group, override, defaults) == null;
 }
 
 export function effectiveCapacityWarningPct(

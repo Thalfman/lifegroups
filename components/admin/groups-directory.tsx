@@ -325,7 +325,7 @@ function GroupCard({
   const isClosed = group.lifecycle_status === "closed";
   const effectiveHealth = effectiveHealthStatus(group, override);
   const cap = effectiveCapacity(group, override, defaults);
-  const isCapacityUnknown = unknownCapacity(group, override);
+  const isCapacityUnknown = unknownCapacity(group, override, defaults);
   const excluded = isExcludedFromCapacityMetrics(override);
   const status = capacityStatus({
     activeMemberCount,

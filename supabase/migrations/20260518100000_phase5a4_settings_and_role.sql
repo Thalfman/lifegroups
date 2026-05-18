@@ -134,6 +134,7 @@ declare
   v_check_in_due_day_of_week       jsonb;
   v_missed_checkin_warning_weeks   jsonb;
   v_default_healthy_attendance_pct jsonb;
+  v_int int;
 begin
   if not public.auth_is_admin() then
     raise exception 'insufficient_privilege';
@@ -152,15 +153,23 @@ begin
   -- schema addition cannot corrupt existing rows by accident. Each
   -- present key must be either null (where allowed) or an integer in
   -- range; anything else raises invalid_input.
+  --
+  -- We use `->>` (text accessor) plus an explicit `::int` cast for the
+  -- bounds checks. The `->` operator returns jsonb, which Postgres will
+  -- not implicitly cast to int -- `jsonb::int` raises "cannot cast type
+  -- jsonb to integer". `jsonb_typeof(... -> key)` is still the right
+  -- way to confirm the JSON type before reading.
 
   if p_settings ? 'default_group_capacity' then
     v_default_group_capacity := p_settings -> 'default_group_capacity';
     if jsonb_typeof(v_default_group_capacity) not in ('null','number') then
       raise exception 'invalid_input';
     end if;
-    if jsonb_typeof(v_default_group_capacity) = 'number'
-       and ((v_default_group_capacity)::int < 1 or (v_default_group_capacity)::int > 500) then
-      raise exception 'invalid_input';
+    if jsonb_typeof(v_default_group_capacity) = 'number' then
+      v_int := (p_settings ->> 'default_group_capacity')::int;
+      if v_int < 1 or v_int > 500 then
+        raise exception 'invalid_input';
+      end if;
     end if;
   end if;
 
@@ -169,8 +178,8 @@ begin
     if jsonb_typeof(v_capacity_warning_threshold_pct) <> 'number' then
       raise exception 'invalid_input';
     end if;
-    if (v_capacity_warning_threshold_pct)::int < 0
-       or (v_capacity_warning_threshold_pct)::int > 300 then
+    v_int := (p_settings ->> 'capacity_warning_threshold_pct')::int;
+    if v_int < 0 or v_int > 300 then
       raise exception 'invalid_input';
     end if;
   end if;
@@ -180,8 +189,8 @@ begin
     if jsonb_typeof(v_capacity_full_threshold_pct) <> 'number' then
       raise exception 'invalid_input';
     end if;
-    if (v_capacity_full_threshold_pct)::int < 1
-       or (v_capacity_full_threshold_pct)::int > 300 then
+    v_int := (p_settings ->> 'capacity_full_threshold_pct')::int;
+    if v_int < 1 or v_int > 300 then
       raise exception 'invalid_input';
     end if;
   end if;
@@ -191,8 +200,8 @@ begin
     if jsonb_typeof(v_check_in_due_day_of_week) <> 'number' then
       raise exception 'invalid_input';
     end if;
-    if (v_check_in_due_day_of_week)::int < 0
-       or (v_check_in_due_day_of_week)::int > 6 then
+    v_int := (p_settings ->> 'check_in_due_day_of_week')::int;
+    if v_int < 0 or v_int > 6 then
       raise exception 'invalid_input';
     end if;
   end if;
@@ -202,8 +211,8 @@ begin
     if jsonb_typeof(v_missed_checkin_warning_weeks) <> 'number' then
       raise exception 'invalid_input';
     end if;
-    if (v_missed_checkin_warning_weeks)::int < 1
-       or (v_missed_checkin_warning_weeks)::int > 12 then
+    v_int := (p_settings ->> 'missed_checkin_warning_weeks')::int;
+    if v_int < 1 or v_int > 12 then
       raise exception 'invalid_input';
     end if;
   end if;
@@ -213,8 +222,8 @@ begin
     if jsonb_typeof(v_default_healthy_attendance_pct) <> 'number' then
       raise exception 'invalid_input';
     end if;
-    if (v_default_healthy_attendance_pct)::int < 0
-       or (v_default_healthy_attendance_pct)::int > 100 then
+    v_int := (p_settings ->> 'default_healthy_attendance_pct')::int;
+    if v_int < 0 or v_int > 100 then
       raise exception 'invalid_input';
     end if;
   end if;
