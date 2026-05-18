@@ -58,6 +58,8 @@ declare
   v_invalid_count integer := 0;
   v_leader_note text;
   v_follow_up boolean;
+  v_current_monday date;
+  v_min_allowed_week date;
 begin
   -- 1. Auth: must have an active profile linked to this session.
   v_actor := public.auth_profile_id();
@@ -83,6 +85,18 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Restrict p_meeting_week to the current ISO week or the immediately
+  -- preceding week. The leader form hard-codes the current week; allowing
+  -- one week back covers Monday-morning back-fills for Sunday meetings and
+  -- absorbs small UTC-vs-server-timezone drift. Anything older is blocked
+  -- so a tampered hidden `meeting_week` field cannot be replayed to rewrite
+  -- arbitrary historical attendance sessions.
+  v_current_monday   := date_trunc('week', current_date)::date;
+  v_min_allowed_week := v_current_monday - 7;
+  if p_meeting_week < v_min_allowed_week or p_meeting_week > v_current_monday then
+    raise exception 'invalid_input';
+  end if;
+
   -- 3. Pulse validation. Phase 5B.0 only supports the three "live" pulses
   --    that the leader form exposes; admin-managed pulses such as
   --    healthy_paused / capacity_full are set elsewhere and not part of
@@ -92,6 +106,16 @@ begin
       raise exception 'invalid_input';
     end if;
     v_pulse_enum := p_pulse::public.group_health_status;
+  end if;
+
+  -- If the leader ticked "Group could use a follow-up this week" but did
+  -- not choose a pulse, treat that as a "needs_follow_up" pulse so the
+  -- escalation signal is not silently dropped. The admin dashboard reads
+  -- group_health_updates for the follow-up flag; without this fallback the
+  -- whole group_health_updates upsert below would be skipped and the
+  -- request would never reach an admin.
+  if v_pulse_enum is null and v_follow_up then
+    v_pulse_enum := 'needs_follow_up'::public.group_health_status;
   end if;
 
   -- 4. Group must exist and be non-closed. We don't lock the row here;
@@ -154,15 +178,26 @@ begin
   --    Phase 2 schema, but we don't rely on that here -- we always
   --    leave the parent session in place so historical metadata
   --    (created_at, meeting_date, leader_note) survives.
-  delete from public.attendance_records where session_id = v_session_id;
-
+  --
+  --    Validate the attendance payload's *shape* BEFORE the delete runs.
+  --    A submitted check-in with a non-array `p_attendance` (object,
+  --    string, number, ...) must fail invalid_input; otherwise the
+  --    destructive delete would already have wiped the prior week's
+  --    records by the time we noticed the payload was malformed.
   if v_status_enum = 'submitted'
      and p_attendance is not null
-     and jsonb_typeof(p_attendance) = 'array' then
+     and jsonb_typeof(p_attendance) <> 'array' then
+    raise exception 'invalid_input';
+  end if;
+
+  delete from public.attendance_records where session_id = v_session_id;
+
+  if v_status_enum = 'submitted' and p_attendance is not null then
     -- Reject any attendance row that references a member outside this
     -- group's active roster, has a bad status enum, or is missing fields.
     -- This is the "members belong to the group" guarantee called out in
-    -- the Phase 5B.0 spec.
+    -- the Phase 5B.0 spec. p_attendance is guaranteed to be a jsonb array
+    -- here because the shape check above already rejected anything else.
     select count(*) into v_invalid_count
       from jsonb_to_recordset(p_attendance)
         as a(member_id uuid, attendance_status text)

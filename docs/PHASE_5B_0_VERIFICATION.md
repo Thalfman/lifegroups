@@ -124,6 +124,44 @@ Each must pass with no new warnings or errors.
     ministry_admin's JWT, or with the Supabase REST endpoint) to
     confirm `select * from public.audit_events` returns zero rows.
 
+## Week-range tampering
+
+26a. Replay a form `POST` with the hidden `meeting_week` field set to a
+    date more than 7 days before the current Monday (e.g. last month).
+    Confirm:
+    - The RPC raises `invalid_input`.
+    - The UI shows "Something in this check-in didn't look right.
+      Refresh and try again."
+    - No `attendance_sessions` or `attendance_records` rows were
+      mutated for that historical week.
+26b. Replay with `meeting_week` set to a Monday more than 7 days in
+    the future. Same expectation: `invalid_input`, no writes.
+26c. Replay with `meeting_week` set to the immediately preceding
+    Monday (one week back). Confirm it succeeds — the 7-day grace
+    window is intentional and covers Sunday-evening meetings
+    submitted Monday morning.
+
+## Follow-up without pulse
+
+26d. Submit a check-in with `pulse=""` (no update) and
+    `follow_up_needed=true`. Confirm:
+    - The submit succeeds.
+    - A new row appears in `group_health_updates` for that week
+      with `pulse='needs_follow_up'`, `follow_up_needed=true`,
+      `submitted_by` set to the leader, and `admin_note` left
+      untouched. This guarantees the escalation signal is visible
+      to admin even if the leader didn't explicitly choose a pulse.
+
+## Malformed attendance payload
+
+26e. Submit a check-in with `status=submitted` and the hidden
+    `attendance` field set to a non-array value (e.g. `{}` or a
+    string). Confirm:
+    - The RPC raises `invalid_input` *before* any delete runs.
+    - In SQL, `select count(*) from public.attendance_records
+      where session_id = <the session id>` is unchanged from
+      before the failed submit.
+
 ## Authorization (negative paths)
 
 20. Sign in as a `leader` who is NOT assigned to group X. Manually

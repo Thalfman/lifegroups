@@ -88,12 +88,21 @@ export default async function CheckInPage({
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   const existingSession = ((sessionResult.data ?? []) as AttendanceSessionsRow[])[0] ?? null;
-  let attendanceMap: Record<string, "present" | "absent" | "excused"> = {};
+  const attendanceMap: Record<string, "present" | "absent" | "excused"> = {};
   if (existingSession) {
     const recordsResult = await fetchAttendanceRecordsForSessions(client, [existingSession.id]);
     if (recordsResult.error) throw recordsResult.error;
+    // Filter prefilled attendance to members still on the active roster.
+    // Historical attendance_records are intentionally never deleted, so a
+    // member who has since been removed from the group will still have a
+    // row pointing at this session. Including their id in the form's
+    // hidden attendance JSON would later trigger `invalid_member` from
+    // the RPC and block the leader from updating the check-in at all.
+    const activeMemberIds = new Set(members.map((m) => m.id));
     for (const rec of recordsResult.data ?? []) {
-      attendanceMap[rec.member_id] = rec.attendance_status;
+      if (activeMemberIds.has(rec.member_id)) {
+        attendanceMap[rec.member_id] = rec.attendance_status;
+      }
     }
   }
 

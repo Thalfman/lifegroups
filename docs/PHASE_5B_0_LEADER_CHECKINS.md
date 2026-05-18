@@ -69,11 +69,20 @@ Following Phase 5A.1 / 5A.2 exactly:
      of `submitted` / `did_not_meet` / `planned_pause`; the leader
      note is ≤ 1000 chars; the pulse, if supplied, is one of
      `healthy` / `watch` / `needs_follow_up`.
-  3. The target group exists and `lifecycle_status <> 'closed'`.
-  4. `auth_is_leader_of(p_group_id)` is true (active leader/co-leader
+  3. `p_meeting_week` is the current ISO week's Monday or the
+     immediately preceding Monday. Anything older is rejected so a
+     tampered hidden field cannot rewrite historical sessions; the
+     7-day grace covers Sunday-evening meetings submitted Monday
+     morning and absorbs small timezone drift.
+  4. When status is `submitted`, the attendance JSON is an array
+     (non-array values fail `invalid_input` *before* any DELETE runs,
+     so a malformed payload can never silently wipe the existing
+     week's records).
+  5. The target group exists and `lifecycle_status <> 'closed'`.
+  6. `auth_is_leader_of(p_group_id)` is true (active leader/co-leader
      of THIS group; admins not separately listed in `group_leaders`
      are rejected).
-  5. When status is `submitted`, every member in the attendance JSON
+  7. When status is `submitted`, every member in the attendance JSON
      belongs to the group via an active `group_memberships` row.
 - Writes that happen in a single transaction:
   - **Upsert** the `attendance_sessions` row on
@@ -88,7 +97,10 @@ Following Phase 5A.1 / 5A.2 exactly:
     `group_health_updates` on (`group_id`, `update_week`). The leader
     columns (`pulse`, `follow_up_needed`, `leader_note`,
     `submitted_by`) are overwritten; `admin_note` is intentionally
-    left alone.
+    left alone. If the leader ticked "Group could use a follow-up"
+    but did not pick a pulse, the RPC promotes the pulse to
+    `needs_follow_up` so the escalation signal is recorded rather
+    than silently dropped.
   - Insert an `audit_events` row with one of three action tokens:
     - `leader.submit_checkin` — new session row, status submitted /
       planned_pause.
