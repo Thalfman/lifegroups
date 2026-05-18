@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { Phase5B1Notice } from "@/components/admin/phase-5b1-notice";
+import { WeekSelector } from "@/components/admin/week-selector";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
   formatSubmittedAt,
@@ -186,79 +187,6 @@ function Empty({ title, description }: { title: string; description: string }) {
         {description}
       </p>
     </div>
-  );
-}
-
-function WeekSelector({
-  meetingWeek,
-  weekOptions,
-}: {
-  meetingWeek: string;
-  weekOptions: WeekOption[];
-}) {
-  return (
-    <form
-      method="GET"
-      action="/admin/check-ins"
-      style={{
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
-      <label
-        htmlFor="check-in-week"
-        style={{
-          fontFamily: fontSans,
-          fontSize: 11,
-          letterSpacing: 1.6,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
-        Showing
-      </label>
-      <select
-        id="check-in-week"
-        name="week"
-        defaultValue={meetingWeek}
-        style={{
-          fontFamily: fontBody,
-          fontSize: 14,
-          padding: "8px 12px",
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 8,
-          color: P.ink,
-          minWidth: 220,
-        }}
-      >
-        {weekOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <button
-        type="submit"
-        style={{
-          fontFamily: fontSans,
-          fontSize: 12,
-          fontWeight: 600,
-          letterSpacing: 0.4,
-          padding: "9px 16px",
-          background: P.ink,
-          color: P.surface,
-          border: `1px solid ${P.ink}`,
-          borderRadius: 8,
-          cursor: "pointer",
-        }}
-      >
-        Show week
-      </button>
-    </form>
   );
 }
 
@@ -490,7 +418,12 @@ export function CheckInReviewShell({
           title={formatWeekLabel(meetingWeek)}
           description="Pick a different Monday to scroll back through prior weeks. Closed groups stay out of these totals."
         />
-        <WeekSelector meetingWeek={meetingWeek} weekOptions={weekOptions} />
+        <WeekSelector
+          meetingWeek={meetingWeek}
+          weekOptions={weekOptions}
+          formAction="/admin/check-ins"
+          selectId="check-in-week"
+        />
         <div
           style={{
             display: "grid",

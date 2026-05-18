@@ -3,6 +3,7 @@ import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
 import { PublicPreviewNotice } from "@/components/dashboard/notices";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
+import { buildWeekOptions } from "@/lib/admin/check-ins";
 
 export const dynamic = "force-dynamic";
 
@@ -14,19 +15,20 @@ const PREVIEW_NAV = [
 
 export default async function AdminPreviewPage() {
   const { data } = await getAdminDashboardData(null);
+  const weekOptions = buildWeekOptions(new Date());
 
   return (
     <PastoralAppShell
       navItems={PREVIEW_NAV}
-      eyebrow={`${data.weekLabel} · Admin preview`}
-      title="Good morning,"
-      titleItalic="Avery."
+      eyebrow="Ministry command center · Preview"
+      title="Life Groups,"
+      titleItalic="this week."
       lede="Public design preview of the admin dashboard, rendered from demo data."
       headerSlot={<DataSourceBadge source="fallback" />}
     >
       <div style={{ display: "grid", gap: 14 }}>
         <PublicPreviewNotice />
-        <AdminDashboard data={data} />
+        <AdminDashboard data={data} weekOptions={weekOptions} />
       </div>
     </PastoralAppShell>
   );

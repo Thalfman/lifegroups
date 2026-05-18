@@ -1,7 +1,11 @@
 import type {
   AdminDashboardData,
+  AttentionItem,
+  CapacityGroupRow,
+  HealthGroupRow,
   LeaderDashboardData,
   PipelineStageCount,
+  SetupGapRow,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
 import { pipelineStageLabel } from "./labels";
@@ -16,81 +20,390 @@ const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   not_now: 1,
 };
 
-const fallbackPipelineBreakdown: PipelineStageCount[] = GUEST_PIPELINE_STAGES.map((stage) => ({
-  stage,
-  label: pipelineStageLabel(stage),
-  count: FALLBACK_PIPELINE_COUNTS[stage] ?? 0,
-}));
+const fallbackPipelineBreakdown: PipelineStageCount[] = GUEST_PIPELINE_STAGES.map(
+  (stage) => ({
+    stage,
+    label: pipelineStageLabel(stage),
+    count: FALLBACK_PIPELINE_COUNTS[stage] ?? 0,
+  }),
+);
+
+const FALLBACK_WEEK = "2026-05-18";
+const FALLBACK_WEEK_LABEL = "Week of May 18, 2026";
+
+const cap = (
+  partial: Omit<CapacityGroupRow, "warningPct" | "fullPct">,
+): CapacityGroupRow => ({
+  warningPct: 80,
+  fullPct: 100,
+  ...partial,
+});
+
+const fallbackCapacityFull: CapacityGroupRow[] = [
+  cap({
+    groupId: "fb-cap-full-1",
+    name: "South Campus Women",
+    activeMembers: 14,
+    effectiveCapacity: 14,
+    capacitySource: "group",
+    utilizationPct: 100,
+    status: "full",
+    hasManualHealthOverride: false,
+    healthStatus: "capacity_full",
+    excluded: false,
+  }),
+];
+
+const fallbackCapacityWarning: CapacityGroupRow[] = [
+  cap({
+    groupId: "fb-cap-warn-1",
+    name: "Downtown Professionals",
+    activeMembers: 10,
+    effectiveCapacity: 12,
+    capacitySource: "group",
+    utilizationPct: 83.3,
+    status: "warning",
+    hasManualHealthOverride: false,
+    healthStatus: "watch",
+    excluded: false,
+  }),
+  cap({
+    groupId: "fb-cap-warn-2",
+    name: "Northside Young Adults",
+    activeMembers: 10,
+    effectiveCapacity: 12,
+    capacitySource: "override",
+    utilizationPct: 83.3,
+    status: "warning",
+    hasManualHealthOverride: false,
+    healthStatus: "healthy",
+    excluded: false,
+  }),
+];
+
+const fallbackCapacityOk: CapacityGroupRow[] = [
+  cap({
+    groupId: "fb-cap-ok-1",
+    name: "Eastside Community",
+    activeMembers: 7,
+    effectiveCapacity: 12,
+    capacitySource: "group",
+    utilizationPct: 58.3,
+    status: "ok",
+    hasManualHealthOverride: false,
+    healthStatus: "healthy",
+    excluded: false,
+  }),
+  cap({
+    groupId: "fb-cap-ok-2",
+    name: "Hillside Couples",
+    activeMembers: 5,
+    effectiveCapacity: 10,
+    capacitySource: "default",
+    utilizationPct: 50,
+    status: "ok",
+    hasManualHealthOverride: false,
+    healthStatus: "healthy",
+    excluded: false,
+  }),
+];
+
+const fallbackCapacityUnknown: CapacityGroupRow[] = [
+  cap({
+    groupId: "fb-cap-unknown-1",
+    name: "Bridge Builders",
+    activeMembers: 4,
+    effectiveCapacity: null,
+    capacitySource: "unknown",
+    utilizationPct: null,
+    status: "unknown",
+    hasManualHealthOverride: false,
+    healthStatus: "healthy",
+    excluded: false,
+  }),
+];
+
+const fallbackCapacityExcluded: CapacityGroupRow[] = [
+  cap({
+    groupId: "fb-cap-excluded-1",
+    name: "Leadership Cohort",
+    activeMembers: 18,
+    effectiveCapacity: 8,
+    capacitySource: "override",
+    utilizationPct: 225,
+    status: "excluded",
+    hasManualHealthOverride: true,
+    healthStatus: "healthy",
+    excluded: true,
+  }),
+];
+
+const healthSubmitted: HealthGroupRow[] = [
+  {
+    groupId: "fb-cap-ok-1",
+    name: "Eastside Community",
+    sessionStatus: "submitted",
+    healthStatus: "healthy",
+    followUpNeeded: false,
+    leaderNames: ["Jonah Reyes"],
+  },
+  {
+    groupId: "fb-cap-warn-2",
+    name: "Northside Young Adults",
+    sessionStatus: "submitted",
+    healthStatus: "healthy",
+    followUpNeeded: false,
+    leaderNames: ["Avery Lewis", "Sam Park"],
+  },
+];
+
+const healthMissing: HealthGroupRow[] = [
+  {
+    groupId: "fb-miss-1",
+    name: "Westside Families",
+    sessionStatus: "no_session",
+    healthStatus: "healthy",
+    followUpNeeded: false,
+    leaderNames: ["Maria Lopez"],
+  },
+];
+
+const healthDidNotMeet: HealthGroupRow[] = [
+  {
+    groupId: "fb-dnm-1",
+    name: "Riverside Singles",
+    sessionStatus: "did_not_meet",
+    healthStatus: "healthy",
+    followUpNeeded: false,
+    leaderNames: ["Daniel Park"],
+  },
+];
+
+const healthPlannedPause: HealthGroupRow[] = [
+  {
+    groupId: "fb-pp-1",
+    name: "Sunset Seniors",
+    sessionStatus: "planned_pause",
+    healthStatus: "healthy_paused",
+    followUpNeeded: false,
+    leaderNames: ["Linda Chen"],
+  },
+];
+
+const healthNeedsFollowUp: HealthGroupRow[] = [
+  {
+    groupId: "fb-cap-full-1",
+    name: "South Campus Women",
+    sessionStatus: "submitted",
+    healthStatus: "needs_follow_up",
+    followUpNeeded: true,
+    leaderNames: ["Priya Mehta"],
+  },
+];
+
+const healthWatch: HealthGroupRow[] = [
+  {
+    groupId: "fb-cap-warn-1",
+    name: "Downtown Professionals",
+    sessionStatus: "submitted",
+    healthStatus: "watch",
+    followUpNeeded: false,
+    leaderNames: ["Noah Bennett"],
+  },
+];
+
+const healthHealthy: HealthGroupRow[] = [
+  {
+    groupId: "fb-cap-ok-2",
+    name: "Hillside Couples",
+    sessionStatus: "submitted",
+    healthStatus: "healthy",
+    followUpNeeded: false,
+    leaderNames: ["Grace Tan", "Eli Robinson"],
+  },
+];
+
+const setupNoCapacity: SetupGapRow[] = [
+  {
+    groupId: "fb-cap-unknown-1",
+    name: "Bridge Builders",
+    gaps: ["capacity"],
+    hasExclusion: false,
+    isCapacityUnknown: true,
+  },
+];
+
+const setupNoLeader: SetupGapRow[] = [
+  {
+    groupId: "fb-no-leader-1",
+    name: "Pending Launch Group",
+    gaps: ["leader", "meeting_day_time", "members"],
+    hasExclusion: false,
+    isCapacityUnknown: false,
+  },
+];
+
+const setupNoMeetingDayTime: SetupGapRow[] = [
+  {
+    groupId: "fb-no-leader-1",
+    name: "Pending Launch Group",
+    gaps: ["leader", "meeting_day_time", "members"],
+    hasExclusion: false,
+    isCapacityUnknown: false,
+  },
+];
+
+const setupNoMembers: SetupGapRow[] = [
+  {
+    groupId: "fb-no-leader-1",
+    name: "Pending Launch Group",
+    gaps: ["leader", "meeting_day_time", "members"],
+    hasExclusion: false,
+    isCapacityUnknown: false,
+  },
+];
+
+const fallbackAttention: AttentionItem[] = [
+  {
+    groupId: "fb-cap-full-1",
+    groupName: "South Campus Women",
+    reason: "follow_up_open",
+    secondaryReasons: ["capacity_full", "health_needs_follow_up"],
+    detail: "1 open follow-up",
+    priority: 10,
+    lifecycleStatus: "active",
+    leaderNames: ["Priya Mehta"],
+    meetingDay: "Wednesday",
+    meetingTime: "19:00",
+    effectiveCapacity: 14,
+    activeMemberCount: 14,
+    sessionStatus: "submitted",
+    excludedFromCapacity: false,
+  },
+  {
+    groupId: "fb-miss-1",
+    groupName: "Westside Families",
+    reason: "missing_check_in",
+    secondaryReasons: [],
+    detail: "No check-in submitted for the selected week",
+    priority: 20,
+    lifecycleStatus: "active",
+    leaderNames: ["Maria Lopez"],
+    meetingDay: "Sunday",
+    meetingTime: "17:00",
+    effectiveCapacity: 12,
+    activeMemberCount: 9,
+    sessionStatus: "no_session",
+    excludedFromCapacity: false,
+  },
+  {
+    groupId: "fb-cap-warn-1",
+    groupName: "Downtown Professionals",
+    reason: "capacity_warning",
+    secondaryReasons: ["health_watch"],
+    detail: "10 / 12 active members",
+    priority: 40,
+    lifecycleStatus: "active",
+    leaderNames: ["Noah Bennett"],
+    meetingDay: "Thursday",
+    meetingTime: "18:30",
+    effectiveCapacity: 12,
+    activeMemberCount: 10,
+    sessionStatus: "submitted",
+    excludedFromCapacity: false,
+  },
+  {
+    groupId: "fb-cap-unknown-1",
+    groupName: "Bridge Builders",
+    reason: "capacity_unknown",
+    secondaryReasons: [],
+    detail: "No capacity configured (override, group, or default)",
+    priority: 70,
+    lifecycleStatus: "active",
+    leaderNames: ["Jordan Kim"],
+    meetingDay: "Monday",
+    meetingTime: "19:00",
+    effectiveCapacity: null,
+    activeMemberCount: 4,
+    sessionStatus: "submitted",
+    excludedFromCapacity: false,
+  },
+  {
+    groupId: "fb-no-leader-1",
+    groupName: "Pending Launch Group",
+    reason: "no_leader",
+    secondaryReasons: ["no_members", "missing_meeting_day_time"],
+    detail: "No active leader assigned",
+    priority: 80,
+    lifecycleStatus: "launching_soon",
+    leaderNames: [],
+    meetingDay: null,
+    meetingTime: null,
+    effectiveCapacity: null,
+    activeMemberCount: 0,
+    sessionStatus: "no_session",
+    excludedFromCapacity: false,
+  },
+];
 
 export const ADMIN_FALLBACK: AdminDashboardData = {
-  activeGroupCount: 18,
-  attendanceThisWeek: 312,
-  guestPipelineCount: 23,
-  missingCheckInsCount: 4,
-  weekLabel: "this week",
-  groupHealth: [
-    {
-      groupId: "fallback-1",
-      name: "Northside Young Adults",
-      lifecycleStatus: "active",
-      healthStatus: "healthy",
-    },
-    {
-      groupId: "fallback-2",
-      name: "Westside Families",
-      lifecycleStatus: "planned_pause",
-      healthStatus: "healthy_paused",
-    },
-    {
-      groupId: "fallback-3",
-      name: "Downtown Professionals",
-      lifecycleStatus: "active",
-      healthStatus: "watch",
-    },
-    {
-      groupId: "fallback-4",
-      name: "South Campus Women",
-      lifecycleStatus: "active",
-      healthStatus: "capacity_full",
-    },
-    {
-      groupId: "fallback-5",
-      name: "Eastside Community",
-      lifecycleStatus: "active",
-      healthStatus: "needs_follow_up",
-    },
-  ],
-  capacity: {
-    totalActiveGroups: 18,
-    nearCapacityGroups: 4,
-    fullGroups: 2,
-    rows: [
-      {
-        groupId: "fallback-1",
-        name: "Northside Young Adults",
-        activeMembers: 9,
-        capacity: 12,
-        utilization: 0.75,
-        healthStatus: "healthy",
-      },
-      {
-        groupId: "fallback-4",
-        name: "South Campus Women",
-        activeMembers: 14,
-        capacity: 14,
-        utilization: 1,
-        healthStatus: "capacity_full",
-      },
-      {
-        groupId: "fallback-3",
-        name: "Downtown Professionals",
-        activeMembers: 10,
-        capacity: 12,
-        utilization: 0.83,
-        healthStatus: "watch",
-      },
-    ],
+  meetingWeek: FALLBACK_WEEK,
+  weekLabel: FALLBACK_WEEK_LABEL,
+  isCurrentWeek: true,
+  summary: {
+    activeGroupCount: 18,
+    submittedCheckIns: 14,
+    missingCheckIns: 4,
+    needsFollowUp: 2,
+    capacityWatch: 3,
+    unknownCapacity: 1,
   },
+  attentionItems: fallbackAttention,
+  capacitySummary: {
+    full: fallbackCapacityFull,
+    warning: fallbackCapacityWarning,
+    ok: fallbackCapacityOk,
+    unknown: fallbackCapacityUnknown,
+    excluded: fallbackCapacityExcluded,
+    counts: {
+      full: fallbackCapacityFull.length,
+      warning: fallbackCapacityWarning.length,
+      ok: fallbackCapacityOk.length,
+      unknown: fallbackCapacityUnknown.length,
+      excluded: fallbackCapacityExcluded.length,
+    },
+  },
+  healthSummary: {
+    submitted: healthSubmitted,
+    missing: healthMissing,
+    didNotMeet: healthDidNotMeet,
+    plannedPause: healthPlannedPause,
+    needsFollowUp: healthNeedsFollowUp,
+    watch: healthWatch,
+    healthy: healthHealthy,
+    counts: {
+      submitted: healthSubmitted.length,
+      missing: healthMissing.length,
+      did_not_meet: healthDidNotMeet.length,
+      planned_pause: healthPlannedPause.length,
+      needs_follow_up: healthNeedsFollowUp.length,
+      watch: healthWatch.length,
+      healthy: healthHealthy.length,
+    },
+  },
+  setupGaps: {
+    noCapacity: setupNoCapacity,
+    noLeader: setupNoLeader,
+    noMeetingDayTime: setupNoMeetingDayTime,
+    noMembers: setupNoMembers,
+    counts: {
+      noCapacity: setupNoCapacity.length,
+      noLeader: setupNoLeader.length,
+      noMeetingDayTime: setupNoMeetingDayTime.length,
+      noMembers: setupNoMembers.length,
+    },
+  },
+  guestPipelineCount: 23,
   guestPipelineBreakdown: fallbackPipelineBreakdown,
   followUps: [
     {
@@ -157,16 +470,41 @@ export const LEADER_FALLBACK: LeaderDashboardData = {
         ],
       },
       recentSessions: [
-        { meetingWeek: "2026-05-11", status: "submitted", presentCount: 7, absentCount: 1, excusedCount: 0 },
-        { meetingWeek: "2026-05-04", status: "submitted", presentCount: 6, absentCount: 1, excusedCount: 1 },
-        { meetingWeek: "2026-04-27", status: "submitted", presentCount: 7, absentCount: 0, excusedCount: 1 },
-        { meetingWeek: "2026-04-20", status: "submitted", presentCount: 6, absentCount: 2, excusedCount: 0 },
+        {
+          meetingWeek: "2026-05-11",
+          status: "submitted",
+          presentCount: 7,
+          absentCount: 1,
+          excusedCount: 0,
+        },
+        {
+          meetingWeek: "2026-05-04",
+          status: "submitted",
+          presentCount: 6,
+          absentCount: 1,
+          excusedCount: 1,
+        },
+        {
+          meetingWeek: "2026-04-27",
+          status: "submitted",
+          presentCount: 7,
+          absentCount: 0,
+          excusedCount: 1,
+        },
+        {
+          meetingWeek: "2026-04-20",
+          status: "submitted",
+          presentCount: 6,
+          absentCount: 2,
+          excusedCount: 0,
+        },
       ],
       healthPulse: {
         attendanceRhythm: "Steady",
         newGuestsThisWeek: 1,
         currentHealth: "healthy",
-        leaderNote: "Group continues to grow steadily; planning a guest-friendly week soon.",
+        leaderNote:
+          "Group continues to grow steadily; planning a guest-friendly week soon.",
       },
       followUps: [
         {
