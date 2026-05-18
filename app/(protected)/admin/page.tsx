@@ -9,6 +9,7 @@ import {
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { PButton } from "@/components/pastoral/button";
+import { P, fontBody } from "@/lib/pastoral";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
@@ -42,22 +43,47 @@ export default async function AdminPage() {
       titleItalic={greetingName(session.profile.full_name)}
       lede={missingCheckInsLede(data)}
       actions={
-        <>
-          <PButton
-            tone="ghost"
-            disabled
-            title="Export workflows arrive in a later phase"
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 8,
+          }}
+        >
+          <div
+            id="admin-actions-help"
+            aria-live="polite"
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              fontStyle: "italic",
+              textAlign: "right",
+              maxWidth: 280,
+              lineHeight: 1.45,
+            }}
           >
-            Export week
-          </PButton>
-          <PButton
-            tone="solid"
-            disabled
-            title="Send-nudges arrives with Phase 5B operational writes"
-          >
-            Send nudges
-          </PButton>
-        </>
+            Export and nudge workflows arrive in Phase 5B with operational
+            writes.
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <PButton
+              tone="ghost"
+              disabled
+              aria-describedby="admin-actions-help"
+            >
+              Export week
+            </PButton>
+            <PButton
+              tone="solid"
+              disabled
+              aria-describedby="admin-actions-help"
+            >
+              Send nudges
+            </PButton>
+          </div>
+        </div>
       }
       headerSlot={
         <>

@@ -188,7 +188,7 @@ export function AdminDashboard({ data }: { data: AdminDashboardData }) {
                 near capacity
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
-                {data.capacity.rows.slice(0, 5).map((row) => {
+                {data.capacity.rows.map((row) => {
                   const pct =
                     row.utilization === null
                       ? null

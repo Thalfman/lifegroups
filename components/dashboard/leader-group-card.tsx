@@ -21,6 +21,7 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
   const { group, recentSessions, healthPulse, followUps } = dashboard;
   const lifecycle = mapLifecycleToBadge(group.lifecycleStatus);
   const health = mapHealthToBadge(group.healthStatus);
+  const checkInHelpId = `check-in-phase-help-${group.groupId}`;
 
   return (
     <section
@@ -157,10 +158,22 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
             fontWeight: 600,
             opacity: 0.95,
           }}
-          title="Check-in submission arrives in Phase 5B"
+          aria-describedby={checkInHelpId}
         >
           Start check-in
         </PButton>
+        <div
+          id={checkInHelpId}
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12,
+            fontStyle: "italic",
+            opacity: 0.85,
+            marginTop: 10,
+          }}
+        >
+          Arrives with Phase 5B operational writes.
+        </div>
       </div>
 
       <div
@@ -280,7 +293,8 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    gap: 12,
+                    flexWrap: "wrap",
+                    gap: "4px 12px",
                     padding: "11px 0",
                     borderBottom:
                       i < arr.length - 1 ? `1px solid ${P.line2}` : "none",
@@ -297,15 +311,32 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
                   </span>
                   <span
                     style={{
-                      fontFamily: fontMono,
-                      fontSize: 11.5,
-                      color: P.ink2,
+                      display: "inline-flex",
+                      alignItems: "baseline",
+                      gap: 8,
                       whiteSpace: "nowrap",
                     }}
-                    title={sessionStatusLabel(session.status)}
                   >
-                    {session.presentCount}P · {session.absentCount}A ·{" "}
-                    {session.excusedCount}E
+                    <span
+                      style={{
+                        fontFamily: fontBody,
+                        fontSize: 12.5,
+                        color: P.ink2,
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {sessionStatusLabel(session.status)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: fontMono,
+                        fontSize: 11.5,
+                        color: P.ink2,
+                      }}
+                    >
+                      {session.presentCount}P · {session.absentCount}A ·{" "}
+                      {session.excusedCount}E
+                    </span>
                   </span>
                 </li>
               ))}
@@ -321,7 +352,7 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
             />
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {followUps.slice(0, 5).map((item, i, arr) => (
+              {followUps.map((item, i, arr) => (
                 <li
                   key={item.id}
                   style={{
