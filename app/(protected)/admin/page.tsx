@@ -13,35 +13,35 @@ import { P, fontBody } from "@/lib/pastoral";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
+import { buildWeekOptions, validateWeekParam } from "@/lib/admin/check-ins";
 import { navItemsForRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
-function greetingName(fullName: string): string {
-  const first = fullName.trim().split(/\s+/)[0];
-  return first ? `${first}.` : `${fullName}.`;
-}
+type SearchParams = { week?: string | string[] };
 
-function missingCheckInsLede(data: { missingCheckInsCount: number }): string {
-  if (data.missingCheckInsCount === 0) {
-    return "Every group has checked in for the week. Quiet stretch.";
-  }
-  const plural = data.missingCheckInsCount === 1 ? "group hasn't" : "groups haven't";
-  return `${data.missingCheckInsCount} ${plural} checked in yet. A gentle nudge goes out tonight unless you intervene.`;
-}
-
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
   const session = await requireAdmin();
+  const params = (await searchParams) ?? {};
+  const selectedWeek = validateWeekParam(params.week);
+  const weekOptions = buildWeekOptions(new Date());
+
   const client = await createSupabaseServerClient();
-  const { source, data, error } = await getAdminDashboardData(client);
+  const { source, data, error } = await getAdminDashboardData(client, {
+    selectedWeek,
+  });
 
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow={`${data.weekLabel} · Admin`}
-      title="Good morning,"
-      titleItalic={greetingName(session.profile.full_name)}
-      lede={missingCheckInsLede(data)}
+      eyebrow="Ministry command center"
+      title="Life Groups,"
+      titleItalic="this week."
+      lede="Review check-ins, capacity, health signals, and setup gaps so the next right follow-up is clear."
       actions={
         <div
           style={{
@@ -64,8 +64,8 @@ export default async function AdminPage() {
               lineHeight: 1.45,
             }}
           >
-            Export and nudge workflows arrive in Phase 5B with operational
-            writes.
+            Export and nudge workflows arrive in a later phase with
+            operational writes.
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <PButton
@@ -100,7 +100,7 @@ export default async function AdminPage() {
       <div style={{ display: "grid", gap: 14 }}>
         {source === "live" ? <ConfiguredDataNotice /> : <FallbackDataNotice />}
         {error ? <DashboardErrorNotice message={error} /> : null}
-        <AdminDashboard data={data} />
+        <AdminDashboard data={data} weekOptions={weekOptions} />
       </div>
     </PastoralAppShell>
   );
