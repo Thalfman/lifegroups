@@ -42,31 +42,30 @@ behave as a backend admin.
    - `supabase/seed/phase2_seed.sql`
 3. Apply Phase 4 RLS:
    - `supabase/migrations/20260518000000_phase4_rls.sql`
-4. From Project Settings → API, copy the project URL and **publishable** key
+4. Apply Phase 5A.1 admin people write functions:
+   - `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`
+5. Apply Phase 5A.2 admin group write functions + audit visibility:
+   - `supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`
+6. From Project Settings → API, copy the project URL and **publishable** key
    into the Vercel env vars above. Do not paste the service role key.
-5. Create one Supabase Auth user per seed profile email
+7. Create one Supabase Auth user per seed profile email
    (`avery.bennett@example.org`, `jordan.hayes@example.org`,
    `casey.morgan@example.org`, etc.) with a development-only password.
-6. **Bootstrap your `super_admin`:** see "Super admin bootstrap" in
+8. **Bootstrap your `super_admin`:** see "Super admin bootstrap" in
    `supabase/dev/README.md` and use
    `supabase/dev/link_super_admin.sql.example` to link your own Supabase
    Auth user to a `super_admin` profile.
-7. Link each seed auth user to its profile row by following
+9. Link each seed auth user to its profile row by following
    `supabase/dev/README.md`.
-8. Visit `/login` and sign in.
+10. Visit `/login` and sign in.
 
-## What lands next (Phase 5A.1 → Phase 5B)
-After live Supabase verification of the existing SELECT policies:
+## What lands next (Phase 5B)
+After live Supabase verification of the existing read + admin write
+workflows:
 
-- **Phase 5A.1 — admin people & role management writes.** Narrow,
-  allowlisted server actions for `super_admin` / `ministry_admin` to create
-  and update admin, leader, and member records. Each workflow gets a
-  dedicated server action and a matching narrow INSERT/UPDATE RLS policy.
-  See `docs/PHASE_5A_ADMIN_MANAGEMENT.md` and
-  `docs/PHASE_5A_ACTION_CONTRACTS.md`.
 - **Phase 5B — operational writes.** Attendance submission, guest capture,
   follow-up updates, and admin review queues. These arrive alongside the
   broader operational INSERT / UPDATE / DELETE RLS policies.
 
-Neither phase introduces a service role key. The cookie-authenticated
+This phase introduces no service role key. The cookie-authenticated
 server client remains the only path for writes.

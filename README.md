@@ -10,8 +10,9 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 4: security foundation — Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement. ✅
 - Phase 4.1: docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code. ✅
 - Phase 5A.0: admin people & role management UI/UX scaffold — protected `/admin/people` route, disabled action cards, polished empty states, validation helpers, throwing server-action stubs. ✅
-- **Phase 5A.1 (current): people foundation writes — admins can add leader profiles, add member records, assign leaders/co-leaders to groups, place members in groups, deactivate either, and review an audit trail. Writes flow through six narrow `public.admin_*` SECURITY DEFINER Postgres RPC functions so each data change and its `audit_events` row commit atomically. RLS stays SELECT-only; no service role; no deletes. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md`, `docs/PHASE_5A_ACTION_CONTRACTS.md`, and `docs/PHASE_5A_1_VERIFICATION.md`.**
-- Phase 5B (after 5A.1): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
+- Phase 5A.1: people foundation writes — admins can add leader profiles, add member records, assign leaders/co-leaders to groups, place members in groups, deactivate either, and review an audit trail. Writes flow through six narrow `public.admin_*` SECURITY DEFINER Postgres RPC functions so each data change and its `audit_events` row commit atomically. RLS stays SELECT-only; no service role; no deletes. ✅
+- **Phase 5A.2 (current): admin group management + super_admin audit visibility — admins can create, edit, close (soft), and reopen Life Groups from `/admin/groups`. Four new `admin_*_group` SECURITY DEFINER RPCs follow the Phase 5A.1 pattern (admin gate, audit row in the same transaction, no hard deletes). RLS on `audit_events` is tightened to `super_admin` only; ministry admins retain every other admin workflow but no longer see the audit trail. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md`, `docs/PHASE_5A_ACTION_CONTRACTS.md`, and `docs/PHASE_5A_2_VERIFICATION.md`.**
+- Phase 5B (after 5A.2): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
 
 ## Local development
 1. Install dependencies:
@@ -105,14 +106,18 @@ or Tom UUIDs or emails are hardcoded in code, migrations, or RLS.
 - Schema migration: `supabase/migrations/20260517040000_phase2_schema.sql`
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
 - Phase 5A.1 admin write functions: `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`
+- Phase 5A.2 admin group writes + audit visibility: `supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
 - Phase 5A scope outline: `docs/PHASE_5A_ADMIN_MANAGEMENT.md`
 - Phase 5A action contracts: `docs/PHASE_5A_ACTION_CONTRACTS.md`
 - Phase 5A.1 verification checklist: `docs/PHASE_5A_1_VERIFICATION.md`
+- Phase 5A.2 verification checklist: `docs/PHASE_5A_2_VERIFICATION.md`
 - Env vars are **optional** for build; required only for sign-in and live data.
 - No service role key is used or expected anywhere in app code. Phase 5A.1
-  is the first phase with live writes; they are limited to admin people
-  and assignment management and flow through narrow RPC functions only.
-  Broader operational write workflows ship in Phase 5B.
+  introduced live writes for admin people / assignment management; Phase
+  5A.2 adds live writes for admin group management (create, edit, close,
+  reopen). All admin writes flow through narrow `public.admin_*`
+  SECURITY DEFINER RPC functions only. Broader operational write
+  workflows ship in Phase 5B.

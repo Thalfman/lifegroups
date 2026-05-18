@@ -15,12 +15,18 @@ import {
   fetchActiveMemberships,
   fetchProfilesForAdmin,
   fetchRecentAuditEvents,
+  type ReadResult,
 } from "@/lib/supabase/read-models";
+import type { AuditEventsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_DATA = (currentActorProfileId: string): PeopleManagementData => ({
+const EMPTY_DATA = (
+  currentActorProfileId: string,
+  showAuditTrail: boolean,
+): PeopleManagementData => ({
   currentActorProfileId,
+  showAuditTrail,
   profiles: [],
   members: [],
   groups: [],
@@ -33,13 +39,16 @@ const EMPTY_DATA = (currentActorProfileId: string): PeopleManagementData => ({
     groups: null,
     leaders: null,
     memberships: null,
-    auditEvents: "Supabase is not configured in this environment.",
+    auditEvents: showAuditTrail ? "Supabase is not configured in this environment." : null,
   },
 });
 
-async function loadData(currentActorProfileId: string): Promise<PeopleManagementData> {
+async function loadData(
+  currentActorProfileId: string,
+  showAuditTrail: boolean,
+): Promise<PeopleManagementData> {
   const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_DATA(currentActorProfileId);
+  if (!client) return EMPTY_DATA(currentActorProfileId, showAuditTrail);
 
   const [
     profilesResult,
@@ -54,11 +63,14 @@ async function loadData(currentActorProfileId: string): Promise<PeopleManagement
     fetchAllGroups(client),
     fetchAllGroupLeaders(client, { activeOnly: true }),
     fetchActiveMemberships(client),
-    fetchRecentAuditEvents(client, { limit: 25, actionsLike: "admin.%" }),
+    showAuditTrail
+      ? fetchRecentAuditEvents(client, { limit: 25, actionsLike: "admin.%" })
+      : Promise.resolve<ReadResult<AuditEventsRow[]>>({ data: [], error: null }),
   ]);
 
   return {
     currentActorProfileId,
+    showAuditTrail,
     profiles: profilesResult.data ?? [],
     members: membersResult.data ?? [],
     groups: groupsResult.data ?? [],
@@ -78,7 +90,8 @@ async function loadData(currentActorProfileId: string): Promise<PeopleManagement
 
 export default async function AdminPeoplePage() {
   const session = await requireAdmin();
-  const data = await loadData(session.profile.id);
+  const showAuditTrail = session.profile.role === "super_admin";
+  const data = await loadData(session.profile.id, showAuditTrail);
 
   return (
     <PastoralAppShell
@@ -86,7 +99,11 @@ export default async function AdminPeoplePage() {
       eyebrow="Phase 5A.1 · Manage people"
       title="The whole church,"
       titleItalic="known by name."
-      lede="Add leaders, record members, place them into groups, and keep the directory true. Every change here is recorded in the audit trail at the bottom of the page."
+      lede={
+        showAuditTrail
+          ? "Add leaders, record members, place them into groups, and keep the directory true. Every change here is recorded in the audit trail at the bottom of the page."
+          : "Add leaders, record members, place them into groups, and keep the directory true."
+      }
       headerSlot={
         <>
           <UserPill

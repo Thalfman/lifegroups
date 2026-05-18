@@ -16,6 +16,7 @@ import type {
 
 export type PeopleManagementData = {
   currentActorProfileId: string;
+  showAuditTrail: boolean;
   profiles: ProfilesRow[];
   members: MembersRow[];
   groups: GroupsRow[];
@@ -54,7 +55,7 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
     data.errors.groups ||
     data.errors.leaders ||
     data.errors.memberships ||
-    data.errors.auditEvents;
+    (data.showAuditTrail ? data.errors.auditEvents : null);
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
@@ -99,13 +100,15 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
         membershipsError={data.errors.memberships}
       />
 
-      <AuditTrailSection
-        events={data.auditEvents}
-        profilesById={profilesById}
-        membersById={membersById}
-        groupsById={groupsById}
-        error={data.errors.auditEvents}
-      />
+      {data.showAuditTrail ? (
+        <AuditTrailSection
+          events={data.auditEvents}
+          profilesById={profilesById}
+          membersById={membersById}
+          groupsById={groupsById}
+          error={data.errors.auditEvents}
+        />
+      ) : null}
     </div>
   );
 }

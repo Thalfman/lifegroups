@@ -246,6 +246,39 @@ export interface Database {
         Args: { p_member_id: UUID };
         Returns: UUID;
       };
+      admin_create_group: {
+        Args: {
+          p_name: string;
+          p_description: string | null;
+          p_meeting_day: string | null;
+          p_meeting_time: string | null;
+          p_location_area: string | null;
+          p_address_optional: string | null;
+          p_capacity: number | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_group: {
+        Args: {
+          p_group_id: UUID;
+          p_name: string;
+          p_description: string | null;
+          p_meeting_day: string | null;
+          p_meeting_time: string | null;
+          p_location_area: string | null;
+          p_address_optional: string | null;
+          p_capacity: number | null;
+        };
+        Returns: UUID;
+      };
+      admin_close_group: {
+        Args: { p_group_id: UUID };
+        Returns: UUID;
+      };
+      admin_reopen_group: {
+        Args: { p_group_id: UUID };
+        Returns: UUID;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
