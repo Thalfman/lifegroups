@@ -21,6 +21,7 @@ const ACTION_LABELS: Record<string, string> = {
   "leader.submit_checkin": "Submitted check-in",
   "leader.update_checkin": "Updated check-in",
   "leader.mark_did_not_meet": "Did not meet",
+  "super_admin.update_profile_role": "Changed role",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -124,6 +125,19 @@ function summarize(
     case "admin.reopen_group": {
       const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
       return `Reopened group ${name ?? ""}`.trim();
+    }
+    case "super_admin.update_profile_role": {
+      const target = event.entity_id ? profilesById.get(event.entity_id) : undefined;
+      const beforeRole = isRecord(before) ? asString(before.role) : null;
+      const afterRole = asString(after.role);
+      const name = target?.full_name ?? "(unknown profile)";
+      if (beforeRole && afterRole) {
+        return `Changed role of ${name} from ${beforeRole} to ${afterRole}`;
+      }
+      if (afterRole) {
+        return `Changed role of ${name} to ${afterRole}`;
+      }
+      return `Changed role of ${name}`;
     }
     case "leader.submit_checkin":
     case "leader.update_checkin":

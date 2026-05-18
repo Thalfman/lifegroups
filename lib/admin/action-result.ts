@@ -28,9 +28,9 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   missing_profile: "We couldn't find that profile. Refresh the page and try again.",
   missing_member: "We couldn't find that member. Refresh the page and try again.",
   forbidden_target:
-    "Ministry admins can't deactivate the super admin. Ask Tom to handle this one.",
+    "That target isn't allowed through this screen. super_admin must be set via the documented bootstrap procedure, and ministry admins can't deactivate the super admin.",
   self_target_not_allowed:
-    "You can't deactivate or assign yourself through this screen.",
+    "You can't deactivate, reassign, or change your own role through this screen.",
   invalid_role:
     "That role isn't allowed here. Leaders and co-leaders are managed through the leader assignment workflow.",
   inactive_target:
@@ -40,6 +40,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That group is already closed. Reopen it if you need to make changes.",
   group_not_closed:
     "That group is already active — there's nothing to reopen.",
+  no_role_change:
+    "That profile already has that role. Nothing to change.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

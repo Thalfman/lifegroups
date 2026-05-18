@@ -2,11 +2,9 @@ import { Phase5A1Notice } from "@/components/admin/phase-5a1-notice";
 import { LeaderProfilesSection } from "@/components/admin/leader-profiles-section";
 import { MembersSection } from "@/components/admin/members-section";
 import { GroupAssignmentsSection } from "@/components/admin/group-assignments-section";
-import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { P, fontBody } from "@/lib/pastoral";
 import type {
-  AuditEventsRow,
   GroupLeadersRow,
   GroupMembershipsRow,
   GroupsRow,
@@ -16,27 +14,23 @@ import type {
 
 export type PeopleManagementData = {
   currentActorProfileId: string;
-  showAuditTrail: boolean;
   profiles: ProfilesRow[];
   members: MembersRow[];
   groups: GroupsRow[];
   groupLeaders: GroupLeadersRow[];
   memberships: GroupMembershipsRow[];
-  auditEvents: AuditEventsRow[];
   errors: {
     profiles: string | null;
     members: string | null;
     groups: string | null;
     leaders: string | null;
     memberships: string | null;
-    auditEvents: string | null;
   };
 };
 
 export function PeopleManagementShell({ data }: { data: PeopleManagementData }) {
   const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
   const membersById = new Map(data.members.map((m) => [m.id, m]));
-  const groupsById = new Map(data.groups.map((g) => [g.id, g]));
 
   const leaderOptions = data.profiles
     .filter((p) => (p.role === "leader" || p.role === "co_leader") && p.status === "active")
@@ -54,8 +48,7 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
     data.errors.members ||
     data.errors.groups ||
     data.errors.leaders ||
-    data.errors.memberships ||
-    (data.showAuditTrail ? data.errors.auditEvents : null);
+    data.errors.memberships;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
@@ -99,16 +92,6 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
         leadersError={data.errors.leaders}
         membershipsError={data.errors.memberships}
       />
-
-      {data.showAuditTrail ? (
-        <AuditTrailSection
-          events={data.auditEvents}
-          profilesById={profilesById}
-          membersById={membersById}
-          groupsById={groupsById}
-          error={data.errors.auditEvents}
-        />
-      ) : null}
     </div>
   );
 }

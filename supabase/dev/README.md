@@ -29,13 +29,13 @@ There are two bootstrap workflows here:
 
    Seed profile emails (from `supabase/seed/phase2_seed.sql`):
 
-   | Email                          | Role             | Notes                              |
-   |--------------------------------|------------------|------------------------------------|
-   | `avery.bennett@example.org`    | `ministry_admin` | Verifies admin dashboard access    |
-   | `jordan.hayes@example.org`     | `staff_viewer`   | Verifies staff read-only view      |
-   | `casey.morgan@example.org`     | `leader`         | Has 2 assigned groups (good test)  |
-   | `riley.cruz@example.org`       | `leader`         | Has 2 assigned groups              |
-   | `taylor.kim@example.org`       | `leader`         | Has 1 assigned group               |
+   | Email                          | Role             | Notes                                                       |
+   |--------------------------------|------------------|-------------------------------------------------------------|
+   | `avery.bennett@example.org`    | `ministry_admin` | Verifies admin dashboard access                             |
+   | `jordan.hayes@example.org`     | `staff_viewer`   | Deprecated — routes to `/unauthorized` (Phase 5B.0 cleanup) |
+   | `casey.morgan@example.org`     | `leader`         | Has 2 assigned groups (good test)                           |
+   | `riley.cruz@example.org`       | `leader`         | Has 2 assigned groups                                       |
+   | `taylor.kim@example.org`       | `leader`         | Has 1 assigned group                                        |
 
 3. **Link each Supabase Auth user to its profile row.**
    - Copy the new auth user's UUID from the dashboard (under each user's
@@ -58,13 +58,15 @@ There are two bootstrap workflows here:
 Once test users are linked, sign in to the app and confirm:
 
 - The unauthenticated user is redirected to `/login` from `/admin`,
-  `/leader`, and `/staff`.
+  `/admin/super-admin`, and `/leader`.
 - `ministry_admin` lands on `/admin` and sees all 5 seeded groups.
-- `staff_viewer` lands on `/staff` and sees the same data with a read-only
-  badge. They cannot reach `/admin` (redirected to `/unauthorized`).
+  `/admin/super-admin` redirects them to `/unauthorized` (Phase 5A.3).
+- `staff_viewer` is redirected to `/unauthorized` on sign-in (the
+  `/staff` route was removed in the Phase 5B.0 cleanup; the role
+  value is retained in the SQL enum for compat only).
 - `leader` Casey lands on `/leader` and sees **both** assigned groups
   (Northside Young Adults and South Campus Women). They cannot reach
-  `/admin` or `/staff`.
+  `/admin` or `/admin/super-admin`.
 
 You can also confirm RLS at the database level. In the Supabase SQL editor,
 use the **Run as** dropdown to impersonate a specific user, then run:
@@ -121,13 +123,14 @@ bootstrap path.
 After this, sign in at `/login` with the email + password you set in
 step 1.
 
-## Manual test checklist (Phase 4.1)
+## Manual test checklist (Phase 4.1 + Phase 5A.3)
 
 Run this checklist after the seed test users and at least one
 `super_admin` are linked. Each item is a manual sign-in test against the
 deployed app or a local `npm run dev` instance.
 
-- [ ] `super_admin` can access `/admin` and `/staff`.
+- [ ] `super_admin` can access `/admin`, `/admin/people`,
+      `/admin/groups`, and `/admin/super-admin`.
 - [ ] `super_admin` **cannot** access `/leader` at all — they are
       redirected to `/unauthorized`. This is expected: `requireLeader()`
       in `lib/auth/session.ts` calls `requireRole(["leader", "co_leader"])`,
@@ -137,20 +140,30 @@ deployed app or a local `npm run dev` instance.
       leader view in practice, that is a Phase 5A design question (e.g.
       an explicit "view as leader" affordance) and not a bug in the
       current role gating.
-- [ ] `ministry_admin` can access `/admin` and `/staff`.
-- [ ] `staff_viewer` can access `/staff` only and is redirected to
-      `/unauthorized` from `/admin`.
+- [ ] `ministry_admin` can access `/admin`, `/admin/people`, and
+      `/admin/groups`.
+- [ ] `ministry_admin` is redirected to `/unauthorized` from
+      `/admin/super-admin` (Phase 5A.3).
+- [ ] `staff_viewer` is redirected to `/unauthorized` on sign-in. The
+      `/staff` route was removed in the Phase 5B.0 cleanup; the enum
+      value remains for compatibility but is no longer promoted in
+      navigation.
 - [ ] `leader` can access `/leader` only and sees their assigned groups
       only.
 - [ ] A signed-in Auth user with **no** linked `profiles` row is sent to
       `/unauthorized`.
-- [ ] A logged-out visitor of `/admin`, `/leader`, or `/staff` is sent to
-      `/login`.
+- [ ] A logged-out visitor of `/admin`, `/admin/super-admin`, or
+      `/leader` is sent to `/login`.
 - [ ] In the Supabase SQL editor, the `anon` database role sees zero
       operational rows after RLS (`select count(*) from groups;` → 0).
 - [ ] Casey leader (`casey.morgan@example.org`) still sees exactly two
       assigned groups in seed data (Northside Young Adults and South
       Campus Women).
+- [ ] On `/admin/super-admin`, the super_admin can change a test leader
+      to `ministry_admin` and back, and each change records an
+      `super_admin.update_profile_role` row in the Audit log panel
+      above. Self-target, `super_admin`, and `staff_viewer` choices are
+      rejected.
 
 ## What's intentionally excluded
 
