@@ -51,7 +51,11 @@ begin
   end if;
 
   v_full_name := nullif(btrim(coalesce(p_full_name, '')), '');
-  v_email     := nullif(btrim(coalesce(p_email, '')), '');
+  -- Canonicalize the email to lowercase. `profiles.email` is `text` with a
+  -- regular unique constraint, so without this `Alice@Example.com` and
+  -- `alice@example.com` would create two rows. Supabase Auth also lowercases
+  -- emails, so keeping profiles.email lowercase preserves the linkage path.
+  v_email     := nullif(lower(btrim(coalesce(p_email, ''))), '');
   v_phone     := nullif(btrim(coalesce(p_phone, '')), '');
 
   if v_full_name is null or v_email is null then
@@ -251,7 +255,7 @@ as $$
 declare
   v_actor uuid;
   v_group_exists boolean;
-  v_member_exists boolean;
+  v_member_status public.membership_status;
   v_new_id uuid;
 begin
   if not public.auth_is_admin() then
@@ -271,12 +275,18 @@ begin
     raise exception 'missing_group';
   end if;
 
-  select true into v_member_exists
+  select status into v_member_status
     from public.members
    where id = p_member_id
    limit 1;
-  if v_member_exists is null then
+  if v_member_status is null then
     raise exception 'missing_member';
+  end if;
+  -- Reject stale submissions that would re-add a just-deactivated member to
+  -- an active roster. Matches the inactive_target guard already on
+  -- admin_assign_leader_to_group.
+  if v_member_status <> 'active' then
+    raise exception 'inactive_target';
   end if;
 
   begin

@@ -35,12 +35,18 @@ The RPCs are defined in
   (server forces `active`), `auth_user_id`, `id`, `created_at`,
   `updated_at`.
 - **RPC:** `public.admin_create_leader_profile(text, text, text)`
-  returns the new profile id.
+  returns the new profile id. The RPC canonicalizes the email to
+  lowercase server-side before insert so case-only variants
+  (`Alice@Example.com` vs `alice@example.com`) cannot create duplicate
+  logical identities; this also keeps the eventual
+  `profiles.email`-to-Supabase-Auth linkage stable (Supabase Auth
+  lowercases emails).
 - **Audit event:** `action = "admin.create_leader_profile"`,
   `entity_type = "profiles"`, `entity_id = <new id>`,
-  `metadata.after = { role:'leader', status:'active', full_name, email }`.
-  (Phone is intentionally omitted from metadata to avoid duplicating
-  long-lived contact details in the audit log.)
+  `metadata.after = { role:'leader', status:'active', full_name, email }`
+  (`email` is the lowercased canonical form). Phone is intentionally
+  omitted from metadata to avoid duplicating long-lived contact
+  details in the audit log.
 - **Error tokens raised:** `insufficient_privilege`, `invalid_input`,
   `duplicate_email`.
 - **Validation:** `validateCreateLeaderProfilePayload` — `full_name`
@@ -97,12 +103,15 @@ The RPCs are defined in
   `joined_at` (server forces `current_date`), `id`, `created_at`.
   INSERT-only.
 - **RPC:** `public.admin_assign_member_to_group(uuid, uuid)` returns
-  the new `group_memberships.id`.
+  the new `group_memberships.id`. The RPC verifies that the target
+  member exists AND has `status='active'` before insert so a stale
+  form submission can't re-add a just-deactivated member to an active
+  roster.
 - **Audit event:** `action = "admin.assign_member_to_group"`,
   `entity_type = "group_memberships"`,
   `metadata = { group_id, member_id, role:'member', status:'active' }`.
 - **Error tokens raised:** `insufficient_privilege`, `missing_group`,
-  `missing_member`, `duplicate_assignment`.
+  `missing_member`, `inactive_target`, `duplicate_assignment`.
 - **Validation:** `validateAssignMemberToGroupPayload`.
 
 ## `adminDeactivateProfile` (shipped in 5A.1)
