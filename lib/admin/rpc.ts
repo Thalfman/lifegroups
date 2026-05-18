@@ -65,3 +65,47 @@ export async function rpcAdminDeactivateMember(
   const r = await client.rpc("admin_deactivate_member" as never, args as never);
   return { data: (r.data as string | null) ?? null, error: r.error };
 }
+
+// Phase 5A.2 group management RPCs.
+
+export type GroupRpcArgs = {
+  p_name: string;
+  p_description: string | null;
+  p_meeting_day: string | null;
+  p_meeting_time: string | null;
+  p_location_area: string | null;
+  p_address_optional: string | null;
+  p_capacity: number | null;
+};
+
+export async function rpcAdminCreateGroup(
+  client: AppSupabaseClient,
+  args: GroupRpcArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_create_group" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminUpdateGroup(
+  client: AppSupabaseClient,
+  args: GroupRpcArgs & { p_group_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_update_group" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminCloseGroup(
+  client: AppSupabaseClient,
+  args: { p_group_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_close_group" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminReopenGroup(
+  client: AppSupabaseClient,
+  args: { p_group_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_reopen_group" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}

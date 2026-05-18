@@ -1,6 +1,6 @@
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
-export function Phase5A1Notice() {
+export function Phase5A2Notice() {
   return (
     <aside
       role="note"
@@ -24,7 +24,7 @@ export function Phase5A1Notice() {
           fontWeight: 600,
         }}
       >
-        Phase 5A.1 · Live
+        Phase 5A.2 · Live
       </div>
       <p
         style={{
@@ -35,11 +35,10 @@ export function Phase5A1Notice() {
           color: P.ink2,
         }}
       >
-        Julian&rsquo;s command center for the people-work &mdash; adding leaders,
-        recording members, assigning them to groups, and quietly keeping the
-        directory true. Every change is recorded in the audit trail and
-        kept for the super admin&rsquo;s review. Calendar, texting, prayer
-        requests, and attendance writes ship in later phases.
+        Create new Life Groups, edit the details, and close groups when they
+        wrap up. Nothing is ever deleted &mdash; closed groups stay in the
+        record and can be reopened. Audit visibility is limited to the super
+        admin from this phase forward.
       </p>
     </aside>
   );

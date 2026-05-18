@@ -36,6 +36,10 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   inactive_target:
     "That person isn't currently active. Reactivation isn't part of this phase yet.",
   invalid_input: "Some required fields are missing or malformed.",
+  group_already_closed:
+    "That group is already closed. Reopen it if you need to make changes.",
+  group_not_closed:
+    "That group is already active — there's nothing to reopen.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

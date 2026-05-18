@@ -14,6 +14,10 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.assign_member_to_group": "Placed member",
   "admin.deactivate_profile": "Deactivated profile",
   "admin.deactivate_member": "Deactivated member",
+  "admin.create_group": "Created group",
+  "admin.update_group": "Updated group",
+  "admin.close_group": "Closed group",
+  "admin.reopen_group": "Reopened group",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -95,6 +99,28 @@ function summarize(
           ? ` (closed ${count} active membership${count === 1 ? "" : "s"})`
           : "";
       return `Deactivated member ${entityMember?.full_name ?? ""}${cascade}`.trim();
+    }
+    case "admin.create_group": {
+      const name =
+        asString(after.name) ??
+        (event.entity_id ? groupsById.get(event.entity_id)?.name : undefined) ??
+        "(unknown)";
+      return `Created group ${name}`;
+    }
+    case "admin.update_group": {
+      const name =
+        asString(after.name) ??
+        (event.entity_id ? groupsById.get(event.entity_id)?.name : undefined) ??
+        "(unknown)";
+      return `Updated group ${name}`;
+    }
+    case "admin.close_group": {
+      const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
+      return `Closed group ${name ?? ""}`.trim();
+    }
+    case "admin.reopen_group": {
+      const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
+      return `Reopened group ${name ?? ""}`.trim();
     }
     default:
       return ACTION_LABELS[event.action] ?? event.action;

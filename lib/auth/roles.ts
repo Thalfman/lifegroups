@@ -42,6 +42,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/people", label: "Manage People" });
+    items.push({ href: "/admin/groups", label: "Manage Groups" });
     items.push({ href: "/staff", label: "Staff View" });
   } else if (role === "staff_viewer") {
     items.push({ href: "/staff", label: "Staff View" });

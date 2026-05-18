@@ -7,12 +7,34 @@ write paths, and it is intentionally narrow: it covers only admin-managed
 people and roles. Operational writes (attendance, guests, follow-ups,
 review queues) ship in Phase 5B once Phase 5A is verified end-to-end.
 
-## Phase 5A.1 status (current)
+## Phase 5A.1 status
 
 Phase 5A.0 shipped the UI scaffold (disabled cards, polished empty
-states, throwing stubs). Phase 5A.1 turns those stubs into the first
+states, throwing stubs). Phase 5A.1 turned those stubs into the first
 set of live admin writes. The write path is intentionally tiny — six
 narrow Postgres functions, each one workflow, each one transaction.
+
+## Phase 5A.2 status (current)
+
+Phase 5A.2 layers admin **group management** on top of the Phase 5A.1
+architecture and tightens audit visibility. Four new SECURITY DEFINER
+RPCs ship behind a new `/admin/groups` route:
+`admin_create_group`, `admin_update_group`, `admin_close_group`,
+`admin_reopen_group`. All four follow the Phase 5A.1 pattern (admin
+gate, validated input, audit row in the same transaction, fixed error
+tokens). There are **no hard deletes**: closing a group is a soft
+update to `lifecycle_status='closed'` + `closed_at=now()`, and
+`admin_reopen_group` restores `lifecycle_status='active'` and clears
+`closed_at`.
+
+In the same migration, the audit log RLS policy
+`audit_events_admin_read` (which exposed audit rows to all admins) is
+replaced with `audit_events_super_admin_read`. From Phase 5A.2 onward,
+only `super_admin` can read `audit_events` — `ministry_admin` retains
+every other admin workflow but cannot read the audit log via RLS, and
+the `<AuditTrailSection />` is conditionally rendered on the
+`/admin/people` and `/admin/groups` pages so ministry_admin doesn't see
+the section.
 
 ### Personas
 
@@ -113,5 +135,16 @@ created through the app rather than seeded by hand.
   `lib/admin/action-result.ts`.
 - Phase 5A.1 write migration:
   `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`.
+- Phase 5A.2 admin page + actions:
+  `app/(protected)/admin/groups/page.tsx`,
+  `app/(protected)/admin/groups/actions.ts`,
+  `components/admin/group-management-shell.tsx`,
+  `components/admin/forms/group-create-form.tsx`,
+  `components/admin/forms/group-edit-form.tsx`,
+  `components/admin/forms/close-group-button.tsx`,
+  `components/admin/forms/reopen-group-button.tsx`.
+- Phase 5A.2 write + audit-visibility migration:
+  `supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`.
 - Action contracts: `docs/PHASE_5A_ACTION_CONTRACTS.md`.
 - Phase 5A.1 manual verification: `docs/PHASE_5A_1_VERIFICATION.md`.
+- Phase 5A.2 manual verification: `docs/PHASE_5A_2_VERIFICATION.md`.
