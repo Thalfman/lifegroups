@@ -7,6 +7,10 @@ import { PButton } from "@/components/pastoral/button";
 import { leaderSubmitCheckinAndReturn } from "@/app/(protected)/leader/actions";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type { ActionResult } from "@/lib/leader/action-result";
+// Match the church-local timezone the server uses for "today" so the
+// meeting_date prefill is the leader's wall-clock day even if their
+// browser or the rendering server is in a different timezone.
+import { CHURCH_TIMEZONE } from "@/lib/leader/validation";
 
 type AttendanceStatus = "present" | "absent" | "excused";
 type SessionStatus = "submitted" | "did_not_meet" | "planned_pause";
@@ -59,11 +63,26 @@ const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; full: string
   { value: "excused", label: "E", full: "Excused" },
 ];
 
+const CHURCH_LOCAL_DATE_FMT =
+  typeof Intl !== "undefined"
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: CHURCH_TIMEZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+    : null;
+
 function todayIso(): string {
+  if (CHURCH_LOCAL_DATE_FMT) return CHURCH_LOCAL_DATE_FMT.format(new Date());
+  // Defensive fallback for the unlikely no-Intl environment. Uses the
+  // browser's local date rather than UTC so Sunday-evening Central users
+  // still default to Sunday, not Monday.
   const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-    .toISOString()
-    .slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function CheckInForm({

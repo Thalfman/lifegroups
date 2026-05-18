@@ -208,6 +208,43 @@ Each must pass with no new warnings or errors.
     A regression in the OR-filter quoting would surface here as
     "Couldn't load audit events: ..." with a parse error.
 
+## Historical-member attendance preservation
+
+26l. Submit a `submitted` check-in for week W with three attendance
+    rows (members A, B, C all active). Then as `super_admin`,
+    deactivate member C via `/admin/people`.
+26m. Reopen the leader check-in for week W and just edit the leader
+    note (don't touch attendance). Submit. Confirm in SQL:
+    ```sql
+    select member_id, attendance_status
+      from public.attendance_records
+     where session_id = '<session id>'
+     order by member_id;
+    ```
+    The result must still include C's original record — historical
+    attendance for the now-inactive member is preserved.
+26n. Reopen the same week. The roster shown in the form should NOT
+    include C (since the prefill filters to active members). Toggle
+    A's status from `P` to `A` and submit. Re-run the SQL above:
+    A's row is now `absent`, B's row unchanged, C's record still
+    present and unchanged. The "delete active-but-not-in-payload"
+    branch must not touch C because C is no longer on the active
+    roster.
+
+## Timezone-correct week assignment
+
+26o. (Manual / time-of-day dependent.) During the window when UTC
+    has rolled past midnight but `America/Chicago` is still Sunday
+    (roughly 7pm–midnight Central on a Sunday), open `/leader` and
+    confirm the dashboard's "this week" label shows the Monday
+    *before* today's Sunday (i.e. the week containing today's
+    Sunday in Central time), not the upcoming Monday. Submit a
+    check-in and confirm `attendance_sessions.meeting_week` matches
+    the Sunday's Monday, and the dashboard immediately reflects the
+    submission as "this week". Off-hours testing can be simulated by
+    temporarily forcing `process.env.TZ=UTC` on the server and
+    flipping the system clock to that window.
+
 ## Authorization (negative paths)
 
 20. Sign in as a `leader` who is NOT assigned to group X. Manually

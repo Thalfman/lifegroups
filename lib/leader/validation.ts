@@ -192,11 +192,48 @@ export function validateLeaderCheckinPayload(
   };
 }
 
-// Re-exported so other modules can keep the canonical Monday-of-week date.
-export function isoWeekStart(date: Date): string {
-  const copy = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const dayOfWeek = copy.getUTCDay();
+// Single-tenant church deployment: the entire app uses one wall-clock
+// timezone for "today" and "this week" computations. Without this, a UTC
+// `new Date()` rolls over to Monday during a Sunday-evening Central
+// submission and the leader's check-in lands in the wrong ISO week
+// (the dashboard would then show "this week" as not submitted even
+// though the leader just submitted). Fox Valley Church is in Wisconsin
+// (US Central), so we anchor on America/Chicago, which handles CST/CDT
+// transitions automatically.
+//
+// If the app ever goes multi-tenant, this becomes per-org configuration.
+export const CHURCH_TIMEZONE = "America/Chicago";
+
+// `Intl.DateTimeFormat` with `en-CA` locale returns ISO `YYYY-MM-DD` form,
+// and respects the timeZone option exactly. Using "en-CA" instead of "en-US"
+// avoids the `MM/DD/YYYY` formatting and gives us a stable parse-target.
+const LOCAL_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: CHURCH_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function localTodayIso(now: Date = new Date()): string {
+  return LOCAL_DATE_FMT.format(now);
+}
+
+// Returns the Monday-of-ISO-week as YYYY-MM-DD for the given input.
+//
+// When passed a Date, the date is first projected into CHURCH_TIMEZONE so
+// the day-of-week reflects the church's local calendar. When passed a
+// YYYY-MM-DD string, the string is treated as a pure calendar date (no
+// timezone) and the Monday-offset math runs directly on it -- this is
+// what we want when a leader picks a meeting_date in the form.
+export function isoWeekStart(date: Date | string): string {
+  const dateIso =
+    typeof date === "string" ? date.slice(0, 10) : localTodayIso(date);
+  // Anchoring on UTC midnight here is safe: dateIso is already a fixed
+  // calendar date, and getUTCDay returns the same weekday regardless of
+  // the runtime's local timezone.
+  const anchor = new Date(`${dateIso}T00:00:00Z`);
+  const dayOfWeek = anchor.getUTCDay();
   const mondayOffset = (dayOfWeek + 6) % 7;
-  copy.setUTCDate(copy.getUTCDate() - mondayOffset);
-  return copy.toISOString().slice(0, 10);
+  anchor.setUTCDate(anchor.getUTCDate() - mondayOffset);
+  return anchor.toISOString().slice(0, 10);
 }

@@ -26,6 +26,10 @@ import type {
 } from "./types";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 import { pipelineStageLabel } from "./labels";
+// Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
+// church-timezone-aware version so the leader workflow and the
+// dashboard agree on what "this week" means.
+import { isoWeekStart } from "@/lib/leader/validation";
 import type {
   AttendanceRecordsRow,
   FollowUpsRow,
@@ -37,18 +41,6 @@ import type {
 import type { GuestPipelineStage } from "@/types/enums";
 
 const NEAR_CAPACITY_THRESHOLD = 0.8;
-
-function isoWeekStart(date: Date): string {
-  // attendance_sessions.meeting_week is stored as the Monday-of-week date
-  // (see supabase/seed/phase2_seed.sql), so this helper returns the Monday
-  // that contains `date`. JS getUTCDay returns Sun=0..Sat=6; map to a
-  // Monday-anchored offset so Mon→0, Tue→1, ..., Sun→6.
-  const copy = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const dayOfWeek = copy.getUTCDay();
-  const mondayOffset = (dayOfWeek + 6) % 7;
-  copy.setUTCDate(copy.getUTCDate() - mondayOffset);
-  return copy.toISOString().slice(0, 10);
-}
 
 function describeWeek(meetingWeekIso: string): string {
   const date = new Date(`${meetingWeekIso}T00:00:00Z`);

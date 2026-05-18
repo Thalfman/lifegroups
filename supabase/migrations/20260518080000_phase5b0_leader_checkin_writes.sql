@@ -179,27 +179,33 @@ begin
         leader_note  = excluded.leader_note
   returning id into v_session_id;
 
-  -- 7. Replace attendance records for the session. Wiping first then
-  --    inserting is the canonical "controlled replace" pattern. The
-  --    DELETE is confined to this single session, never touches other
-  --    sessions, and never hard-deletes the parent attendance_sessions
-  --    row. attendance_records.session_id has ON DELETE CASCADE in the
-  --    Phase 2 schema, but we don't rely on that here -- we always
-  --    leave the parent session in place so historical metadata
-  --    (created_at, meeting_date, leader_note) survives.
+  -- 7. Reconcile attendance_records for the session.
+  --    History-preserving strategy:
+  --      * status in (did_not_meet, planned_pause): the meeting did not
+  --        happen, so every record for the session is wiped (including
+  --        historical entries for now-inactive members). Retroactively
+  --        moving a session from "submitted" to "did_not_meet" is an
+  --        explicit correction by the leader; clearing the records is
+  --        the right thing to do.
+  --      * status = submitted: only touch records for members who are
+  --        currently on the group's ACTIVE roster. Records for members
+  --        who left the group between the original submit and this edit
+  --        are preserved as historical attendance data -- editing the
+  --        leader note on a months-old session must not erase someone's
+  --        attendance record just because they later moved away.
   --
-  --    Validate the attendance payload's *shape* BEFORE the delete runs.
-  --    A submitted check-in with a non-array `p_attendance` (object,
-  --    string, number, ...) must fail invalid_input; otherwise the
-  --    destructive delete would already have wiped the prior week's
-  --    records by the time we noticed the payload was malformed.
+  --    Validate the attendance payload's *shape* before any destructive
+  --    action runs. A submitted check-in with a non-array `p_attendance`
+  --    (object, string, number, ...) must fail invalid_input cleanly.
   if v_status_enum = 'submitted'
      and p_attendance is not null
      and jsonb_typeof(p_attendance) <> 'array' then
     raise exception 'invalid_input';
   end if;
 
-  delete from public.attendance_records where session_id = v_session_id;
+  if v_status_enum in ('did_not_meet', 'planned_pause') then
+    delete from public.attendance_records where session_id = v_session_id;
+  end if;
 
   if v_status_enum = 'submitted' and p_attendance is not null then
     -- Reject any attendance row that references a member outside this
@@ -225,11 +231,11 @@ begin
       raise exception 'invalid_member';
     end if;
 
-    -- De-duplicate within the submitted payload so two records can never
-    -- collide on the (session_id, member_id) unique constraint. The
-    -- "last entry wins" via distinct on (member_id) ordered by ordinality
-    -- desc, which matches how the form-state itself overwrites earlier
-    -- selections client-side.
+    -- Upsert each submitted attendance row. De-dupe within the payload
+    -- so two records can never collide on the (session_id, member_id)
+    -- unique constraint -- "last entry wins" via distinct on (member_id)
+    -- ordered by ordinality desc, matching how the form-state itself
+    -- overwrites earlier selections client-side.
     insert into public.attendance_records (session_id, member_id, attendance_status)
     select distinct on (a.member_id)
       v_session_id,
@@ -238,9 +244,31 @@ begin
     from jsonb_to_recordset(p_attendance)
         with ordinality
         as a(member_id uuid, attendance_status text, ord int)
-    order by a.member_id, a.ord desc;
+    order by a.member_id, a.ord desc
+    on conflict (session_id, member_id) do update
+      set attendance_status = excluded.attendance_status;
 
     get diagnostics v_attendance_count = row_count;
+
+    -- Delete records for currently-active members who were NOT in the
+    -- submitted payload. This lets a leader remove someone's attendance
+    -- from this week (e.g. they marked the wrong person), but only for
+    -- members still on the active roster. Records for now-inactive
+    -- members are preserved -- an edit to a months-old session must not
+    -- silently erase historical attendance.
+    delete from public.attendance_records ar
+     where ar.session_id = v_session_id
+       and exists (
+         select 1 from public.group_memberships gm
+          where gm.group_id  = p_group_id
+            and gm.member_id = ar.member_id
+            and gm.status    = 'active'
+       )
+       and not exists (
+         select 1 from jsonb_to_recordset(p_attendance)
+                as a(member_id uuid, attendance_status text)
+          where a.member_id = ar.member_id
+       );
   end if;
 
   -- 8. Health pulse upsert (or controlled clear).

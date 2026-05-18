@@ -92,10 +92,19 @@ Following Phase 5A.1 / 5A.2 exactly:
     so a concurrent first-time submit by a co-leader (where the
     pre-SELECT sees no row to lock) can't fail with a unique-violation —
     one writer inserts, the other lands in the conflict branch.
-  - **Replace** the `attendance_records` for that session. The DELETE
-    is confined to the RPC and to the one session id; the parent
-    session row is never hard-deleted; client code never issues a
-    `.delete()`.
+  - **Reconcile** the `attendance_records` for that session.
+    - When `status` is `did_not_meet` or `planned_pause`, every record
+      for the session is deleted (the meeting didn't happen). This is
+      a controlled, scoped delete inside the RPC; the parent session
+      row is never hard-deleted; client code never issues a
+      `.delete()`.
+    - When `status` is `submitted`, the RPC **upserts** each member in
+      the payload and deletes records for currently-active members who
+      were NOT in the payload (so a leader can remove someone they
+      marked by mistake). Records for members who are no longer on the
+      active roster are **preserved** — editing a months-old check-in
+      to fix a typo in the leader note must not silently erase
+      historical attendance for someone who has since left the group.
   - When a pulse is supplied, **upsert** the matching row in
     `group_health_updates` on (`group_id`, `update_week`). The leader
     columns (`pulse`, `follow_up_needed`, `leader_note`,
@@ -143,6 +152,18 @@ The action layer also short-circuits before hitting the RPC:
 - Reject any payload whose `group_id` isn't in the session's
   `assignedGroupIds`. (The RPC re-checks via `auth_is_leader_of` — this
   is defense in depth.)
+
+## Timezones
+
+The whole leader workflow ("today", "this week", the form's default
+meeting date, the dashboard's current-week lookup) anchors on the
+single-tenant `CHURCH_TIMEZONE` constant in `lib/leader/validation.ts`
+(`America/Chicago` for Fox Valley). `isoWeekStart()` projects any
+`Date` through that timezone before computing the Monday-of-ISO-week,
+so a Sunday-evening Central submission lands in the same calendar
+week the leader sees on the wall, rather than UTC's already-Monday.
+`lib/dashboard/queries.ts` imports the same helper so the dashboard's
+"this week submitted?" check agrees with the leader's submission.
 
 ## Out of scope
 
