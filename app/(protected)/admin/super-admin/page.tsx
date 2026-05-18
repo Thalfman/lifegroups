@@ -26,23 +26,16 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-const NO_CLIENT_DATA: SuperAdminConsoleData = {
-  assignableProfiles: [],
-  auditEvents: [],
-  profilesById: new Map(),
-  membersById: new Map(),
-  groupsById: new Map(),
-  checklist: [],
-  errors: {
-    audit: "Supabase is not configured in this environment.",
-    profiles: "Supabase is not configured in this environment.",
-  },
-};
-
-function isAssignableRole(
+// Profiles whose current role is super_admin cannot be reassigned via
+// this form -- both because the actor can't change their own role and
+// because we never demote the bootstrapped owner from the app surface.
+// Every other current role (ministry_admin, leader, co_leader, and the
+// deprecated staff_viewer) IS reassignable so operators have a path to
+// migrate accounts off staff_viewer.
+function isAssignableTargetRole(
   role: ProfilesRow["role"],
-): role is "ministry_admin" | "leader" | "co_leader" {
-  return role === "ministry_admin" || role === "leader" || role === "co_leader";
+): role is Exclude<ProfilesRow["role"], "super_admin"> {
+  return role !== "super_admin";
 }
 
 function buildAssignableProfiles(
@@ -54,7 +47,7 @@ function buildAssignableProfiles(
       (p) =>
         p.status === "active" &&
         p.id !== currentActorProfileId &&
-        isAssignableRole(p.role),
+        isAssignableTargetRole(p.role),
     )
     .map((p) => ({
       id: p.id,
@@ -65,15 +58,28 @@ function buildAssignableProfiles(
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
 }
 
-function buildChecklist(args: {
+type ChecklistInputs = {
   hasClient: boolean;
   profiles: ProfilesRow[];
   groups: GroupsRow[];
   members: MembersRow[];
   activeGroupLeaders: { profile_id: string }[];
-  auditError: string | null;
-}): ChecklistRow[] {
-  const { hasClient, profiles, groups, members, activeGroupLeaders, auditError } = args;
+  errors: {
+    profiles: string | null;
+    groups: string | null;
+    members: string | null;
+    leaders: string | null;
+    audit: string | null;
+  };
+};
+
+// When a read fails we render the failure inline in its row so the
+// operator sees the actual error rather than a misleading "No X yet"
+// message. Same idea for the supabase-not-configured fallback: every
+// row still shows so the 8-row layout is preserved, but the data rows
+// read "unknown" instead of pretending to be empty.
+function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
+  const { hasClient, profiles, groups, members, activeGroupLeaders, errors } = input;
   const leaderProfiles = profiles.filter(
     (p) => p.role === "leader" || p.role === "co_leader",
   );
@@ -92,56 +98,76 @@ function buildChecklist(args: {
       key: "is_super_admin",
       label: "Current user is super_admin",
       description:
-        "You wouldn&rsquo;t see this page otherwise &mdash; the route guard redirects every other role to /unauthorized.",
+        "You wouldn’t see this page otherwise — the route guard redirects every other role to /unauthorized.",
       tone: "info",
     },
     {
       key: "groups",
       label: "Groups exist",
-      description:
-        groups.length > 0
-          ? `${groups.length} group${groups.length === 1 ? "" : "s"} on file (active and closed).`
-          : "No groups yet. Add one via Manage Groups.",
-      tone: groups.length > 0 ? "ok" : "warn",
+      description: !hasClient
+        ? "Unknown — Supabase isn’t configured in this environment."
+        : errors.groups
+          ? `Couldn’t load groups: ${errors.groups}`
+          : groups.length > 0
+            ? `${groups.length} group${groups.length === 1 ? "" : "s"} on file (active and closed).`
+            : "No groups yet. Add one via Manage Groups.",
+      tone: !hasClient || errors.groups ? "warn" : groups.length > 0 ? "ok" : "warn",
     },
     {
       key: "leaders",
       label: "Leaders exist",
-      description:
-        leaderProfiles.length > 0
-          ? `${leaderProfiles.length} leader / co-leader profile${
-              leaderProfiles.length === 1 ? "" : "s"
-            } on file.`
-          : "No leader or co-leader profiles yet. Add one via Manage People.",
-      tone: leaderProfiles.length > 0 ? "ok" : "warn",
+      description: !hasClient
+        ? "Unknown — Supabase isn’t configured in this environment."
+        : errors.profiles
+          ? `Couldn’t load profiles: ${errors.profiles}`
+          : leaderProfiles.length > 0
+            ? `${leaderProfiles.length} leader / co-leader profile${
+                leaderProfiles.length === 1 ? "" : "s"
+              } on file.`
+            : "No leader or co-leader profiles yet. Add one via Manage People.",
+      tone:
+        !hasClient || errors.profiles ? "warn" : leaderProfiles.length > 0 ? "ok" : "warn",
     },
     {
       key: "members",
       label: "Members exist",
-      description:
-        members.length > 0
-          ? `${members.length} member record${members.length === 1 ? "" : "s"} on file.`
-          : "No members yet. Members are non-auth participant records added via Manage People.",
-      tone: members.length > 0 ? "ok" : "warn",
+      description: !hasClient
+        ? "Unknown — Supabase isn’t configured in this environment."
+        : errors.members
+          ? `Couldn’t load members: ${errors.members}`
+          : members.length > 0
+            ? `${members.length} member record${members.length === 1 ? "" : "s"} on file.`
+            : "No members yet. Members are non-auth participant records added via Manage People.",
+      tone: !hasClient || errors.members ? "warn" : members.length > 0 ? "ok" : "warn",
     },
     {
       key: "leader_assignment",
       label: "At least one leader has an active group assignment",
-      description:
-        leadersWithAssignment.size > 0
-          ? `${leadersWithAssignment.size} leader profile${
-              leadersWithAssignment.size === 1 ? "" : "s"
-            } currently assigned to a group.`
-          : "No active group_leaders assignments yet. Assign a leader to a group via Manage People.",
-      tone: leadersWithAssignment.size > 0 ? "ok" : "warn",
+      description: !hasClient
+        ? "Unknown — Supabase isn’t configured in this environment."
+        : errors.leaders
+          ? `Couldn’t load group_leaders: ${errors.leaders}`
+          : leadersWithAssignment.size > 0
+            ? `${leadersWithAssignment.size} leader profile${
+                leadersWithAssignment.size === 1 ? "" : "s"
+              } currently assigned to a group.`
+            : "No active group_leaders assignments yet. Assign a leader to a group via Manage People.",
+      tone:
+        !hasClient || errors.leaders
+          ? "warn"
+          : leadersWithAssignment.size > 0
+            ? "ok"
+            : "warn",
     },
     {
       key: "audit_access",
       label: "Audit log access available",
-      description: auditError
-        ? `Audit fetch failed: ${auditError}`
-        : "audit_events readable; the panel above is the canonical surface.",
-      tone: auditError ? "warn" : "ok",
+      description: !hasClient
+        ? "Unknown — Supabase isn’t configured in this environment."
+        : errors.audit
+          ? `Audit fetch failed: ${errors.audit}`
+          : "audit_events readable; the panel above is the canonical surface.",
+      tone: !hasClient || errors.audit ? "warn" : "ok",
     },
     {
       key: "staff_view_deprecated",
@@ -153,9 +179,41 @@ function buildChecklist(args: {
   ];
 }
 
+function buildNoClientData(): SuperAdminConsoleData {
+  const notConfigured = "Supabase is not configured in this environment.";
+  return {
+    assignableProfiles: [],
+    auditEvents: [],
+    profilesById: new Map(),
+    membersById: new Map(),
+    groupsById: new Map(),
+    checklist: buildChecklist({
+      hasClient: false,
+      profiles: [],
+      groups: [],
+      members: [],
+      activeGroupLeaders: [],
+      errors: {
+        profiles: notConfigured,
+        groups: notConfigured,
+        members: notConfigured,
+        leaders: notConfigured,
+        audit: notConfigured,
+      },
+    }),
+    errors: {
+      audit: notConfigured,
+      profiles: notConfigured,
+      groups: notConfigured,
+      members: notConfigured,
+      leaders: notConfigured,
+    },
+  };
+}
+
 async function loadData(currentActorProfileId: string): Promise<SuperAdminConsoleData> {
   const client = await createSupabaseServerClient();
-  if (!client) return NO_CLIENT_DATA;
+  if (!client) return buildNoClientData();
 
   const [profilesResult, groupsResult, membersResult, leadersResult, auditResult] =
     await Promise.all([
@@ -181,6 +239,14 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
   const membersById = new Map(members.map((m) => [m.id, m]));
   const groupsById = new Map(groups.map((g) => [g.id, g]));
 
+  const errors = {
+    profiles: profilesResult.error?.message ?? null,
+    groups: groupsResult.error?.message ?? null,
+    members: membersResult.error?.message ?? null,
+    leaders: leadersResult.error?.message ?? null,
+    audit: auditResult.error?.message ?? null,
+  };
+
   const assignableProfiles = buildAssignableProfiles(profiles, currentActorProfileId);
 
   const checklist = buildChecklist({
@@ -189,7 +255,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
     groups,
     members,
     activeGroupLeaders,
-    auditError: auditResult.error?.message ?? null,
+    errors,
   });
 
   return {
@@ -199,10 +265,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
     membersById,
     groupsById,
     checklist,
-    errors: {
-      audit: auditResult.error?.message ?? null,
-      profiles: profilesResult.error?.message ?? null,
-    },
+    errors,
   };
 }
 

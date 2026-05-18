@@ -26,11 +26,19 @@ export type SuperAdminConsoleData = {
   errors: {
     audit: string | null;
     profiles: string | null;
+    groups: string | null;
+    members: string | null;
+    leaders: string | null;
   };
 };
 
 export function SuperAdminConsoleShell({ data }: { data: SuperAdminConsoleData }) {
-  const anyError = data.errors.audit || data.errors.profiles;
+  const anyError =
+    data.errors.audit ||
+    data.errors.profiles ||
+    data.errors.groups ||
+    data.errors.members ||
+    data.errors.leaders;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>

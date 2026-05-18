@@ -40,6 +40,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That group is already closed. Reopen it if you need to make changes.",
   group_not_closed:
     "That group is already active — there's nothing to reopen.",
+  no_role_change:
+    "That profile already has that role. Nothing to change.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

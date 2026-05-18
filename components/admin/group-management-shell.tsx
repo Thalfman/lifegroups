@@ -6,16 +6,12 @@ import { ReopenGroupButton } from "@/components/admin/forms/reopen-group-button"
 import { Phase5A2Notice } from "@/components/admin/phase-5a2-notice";
 import { PBadge } from "@/components/pastoral/atoms";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
+import type { GroupsRow } from "@/types/database";
 
 export type GroupManagementData = {
   groups: GroupsRow[];
-  profiles: ProfilesRow[];
-  members: MembersRow[];
   errors: {
     groups: string | null;
-    profiles: string | null;
-    members: string | null;
   };
 };
 
@@ -48,8 +44,7 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
   const activeGroups = data.groups.filter((g) => g.lifecycle_status !== "closed");
   const closedGroups = data.groups.filter((g) => g.lifecycle_status === "closed");
 
-  const anyError =
-    data.errors.groups || data.errors.profiles || data.errors.members;
+  const anyError = data.errors.groups;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>

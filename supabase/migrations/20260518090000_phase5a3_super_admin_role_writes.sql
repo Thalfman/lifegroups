@@ -22,7 +22,7 @@
 -- Fixed error tokens raised by this function, mapped to friendly
 -- messages by lib/admin/action-result.ts:
 --   insufficient_privilege, self_target_not_allowed, forbidden_target,
---   invalid_role, missing_profile.
+--   invalid_role, missing_profile, no_role_change.
 
 -- ---------------------------------------------------------------------------
 -- super_admin_update_profile_role
@@ -79,6 +79,13 @@ begin
    for update;
   if v_old_role is null then
     raise exception 'missing_profile';
+  end if;
+
+  -- Short-circuit no-op changes. Without this, submitting the same
+  -- role would write a misleading "Changed role of X from leader to
+  -- leader" audit row and drown real changes in noise.
+  if v_old_role = p_new_role then
+    raise exception 'no_role_change';
   end if;
 
   update public.profiles

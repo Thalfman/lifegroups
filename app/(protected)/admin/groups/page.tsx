@@ -8,44 +8,24 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchAllGroups,
-  fetchAllMembers,
-  fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
+import { fetchAllGroups } from "@/lib/supabase/read-models";
 
 export const dynamic = "force-dynamic";
 
 const EMPTY_DATA: GroupManagementData = {
   groups: [],
-  profiles: [],
-  members: [],
-  errors: {
-    groups: "Supabase is not configured in this environment.",
-    profiles: null,
-    members: null,
-  },
+  errors: { groups: "Supabase is not configured in this environment." },
 };
 
 async function loadData(): Promise<GroupManagementData> {
   const client = await createSupabaseServerClient();
   if (!client) return EMPTY_DATA;
 
-  const [groupsResult, profilesResult, membersResult] = await Promise.all([
-    fetchAllGroups(client),
-    fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
-    fetchAllMembers(client, { statuses: ["active", "inactive"] }),
-  ]);
+  const groupsResult = await fetchAllGroups(client);
 
   return {
     groups: groupsResult.data ?? [],
-    profiles: profilesResult.data ?? [],
-    members: membersResult.data ?? [],
-    errors: {
-      groups: groupsResult.error?.message ?? null,
-      profiles: profilesResult.error?.message ?? null,
-      members: membersResult.error?.message ?? null,
-    },
+    errors: { groups: groupsResult.error?.message ?? null },
   };
 }
 

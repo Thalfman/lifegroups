@@ -12,12 +12,17 @@ import {
   successTextStyle,
 } from "./field-styles";
 import type { ActionResult } from "@/lib/admin/action-result";
+import type { UserRole } from "@/types/enums";
 
+// Any active profile whose current role is NOT super_admin can be the
+// target of a role change -- including profiles still set to the
+// deprecated staff_viewer value, so the operator has a documented path
+// to migrate them off it.
 type AssignableProfile = {
   id: string;
   full_name: string;
   email: string;
-  current_role: "ministry_admin" | "leader" | "co_leader";
+  current_role: Exclude<UserRole, "super_admin">;
 };
 
 type State = ActionResult<{ id: string }> | undefined;

@@ -108,6 +108,18 @@ Each must pass with no new warnings or errors.
     `guardAgainstSuperAdminAssignment` and, as defense in depth, by
     the RPC's `forbidden_target` raise.
 
+### Role management — no-op and deprecation paths
+
+15a. As `super_admin`, pick a target profile and submit their current
+     role unchanged. The RPC raises `no_role_change`, mapped to
+     "That profile already has that role. Nothing to change." No new
+     audit row is written.
+15b. If any seeded profile still has role `staff_viewer` (e.g.
+     `jordan.hayes@example.org` after the dev bootstrap), confirm
+     they appear in the target select and can be reassigned to
+     `leader`. After the change, signing in as that user lands on
+     `/leader` instead of `/unauthorized`.
+
 ### Members remain non-auth
 
 16. Open `/admin/people`. The Members section still shows

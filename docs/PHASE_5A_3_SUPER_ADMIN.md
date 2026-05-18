@@ -61,13 +61,15 @@ Behavior:
 5. Reject `p_new_role = 'staff_viewer'` with `invalid_role`.
 6. `select ... for update` on the target profile. If null,
    `missing_profile`.
-7. `update public.profiles set role = p_new_role where id =
+7. If `v_old_role = p_new_role`, raise `no_role_change` (no audit
+   row is written for no-op submissions).
+8. `update public.profiles set role = p_new_role where id =
    p_profile_id`.
-8. `insert into public.audit_events ...` with action
+9. `insert into public.audit_events ...` with action
    `'super_admin.update_profile_role'`, entity_type `'profiles'`,
    entity_id = target id, metadata `{ before: { role: <old> }, after:
    { role: <new> } }`.
-9. Return the target profile id.
+10. Return the target profile id.
 
 The data write and the audit insert are in the same transaction; an
 audit failure rolls back the role change.
@@ -86,6 +88,11 @@ The form also blocks the actor from changing their own role
 (`self_target_not_allowed`), so a super_admin cannot accidentally
 downgrade themselves and lock the owner account out.
 
+Profiles whose **current** role is `staff_viewer` DO appear in the
+target select. The deprecation cleanup path is "reassign deprecated
+staff_viewer users to an active role", and hiding them would block
+that. The new role still cannot be `staff_viewer` itself.
+
 ## Error tokens
 
 | Token                     | Cause                                                                | UI copy (lib/admin/action-result.ts) |
@@ -95,6 +102,7 @@ downgrade themselves and lock the owner account out.
 | `forbidden_target`        | `p_new_role` is `super_admin`.                                       | "That target isn't allowed through this screen. super_admin must be set via the documented bootstrap procedure, and ministry admins can't deactivate the super admin." |
 | `invalid_role`            | `p_new_role` is `staff_viewer`.                                       | "That role isn't allowed here. Leaders and co-leaders are managed through the leader assignment workflow." |
 | `missing_profile`         | No `profiles` row matches `p_profile_id`.                             | "We couldn't find that profile. Refresh the page and try again." |
+| `no_role_change`          | `p_new_role` equals the target's current role.                        | "That profile already has that role. Nothing to change." |
 
 ## Security boundary
 
