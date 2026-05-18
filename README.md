@@ -11,8 +11,9 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 4.1: docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code. ✅
 - Phase 5A.0: admin people & role management UI/UX scaffold — protected `/admin/people` route, disabled action cards, polished empty states, validation helpers, throwing server-action stubs. ✅
 - Phase 5A.1: people foundation writes — admins can add leader profiles, add member records, assign leaders/co-leaders to groups, place members in groups, deactivate either, and review an audit trail. Writes flow through six narrow `public.admin_*` SECURITY DEFINER Postgres RPC functions so each data change and its `audit_events` row commit atomically. RLS stays SELECT-only; no service role; no deletes. ✅
-- **Phase 5A.2 (current): admin group management + super_admin audit visibility — admins can create, edit, close (soft), and reopen Life Groups from `/admin/groups`. Four new `admin_*_group` SECURITY DEFINER RPCs follow the Phase 5A.1 pattern (admin gate, audit row in the same transaction, no hard deletes). RLS on `audit_events` is tightened to `super_admin` only; ministry admins retain every other admin workflow but no longer see the audit trail. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md`, `docs/PHASE_5A_ACTION_CONTRACTS.md`, and `docs/PHASE_5A_2_VERIFICATION.md`.**
-- Phase 5B (after 5A.2): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
+- Phase 5A.2: admin group management + super_admin audit visibility — admins can create, edit, close (soft), and reopen Life Groups from `/admin/groups`. Four `admin_*_group` SECURITY DEFINER RPCs follow the Phase 5A.1 pattern (admin gate, audit row in the same transaction, no hard deletes). RLS on `audit_events` is tightened to `super_admin` only; ministry admins retain every other admin workflow but no longer see the audit trail. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md`, `docs/PHASE_5A_ACTION_CONTRACTS.md`, and `docs/PHASE_5A_2_VERIFICATION.md`. ✅
+- **Phase 5B.0 (current): leader weekly check-ins — leaders and co-leaders sign in to `/leader`, see only the groups they are actively assigned to, and submit a weekly check-in for each one (attendance per active member, optional health pulse, optional admin-visible follow-up signal) or mark the group `did_not_meet` / `planned_pause` for the week. All writes flow through the `leader_submit_group_checkin` SECURITY DEFINER RPC, which atomically upserts `attendance_sessions`, replaces `attendance_records` for that session, preserves `group_health_updates.admin_note`, and writes an `audit_events` row (`leader.submit_checkin`, `leader.update_checkin`, or `leader.mark_did_not_meet`). Closed groups are rejected. No service role; no client-side writes; no hard deletes outside the RPC body. See `docs/PHASE_5B_0_LEADER_CHECKINS.md`, `docs/PHASE_5B_0_VERIFICATION.md`, and `docs/PHASE_5B_0_HARDENING_REPORT.md`.**
+- Phase 5B.1 (next): admin check-in review and missing-submission dashboard — read-only `/admin` views that surface which groups submitted check-ins this week, which are missing, and which raised a follow-up signal. No new operational write surfaces.
 
 ## Local development
 1. Install dependencies:
@@ -42,8 +43,9 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - **Public**: `/`, `/admin-preview`, `/leader-preview`, `/login`, `/unauthorized`. The
   preview routes always render fallback demo data so the design demo stays
   visible without secrets.
-- **Protected (sign-in required)**: `/admin`, `/leader`, `/staff`. Each enforces
-  its own role gate and reads through Supabase Auth / RLS.
+- **Protected (sign-in required)**: `/admin` and `/leader`. Each enforces
+  its own role gate and reads through Supabase Auth / RLS. (`/staff` was
+  removed in the Phase 5B.0 post-merge cleanup — see Role model below.)
 
 ## Role model
 App-login roles live on `profiles.role` (the `user_role` enum). The five
@@ -52,8 +54,12 @@ values, in order from most to least privileged:
 - `super_admin` — top-level owner/operator. Treated as a superset of
   `ministry_admin` for read access. Bootstrapped manually (see Sign-in setup
   below); future workflows for managing other admins live in Phase 5A.
-- `ministry_admin` — ministry operations admin. Sees `/admin` and `/staff`.
-- `staff_viewer` — read-only ministry-wide view. Sees `/staff` only.
+- `ministry_admin` — ministry operations admin. Sees `/admin`.
+- `staff_viewer` — **deprecated.** The role value is retained in the
+  `user_role` SQL enum for backwards compatibility, but the Staff View
+  product surface (`/staff`) has been removed. Any account still set to
+  `staff_viewer` is routed to `/unauthorized` until reassigned to an
+  active role. No new Staff workflow is planned.
 - `leader` — app-login role scoped to assigned groups only via active
   `group_leaders` rows. Sees `/leader`.
 - `co_leader` — same scoping as `leader`.
@@ -107,6 +113,8 @@ or Tom UUIDs or emails are hardcoded in code, migrations, or RLS.
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
 - Phase 5A.1 admin write functions: `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`
 - Phase 5A.2 admin group writes + audit visibility: `supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`
+- Phase 5A.2 grants hardening: `supabase/migrations/20260518070000_phase5a2_grants_hardening.sql`
+- Phase 5B.0 leader check-in writes: `supabase/migrations/20260518080000_phase5b0_leader_checkin_writes.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
@@ -114,10 +122,14 @@ or Tom UUIDs or emails are hardcoded in code, migrations, or RLS.
 - Phase 5A action contracts: `docs/PHASE_5A_ACTION_CONTRACTS.md`
 - Phase 5A.1 verification checklist: `docs/PHASE_5A_1_VERIFICATION.md`
 - Phase 5A.2 verification checklist: `docs/PHASE_5A_2_VERIFICATION.md`
+- Phase 5B.0 feature spec: `docs/PHASE_5B_0_LEADER_CHECKINS.md`
+- Phase 5B.0 verification checklist: `docs/PHASE_5B_0_VERIFICATION.md`
+- Phase 5B.0 hardening report: `docs/PHASE_5B_0_HARDENING_REPORT.md`
 - Env vars are **optional** for build; required only for sign-in and live data.
 - No service role key is used or expected anywhere in app code. Phase 5A.1
   introduced live writes for admin people / assignment management; Phase
   5A.2 adds live writes for admin group management (create, edit, close,
-  reopen). All admin writes flow through narrow `public.admin_*`
-  SECURITY DEFINER RPC functions only. Broader operational write
-  workflows ship in Phase 5B.
+  reopen); Phase 5B.0 adds live writes for leader weekly check-ins and
+  attendance submission. All app-driven writes flow through narrow
+  `public.admin_*` and `public.leader_*` SECURITY DEFINER RPC functions
+  only. There are no hard deletes outside those RPC bodies.
