@@ -279,6 +279,19 @@ export interface Database {
         Args: { p_group_id: UUID };
         Returns: UUID;
       };
+      leader_submit_group_checkin: {
+        Args: {
+          p_group_id: UUID;
+          p_meeting_week: DateString;
+          p_meeting_date: DateString | null;
+          p_status: 'submitted' | 'did_not_meet' | 'planned_pause';
+          p_leader_note: string | null;
+          p_pulse: 'healthy' | 'watch' | 'needs_follow_up' | null;
+          p_follow_up_needed: boolean;
+          p_attendance: { member_id: UUID; attendance_status: E.AttendanceStatus }[];
+        };
+        Returns: UUID;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

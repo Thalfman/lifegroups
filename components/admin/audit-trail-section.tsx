@@ -18,6 +18,9 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.update_group": "Updated group",
   "admin.close_group": "Closed group",
   "admin.reopen_group": "Reopened group",
+  "leader.submit_checkin": "Submitted check-in",
+  "leader.update_checkin": "Updated check-in",
+  "leader.mark_did_not_meet": "Did not meet",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -121,6 +124,26 @@ function summarize(
     case "admin.reopen_group": {
       const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
       return `Reopened group ${name ?? ""}`.trim();
+    }
+    case "leader.submit_checkin":
+    case "leader.update_checkin":
+    case "leader.mark_did_not_meet": {
+      const groupId = asString(md.group_id);
+      const group = groupId ? groupsById.get(groupId) : undefined;
+      const meetingWeek = asString(md.meeting_week);
+      const attendanceCount = asNumber(md.attendance_count) ?? 0;
+      const groupLabel = group?.name ?? "a group";
+      const weekLabel = meetingWeek ? ` (week of ${meetingWeek})` : "";
+      if (event.action === "leader.mark_did_not_meet") {
+        return `Recorded "did not meet" for ${groupLabel}${weekLabel}`.trim();
+      }
+      const verb =
+        event.action === "leader.update_checkin" ? "Updated check-in" : "Submitted check-in";
+      const counted =
+        attendanceCount > 0
+          ? ` (${attendanceCount} attendance record${attendanceCount === 1 ? "" : "s"})`
+          : "";
+      return `${verb} for ${groupLabel}${weekLabel}${counted}`.trim();
     }
     default:
       return ACTION_LABELS[event.action] ?? event.action;

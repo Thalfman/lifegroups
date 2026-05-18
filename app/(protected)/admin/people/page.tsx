@@ -64,7 +64,10 @@ async function loadData(
     fetchAllGroupLeaders(client, { activeOnly: true }),
     fetchActiveMemberships(client),
     showAuditTrail
-      ? fetchRecentAuditEvents(client, { limit: 25, actionsLike: "admin.%" })
+      ? fetchRecentAuditEvents(client, {
+          limit: 25,
+          actionsLike: ["admin.%", "leader.%"],
+        })
       : Promise.resolve<ReadResult<AuditEventsRow[]>>({ data: [], error: null }),
   ]);
 
