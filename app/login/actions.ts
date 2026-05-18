@@ -12,7 +12,7 @@ export async function loginAction(
   _prev: LoginFormState,
   formData: FormData,
 ): Promise<LoginFormState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const nextRaw = formData.get("next");
   const next = typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
