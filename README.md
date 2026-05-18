@@ -9,8 +9,8 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - Phase 3: safe Supabase read integration with fallback demo data. ✅
 - Phase 4: security foundation — Supabase Auth, protected routes, role-aware access, assigned leader scoping, and Row Level Security policy enforcement. ✅
 - Phase 4.1: docs + dev-helper patch — super admin bootstrap, role model clarification, Phase 5A scope outline. No app write code. ✅
-- **Phase 5A.0 (current): admin people & role management UI/UX scaffold — protected `/admin/people` route, disabled action cards, polished empty states, validation helpers, and throwing server-action stubs. No mock data, no real writes, no new RLS policies. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md` and `docs/PHASE_5A_ACTION_CONTRACTS.md`.**
-- Phase 5A.1 (pending): write policies + real admin actions — landed once Phase 4 RLS is verified against a live Supabase project.
+- Phase 5A.0: admin people & role management UI/UX scaffold — protected `/admin/people` route, disabled action cards, polished empty states, validation helpers, throwing server-action stubs. ✅
+- **Phase 5A.1 (current): people foundation writes — admins can add leader profiles, add member records, assign leaders/co-leaders to groups, place members in groups, deactivate either, and review an audit trail. Writes flow through six narrow `public.admin_*` SECURITY DEFINER Postgres RPC functions so each data change and its `audit_events` row commit atomically. RLS stays SELECT-only; no service role; no deletes. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md`, `docs/PHASE_5A_ACTION_CONTRACTS.md`, and `docs/PHASE_5A_1_VERIFICATION.md`.**
 - Phase 5B (after 5A.1): operational write workflows — attendance submission, guest capture, follow-up updates, admin review queues. These arrive alongside the operational INSERT / UPDATE / DELETE RLS policies.
 
 ## Local development
@@ -94,15 +94,25 @@ admin, leader, and member records — see
 - When Supabase env vars are missing, protected routes redirect to `/login`
   and the preview routes still render demo data.
 
+## Personas
+
+Julian is the primary ministry admin and operator persona used throughout
+admin-facing copy. Tom holds the owner/super_admin account for bootstrap,
+oversight, and emergency access. Authorization is role-based — no Julian
+or Tom UUIDs or emails are hardcoded in code, migrations, or RLS.
+
 ## Supabase notes
 - Schema migration: `supabase/migrations/20260517040000_phase2_schema.sql`
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
+- Phase 5A.1 admin write functions: `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: `docs/DATABASE_SCHEMA.md` and `docs/SEED_DATA.md`
 - Phase 5A scope outline: `docs/PHASE_5A_ADMIN_MANAGEMENT.md`
-- Phase 5A action contracts (forward-looking, used by Phase 5A.1): `docs/PHASE_5A_ACTION_CONTRACTS.md`
+- Phase 5A action contracts: `docs/PHASE_5A_ACTION_CONTRACTS.md`
+- Phase 5A.1 verification checklist: `docs/PHASE_5A_1_VERIFICATION.md`
 - Env vars are **optional** for build; required only for sign-in and live data.
-- No service role key is used or expected anywhere in app code. The first
-  narrow write workflows ship in Phase 5A (admin people & role management);
-  broader operational write workflows ship in Phase 5B.
+- No service role key is used or expected anywhere in app code. Phase 5A.1
+  is the first phase with live writes; they are limited to admin people
+  and assignment management and flow through narrow RPC functions only.
+  Broader operational write workflows ship in Phase 5B.

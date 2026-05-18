@@ -1,22 +1,92 @@
 import { PastoralAppShell } from "@/components/pastoral/shell";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { PeopleManagementShell } from "@/components/admin/people-management-shell";
+import {
+  PeopleManagementShell,
+  type PeopleManagementData,
+} from "@/components/admin/people-management-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  fetchAllGroupLeaders,
+  fetchAllGroups,
+  fetchAllMembers,
+  fetchActiveMemberships,
+  fetchProfilesForAdmin,
+  fetchRecentAuditEvents,
+} from "@/lib/supabase/read-models";
 
 export const dynamic = "force-dynamic";
 
+const EMPTY_DATA = (currentActorProfileId: string): PeopleManagementData => ({
+  currentActorProfileId,
+  profiles: [],
+  members: [],
+  groups: [],
+  groupLeaders: [],
+  memberships: [],
+  auditEvents: [],
+  errors: {
+    profiles: null,
+    members: null,
+    groups: null,
+    leaders: null,
+    memberships: null,
+    auditEvents: "Supabase is not configured in this environment.",
+  },
+});
+
+async function loadData(currentActorProfileId: string): Promise<PeopleManagementData> {
+  const client = await createSupabaseServerClient();
+  if (!client) return EMPTY_DATA(currentActorProfileId);
+
+  const [
+    profilesResult,
+    membersResult,
+    groupsResult,
+    leadersResult,
+    membershipsResult,
+    auditResult,
+  ] = await Promise.all([
+    fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
+    fetchAllMembers(client, { statuses: ["active", "inactive"] }),
+    fetchAllGroups(client),
+    fetchAllGroupLeaders(client, { activeOnly: true }),
+    fetchActiveMemberships(client),
+    fetchRecentAuditEvents(client, { limit: 25, actionsLike: "admin.%" }),
+  ]);
+
+  return {
+    currentActorProfileId,
+    profiles: profilesResult.data ?? [],
+    members: membersResult.data ?? [],
+    groups: groupsResult.data ?? [],
+    groupLeaders: leadersResult.data ?? [],
+    memberships: membershipsResult.data ?? [],
+    auditEvents: auditResult.data ?? [],
+    errors: {
+      profiles: profilesResult.error?.message ?? null,
+      members: membersResult.error?.message ?? null,
+      groups: groupsResult.error?.message ?? null,
+      leaders: leadersResult.error?.message ?? null,
+      memberships: membershipsResult.error?.message ?? null,
+      auditEvents: auditResult.error?.message ?? null,
+    },
+  };
+}
+
 export default async function AdminPeoplePage() {
   const session = await requireAdmin();
+  const data = await loadData(session.profile.id);
 
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.0 · Manage people"
+      eyebrow="Phase 5A.1 · Manage people"
       title="The whole church,"
       titleItalic="known by name."
-      lede="Preview of admin people and role management. Real writes unlock in Phase 5A.1 once narrow write policies and server actions are verified against live Supabase. Operational writes — attendance, guests, follow-ups — unlock in Phase 5B."
+      lede="Add leaders, record members, place them into groups, and keep the directory true. Every change here is recorded in the audit trail at the bottom of the page."
       headerSlot={
         <>
           <UserPill
@@ -28,7 +98,7 @@ export default async function AdminPeoplePage() {
         </>
       }
     >
-      <PeopleManagementShell />
+      <PeopleManagementShell data={data} />
     </PastoralAppShell>
   );
 }

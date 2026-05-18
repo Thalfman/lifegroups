@@ -1,68 +1,111 @@
-import { SectionHeader } from "@/components/layout/shell";
-import { PhaseGateNotice } from "@/components/admin/phase-gate-notice";
-import { DisabledAdminActionCard } from "@/components/admin/disabled-admin-action-card";
-import { EmptyPeopleState } from "@/components/admin/empty-people-state";
-import { AuditTrailEmptyState } from "@/components/admin/audit-trail-empty-state";
-import { RoleManagementPanel } from "@/components/admin/role-management-panel";
-import { GroupAssignmentPanel } from "@/components/admin/group-assignment-panel";
+import { Phase5A1Notice } from "@/components/admin/phase-5a1-notice";
+import { LeaderProfilesSection } from "@/components/admin/leader-profiles-section";
+import { MembersSection } from "@/components/admin/members-section";
+import { GroupAssignmentsSection } from "@/components/admin/group-assignments-section";
+import { AuditTrailSection } from "@/components/admin/audit-trail-section";
+import { ROLE_LABELS } from "@/lib/auth/roles";
+import { P, fontBody } from "@/lib/pastoral";
+import type {
+  AuditEventsRow,
+  GroupLeadersRow,
+  GroupMembershipsRow,
+  GroupsRow,
+  MembersRow,
+  ProfilesRow,
+} from "@/types/database";
 
-export function PeopleManagementShell() {
+export type PeopleManagementData = {
+  currentActorProfileId: string;
+  profiles: ProfilesRow[];
+  members: MembersRow[];
+  groups: GroupsRow[];
+  groupLeaders: GroupLeadersRow[];
+  memberships: GroupMembershipsRow[];
+  auditEvents: AuditEventsRow[];
+  errors: {
+    profiles: string | null;
+    members: string | null;
+    groups: string | null;
+    leaders: string | null;
+    memberships: string | null;
+    auditEvents: string | null;
+  };
+};
+
+export function PeopleManagementShell({ data }: { data: PeopleManagementData }) {
+  const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
+  const membersById = new Map(data.members.map((m) => [m.id, m]));
+  const groupsById = new Map(data.groups.map((g) => [g.id, g]));
+
+  const leaderOptions = data.profiles
+    .filter((p) => (p.role === "leader" || p.role === "co_leader") && p.status === "active")
+    .map((p) => ({
+      id: p.id,
+      label: `${p.full_name} (${ROLE_LABELS[p.role]})`,
+    }));
+
+  const memberOptions = data.members
+    .filter((m) => m.status === "active")
+    .map((m) => ({ id: m.id, label: m.full_name }));
+
+  const anyError =
+    data.errors.profiles ||
+    data.errors.members ||
+    data.errors.groups ||
+    data.errors.leaders ||
+    data.errors.memberships ||
+    data.errors.auditEvents;
+
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      <PhaseGateNotice />
+      <Phase5A1Notice />
 
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="People"
-          title="Profiles and members"
-          description="Profiles are app-login records; members are non-auth participant records. Both will land here once narrow writes ship."
-        />
+      {anyError ? (
         <div
+          role="alert"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 16,
+            background: P.terraSoft,
+            border: `1px solid ${P.terra}`,
+            borderRadius: 8,
+            padding: "12px 14px",
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: "#7d3621",
           }}
         >
-          <DisabledAdminActionCard
-            title="Add leader"
-            description="Create a leader profile (role = leader). Sign-in linkage is handled through the documented Supabase Auth setup, not this form."
-          />
-          <DisabledAdminActionCard
-            title="Add member"
-            description="Create a non-auth member record. Members never sign in; they are linked to a group via group_memberships."
-          />
+          Some sections couldn&rsquo;t load. The page below shows what we did get;
+          retry in a moment or check the Supabase connection.
         </div>
-        <EmptyPeopleState
-          title="No profiles loaded"
-          description="People records are not fetched on this screen in Phase 5A.0. Phase 5A.1 will load the admin-scoped list once the narrow INSERT/UPDATE policies are in place and verified."
-        />
-      </section>
+      ) : null}
 
-      <RoleManagementPanel />
+      <LeaderProfilesSection
+        profiles={data.profiles}
+        currentActorProfileId={data.currentActorProfileId}
+        error={data.errors.profiles}
+      />
 
-      <GroupAssignmentPanel />
+      <MembersSection members={data.members} error={data.errors.members} />
 
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Members"
-          title="Non-auth participants"
-          description="Tracked through the members table. Members never appear in the role-aware sign-in surface."
-        />
-        <EmptyPeopleState
-          title="No member records loaded"
-          description="The member directory will appear here in Phase 5A.1, scoped by the same admin RLS read policies that already gate the rest of the admin dashboard."
-        />
-      </section>
+      <GroupAssignmentsSection
+        groups={data.groups}
+        groupLeaders={data.groupLeaders}
+        memberships={data.memberships}
+        profilesById={profilesById}
+        membersById={membersById}
+        leaderOptions={leaderOptions}
+        memberOptions={memberOptions}
+        groupsError={data.errors.groups}
+        leadersError={data.errors.leaders}
+        membershipsError={data.errors.memberships}
+      />
 
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Audit trail"
-          title="Every admin write, kept"
-          description="A read-only stream of every admin action: actor, action, target, before/after. Powered by audit_events once Phase 5A.1 starts recording them."
-        />
-        <AuditTrailEmptyState />
-      </section>
+      <AuditTrailSection
+        events={data.auditEvents}
+        profilesById={profilesById}
+        membersById={membersById}
+        groupsById={groupsById}
+        error={data.errors.auditEvents}
+      />
     </div>
   );
 }

@@ -7,81 +7,89 @@ write paths, and it is intentionally narrow: it covers only admin-managed
 people and roles. Operational writes (attendance, guests, follow-ups,
 review queues) ship in Phase 5B once Phase 5A is verified end-to-end.
 
-## Phase 5A.0 status (current)
+## Phase 5A.1 status (current)
 
-Phase 5A is split into two sub-phases because live Supabase access is
-not yet available to verify write policies end-to-end:
+Phase 5A.0 shipped the UI scaffold (disabled cards, polished empty
+states, throwing stubs). Phase 5A.1 turns those stubs into the first
+set of live admin writes. The write path is intentionally tiny — six
+narrow Postgres functions, each one workflow, each one transaction.
 
-- **Phase 5A.0 — UI/UX scaffold only (this state).**
-  - No mock data anywhere. No fake people, profiles, members, group
-    rows, role assignments, or audit events are rendered or seeded.
-  - No real writes. The route at `/admin/people` displays disabled
-    action cards and polished empty states only.
-  - No write RLS policies. Phase 4's SELECT-only policies are
-    unchanged.
-  - The server action stubs in
-    `app/(protected)/admin/people/actions.ts` throw a "not enabled"
-    error and never reach Supabase.
-  - Validation helpers in `lib/admin/validation.ts` are pure
-    TypeScript and perform no I/O. They will be reused by Phase 5A.1.
-  - Action contracts are documented in
-    `docs/PHASE_5A_ACTION_CONTRACTS.md` as the spec for Phase 5A.1.
-- **Phase 5A.1 — write policies + real admin actions (pending).**
-  - Lands the narrow `INSERT`/`UPDATE` RLS policies described in
-    `PHASE_5A_ACTION_CONTRACTS.md`.
-  - Wires the server actions to the Supabase server client with the
-    same narrow column allowlists.
-  - Records `audit_events` rows from inside each write transaction.
-  - Requires live Supabase verification of Phase 4 RLS first.
+### Personas
 
-Supabase verification of Phase 4 RLS is still required before
-Phase 5A.1 may ship.
+- **Julian** is the primary ministry admin / operator persona used
+  throughout admin-facing copy. He'll be a `ministry_admin` once his
+  Supabase Auth user exists.
+- **Tom** is the owner / `super_admin` for bootstrap, oversight, and
+  emergency access. He can use every Phase 5A.1 workflow today.
+- Authorization is **role-based**. No Julian or Tom UUIDs or emails are
+  hardcoded anywhere in migrations, RLS, RPC functions, server actions,
+  types, or application logic.
 
 ## Goal
 
 Give `super_admin` and `ministry_admin` users a small, allowlisted set of
-workflows for managing the people who use the app and their roles, without
-turning the dashboard into a generic database editor.
+workflows for managing the people who use the app, without turning the
+dashboard into a generic database editor and without exposing any
+multi-admin / role-change controls in this phase.
 
-## Allowed workflows (Phase 5A scope)
+## Allowed workflows (Phase 5A.1 scope)
 
-- `super_admin` creates `ministry_admin` users.
-- `super_admin` creates or updates `leader` profiles.
-- `ministry_admin` creates `leader` profiles if explicitly allowed
-  (configurable, default off).
-- Admins create `member` records (non-auth participant records in the
-  `members` table).
-- Admins assign members to groups (`group_memberships`).
-- Admins assign leaders / co-leaders to groups (`group_leaders`).
-- Admins deactivate people by setting `status = 'inactive'` on `profiles`
-  or `members`. No row deletion in the first implementation.
+- Admins create `leader` profiles (server-forced `role='leader'`,
+  `status='active'`).
+- Admins create `member` records (non-auth participants; server-forced
+  `status='active'`, `care_sensitivity_flag=false`).
+- Admins assign leaders / co-leaders to groups (`group_leaders` with
+  `active=true`, `assigned_at=current_date`).
+- Admins place members into groups (`group_memberships` with
+  `role='member'`, `status='active'`, `joined_at=current_date` — leader
+  membership in a group is handled through `group_leaders`, not this
+  workflow).
+- Admins deactivate a profile (sets `profiles.status='inactive'` and
+  cascade-deactivates any active `group_leaders` rows for that profile).
+- Admins deactivate a member (sets `members.status='inactive'` and
+  cascade-closes any active `group_memberships` with
+  `status='inactive'`, `ended_at=current_date`).
+- Admins view a recent audit trail of the actions above.
 
-## Forbidden in Phase 5A
+## Out of scope in Phase 5A.1
 
-- Generic database editor or table browser.
-- Arbitrary table writes outside the workflows listed above.
-- Self role escalation of any kind.
-- Changing one's own role.
-- Deleting records as a first implementation. Deactivation only.
-- `service_role` (or any `sb_secret_*` / admin key) in app code.
-- Broad `update-all-columns` RLS policies. Every workflow ships with an
-  explicit column allowlist on both the server action and the matching RLS
-  policy.
+- App-based creation of another `ministry_admin` from within the app.
+  (Tom remains the single super_admin; Julian's `ministry_admin`
+  profile is provisioned through the documented Supabase bootstrap.)
+- Changing any user's app-login role from within the app.
+- Assigning `super_admin` to anyone from within the app.
+- Reactivation, undeactivation, or row deletion of any kind.
+- Generic database editor, arbitrary table writes, or broad
+  `with check (true)` policies.
+- Calendar, SMS messaging / consent / phone login, prayer requests,
+  attendance writes / analytics, guest capture, follow-up editing,
+  admin review queues, self-service member login, staff viewer
+  management, multi-admin management. Those land in later phases.
 
-## Implementation constraints (for future-me)
+The two pre-existing stubs `adminCreateMinistryAdmin` and
+`adminChangeUserRole` remain as throwing stubs in
+`app/(protected)/admin/people/actions.ts` but are intentionally absent
+from the UI in Phase 5A.1.
 
-1. Each workflow is a dedicated **server action** with an explicit input
-   schema and column allowlist. No generic "update profile" endpoint.
-2. Each workflow ships with matching narrow **INSERT/UPDATE RLS policies**.
-   No blanket `with check (true)`. Policies are gated through the same
-   `auth_is_admin()` helper family already defined in Phase 4.
-3. Each workflow writes an entry to `audit_events` (actor, action, target,
-   before/after where relevant).
-4. Server actions reject any attempt to modify the caller's own `role` or
-   `status` columns.
-5. UI surfaces these workflows behind explicit "Manage people" / "Manage
-   roles" pages under `/admin` — never inline in operational views.
-6. Cookie-authenticated server client only. No service-role client, ever.
+## Implementation constraints (delivered in Phase 5A.1)
+
+1. Each workflow is a dedicated **server action** with an explicit
+   input schema and column allowlist. No generic "update profile"
+   endpoint.
+2. Each workflow ships with a matching narrow **SECURITY DEFINER
+   Postgres RPC** (`public.admin_*`) granted execute only to
+   `authenticated`. The RPC is the entire write surface; Phase 4 RLS
+   stays SELECT-only.
+3. Each workflow writes an entry to `audit_events` inside the same
+   transaction as the data change. If the audit insert fails, the
+   data change rolls back.
+4. Server actions reject any attempt to modify the caller's own
+   profile via these workflows (self-target guards in TypeScript;
+   defense-in-depth in SQL).
+5. `ministry_admin` cannot deactivate `super_admin`.
+6. UI surfaces these workflows behind the existing `/admin/people`
+   page only. Cookie-authenticated server client only — never the
+   service role.
 
 ## What stays in Phase 5B
 
@@ -98,7 +106,12 @@ created through the app rather than seeded by hand.
 - RLS helper functions: `supabase/migrations/20260518000000_phase4_rls.sql`.
 - Phase 4 session helpers used to gate admin actions:
   `lib/auth/session.ts`, `lib/auth/roles.ts`.
-- Phase 5A.0 scaffold: `app/(protected)/admin/people/page.tsx`,
-  `components/admin/*`, `lib/admin/validation.ts`.
-- Action contracts (forward-looking, for Phase 5A.1):
-  `docs/PHASE_5A_ACTION_CONTRACTS.md`.
+- Phase 5A.1 admin page + actions:
+  `app/(protected)/admin/people/page.tsx`,
+  `app/(protected)/admin/people/actions.ts`,
+  `components/admin/*`, `lib/admin/validation.ts`,
+  `lib/admin/action-result.ts`.
+- Phase 5A.1 write migration:
+  `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`.
+- Action contracts: `docs/PHASE_5A_ACTION_CONTRACTS.md`.
+- Phase 5A.1 manual verification: `docs/PHASE_5A_1_VERIFICATION.md`.

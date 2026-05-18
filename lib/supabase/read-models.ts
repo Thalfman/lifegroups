@@ -2,6 +2,7 @@ import type { AppSupabaseClient } from "./types";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
+  AuditEventsRow,
   FollowUpsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
@@ -9,8 +10,14 @@ import type {
   GroupsRow,
   GuestsRow,
   MembersRow,
+  ProfilesRow,
 } from "@/types/database";
-import type { GuestPipelineStage } from "@/types/enums";
+import type {
+  GuestPipelineStage,
+  MembershipStatus,
+  ProfileStatus,
+  UserRole,
+} from "@/types/enums";
 
 type ReadClient = AppSupabaseClient;
 
@@ -202,3 +209,59 @@ export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
   "placed",
   "not_now",
 ];
+
+// ----- Admin-scoped readers (Phase 5A.1). RLS already permits these for
+// super_admin / ministry_admin / staff_viewer via the Phase 4 policies.
+// -------------------------------------------------------------------------
+
+export async function fetchProfilesForAdmin(
+  client: ReadClient,
+  options: { roles?: UserRole[]; statuses?: ProfileStatus[] } = {},
+): Promise<ReadResult<ProfilesRow[]>> {
+  let query = client.from("profiles").select("*").order("full_name", { ascending: true });
+  if (options.roles && options.roles.length > 0) query = query.in("role", options.roles);
+  if (options.statuses && options.statuses.length > 0)
+    query = query.in("status", options.statuses);
+  const { data, error } = await query;
+  if (error) return { data: null, error: wrapError("fetchProfilesForAdmin", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchAllMembers(
+  client: ReadClient,
+  options: { statuses?: MembershipStatus[] } = {},
+): Promise<ReadResult<MembersRow[]>> {
+  let query = client.from("members").select("*").order("full_name", { ascending: true });
+  if (options.statuses && options.statuses.length > 0)
+    query = query.in("status", options.statuses);
+  const { data, error } = await query;
+  if (error) return { data: null, error: wrapError("fetchAllMembers", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchAllGroupLeaders(
+  client: ReadClient,
+  options: { activeOnly?: boolean } = {},
+): Promise<ReadResult<GroupLeadersRow[]>> {
+  let query = client.from("group_leaders").select("*");
+  if (options.activeOnly) query = query.eq("active", true);
+  const { data, error } = await query;
+  if (error) return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchRecentAuditEvents(
+  client: ReadClient,
+  options: { limit?: number; actionsLike?: string } = {},
+): Promise<ReadResult<AuditEventsRow[]>> {
+  const limit = options.limit ?? 25;
+  let query = client
+    .from("audit_events")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (options.actionsLike) query = query.like("action", options.actionsLike);
+  const { data, error } = await query;
+  if (error) return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
+  return { data: data ?? [], error: null };
+}

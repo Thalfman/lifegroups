@@ -19,12 +19,6 @@ const USER_ROLES: ReadonlySet<UserRole> = new Set([
   "co_leader",
 ]);
 
-const ROLES_IN_GROUP: ReadonlySet<RoleInGroup> = new Set([
-  "member",
-  "leader",
-  "co_leader",
-]);
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -65,10 +59,6 @@ function normalizeUuid(value: string): string {
 
 function isUserRole(value: unknown): value is UserRole {
   return typeof value === "string" && USER_ROLES.has(value as UserRole);
-}
-
-function isRoleInGroup(value: unknown): value is RoleInGroup {
-  return typeof value === "string" && ROLES_IN_GROUP.has(value as RoleInGroup);
 }
 
 export type CreateMinistryAdminPayload = {
@@ -163,12 +153,12 @@ export function validateAssignLeaderToGroupPayload(
   };
 }
 
-// Field name `role` matches the `group_memberships.role` column (typed as the
-// `role_in_group` enum), so allowlisted inserts can use the payload directly.
+// Phase 5A.1 forces role='member' server-side; leader/co_leader assignments
+// flow through group_leaders + adminAssignLeaderToGroup instead, so the
+// payload no longer accepts a client-side role choice.
 export type AssignMemberToGroupPayload = {
   group_id: string;
   member_id: string;
-  role: RoleInGroup;
 };
 
 export function validateAssignMemberToGroupPayload(
@@ -178,14 +168,12 @@ export function validateAssignMemberToGroupPayload(
   if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
   if (!isUuid(input.member_id)) errors.push("member_id must be a uuid");
-  if (!isRoleInGroup(input.role)) errors.push("role must be member, leader, or co_leader");
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
     value: {
       group_id: normalizeUuid(input.group_id as string),
       member_id: normalizeUuid(input.member_id as string),
-      role: input.role as RoleInGroup,
     },
   };
 }
