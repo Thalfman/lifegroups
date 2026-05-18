@@ -3,6 +3,48 @@
 This document is the checklist that should be run against a live
 Supabase project before declaring Phase 5B.0 verified.
 
+## Fast Smoke Test
+
+The minimum end-to-end check after a deploy. Run this before the full
+checklist below; if any step here fails, do not bother with the deeper
+audit until the regression is understood.
+
+1. Identify (or create) one open Life Group that has at least two
+   active members in `group_memberships`.
+2. Identify (or create) one `leader` or `co_leader` profile linked to a
+   Supabase Auth user and actively assigned (`group_leaders.active =
+   true`) to that group, plus a second group for step 6.
+3. Sign in as that leader. Confirm `/leader` lists only the assigned
+   group(s); admin routes redirect to `/unauthorized`.
+4. Open the first group's check-in page and submit attendance for the
+   current week (mark one member present, one absent). Confirm the
+   leader is redirected back with a success notice and the row appears
+   on the dashboard.
+5. Re-open the same check-in and resubmit with a different attendance
+   pattern. Confirm there is still exactly one row in
+   `attendance_sessions` for `(group_id, week_start)` and that
+   `audit_events` shows a `leader.update_checkin` row for the second
+   submission.
+6. From the leader dashboard, mark the second group as `did_not_meet`
+   for the current week. Confirm a session row exists with status
+   `did_not_meet` and an `audit_events` row with action
+   `leader.mark_did_not_meet`.
+7. Sign out, sign in as `super_admin`, and confirm all three audit
+   events from steps 4–6 are visible in the audit trail.
+8. From the same `super_admin` session, confirm `/admin/people` and
+   `/admin/groups` still render and that at least one admin write
+   (e.g. editing a group note) still succeeds.
+9. Sign out, sign in as `ministry_admin`, and confirm the audit trail
+   is **not** visible (RLS gate). All other admin pages should still
+   work.
+10. Sign out, sign in as the leader again, and confirm that visiting
+    `/admin`, `/admin/people`, or `/admin/groups` redirects to
+    `/unauthorized`.
+
+If all ten steps pass, Phase 5B.0 is healthy for live testing. Run the
+full checklist below before any release that touches leader or
+attendance code.
+
 ## Prerequisites
 
 - Supabase project has, in order:

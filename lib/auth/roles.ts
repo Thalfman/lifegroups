@@ -32,7 +32,9 @@ export function isLeaderRole(role: UserRole): boolean {
 
 export function defaultLandingPathForRole(role: UserRole): string {
   if (isAdminRole(role)) return "/admin";
-  if (role === "staff_viewer") return "/staff";
+  // staff_viewer is retained in the DB enum for backwards compatibility but
+  // no longer has a product surface; route any such accounts to /unauthorized.
+  if (role === "staff_viewer") return "/unauthorized";
   if (isLeaderRole(role)) return "/leader";
   return "/unauthorized";
 }
@@ -43,9 +45,6 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/people", label: "Manage People" });
     items.push({ href: "/admin/groups", label: "Manage Groups" });
-    items.push({ href: "/staff", label: "Staff View" });
-  } else if (role === "staff_viewer") {
-    items.push({ href: "/staff", label: "Staff View" });
   } else if (isLeaderRole(role)) {
     items.push({ href: "/leader", label: "My Groups" });
   }
