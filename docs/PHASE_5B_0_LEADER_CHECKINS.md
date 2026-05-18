@@ -87,8 +87,11 @@ Following Phase 5A.1 / 5A.2 exactly:
 - Writes that happen in a single transaction:
   - **Upsert** the `attendance_sessions` row on
     (`group_id`, `meeting_week`). The unique index guarantees one row
-    per group per week; concurrent submits serialize through
-    `FOR UPDATE`.
+    per group per week. A pre-statement `SELECT … FOR UPDATE` serializes
+    updates to an existing row; the INSERT uses `ON CONFLICT DO UPDATE`
+    so a concurrent first-time submit by a co-leader (where the
+    pre-SELECT sees no row to lock) can't fail with a unique-violation —
+    one writer inserts, the other lands in the conflict branch.
   - **Replace** the `attendance_records` for that session. The DELETE
     is confined to the RPC and to the one session id; the parent
     session row is never hard-deleted; client code never issues a
@@ -101,6 +104,14 @@ Following Phase 5A.1 / 5A.2 exactly:
     but did not pick a pulse, the RPC promotes the pulse to
     `needs_follow_up` so the escalation signal is recorded rather
     than silently dropped.
+  - When the leader explicitly picks "No update" for the pulse AND
+    leaves the follow-up checkbox unchecked, the RPC **deletes** the
+    week's `group_health_updates` row — but only when its
+    `admin_note` is NULL. This lets the leader actually clear a
+    previously-saved pulse while still protecting admin work. The
+    delete is scoped to the leader's own weekly entry and confined
+    to the SECURITY DEFINER boundary; it is not a hard delete of
+    historical data.
   - Insert an `audit_events` row with one of three action tokens:
     - `leader.submit_checkin` — new session row, status submitted /
       planned_pause.

@@ -262,10 +262,27 @@ export async function fetchRecentAuditEvents(
     .limit(limit);
   if (options.actionsLike) {
     if (Array.isArray(options.actionsLike)) {
-      // PostgREST OR syntax. Each pattern becomes `action.like.<value>` and
-      // they're joined by commas. Patterns must not themselves contain commas.
+      // PostgREST OR syntax. Each pattern becomes `action.like."<value>"`
+      // and they're joined by commas. The value must be wrapped in double
+      // quotes when it contains a `.` (or `,`, `(`, `)`, `:`) because the
+      // PostgREST grammar uses unquoted dots as `column.operator.value`
+      // separators -- without quotes, a pattern like `admin.%` is parsed
+      // as four tokens and rejected at the API boundary.
+      // Reject patterns that themselves contain `"`, `,`, or `(` so we
+      // don't end up constructing a malformed filter expression.
+      for (const pat of options.actionsLike) {
+        if (/["(),]/.test(pat)) {
+          return {
+            data: null,
+            error: wrapError(
+              "fetchRecentAuditEvents",
+              new Error(`unsafe actionsLike pattern: ${pat}`),
+            ),
+          };
+        }
+      }
       const orExpr = options.actionsLike
-        .map((pat) => `action.like.${pat}`)
+        .map((pat) => `action.like."${pat}"`)
         .join(",");
       query = query.or(orExpr);
     } else {

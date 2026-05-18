@@ -144,6 +144,18 @@ begin
   --    `(group_id, meeting_week)` prevents duplicates; the FOR UPDATE
   --    serializes concurrent submits from the leader and co-leader
   --    of the same group.
+  -- 6. Snapshot the existing session row (if any) for the audit metadata,
+  --    then upsert atomically. The pre-existing-row SELECT uses FOR UPDATE
+  --    so a concurrent UPDATE to the same row blocks here, but on a brand
+  --    new week the row doesn't exist yet and FOR UPDATE acquires no lock
+  --    -- two leaders submitting simultaneously could both see no row.
+  --    The ON CONFLICT DO UPDATE on the unique (group_id, meeting_week)
+  --    index makes the upsert idempotent under that race: one transaction
+  --    inserts, the other one updates via the conflict branch. v_was_existing
+  --    reflects the pre-statement view, so under extreme concurrency the
+  --    audit action may say "submit_checkin" twice instead of
+  --    "submit_checkin + update_checkin"; the underlying data is still
+  --    correct (one session row, latest writer wins on the columns).
   select id, status into v_session_id, v_previous_status
     from public.attendance_sessions
    where group_id = p_group_id
@@ -152,23 +164,20 @@ begin
 
   v_was_existing := v_session_id is not null;
 
-  if v_was_existing then
-    update public.attendance_sessions
-       set meeting_date = p_meeting_date,
-           status       = v_status_enum,
-           submitted_by = v_actor,
-           submitted_at = now(),
-           leader_note  = v_leader_note
-     where id = v_session_id;
-  else
-    insert into public.attendance_sessions (
-      group_id, meeting_week, meeting_date, status,
-      submitted_by, submitted_at, leader_note
-    ) values (
-      p_group_id, p_meeting_week, p_meeting_date, v_status_enum,
-      v_actor, now(), v_leader_note
-    ) returning id into v_session_id;
-  end if;
+  insert into public.attendance_sessions (
+    group_id, meeting_week, meeting_date, status,
+    submitted_by, submitted_at, leader_note
+  ) values (
+    p_group_id, p_meeting_week, p_meeting_date, v_status_enum,
+    v_actor, now(), v_leader_note
+  )
+  on conflict (group_id, meeting_week) do update
+    set meeting_date = excluded.meeting_date,
+        status       = excluded.status,
+        submitted_by = excluded.submitted_by,
+        submitted_at = excluded.submitted_at,
+        leader_note  = excluded.leader_note
+  returning id into v_session_id;
 
   -- 7. Replace attendance records for the session. Wiping first then
   --    inserting is the canonical "controlled replace" pattern. The
@@ -234,10 +243,20 @@ begin
     get diagnostics v_attendance_count = row_count;
   end if;
 
-  -- 8. Health pulse upsert. The Phase 2 schema declares
-  --    unique(group_id, update_week) on group_health_updates, so the
-  --    upsert below is safe. We deliberately leave `admin_note` alone;
-  --    only the leader-facing columns are written.
+  -- 8. Health pulse upsert (or controlled clear).
+  --    The Phase 2 schema declares unique(group_id, update_week) on
+  --    group_health_updates, so the upsert below is safe. We deliberately
+  --    leave admin_note alone; only the leader-facing columns are written.
+  --
+  --    If the leader explicitly picked "No update" (v_pulse_enum is null
+  --    -- note that follow_up=true was already promoted to a needs_follow_up
+  --    pulse above), and a prior row exists for this group/week without
+  --    admin_note set, drop the row so the leader can actually clear a
+  --    previously-saved pulse. If the prior row has admin_note populated,
+  --    we never delete -- that protects admin work from leader actions.
+  --    This DELETE is a scoped, leader-owned-week clear inside the
+  --    SECURITY DEFINER boundary; the row is not "historical data" in
+  --    the same way an attendance_session is.
   if v_pulse_enum is not null then
     insert into public.group_health_updates (
       group_id, submitted_by, update_week, pulse, follow_up_needed, leader_note
@@ -250,6 +269,11 @@ begin
           follow_up_needed  = excluded.follow_up_needed,
           leader_note       = excluded.leader_note;
     -- admin_note: intentionally untouched.
+  else
+    delete from public.group_health_updates
+     where group_id    = p_group_id
+       and update_week = p_meeting_week
+       and admin_note is null;
   end if;
 
   -- 9. Choose audit action. The spec calls out three actions; the

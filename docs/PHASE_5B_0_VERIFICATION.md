@@ -162,6 +162,52 @@ Each must pass with no new warnings or errors.
       where session_id = <the session id>` is unchanged from
       before the failed submit.
 
+## Concurrent first-time submit (leader + co-leader race)
+
+26f. Set up: an assigned leader AND co-leader on the same group,
+    no `attendance_sessions` row for the current week yet.
+26g. Have both sign in (different browsers / sessions) and submit
+    a check-in for the same group at the same time (or simulate
+    via two SQL Editor windows calling
+    `select public.leader_submit_group_checkin(...)` with the
+    same args concurrently). Confirm:
+    - Both calls return successfully (no `unique_violation` error).
+    - In SQL, `select count(*) from public.attendance_sessions
+      where group_id = <id> and meeting_week = <W>` returns
+      exactly 1.
+    - Two audit events exist for this group/week; the later one
+      may show `leader.submit_checkin` rather than
+      `leader.update_checkin` under extreme races -- the data is
+      correct, the audit semantics are best-effort under
+      concurrency.
+
+## Clearing a previously-saved pulse
+
+26h. Submit a check-in with `pulse=watch` for the current week.
+26i. Re-open the form, change the pulse selector to "No update",
+    leave `follow_up_needed=false`, and submit. Confirm:
+    - The submit succeeds.
+    - In SQL, `select * from public.group_health_updates
+      where group_id = <id> and update_week = <W>` returns
+      zero rows (the leader's row was cleared).
+26j. Repeat 26h-i, but before re-submitting set
+    `admin_note = 'admin observation'` in SQL on the existing
+    row. Re-submit the form with `pulse=""` and `follow_up=false`.
+    Confirm:
+    - The submit succeeds.
+    - The row is **NOT** deleted; `admin_note` is still
+      `'admin observation'`. Admin work is preserved.
+
+## Audit feed OR-filter
+
+26k. As `super_admin`, open `/admin/people`. Confirm the audit
+    trail section renders without an error banner and shows
+    both `admin.%` and `leader.%` events mixed (the page calls
+    `fetchRecentAuditEvents` with `actionsLike: ["admin.%", "leader.%"]`
+    and the PostgREST OR-filter must accept the dotted patterns).
+    A regression in the OR-filter quoting would surface here as
+    "Couldn't load audit events: ..." with a parse error.
+
 ## Authorization (negative paths)
 
 20. Sign in as a `leader` who is NOT assigned to group X. Manually
@@ -317,7 +363,12 @@ Expected:
   migration. It is scoped by `session_id` inside the SECURITY DEFINER
   RPC, after every authorization check has passed. No hard delete of
   `attendance_sessions` itself.
-- No hard deletes against `group_health_updates`.
+- One `delete from public.group_health_updates` inside the Phase 5B.0
+  migration. It is scoped by `(group_id, update_week)` AND requires
+  `admin_note is null`, inside the SECURITY DEFINER RPC after all
+  authorization checks. This implements the leader's explicit
+  "clear my pulse for this week" intent without ever overwriting
+  admin work.
 
 ## Preview routes
 
