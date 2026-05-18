@@ -147,6 +147,26 @@ export interface AuditEventsRow {
   created_at: Timestamp;
 }
 
+export interface AppSettingsRow {
+  id: UUID;
+  setting_key: string;
+  setting_value: Record<string, unknown>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface GroupMetricSettingsRow {
+  group_id: UUID;
+  capacity_override: number | null;
+  capacity_warning_threshold_pct_override: number | null;
+  healthy_attendance_pct_override: number | null;
+  manual_health_status_override: E.GroupHealthStatus | null;
+  exclude_from_capacity_metrics: boolean;
+  admin_metric_notes: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -217,6 +237,18 @@ export interface Database {
         Row: AuditEventsRow;
         Insert: InsertOf<AuditEventsRow, 'id' | 'created_at' | 'metadata'>;
         Update: Partial<AuditEventsRow>;
+        Relationships: [];
+      };
+      app_settings: {
+        Row: AppSettingsRow;
+        Insert: InsertOf<AppSettingsRow, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<AppSettingsRow>;
+        Relationships: [];
+      };
+      group_metric_settings: {
+        Row: GroupMetricSettingsRow;
+        Insert: InsertOf<GroupMetricSettingsRow, 'created_at' | 'updated_at'>;
+        Update: Partial<GroupMetricSettingsRow>;
         Relationships: [];
       };
     };
@@ -290,6 +322,26 @@ export interface Database {
           p_follow_up_needed: boolean;
           p_attendance: { member_id: UUID; attendance_status: E.AttendanceStatus }[];
         };
+        Returns: UUID;
+      };
+      admin_update_metric_defaults: {
+        Args: { p_settings: Record<string, unknown> };
+        Returns: UUID;
+      };
+      admin_upsert_group_metric_settings: {
+        Args: {
+          p_group_id: UUID;
+          p_capacity_override: number | null;
+          p_capacity_warning_threshold_pct_override: number | null;
+          p_healthy_attendance_pct_override: number | null;
+          p_manual_health_status_override: E.GroupHealthStatus | null;
+          p_exclude_from_capacity_metrics: boolean;
+          p_admin_metric_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_change_leader_role: {
+        Args: { p_profile_id: UUID; p_new_role: E.UserRole };
         Returns: UUID;
       };
     };

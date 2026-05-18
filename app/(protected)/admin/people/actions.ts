@@ -8,6 +8,7 @@ import {
   validateCreateMemberPayload,
   validateAssignLeaderToGroupPayload,
   validateAssignMemberToGroupPayload,
+  validateChangeLeaderRolePayload,
   validateDeactivateProfilePayload,
   validateDeactivateMemberPayload,
   guardAgainstSelfTarget,
@@ -21,6 +22,7 @@ import {
 import {
   rpcAdminAssignLeaderToGroup,
   rpcAdminAssignMemberToGroup,
+  rpcAdminChangeLeaderRole,
   rpcAdminCreateLeaderProfile,
   rpcAdminCreateMember,
   rpcAdminDeactivateMember,
@@ -233,6 +235,44 @@ export async function adminDeactivateMember(
 
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) return actionFail(["The member was not deactivated. Please try again."]);
+
+  revalidatePath(REVALIDATE_PATH);
+  return actionOk({ id: data });
+}
+
+// ----- 7. adminChangeLeaderRole (Phase 5A.4) ------------------------------
+//
+// Ministry-admin-safe role swap between `leader` and `co_leader`. Both
+// super_admin and ministry_admin can call this. The RPC enforces the
+// narrow target/new-role envelope; the TS guards here are defense in
+// depth so the friendly error surfaces before we even hit Supabase.
+
+const CHANGE_LEADER_ROLE_KEYS = ["profile_id", "new_role"] as const;
+
+export async function adminChangeLeaderRole(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<{ profile_id: string; new_role: "leader" | "co_leader" }>,
+): Promise<ActionResult<{ id: string }>> {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return actionFail([auth.error]);
+
+  const raw = readFromForm(input, CHANGE_LEADER_ROLE_KEYS);
+  const v = validateChangeLeaderRolePayload(raw);
+  if (!v.ok) return actionFail(v.errors);
+
+  const guard = guardAgainstSelfTarget(auth.session.profile.id, v.value.profile_id);
+  if (guard) return actionFail([guard]);
+
+  const client = await createSupabaseServerClient();
+  if (!client) return actionFail(["Database is not configured."]);
+
+  const { data, error } = await rpcAdminChangeLeaderRole(client, {
+    p_profile_id: v.value.profile_id,
+    p_new_role: v.value.new_role,
+  });
+
+  if (error) return actionFail([mapRpcError(error.message)]);
+  if (!data) return actionFail(["The role was not updated. Please try again."]);
 
   revalidatePath(REVALIDATE_PATH);
   return actionOk({ id: data });
