@@ -11,19 +11,24 @@
 - **Phase 4.1**: docs + dev-helper patch — super admin bootstrap, role
   model clarification, Phase 5A scope outline. No app write code, no new
   RLS policies. ✅
-- **Phase 5A.0 (current)**: admin people & role management UI/UX
-  scaffold. Adds the protected `/admin/people` route, the disabled
-  action cards, polished empty states, pure-TypeScript validation
-  helpers, and the throwing server-action stubs that document the
-  Phase 5A.1 contract. No mock data, no real writes, no new RLS
-  policies. See `docs/PHASE_5A_ADMIN_MANAGEMENT.md` and
-  `docs/PHASE_5A_ACTION_CONTRACTS.md`. ✅
-- **Phase 5A.1 (pending)**: write policies + real admin actions —
-  super_admin and ministry_admin create/update admin, leader, and
-  member records through narrow, allowlisted server actions matched
-  by narrow INSERT/UPDATE RLS policies, with audit_events recorded
-  per write. Blocked on live Supabase verification of Phase 4 RLS.
+- **Phase 5A.0**: admin people & role management UI/UX scaffold —
+  protected `/admin/people` route, disabled action cards, polished
+  empty states, pure-TypeScript validation helpers, throwing
+  server-action stubs documenting the Phase 5A.1 contract. ✅
+- **Phase 5A.1 (current)**: people foundation writes. Admins can:
+  add leader profiles, add member records, assign leaders/co-leaders
+  to groups, place members into groups, deactivate either, and review
+  a recent admin audit trail. Writes flow through six narrow
+  `public.admin_*` SECURITY DEFINER Postgres RPCs so each data
+  change and its `audit_events` row commit in a single transaction.
+  RLS stays SELECT-only — no broad write policies. No deletes
+  anywhere. No service role. No app-based creation of another
+  ministry admin and no role-change workflow in this phase. ✅
 - **Phase 5B (after 5A.1)**: operational write workflows —
   attendance submission, guest capture, follow-up updates, and admin
   review queues. This is where the broader operational INSERT /
   UPDATE / DELETE RLS policies arrive.
+- **Later phases (not in 5A.1)**: calendar, SMS messaging / consent /
+  phone login, prayer requests, attendance analytics, follow-up
+  editing, multi-admin management, role change workflows,
+  self-service member login, staff viewer management.

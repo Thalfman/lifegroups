@@ -137,6 +137,16 @@ export interface GroupHealthUpdatesRow {
   created_at: Timestamp;
 }
 
+export interface AuditEventsRow {
+  id: UUID;
+  actor_profile_id: UUID | null;
+  action: string;
+  entity_type: string;
+  entity_id: UUID | null;
+  metadata: Record<string, unknown>;
+  created_at: Timestamp;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -203,9 +213,40 @@ export interface Database {
         Update: Partial<GroupHealthUpdatesRow>;
         Relationships: [];
       };
+      audit_events: {
+        Row: AuditEventsRow;
+        Insert: InsertOf<AuditEventsRow, 'id' | 'created_at' | 'metadata'>;
+        Update: Partial<AuditEventsRow>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      admin_create_leader_profile: {
+        Args: { p_full_name: string; p_email: string; p_phone: string | null };
+        Returns: UUID;
+      };
+      admin_create_member: {
+        Args: { p_full_name: string; p_email: string | null; p_phone: string | null };
+        Returns: UUID;
+      };
+      admin_assign_leader_to_group: {
+        Args: { p_group_id: UUID; p_profile_id: UUID; p_role: E.RoleInGroup };
+        Returns: UUID;
+      };
+      admin_assign_member_to_group: {
+        Args: { p_group_id: UUID; p_member_id: UUID };
+        Returns: UUID;
+      };
+      admin_deactivate_profile: {
+        Args: { p_profile_id: UUID };
+        Returns: UUID;
+      };
+      admin_deactivate_member: {
+        Args: { p_member_id: UUID };
+        Returns: UUID;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
