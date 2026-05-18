@@ -42,7 +42,10 @@ async function loadData(showAuditTrail: boolean): Promise<GroupManagementData> {
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllMembers(client, { statuses: ["active", "inactive"] }),
     showAuditTrail
-      ? fetchRecentAuditEvents(client, { limit: 25, actionsLike: "admin.%" })
+      ? fetchRecentAuditEvents(client, {
+          limit: 25,
+          actionsLike: ["admin.%", "leader.%"],
+        })
       : Promise.resolve<ReadResult<AuditEventsRow[]>>({ data: [], error: null }),
   ]);
 

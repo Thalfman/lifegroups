@@ -144,7 +144,7 @@ export const LEADER_FALLBACK: LeaderDashboardData = {
         healthStatus: "healthy",
         capacity: 12,
         activeMembers: 8,
-        weekLabel: "Week of May 17",
+        weekLabel: "Week of May 18",
         members: [
           { id: "fallback-m-1", displayName: "Jordan K." },
           { id: "fallback-m-2", displayName: "Priya M." },
@@ -188,6 +188,17 @@ export const LEADER_FALLBACK: LeaderDashboardData = {
           relatedGroupName: "Tuesday Night Life Group",
         },
       ],
+      currentWeek: {
+        meetingWeek: "2026-05-18",
+        status: "not_submitted",
+        alreadySubmitted: false,
+        presentCount: 0,
+        absentCount: 0,
+        excusedCount: 0,
+        meetingDate: null,
+        submittedAt: null,
+        leaderNote: null,
+      },
     },
   ],
 };

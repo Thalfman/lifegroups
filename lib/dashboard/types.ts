@@ -100,11 +100,27 @@ export interface LeaderHealthPulse {
   leaderNote: string | null;
 }
 
+// `AttendanceSessionStatus` already includes `'not_submitted'`. That value
+// is used here when no `attendance_sessions` row exists for the current
+// week yet; the dashboard displays it as the "not yet started" state.
+export interface LeaderCurrentWeek {
+  meetingWeek: string;
+  status: AttendanceSessionStatus;
+  alreadySubmitted: boolean;
+  presentCount: number;
+  absentCount: number;
+  excusedCount: number;
+  meetingDate: string | null;
+  submittedAt: string | null;
+  leaderNote: string | null;
+}
+
 export interface LeaderGroupDashboard {
   group: LeaderGroupSummary;
   recentSessions: LeaderSessionStatusRow[];
   healthPulse: LeaderHealthPulse;
   followUps: FollowUpItem[];
+  currentWeek: LeaderCurrentWeek;
 }
 
 export interface LeaderDashboardData {

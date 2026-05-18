@@ -35,7 +35,7 @@ export default async function LeaderPreviewPage() {
             description="When a leader has an active group assignment, their workflow will load here."
           />
         ) : (
-          <LeaderGroupCard dashboard={dashboard} />
+          <LeaderGroupCard dashboard={dashboard} preview />
         )}
       </div>
     </PastoralAppShell>

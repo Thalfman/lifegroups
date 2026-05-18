@@ -13,6 +13,7 @@ import { requireLeader } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getLeaderDashboardData } from "@/lib/dashboard/queries";
 import { navItemsForRole } from "@/lib/auth/roles";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,14 @@ function greetingName(fullName: string): string {
   return first ? `${first}.` : `${fullName}.`;
 }
 
-export default async function LeaderPage() {
+export default async function LeaderPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ checkin?: string }>;
+}) {
   const session = await requireLeader();
+  const params = (await searchParams) ?? {};
+  const savedNoticeVisible = params.checkin === "saved";
   const client = await createSupabaseServerClient();
   const { source, data, error } = await getLeaderDashboardData(client, {
     assignedGroupIds: session.assignedGroupIds,
@@ -59,6 +66,38 @@ export default async function LeaderPage() {
       <div style={{ display: "grid", gap: 14 }}>
         {source === "live" ? <ConfiguredDataNotice /> : <FallbackDataNotice />}
         {error ? <DashboardErrorNotice message={error} /> : null}
+        {savedNoticeVisible ? (
+          <div
+            role="status"
+            style={{
+              background: P.sageSoft,
+              border: `1px solid ${P.sage}`,
+              borderLeft: `3px solid ${P.sage}`,
+              borderRadius: 8,
+              padding: "12px 16px",
+              fontFamily: fontBody,
+              fontSize: 13.5,
+              color: "#3e4f29",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: fontSans,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                fontWeight: 600,
+              }}
+            >
+              Saved
+            </span>
+            <span>Your check-in is in the record. Thanks for keeping it fresh.</span>
+          </div>
+        ) : null}
 
         {groupCount === 0 ? (
           <EmptyState

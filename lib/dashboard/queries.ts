@@ -19,6 +19,7 @@ import type {
   CapacityRow,
   DashboardResult,
   FollowUpItem,
+  LeaderCurrentWeek,
   LeaderDashboardData,
   LeaderGroupDashboard,
   PipelineStageCount,
@@ -290,8 +291,16 @@ async function buildLeaderGroupDashboard(
   });
 
   const latestHealth = healthUpdates[0];
-  const latestWeekIso = sessions[0]?.meeting_week ?? isoWeekStart(new Date());
   const currentWeekIso = isoWeekStart(new Date());
+  // The leader card header is always anchored to "this calendar week" so
+  // the workflow date doesn't drift backwards on weeks where a leader
+  // hasn't submitted yet.
+  const latestWeekIso = currentWeekIso;
+
+  const currentWeekSession = sessions.find((s) => s.meeting_week === currentWeekIso) ?? null;
+  const currentWeekRecords = currentWeekSession
+    ? recordsByMember.filter((r) => r.session_id === currentWeekSession.id)
+    : [];
 
   const newGuestsResult = await fetchNewGuestsForGroupSince(client, group.id, currentWeekIso);
   if (newGuestsResult.error) throw newGuestsResult.error;
@@ -306,6 +315,22 @@ async function buildLeaderGroupDashboard(
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   const rhythm = computeAttendanceRhythm(recentSessions);
+
+  const currentWeek: LeaderCurrentWeek = {
+    meetingWeek: currentWeekIso,
+    status: currentWeekSession?.status ?? "not_submitted",
+    alreadySubmitted:
+      currentWeekSession?.status === "submitted"
+      || currentWeekSession?.status === "did_not_meet"
+      || currentWeekSession?.status === "planned_pause"
+      || currentWeekSession?.status === "admin_entered",
+    presentCount: currentWeekRecords.filter((r) => r.attendance_status === "present").length,
+    absentCount: currentWeekRecords.filter((r) => r.attendance_status === "absent").length,
+    excusedCount: currentWeekRecords.filter((r) => r.attendance_status === "excused").length,
+    meetingDate: currentWeekSession?.meeting_date ?? null,
+    submittedAt: currentWeekSession?.submitted_at ?? null,
+    leaderNote: currentWeekSession?.leader_note ?? null,
+  };
 
   return {
     group: {
@@ -328,6 +353,7 @@ async function buildLeaderGroupDashboard(
       leaderNote: latestHealth?.leader_note ?? null,
     },
     followUps: followUpItems,
+    currentWeek,
   };
 }
 

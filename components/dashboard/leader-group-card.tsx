@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
 import { PAvatar, PBadge } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { EmptyState, StatusCard } from "@/components/dashboard/cards";
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
+import { LeaderQuickDidNotMeet } from "@/components/leader/quick-did-not-meet";
 import { mapHealthToBadge, mapLifecycleToBadge } from "@/lib/dashboard/badge-map";
 import {
   followUpPriorityLabel,
@@ -17,11 +19,42 @@ function priorityToTone(priority: string) {
   return "neutral" as const;
 }
 
-export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard }) {
-  const { group, recentSessions, healthPulse, followUps } = dashboard;
+function describeWeek(meetingWeekIso: string): string {
+  const date = new Date(`${meetingWeekIso}T00:00:00Z`);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export function LeaderGroupCard({
+  dashboard,
+  preview = false,
+}: {
+  dashboard: LeaderGroupDashboard;
+  preview?: boolean;
+}) {
+  const { group, recentSessions, healthPulse, followUps, currentWeek } = dashboard;
   const lifecycle = mapLifecycleToBadge(group.lifecycleStatus);
   const health = mapHealthToBadge(group.healthStatus);
-  const checkInHelpId = `check-in-phase-help-${group.groupId}`;
+  const closed = group.lifecycleStatus === "closed";
+  const submitted = currentWeek.alreadySubmitted;
+  const checkinHref = `/leader/${group.groupId}/checkin`;
+  const ctaLabel = submitted ? "Update check-in" : "Start check-in";
+  const heroEyebrow = submitted ? "Saved for this week" : "This week";
+  const heroTitle = submitted ? (
+    <>
+      Anything to <span style={{ fontStyle: "italic" }}>add?</span>
+    </>
+  ) : (
+    <>
+      How did <span style={{ fontStyle: "italic" }}>tonight</span> go?
+    </>
+  );
+  const heroLede = submitted
+    ? "You can update tonight's check-in any time. We'll keep the record fresh."
+    : "Tap each person as you remember them. We'll save it when you submit.";
 
   return (
     <section
@@ -113,16 +146,42 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
         />
         <div
           style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            fontWeight: 600,
-            opacity: 0.85,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
             marginBottom: 8,
           }}
         >
-          This week
+          <div
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              fontWeight: 600,
+              opacity: 0.85,
+            }}
+          >
+            {heroEyebrow}
+          </div>
+          {submitted ? (
+            <span
+              style={{
+                fontFamily: fontSans,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                fontWeight: 600,
+                background: "rgba(255,255,255,0.18)",
+                padding: "3px 10px",
+                borderRadius: 999,
+              }}
+            >
+              {sessionStatusLabel(currentWeek.status)}
+            </span>
+          ) : null}
         </div>
         <div
           style={{
@@ -134,7 +193,7 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
             marginBottom: 6,
           }}
         >
-          How did <span style={{ fontStyle: "italic" }}>tonight</span> go?
+          {heroTitle}
         </div>
         <div
           style={{
@@ -145,35 +204,80 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
             marginBottom: 18,
           }}
         >
-          Tap each person as you remember them. We&apos;ll save as you go.
+          {heroLede}
         </div>
-        <PButton
-          tone="ghost"
-          disabled
-          style={{
-            background: P.surface,
-            color: P.terra,
-            border: "none",
-            width: "100%",
-            fontWeight: 600,
-            opacity: 0.95,
-          }}
-          aria-describedby={checkInHelpId}
-        >
-          Start check-in
-        </PButton>
-        <div
-          id={checkInHelpId}
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            fontStyle: "italic",
-            opacity: 0.85,
-            marginTop: 10,
-          }}
-        >
-          Arrives with Phase 5B operational writes.
-        </div>
+        {submitted && currentWeek.status === "submitted" ? (
+          <div
+            style={{
+              fontFamily: fontMono,
+              fontSize: 12.5,
+              opacity: 0.9,
+              marginBottom: 14,
+            }}
+          >
+            {currentWeek.presentCount}P · {currentWeek.absentCount}A ·{" "}
+            {currentWeek.excusedCount}E
+            {currentWeek.meetingDate ? ` · ${currentWeek.meetingDate}` : ""}
+          </div>
+        ) : null}
+        {closed ? (
+          <div
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              fontStyle: "italic",
+              opacity: 0.85,
+              padding: "10px 14px",
+              background: "rgba(255,255,255,0.12)",
+              borderRadius: 10,
+            }}
+          >
+            This group is closed. Check-ins are turned off; ask an admin to
+            reopen it if it should be active again.
+          </div>
+        ) : preview ? (
+          <PButton
+            tone="ghost"
+            disabled
+            style={{
+              background: P.surface,
+              color: P.terra,
+              border: "none",
+              width: "100%",
+              fontWeight: 600,
+              opacity: 0.95,
+            }}
+            title="Preview — sign in as a leader to start a real check-in."
+          >
+            {ctaLabel}
+          </PButton>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            <Link
+              href={checkinHref}
+              style={{
+                background: P.surface,
+                color: P.terra,
+                borderRadius: 999,
+                padding: "12px 18px",
+                fontFamily: fontSans,
+                fontSize: 14,
+                fontWeight: 600,
+                textAlign: "center",
+                textDecoration: "none",
+                display: "block",
+              }}
+            >
+              {ctaLabel}
+            </Link>
+            {submitted ? null : (
+              <LeaderQuickDidNotMeet
+                groupId={group.groupId}
+                groupName={group.name}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -307,7 +411,7 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
                       color: P.ink,
                     }}
                   >
-                    Week of {session.meetingWeek}
+                    Week of {describeWeek(session.meetingWeek)}
                   </span>
                   <span
                     style={{
@@ -448,13 +552,13 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
               fontWeight: 600,
             }}
           >
-            Tap arrives in Phase 5B
+            Tap each person inside the check-in
           </span>
         </div>
         {group.members.length === 0 ? (
           <EmptyState
             title="No active members yet"
-            description="Add members in Supabase or via admin tools to populate this list."
+            description="Ask an admin to add members in the people screen, or submit 'Group did not meet' if there's no roster to mark."
           />
         ) : (
           <ul
@@ -502,33 +606,6 @@ export function LeaderGroupCard({ dashboard }: { dashboard: LeaderGroupDashboard
                   >
                     {member.displayName}
                   </span>
-                </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {(["P", "A", "E"] as const).map((letter) => (
-                    <button
-                      key={letter}
-                      type="button"
-                      disabled
-                      aria-label={`Mark ${member.displayName} ${letter === "P" ? "present" : letter === "A" ? "absent" : "excused"} (arrives in Phase 5B)`}
-                      title="Arrives in Phase 5B"
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 99,
-                        display: "grid",
-                        placeItems: "center",
-                        fontSize: 12,
-                        fontFamily: fontSans,
-                        fontWeight: 600,
-                        background: "transparent",
-                        color: P.ink3,
-                        border: `1px solid ${P.line}`,
-                        cursor: "not-allowed",
-                      }}
-                    >
-                      {letter}
-                    </button>
-                  ))}
                 </div>
               </li>
             ))}

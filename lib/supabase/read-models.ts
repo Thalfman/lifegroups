@@ -252,7 +252,7 @@ export async function fetchAllGroupLeaders(
 
 export async function fetchRecentAuditEvents(
   client: ReadClient,
-  options: { limit?: number; actionsLike?: string } = {},
+  options: { limit?: number; actionsLike?: string | string[] } = {},
 ): Promise<ReadResult<AuditEventsRow[]>> {
   const limit = options.limit ?? 25;
   let query = client
@@ -260,7 +260,18 @@ export async function fetchRecentAuditEvents(
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (options.actionsLike) query = query.like("action", options.actionsLike);
+  if (options.actionsLike) {
+    if (Array.isArray(options.actionsLike)) {
+      // PostgREST OR syntax. Each pattern becomes `action.like.<value>` and
+      // they're joined by commas. Patterns must not themselves contain commas.
+      const orExpr = options.actionsLike
+        .map((pat) => `action.like.${pat}`)
+        .join(",");
+      query = query.or(orExpr);
+    } else {
+      query = query.like("action", options.actionsLike);
+    }
+  }
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
   return { data: data ?? [], error: null };
