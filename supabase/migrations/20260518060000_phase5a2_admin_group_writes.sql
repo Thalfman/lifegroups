@@ -178,6 +178,10 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Row-level lock serializes concurrent admin_update_group / admin_close_group
+  -- / admin_reopen_group calls against the same group. If the row was deleted
+  -- between transactions, the locked select returns nothing and we raise
+  -- missing_group before any UPDATE or audit insert runs.
   select jsonb_build_object(
            'name', name,
            'description', description,
@@ -190,7 +194,7 @@ begin
     into v_before
     from public.groups
    where id = p_group_id
-   limit 1;
+   for update;
 
   if v_before is null then
     raise exception 'missing_group';
@@ -254,11 +258,15 @@ begin
     raise exception 'insufficient_privilege';
   end if;
 
+  -- Row-level lock serializes concurrent close attempts on the same group.
+  -- The second transaction blocks on FOR UPDATE until the first commits,
+  -- then re-reads lifecycle_status='closed' and exits via group_already_closed
+  -- without a duplicate closed_at stamp or duplicate audit event.
   select lifecycle_status, closed_at
     into v_previous_lifecycle, v_previous_closed_at
     from public.groups
    where id = p_group_id
-   limit 1;
+   for update;
 
   if v_previous_lifecycle is null then
     raise exception 'missing_group';
@@ -323,11 +331,15 @@ begin
     raise exception 'insufficient_privilege';
   end if;
 
+  -- Row-level lock serializes concurrent reopen attempts on the same group.
+  -- The second transaction blocks on FOR UPDATE until the first commits,
+  -- then re-reads lifecycle_status='active' and exits via group_not_closed
+  -- without writing a duplicate reopen audit event.
   select lifecycle_status, closed_at
     into v_previous_lifecycle, v_previous_closed_at
     from public.groups
    where id = p_group_id
-   limit 1;
+   for update;
 
   if v_previous_lifecycle is null then
     raise exception 'missing_group';

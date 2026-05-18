@@ -270,8 +270,12 @@ function isTimeString(value: string): boolean {
 function readOptionalCapacity(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) return undefined;
-    return Math.trunc(value);
+    // Reject NaN / Infinity / fractional values so programmatic callers
+    // see the same "Capacity must be a whole number." failure that string
+    // callers get when they submit "12.7".
+    if (!Number.isFinite(value)) return Number.NaN;
+    if (!Number.isInteger(value)) return Number.NaN;
+    return value;
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
