@@ -1,5 +1,6 @@
 import type { AppSupabaseClient } from "./types";
 import type {
+  AppSettingsRow,
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   AuditEventsRow,
@@ -7,6 +8,7 @@ import type {
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
+  GroupMetricSettingsRow,
   GroupsRow,
   GuestsRow,
   MembersRow,
@@ -253,6 +255,51 @@ export async function fetchAllGroupLeaders(
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
   return { data: data ?? [], error: null };
+}
+
+// Phase 5A.4: Settings readers.
+
+// Returns the single `metric_defaults` row from `app_settings`. The row is
+// seeded by the Phase 5A.4 migration and never deleted; a `null` return
+// here means either Supabase rejected the read or the row was manually
+// removed. Callers should treat null as "use built-in defaults".
+export async function fetchMetricDefaults(
+  client: ReadClient,
+): Promise<ReadResult<AppSettingsRow | null>> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select("*")
+    .eq("setting_key", "metric_defaults")
+    .maybeSingle();
+  if (error) return { data: null, error: wrapError("fetchMetricDefaults", error) };
+  return { data: (data as AppSettingsRow | null) ?? null, error: null };
+}
+
+// Returns every row in group_metric_settings. RLS on the table restricts
+// reads to super_admin / ministry_admin, so calling this from any
+// non-admin context will surface as an empty result. Admin pages call
+// this once at load time and join client-side by group_id.
+export async function fetchAllGroupMetricSettings(
+  client: ReadClient,
+): Promise<ReadResult<GroupMetricSettingsRow[]>> {
+  const { data, error } = await client.from("group_metric_settings").select("*");
+  if (error)
+    return { data: null, error: wrapError("fetchAllGroupMetricSettings", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchGroupMetricSettings(
+  client: ReadClient,
+  groupId: string,
+): Promise<ReadResult<GroupMetricSettingsRow | null>> {
+  const { data, error } = await client
+    .from("group_metric_settings")
+    .select("*")
+    .eq("group_id", groupId)
+    .maybeSingle();
+  if (error)
+    return { data: null, error: wrapError("fetchGroupMetricSettings", error) };
+  return { data: (data as GroupMetricSettingsRow | null) ?? null, error: null };
 }
 
 export async function fetchRecentAuditEvents(

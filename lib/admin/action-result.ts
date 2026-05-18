@@ -42,6 +42,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That group is already active — there's nothing to reopen.",
   no_role_change:
     "That profile already has that role. Nothing to change.",
+  missing_settings:
+    "The settings record is missing. Refresh the page and try again.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

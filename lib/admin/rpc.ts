@@ -119,3 +119,40 @@ export async function rpcSuperAdminUpdateProfileRole(
   const r = await client.rpc("super_admin_update_profile_role" as never, args as never);
   return { data: (r.data as string | null) ?? null, error: r.error };
 }
+
+// Phase 5A.4 admin settings + leader-role-swap RPCs.
+
+export async function rpcAdminUpdateMetricDefaults(
+  client: AppSupabaseClient,
+  args: { p_settings: Record<string, unknown> },
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_update_metric_defaults" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminUpsertGroupMetricSettings(
+  client: AppSupabaseClient,
+  args: {
+    p_group_id: string;
+    p_capacity_override: number | null;
+    p_capacity_warning_threshold_pct_override: number | null;
+    p_healthy_attendance_pct_override: number | null;
+    p_manual_health_status_override: string | null;
+    p_exclude_from_capacity_metrics: boolean;
+    p_admin_metric_notes: string | null;
+  },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_upsert_group_metric_settings" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminChangeLeaderRole(
+  client: AppSupabaseClient,
+  args: { p_profile_id: string; p_new_role: "leader" | "co_leader" },
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_change_leader_role" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}

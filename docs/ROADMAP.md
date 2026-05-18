@@ -15,20 +15,25 @@
   protected `/admin/people` route, disabled action cards, polished
   empty states, pure-TypeScript validation helpers, throwing
   server-action stubs documenting the Phase 5A.1 contract. ✅
-- **Phase 5A.1 (current)**: people foundation writes. Admins can:
-  add leader profiles, add member records, assign leaders/co-leaders
-  to groups, place members into groups, deactivate either, and review
-  a recent admin audit trail. Writes flow through six narrow
-  `public.admin_*` SECURITY DEFINER Postgres RPCs so each data
-  change and its `audit_events` row commit in a single transaction.
-  RLS stays SELECT-only — no broad write policies. No deletes
-  anywhere. No service role. No app-based creation of another
-  ministry admin and no role-change workflow in this phase. ✅
-- **Phase 5B (after 5A.1)**: operational write workflows —
-  attendance submission, guest capture, follow-up updates, and admin
-  review queues. This is where the broader operational INSERT /
-  UPDATE / DELETE RLS policies arrive.
-- **Later phases (not in 5A.1)**: calendar, SMS messaging / consent /
-  phone login, prayer requests, attendance analytics, follow-up
-  editing, multi-admin management, role change workflows,
-  self-service member login, staff viewer management.
+- **Phase 5A.1**: people foundation writes — leader / member create,
+  group assignments, deactivation, audit trail via six
+  `public.admin_*` SECURITY DEFINER RPCs. ✅
+- **Phase 5A.2**: admin group management (create, edit, soft close,
+  reopen) plus tightening of `audit_events` reads to super_admin. ✅
+- **Phase 5A.3**: super admin console at `/admin/super-admin` plus
+  one `super_admin_update_profile_role` RPC. ✅
+- **Phase 5B.0**: leader weekly check-ins + attendance submission. ✅
+- **Phase 5B.1**: read-only admin weekly check-in review at
+  `/admin/check-ins`. ✅
+- **Phase 5A.4 (current)**: admin operations UX + metric settings
+  foundation. Filterable people / groups directories, a new
+  `/admin/settings` page with global metric defaults and per-group
+  overrides, and a ministry-admin-safe `leader` ⇄ `co_leader` role
+  swap. Three new SECURITY DEFINER RPCs; one new admin-only
+  `group_metric_settings` table; typed `lib/admin/metrics.ts`
+  helpers prepare the dashboard for later rebuild. No service role,
+  no broad write RLS, no hard deletes.
+- **Later phases**: guest pipeline, SMS / consent / phone login,
+  calendar, prayer requests, attendance analytics, follow-up
+  editing, advanced dashboard builder, custom formulas,
+  self-service member login.

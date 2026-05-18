@@ -8,24 +8,89 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchAllGroups } from "@/lib/supabase/read-models";
+import {
+  fetchActiveMemberships,
+  fetchAllGroupLeaders,
+  fetchAllGroupMetricSettings,
+  fetchAllGroups,
+  fetchAttendanceSessions,
+  fetchLatestMeetingWeek,
+  fetchMetricDefaults,
+  fetchProfilesForAdmin,
+} from "@/lib/supabase/read-models";
+import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
 
 export const dynamic = "force-dynamic";
 
 const EMPTY_DATA: GroupManagementData = {
   groups: [],
-  errors: { groups: "Supabase is not configured in this environment." },
+  groupLeaders: [],
+  profiles: [],
+  memberships: [],
+  latestSessions: [],
+  latestWeek: null,
+  metricDefaults: BUILT_IN_METRIC_DEFAULTS,
+  groupMetricSettings: [],
+  errors: {
+    groups: "Supabase is not configured in this environment.",
+    leaders: "Supabase is not configured in this environment.",
+    profiles: "Supabase is not configured in this environment.",
+    memberships: "Supabase is not configured in this environment.",
+    sessions: "Supabase is not configured in this environment.",
+    settings: "Supabase is not configured in this environment.",
+  },
 };
 
 async function loadData(): Promise<GroupManagementData> {
   const client = await createSupabaseServerClient();
   if (!client) return EMPTY_DATA;
 
-  const groupsResult = await fetchAllGroups(client);
+  const [
+    groupsResult,
+    leadersResult,
+    profilesResult,
+    membershipsResult,
+    latestWeekResult,
+    defaultsResult,
+    settingsResult,
+  ] = await Promise.all([
+    fetchAllGroups(client),
+    fetchAllGroupLeaders(client, { activeOnly: true }),
+    fetchProfilesForAdmin(client, {
+      roles: ["leader", "co_leader"],
+      statuses: ["active", "inactive"],
+    }),
+    fetchActiveMemberships(client),
+    fetchLatestMeetingWeek(client),
+    fetchMetricDefaults(client),
+    fetchAllGroupMetricSettings(client),
+  ]);
+
+  const latestWeek = latestWeekResult.data ?? null;
+  const sessionsResult = latestWeek
+    ? await fetchAttendanceSessions(client, { meetingWeek: latestWeek })
+    : { data: [], error: null as Error | null };
 
   return {
     groups: groupsResult.data ?? [],
-    errors: { groups: groupsResult.error?.message ?? null },
+    groupLeaders: leadersResult.data ?? [],
+    profiles: profilesResult.data ?? [],
+    memberships: membershipsResult.data ?? [],
+    latestSessions: sessionsResult.data ?? [],
+    latestWeek,
+    metricDefaults: decodeMetricDefaults(defaultsResult.data ?? null),
+    groupMetricSettings: settingsResult.data ?? [],
+    errors: {
+      groups: groupsResult.error?.message ?? null,
+      leaders: leadersResult.error?.message ?? null,
+      profiles: profilesResult.error?.message ?? null,
+      memberships: membershipsResult.error?.message ?? null,
+      sessions:
+        latestWeekResult.error?.message ??
+        sessionsResult.error?.message ??
+        null,
+      settings: settingsResult.error?.message ?? null,
+    },
   };
 }
 
@@ -36,10 +101,10 @@ export default async function AdminGroupsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.2 · Manage groups"
+      eyebrow="Phase 5A.4 · Manage groups"
       title="Every Life Group,"
       titleItalic="held in view."
-      lede="Create new groups, polish the details, and quietly close ones that have run their course. Nothing is ever deleted — closed groups stay in the record and can be reopened later."
+      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it; closed groups stay in the record and can be reopened."
       headerSlot={
         <>
           <UserPill
