@@ -45,6 +45,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/people", label: "Manage People" });
     items.push({ href: "/admin/groups", label: "Manage Groups" });
+    items.push({ href: "/admin/check-ins", label: "Check-Ins" });
     // Phase 5A.3: only super_admin sees the owner console. ministry_admin
     // keeps every other admin item but has no need for the audit log or
     // role-management surfaces.

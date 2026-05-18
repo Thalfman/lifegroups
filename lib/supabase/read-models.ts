@@ -93,10 +93,14 @@ export async function fetchAttendanceRecordsForSessions(
   sessionIds: string[],
 ): Promise<ReadResult<AttendanceRecordsRow[]>> {
   if (sessionIds.length === 0) return { data: [], error: null };
+  // Widen past the PostgREST default 1000-row cap (see GUEST_PAGE_LIMIT note
+  // below). A week-wide admin review across many groups can approach the cap
+  // even at modest deployment sizes; explicit range keeps results stable.
   const { data, error } = await client
     .from("attendance_records")
     .select("*")
-    .in("session_id", sessionIds);
+    .in("session_id", sessionIds)
+    .range(0, 9999);
   if (error) return { data: null, error: wrapError("fetchAttendanceRecordsForSessions", error) };
   return { data: data ?? [], error: null };
 }
@@ -136,13 +140,14 @@ export async function fetchOpenFollowUps(
 
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
-  options: { groupId?: string } = {},
+  options: { groupId?: string; updateWeek?: string } = {},
 ): Promise<ReadResult<GroupHealthUpdatesRow[]>> {
   let query = client
     .from("group_health_updates")
     .select("*")
     .order("update_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
+  if (options.updateWeek) query = query.eq("update_week", options.updateWeek);
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchLatestHealthUpdates", error) };
   return { data: data ?? [], error: null };
