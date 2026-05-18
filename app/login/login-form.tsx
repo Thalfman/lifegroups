@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
 import { loginAction, type LoginFormState } from "./actions";
@@ -32,6 +32,7 @@ const inputStyle = {
 
 export function LoginForm({ next }: { next: string | null }) {
   const [state, formAction, pending] = useActionState(loginAction, INITIAL_STATE);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 16 }}>
@@ -45,7 +46,11 @@ export function LoginForm({ next }: { next: string | null }) {
           id="email"
           name="email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           disabled={pending}
           style={{ ...inputStyle, opacity: pending ? 0.6 : 1 }}
@@ -56,15 +61,44 @@ export function LoginForm({ next }: { next: string | null }) {
         <label htmlFor="password" style={labelStyle}>
           Password
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          disabled={pending}
-          style={{ ...inputStyle, opacity: pending ? 0.6 : 1 }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            disabled={pending}
+            style={{
+              ...inputStyle,
+              paddingRight: 76,
+              opacity: pending ? 0.6 : 1,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((value) => !value)}
+            disabled={pending}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            style={{
+              position: "absolute",
+              top: "50%",
+              right: 10,
+              transform: "translateY(-50%)",
+              border: 0,
+              background: "transparent",
+              color: P.terra,
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: pending ? "not-allowed" : "pointer",
+              opacity: pending ? 0.5 : 1,
+              padding: "6px 8px",
+            }}
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
 
       {state.error ? (
