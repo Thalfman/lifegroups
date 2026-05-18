@@ -25,15 +25,27 @@
 - **Phase 5B.0**: leader weekly check-ins + attendance submission. ✅
 - **Phase 5B.1**: read-only admin weekly check-in review at
   `/admin/check-ins`. ✅
-- **Phase 5A.4 (current)**: admin operations UX + metric settings
+- **Phase 5A.4**: admin operations UX + metric settings
   foundation. Filterable people / groups directories, a new
   `/admin/settings` page with global metric defaults and per-group
   overrides, and a ministry-admin-safe `leader` ⇄ `co_leader` role
   swap. Three new SECURITY DEFINER RPCs; one new admin-only
   `group_metric_settings` table; typed `lib/admin/metrics.ts`
   helpers prepare the dashboard for later rebuild. No service role,
-  no broad write RLS, no hard deletes.
-- **Later phases**: guest pipeline, SMS / consent / phone login,
-  calendar, prayer requests, attendance analytics, follow-up
-  editing, advanced dashboard builder, custom formulas,
-  self-service member login.
+  no broad write RLS, no hard deletes. ✅
+- **Phase 6.0**: admin dashboard metrics integration. `/admin` is
+  rebuilt as Julian's command center — six summary cards, a
+  prioritized attention queue, five capacity buckets, seven health
+  buckets, a setup-gaps panel, and read-only consumption of the
+  Phase 5A.4 metric helpers. ✅
+- **Phase 5C.0 (current)**: guest pipeline + follow-up foundation.
+  Two new admin routes (`/admin/guests`, `/admin/follow-ups`), a
+  leader follow-ups section on `/leader`, and five new SECURITY
+  DEFINER RPCs (`admin_create_guest`, `admin_update_guest_pipeline`,
+  `admin_create_follow_up`, `admin_update_follow_up_status`,
+  `leader_update_follow_up_status`). Manual workflow only — no SMS,
+  no public guest signup, no automation, no exports.
+- **Later phases**: SMS / consent / phone login, calendar, prayer
+  requests, attendance analytics, follow-up editing surface for
+  leaders beyond status updates, advanced dashboard builder, custom
+  formulas, self-service member login.

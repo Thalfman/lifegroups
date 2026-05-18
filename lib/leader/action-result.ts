@@ -29,6 +29,15 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "Only the assigned leader or co-leader can submit this group's check-in.",
   invalid_member:
     "One of the people on the attendance list isn't in this group anymore. Refresh and try again.",
+  // Phase 5C.0 leader follow-up tokens.
+  missing_follow_up:
+    "We couldn't find that follow-up. Refresh the page and try again.",
+  invalid_status:
+    "Leaders can mark a follow-up in progress or done — nothing else.",
+  invalid_status_transition:
+    "That follow-up has already been closed or moved past this step. Refresh to see the latest.",
+  forbidden_target:
+    "That follow-up isn't yours to update. Only the assigned person or a group leader can move it.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

@@ -34,3 +34,22 @@ export async function rpcLeaderSubmitGroupCheckin(
   const r = await client.rpc("leader_submit_group_checkin" as never, args as never);
   return { data: (r.data as string | null) ?? null, error: r.error };
 }
+
+// Phase 5C.0 leader follow-up status update.
+export type LeaderUpdateFollowUpStatus = "in_progress" | "done";
+
+export type LeaderUpdateFollowUpStatusArgs = {
+  p_follow_up_id: string;
+  p_status: LeaderUpdateFollowUpStatus;
+};
+
+export async function rpcLeaderUpdateFollowUpStatus(
+  client: AppSupabaseClient,
+  args: LeaderUpdateFollowUpStatusArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "leader_update_follow_up_status" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}

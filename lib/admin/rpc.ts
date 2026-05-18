@@ -14,7 +14,14 @@
 //   * does no validation of its own — the action layer validates first.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import type { RoleInGroup, UserRole } from "@/types/enums";
+import type {
+  FollowUpPriority,
+  FollowUpStatus,
+  FollowUpType,
+  GuestPipelineStage,
+  RoleInGroup,
+  UserRole,
+} from "@/types/enums";
 
 type RpcResult = { data: string | null; error: { message: string } | null };
 
@@ -154,5 +161,84 @@ export async function rpcAdminChangeLeaderRole(
   args: { p_profile_id: string; p_new_role: "leader" | "co_leader" },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_change_leader_role" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+// Phase 5C.0 guest + follow-up admin RPCs.
+
+export type AdminCreateGuestArgs = {
+  p_full_name: string;
+  p_email: string | null;
+  p_phone: string | null;
+  p_first_attended_group_id: string | null;
+  p_first_attended_date: string | null;
+  p_pipeline_stage: GuestPipelineStage;
+  p_assigned_group_id: string | null;
+  p_follow_up_owner_id: string | null;
+  p_notes: string | null;
+};
+
+export async function rpcAdminCreateGuest(
+  client: AppSupabaseClient,
+  args: AdminCreateGuestArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_create_guest" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export type AdminUpdateGuestPipelineArgs = {
+  p_guest_id: string;
+  p_pipeline_stage: GuestPipelineStage;
+  p_set_assigned_group_id: boolean;
+  p_assigned_group_id: string | null;
+  p_set_follow_up_owner_id: boolean;
+  p_follow_up_owner_id: string | null;
+  p_set_notes: boolean;
+  p_notes: string | null;
+};
+
+export async function rpcAdminUpdateGuestPipeline(
+  client: AppSupabaseClient,
+  args: AdminUpdateGuestPipelineArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_update_guest_pipeline" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export type AdminCreateFollowUpArgs = {
+  p_type: FollowUpType;
+  p_title: string;
+  p_related_group_id: string | null;
+  p_related_member_id: string | null;
+  p_related_guest_id: string | null;
+  p_assigned_to: string | null;
+  p_priority: FollowUpPriority;
+  p_due_date: string | null;
+  p_leader_visible_note: string | null;
+  p_admin_private_note: string | null;
+};
+
+export async function rpcAdminCreateFollowUp(
+  client: AppSupabaseClient,
+  args: AdminCreateFollowUpArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_create_follow_up" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export type AdminUpdateFollowUpStatusArgs = {
+  p_follow_up_id: string;
+  p_status: FollowUpStatus;
+  p_set_leader_visible_note: boolean;
+  p_leader_visible_note: string | null;
+  p_set_admin_private_note: boolean;
+  p_admin_private_note: string | null;
+};
+
+export async function rpcAdminUpdateFollowUpStatus(
+  client: AppSupabaseClient,
+  args: AdminUpdateFollowUpStatusArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_update_follow_up_status" as never, args as never);
   return { data: (r.data as string | null) ?? null, error: r.error };
 }

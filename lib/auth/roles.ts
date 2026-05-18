@@ -46,6 +46,10 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin/people", label: "Manage People" });
     items.push({ href: "/admin/groups", label: "Manage Groups" });
     items.push({ href: "/admin/check-ins", label: "Check-Ins" });
+    // Phase 5C.0: guest pipeline + follow-up workflows. Both admin
+    // roles see these; leaders / co_leaders / staff_viewer never do.
+    items.push({ href: "/admin/guests", label: "Guests" });
+    items.push({ href: "/admin/follow-ups", label: "Follow-Ups" });
     // Phase 5A.4: ministry-admin-accessible operational settings. Both
     // admin roles see this; leaders / co_leaders / staff_viewer never do.
     items.push({ href: "/admin/settings", label: "Settings" });
