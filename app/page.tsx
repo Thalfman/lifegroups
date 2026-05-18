@@ -198,7 +198,6 @@ export default async function HomePage() {
         fontFamily: fontBody,
         color: P.ink,
         position: "relative",
-        overflow: "hidden",
       }}
     >
       <div
@@ -216,10 +215,12 @@ export default async function HomePage() {
 
       <header
         style={{
-          padding: "24px 64px",
+          padding: "clamp(16px, 4vw, 24px) clamp(20px, 5vw, 64px)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
           position: "relative",
           zIndex: 1,
         }}
@@ -254,8 +255,9 @@ export default async function HomePage() {
         <div
           style={{
             display: "flex",
-            gap: 32,
+            gap: "clamp(16px, 3vw, 32px)",
             alignItems: "center",
+            flexWrap: "wrap",
             fontSize: 14,
             fontFamily: fontBody,
             color: P.ink2,
@@ -274,7 +276,13 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section style={{ padding: "56px 64px 72px", position: "relative", zIndex: 1 }}>
+      <section
+        style={{
+          padding: "clamp(40px, 6vw, 56px) clamp(20px, 5vw, 64px) clamp(48px, 7vw, 72px)",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         <div style={{ textAlign: "center", marginBottom: 64 }}>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <POrnament w={120} />
@@ -295,9 +303,9 @@ export default async function HomePage() {
           <h1
             style={{
               fontFamily: fontDisplay,
-              fontSize: 88,
-              lineHeight: 0.98,
-              letterSpacing: -2.5,
+              fontSize: "clamp(40px, 9vw, 88px)",
+              lineHeight: 1,
+              letterSpacing: "-0.03em",
               margin: "0 auto",
               fontWeight: 400,
               color: P.ink,
@@ -313,7 +321,7 @@ export default async function HomePage() {
           </h1>
           <p
             style={{
-              fontSize: 19,
+              fontSize: "clamp(16px, 2vw, 19px)",
               lineHeight: 1.55,
               color: P.ink2,
               margin: "28px auto 0",
@@ -322,7 +330,7 @@ export default async function HomePage() {
             }}
           >
             Weekly check-ins for leaders. Health and capacity at a glance for admins. A simple,
-            gentle home for the people-work of life groups.
+            gentle home for the people-work of Life Groups.
           </p>
           <div style={{ display: "flex", gap: 12, marginTop: 36, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href={primaryCtaHref} style={pillPrimary}>
@@ -406,7 +414,7 @@ export default async function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
                 gap: 12,
               }}
             >
@@ -455,7 +463,7 @@ export default async function HomePage() {
             maxWidth: 1080,
             margin: "80px auto 0",
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
             gap: 1,
             background: P.line,
             border: `1px solid ${P.line}`,
@@ -506,7 +514,7 @@ export default async function HomePage() {
 
       <section
         style={{
-          padding: "72px 64px 100px",
+          padding: "clamp(48px, 7vw, 72px) clamp(20px, 5vw, 64px) clamp(64px, 9vw, 100px)",
           background: P.bgDeep,
           borderTop: `1px solid ${P.line}`,
           position: "relative",
@@ -518,8 +526,8 @@ export default async function HomePage() {
             maxWidth: 1080,
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: 80,
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "clamp(40px, 6vw, 80px)",
             alignItems: "center",
           }}
         >
@@ -542,11 +550,11 @@ export default async function HomePage() {
             <h2
               style={{
                 fontFamily: fontDisplay,
-                fontSize: 48,
+                fontSize: "clamp(30px, 5vw, 48px)",
                 lineHeight: 1.04,
                 margin: 0,
                 fontWeight: 500,
-                letterSpacing: -1.2,
+                letterSpacing: "-0.025em",
               }}
             >
               Two minutes <span style={{ fontStyle: "italic", color: P.terra }}>on the couch</span>
@@ -576,7 +584,8 @@ export default async function HomePage() {
           <div
             style={{
               justifySelf: "center",
-              width: 300,
+              width: "100%",
+              maxWidth: 300,
               background: P.ink,
               borderRadius: 36,
               padding: 10,
@@ -664,23 +673,23 @@ export default async function HomePage() {
                   </div>
                 ))}
               </div>
-              <button
-                type="button"
+              <div
+                aria-hidden="true"
                 style={{
                   width: "100%",
                   marginTop: 16,
                   background: P.terra,
                   color: P.surface,
-                  border: "none",
                   padding: "12px",
                   borderRadius: 10,
                   fontSize: 13,
                   fontFamily: fontSans,
                   fontWeight: 500,
+                  textAlign: "center",
                 }}
               >
                 Submit check-in
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -688,7 +697,7 @@ export default async function HomePage() {
 
       <footer
         style={{
-          padding: "40px 64px",
+          padding: "clamp(24px, 4vw, 40px) clamp(20px, 5vw, 64px)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
