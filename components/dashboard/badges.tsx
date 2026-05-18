@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { PBadge, type PTone } from "@/components/pastoral/atoms";
 
 export type BadgeTone = "healthy" | "watch" | "followup";
 export type BadgeLifecycle =
@@ -8,42 +8,24 @@ export type BadgeLifecycle =
   | "Restart Soon"
   | "Overdue Restart";
 
-const healthToneMap: Record<BadgeTone, string> = {
-  healthy: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  watch: "bg-amber-100 text-amber-800 border-amber-200",
-  followup: "bg-rose-100 text-rose-800 border-rose-200",
-};
-
-const lifecycleToneMap: Record<BadgeLifecycle, string> = {
-  Active: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  "Planned Pause": "bg-blue-100 text-blue-800 border-blue-200",
-  "Seasonal Break": "bg-violet-100 text-violet-800 border-violet-200",
-  "Restart Soon": "bg-amber-100 text-amber-800 border-amber-200",
-  "Overdue Restart": "bg-rose-100 text-rose-800 border-rose-200",
+const lifecycleToneMap: Record<BadgeLifecycle, PTone> = {
+  Active: "neutral",
+  "Planned Pause": "pause",
+  "Seasonal Break": "pause",
+  "Restart Soon": "watch",
+  "Overdue Restart": "followup",
 };
 
 export function HealthBadge({ tone, label }: { tone: BadgeTone; label?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-        healthToneMap[tone],
-      )}
-    >
-      {label ?? tone}
-    </span>
-  );
+  return <PBadge tone={tone}>{label ?? tone}</PBadge>;
 }
 
-export function LifecycleBadge({ status, label }: { status: BadgeLifecycle; label?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
-        lifecycleToneMap[status],
-      )}
-    >
-      {label ?? status}
-    </span>
-  );
+export function LifecycleBadge({
+  status,
+  label,
+}: {
+  status: BadgeLifecycle;
+  label?: string;
+}) {
+  return <PBadge tone={lifecycleToneMap[status]}>{label ?? status}</PBadge>;
 }

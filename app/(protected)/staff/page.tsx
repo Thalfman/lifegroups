@@ -1,4 +1,4 @@
-import { AppShell } from "@/components/layout/shell";
+import { PastoralAppShell } from "@/components/pastoral/shell";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
 import {
@@ -21,22 +21,29 @@ export default async function StaffPage() {
   const { source, data, error } = await getAdminDashboardData(client);
 
   return (
-    <AppShell
-      title="Staff Read-Only View"
-      subtitle="Ministry-wide read-only visibility for staff coordinators."
-      phaseLabel="Staff"
+    <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      eyebrow={`${data.weekLabel} · Staff view`}
+      title="The whole ministry,"
+      titleItalic="at a glance."
+      lede="Read-only visibility for staff coordinators. Mirrors the admin dashboard without the levers."
       headerSlot={
         <>
           <DataSourceBadge source={source} />
-          <UserPill name={session.profile.full_name} email={session.profile.email} role={session.profile.role} />
+          <UserPill
+            name={session.profile.full_name}
+            email={session.profile.email}
+            role={session.profile.role}
+          />
           <LogoutButton />
         </>
       }
     >
-      {source === "live" ? <ReadOnlyDataNotice /> : <FallbackDataNotice />}
-      {error ? <DashboardErrorNotice message={error} /> : null}
-      <AdminDashboard data={data} />
-    </AppShell>
+      <div style={{ display: "grid", gap: 14 }}>
+        {source === "live" ? <ReadOnlyDataNotice /> : <FallbackDataNotice />}
+        {error ? <DashboardErrorNotice message={error} /> : null}
+        <AdminDashboard data={data} />
+      </div>
+    </PastoralAppShell>
   );
 }

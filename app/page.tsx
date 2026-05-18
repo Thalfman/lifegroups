@@ -1,105 +1,11 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import { getCurrentSession } from "@/lib/auth/session";
 import { defaultLandingPathForRole } from "@/lib/auth/roles";
+import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
+import { PBadge, POrnament, PSeal } from "@/components/pastoral/atoms";
 
 export const dynamic = "force-dynamic";
-
-const P = {
-  bg: "#f5ecd9",
-  bgDeep: "#ede0c4",
-  surface: "#fbf6e8",
-  ink: "#3a2a1a",
-  ink2: "#6b5641",
-  ink3: "#9c8a6d",
-  line: "#e3d4af",
-  line2: "#ebe0c2",
-  terra: "#b85a3c",
-  terraSoft: "#f2d7c8",
-  sage: "#6a7d4f",
-  sageSoft: "#dfe4ce",
-  mustard: "#c8964a",
-  mustardSoft: "#f0dfb5",
-};
-
-const fontDisplay = "var(--font-display)";
-const fontBody = "var(--font-body)";
-const fontSans = "var(--font-sans)";
-const fontMono = "var(--font-mono)";
-
-type Tone = "neutral" | "healthy" | "watch" | "followup" | "pause";
-
-const BADGE_TONES: Record<Tone, { bg: string; fg: string; dot: string }> = {
-  neutral: { bg: P.line2, fg: P.ink2, dot: P.ink3 },
-  healthy: { bg: P.sageSoft, fg: "#3e4f29", dot: P.sage },
-  watch: { bg: P.mustardSoft, fg: "#7c5a1f", dot: P.mustard },
-  followup: { bg: P.terraSoft, fg: "#7d3621", dot: P.terra },
-  pause: { bg: "#e2dfd3", fg: "#5c5848", dot: "#8a8166" },
-};
-
-function PBadge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
-  const t = BADGE_TONES[tone];
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 10px",
-        borderRadius: 999,
-        background: t.bg,
-        color: t.fg,
-        fontSize: 11,
-        fontFamily: fontSans,
-        fontWeight: 500,
-        letterSpacing: 0.2,
-      }}
-    >
-      <span style={{ width: 5, height: 5, borderRadius: 99, background: t.dot }} />
-      {children}
-    </span>
-  );
-}
-
-function PSeal() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="15" fill={P.terra} />
-      <circle
-        cx="16"
-        cy="16"
-        r="15"
-        fill="none"
-        stroke={P.surface}
-        strokeWidth="0.5"
-        strokeDasharray="2 2"
-      />
-      <text
-        x="16"
-        y="20"
-        textAnchor="middle"
-        fill={P.surface}
-        fontFamily={fontDisplay}
-        fontSize="13"
-        fontWeight="600"
-        fontStyle="italic"
-      >
-        fv
-      </text>
-    </svg>
-  );
-}
-
-function POrnament({ w = 80, color = P.terra }: { w?: number; color?: string }) {
-  return (
-    <svg width={w} height="14" viewBox="0 0 80 14" aria-hidden="true">
-      <line x1="0" y1="7" x2="30" y2="7" stroke={color} strokeWidth="0.8" />
-      <circle cx="40" cy="7" r="3" fill="none" stroke={color} strokeWidth="0.8" />
-      <circle cx="40" cy="7" r="1" fill={color} />
-      <line x1="50" y1="7" x2="80" y2="7" stroke={color} strokeWidth="0.8" />
-    </svg>
-  );
-}
 
 const pillPrimary: CSSProperties = {
   display: "inline-flex",
