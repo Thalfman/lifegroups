@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import type { AppShellNavItem } from "@/components/layout/shell";
+import { P, fontBody } from "@/lib/pastoral";
 
-function bestMatchHref(pathname: string | null, items: AppShellNavItem[]): string | null {
+export type ShellNavItem = { href: string; label: string };
+
+function bestMatchHref(pathname: string | null, items: ShellNavItem[]): string | null {
   if (!pathname) return null;
   let bestHref: string | null = null;
   let bestScore = -1;
@@ -26,14 +27,21 @@ function bestMatchHref(pathname: string | null, items: AppShellNavItem[]): strin
   return bestHref;
 }
 
-export function SidebarNav({ items }: { items: AppShellNavItem[] }) {
+export function ShellNav({ items }: { items: ShellNavItem[] }) {
   const pathname = usePathname();
   const activeHref = bestMatchHref(pathname, items);
 
   return (
     <nav
       aria-label="Primary"
-      className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:mt-4 lg:flex-col lg:gap-0 lg:space-y-1 lg:overflow-visible lg:pb-0"
+      style={{
+        display: "flex",
+        gap: "clamp(18px, 3vw, 32px)",
+        fontFamily: fontBody,
+        fontSize: 14,
+        flexWrap: "wrap",
+        justifyContent: "center",
+      }}
     >
       {items.map((item) => {
         const active = item.href === activeHref;
@@ -42,12 +50,16 @@ export function SidebarNav({ items }: { items: AppShellNavItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors lg:shrink lg:whitespace-normal",
-              active
-                ? "bg-background text-foreground shadow-sm ring-1 ring-border lg:border-l-2 lg:border-primary lg:bg-background lg:ring-0"
-                : "text-muted-foreground hover:bg-background hover:text-foreground",
-            )}
+            style={{
+              color: active ? P.terra : P.ink2,
+              fontWeight: active ? 600 : 400,
+              fontStyle: active ? "normal" : "italic",
+              borderBottom: active ? `1.5px solid ${P.terra}` : "1.5px solid transparent",
+              paddingBottom: 18,
+              marginBottom: -19,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
           >
             {item.label}
           </Link>

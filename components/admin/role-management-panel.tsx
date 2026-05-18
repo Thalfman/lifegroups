@@ -3,12 +3,19 @@ import { DisabledAdminActionCard } from "@/components/admin/disabled-admin-actio
 
 export function RoleManagementPanel() {
   return (
-    <section className="space-y-4">
+    <section style={{ display: "grid", gap: 18 }}>
       <SectionHeader
-        title="Roles"
-        description="Promote, demote, or deactivate the admins and leaders who can sign in. Every action here is gated on a self-escalation guard and a narrow column allowlist that ships in Phase 5A.1."
+        eyebrow="Roles"
+        title="Promote, demote, deactivate"
+        description="Curate the admins and leaders who can sign in. Every action here is gated on a self-escalation guard and a narrow column allowlist that ships in Phase 5A.1."
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+        }}
+      >
         <DisabledAdminActionCard
           title="Add ministry admin"
           description="Create a new ministry_admin profile. Only super_admin will be allowed to call this action, and never against the caller's own profile."

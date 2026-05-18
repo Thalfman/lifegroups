@@ -3,12 +3,19 @@ import { DisabledAdminActionCard } from "@/components/admin/disabled-admin-actio
 
 export function GroupAssignmentPanel() {
   return (
-    <section className="space-y-4">
+    <section style={{ display: "grid", gap: 18 }}>
       <SectionHeader
-        title="Group assignments"
-        description="Place leaders and members into life groups. Each assignment writes a single allowlisted row to either group_leaders or group_memberships and is gated by a narrow INSERT RLS policy in Phase 5A.1."
+        eyebrow="Group assignments"
+        title="Place leaders and members"
+        description="Each assignment writes a single allowlisted row to either group_leaders or group_memberships and is gated by a narrow INSERT RLS policy in Phase 5A.1."
       />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+        }}
+      >
         <DisabledAdminActionCard
           title="Assign leader to group"
           description="Add a leader or co-leader to a group via group_leaders (active = true). Cannot self-assign. Only the columns group_id, profile_id, role, and active are touched."

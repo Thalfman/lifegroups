@@ -8,15 +8,22 @@ import { GroupAssignmentPanel } from "@/components/admin/group-assignment-panel"
 
 export function PeopleManagementShell() {
   return (
-    <div className="space-y-8">
+    <div style={{ display: "grid", gap: 36 }}>
       <PhaseGateNotice />
 
-      <section className="space-y-4">
+      <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          title="People"
-          description="Create the profiles and member records the rest of the app references. Profiles are app-login records; members are non-auth participant records."
+          eyebrow="People"
+          title="Profiles and members"
+          description="Profiles are app-login records; members are non-auth participant records. Both will land here once narrow writes ship."
         />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+          }}
+        >
           <DisabledAdminActionCard
             title="Add leader"
             description="Create a leader profile (role = leader). Sign-in linkage is handled through the documented Supabase Auth setup, not this form."
@@ -36,10 +43,11 @@ export function PeopleManagementShell() {
 
       <GroupAssignmentPanel />
 
-      <section className="space-y-4">
+      <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          title="Member records"
-          description="Non-auth participants tracked through the members table. Treated separately from profiles so members never appear in the role-aware sign-in surface."
+          eyebrow="Members"
+          title="Non-auth participants"
+          description="Tracked through the members table. Members never appear in the role-aware sign-in surface."
         />
         <EmptyPeopleState
           title="No member records loaded"
@@ -47,10 +55,11 @@ export function PeopleManagementShell() {
         />
       </section>
 
-      <section className="space-y-4">
+      <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          title="Audit trail"
-          description="A read-only stream of every admin write: actor, action, target, before/after. Powered by audit_events once Phase 5A.1 starts recording them."
+          eyebrow="Audit trail"
+          title="Every admin write, kept"
+          description="A read-only stream of every admin action: actor, action, target, before/after. Powered by audit_events once Phase 5A.1 starts recording them."
         />
         <AuditTrailEmptyState />
       </section>
