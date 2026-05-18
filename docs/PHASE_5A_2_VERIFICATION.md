@@ -5,11 +5,17 @@ Supabase project before declaring Phase 5A.2 verified.
 
 ## Prerequisites
 
-- Supabase project has Phase 2 schema, Phase 4 RLS, the Phase 5A.1
-  migration (`20260518050000_phase5a1_admin_people_writes.sql`), and
-  the Phase 5A.2 migration
-  (`supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`)
-  applied.
+- Supabase project has, in order:
+  - Phase 2 schema (`20260517040000_phase2_schema.sql`)
+  - Phase 4 RLS (`20260518000000_phase4_rls.sql`)
+  - Phase 5A.1 admin people writes
+    (`20260518050000_phase5a1_admin_people_writes.sql`)
+  - Phase 5A.2 admin group writes
+    (`20260518060000_phase5a2_admin_group_writes.sql`)
+  - Phase 5A.2 grants hardening
+    (`20260518070000_phase5a2_grants_hardening.sql`) — this is what
+    makes a fresh project work without the manual `grant select` step
+    that Phase 5A.1 needed.
 - A `super_admin` profile exists and is linked to a Supabase Auth user
   (Tom's account in the live environment).
 - A `ministry_admin` profile exists and is linked to a Supabase Auth
@@ -146,6 +152,41 @@ Expected: a single `audit_events_super_admin_read` policy whose USING
 clause references `auth_role() = 'super_admin'`. The old
 `audit_events_admin_read` policy should be gone.
 
+## Grants spot-check (proves no manual `grant select` is needed)
+
+```sql
+select table_name, privilege_type
+  from information_schema.role_table_grants
+ where table_schema = 'public'
+   and grantee      = 'authenticated'
+   and privilege_type = 'SELECT'
+ order by table_name;
+```
+
+Expected rows (13 tables): `app_settings`, `attendance_records`,
+`attendance_sessions`, `audit_events`, `follow_ups`, `group_health_updates`,
+`group_leaders`, `group_memberships`, `group_status_history`, `groups`,
+`guests`, `members`, `profiles`. If any of these are missing on a fresh
+project, re-run migration `20260518070000_phase5a2_grants_hardening.sql`.
+
+```sql
+select n.nspname, c.relname, c.relrowsecurity
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public'
+   and c.relkind = 'r'
+   and c.relname in (
+     'profiles','groups','group_leaders','members','group_memberships',
+     'attendance_sessions','attendance_records','guests','follow_ups',
+     'group_health_updates','group_status_history','audit_events','app_settings'
+   )
+ order by c.relname;
+```
+
+Expected: `relrowsecurity = true` on every row. RLS must stay on; the
+grants in the hardening migration are pre-RLS table privileges, not a
+bypass.
+
 ## Security grep checks (run from repo root)
 
 ```bash
@@ -164,6 +205,29 @@ Expected:
   or `lib/admin/`.
 - No `delete from public.groups` (or any hard delete) in the new
   Phase 5A.2 migration.
+
+## Preview routes
+
+- Visit `/admin-preview` and `/leader-preview` (no sign-in required) and
+  confirm both render with fallback demo data only — no Supabase writes,
+  no audit rows.
+
+## Minimal-data group creation (real-world pastoral entry)
+
+The create form is intentionally lenient so a pastor can add a group
+when they only know its name. Manually confirm:
+
+- Submit the create form with only the **name** filled in (e.g.
+  "Wednesday Westside"). A group is created with `lifecycle_status = 'active'`,
+  `health_status = 'healthy'`, every other column null. No error.
+- Submit with **name + meeting day + meeting time** filled in. The
+  card on the active roster shows the meta line; the underlying row
+  has those columns populated and the rest still null.
+- The leader name is **not** captured on the group itself yet. Leader
+  linkage happens through `/admin/people` once you have the leader's
+  email. Do **not** fake an email to satisfy a form — leave the group
+  unlinked until the real email is known. This is a documented
+  follow-up (see `docs/PHASE_5A_2_HARDENING_REPORT.md`).
 
 ## Acceptance criteria
 
