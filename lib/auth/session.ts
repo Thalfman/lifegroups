@@ -72,6 +72,7 @@ export async function requireRole(
 export const requireAdmin = () => requireRole(["super_admin", "ministry_admin"] as const);
 export const requireAdminOrStaff = () =>
   requireRole(["super_admin", "ministry_admin", "staff_viewer"] as const);
+export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
 export const requireLeader = () => requireRole(["leader", "co_leader"] as const);
 
 // Server-action variant: instead of redirecting, returns a typed result the
@@ -88,5 +89,23 @@ export async function requireAdminSession(): Promise<
     return { ok: false, error: "Your account isn't active." };
   if (session.profile.role !== "super_admin" && session.profile.role !== "ministry_admin")
     return { ok: false, error: "Only ministry admins can perform that action." };
+  return { ok: true, session: session as CurrentSession & { profile: ProfilesRow } };
+}
+
+// Server-action variant for the Phase 5A.3 super-admin-only console.
+// Mirrors requireAdminSession() above but tightens the role check to
+// super_admin alone, so role-management writes never accept a
+// ministry_admin caller.
+export async function requireSuperAdminSession(): Promise<
+  | { ok: true; session: CurrentSession & { profile: ProfilesRow } }
+  | { ok: false; error: string }
+> {
+  const session = await getCurrentSession();
+  if (!session) return { ok: false, error: "You need to sign in to do that." };
+  if (!session.profile) return { ok: false, error: "Your account isn't set up yet." };
+  if (session.profile.status !== "active")
+    return { ok: false, error: "Your account isn't active." };
+  if (session.profile.role !== "super_admin")
+    return { ok: false, error: "Only the super admin can perform that action." };
   return { ok: true, session: session as CurrentSession & { profile: ProfilesRow } };
 }

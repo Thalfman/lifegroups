@@ -254,6 +254,19 @@ export function guardAgainstSuperAdminAssignment(
   return null;
 }
 
+// staff_viewer is retained in the SQL enum and TS union for backwards
+// compatibility but is no longer a promoted product workflow. The
+// Phase 5A.3 role-change form omits it from the role select, and this
+// guard provides defense-in-depth for direct callers.
+export function guardAgainstStaffViewerAssignment(
+  payload: ChangeUserRolePayload,
+): string | null {
+  if (payload.new_role === "staff_viewer") {
+    return "staff_viewer is deprecated and can't be assigned from the app.";
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Phase 5A.2 — Group management payloads
 // ---------------------------------------------------------------------------

@@ -4,27 +4,18 @@ import { EditGroupToggle } from "@/components/admin/forms/group-edit-form";
 import { CloseGroupButton } from "@/components/admin/forms/close-group-button";
 import { ReopenGroupButton } from "@/components/admin/forms/reopen-group-button";
 import { Phase5A2Notice } from "@/components/admin/phase-5a2-notice";
-import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import { PBadge } from "@/components/pastoral/atoms";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import type {
-  AuditEventsRow,
-  GroupsRow,
-  MembersRow,
-  ProfilesRow,
-} from "@/types/database";
+import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 
 export type GroupManagementData = {
   groups: GroupsRow[];
   profiles: ProfilesRow[];
   members: MembersRow[];
-  auditEvents: AuditEventsRow[];
-  showAuditTrail: boolean;
   errors: {
     groups: string | null;
     profiles: string | null;
     members: string | null;
-    auditEvents: string | null;
   };
 };
 
@@ -54,18 +45,11 @@ function groupMetaLine(group: GroupsRow): string {
 }
 
 export function GroupManagementShell({ data }: { data: GroupManagementData }) {
-  const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
-  const membersById = new Map(data.members.map((m) => [m.id, m]));
-  const groupsById = new Map(data.groups.map((g) => [g.id, g]));
-
   const activeGroups = data.groups.filter((g) => g.lifecycle_status !== "closed");
   const closedGroups = data.groups.filter((g) => g.lifecycle_status === "closed");
 
   const anyError =
-    data.errors.groups ||
-    data.errors.profiles ||
-    data.errors.members ||
-    (data.showAuditTrail ? data.errors.auditEvents : null);
+    data.errors.groups || data.errors.profiles || data.errors.members;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
@@ -141,16 +125,6 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
             ))}
           </ul>
         </section>
-      ) : null}
-
-      {data.showAuditTrail ? (
-        <AuditTrailSection
-          events={data.auditEvents}
-          profilesById={profilesById}
-          membersById={membersById}
-          groupsById={groupsById}
-          error={data.errors.auditEvents}
-        />
       ) : null}
     </div>
   );

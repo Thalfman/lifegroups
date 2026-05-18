@@ -12,62 +12,46 @@ import {
   fetchAllGroups,
   fetchAllMembers,
   fetchProfilesForAdmin,
-  fetchRecentAuditEvents,
-  type ReadResult,
 } from "@/lib/supabase/read-models";
-import type { AuditEventsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_DATA = (showAuditTrail: boolean): GroupManagementData => ({
+const EMPTY_DATA: GroupManagementData = {
   groups: [],
   profiles: [],
   members: [],
-  auditEvents: [],
-  showAuditTrail,
   errors: {
     groups: "Supabase is not configured in this environment.",
     profiles: null,
     members: null,
-    auditEvents: null,
   },
-});
+};
 
-async function loadData(showAuditTrail: boolean): Promise<GroupManagementData> {
+async function loadData(): Promise<GroupManagementData> {
   const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_DATA(showAuditTrail);
+  if (!client) return EMPTY_DATA;
 
-  const [groupsResult, profilesResult, membersResult, auditResult] = await Promise.all([
+  const [groupsResult, profilesResult, membersResult] = await Promise.all([
     fetchAllGroups(client),
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllMembers(client, { statuses: ["active", "inactive"] }),
-    showAuditTrail
-      ? fetchRecentAuditEvents(client, {
-          limit: 25,
-          actionsLike: ["admin.%", "leader.%"],
-        })
-      : Promise.resolve<ReadResult<AuditEventsRow[]>>({ data: [], error: null }),
   ]);
 
   return {
     groups: groupsResult.data ?? [],
     profiles: profilesResult.data ?? [],
     members: membersResult.data ?? [],
-    auditEvents: auditResult.data ?? [],
-    showAuditTrail,
     errors: {
       groups: groupsResult.error?.message ?? null,
       profiles: profilesResult.error?.message ?? null,
       members: membersResult.error?.message ?? null,
-      auditEvents: auditResult.error?.message ?? null,
     },
   };
 }
 
 export default async function AdminGroupsPage() {
   const session = await requireAdmin();
-  const showAuditTrail = session.profile.role === "super_admin";
-  const data = await loadData(showAuditTrail);
+  const data = await loadData();
 
   return (
     <PastoralAppShell

@@ -14,7 +14,7 @@
 //   * does no validation of its own — the action layer validates first.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import type { RoleInGroup } from "@/types/enums";
+import type { RoleInGroup, UserRole } from "@/types/enums";
 
 type RpcResult = { data: string | null; error: { message: string } | null };
 
@@ -107,5 +107,15 @@ export async function rpcAdminReopenGroup(
   args: { p_group_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_reopen_group" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+// Phase 5A.3 super admin role management RPC.
+
+export async function rpcSuperAdminUpdateProfileRole(
+  client: AppSupabaseClient,
+  args: { p_profile_id: string; p_new_role: UserRole },
+): Promise<RpcResult> {
+  const r = await client.rpc("super_admin_update_profile_role" as never, args as never);
   return { data: (r.data as string | null) ?? null, error: r.error };
 }

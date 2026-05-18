@@ -238,19 +238,14 @@ export async function adminDeactivateMember(
   return actionOk({ id: data });
 }
 
-// ----- Out of scope for Phase 5A.1 ----------------------------------------
-// Kept as throwing stubs so any stale import surface keeps compiling, but
-// these workflows have no UI in Phase 5A.1. They will not ship until
-// multi-admin management is in scope; the app must never create a second
-// admin or change a user's role from within itself.
+// ----- Out of scope for Phase 5A.1 / 5A.3 ---------------------------------
+// adminChangeUserRole has been removed in Phase 5A.3 -- the live role-change
+// workflow now lives at app/(protected)/admin/super-admin/actions.ts. The
+// remaining stub stays here for out-of-scope workflows that no UI hits today.
 
 const NOT_ENABLED =
   "This admin workflow is intentionally out of scope for Phase 5A.1.";
 
 export async function adminCreateMinistryAdmin(_input: unknown): Promise<never> {
-  throw new Error(NOT_ENABLED);
-}
-
-export async function adminChangeUserRole(_input: unknown): Promise<never> {
   throw new Error(NOT_ENABLED);
 }
