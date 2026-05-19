@@ -322,7 +322,9 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
                 fontWeight: 500,
               }}
             >
-              No follow-ups match these filters
+              {followUps.length === 0
+                ? "No follow-ups yet"
+                : "No follow-ups match these filters"}
             </div>
             <p
               style={{
@@ -333,7 +335,9 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
                 lineHeight: 1.5,
               }}
             >
-              Adjust the filters above — or add a new follow-up at the top.
+              {followUps.length === 0
+                ? "Create the first follow-up using the form above. Tie it to a guest, member, group, or leader — and add a leader-visible note if helpful."
+                : "Adjust the filters above — or add a new follow-up at the top."}
             </p>
           </div>
         ) : (

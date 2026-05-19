@@ -13,6 +13,15 @@ import type {
   FollowUpStatus,
 } from "@/types/enums";
 
+/**
+ * Leader-facing follow-up view model. Privacy boundary: this type
+ * intentionally exposes only `leaderVisibleNote` and has **no**
+ * `adminPrivateNote` / `admin_private_note` field. The mapping from
+ * `LeaderFollowUpRow` to this shape in `app/(protected)/leader/page.tsx`
+ * never reads `admin_private_note`, and the upstream reader
+ * (`fetchFollowUpsForLeader`) does not select the column. Keep this type
+ * narrow — see `docs/PHASE_5C_1_PRIVACY_HARDENING.md`.
+ */
 export type LeaderFollowUpItem = {
   id: string;
   title: string;
