@@ -22,6 +22,8 @@ export interface GroupsRow {
   description: string | null;
   meeting_day: string | null;
   meeting_time: string | null;
+  meeting_frequency: E.MeetingFrequency;
+  meeting_week_parity: E.MeetingWeekParity | null;
   location_area: string | null;
   address_optional: string | null;
   capacity: number | null;
@@ -287,6 +289,8 @@ export interface Database {
           p_location_area: string | null;
           p_address_optional: string | null;
           p_capacity: number | null;
+          p_meeting_frequency: E.MeetingFrequency;
+          p_meeting_week_parity: E.MeetingWeekParity | null;
         };
         Returns: UUID;
       };
@@ -300,6 +304,8 @@ export interface Database {
           p_location_area: string | null;
           p_address_optional: string | null;
           p_capacity: number | null;
+          p_meeting_frequency: E.MeetingFrequency;
+          p_meeting_week_parity: E.MeetingWeekParity | null;
         };
         Returns: UUID;
       };

@@ -7,11 +7,14 @@ import {
   errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
+  fieldSelectStyle,
   successTextStyle,
 } from "./field-styles";
-import { P, fontBody } from "@/lib/pastoral";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { MEETING_DAYS_ORDERED, MEETING_FREQUENCY_OPTIONS, MEETING_PARITY_OPTIONS } from "./meeting-schedule-options";
 import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupsRow } from "@/types/database";
+import type { MeetingFrequency } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
 
@@ -34,6 +37,9 @@ export function GroupEditForm({
     adminUpdateGroup,
     undefined,
   );
+  const [frequency, setFrequency] = useState<MeetingFrequency>(group.meeting_frequency);
+
+  const showParity = frequency === "biweekly";
 
   return (
     <form
@@ -73,14 +79,19 @@ export function GroupEditForm({
           <label htmlFor={`edit-meeting_day-${group.id}`} style={fieldLabelStyle}>
             Meeting day
           </label>
-          <input
+          <select
             id={`edit-meeting_day-${group.id}`}
             name="meeting_day"
-            type="text"
             defaultValue={group.meeting_day ?? ""}
-            style={fieldInputStyle}
-            placeholder="Wednesday"
-          />
+            style={fieldSelectStyle}
+          >
+            <option value="">Not set</option>
+            {MEETING_DAYS_ORDERED.map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor={`edit-meeting_time-${group.id}`} style={fieldLabelStyle}>
@@ -94,6 +105,58 @@ export function GroupEditForm({
             style={fieldInputStyle}
           />
         </div>
+        <div>
+          <label htmlFor={`edit-meeting_frequency-${group.id}`} style={fieldLabelStyle}>
+            Meeting frequency
+          </label>
+          <select
+            id={`edit-meeting_frequency-${group.id}`}
+            name="meeting_frequency"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
+            style={fieldSelectStyle}
+          >
+            {MEETING_FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {showParity ? (
+          <div>
+            <label
+              htmlFor={`edit-meeting_week_parity-${group.id}`}
+              style={fieldLabelStyle}
+            >
+              Bi-weekly parity
+            </label>
+            <select
+              id={`edit-meeting_week_parity-${group.id}`}
+              name="meeting_week_parity"
+              defaultValue={group.meeting_week_parity ?? ""}
+              style={fieldSelectStyle}
+            >
+              <option value="">Choose week parity</option>
+              {MEETING_PARITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink3,
+                margin: "6px 0 0",
+                lineHeight: 1.4,
+              }}
+            >
+              Bi-weekly groups meet on odd or even calendar week numbers.
+            </p>
+          </div>
+        ) : null}
         <div>
           <label htmlFor={`edit-location_area-${group.id}`} style={fieldLabelStyle}>
             Location area
@@ -149,7 +212,16 @@ export function GroupEditForm({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          paddingTop: 4,
+          borderTop: `1px solid ${P.line}`,
+          marginTop: 2,
+        }}
+      >
         <PButton type="submit" tone="terra" size="sm" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
         </PButton>
@@ -164,6 +236,19 @@ export function GroupEditForm({
             Cancel
           </PButton>
         ) : null}
+        <span
+          style={{
+            fontFamily: fontSans,
+            fontSize: 11,
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            color: P.ink3,
+            alignSelf: "center",
+            marginLeft: "auto",
+          }}
+        >
+          Lifecycle actions move below
+        </span>
       </div>
 
       {state && !state.ok ? (
@@ -179,29 +264,5 @@ export function GroupEditForm({
         <p style={successTextStyle}>Group updated.</p>
       ) : null}
     </form>
-  );
-}
-
-// Convenience toggle wrapper: shows an "Edit" button until clicked, then
-// renders the inline edit form. Keeps the group list compact by default.
-export function EditGroupToggle({ group }: { group: GroupsRow }) {
-  const [open, setOpen] = useState(false);
-
-  if (!open) {
-    return (
-      <PButton type="button" tone="ghost" size="sm" onClick={() => setOpen(true)}>
-        Edit
-      </PButton>
-    );
-  }
-  return (
-    <div
-      style={{
-        gridColumn: "1 / -1",
-        fontFamily: fontBody,
-      }}
-    >
-      <GroupEditForm group={group} onClose={() => setOpen(false)} />
-    </div>
   );
 }

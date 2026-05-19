@@ -2,7 +2,7 @@ import { SectionHeader } from "@/components/layout/shell";
 import { Phase5A4Notice } from "@/components/admin/phase-5a4-notice";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
-import { ReopenGroupButton } from "@/components/admin/forms/reopen-group-button";
+import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type {
@@ -82,9 +82,9 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
       {closedGroups.length > 0 ? (
         <section style={{ display: "grid", gap: 18 }}>
           <SectionHeader
-            eyebrow="Closed groups"
+            eyebrow="Archived groups"
             title="The archive"
-            description="These groups are off the active roster but their record is preserved. Reopen one to bring it back."
+            description="These groups are off the active roster but everything's preserved. Restore one to bring it back."
           />
           <ul style={listResetStyle}>
             {closedGroups.map((group) => (
@@ -136,11 +136,11 @@ function ClosedGroupCard({ group }: { group: GroupsRow }) {
           }}
         >
           {group.closed_at
-            ? `Closed ${new Date(group.closed_at).toLocaleDateString()}`
-            : "Closed"}
+            ? `Archived ${new Date(group.closed_at).toLocaleDateString()}`
+            : "Archived"}
         </div>
       </div>
-      <ReopenGroupButton groupId={group.id} groupName={group.name} />
+      <RestoreGroupButton groupId={group.id} groupName={group.name} />
     </article>
   );
 }

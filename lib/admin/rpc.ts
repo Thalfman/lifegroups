@@ -19,6 +19,8 @@ import type {
   FollowUpStatus,
   FollowUpType,
   GuestPipelineStage,
+  MeetingFrequency,
+  MeetingWeekParity,
   RoleInGroup,
   UserRole,
 } from "@/types/enums";
@@ -83,6 +85,8 @@ export type GroupRpcArgs = {
   p_location_area: string | null;
   p_address_optional: string | null;
   p_capacity: number | null;
+  p_meeting_frequency: MeetingFrequency;
+  p_meeting_week_parity: MeetingWeekParity | null;
 };
 
 export async function rpcAdminCreateGroup(

@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CloseGroupButton } from "@/components/admin/forms/close-group-button";
-import { EditGroupToggle } from "@/components/admin/forms/group-edit-form";
+import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
+import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
+import { MEETING_DAYS_ORDERED } from "@/components/admin/forms/meeting-schedule-options";
+import { PButton } from "@/components/pastoral/button";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { mapHealthToBadge } from "@/lib/dashboard/badge-map";
 import { healthStatusLabel, lifecycleStatusLabel } from "@/lib/dashboard/labels";
@@ -94,15 +96,6 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     [props.groupMetricSettings],
   );
 
-  const dayOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const g of props.groups) {
-      const d = g.meeting_day?.trim();
-      if (d) set.add(d);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [props.groups]);
-
   const trimmed = query.trim().toLowerCase();
 
   const filterFn = (g: GroupsRow): boolean => {
@@ -137,7 +130,6 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         lifecycleFilter={lifecycleFilter}
         healthFilter={healthFilter}
         dayFilter={dayFilter}
-        dayOptions={dayOptions}
         onQueryChange={setQuery}
         onLifecycleFilterChange={setLifecycleFilter}
         onHealthFilterChange={setHealthFilter}
@@ -201,7 +193,6 @@ function FilterBar({
   lifecycleFilter,
   healthFilter,
   dayFilter,
-  dayOptions,
   onQueryChange,
   onLifecycleFilterChange,
   onHealthFilterChange,
@@ -211,7 +202,6 @@ function FilterBar({
   lifecycleFilter: LifecycleFilter;
   healthFilter: HealthFilter;
   dayFilter: string;
-  dayOptions: string[];
   onQueryChange: (v: string) => void;
   onLifecycleFilterChange: (v: LifecycleFilter) => void;
   onHealthFilterChange: (v: HealthFilter) => void;
@@ -254,7 +244,7 @@ function FilterBar({
         style={selectStyle}
       >
         <option value="active">Active</option>
-        <option value="closed">Closed</option>
+        <option value="closed">Archived</option>
         <option value="all">All lifecycle</option>
       </select>
       <select
@@ -280,7 +270,7 @@ function FilterBar({
         style={selectStyle}
       >
         <option value="all">Any day</option>
-        {dayOptions.map((d) => (
+        {MEETING_DAYS_ORDERED.map((d) => (
           <option key={d} value={d}>
             {d}
           </option>
@@ -323,6 +313,11 @@ function GroupCard({
   defaults: MetricDefaults;
 }) {
   const isClosed = group.lifecycle_status === "closed";
+  // The edit panel owns the entire card body while open. We lift this state
+  // out of the form so the card header can drop the Archive chip while
+  // editing — Archive sitting next to Cancel was the main "Close = cancel?"
+  // confusion in the previous UX.
+  const [editing, setEditing] = useState(false);
   const effectiveHealth = effectiveHealthStatus(group, override);
   const cap = effectiveCapacity(group, override, defaults);
   const isCapacityUnknown = unknownCapacity(group, override, defaults);
@@ -402,17 +397,34 @@ function GroupCard({
             {metaLine(group)}
           </div>
         </div>
-        {!isClosed ? (
+        {!isClosed && !editing ? (
           <div
             style={{
               display: "flex",
-              gap: 8,
+              alignItems: "center",
+              gap: 14,
               flexWrap: "wrap",
               justifyContent: "flex-end",
             }}
           >
-            <EditGroupToggle group={group} />
-            <CloseGroupButton groupId={group.id} groupName={group.name} />
+            <PButton
+              type="button"
+              tone="ghost"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </PButton>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 1,
+                height: 24,
+                background: P.line,
+                display: "inline-block",
+              }}
+            />
+            <ArchiveGroupButton groupId={group.id} groupName={group.name} />
           </div>
         ) : null}
       </header>
@@ -463,6 +475,46 @@ function GroupCard({
         >
           {group.description}
         </p>
+      ) : null}
+
+      {editing ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <GroupEditForm group={group} onClose={() => setEditing(false)} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: `1px dashed ${P.line}`,
+              background: P.bg,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontSans,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: P.ink3,
+                fontWeight: 600,
+              }}
+            >
+              Lifecycle
+            </span>
+            <span
+              style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}
+            >
+              Archiving takes the group off the active roster. It&rsquo;s
+              reversible — the record stays and you can restore it later.
+            </span>
+            <div style={{ marginLeft: "auto" }}>
+              <ArchiveGroupButton groupId={group.id} groupName={group.name} />
+            </div>
+          </div>
+        </div>
       ) : null}
     </article>
   );

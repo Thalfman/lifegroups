@@ -10,3 +10,5 @@ export type GuestPipelineStage = 'new' | 'contacted' | 'interested' | 'assigned'
 export type FollowUpType = 'attendance' | 'guest' | 'leader' | 'capacity' | 'pause' | 'care' | 'admin';
 export type FollowUpStatus = 'open' | 'in_progress' | 'done' | 'snoozed';
 export type FollowUpPriority = 'low' | 'normal' | 'high';
+export type MeetingFrequency = 'weekly' | 'biweekly' | 'monthly';
+export type MeetingWeekParity = 'odd' | 'even';

@@ -8,7 +8,10 @@ import type { ActionResult } from "@/lib/admin/action-result";
 
 type State = ActionResult<{ id: string }> | undefined;
 
-export function ReopenGroupButton({
+// Restores a previously archived group via the existing reopen RPC. Pure
+// UI vocabulary swap from "Reopen" — the lifecycle_status enum value
+// returns to 'active' as before.
+export function RestoreGroupButton({
   groupId,
   groupName,
 }: {
@@ -20,12 +23,12 @@ export function ReopenGroupButton({
     undefined,
   );
 
-  function confirmReopen(e: React.FormEvent<HTMLFormElement>) {
+  function confirmRestore(e: React.FormEvent<HTMLFormElement>) {
     if (
       !window.confirm(
         groupName
-          ? `Reopen ${groupName}? It'll move back to the active roster.`
-          : "Reopen this group? It'll move back to the active roster.",
+          ? `Restore ${groupName}? It'll move back to the active roster.`
+          : "Restore this group? It'll move back to the active roster.",
       )
     ) {
       e.preventDefault();
@@ -34,10 +37,10 @@ export function ReopenGroupButton({
 
   return (
     <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
-      <form action={formAction} onSubmit={confirmReopen}>
+      <form action={formAction} onSubmit={confirmRestore}>
         <input type="hidden" name="group_id" value={groupId} />
         <PButton type="submit" tone="terra" size="sm" disabled={pending}>
-          {pending ? "Reopening…" : "Reopen group"}
+          {pending ? "Restoring…" : "Restore group"}
         </PButton>
       </form>
       {state && !state.ok ? <p style={errorTextStyle}>{state.errors[0]}</p> : null}
