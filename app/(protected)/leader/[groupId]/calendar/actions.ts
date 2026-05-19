@@ -39,6 +39,11 @@ function payloadFromInput(input: unknown): Record<string, unknown> {
 
 function revalidateLeaderCalendar(groupId: string): void {
   revalidatePath(`/leader/${groupId}/calendar`);
+  // The check-in page reads calendar events to compute the due-date
+  // label / OFF-week suppression. Without revalidating this path,
+  // marking a week OFF here can leave a stale "due Tuesday 7pm" on
+  // the check-in screen until the next full reload.
+  revalidatePath(`/leader/${groupId}/checkin`);
   revalidatePath("/leader");
 }
 

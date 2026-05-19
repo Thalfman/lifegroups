@@ -453,6 +453,15 @@ export async function fetchAdminWeeklyCheckInReview(
     }),
   ]);
 
+  // Fail closed on calendar fetch errors. The admin triage surface
+  // partitions rows into missing/overdue, which is calculated from the
+  // calendar-aware due result. If we silently dropped overrides on a
+  // failed fetch, OFF / cancelled weeks would surface as overdue and
+  // mislead the admin. Other read errors are still collected on the
+  // errors record because the rest of the surface (lifecycle, leader
+  // names, session counts) can still render meaningfully without them.
+  if (calendarEventsResult.error) throw calendarEventsResult.error;
+
   const errors: WeeklyReviewErrors = { ...EMPTY_WEEKLY_ERRORS };
   errors.groups = groupsResult.error?.message ?? null;
   errors.leaders = leadersResult.error?.message ?? null;
@@ -462,7 +471,6 @@ export async function fetchAdminWeeklyCheckInReview(
   errors.settings =
     metricDefaultsResult.error?.message ??
     metricSettingsResult.error?.message ??
-    calendarEventsResult.error?.message ??
     null;
 
   const groups = (groupsResult.data ?? []).filter(

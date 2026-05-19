@@ -42,6 +42,11 @@ function revalidateAdminCalendar(groupId: string): void {
   revalidatePath("/admin/groups");
   revalidatePath("/admin");
   revalidatePath("/admin/check-ins");
+  // The per-group check-in detail surface reads calendar events for the
+  // selected week, so admin calendar writes must invalidate that path
+  // too -- otherwise marking a week OFF here can leave a stale "due"
+  // state on /admin/check-ins/[groupId] until the next full reload.
+  revalidatePath(`/admin/check-ins/${groupId}`);
 }
 
 export async function adminCreateCalendarEvent(

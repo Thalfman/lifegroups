@@ -241,6 +241,13 @@ export type CalendarEventReadOptions = {
   archivedOnly?: boolean; // when true, returns only archived rows
 };
 
+// Match the fetchAttendanceRecordsForSessions defensive cap so a
+// week-wide admin batch (events across all groups) can't silently
+// truncate at PostgREST's default 1000-row cap. The override resolver
+// depends on a *complete* per-group event set -- truncation would
+// produce some groups evaluated as if they had no calendar override.
+const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
+
 export async function fetchGroupCalendarEvents(
   client: ReadClient,
   options: CalendarEventReadOptions = {},
@@ -262,6 +269,7 @@ export async function fetchGroupCalendarEvents(
   } else if (!options.includeArchived) {
     query = query.is("archived_at", null);
   }
+  query = query.range(0, CALENDAR_EVENTS_PAGE_LIMIT - 1);
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
   return { data: data ?? [], error: null };
