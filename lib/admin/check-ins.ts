@@ -93,6 +93,10 @@ export type GroupReviewRow = {
   dueLabel: string | null;
   dueRelative: string | null;
   isOverdue: boolean;
+  // False for bi-weekly groups in their off-parity week; suppresses the
+  // "Missing" badge so the review surface doesn't accuse a group of
+  // missing a check-in for a week it wasn't scheduled to meet.
+  isScheduledThisWeek: boolean;
 };
 
 export type WeeklyReviewSummary = {
@@ -372,8 +376,13 @@ function leaderNamesByGroup(
 //   2. Active with follow-up needed
 //   3. Everything else by group name
 function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
-  const aMissing = a.sessionStatus === "missing" && a.isActive ? 0 : 1;
-  const bMissing = b.sessionStatus === "missing" && b.isActive ? 0 : 1;
+  // Only sort a row to the top as "missing" if it was actually scheduled
+  // to meet this week. Off-parity bi-weekly groups stay in the body of
+  // the list.
+  const aMissing =
+    a.sessionStatus === "missing" && a.isActive && a.isScheduledThisWeek ? 0 : 1;
+  const bMissing =
+    b.sessionStatus === "missing" && b.isActive && b.isScheduledThisWeek ? 0 : 1;
   if (aMissing !== bMissing) return aMissing - bMissing;
   const aFollowUp = a.followUpNeeded ? 0 : 1;
   const bFollowUp = b.followUpNeeded ? 0 : 1;
@@ -468,9 +477,15 @@ export async function fetchAdminWeeklyCheckInReview(
     const submitterName =
       session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
     const dueResult = computeCheckInDue({
-      group: { meetingDay: g.meeting_day, meetingTime: g.meeting_time },
+      group: {
+        meetingDay: g.meeting_day,
+        meetingTime: g.meeting_time,
+        meetingFrequency: g.meeting_frequency,
+        meetingWeekParity: g.meeting_week_parity,
+      },
       override: metricSettingsByGroup.get(g.id) ?? null,
       defaults,
+      meetingWeek,
       now,
     });
     const isSubmittedSession =
@@ -497,6 +512,7 @@ export async function fetchAdminWeeklyCheckInReview(
       // (2) the leader hasn't already submitted. did_not_meet and
       // planned_pause count as "in" for this purpose.
       isOverdue: dueResult.isOverdue && !isSubmittedSession,
+      isScheduledThisWeek: dueResult.isScheduledThisWeek,
     };
   });
 
@@ -519,7 +535,11 @@ export async function fetchAdminWeeklyCheckInReview(
         summary.plannedPause++;
         break;
       case "missing":
-        summary.missing++;
+        // Only count a missing session toward the "Missing" tile when
+        // the group was actually scheduled to meet this week. Bi-weekly
+        // off-parity groups otherwise inflate the missing count for a
+        // week they were never expected to check in.
+        if (row.isScheduledThisWeek) summary.missing++;
         break;
     }
   }

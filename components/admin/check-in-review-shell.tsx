@@ -37,7 +37,10 @@ function meetingLine(day: string | null, time: string | null): string | null {
   return null;
 }
 
-function statusBadge(status: SessionReviewStatus) {
+function statusBadge(
+  status: SessionReviewStatus,
+  isScheduledThisWeek: boolean,
+) {
   switch (status) {
     case "submitted":
       return <PBadge tone="healthy">Submitted</PBadge>;
@@ -48,6 +51,16 @@ function statusBadge(status: SessionReviewStatus) {
         </PBadge>
       );
     case "missing":
+      // Bi-weekly off-parity groups shouldn't be accused of missing a
+      // check-in for a week they weren't scheduled to meet. Surface them
+      // as "Off-week" instead so admins know nothing is broken.
+      if (!isScheduledThisWeek) {
+        return (
+          <PBadge tone="neutral" outline>
+            Off-week
+          </PBadge>
+        );
+      }
       return <PBadge tone="followup">Missing</PBadge>;
     case "did_not_meet":
       return <PBadge tone="neutral">Did not meet</PBadge>;
@@ -205,7 +218,7 @@ function ReviewCard({
           .join(" · ")
       : null;
   const highlight =
-    row.sessionStatus === "missing" && row.isActive
+    row.sessionStatus === "missing" && row.isActive && row.isScheduledThisWeek
       ? { borderColor: P.terra, background: P.terraSoft }
       : row.followUpNeeded
         ? { borderColor: P.mustard, background: P.surface }
@@ -251,7 +264,7 @@ function ReviewCard({
             >
               {row.groupName}
             </h3>
-            {statusBadge(row.sessionStatus)}
+            {statusBadge(row.sessionStatus, row.isScheduledThisWeek)}
             {lifecycleBadge(row)}
             {row.followUpNeeded ? (
               <PBadge tone="followup">Follow-up needed</PBadge>
@@ -307,6 +320,19 @@ function ReviewCard({
                 ? `Overdue · was due ${row.dueLabel}`
                 : `Check-in due ${row.dueLabel}`}
               {row.dueRelative ? ` · ${row.dueRelative}` : ""}
+            </div>
+          ) : !row.isScheduledThisWeek && row.isActive ? (
+            <div
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12.5,
+                color: P.ink3,
+                marginTop: 4,
+                fontStyle: "italic",
+              }}
+            >
+              Not scheduled this week &mdash; bi-weekly off-parity or
+              monthly cadence.
             </div>
           ) : null}
         </div>

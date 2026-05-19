@@ -137,9 +137,20 @@ export default async function CheckInPage({
     ? BUILT_IN_METRIC_DEFAULTS
     : decodeMetricDefaults(metricDefaultsResult.data ?? null);
   const dueResult = computeCheckInDue({
-    group: { meetingDay: group.meeting_day, meetingTime: group.meeting_time },
+    group: {
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      meetingFrequency: group.meeting_frequency,
+      meetingWeekParity: group.meeting_week_parity,
+    },
+    // Per-group offset overrides live on group_metric_settings (admin-only
+    // RLS), so the leader workflow always uses the global default.
     override: null,
     defaults: metricDefaults,
+    // Anchor due-date math to the week the leader is checking in for
+    // (the same `meetingWeek` we hand to the form) so a bi-weekly group's
+    // parity check is judged against this week, not whatever "now" is.
+    meetingWeek,
   });
   const dueLabel = formatCheckInDueLabel(dueResult.due);
   const dueRelative = formatCheckInDueRelative(dueResult);
