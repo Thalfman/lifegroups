@@ -10,11 +10,23 @@ type SearchParams = Promise<{ code?: string | string[] }>;
 
 // Supabase password-recovery emails send the user to this page with a
 // `?code=...` PKCE param. We exchange it for a recovery session here so
-// the form's server action sees an authenticated user.
+// the form's server action sees an authenticated user. PKCE codes are
+// single-use, so we check for an existing session first — that keeps a
+// refresh (with the still-present ?code= in the URL) from invalidating
+// a session we already established.
 async function maybeExchangeCode(code: string | undefined): Promise<string | null> {
-  if (!code) return null;
   const client = await createSupabaseServerClient();
   if (!client) return "Password reset is not configured on this deployment.";
+
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (user) return null;
+
+  if (!code) {
+    return "No reset code provided. Request a new link from Forgot password.";
+  }
+
   const { error } = await client.auth.exchangeCodeForSession(code);
   if (error) {
     return "Your reset link has expired or was already used. Request a new one from Forgot password.";
