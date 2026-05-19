@@ -1,17 +1,25 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateGroup } from "@/app/(protected)/admin/groups/actions";
 import {
   errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
+  fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
   successTextStyle,
 } from "./field-styles";
+import { P, fontBody } from "@/lib/pastoral";
+import {
+  MEETING_DAYS_ORDERED,
+  MEETING_FREQUENCY_OPTIONS,
+  MEETING_PARITY_OPTIONS,
+} from "./meeting-schedule-options";
 import type { ActionResult } from "@/lib/admin/action-result";
+import type { MeetingFrequency } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
 
@@ -21,10 +29,16 @@ export function GroupCreateForm() {
     undefined,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
 
   useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
+    if (state?.ok) {
+      formRef.current?.reset();
+      setFrequency("weekly");
+    }
   }, [state]);
+
+  const showParity = frequency === "biweekly";
 
   return (
     <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
@@ -51,14 +65,19 @@ export function GroupCreateForm() {
           <label htmlFor="group-meeting_day" style={fieldLabelStyle}>
             Meeting day (optional)
           </label>
-          <input
+          <select
             id="group-meeting_day"
             name="meeting_day"
-            type="text"
-            autoComplete="off"
-            style={fieldInputStyle}
-            placeholder="Wednesday"
-          />
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
+            <option value="">Not set</option>
+            {MEETING_DAYS_ORDERED.map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="group-meeting_time" style={fieldLabelStyle}>
@@ -72,6 +91,55 @@ export function GroupCreateForm() {
             style={fieldInputStyle}
           />
         </div>
+        <div>
+          <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
+            Meeting frequency
+          </label>
+          <select
+            id="group-meeting_frequency"
+            name="meeting_frequency"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
+            style={fieldSelectStyle}
+          >
+            {MEETING_FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {showParity ? (
+          <div>
+            <label htmlFor="group-meeting_week_parity" style={fieldLabelStyle}>
+              Bi-weekly parity
+            </label>
+            <select
+              id="group-meeting_week_parity"
+              name="meeting_week_parity"
+              defaultValue=""
+              style={fieldSelectStyle}
+            >
+              <option value="">Choose week parity</option>
+              {MEETING_PARITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink3,
+                margin: "6px 0 0",
+                lineHeight: 1.4,
+              }}
+            >
+              Bi-weekly groups meet on odd or even calendar week numbers.
+            </p>
+          </div>
+        ) : null}
         <div>
           <label htmlFor="group-location_area" style={fieldLabelStyle}>
             Location area (optional)

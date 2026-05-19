@@ -104,7 +104,7 @@ export default async function AdminGroupsPage() {
       eyebrow="Phase 5A.4 · Manage groups"
       title="Every Life Group,"
       titleItalic="held in view."
-      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it; closed groups stay in the record and can be reopened."
+      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it; archived groups stay in the record and can be restored."
       headerSlot={
         <>
           <UserPill

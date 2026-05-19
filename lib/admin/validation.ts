@@ -3,6 +3,8 @@ import type {
   FollowUpStatus,
   FollowUpType,
   GuestPipelineStage,
+  MeetingFrequency,
+  MeetingWeekParity,
   RoleInGroup,
   UserRole,
 } from "@/types/enums";
@@ -307,11 +309,46 @@ function readOptionalCapacity(value: unknown): number | undefined {
   return Number.NaN;
 }
 
+// Phase 5A.5 canonical meeting schedule vocabularies. Stored verbatim in
+// `public.groups.meeting_day` (Capitalized day name) and as Postgres enum
+// values for frequency / parity. The DB also enforces these via CHECK +
+// enum constraints; the TS validation layer surfaces friendlier errors.
+export const MEETING_DAYS: ReadonlySet<string> = new Set([
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+]);
+
+const MEETING_FREQUENCIES: ReadonlySet<MeetingFrequency> = new Set([
+  "weekly",
+  "biweekly",
+  "monthly",
+]);
+
+const MEETING_WEEK_PARITIES: ReadonlySet<MeetingWeekParity> = new Set([
+  "odd",
+  "even",
+]);
+
+function isMeetingFrequency(value: unknown): value is MeetingFrequency {
+  return typeof value === "string" && MEETING_FREQUENCIES.has(value as MeetingFrequency);
+}
+
+function isMeetingWeekParity(value: unknown): value is MeetingWeekParity {
+  return typeof value === "string" && MEETING_WEEK_PARITIES.has(value as MeetingWeekParity);
+}
+
 export type GroupWritablePayload = {
   name: string;
   description?: string;
   meeting_day?: string;
   meeting_time?: string;
+  meeting_frequency: MeetingFrequency;
+  meeting_week_parity: MeetingWeekParity | null;
   location_area?: string;
   address_optional?: string;
   capacity?: number;
@@ -331,12 +368,40 @@ function validateGroupWritablePayload(
   const addressOptional = readOptionalString(input.address_optional);
   const capacity = readOptionalCapacity(input.capacity);
 
+  // Frequency defaults to 'weekly' when missing so the minimal-data "create
+  // a group with just a name" path keeps working. An explicit but invalid
+  // value still errors so a typo doesn't silently fall back.
+  const rawFrequency = readOptionalString(input.meeting_frequency);
+  let frequency: MeetingFrequency = "weekly";
+  if (rawFrequency !== undefined) {
+    if (!isMeetingFrequency(rawFrequency)) {
+      errors.push("Meeting frequency must be weekly, biweekly, or monthly.");
+    } else {
+      frequency = rawFrequency;
+    }
+  }
+
+  const rawParity = readOptionalString(input.meeting_week_parity);
+  let parity: MeetingWeekParity | null = null;
+  if (rawParity !== undefined) {
+    if (!isMeetingWeekParity(rawParity)) {
+      errors.push("Bi-weekly parity must be odd or even.");
+    } else {
+      parity = rawParity;
+    }
+  }
+  // Parity is only meaningful for bi-weekly groups. Weekly/monthly groups
+  // always submit null so a stale form value can't leak through.
+  if (frequency !== "biweekly") {
+    parity = null;
+  }
+
   if (name.length === 0) errors.push("Group name is required.");
   if (name.length > 120) errors.push("Group name is too long (max 120 characters).");
   if (description !== undefined && description.length > 500)
     errors.push("Description is too long (max 500 characters).");
-  if (meetingDay !== undefined && meetingDay.length > 40)
-    errors.push("Meeting day is too long.");
+  if (meetingDay !== undefined && !MEETING_DAYS.has(meetingDay))
+    errors.push("Meeting day must be Sunday through Saturday.");
   if (meetingTime !== undefined && !isTimeString(meetingTime))
     errors.push("Meeting time must look like 18:30.");
   if (locationArea !== undefined && locationArea.length > 80)
@@ -351,7 +416,11 @@ function validateGroupWritablePayload(
 
   if (errors.length > 0) return { ok: false, errors };
 
-  const value: GroupWritablePayload = { name };
+  const value: GroupWritablePayload = {
+    name,
+    meeting_frequency: frequency,
+    meeting_week_parity: parity,
+  };
   if (description !== undefined) value.description = description;
   if (meetingDay !== undefined) value.meeting_day = meetingDay;
   if (meetingTime !== undefined) value.meeting_time = meetingTime;
