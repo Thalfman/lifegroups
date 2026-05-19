@@ -8,8 +8,6 @@ import {
 } from "@/components/dashboard/notices";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { PButton } from "@/components/pastoral/button";
-import { P, fontBody } from "@/lib/pastoral";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
@@ -41,50 +39,7 @@ export default async function AdminPage({
       eyebrow="Ministry command center"
       title="Life Groups,"
       titleItalic="this week."
-      lede="Review check-ins, capacity, health signals, and setup gaps so the next right follow-up is clear."
-      actions={
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: 8,
-          }}
-        >
-          <div
-            id="admin-actions-help"
-            aria-live="polite"
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              fontStyle: "italic",
-              textAlign: "right",
-              maxWidth: 280,
-              lineHeight: 1.45,
-            }}
-          >
-            Export and nudge workflows arrive in a later phase with
-            operational writes.
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <PButton
-              tone="ghost"
-              disabled
-              aria-describedby="admin-actions-help"
-            >
-              Export week
-            </PButton>
-            <PButton
-              tone="solid"
-              disabled
-              aria-describedby="admin-actions-help"
-            >
-              Send nudges
-            </PButton>
-          </div>
-        </div>
-      }
+      lede="What needs attention, what changed, and where to click next."
       headerSlot={
         <>
           <DataSourceBadge source={source} />

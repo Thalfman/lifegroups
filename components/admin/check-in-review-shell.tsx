@@ -294,6 +294,21 @@ function ReviewCard({
               {meta}
             </div>
           ) : null}
+          {row.dueLabel ? (
+            <div
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12.5,
+                color: row.isOverdue ? "#7d3621" : P.ink3,
+                marginTop: 4,
+              }}
+            >
+              {row.isOverdue
+                ? `Overdue · was due ${row.dueLabel}`
+                : `Check-in due ${row.dueLabel}`}
+              {row.dueRelative ? ` · ${row.dueRelative}` : ""}
+            </div>
+          ) : null}
         </div>
         <div
           style={{
@@ -396,7 +411,8 @@ export function CheckInReviewShell({
     data.errors.profiles ||
     data.errors.sessions ||
     data.errors.records ||
-    data.errors.health;
+    data.errors.health ||
+    data.errors.settings;
 
   const everyoneIn =
     data.summary.totalActive > 0 && data.summary.missing === 0;

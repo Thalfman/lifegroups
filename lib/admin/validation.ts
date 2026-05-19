@@ -523,6 +523,7 @@ export type MetricDefaultsPayload = {
   check_in_due_day_of_week?: number;
   missed_checkin_warning_weeks?: number;
   default_healthy_attendance_pct?: number;
+  check_in_due_offset_hours?: number;
 };
 
 const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
@@ -532,6 +533,7 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
   "check_in_due_day_of_week",
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
+  "check_in_due_offset_hours",
 ]);
 
 export function validateMetricDefaultsPayload(
@@ -604,6 +606,15 @@ export function validateMetricDefaultsPayload(
     else if (n !== undefined) value.default_healthy_attendance_pct = n;
   }
 
+  if ("check_in_due_offset_hours" in input) {
+    const n = readOptionalInteger(input.check_in_due_offset_hours);
+    if (n === "invalid")
+      errors.push("Check-in due offset hours must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 336))
+      errors.push("Check-in due offset hours must be between 0 and 336 (14 days).");
+    else if (n !== undefined) value.check_in_due_offset_hours = n;
+  }
+
   // Cross-field: full % must be >= warning % when both present (or fall
   // back to the documented defaults so a one-sided submit can still be
   // validated sanely).
@@ -631,6 +642,7 @@ export type GroupMetricSettingsPayload = {
   manual_health_status_override: string | null;
   exclude_from_capacity_metrics: boolean;
   admin_metric_notes: string | null;
+  check_in_due_offset_hours_override: number | null;
 };
 
 export function validateGroupMetricSettingsPayload(
@@ -688,6 +700,24 @@ export function validateGroupMetricSettingsPayload(
     }
   }
 
+  let checkInOffsetOverride: number | null = null;
+  {
+    const raw = input.check_in_due_offset_hours_override;
+    if (raw === undefined || raw === null || raw === "") {
+      checkInOffsetOverride = null;
+    } else {
+      const n = readOptionalInteger(raw);
+      if (n === "invalid")
+        errors.push("Check-in due offset override must be a whole number.");
+      else if (n === undefined) checkInOffsetOverride = null;
+      else if (n < 0 || n > 336)
+        errors.push(
+          "Check-in due offset override must be between 0 and 336 (14 days).",
+        );
+      else checkInOffsetOverride = n;
+    }
+  }
+
   let manualHealth: string | null = null;
   {
     const raw = input.manual_health_status_override;
@@ -727,6 +757,7 @@ export function validateGroupMetricSettingsPayload(
       manual_health_status_override: manualHealth,
       exclude_from_capacity_metrics: excludeFromCapacity,
       admin_metric_notes: notes,
+      check_in_due_offset_hours_override: checkInOffsetOverride,
     },
   };
 }

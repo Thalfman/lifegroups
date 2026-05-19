@@ -338,13 +338,14 @@ function GroupCard({
   return (
     <article
       style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
+        background: editing ? P.bg : P.surface,
+        border: `1px solid ${editing ? P.terra : P.line}`,
         borderRadius: 12,
         padding: "18px 22px",
         display: "grid",
         gap: 14,
         opacity: isClosed ? 0.7 : 1,
+        transition: "background 120ms ease, border-color 120ms ease",
       }}
     >
       <header
@@ -385,6 +386,11 @@ function GroupCard({
             {excluded ? (
               <PBadge tone="followup">Excluded from capacity</PBadge>
             ) : null}
+            {editing ? (
+              <PBadge tone="watch" outline>
+                Editing
+              </PBadge>
+            ) : null}
           </div>
           <div
             style={{
@@ -402,117 +408,126 @@ function GroupCard({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 14,
+              gap: 8,
               flexWrap: "wrap",
               justifyContent: "flex-end",
             }}
           >
             <PButton
               type="button"
-              tone="ghost"
+              tone="terra"
               size="sm"
               onClick={() => setEditing(true)}
             >
               Edit
             </PButton>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 1,
-                height: 24,
-                background: P.line,
-                display: "inline-block",
-              }}
-            />
-            <ArchiveGroupButton groupId={group.id} groupName={group.name} />
           </div>
         ) : null}
       </header>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: 14,
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-        }}
-      >
-        <Stat
-          label="Leaders"
-          value={
-            leaders.length === 0
-              ? "Unassigned"
-              : leaders
-                  .map((l) => {
-                    const profile = profilesById.get(l.profile_id);
-                    if (!profile) return "(unknown)";
-                    return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
-                  })
-                  .join(" · ")
-          }
-        />
-        <Stat
-          label="Active members"
-          value={`${activeMemberCount}${
-            isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
-          }`}
-          tone={status === "full" ? "warn" : status === "warning" ? "watch" : undefined}
-        />
-        <Stat label="Latest check-in" value={latestCheckinText(latestSession)} />
-      </div>
+      {!editing ? (
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: 14,
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+            }}
+          >
+            <Stat
+              label="Leaders"
+              value={
+                leaders.length === 0
+                  ? "Unassigned"
+                  : leaders
+                      .map((l) => {
+                        const profile = profilesById.get(l.profile_id);
+                        if (!profile) return "(unknown)";
+                        return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
+                      })
+                      .join(" · ")
+              }
+            />
+            <Stat
+              label="Active members"
+              value={`${activeMemberCount}${
+                isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
+              }`}
+              tone={
+                status === "full"
+                  ? "warn"
+                  : status === "warning"
+                    ? "watch"
+                    : undefined
+              }
+            />
+            <Stat
+              label="Latest check-in"
+              value={latestCheckinText(latestSession)}
+            />
+          </div>
 
-      {group.description ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            lineHeight: 1.5,
-          }}
-        >
-          {group.description}
-        </p>
+          {group.description ? (
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                lineHeight: 1.5,
+              }}
+            >
+              {group.description}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {editing ? (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: 18 }}>
           <GroupEditForm group={group} onClose={() => setEditing(false)} />
           <div
             style={{
-              display: "flex",
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              gap: 14,
               alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: `1px dashed ${P.line}`,
-              background: P.bg,
+              padding: "12px 16px",
+              borderRadius: 10,
+              border: `1px solid ${P.line}`,
+              background: P.surface,
             }}
           >
-            <span
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 600,
-              }}
-            >
-              Lifecycle
-            </span>
-            <span
-              style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}
-            >
-              Archiving takes the group off the active roster. It&rsquo;s
-              reversible — the record stays and you can restore it later.
-            </span>
-            <div style={{ marginLeft: "auto" }}>
-              <ArchiveGroupButton groupId={group.id} groupName={group.name} />
+            <div style={{ display: "grid", gap: 4 }}>
+              <span
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 10,
+                  letterSpacing: 1.6,
+                  textTransform: "uppercase",
+                  color: P.ink3,
+                  fontWeight: 600,
+                }}
+              >
+                Lifecycle &middot; separate from edit
+              </span>
+              <span
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink2,
+                  lineHeight: 1.45,
+                }}
+              >
+                Archive takes the group off the active roster. The record
+                stays and you can restore it later. This is not the same as
+                cancelling your edit above.
+              </span>
             </div>
+            <ArchiveGroupButton groupId={group.id} groupName={group.name} />
           </div>
         </div>
       ) : null}
@@ -561,7 +576,19 @@ function metaLine(group: GroupsRow): string {
   if (day && time) parts.push(`${day} · ${time}`);
   else if (day) parts.push(day);
   else if (time) parts.push(time);
+  const cadence = cadenceLabel(group);
+  if (cadence) parts.push(cadence);
   return parts.length > 0 ? parts.join(" · ") : "No meeting day/time set";
+}
+
+function cadenceLabel(group: GroupsRow): string | null {
+  if (group.meeting_frequency === "weekly") return null;
+  if (group.meeting_frequency === "monthly") return "Monthly";
+  // bi-weekly: include parity when known so the line tells the operator
+  // which weeks the group actually meets.
+  if (group.meeting_week_parity === "odd") return "Bi-weekly · odd weeks";
+  if (group.meeting_week_parity === "even") return "Bi-weekly · even weeks";
+  return "Bi-weekly";
 }
 
 function formatMeetingTime(value: string | null): string | null {

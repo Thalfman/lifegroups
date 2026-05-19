@@ -16,20 +16,32 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
   fetchAllGroupLeaders,
+  fetchAllGroupMetricSettings,
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
+  fetchMetricDefaults,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
 import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/leader/validation";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
+import {
+  computeCheckInDue,
+  formatCheckInDueLabel,
+  formatCheckInDueRelative,
+} from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
+  GroupMetricSettingsRow,
   GroupsRow,
   MembersRow,
   ProfilesRow,
@@ -77,6 +89,10 @@ export type GroupReviewRow = {
   healthPulse: LeaderPulseDisplay | null;
   followUpNeeded: boolean;
   leaderNotePreview: string | null;
+  // Phase 5A.5 shared due-date logic.
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
 };
 
 export type WeeklyReviewSummary = {
@@ -95,6 +111,7 @@ export type WeeklyReviewErrors = {
   sessions: string | null;
   records: string | null;
   health: string | null;
+  settings: string | null;
 };
 
 export type WeeklyReviewData = {
@@ -157,6 +174,7 @@ const EMPTY_WEEKLY_ERRORS: WeeklyReviewErrors = {
   sessions: null,
   records: null,
   health: null,
+  settings: null,
 };
 
 const EMPTY_DETAIL_ERRORS: CheckInDetailErrors = {
@@ -366,6 +384,7 @@ function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
 export async function fetchAdminWeeklyCheckInReview(
   client: ReadClient,
   meetingWeek: string,
+  now: Date = new Date(),
 ): Promise<WeeklyReviewData> {
   const [
     groupsResult,
@@ -373,6 +392,8 @@ export async function fetchAdminWeeklyCheckInReview(
     profilesResult,
     sessionsResult,
     healthResult,
+    metricDefaultsResult,
+    metricSettingsResult,
   ] = await Promise.all([
     fetchAllGroups(client),
     fetchAllGroupLeaders(client, { activeOnly: true }),
@@ -384,6 +405,8 @@ export async function fetchAdminWeeklyCheckInReview(
     fetchProfilesForAdmin(client),
     fetchAttendanceSessions(client, { meetingWeek }),
     fetchLatestHealthUpdates(client, { updateWeek: meetingWeek }),
+    fetchMetricDefaults(client),
+    fetchAllGroupMetricSettings(client),
   ]);
 
   const errors: WeeklyReviewErrors = { ...EMPTY_WEEKLY_ERRORS };
@@ -392,6 +415,10 @@ export async function fetchAdminWeeklyCheckInReview(
   errors.profiles = profilesResult.error?.message ?? null;
   errors.sessions = sessionsResult.error?.message ?? null;
   errors.health = healthResult.error?.message ?? null;
+  errors.settings =
+    metricDefaultsResult.error?.message ??
+    metricSettingsResult.error?.message ??
+    null;
 
   const groups = (groupsResult.data ?? []).filter(
     (g) => g.lifecycle_status !== "closed",
@@ -400,6 +427,7 @@ export async function fetchAdminWeeklyCheckInReview(
   const profiles = profilesResult.data ?? [];
   const sessions = sessionsResult.data ?? [];
   const healthUpdates = healthResult.data ?? [];
+  const metricSettings = metricSettingsResult.data ?? [];
 
   const sessionIds = sessions.map((s) => s.id);
   const recordsResult = await fetchAttendanceRecordsForSessions(client, sessionIds);
@@ -422,6 +450,13 @@ export async function fetchAdminWeeklyCheckInReview(
     recordsBySession.set(r.session_id, list);
   }
 
+  const metricSettingsByGroup = new Map<string, GroupMetricSettingsRow>(
+    metricSettings.map((s) => [s.group_id, s]),
+  );
+  const defaults = metricDefaultsResult.error
+    ? BUILT_IN_METRIC_DEFAULTS
+    : decodeMetricDefaults(metricDefaultsResult.data ?? null);
+
   const rows: GroupReviewRow[] = groups.map((g) => {
     const session = sessionByGroup.get(g.id) ?? null;
     const sessionStatus = deriveSessionStatus(session);
@@ -432,6 +467,14 @@ export async function fetchAdminWeeklyCheckInReview(
     const health = healthByGroup.get(g.id) ?? null;
     const submitterName =
       session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
+    const dueResult = computeCheckInDue({
+      group: { meetingDay: g.meeting_day, meetingTime: g.meeting_time },
+      override: metricSettingsByGroup.get(g.id) ?? null,
+      defaults,
+      now,
+    });
+    const isSubmittedSession =
+      sessionStatus === "submitted" || sessionStatus === "admin_entered";
     return {
       groupId: g.id,
       groupName: g.name,
@@ -448,6 +491,12 @@ export async function fetchAdminWeeklyCheckInReview(
       healthPulse: isLeaderPulse(health?.pulse) ? health!.pulse : null,
       followUpNeeded: health?.follow_up_needed ?? false,
       leaderNotePreview: truncatePreview(session?.leader_note ?? null),
+      dueLabel: formatCheckInDueLabel(dueResult.due),
+      dueRelative: formatCheckInDueRelative(dueResult),
+      // Only treat the row as "overdue" if (1) due-date math worked AND
+      // (2) the leader hasn't already submitted. did_not_meet and
+      // planned_pause count as "in" for this purpose.
+      isOverdue: dueResult.isOverdue && !isSubmittedSession,
     };
   });
 

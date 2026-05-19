@@ -29,6 +29,11 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.create_follow_up": "Created follow-up",
   "admin.update_follow_up_status": "Updated follow-up status",
   "leader.update_follow_up_status": "Leader updated follow-up",
+  // Phase 5A.4 settings + Phase 5A.5 reset
+  "admin.update_metric_defaults": "Updated metric defaults",
+  "admin.upsert_group_metric_settings": "Updated group overrides",
+  "admin.change_leader_role": "Changed leader role",
+  "admin.reset_metric_defaults": "Reset metric defaults",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -173,6 +178,26 @@ function summarize(
         return `Leader moved "${title}" ${beforeStatus} → ${afterStatus}`;
       }
       return `Leader updated follow-up: ${title}`;
+    }
+    case "admin.reset_metric_defaults":
+      return "Reset metric defaults to baseline";
+    case "admin.update_metric_defaults": {
+      const submittedKeys = Array.isArray(md.submitted_keys)
+        ? (md.submitted_keys as unknown[]).filter(
+            (k): k is string => typeof k === "string",
+          )
+        : [];
+      return submittedKeys.length > 0
+        ? `Updated metric defaults (${submittedKeys.join(", ")})`
+        : "Updated metric defaults";
+    }
+    case "admin.upsert_group_metric_settings": {
+      const groupName = event.entity_id
+        ? groupsById.get(event.entity_id)?.name
+        : null;
+      return groupName
+        ? `Updated overrides for ${groupName}`
+        : "Updated group overrides";
     }
     case "super_admin.update_profile_role": {
       const target = event.entity_id ? profilesById.get(event.entity_id) : undefined;

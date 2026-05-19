@@ -32,6 +32,7 @@ const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (meetingWeek) => (
     sessions: null,
     records: null,
     health: null,
+    settings: null,
   },
 });
 

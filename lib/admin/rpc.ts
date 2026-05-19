@@ -151,11 +151,25 @@ export async function rpcAdminUpsertGroupMetricSettings(
     p_manual_health_status_override: string | null;
     p_exclude_from_capacity_metrics: boolean;
     p_admin_metric_notes: string | null;
+    p_check_in_due_offset_hours_override: number | null;
   },
 ): Promise<RpcResult> {
   const r = await client.rpc(
     "admin_upsert_group_metric_settings" as never,
     args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+// Phase 5A.5 reset-to-defaults helper. Takes no arguments; the RPC
+// snapshots the current values, restores the baseline, and writes the
+// audit row in one transaction.
+export async function rpcAdminResetMetricDefaults(
+  client: AppSupabaseClient,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_reset_metric_defaults" as never,
+    {} as never,
   );
   return { data: (r.data as string | null) ?? null, error: r.error };
 }

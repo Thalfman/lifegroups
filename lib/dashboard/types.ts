@@ -70,6 +70,10 @@ export interface AttentionItem {
   activeMemberCount: number;
   sessionStatus: AttendanceSessionStatus | "no_session";
   excludedFromCapacity: boolean;
+  // Phase 5A.5 — due-date enrichment for "missing check-in" items.
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
 }
 
 export interface CapacityGroupRow {

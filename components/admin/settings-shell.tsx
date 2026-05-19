@@ -2,6 +2,7 @@ import { SectionHeader } from "@/components/layout/shell";
 import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-form";
 import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
+import { ResetMetricDefaultsButton } from "@/components/admin/forms/reset-metric-defaults-button";
 import { PBadge } from "@/components/pastoral/atoms";
 import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
@@ -62,6 +63,36 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
+          <div
+            style={{
+              marginTop: 18,
+              paddingTop: 14,
+              borderTop: `1px solid ${P.line}`,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                maxWidth: 380,
+                lineHeight: 1.45,
+                margin: 0,
+              }}
+            >
+              <strong style={{ color: P.ink, fontWeight: 600 }}>
+                Need a clean slate?
+              </strong>{" "}
+              Reset the baseline thresholds back to the ministry defaults.
+              You&rsquo;ll be asked to confirm first.
+            </div>
+            <ResetMetricDefaultsButton />
+          </div>
         </Card>
       </section>
 
@@ -125,6 +156,11 @@ function OverrideSummaryRow({
     chips.push({
       key: "att",
       label: `Healthy ≥ ${settings.healthy_attendance_pct_override}%`,
+    });
+  if (settings.check_in_due_offset_hours_override != null)
+    chips.push({
+      key: "due",
+      label: `Check-in due ${settings.check_in_due_offset_hours_override}h after meeting`,
     });
   if (settings.manual_health_status_override) {
     chips.push({

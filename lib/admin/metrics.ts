@@ -26,13 +26,20 @@ export type MetricDefaults = {
   default_group_capacity: number | null;
   capacity_warning_threshold_pct: number;
   capacity_full_threshold_pct: number;
+  // Legacy: a global "check-ins are due on this day-of-week" hint. Kept
+  // for backwards compatibility / nostalgia, but the Phase 5A.5 due-date
+  // computation is now per-group (meeting_day + meeting_time + offset).
   check_in_due_day_of_week: number;
   missed_checkin_warning_weeks: number;
   default_healthy_attendance_pct: number;
+  // Phase 5A.5: hours after a group's scheduled meeting time before its
+  // check-in is considered overdue. 24 = "due 24 hours after meeting".
+  check_in_due_offset_hours: number;
 };
 
-// Documented fall-back values used when app_settings.metric_defaults is
-// missing or has a malformed key. Mirrors the Phase 5A.4 migration seed.
+// Documented baseline values. Mirrors the Phase 5A.5 reset RPC so
+// "reset defaults" in the UI and the seeded values stay in sync.
+// If you change one, change the other.
 export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   default_group_capacity: null,
   capacity_warning_threshold_pct: 80,
@@ -40,6 +47,7 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   check_in_due_day_of_week: 1,
   missed_checkin_warning_weeks: 2,
   default_healthy_attendance_pct: 60,
+  check_in_due_offset_hours: 24,
 };
 
 function readJsonInt(
@@ -98,6 +106,11 @@ export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults
       "default_healthy_attendance_pct",
       BUILT_IN_METRIC_DEFAULTS.default_healthy_attendance_pct,
     ),
+    check_in_due_offset_hours: readJsonInt(
+      source,
+      "check_in_due_offset_hours",
+      BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours,
+    ),
   };
 }
 
@@ -114,6 +127,7 @@ type OverrideRef = Pick<
   | "manual_health_status_override"
   | "exclude_from_capacity_metrics"
   | "admin_metric_notes"
+  | "check_in_due_offset_hours_override"
 > | null;
 
 export function effectiveCapacity(
@@ -161,6 +175,24 @@ export function effectiveHealthyAttendancePct(
   if (override?.healthy_attendance_pct_override != null)
     return override.healthy_attendance_pct_override;
   return defaults.default_healthy_attendance_pct;
+}
+
+// Phase 5A.5: the per-group check-in due offset (in hours after the
+// scheduled meeting). Falls back to the global default when no override
+// is set. Kept here so admin + leader surfaces compute "due" identically.
+//
+// Takes a narrower override shape (only the offset field) so callers
+// that just need due-date math don't have to pass every override field.
+export function effectiveCheckInDueOffsetHours(
+  override:
+    | Pick<GroupMetricSettingsRow, "check_in_due_offset_hours_override">
+    | null
+    | undefined,
+  defaults: MetricDefaults,
+): number {
+  if (override?.check_in_due_offset_hours_override != null)
+    return override.check_in_due_offset_hours_override;
+  return defaults.check_in_due_offset_hours;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +246,7 @@ export function hasActiveOverrides(
   if (settings.healthy_attendance_pct_override != null) return true;
   if (settings.manual_health_status_override != null) return true;
   if (settings.exclude_from_capacity_metrics) return true;
+  if (settings.check_in_due_offset_hours_override != null) return true;
   if (
     typeof settings.admin_metric_notes === "string" &&
     settings.admin_metric_notes.trim().length > 0

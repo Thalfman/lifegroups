@@ -9,7 +9,7 @@ import type {
 } from "@/lib/dashboard/types";
 import { meetingLine } from "./shared";
 
-const VISIBLE_LIMIT = 12;
+const VISIBLE_LIMIT = 6;
 
 function toneFor(reason: AttentionReason): PTone {
   switch (reason) {
@@ -175,6 +175,19 @@ export function AttentionList({
                   {item.excludedFromCapacity ? (
                     <span>· Excluded from capacity</span>
                   ) : null}
+                  {item.dueLabel ? (
+                    <span
+                      style={{
+                        color: item.isOverdue ? "#7d3621" : P.ink3,
+                      }}
+                    >
+                      ·{" "}
+                      {item.isOverdue
+                        ? `Overdue (was due ${item.dueLabel})`
+                        : `Check-in due ${item.dueLabel}`}
+                      {item.dueRelative ? ` · ${item.dueRelative}` : ""}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div
@@ -241,10 +254,31 @@ export function AttentionList({
                 color: P.ink3,
                 textAlign: "center",
                 fontStyle: "italic",
+                paddingTop: 4,
               }}
             >
-              +{overflow} more {overflow === 1 ? "group" : "groups"} in the
-              queue
+              +{overflow} more {overflow === 1 ? "group" : "groups"} —{" "}
+              <Link
+                href="/admin/groups"
+                style={{
+                  color: P.ink2,
+                  textDecoration: "underline",
+                  fontStyle: "normal",
+                }}
+              >
+                see all in Groups
+              </Link>
+              {" · "}
+              <Link
+                href={`/admin/check-ins?week=${meetingWeek}`}
+                style={{
+                  color: P.ink2,
+                  textDecoration: "underline",
+                  fontStyle: "normal",
+                }}
+              >
+                review check-ins
+              </Link>
             </li>
           ) : null}
         </ul>

@@ -58,6 +58,11 @@ import {
   type CapacityStatus,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
+import {
+  computeCheckInDue,
+  formatCheckInDueLabel,
+  formatCheckInDueRelative,
+} from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
@@ -179,6 +184,9 @@ type DerivedGroupRow = {
   hasMeetingDayTime: boolean;
   hasCapacityConfigured: boolean;
   followUpsForGroup: LeaderFollowUpRow[];
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
 };
 
 const ATTENTION_PRIORITY: Record<AttentionReason, number> = {
@@ -510,6 +518,9 @@ function buildAttentionItems(rows: DerivedGroupRow[]): AttentionItem[] {
       activeMemberCount: r.activeMemberCount,
       sessionStatus: r.sessionStatus,
       excludedFromCapacity: r.isExcluded,
+      dueLabel: r.dueLabel,
+      dueRelative: r.dueRelative,
+      isOverdue: r.isOverdue,
     });
   }
   items.sort(
@@ -640,6 +651,14 @@ export async function getAdminDashboardData(
       const hasMeetingDayTime = Boolean(g.meeting_day && g.meeting_time);
       const hasCapacityConfigured =
         override?.capacity_override != null || g.capacity != null;
+      const dueResult = computeCheckInDue({
+        group: { meetingDay: g.meeting_day, meetingTime: g.meeting_time },
+        override,
+        defaults,
+        now,
+      });
+      const submittedThisWeek =
+        sessionStatus === "submitted" || sessionStatus === "admin_entered";
       return {
         group: g,
         override,
@@ -666,6 +685,11 @@ export async function getAdminDashboardData(
         hasMeetingDayTime,
         hasCapacityConfigured,
         followUpsForGroup: followUpsByGroup.get(g.id) ?? [],
+        dueLabel: formatCheckInDueLabel(dueResult.due),
+        dueRelative: formatCheckInDueRelative(dueResult),
+        // Only flag overdue if a check-in hasn't already been submitted for
+        // the selected week.
+        isOverdue: dueResult.isOverdue && !submittedThisWeek,
       };
     });
 

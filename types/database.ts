@@ -165,6 +165,7 @@ export interface GroupMetricSettingsRow {
   manual_health_status_override: E.GroupHealthStatus | null;
   exclude_from_capacity_metrics: boolean;
   admin_metric_notes: string | null;
+  check_in_due_offset_hours_override: number | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -334,6 +335,10 @@ export interface Database {
         Args: { p_settings: Record<string, unknown> };
         Returns: UUID;
       };
+      admin_reset_metric_defaults: {
+        Args: Record<string, never>;
+        Returns: UUID;
+      };
       admin_upsert_group_metric_settings: {
         Args: {
           p_group_id: UUID;
@@ -343,6 +348,7 @@ export interface Database {
           p_manual_health_status_override: E.GroupHealthStatus | null;
           p_exclude_from_capacity_metrics: boolean;
           p_admin_metric_notes: string | null;
+          p_check_in_due_offset_hours_override: number | null;
         };
         Returns: UUID;
       };
