@@ -226,12 +226,19 @@ export async function fetchNewGuestsForGroupSince(
 // admin / staff_viewer / leader-of-group via the SELECT policies in
 // supabase/migrations/20260518140000_phase5a6_group_calendar.sql, so
 // callers can pass arbitrary filters and the database enforces access.
+//
+// Archive filter precedence: archivedOnly > includeArchived. Use
+// archivedOnly:true for the leader / admin "Archived" tabs; the
+// includeArchived:true escape hatch returns both active and archived
+// rows and is reserved for surfaces that explicitly want the full set
+// (none in this phase).
 export type CalendarEventReadOptions = {
   groupId?: string;
   groupIds?: string[];
   fromDate?: string; // YYYY-MM-DD inclusive
   toDate?: string; // YYYY-MM-DD inclusive
-  includeArchived?: boolean; // default false
+  includeArchived?: boolean; // default false (active only)
+  archivedOnly?: boolean; // when true, returns only archived rows
 };
 
 export async function fetchGroupCalendarEvents(
@@ -250,7 +257,11 @@ export async function fetchGroupCalendarEvents(
   }
   if (options.fromDate) query = query.gte("event_date", options.fromDate);
   if (options.toDate) query = query.lte("event_date", options.toDate);
-  if (!options.includeArchived) query = query.is("archived_at", null);
+  if (options.archivedOnly) {
+    query = query.not("archived_at", "is", null);
+  } else if (!options.includeArchived) {
+    query = query.is("archived_at", null);
+  }
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
   return { data: data ?? [], error: null };

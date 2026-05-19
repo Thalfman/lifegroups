@@ -61,7 +61,9 @@ export default async function AdminGroupCalendarPage({
       groupId,
       fromDate,
       toDate,
-      includeArchived: showArchived,
+      // Archived tab scopes to archived-only; default tab stays
+      // active-only. Mirrors the leader calendar route.
+      archivedOnly: showArchived,
     }),
   ]);
 

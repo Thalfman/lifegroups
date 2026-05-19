@@ -174,7 +174,14 @@ function RestoreButton({
 
 // Quick-toggles status to off/cancelled via the update action. Sends the
 // same payload as the edit form so server-side coercion sets event_type
-// to match.
+// to match. Postgres `time` columns serialize as HH:mm:ss while the
+// shared validator only accepts HH:mm, so trim seconds before
+// submitting -- otherwise Mark OFF / Cancel fails for timed events.
+function toHhMm(value: string | null): string {
+  if (!value) return "";
+  return value.length >= 5 ? value.slice(0, 5) : value;
+}
+
 function QuickStatusButton({
   event,
   groupId,
@@ -197,8 +204,8 @@ function QuickStatusButton({
       <input type="hidden" name="event_id" value={event.id} />
       <input type="hidden" name="group_id" value={groupId} />
       <input type="hidden" name="event_date" value={event.event_date} />
-      <input type="hidden" name="start_time" value={event.start_time ?? ""} />
-      <input type="hidden" name="end_time" value={event.end_time ?? ""} />
+      <input type="hidden" name="start_time" value={toHhMm(event.start_time)} />
+      <input type="hidden" name="end_time" value={toHhMm(event.end_time)} />
       <input type="hidden" name="status" value={targetStatus} />
       <input type="hidden" name="event_type" value={targetStatus} />
       <input type="hidden" name="title" value={event.title ?? ""} />

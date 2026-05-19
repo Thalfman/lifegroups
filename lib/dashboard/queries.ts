@@ -946,8 +946,11 @@ async function buildLeaderGroupDashboard(
 
   // Upcoming-events strip: at most 2 upcoming events (today onwards),
   // sorted by date / start_time. Pre-resolve the friendly label so the
-  // client component stays simple.
-  const todayIso = currentWeekIso; // Monday of this week is the floor; events earlier in the week are already past at this point
+  // client component stays simple. The floor must be today's calendar
+  // date (not the ISO-week Monday) -- otherwise a leader checking the
+  // dashboard on Wednesday would see Monday's already-past meeting in
+  // the "next up" strip, displacing the next genuinely upcoming event.
+  const todayIso = new Date().toISOString().slice(0, 10);
   const upcomingEvents = calendarEvents
     .filter((e) => e.archived_at == null && e.event_date >= todayIso)
     .sort((a, b) => {

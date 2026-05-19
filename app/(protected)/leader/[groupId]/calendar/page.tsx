@@ -63,7 +63,10 @@ export default async function LeaderCalendarPage({
       groupId,
       fromDate,
       toDate,
-      includeArchived: showArchived,
+      // Archived tab scopes to archived-only; default tab stays
+      // active-only. Avoid includeArchived (which returns both) so the
+      // archived workflow never surfaces still-active rows.
+      archivedOnly: showArchived,
     }),
   ]);
 
