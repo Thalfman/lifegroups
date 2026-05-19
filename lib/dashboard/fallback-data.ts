@@ -279,6 +279,9 @@ const fallbackAttention: AttentionItem[] = [
     activeMemberCount: 14,
     sessionStatus: "submitted",
     excludedFromCapacity: false,
+    dueLabel: null,
+    dueRelative: null,
+    isOverdue: false,
   },
   {
     groupId: "fb-miss-1",
@@ -295,6 +298,9 @@ const fallbackAttention: AttentionItem[] = [
     activeMemberCount: 9,
     sessionStatus: "no_session",
     excludedFromCapacity: false,
+    dueLabel: "Monday, May 18 at 5:00 PM",
+    dueRelative: "due 18h ago",
+    isOverdue: true,
   },
   {
     groupId: "fb-cap-warn-1",
@@ -311,6 +317,9 @@ const fallbackAttention: AttentionItem[] = [
     activeMemberCount: 10,
     sessionStatus: "submitted",
     excludedFromCapacity: false,
+    dueLabel: null,
+    dueRelative: null,
+    isOverdue: false,
   },
   {
     groupId: "fb-cap-unknown-1",
@@ -327,6 +336,9 @@ const fallbackAttention: AttentionItem[] = [
     activeMemberCount: 4,
     sessionStatus: "submitted",
     excludedFromCapacity: false,
+    dueLabel: null,
+    dueRelative: null,
+    isOverdue: false,
   },
   {
     groupId: "fb-no-leader-1",
@@ -343,6 +355,9 @@ const fallbackAttention: AttentionItem[] = [
     activeMemberCount: 0,
     sessionStatus: "no_session",
     excludedFromCapacity: false,
+    dueLabel: null,
+    dueRelative: null,
+    isOverdue: false,
   },
 ];
 

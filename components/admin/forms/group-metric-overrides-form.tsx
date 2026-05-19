@@ -201,6 +201,32 @@ export function GroupMetricOverridesForm({
               </select>
               <p style={hintStyle}>Pins the group&rsquo;s health label on the dashboard.</p>
             </div>
+
+            <div>
+              <label
+                htmlFor="check_in_due_offset_hours_override"
+                style={fieldLabelStyle}
+              >
+                Check-in due offset (hours)
+              </label>
+              <input
+                id="check_in_due_offset_hours_override"
+                name="check_in_due_offset_hours_override"
+                type="number"
+                min={0}
+                max={336}
+                inputMode="numeric"
+                defaultValue={
+                  currentSettings?.check_in_due_offset_hours_override ?? ""
+                }
+                placeholder="Use default"
+                style={fieldInputStyle}
+              />
+              <p style={hintStyle}>
+                0&ndash;336. Hours after this group&rsquo;s meeting time before
+                the check-in is overdue. Blank = follow the global default.
+              </p>
+            </div>
           </div>
 
           <div>

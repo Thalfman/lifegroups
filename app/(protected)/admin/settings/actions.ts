@@ -14,12 +14,15 @@ import {
   mapRpcError,
 } from "@/lib/admin/action-result";
 import {
+  rpcAdminResetMetricDefaults,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
 } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_SETTINGS = "/admin/settings";
 const REVALIDATE_PATH_GROUPS = "/admin/groups";
+const REVALIDATE_PATH_ADMIN = "/admin";
+const REVALIDATE_PATH_LEADER = "/leader";
 
 const METRIC_DEFAULT_FIELDS = [
   "default_group_capacity",
@@ -28,6 +31,7 @@ const METRIC_DEFAULT_FIELDS = [
   "check_in_due_day_of_week",
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
+  "check_in_due_offset_hours",
 ] as const;
 
 const GROUP_METRIC_FIELDS = [
@@ -38,6 +42,7 @@ const GROUP_METRIC_FIELDS = [
   "manual_health_status_override",
   "exclude_from_capacity_metrics",
   "admin_metric_notes",
+  "check_in_due_offset_hours_override",
 ] as const;
 
 // Only include a key in the payload when the form actually submitted a
@@ -118,6 +123,8 @@ export async function adminUpdateMetricDefaults(
 
   revalidatePath(REVALIDATE_PATH_SETTINGS);
   revalidatePath(REVALIDATE_PATH_GROUPS);
+  revalidatePath(REVALIDATE_PATH_ADMIN);
+  revalidatePath(REVALIDATE_PATH_LEADER);
   return actionOk({ id: data });
 }
 
@@ -144,6 +151,8 @@ export async function adminUpsertGroupMetricSettings(
     p_manual_health_status_override: v.value.manual_health_status_override,
     p_exclude_from_capacity_metrics: v.value.exclude_from_capacity_metrics,
     p_admin_metric_notes: v.value.admin_metric_notes,
+    p_check_in_due_offset_hours_override:
+      v.value.check_in_due_offset_hours_override,
   });
 
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -151,5 +160,33 @@ export async function adminUpsertGroupMetricSettings(
 
   revalidatePath(REVALIDATE_PATH_SETTINGS);
   revalidatePath(REVALIDATE_PATH_GROUPS);
+  revalidatePath(REVALIDATE_PATH_ADMIN);
+  revalidatePath(REVALIDATE_PATH_LEADER);
+  return actionOk({ id: data });
+}
+
+// Phase 5A.5: reset metric defaults to the documented baseline. Does NOT
+// touch per-group overrides; the UI surfaces this distinction so admins
+// can clear overrides separately if they want a truly clean slate.
+export async function adminResetMetricDefaults(
+  _prev: ActionResult<{ id: string }> | undefined,
+  _input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const auth = await requireAdminSession();
+  if (!auth.ok) return actionFail([auth.error]);
+
+  const client = await createSupabaseServerClient();
+  if (!client) return actionFail(["Database is not configured."]);
+
+  const { data, error } = await rpcAdminResetMetricDefaults(client);
+
+  if (error) return actionFail([mapRpcError(error.message)]);
+  if (!data)
+    return actionFail(["The defaults were not reset. Please try again."]);
+
+  revalidatePath(REVALIDATE_PATH_SETTINGS);
+  revalidatePath(REVALIDATE_PATH_GROUPS);
+  revalidatePath(REVALIDATE_PATH_ADMIN);
+  revalidatePath(REVALIDATE_PATH_LEADER);
   return actionOk({ id: data });
 }

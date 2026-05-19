@@ -136,7 +136,8 @@ export function GroupCreateForm() {
                 lineHeight: 1.4,
               }}
             >
-              Bi-weekly groups meet on odd or even calendar week numbers.
+              Used for bi-weekly groups only. Odd/even is based on the
+              calendar week number.
             </p>
           </div>
         ) : null}

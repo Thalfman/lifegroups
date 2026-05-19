@@ -91,6 +91,9 @@ export function CheckInForm({
   meetingWeek,
   meetingDay,
   meetingTime,
+  dueLabel,
+  dueRelative,
+  isOverdue,
   members,
   alreadySubmitted,
   prefill,
@@ -100,6 +103,9 @@ export function CheckInForm({
   meetingWeek: string;
   meetingDay: string | null;
   meetingTime: string | null;
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
   members: Member[];
   alreadySubmitted: boolean;
   prefill: Prefill;
@@ -203,6 +209,46 @@ export function CheckInForm({
             ? "Already submitted — submitting again will replace the saved data for this week."
             : "Once you submit, this card will show as complete on your dashboard."}
         </div>
+        {dueLabel ? (
+          <div
+            style={{
+              marginTop: 10,
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: isOverdue && !alreadySubmitted ? "#7d3621" : P.ink2,
+              background:
+                isOverdue && !alreadySubmitted ? P.terraSoft : "transparent",
+              border:
+                isOverdue && !alreadySubmitted
+                  ? `1px solid ${P.terra}`
+                  : `1px dashed ${P.line}`,
+              borderRadius: 8,
+              padding: "8px 12px",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 6,
+              lineHeight: 1.45,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontSans,
+                fontSize: 10,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                fontWeight: 600,
+                color: isOverdue && !alreadySubmitted ? "#7d3621" : P.ink3,
+              }}
+            >
+              {isOverdue && !alreadySubmitted ? "Overdue" : "Check-in due"}
+            </span>
+            <span>{dueLabel}</span>
+            {dueRelative ? (
+              <span style={{ color: P.ink3 }}>&middot; {dueRelative}</span>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <FieldSet

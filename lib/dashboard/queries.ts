@@ -58,6 +58,11 @@ import {
   type CapacityStatus,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
+import {
+  computeCheckInDue,
+  formatCheckInDueLabel,
+  formatCheckInDueRelative,
+} from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
@@ -179,6 +184,10 @@ type DerivedGroupRow = {
   hasMeetingDayTime: boolean;
   hasCapacityConfigured: boolean;
   followUpsForGroup: LeaderFollowUpRow[];
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
+  isScheduledThisWeek: boolean;
 };
 
 const ATTENTION_PRIORITY: Record<AttentionReason, number> = {
@@ -262,7 +271,11 @@ function pickHealthBucket(row: DerivedGroupRow): HealthBucket {
   if (row.effectiveHealth === "watch") return "watch";
   if (row.sessionStatus === "planned_pause") return "planned_pause";
   if (row.sessionStatus === "did_not_meet") return "did_not_meet";
-  if (isMissingForWeek(row.sessionStatus)) return "missing";
+  // Off-parity bi-weekly groups aren't expected to meet this week; they
+  // fall through to "healthy" rather than "missing".
+  if (isMissingForWeek(row.sessionStatus) && row.isScheduledThisWeek) {
+    return "missing";
+  }
   if (isSubmittedForWeek(row.sessionStatus)) return "submitted";
   return "healthy";
 }
@@ -315,7 +328,14 @@ function buildAttentionDetail(
 function collectReasonsFor(row: DerivedGroupRow): AttentionReason[] {
   const reasons: AttentionReason[] = [];
   if (row.followUpsForGroup.length > 0) reasons.push("follow_up_open");
-  if (isMissingForWeek(row.sessionStatus)) reasons.push("missing_check_in");
+  // Off-parity bi-weekly groups (and groups missing day/time) aren't
+  // scheduled to meet this week, so the absence of a session isn't a
+  // missing check-in (Codex P2: "honor cadence when marking check-ins
+  // due"). The "missing meeting day/time" gap is still surfaced via
+  // its own reason below.
+  if (isMissingForWeek(row.sessionStatus) && row.isScheduledThisWeek) {
+    reasons.push("missing_check_in");
+  }
   if (!row.isExcluded) {
     if (row.capacityStatusValue === "full") reasons.push("capacity_full");
     else if (row.capacityStatusValue === "warning")
@@ -510,6 +530,9 @@ function buildAttentionItems(rows: DerivedGroupRow[]): AttentionItem[] {
       activeMemberCount: r.activeMemberCount,
       sessionStatus: r.sessionStatus,
       excludedFromCapacity: r.isExcluded,
+      dueLabel: r.dueLabel,
+      dueRelative: r.dueRelative,
+      isOverdue: r.isOverdue,
     });
   }
   items.sort(
@@ -640,6 +663,28 @@ export async function getAdminDashboardData(
       const hasMeetingDayTime = Boolean(g.meeting_day && g.meeting_time);
       const hasCapacityConfigured =
         override?.capacity_override != null || g.capacity != null;
+      const dueResult = computeCheckInDue({
+        group: {
+          meetingDay: g.meeting_day,
+          meetingTime: g.meeting_time,
+          meetingFrequency: g.meeting_frequency,
+          meetingWeekParity: g.meeting_week_parity,
+        },
+        override,
+        defaults,
+        // Anchor due-date math to the week the admin is reviewing so
+        // historical-week views compute the right meeting occurrence
+        // (Codex P2: "use selected week when computing due dates").
+        meetingWeek: selectedWeek,
+        now,
+      });
+      // Any session status other than "no_session" / "not_submitted"
+      // counts as the leader having checked in for the week. We use
+      // this to suppress overdue messaging on rows that already have
+      // a did_not_meet or planned_pause submission so the attention
+      // and health surfaces don't show "Did not meet · Overdue"
+      // simultaneously.
+      const isCheckedInThisWeek = !isMissingForWeek(sessionStatus);
       return {
         group: g,
         override,
@@ -666,6 +711,14 @@ export async function getAdminDashboardData(
         hasMeetingDayTime,
         hasCapacityConfigured,
         followUpsForGroup: followUpsByGroup.get(g.id) ?? [],
+        dueLabel: formatCheckInDueLabel(dueResult.due),
+        dueRelative: formatCheckInDueRelative(dueResult),
+        // Only flag overdue if (1) due-date math worked AND (2) the
+        // leader hasn't already submitted anything for the selected
+        // week (submitted / admin_entered / did_not_meet / planned_pause
+        // all count as "checked in").
+        isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
+        isScheduledThisWeek: dueResult.isScheduledThisWeek,
       };
     });
 
@@ -676,8 +729,13 @@ export async function getAdminDashboardData(
     const submittedCheckIns = activeRows.filter((r) =>
       isSubmittedForWeek(r.sessionStatus),
     ).length;
-    const missingCheckIns = activeRows.filter((r) =>
-      isMissingForWeek(r.sessionStatus),
+    // Bi-weekly off-parity groups and monthly groups aren't necessarily
+    // expected to check in this specific week, so they don't count
+    // toward "missing". Monthly groups can't be resolved without richer
+    // recurrence info; the dashboard surfaces them as healthy until
+    // they actually submit a check-in.
+    const missingCheckIns = activeRows.filter(
+      (r) => isMissingForWeek(r.sessionStatus) && r.isScheduledThisWeek,
     ).length;
     const needsFollowUp = activeRows.filter(
       (r) =>

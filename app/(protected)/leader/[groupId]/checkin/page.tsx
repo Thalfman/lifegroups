@@ -13,8 +13,18 @@ import {
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
+  fetchMetricDefaults,
 } from "@/lib/supabase/read-models";
 import { isoWeekStart } from "@/lib/leader/validation";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
+import {
+  computeCheckInDue,
+  formatCheckInDueLabel,
+  formatCheckInDueRelative,
+} from "@/lib/admin/check-in-due";
 import type {
   AttendanceSessionsRow,
   GroupHealthUpdatesRow,
@@ -60,11 +70,18 @@ export default async function CheckInPage({
 
   const meetingWeek = isoWeekStart(new Date());
 
-  const [groupResult, membershipsResult, sessionResult, healthResult] = await Promise.all([
+  const [
+    groupResult,
+    membershipsResult,
+    sessionResult,
+    healthResult,
+    metricDefaultsResult,
+  ] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),
     fetchActiveMemberships(client, { groupId }),
     fetchAttendanceSessions(client, { groupId, meetingWeek }),
     fetchLatestHealthUpdates(client, { groupId }),
+    fetchMetricDefaults(client),
   ]);
 
   if (groupResult.error) throw groupResult.error;
@@ -110,6 +127,33 @@ export default async function CheckInPage({
     ((healthResult.data ?? []) as GroupHealthUpdatesRow[]).find(
       (h) => h.update_week === meetingWeek,
     ) ?? null;
+
+  // Phase 5A.5: due-date is computed from the group's meeting day/time +
+  // the global offset default. Per-group offset overrides live on
+  // group_metric_settings (admin-only RLS); the leader view always uses
+  // the global default. The admin dashboard / check-ins surface use the
+  // same helper but pass the override when available.
+  const metricDefaults = metricDefaultsResult.error
+    ? BUILT_IN_METRIC_DEFAULTS
+    : decodeMetricDefaults(metricDefaultsResult.data ?? null);
+  const dueResult = computeCheckInDue({
+    group: {
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      meetingFrequency: group.meeting_frequency,
+      meetingWeekParity: group.meeting_week_parity,
+    },
+    // Per-group offset overrides live on group_metric_settings (admin-only
+    // RLS), so the leader workflow always uses the global default.
+    override: null,
+    defaults: metricDefaults,
+    // Anchor due-date math to the week the leader is checking in for
+    // (the same `meetingWeek` we hand to the form) so a bi-weekly group's
+    // parity check is judged against this week, not whatever "now" is.
+    meetingWeek,
+  });
+  const dueLabel = formatCheckInDueLabel(dueResult.due);
+  const dueRelative = formatCheckInDueRelative(dueResult);
 
   const prefill: CheckInPrefill = existingSession
     ? {
@@ -161,6 +205,9 @@ export default async function CheckInPage({
         meetingWeek={meetingWeek}
         meetingDay={group.meeting_day}
         meetingTime={group.meeting_time}
+        dueLabel={dueLabel}
+        dueRelative={dueRelative}
+        isOverdue={dueResult.isOverdue}
         members={members.map((m) => ({ id: m.id, fullName: m.full_name }))}
         alreadySubmitted={Boolean(existingSession)}
         prefill={prefill}

@@ -10,7 +10,7 @@ import {
   fieldSelectStyle,
   successTextStyle,
 } from "./field-styles";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { P, fontBody } from "@/lib/pastoral";
 import { MEETING_DAYS_ORDERED, MEETING_FREQUENCY_OPTIONS, MEETING_PARITY_OPTIONS } from "./meeting-schedule-options";
 import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupsRow } from "@/types/database";
@@ -153,7 +153,8 @@ export function GroupEditForm({
                 lineHeight: 1.4,
               }}
             >
-              Bi-weekly groups meet on odd or even calendar week numbers.
+              Used for bi-weekly groups only. Odd/even is based on the
+              calendar week number.
             </p>
           </div>
         ) : null}
@@ -217,7 +218,8 @@ export function GroupEditForm({
           display: "flex",
           gap: 10,
           flexWrap: "wrap",
-          paddingTop: 4,
+          alignItems: "center",
+          paddingTop: 10,
           borderTop: `1px solid ${P.line}`,
           marginTop: 2,
         }}
@@ -236,19 +238,6 @@ export function GroupEditForm({
             Cancel
           </PButton>
         ) : null}
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-            color: P.ink3,
-            alignSelf: "center",
-            marginLeft: "auto",
-          }}
-        >
-          Lifecycle actions move below
-        </span>
       </div>
 
       {state && !state.ok ? (

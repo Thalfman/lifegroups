@@ -103,8 +103,28 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
 
         <div>
+          <label htmlFor="check_in_due_offset_hours" style={fieldLabelStyle}>
+            Check-in due offset (hours)
+          </label>
+          <input
+            id="check_in_due_offset_hours"
+            name="check_in_due_offset_hours"
+            type="number"
+            min={0}
+            max={336}
+            inputMode="numeric"
+            defaultValue={defaults.check_in_due_offset_hours}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Hours after each group&rsquo;s meeting time before its check-in is
+            considered overdue. 24 = next day. 0&ndash;336.
+          </p>
+        </div>
+
+        <div>
           <label htmlFor="check_in_due_day_of_week" style={fieldLabelStyle}>
-            Check-in due day
+            Check-in due day (legacy)
           </label>
           <select
             id="check_in_due_day_of_week"
@@ -118,7 +138,10 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               </option>
             ))}
           </select>
-          <p style={hintStyle}>Day a weekly check-in is expected.</p>
+          <p style={hintStyle}>
+            Kept for historical context. The dashboard now uses each group&rsquo;s
+            meeting day + the offset above.
+          </p>
         </div>
 
         <div>

@@ -16,20 +16,32 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
   fetchAllGroupLeaders,
+  fetchAllGroupMetricSettings,
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
+  fetchMetricDefaults,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
 import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/leader/validation";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
+import {
+  computeCheckInDue,
+  formatCheckInDueLabel,
+  formatCheckInDueRelative,
+} from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
+  GroupMetricSettingsRow,
   GroupsRow,
   MembersRow,
   ProfilesRow,
@@ -77,6 +89,14 @@ export type GroupReviewRow = {
   healthPulse: LeaderPulseDisplay | null;
   followUpNeeded: boolean;
   leaderNotePreview: string | null;
+  // Phase 5A.5 shared due-date logic.
+  dueLabel: string | null;
+  dueRelative: string | null;
+  isOverdue: boolean;
+  // False for bi-weekly groups in their off-parity week; suppresses the
+  // "Missing" badge so the review surface doesn't accuse a group of
+  // missing a check-in for a week it wasn't scheduled to meet.
+  isScheduledThisWeek: boolean;
 };
 
 export type WeeklyReviewSummary = {
@@ -95,6 +115,7 @@ export type WeeklyReviewErrors = {
   sessions: string | null;
   records: string | null;
   health: string | null;
+  settings: string | null;
 };
 
 export type WeeklyReviewData = {
@@ -157,6 +178,7 @@ const EMPTY_WEEKLY_ERRORS: WeeklyReviewErrors = {
   sessions: null,
   records: null,
   health: null,
+  settings: null,
 };
 
 const EMPTY_DETAIL_ERRORS: CheckInDetailErrors = {
@@ -354,8 +376,13 @@ function leaderNamesByGroup(
 //   2. Active with follow-up needed
 //   3. Everything else by group name
 function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
-  const aMissing = a.sessionStatus === "missing" && a.isActive ? 0 : 1;
-  const bMissing = b.sessionStatus === "missing" && b.isActive ? 0 : 1;
+  // Only sort a row to the top as "missing" if it was actually scheduled
+  // to meet this week. Off-parity bi-weekly groups stay in the body of
+  // the list.
+  const aMissing =
+    a.sessionStatus === "missing" && a.isActive && a.isScheduledThisWeek ? 0 : 1;
+  const bMissing =
+    b.sessionStatus === "missing" && b.isActive && b.isScheduledThisWeek ? 0 : 1;
   if (aMissing !== bMissing) return aMissing - bMissing;
   const aFollowUp = a.followUpNeeded ? 0 : 1;
   const bFollowUp = b.followUpNeeded ? 0 : 1;
@@ -366,6 +393,7 @@ function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
 export async function fetchAdminWeeklyCheckInReview(
   client: ReadClient,
   meetingWeek: string,
+  now: Date = new Date(),
 ): Promise<WeeklyReviewData> {
   const [
     groupsResult,
@@ -373,6 +401,8 @@ export async function fetchAdminWeeklyCheckInReview(
     profilesResult,
     sessionsResult,
     healthResult,
+    metricDefaultsResult,
+    metricSettingsResult,
   ] = await Promise.all([
     fetchAllGroups(client),
     fetchAllGroupLeaders(client, { activeOnly: true }),
@@ -384,6 +414,8 @@ export async function fetchAdminWeeklyCheckInReview(
     fetchProfilesForAdmin(client),
     fetchAttendanceSessions(client, { meetingWeek }),
     fetchLatestHealthUpdates(client, { updateWeek: meetingWeek }),
+    fetchMetricDefaults(client),
+    fetchAllGroupMetricSettings(client),
   ]);
 
   const errors: WeeklyReviewErrors = { ...EMPTY_WEEKLY_ERRORS };
@@ -392,6 +424,10 @@ export async function fetchAdminWeeklyCheckInReview(
   errors.profiles = profilesResult.error?.message ?? null;
   errors.sessions = sessionsResult.error?.message ?? null;
   errors.health = healthResult.error?.message ?? null;
+  errors.settings =
+    metricDefaultsResult.error?.message ??
+    metricSettingsResult.error?.message ??
+    null;
 
   const groups = (groupsResult.data ?? []).filter(
     (g) => g.lifecycle_status !== "closed",
@@ -400,6 +436,7 @@ export async function fetchAdminWeeklyCheckInReview(
   const profiles = profilesResult.data ?? [];
   const sessions = sessionsResult.data ?? [];
   const healthUpdates = healthResult.data ?? [];
+  const metricSettings = metricSettingsResult.data ?? [];
 
   const sessionIds = sessions.map((s) => s.id);
   const recordsResult = await fetchAttendanceRecordsForSessions(client, sessionIds);
@@ -422,6 +459,13 @@ export async function fetchAdminWeeklyCheckInReview(
     recordsBySession.set(r.session_id, list);
   }
 
+  const metricSettingsByGroup = new Map<string, GroupMetricSettingsRow>(
+    metricSettings.map((s) => [s.group_id, s]),
+  );
+  const defaults = metricDefaultsResult.error
+    ? BUILT_IN_METRIC_DEFAULTS
+    : decodeMetricDefaults(metricDefaultsResult.data ?? null);
+
   const rows: GroupReviewRow[] = groups.map((g) => {
     const session = sessionByGroup.get(g.id) ?? null;
     const sessionStatus = deriveSessionStatus(session);
@@ -432,6 +476,24 @@ export async function fetchAdminWeeklyCheckInReview(
     const health = healthByGroup.get(g.id) ?? null;
     const submitterName =
       session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
+    const dueResult = computeCheckInDue({
+      group: {
+        meetingDay: g.meeting_day,
+        meetingTime: g.meeting_time,
+        meetingFrequency: g.meeting_frequency,
+        meetingWeekParity: g.meeting_week_parity,
+      },
+      override: metricSettingsByGroup.get(g.id) ?? null,
+      defaults,
+      meetingWeek,
+      now,
+    });
+    // Any non-"missing" session counts as the leader having checked in for
+    // the week. submitted / admin_entered are the obvious cases; did_not_meet
+    // and planned_pause are also valid leader submissions that settle the
+    // week, so they should suppress overdue messaging too (otherwise a row
+    // ends up "Did not meet · Overdue" simultaneously).
+    const isCheckedInThisWeek = sessionStatus !== "missing";
     return {
       groupId: g.id,
       groupName: g.name,
@@ -448,6 +510,14 @@ export async function fetchAdminWeeklyCheckInReview(
       healthPulse: isLeaderPulse(health?.pulse) ? health!.pulse : null,
       followUpNeeded: health?.follow_up_needed ?? false,
       leaderNotePreview: truncatePreview(session?.leader_note ?? null),
+      dueLabel: formatCheckInDueLabel(dueResult.due),
+      dueRelative: formatCheckInDueRelative(dueResult),
+      // Only treat the row as "overdue" if (1) due-date math worked AND
+      // (2) the leader hasn't already submitted *anything* for this week
+      // (submitted / admin_entered / did_not_meet / planned_pause all
+      // count as "in").
+      isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
+      isScheduledThisWeek: dueResult.isScheduledThisWeek,
     };
   });
 
@@ -470,7 +540,11 @@ export async function fetchAdminWeeklyCheckInReview(
         summary.plannedPause++;
         break;
       case "missing":
-        summary.missing++;
+        // Only count a missing session toward the "Missing" tile when
+        // the group was actually scheduled to meet this week. Bi-weekly
+        // off-parity groups otherwise inflate the missing count for a
+        // week they were never expected to check in.
+        if (row.isScheduledThisWeek) summary.missing++;
         break;
     }
   }
