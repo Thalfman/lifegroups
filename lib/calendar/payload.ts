@@ -18,6 +18,16 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HH_MM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Calendar dates are bounded to a reasonable planning horizon: 1 year
+// in the past, 2 years in the future. This prevents typo dates
+// (2999-01-01) and pairs with the read-window widths chosen on
+// /leader/[groupId]/calendar (+52 weeks future) and
+// /admin/groups/[groupId]/calendar (+52 weeks future) so newly
+// created events stay visible from the calendar surface that created
+// them.
+const PAST_BOUND_DAYS = 365;
+const FUTURE_BOUND_DAYS = 365 * 2;
+
 const EVENT_TYPES: ReadonlySet<GroupCalendarEventType> = new Set([
   "study",
   "community_night",
@@ -59,6 +69,19 @@ function isIsoDate(value: string): boolean {
   const parsed = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return false;
   return parsed.toISOString().slice(0, 10) === value;
+}
+
+function isWithinPlanningHorizon(value: string, now: Date): boolean {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const minDate = new Date(today);
+  minDate.setUTCDate(minDate.getUTCDate() - PAST_BOUND_DAYS);
+  const maxDate = new Date(today);
+  maxDate.setUTCDate(maxDate.getUTCDate() + FUTURE_BOUND_DAYS);
+  return parsed >= minDate && parsed <= maxDate;
 }
 
 function isHhMm(value: string): boolean {
@@ -128,6 +151,10 @@ function validateWritable(
     errors.push("event_date is required (YYYY-MM-DD).");
   } else if (!isIsoDate(eventDate)) {
     errors.push("event_date must be a real ISO date in YYYY-MM-DD form.");
+  } else if (!isWithinPlanningHorizon(eventDate, new Date())) {
+    errors.push(
+      "event_date must be within the planning horizon: 1 year in the past or 2 years in the future.",
+    );
   }
 
   const startRaw = readOptionalString(input.start_time);

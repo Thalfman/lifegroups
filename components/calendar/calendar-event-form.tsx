@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   errorTextStyle,
@@ -61,6 +61,18 @@ export function CalendarEventForm({
   successMessage?: string;
 }) {
   const init = initial ?? EMPTY_INITIAL;
+  // Both the page-level create form and any number of inline edit
+  // forms can mount simultaneously. Hard-coded ids would produce
+  // duplicate `event-date` / `event-status` ids and break label-input
+  // targeting (and focus management for keyboard / a11y).
+  const fieldId = useId();
+  const dateId = `${fieldId}-date`;
+  const statusId = `${fieldId}-status`;
+  const typeId = `${fieldId}-type`;
+  const startId = `${fieldId}-start`;
+  const endId = `${fieldId}-end`;
+  const titleId = `${fieldId}-title`;
+  const descriptionId = `${fieldId}-description`;
   const [state, formAction, pending] = useActionState<State, FormData>(
     action,
     undefined,
@@ -100,11 +112,11 @@ export function CalendarEventForm({
 
       <div style={formGridStyle}>
         <div>
-          <label htmlFor="event-date" style={fieldLabelStyle}>
+          <label htmlFor={dateId} style={fieldLabelStyle}>
             Date
           </label>
           <input
-            id="event-date"
+            id={dateId}
             name="event_date"
             type="date"
             required
@@ -113,11 +125,11 @@ export function CalendarEventForm({
           />
         </div>
         <div>
-          <label htmlFor="event-status" style={fieldLabelStyle}>
+          <label htmlFor={statusId} style={fieldLabelStyle}>
             Status
           </label>
           <select
-            id="event-status"
+            id={statusId}
             name="status"
             value={status}
             onChange={(e) => setStatus(e.target.value as GroupCalendarEventStatus)}
@@ -132,11 +144,11 @@ export function CalendarEventForm({
         </div>
         {showEventTypeSelect ? (
           <div>
-            <label htmlFor="event-type" style={fieldLabelStyle}>
+            <label htmlFor={typeId} style={fieldLabelStyle}>
               Event type
             </label>
             <select
-              id="event-type"
+              id={typeId}
               name="event_type"
               defaultValue={init.eventType === "off" || init.eventType === "cancelled" ? "study" : init.eventType}
               style={fieldSelectStyle}
@@ -150,11 +162,11 @@ export function CalendarEventForm({
           </div>
         ) : null}
         <div>
-          <label htmlFor="event-start" style={fieldLabelStyle}>
+          <label htmlFor={startId} style={fieldLabelStyle}>
             Start time (optional)
           </label>
           <input
-            id="event-start"
+            id={startId}
             name="start_time"
             type="time"
             defaultValue={init.startTime ?? ""}
@@ -162,11 +174,11 @@ export function CalendarEventForm({
           />
         </div>
         <div>
-          <label htmlFor="event-end" style={fieldLabelStyle}>
+          <label htmlFor={endId} style={fieldLabelStyle}>
             End time (optional)
           </label>
           <input
-            id="event-end"
+            id={endId}
             name="end_time"
             type="time"
             defaultValue={init.endTime ?? ""}
@@ -176,11 +188,11 @@ export function CalendarEventForm({
       </div>
 
       <div>
-        <label htmlFor="event-title" style={fieldLabelStyle}>
+        <label htmlFor={titleId} style={fieldLabelStyle}>
           Title (optional)
         </label>
         <input
-          id="event-title"
+          id={titleId}
           name="title"
           type="text"
           maxLength={200}
@@ -191,11 +203,11 @@ export function CalendarEventForm({
       </div>
 
       <div>
-        <label htmlFor="event-description" style={fieldLabelStyle}>
+        <label htmlFor={descriptionId} style={fieldLabelStyle}>
           Description (optional)
         </label>
         <textarea
-          id="event-description"
+          id={descriptionId}
           name="description"
           maxLength={1000}
           rows={3}

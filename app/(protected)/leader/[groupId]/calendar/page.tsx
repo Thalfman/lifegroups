@@ -53,9 +53,12 @@ export default async function LeaderCalendarPage({
   if (!client) notFound();
 
   const todayWeek = isoWeekStart(new Date());
-  // 4 weeks past + 16 weeks future window.
+  // 4 weeks past + 52 weeks future. The future bound matches the
+  // calendar payload validator's planning horizon so an event a leader
+  // can validly create is always visible from the calendar surface
+  // that created it.
   const fromDate = addDays(todayWeek, -28);
-  const toDate = addDays(todayWeek, 16 * 7);
+  const toDate = addDays(todayWeek, 52 * 7);
 
   const [groupResult, eventsResult] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),

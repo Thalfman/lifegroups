@@ -51,9 +51,11 @@ export default async function AdminGroupCalendarPage({
   if (!client) notFound();
 
   const todayWeek = isoWeekStart(new Date());
-  // Admins get a wider window: 12 weeks past + 26 weeks future.
+  // Admins get a wider window: 12 weeks past + 52 weeks future. The
+  // future bound matches the calendar payload validator's planning
+  // horizon so any validly-created event stays visible here.
   const fromDate = addDays(todayWeek, -12 * 7);
-  const toDate = addDays(todayWeek, 26 * 7);
+  const toDate = addDays(todayWeek, 52 * 7);
 
   const [groupResult, eventsResult] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),
