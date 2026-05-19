@@ -25,25 +25,10 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatTimeRange(start: string | null, end: string | null): string | null {
-  const fmt = (t: string | null) => {
-    if (!t) return null;
-    const [h, m] = t.split(":");
-    const hour = Number.parseInt(h ?? "0", 10);
-    const minute = Number.parseInt(m ?? "0", 10);
-    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-    const suffix = hour >= 12 ? "PM" : "AM";
-    const display = ((hour + 11) % 12) + 1;
-    const minuteStr = minute === 0 ? "" : `:${String(minute).padStart(2, "0")}`;
-    return `${display}${minuteStr} ${suffix}`;
-  };
-  const a = fmt(start);
-  const b = fmt(end);
-  if (a && b) return `${a} – ${b}`;
-  if (a) return a;
-  return null;
-}
-
+// Phase 5A.6 (corrected): list used by the archived tab. The main
+// calendar surface is now the grid + modal editor. We no longer render
+// per-event start_time / end_time -- meeting time is inherited from the
+// group schedule and shown in the page header.
 export function CalendarEventList({
   events,
   emptyMessage,
@@ -68,16 +53,11 @@ export function CalendarEventList({
           color: P.ink2,
         }}
       >
-        {emptyMessage ?? "No calendar events yet."}
+        {emptyMessage ?? "No calendar overrides."}
       </div>
     );
   }
 
-  // archivedSeparate=true: split into an active list + a collapsible
-  // archived section (the default "upcoming" view).
-  // archivedSeparate=false: render every row inline -- used by the
-  // archived-only tab, where the caller has already scoped the fetch to
-  // archived events and expects them all to render.
   if (!archivedSeparate) {
     return (
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
@@ -116,7 +96,7 @@ export function CalendarEventList({
             color: P.ink2,
           }}
         >
-          {emptyMessage ?? "No upcoming events yet."}
+          {emptyMessage ?? "No overrides yet."}
         </div>
       )}
 
@@ -164,7 +144,6 @@ function CalendarEventRow({
   archived?: boolean;
 }) {
   const dateLabel = formatDate(event.event_date);
-  const timeLabel = formatTimeRange(event.start_time, event.end_time);
   const displayLabel = eventDisplayLabel(event);
   const typeLabel = friendlyEventTypeLabel(event.event_type);
   const statusLabel = friendlyEventStatusLabel(event.status);
@@ -196,7 +175,6 @@ function CalendarEventRow({
           }}
         >
           {dateLabel}
-          {timeLabel ? ` · ${timeLabel}` : ""}
         </div>
         <div
           style={{

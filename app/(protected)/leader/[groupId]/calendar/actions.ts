@@ -101,8 +101,10 @@ export async function leaderCreateCalendarEvent(
   const { data, error } = await rpcLeaderCreateGroupCalendarEvent(client, {
     p_group_id: v.value.group_id,
     p_event_date: v.value.event_date,
-    p_start_time: v.value.start_time,
-    p_end_time: v.value.end_time,
+    // Phase 5A.6 correction: meeting time is always inherited from the
+    // group schedule. The calendar editor never sets a per-event time.
+    p_start_time: null,
+    p_end_time: null,
     p_event_type: v.value.event_type,
     p_status: v.value.status,
     p_title: v.value.title,
@@ -135,8 +137,8 @@ export async function leaderUpdateCalendarEvent(
   const { data, error } = await rpcLeaderUpdateGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
     p_event_date: v.value.event_date,
-    p_start_time: v.value.start_time,
-    p_end_time: v.value.end_time,
+    p_start_time: null,
+    p_end_time: null,
     p_event_type: v.value.event_type,
     p_status: v.value.status,
     p_title: v.value.title,

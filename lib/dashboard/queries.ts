@@ -61,9 +61,10 @@ import {
 } from "@/lib/admin/metrics";
 import {
   computeCheckInDue,
+  expectedMeetingDateForWeek,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
-  pickCalendarOverrideForWeek,
+  pickCalendarOverrideForOccurrence,
   type CalendarEventLite,
 } from "@/lib/admin/check-in-due";
 import { eventDisplayLabel } from "@/lib/calendar/payload";
@@ -108,7 +109,6 @@ function buildCalendarEventsByGroup(
     const list = m.get(e.group_id) ?? [];
     list.push({
       event_date: e.event_date,
-      start_time: e.start_time,
       status: e.status,
       archived_at: e.archived_at,
     });
@@ -707,9 +707,14 @@ export async function getAdminDashboardData(
       const hasCapacityConfigured =
         override?.capacity_override != null || g.capacity != null;
       const groupEventsForWeek = calendarEventsByGroup.get(g.id) ?? [];
-      const calendarOverride = pickCalendarOverrideForWeek(
+      const occurrenceDate = expectedMeetingDateForWeek(selectedWeek, {
+        meetingDay: g.meeting_day,
+        meetingFrequency: g.meeting_frequency,
+        meetingWeekParity: g.meeting_week_parity,
+      });
+      const calendarOverride = pickCalendarOverrideForOccurrence(
         groupEventsForWeek,
-        selectedWeek,
+        occurrenceDate,
       );
       const dueResult = computeCheckInDue({
         group: {
@@ -945,30 +950,25 @@ async function buildLeaderGroupDashboard(
   };
 
   // Upcoming-events strip: at most 2 upcoming events (today onwards),
-  // sorted by date / start_time. Pre-resolve the friendly label so the
-  // client component stays simple. The floor must be today's calendar
-  // date in the church-local timezone (not UTC, not the ISO-week
-  // Monday) -- otherwise a leader checking the dashboard on Wednesday
-  // would see Monday's already-past meeting in the "next up" strip,
-  // and around local-midnight UTC drift could hide same-day events or
-  // include yesterday's.
+  // sorted by date. Pre-resolve the friendly label so the client
+  // component stays simple. The floor must be today's calendar date in
+  // the church-local timezone (not UTC, not the ISO-week Monday) --
+  // otherwise a leader checking the dashboard on Wednesday would see
+  // Monday's already-past meeting in the "next up" strip, and around
+  // local-midnight UTC drift could hide same-day events or include
+  // yesterday's. Meeting time is inherited from the group schedule
+  // (Phase 5A.6 correction) -- the calendar table's start_time column
+  // is no longer authoritative.
   const todayIso = localTodayIso();
   const upcomingEvents = calendarEvents
     .filter((e) => e.archived_at == null && e.event_date >= todayIso)
-    .sort((a, b) => {
-      if (a.event_date !== b.event_date)
-        return a.event_date < b.event_date ? -1 : 1;
-      const aTime = a.start_time ?? "";
-      const bTime = b.start_time ?? "";
-      if (aTime === bTime) return 0;
-      return aTime < bTime ? -1 : 1;
-    })
+    .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0))
     .slice(0, 2)
     .map((e) => ({
       date: e.event_date,
       label: eventDisplayLabel({ title: e.title, event_type: e.event_type }),
       status: e.status,
-      startTime: e.start_time,
+      startTime: group.meeting_time,
     }));
 
   return {

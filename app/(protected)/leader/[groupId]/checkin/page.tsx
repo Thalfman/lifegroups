@@ -23,9 +23,10 @@ import {
 } from "@/lib/admin/metrics";
 import {
   computeCheckInDue,
+  expectedMeetingDateForWeek,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
-  pickCalendarOverrideForWeek,
+  pickCalendarOverrideForOccurrence,
 } from "@/lib/admin/check-in-due";
 import type {
   AttendanceSessionsRow,
@@ -155,19 +156,25 @@ export default async function CheckInPage({
   const metricDefaults = metricDefaultsResult.error
     ? BUILT_IN_METRIC_DEFAULTS
     : decodeMetricDefaults(metricDefaultsResult.data ?? null);
-  // Phase 5A.6: if a leader has published a calendar event for this
-  // week, that event overrides the default meeting_day / meeting_time
-  // for due-date math. OFF / cancelled events suppress the due timestamp.
-  // The error case is handled above (we throw) so we can trust the data
-  // here.
-  const calendarOverride = pickCalendarOverrideForWeek(
+  // Phase 5A.6 (corrected): if a leader has overridden the cadence's
+  // expected meeting occurrence for this week, the gathering type /
+  // status replaces the default. OFF / cancelled suppress the due
+  // timestamp. Meeting time is always inherited from the group
+  // schedule; the override carries no time. Special one-off rows on
+  // non-meeting dates are ignored for check-in due math -- they appear
+  // on the calendar grid but don't shift the regular weekly check-in.
+  const occurrenceDate = expectedMeetingDateForWeek(meetingWeek, {
+    meetingDay: group.meeting_day,
+    meetingFrequency: group.meeting_frequency,
+    meetingWeekParity: group.meeting_week_parity,
+  });
+  const calendarOverride = pickCalendarOverrideForOccurrence(
     (calendarEventsResult.data ?? []).map((e) => ({
       event_date: e.event_date,
-      start_time: e.start_time,
       status: e.status,
       archived_at: e.archived_at,
     })),
-    meetingWeek,
+    occurrenceDate,
   );
   const dueResult = computeCheckInDue({
     group: {

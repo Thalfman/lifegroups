@@ -34,9 +34,10 @@ import {
 } from "@/lib/admin/metrics";
 import {
   computeCheckInDue,
+  expectedMeetingDateForWeek,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
-  pickCalendarOverrideForWeek,
+  pickCalendarOverrideForOccurrence,
   type CalendarEventLite,
 } from "@/lib/admin/check-in-due";
 import type {
@@ -338,7 +339,6 @@ function buildCalendarEventsByGroupCheckIns(
     const list = m.get(e.group_id) ?? [];
     list.push({
       event_date: e.event_date,
-      start_time: e.start_time,
       status: e.status,
       archived_at: e.archived_at,
     });
@@ -523,9 +523,14 @@ export async function fetchAdminWeeklyCheckInReview(
     const health = healthByGroup.get(g.id) ?? null;
     const submitterName =
       session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
-    const calendarOverride = pickCalendarOverrideForWeek(
+    const occurrenceDate = expectedMeetingDateForWeek(meetingWeek, {
+      meetingDay: g.meeting_day,
+      meetingFrequency: g.meeting_frequency,
+      meetingWeekParity: g.meeting_week_parity,
+    });
+    const calendarOverride = pickCalendarOverrideForOccurrence(
       calendarEventsByGroup.get(g.id) ?? [],
-      meetingWeek,
+      occurrenceDate,
     );
     const dueResult = computeCheckInDue({
       group: {
