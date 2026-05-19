@@ -208,11 +208,14 @@ function isoWeekNumberOf(meetingWeekIso: string): number | null {
 // Returns true when a group with the given cadence is scheduled to meet
 // in the ISO week starting on `meetingWeekIso`. Weekly groups always
 // meet. Bi-weekly groups only meet when the calendar week parity matches
-// the group's parity setting. Monthly groups can't be resolved without
-// richer recurrence info (day-of-month vs. nth-weekday); we return
-// false so the dashboard doesn't flag a monthly group as "missing" just
-// because no session exists for an arbitrary week, and the helper
-// returns no due-date for them.
+// the group's parity setting. Monthly groups can't be resolved precisely
+// without richer recurrence info (day-of-month vs. nth-weekday); we
+// return `true` so a monthly group isn't silently hidden from missing
+// check-in counts on every week of the year. The dashboard still
+// surfaces a "missing day/time" attention reason for monthly groups
+// with no leader submission, and admins can settle a non-meeting week
+// by recording a `did_not_meet` or `planned_pause` submission --
+// which already suppresses overdue messaging.
 //
 // A bi-weekly group with parity = null is a data gap. We treat it as
 // "meets this week" so it isn't silently dropped from review surfaces;
@@ -223,7 +226,7 @@ function groupMeetsInWeek(
   parity: MeetingWeekParity | null,
 ): boolean {
   if (frequency === "weekly") return true;
-  if (frequency === "monthly") return false;
+  if (frequency === "monthly") return true;
   // bi-weekly
   const weekNumber = isoWeekNumberOf(meetingWeekIso);
   if (weekNumber == null) return true;
@@ -273,8 +276,7 @@ export function computeCheckInDue(args: {
   // -- which is what the admin dashboard / check-ins review need so
   // historical week views compute due dates against the actual
   // meeting that *was* scheduled, not relative to today. When omitted,
-  // the helper falls back to "the most recent meeting relative to `now`"
-  // -- which is what the leader check-in surface wants.
+  // the helper uses the current ISO week of `now` (church-local).
   meetingWeek?: string;
   now?: Date;
 }): CheckInDueResult {
@@ -283,25 +285,51 @@ export function computeCheckInDue(args: {
     args.defaults,
   );
   const now = args.now ?? new Date();
-  const dayName = args.group.meetingDay?.trim() ?? "";
-  const timeParts = parseMeetingTime(args.group.meetingTime);
-  const empty: CheckInDueResult = {
+  const nowParts = churchClockParts(now);
+
+  // ---- Phase 1: cadence-only gate ---------------------------------------
+  //
+  // The cadence check intentionally runs BEFORE we look at meeting_day /
+  // meeting_time. A bi-weekly off-parity group is genuinely not scheduled
+  // this week regardless of whether the day/time fields are set; a group
+  // missing day/time but on a valid cadence is still scheduled (we just
+  // can't pinpoint the due moment). Splitting the phases like this keeps
+  // the dashboard from labelling a group "Off-week" when the real
+  // problem is a configuration gap (which has its own attention reason).
+  const cadenceWeekIso =
+    args.meetingWeek ??
+    mondayOfWeekIso(nowParts.year, nowParts.month, nowParts.day);
+  const scheduled = groupMeetsInWeek(
+    cadenceWeekIso,
+    args.group.meetingFrequency,
+    args.group.meetingWeekParity,
+  );
+
+  const empty = (isScheduled: boolean): CheckInDueResult => ({
     due: null,
     offsetHours,
     isOverdue: false,
     minutesUntilDue: 0,
-    isScheduledThisWeek: false,
-  };
-  if (!(dayName in DAY_INDEX) || !timeParts) {
-    return empty;
+    isScheduledThisWeek: isScheduled,
+  });
+
+  if (!scheduled) {
+    // Bi-weekly off-parity: not meeting this week, no due date.
+    return empty(false);
   }
 
-  // Cadence gate: if the group is bi-weekly and we know which calendar
-  // week we're talking about, drop it out when the parity doesn't match.
-  // For "no meetingWeek given" (leader-current-week path), we anchor the
-  // parity check against the calendar week the most-recent meeting falls
-  // in.
-  const nowParts = churchClockParts(now);
+  // ---- Phase 2: due-date computation ------------------------------------
+  //
+  // Requires meeting_day + meeting_time. When either is missing the group
+  // is still considered scheduled (per cadence above) so the "missing
+  // check-in" count still includes it -- we just can't pin a due
+  // timestamp on it.
+  const dayName = args.group.meetingDay?.trim() ?? "";
+  const timeParts = parseMeetingTime(args.group.meetingTime);
+  if (!(dayName in DAY_INDEX) || !timeParts) {
+    return empty(true);
+  }
+
   const candidateMeeting = args.meetingWeek
     ? meetingOccurrenceInWeek(
         args.meetingWeek,
@@ -315,28 +343,7 @@ export function computeCheckInDue(args: {
         timeParts.hour,
         timeParts.minute,
       );
-  if (!candidateMeeting) return empty;
-
-  // Compute the ISO week (Monday) that the candidate meeting falls in so
-  // we can run the cadence parity check uniformly whether the caller
-  // passed `meetingWeek` or not.
-  const meetingWeekIso =
-    args.meetingWeek ??
-    mondayOfWeekIso(
-      candidateMeeting.year,
-      candidateMeeting.month,
-      candidateMeeting.day,
-    );
-  const scheduled = groupMeetsInWeek(
-    meetingWeekIso,
-    args.group.meetingFrequency,
-    args.group.meetingWeekParity,
-  );
-  if (!scheduled) {
-    // Off-parity bi-weekly OR monthly (which we can't resolve without
-    // richer recurrence data). No due-date, no overdue flag.
-    return empty;
-  }
+  if (!candidateMeeting) return empty(true);
 
   const meetingMinutes = ymdHmToMinutes(
     candidateMeeting.year,
@@ -355,7 +362,11 @@ export function computeCheckInDue(args: {
   return {
     due: dueParts,
     offsetHours,
-    isOverdue: minutesUntilDue <= 0,
+    // Exact-minute boundary: treat `minutesUntilDue === 0` as "due now",
+    // not overdue, so the UI doesn't render "Overdue · due in 0m"
+    // simultaneously. Overdue fires only once we've strictly passed the
+    // due instant. Mirrors the `< 0` past check in formatCheckInDueRelative.
+    isOverdue: minutesUntilDue < 0,
     minutesUntilDue,
     isScheduledThisWeek: true,
   };

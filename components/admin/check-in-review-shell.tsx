@@ -331,8 +331,8 @@ function ReviewCard({
                 fontStyle: "italic",
               }}
             >
-              Not scheduled this week &mdash; bi-weekly off-parity or
-              monthly cadence.
+              Bi-weekly off-parity &mdash; this group wasn&rsquo;t
+              scheduled to meet this week.
             </div>
           ) : null}
         </div>
