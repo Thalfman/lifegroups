@@ -22,6 +22,13 @@ const ACTION_LABELS: Record<string, string> = {
   "leader.update_checkin": "Updated check-in",
   "leader.mark_did_not_meet": "Did not meet",
   "super_admin.update_profile_role": "Changed role",
+  // Phase 5C.0 guest pipeline + follow-up actions.
+  "admin.create_guest": "Added guest",
+  "admin.update_guest_pipeline": "Updated guest pipeline",
+  "admin.mark_guest_not_now": "Marked guest not now",
+  "admin.create_follow_up": "Created follow-up",
+  "admin.update_follow_up_status": "Updated follow-up status",
+  "leader.update_follow_up_status": "Leader updated follow-up",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -125,6 +132,47 @@ function summarize(
     case "admin.reopen_group": {
       const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
       return `Reopened group ${name ?? ""}`.trim();
+    }
+    case "admin.create_guest": {
+      const name = asString(after.full_name) ?? "(unknown)";
+      const stage = asString(after.pipeline_stage);
+      return stage ? `Added guest ${name} (${stage})` : `Added guest ${name}`;
+    }
+    case "admin.update_guest_pipeline": {
+      const name = asString(md.full_name) ?? "guest";
+      const beforeStage = asString(before.pipeline_stage);
+      const afterStage = asString(after.pipeline_stage);
+      if (beforeStage && afterStage && beforeStage !== afterStage) {
+        return `Moved ${name} from ${beforeStage} to ${afterStage}`;
+      }
+      return `Updated ${name}'s pipeline`;
+    }
+    case "admin.mark_guest_not_now": {
+      const name = asString(md.full_name) ?? "guest";
+      return `Marked ${name} as "not now"`;
+    }
+    case "admin.create_follow_up": {
+      const title = asString(after.title) ?? "(no title)";
+      const type = asString(after.type);
+      return type ? `Created ${type} follow-up: ${title}` : `Created follow-up: ${title}`;
+    }
+    case "admin.update_follow_up_status": {
+      const title = asString(md.title) ?? "follow-up";
+      const beforeStatus = asString(before.status);
+      const afterStatus = asString(after.status);
+      if (beforeStatus && afterStatus && beforeStatus !== afterStatus) {
+        return `${title}: ${beforeStatus} → ${afterStatus}`;
+      }
+      return `Updated follow-up: ${title}`;
+    }
+    case "leader.update_follow_up_status": {
+      const title = asString(md.title) ?? "follow-up";
+      const beforeStatus = asString(before.status);
+      const afterStatus = asString(after.status);
+      if (beforeStatus && afterStatus && beforeStatus !== afterStatus) {
+        return `Leader moved "${title}" ${beforeStatus} → ${afterStatus}`;
+      }
+      return `Leader updated follow-up: ${title}`;
     }
     case "super_admin.update_profile_role": {
       const target = event.entity_id ? profilesById.get(event.entity_id) : undefined;

@@ -1,4 +1,11 @@
-import type { UserRole, RoleInGroup } from "@/types/enums";
+import type {
+  FollowUpPriority,
+  FollowUpStatus,
+  FollowUpType,
+  GuestPipelineStage,
+  RoleInGroup,
+  UserRole,
+} from "@/types/enums";
 
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
@@ -675,6 +682,352 @@ export function validateChangeLeaderRolePayload(
     value: {
       profile_id: normalizeUuid(input.profile_id as string),
       new_role: input.new_role as "leader" | "co_leader",
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5C.0 — Guest pipeline + follow-up payloads.
+// ---------------------------------------------------------------------------
+
+const GUEST_PIPELINE_STAGES: ReadonlySet<GuestPipelineStage> = new Set([
+  "new",
+  "contacted",
+  "interested",
+  "assigned",
+  "attended",
+  "placed",
+  "not_now",
+]);
+
+const FOLLOW_UP_TYPES: ReadonlySet<FollowUpType> = new Set([
+  "attendance",
+  "guest",
+  "leader",
+  "capacity",
+  "pause",
+  "care",
+  "admin",
+]);
+
+const FOLLOW_UP_PRIORITIES: ReadonlySet<FollowUpPriority> = new Set([
+  "low",
+  "normal",
+  "high",
+]);
+
+const FOLLOW_UP_STATUSES: ReadonlySet<FollowUpStatus> = new Set([
+  "open",
+  "in_progress",
+  "done",
+  "snoozed",
+]);
+
+const LEADER_FOLLOW_UP_STATUSES: ReadonlySet<FollowUpStatus> = new Set([
+  "in_progress",
+  "done",
+]);
+
+// ISO date `YYYY-MM-DD`. The RPC takes `date` so we trust the value if
+// parseable; this just keeps obviously-malformed input out of the network.
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isIsoDate(value: string): boolean {
+  return ISO_DATE_RE.test(value);
+}
+
+function isPipelineStage(value: unknown): value is GuestPipelineStage {
+  return typeof value === "string" && GUEST_PIPELINE_STAGES.has(value as GuestPipelineStage);
+}
+
+function isFollowUpType(value: unknown): value is FollowUpType {
+  return typeof value === "string" && FOLLOW_UP_TYPES.has(value as FollowUpType);
+}
+
+function isFollowUpPriority(value: unknown): value is FollowUpPriority {
+  return typeof value === "string" && FOLLOW_UP_PRIORITIES.has(value as FollowUpPriority);
+}
+
+function isFollowUpStatus(value: unknown): value is FollowUpStatus {
+  return typeof value === "string" && FOLLOW_UP_STATUSES.has(value as FollowUpStatus);
+}
+
+function isLeaderFollowUpStatus(value: unknown): value is FollowUpStatus {
+  return typeof value === "string" && LEADER_FOLLOW_UP_STATUSES.has(value as FollowUpStatus);
+}
+
+// HTML forms post boolean fields as "true" / "false" / "on" / "1" / "0".
+// `Boolean(value)` on a non-empty string is always true, so we need an
+// explicit parser to keep "false" from accidentally meaning "true".
+function readBooleanFlag(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === false || value === undefined || value === null) return false;
+  if (typeof value === "string") {
+    const t = value.trim().toLowerCase();
+    return t === "true" || t === "on" || t === "1";
+  }
+  return false;
+}
+
+export type CreateGuestPayload = {
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  first_attended_group_id: string | null;
+  first_attended_date: string | null;
+  pipeline_stage: GuestPipelineStage;
+  assigned_group_id: string | null;
+  follow_up_owner_id: string | null;
+  notes: string | null;
+};
+
+export function validateCreateGuestPayload(
+  input: unknown,
+): ValidationResult<CreateGuestPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const fullName = trimString(input.full_name) ?? "";
+  const email = readOptionalString(input.email);
+  const phone = readOptionalString(input.phone);
+  const firstAttendedGroupId = readOptionalString(input.first_attended_group_id);
+  const firstAttendedDate = readOptionalString(input.first_attended_date);
+  const assignedGroupId = readOptionalString(input.assigned_group_id);
+  const followUpOwnerId = readOptionalString(input.follow_up_owner_id);
+  const notes = readOptionalString(input.notes);
+  const rawStage = readOptionalString(input.pipeline_stage);
+  const stage: GuestPipelineStage = rawStage !== undefined
+    ? (rawStage as GuestPipelineStage)
+    : "new";
+
+  if (fullName.length === 0) errors.push("Guest name is required.");
+  if (fullName.length > 120) errors.push("Guest name is too long (max 120 characters).");
+  if (email !== undefined && !isEmail(email)) errors.push("Email must be a valid address.");
+  if (phone !== undefined && !isPhone(phone)) errors.push("Phone format is invalid.");
+  if (firstAttendedGroupId !== undefined && !isUuid(firstAttendedGroupId)) {
+    errors.push("First-attended group is invalid.");
+  }
+  if (assignedGroupId !== undefined && !isUuid(assignedGroupId)) {
+    errors.push("Assigned group is invalid.");
+  }
+  if (followUpOwnerId !== undefined && !isUuid(followUpOwnerId)) {
+    errors.push("Follow-up owner is invalid.");
+  }
+  if (firstAttendedDate !== undefined && !isIsoDate(firstAttendedDate)) {
+    errors.push("First-attended date must be YYYY-MM-DD.");
+  }
+  if (rawStage !== undefined && !isPipelineStage(rawStage)) {
+    errors.push("Pipeline stage isn't a valid value.");
+  }
+  if (notes !== undefined && notes.length > 1000) {
+    errors.push("Notes are too long (max 1000 characters).");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      full_name: fullName,
+      email: email ?? null,
+      phone: phone ?? null,
+      first_attended_group_id: firstAttendedGroupId
+        ? normalizeUuid(firstAttendedGroupId)
+        : null,
+      first_attended_date: firstAttendedDate ?? null,
+      pipeline_stage: stage,
+      assigned_group_id: assignedGroupId ? normalizeUuid(assignedGroupId) : null,
+      follow_up_owner_id: followUpOwnerId ? normalizeUuid(followUpOwnerId) : null,
+      notes: notes ?? null,
+    },
+  };
+}
+
+export type UpdateGuestPipelinePayload = {
+  guest_id: string;
+  pipeline_stage: GuestPipelineStage;
+  set_assigned_group_id: boolean;
+  assigned_group_id: string | null;
+  set_follow_up_owner_id: boolean;
+  follow_up_owner_id: string | null;
+  set_notes: boolean;
+  notes: string | null;
+};
+
+export function validateUpdateGuestPipelinePayload(
+  input: unknown,
+): ValidationResult<UpdateGuestPipelinePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.guest_id)) errors.push("guest_id must be a uuid");
+  if (!isPipelineStage(input.pipeline_stage)) {
+    errors.push("Pipeline stage isn't a valid value.");
+  }
+
+  const setAssigned = readBooleanFlag(input.set_assigned_group_id);
+  const setOwner = readBooleanFlag(input.set_follow_up_owner_id);
+  const setNotes = readBooleanFlag(input.set_notes);
+
+  const assignedRaw = readOptionalString(input.assigned_group_id);
+  const ownerRaw = readOptionalString(input.follow_up_owner_id);
+  const notesRaw = readOptionalString(input.notes);
+
+  if (setAssigned && assignedRaw !== undefined && !isUuid(assignedRaw)) {
+    errors.push("Assigned group is invalid.");
+  }
+  if (setOwner && ownerRaw !== undefined && !isUuid(ownerRaw)) {
+    errors.push("Follow-up owner is invalid.");
+  }
+  if (setNotes && notesRaw !== undefined && notesRaw.length > 1000) {
+    errors.push("Notes are too long (max 1000 characters).");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      guest_id: normalizeUuid(input.guest_id as string),
+      pipeline_stage: input.pipeline_stage as GuestPipelineStage,
+      set_assigned_group_id: setAssigned,
+      assigned_group_id: setAssigned && assignedRaw ? normalizeUuid(assignedRaw) : null,
+      set_follow_up_owner_id: setOwner,
+      follow_up_owner_id: setOwner && ownerRaw ? normalizeUuid(ownerRaw) : null,
+      set_notes: setNotes,
+      notes: setNotes ? notesRaw ?? null : null,
+    },
+  };
+}
+
+export type CreateFollowUpPayload = {
+  type: FollowUpType;
+  title: string;
+  related_group_id: string | null;
+  related_member_id: string | null;
+  related_guest_id: string | null;
+  assigned_to: string | null;
+  priority: FollowUpPriority;
+  due_date: string | null;
+  leader_visible_note: string | null;
+  admin_private_note: string | null;
+};
+
+export function validateCreateFollowUpPayload(
+  input: unknown,
+): ValidationResult<CreateFollowUpPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  const title = trimString(input.title) ?? "";
+  if (title.length === 0) errors.push("Title is required.");
+  if (title.length > 200) errors.push("Title is too long (max 200 characters).");
+
+  if (!isFollowUpType(input.type)) errors.push("Type isn't a valid value.");
+  const priority: FollowUpPriority = isFollowUpPriority(input.priority)
+    ? (input.priority as FollowUpPriority)
+    : "normal";
+
+  const group = readOptionalString(input.related_group_id);
+  const member = readOptionalString(input.related_member_id);
+  const guest = readOptionalString(input.related_guest_id);
+  const assignedTo = readOptionalString(input.assigned_to);
+  const dueDate = readOptionalString(input.due_date);
+  const leaderNote = readOptionalString(input.leader_visible_note);
+  const adminNote = readOptionalString(input.admin_private_note);
+
+  if (group !== undefined && !isUuid(group)) errors.push("Related group is invalid.");
+  if (member !== undefined && !isUuid(member)) errors.push("Related member is invalid.");
+  if (guest !== undefined && !isUuid(guest)) errors.push("Related guest is invalid.");
+  if (assignedTo !== undefined && !isUuid(assignedTo))
+    errors.push("Assigned-to is invalid.");
+  if (dueDate !== undefined && !isIsoDate(dueDate))
+    errors.push("Due date must be YYYY-MM-DD.");
+  if (leaderNote !== undefined && leaderNote.length > 1000)
+    errors.push("Leader-visible note is too long (max 1000 characters).");
+  if (adminNote !== undefined && adminNote.length > 1000)
+    errors.push("Admin-private note is too long (max 1000 characters).");
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      type: input.type as FollowUpType,
+      title,
+      related_group_id: group ? normalizeUuid(group) : null,
+      related_member_id: member ? normalizeUuid(member) : null,
+      related_guest_id: guest ? normalizeUuid(guest) : null,
+      assigned_to: assignedTo ? normalizeUuid(assignedTo) : null,
+      priority,
+      due_date: dueDate ?? null,
+      leader_visible_note: leaderNote ?? null,
+      admin_private_note: adminNote ?? null,
+    },
+  };
+}
+
+export type AdminUpdateFollowUpStatusPayload = {
+  follow_up_id: string;
+  status: FollowUpStatus;
+  set_leader_visible_note: boolean;
+  leader_visible_note: string | null;
+  set_admin_private_note: boolean;
+  admin_private_note: string | null;
+};
+
+export function validateAdminUpdateFollowUpStatusPayload(
+  input: unknown,
+): ValidationResult<AdminUpdateFollowUpStatusPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
+  if (!isFollowUpStatus(input.status)) errors.push("Status isn't a valid value.");
+
+  const setLeader = readBooleanFlag(input.set_leader_visible_note);
+  const setAdmin = readBooleanFlag(input.set_admin_private_note);
+  const leaderNote = readOptionalString(input.leader_visible_note);
+  const adminNote = readOptionalString(input.admin_private_note);
+
+  if (setLeader && leaderNote !== undefined && leaderNote.length > 1000)
+    errors.push("Leader-visible note is too long (max 1000 characters).");
+  if (setAdmin && adminNote !== undefined && adminNote.length > 1000)
+    errors.push("Admin-private note is too long (max 1000 characters).");
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      follow_up_id: normalizeUuid(input.follow_up_id as string),
+      status: input.status as FollowUpStatus,
+      set_leader_visible_note: setLeader,
+      leader_visible_note: setLeader ? leaderNote ?? null : null,
+      set_admin_private_note: setAdmin,
+      admin_private_note: setAdmin ? adminNote ?? null : null,
+    },
+  };
+}
+
+export type LeaderUpdateFollowUpStatusPayload = {
+  follow_up_id: string;
+  status: "in_progress" | "done";
+};
+
+export function validateLeaderUpdateFollowUpStatusPayload(
+  input: unknown,
+): ValidationResult<LeaderUpdateFollowUpStatusPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
+  if (!isLeaderFollowUpStatus(input.status))
+    errors.push("Leaders can only mark follow-ups in progress or done.");
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      follow_up_id: normalizeUuid(input.follow_up_id as string),
+      status: input.status as "in_progress" | "done",
     },
   };
 }

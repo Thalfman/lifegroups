@@ -344,6 +344,63 @@ export interface Database {
         Args: { p_profile_id: UUID; p_new_role: E.UserRole };
         Returns: UUID;
       };
+      admin_create_guest: {
+        Args: {
+          p_full_name: string;
+          p_email: string | null;
+          p_phone: string | null;
+          p_first_attended_group_id: UUID | null;
+          p_first_attended_date: DateString | null;
+          p_pipeline_stage: E.GuestPipelineStage;
+          p_assigned_group_id: UUID | null;
+          p_follow_up_owner_id: UUID | null;
+          p_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_guest_pipeline: {
+        Args: {
+          p_guest_id: UUID;
+          p_pipeline_stage: E.GuestPipelineStage;
+          p_set_assigned_group_id: boolean;
+          p_assigned_group_id: UUID | null;
+          p_set_follow_up_owner_id: boolean;
+          p_follow_up_owner_id: UUID | null;
+          p_set_notes: boolean;
+          p_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_create_follow_up: {
+        Args: {
+          p_type: E.FollowUpType;
+          p_title: string;
+          p_related_group_id: UUID | null;
+          p_related_member_id: UUID | null;
+          p_related_guest_id: UUID | null;
+          p_assigned_to: UUID | null;
+          p_priority: E.FollowUpPriority;
+          p_due_date: DateString | null;
+          p_leader_visible_note: string | null;
+          p_admin_private_note: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_follow_up_status: {
+        Args: {
+          p_follow_up_id: UUID;
+          p_status: E.FollowUpStatus;
+          p_set_leader_visible_note: boolean;
+          p_leader_visible_note: string | null;
+          p_set_admin_private_note: boolean;
+          p_admin_private_note: string | null;
+        };
+        Returns: UUID;
+      };
+      leader_update_follow_up_status: {
+        Args: { p_follow_up_id: UUID; p_status: E.FollowUpStatus };
+        Returns: UUID;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

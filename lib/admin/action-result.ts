@@ -44,6 +44,17 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That profile already has that role. Nothing to change.",
   missing_settings:
     "The settings record is missing. Refresh the page and try again.",
+  // Phase 5C.0 tokens.
+  missing_guest:
+    "We couldn't find that guest. Refresh the page and try again.",
+  missing_follow_up:
+    "We couldn't find that follow-up. Refresh the page and try again.",
+  group_closed:
+    "That group is closed. Reopen it before assigning new guests or placements.",
+  invalid_status:
+    "That status isn't allowed here. Leaders can mark follow-ups in progress or done.",
+  invalid_status_transition:
+    "That follow-up has already been closed or moved past this step. Refresh to see the latest state.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

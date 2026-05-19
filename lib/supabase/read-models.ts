@@ -15,6 +15,7 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import type {
+  FollowUpStatus,
   GuestPipelineStage,
   MembershipStatus,
   ProfileStatus,
@@ -300,6 +301,113 @@ export async function fetchGroupMetricSettings(
   if (error)
     return { data: null, error: wrapError("fetchGroupMetricSettings", error) };
   return { data: (data as GroupMetricSettingsRow | null) ?? null, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5C.0 — Guest pipeline + follow-up read models.
+// ---------------------------------------------------------------------------
+
+// Leader-safe follow_ups column list. `admin_private_note` is *excluded*
+// so leader read paths never return it even though the table-level RLS
+// policy currently exposes the column. Column-level redaction via RLS
+// is intentionally deferred to a future migration; this list is the
+// defensive boundary for now.
+export const LEADER_FOLLOW_UP_COLUMNS =
+  "id, type, title, related_group_id, related_member_id, related_guest_id, " +
+  "assigned_to, priority, due_date, status, leader_visible_note, " +
+  "created_at, updated_at, completed_at";
+
+export type LeaderFollowUpRow = Omit<FollowUpsRow, "admin_private_note">;
+
+export async function fetchFollowUpsForAdmin(
+  client: ReadClient,
+  options: { statuses?: FollowUpStatus[]; limit?: number } = {},
+): Promise<ReadResult<FollowUpsRow[]>> {
+  let query = client
+    .from("follow_ups")
+    .select("*")
+    .order("priority", { ascending: false })
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (options.statuses && options.statuses.length > 0) {
+    query = query.in("status", options.statuses);
+  }
+  if (options.limit) query = query.limit(options.limit);
+  const { data, error } = await query.range(0, 9999);
+  if (error) return { data: null, error: wrapError("fetchFollowUpsForAdmin", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchFollowUpsForLeader(
+  client: ReadClient,
+  options: { profileId: string; assignedGroupIds: readonly string[] },
+): Promise<ReadResult<LeaderFollowUpRow[]>> {
+  const { profileId, assignedGroupIds } = options;
+  // Build an OR clause: assigned_to = me, OR related_group_id IN my groups.
+  // We always include the assigned_to predicate; the group clause is added
+  // only when there is at least one assigned group, so leaders with zero
+  // assignments still see follow-ups owned personally.
+  const orParts = [`assigned_to.eq.${profileId}`];
+  if (assignedGroupIds.length > 0) {
+    // PostgREST `in.(uuid,uuid,...)` -- uuids are safe identifiers, no quoting needed.
+    orParts.push(`related_group_id.in.(${assignedGroupIds.join(",")})`);
+  }
+  const { data, error } = await client
+    .from("follow_ups")
+    .select(LEADER_FOLLOW_UP_COLUMNS)
+    .or(orParts.join(","))
+    .order("priority", { ascending: false })
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .returns<LeaderFollowUpRow[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchFollowUpsForLeader", error) };
+  return { data: data ?? [], error: null };
+}
+
+// Counts open + in_progress follow-ups per guest. Single query, grouped
+// client-side so the guest list stays free of N+1 round trips.
+export async function fetchGuestFollowUpCounts(
+  client: ReadClient,
+  guestIds: string[],
+): Promise<ReadResult<Map<string, number>>> {
+  if (guestIds.length === 0) return { data: new Map(), error: null };
+  const { data, error } = await client
+    .from("follow_ups")
+    .select("related_guest_id, status")
+    .in("related_guest_id", guestIds)
+    .in("status", ["open", "in_progress"])
+    .returns<{ related_guest_id: string | null; status: FollowUpStatus }[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchGuestFollowUpCounts", error) };
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    if (!row.related_guest_id) continue;
+    counts.set(row.related_guest_id, (counts.get(row.related_guest_id) ?? 0) + 1);
+  }
+  return { data: counts, error: null };
+}
+
+// Returns { id, full_name } for guests the caller can see via RLS. Leaders
+// only see guests tied to a group they lead; admins see all. The UI uses
+// the returned set to render guest names on follow-up cards safely (any
+// guest id missing from the set is rendered as "Guest" without a name).
+export async function fetchGuestNamesByIds(
+  client: ReadClient,
+  guestIds: string[],
+): Promise<ReadResult<Map<string, string>>> {
+  if (guestIds.length === 0) return { data: new Map(), error: null };
+  const { data, error } = await client
+    .from("guests")
+    .select("id, full_name")
+    .in("id", guestIds)
+    .returns<{ id: string; full_name: string }[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchGuestNamesByIds", error) };
+  return {
+    data: new Map((data ?? []).map((r) => [r.id, r.full_name])),
+    error: null,
+  };
 }
 
 export async function fetchRecentAuditEvents(
