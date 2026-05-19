@@ -307,18 +307,48 @@ export async function fetchGroupMetricSettings(
 // Phase 5C.0 — Guest pipeline + follow-up read models.
 // ---------------------------------------------------------------------------
 
-// Leader-safe follow_ups column list. `admin_private_note` is *excluded*
-// so leader read paths never return it even though the table-level RLS
-// policy currently exposes the column. Column-level redaction via RLS
-// is intentionally deferred to a future migration; this list is the
-// defensive boundary for now.
+/**
+ * Leader-safe follow_ups column list. `admin_private_note` is intentionally
+ * **omitted** here so leader read paths never return it, even though the
+ * table-level RLS SELECT policy currently exposes the column to any caller
+ * with row access. This constant is the **defensive privacy boundary** for
+ * the `/leader` surface.
+ *
+ * Privacy contract (Phase 5C.0 / 5C.1):
+ *  - Every leader-facing query against `follow_ups` MUST select via this
+ *    constant (or a narrower allowlist), never `select("*")`.
+ *  - Every leader-facing helper MUST return `LeaderFollowUpRow` (which omits
+ *    `admin_private_note` at the type level — see below).
+ *  - Column-level RLS / a leader-safe Postgres view is documented as a
+ *    future hardening item in `docs/PHASE_5C_1_PRIVACY_HARDENING.md`. Until
+ *    that lands, this allowlist + type omission is the boundary.
+ *
+ * If you change this list, update `LeaderFollowUpRow` and re-run the
+ * verification grep in `docs/PHASE_5C_1_VERIFICATION.md`.
+ */
 export const LEADER_FOLLOW_UP_COLUMNS =
   "id, type, title, related_group_id, related_member_id, related_guest_id, " +
   "assigned_to, priority, due_date, status, leader_visible_note, " +
   "created_at, updated_at, completed_at";
 
+/**
+ * Leader-safe row type for `follow_ups`. The `Omit<..., "admin_private_note">`
+ * is the compile-time half of the privacy boundary documented above; the
+ * `LEADER_FOLLOW_UP_COLUMNS` allowlist is the runtime half. Any helper that
+ * fetches follow-ups for a leader-facing page MUST return this type.
+ */
 export type LeaderFollowUpRow = Omit<FollowUpsRow, "admin_private_note">;
 
+/**
+ * **Admin-only** follow-ups reader. Returns the full row including
+ * `admin_private_note` and is intended for `/admin/follow-ups` and other
+ * admin server contexts only.
+ *
+ * Do **not** call from any leader code path (`app/(protected)/leader/`,
+ * `components/leader/`, `lib/leader/`). Leader paths must use
+ * {@link fetchFollowUpsForLeader} which selects through
+ * {@link LEADER_FOLLOW_UP_COLUMNS} and returns {@link LeaderFollowUpRow}.
+ */
 export async function fetchFollowUpsForAdmin(
   client: ReadClient,
   options: { statuses?: FollowUpStatus[]; limit?: number } = {},
@@ -338,6 +368,14 @@ export async function fetchFollowUpsForAdmin(
   return { data: data ?? [], error: null };
 }
 
+/**
+ * Leader-safe follow-ups reader. Selects via {@link LEADER_FOLLOW_UP_COLUMNS}
+ * (which omits `admin_private_note`) and returns {@link LeaderFollowUpRow}.
+ * Visibility: rows where `assigned_to = profileId` OR `related_group_id` is
+ * in the caller's active leader/co_leader assignments. The OR clause is
+ * enforced both here (in the PostgREST `or(...)` predicate) and at the RLS
+ * layer by the Phase 4 `follow_ups_leader_read` policy.
+ */
 export async function fetchFollowUpsForLeader(
   client: ReadClient,
   options: { profileId: string; assignedGroupIds: readonly string[] },

@@ -252,7 +252,9 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
                 fontWeight: 500,
               }}
             >
-              No guests match these filters
+              {guests.length === 0
+                ? "No guests yet"
+                : "No guests match these filters"}
             </div>
             <p
               style={{
@@ -263,7 +265,9 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
                 lineHeight: 1.5,
               }}
             >
-              Adjust the search or filters above — or add a new guest at the top.
+              {guests.length === 0
+                ? "Add your first guest using the form above. A name is enough to start — the rest can come later."
+                : "Adjust the search or filters above — or add a new guest at the top."}
             </p>
           </div>
         ) : (

@@ -38,13 +38,26 @@
   prioritized attention queue, five capacity buckets, seven health
   buckets, a setup-gaps panel, and read-only consumption of the
   Phase 5A.4 metric helpers. ✅
-- **Phase 5C.0 (current)**: guest pipeline + follow-up foundation.
+- **Phase 5C.0**: guest pipeline + follow-up foundation.
   Two new admin routes (`/admin/guests`, `/admin/follow-ups`), a
   leader follow-ups section on `/leader`, and five new SECURITY
   DEFINER RPCs (`admin_create_guest`, `admin_update_guest_pipeline`,
   `admin_create_follow_up`, `admin_update_follow_up_status`,
   `leader_update_follow_up_status`). Manual workflow only — no SMS,
-  no public guest signup, no automation, no exports.
+  no public guest signup, no automation, no exports. ✅
+- **Phase 5C.1 (current)**: guest + follow-up privacy hardening and
+  post-merge verification pass. No new features, no new RPCs, no
+  new migrations. Reinforces the leader-side redaction boundary
+  that keeps `follow_ups.admin_private_note` out of `/leader` reads:
+  explicit JSDoc privacy contracts on `LEADER_FOLLOW_UP_COLUMNS`,
+  `LeaderFollowUpRow`, `fetchFollowUpsForLeader`, and the admin-only
+  `fetchFollowUpsForAdmin`; a narrowed `LeaderFollowUpItem`
+  view-model with a matching privacy note; documented grep regression
+  check. Verifies leader visibility, status-transition guards, and
+  the six new Super Admin audit summaries. Light UI polish:
+  separate "nothing yet" vs "filter mismatch" empty states on
+  `/admin/guests` and `/admin/follow-ups`. Column-level RLS / a
+  leader-safe Postgres view documented as future hardening.
 - **Later phases**: SMS / consent / phone login, calendar, prayer
   requests, attendance analytics, follow-up editing surface for
   leaders beyond status updates, advanced dashboard builder, custom
