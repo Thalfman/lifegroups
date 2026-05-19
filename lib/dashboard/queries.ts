@@ -44,7 +44,7 @@ import { pipelineStageLabel } from "./labels";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
 // dashboard agree on what "this week" means.
-import { isoWeekStart } from "@/lib/leader/validation";
+import { isoWeekStart, localTodayIso } from "@/lib/leader/validation";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import {
   capacityStatus as computeCapacityStatus,
@@ -947,10 +947,12 @@ async function buildLeaderGroupDashboard(
   // Upcoming-events strip: at most 2 upcoming events (today onwards),
   // sorted by date / start_time. Pre-resolve the friendly label so the
   // client component stays simple. The floor must be today's calendar
-  // date (not the ISO-week Monday) -- otherwise a leader checking the
-  // dashboard on Wednesday would see Monday's already-past meeting in
-  // the "next up" strip, displacing the next genuinely upcoming event.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // date in the church-local timezone (not UTC, not the ISO-week
+  // Monday) -- otherwise a leader checking the dashboard on Wednesday
+  // would see Monday's already-past meeting in the "next up" strip,
+  // and around local-midnight UTC drift could hide same-day events or
+  // include yesterday's.
+  const todayIso = localTodayIso();
   const upcomingEvents = calendarEvents
     .filter((e) => e.archived_at == null && e.event_date >= todayIso)
     .sort((a, b) => {

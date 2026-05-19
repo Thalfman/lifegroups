@@ -42,6 +42,34 @@ function revalidateLeaderCalendar(groupId: string): void {
   revalidatePath("/leader");
 }
 
+// Leader event-by-id actions require the form to submit the parent
+// group_id alongside event_id. Without it, an action that omits the
+// hidden field would fall through to the RPC and could leak whether an
+// event_id exists in another group via the difference between
+// missing_event and insufficient_privilege errors. We reject any
+// submission missing a group_id the leader actually leads -- the RPC
+// also normalizes those cases, but this client-side guard keeps the
+// error surface tight.
+function requireOwnedGroupId(
+  raw: Record<string, unknown>,
+  assignedGroupIds: string[],
+): { ok: true; groupId: string } | { ok: false; error: string } {
+  const value = typeof raw.group_id === "string" ? raw.group_id.trim() : "";
+  if (!value) {
+    return {
+      ok: false,
+      error: "group_id is required for leader calendar mutations.",
+    };
+  }
+  if (!assignedGroupIds.includes(value)) {
+    return {
+      ok: false,
+      error: "Only the assigned leader or co-leader can manage that group's calendar.",
+    };
+  }
+  return { ok: true, groupId: value };
+}
+
 export async function leaderCreateCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
@@ -90,19 +118,11 @@ export async function leaderUpdateCalendarEvent(
   if (!auth.ok) return actionFail([auth.error]);
 
   const raw = payloadFromInput(input);
+  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
+  if (!ownership.ok) return actionFail([ownership.error]);
+
   const v = validateCalendarEventUpdatePayload(raw);
   if (!v.ok) return actionFail(v.errors);
-
-  // Defense-in-depth: confirm caller leads the group_id passed in the
-  // hidden form field. The RPC re-resolves group_id from the event row
-  // and checks auth_is_leader_of(event.group_id), but this client-side
-  // gate avoids leaking event existence across groups for a tampered id.
-  const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
-  if (groupId && !auth.assignedGroupIds.includes(groupId)) {
-    return actionFail([
-      "Only the assigned leader or co-leader can update that group's calendar.",
-    ]);
-  }
 
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
@@ -120,7 +140,7 @@ export async function leaderUpdateCalendarEvent(
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) return actionFail(["The calendar event was not updated. Please try again."]);
 
-  if (groupId) revalidateLeaderCalendar(groupId);
+  revalidateLeaderCalendar(ownership.groupId);
   return actionOk({ id: data });
 }
 
@@ -132,15 +152,11 @@ export async function leaderArchiveCalendarEvent(
   if (!auth.ok) return actionFail([auth.error]);
 
   const raw = payloadFromInput(input);
+  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
+  if (!ownership.ok) return actionFail([ownership.error]);
+
   const v = validateCalendarEventIdPayload(raw);
   if (!v.ok) return actionFail(v.errors);
-
-  const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
-  if (groupId && !auth.assignedGroupIds.includes(groupId)) {
-    return actionFail([
-      "Only the assigned leader or co-leader can manage that group's calendar.",
-    ]);
-  }
 
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
@@ -151,7 +167,7 @@ export async function leaderArchiveCalendarEvent(
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) return actionFail(["The calendar event was not archived. Please try again."]);
 
-  if (groupId) revalidateLeaderCalendar(groupId);
+  revalidateLeaderCalendar(ownership.groupId);
   return actionOk({ id: data });
 }
 
@@ -163,15 +179,11 @@ export async function leaderRestoreCalendarEvent(
   if (!auth.ok) return actionFail([auth.error]);
 
   const raw = payloadFromInput(input);
+  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
+  if (!ownership.ok) return actionFail([ownership.error]);
+
   const v = validateCalendarEventIdPayload(raw);
   if (!v.ok) return actionFail(v.errors);
-
-  const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
-  if (groupId && !auth.assignedGroupIds.includes(groupId)) {
-    return actionFail([
-      "Only the assigned leader or co-leader can manage that group's calendar.",
-    ]);
-  }
 
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
@@ -182,6 +194,6 @@ export async function leaderRestoreCalendarEvent(
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) return actionFail(["The calendar event was not restored. Please try again."]);
 
-  if (groupId) revalidateLeaderCalendar(groupId);
+  revalidateLeaderCalendar(ownership.groupId);
   return actionOk({ id: data });
 }

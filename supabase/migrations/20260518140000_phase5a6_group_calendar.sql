@@ -740,11 +740,15 @@ begin
   if v_existing.id is null then
     raise exception 'missing_event';
   end if;
+  -- Normalize cross-group reads to missing_event so a leader of group A
+  -- cannot probe whether an event_id exists (or is archived) in group B
+  -- via the difference between insufficient_privilege /
+  -- event_already_archived errors.
+  if not public.auth_is_leader_of(v_existing.group_id) then
+    raise exception 'missing_event';
+  end if;
   if v_existing.archived_at is not null then
     raise exception 'event_already_archived';
-  end if;
-  if not public.auth_is_leader_of(v_existing.group_id) then
-    raise exception 'insufficient_privilege';
   end if;
 
   select lifecycle_status into v_lifecycle
@@ -842,11 +846,13 @@ begin
   if v_existing.id is null then
     raise exception 'missing_event';
   end if;
+  -- Normalize cross-group reads to missing_event (see comment on
+  -- leader_update_group_calendar_event).
+  if not public.auth_is_leader_of(v_existing.group_id) then
+    raise exception 'missing_event';
+  end if;
   if v_existing.archived_at is not null then
     raise exception 'event_already_archived';
-  end if;
-  if not public.auth_is_leader_of(v_existing.group_id) then
-    raise exception 'insufficient_privilege';
   end if;
 
   select lifecycle_status into v_lifecycle
@@ -914,11 +920,13 @@ begin
   if v_existing.id is null then
     raise exception 'missing_event';
   end if;
+  -- Normalize cross-group reads to missing_event (see comment on
+  -- leader_update_group_calendar_event).
+  if not public.auth_is_leader_of(v_existing.group_id) then
+    raise exception 'missing_event';
+  end if;
   if v_existing.archived_at is null then
     raise exception 'event_not_archived';
-  end if;
-  if not public.auth_is_leader_of(v_existing.group_id) then
-    raise exception 'insufficient_privilege';
   end if;
 
   select lifecycle_status into v_lifecycle
