@@ -678,8 +678,13 @@ export async function getAdminDashboardData(
         meetingWeek: selectedWeek,
         now,
       });
-      const submittedThisWeek =
-        sessionStatus === "submitted" || sessionStatus === "admin_entered";
+      // Any session status other than "no_session" / "not_submitted"
+      // counts as the leader having checked in for the week. We use
+      // this to suppress overdue messaging on rows that already have
+      // a did_not_meet or planned_pause submission so the attention
+      // and health surfaces don't show "Did not meet · Overdue"
+      // simultaneously.
+      const isCheckedInThisWeek = !isMissingForWeek(sessionStatus);
       return {
         group: g,
         override,
@@ -708,9 +713,11 @@ export async function getAdminDashboardData(
         followUpsForGroup: followUpsByGroup.get(g.id) ?? [],
         dueLabel: formatCheckInDueLabel(dueResult.due),
         dueRelative: formatCheckInDueRelative(dueResult),
-        // Only flag overdue if a check-in hasn't already been submitted for
-        // the selected week.
-        isOverdue: dueResult.isOverdue && !submittedThisWeek,
+        // Only flag overdue if (1) due-date math worked AND (2) the
+        // leader hasn't already submitted anything for the selected
+        // week (submitted / admin_entered / did_not_meet / planned_pause
+        // all count as "checked in").
+        isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
         isScheduledThisWeek: dueResult.isScheduledThisWeek,
       };
     });

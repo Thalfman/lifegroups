@@ -488,8 +488,12 @@ export async function fetchAdminWeeklyCheckInReview(
       meetingWeek,
       now,
     });
-    const isSubmittedSession =
-      sessionStatus === "submitted" || sessionStatus === "admin_entered";
+    // Any non-"missing" session counts as the leader having checked in for
+    // the week. submitted / admin_entered are the obvious cases; did_not_meet
+    // and planned_pause are also valid leader submissions that settle the
+    // week, so they should suppress overdue messaging too (otherwise a row
+    // ends up "Did not meet · Overdue" simultaneously).
+    const isCheckedInThisWeek = sessionStatus !== "missing";
     return {
       groupId: g.id,
       groupName: g.name,
@@ -509,9 +513,10 @@ export async function fetchAdminWeeklyCheckInReview(
       dueLabel: formatCheckInDueLabel(dueResult.due),
       dueRelative: formatCheckInDueRelative(dueResult),
       // Only treat the row as "overdue" if (1) due-date math worked AND
-      // (2) the leader hasn't already submitted. did_not_meet and
-      // planned_pause count as "in" for this purpose.
-      isOverdue: dueResult.isOverdue && !isSubmittedSession,
+      // (2) the leader hasn't already submitted *anything* for this week
+      // (submitted / admin_entered / did_not_meet / planned_pause all
+      // count as "in").
+      isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
       isScheduledThisWeek: dueResult.isScheduledThisWeek,
     };
   });

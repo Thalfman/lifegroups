@@ -86,7 +86,10 @@ export function AdminDashboard({
             { label: "Did not meet", value: health.did_not_meet },
             { label: "Needs follow-up", value: health.needs_follow_up, tone: health.needs_follow_up > 0 ? "warn" : undefined },
           ]}
-          href="/admin/check-ins"
+          // Carry the selected week into the drill-down so a historical
+          // review on /admin keeps showing the same week's data when the
+          // admin clicks through.
+          href={`/admin/check-ins?week=${data.meetingWeek}`}
           cta="Review check-ins"
         />
         <DrillDownCard
