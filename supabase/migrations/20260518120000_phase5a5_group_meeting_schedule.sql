@@ -42,16 +42,70 @@ alter table public.groups
   add column if not exists meeting_week_parity public.meeting_week_parity;
 
 -- ---------------------------------------------------------------------------
--- 3. Normalize legacy meeting_day capitalization, then add the canonical
---    check constraint. initcap('TUESDAY') -> 'Tuesday', initcap('tuesday')
---    -> 'Tuesday'. Existing seed data already uses Capitalized names; this
---    pass just guards against drift.
+-- 3. Normalize legacy meeting_day values, then add the canonical CHECK.
+--
+-- The pre-Phase-5A.5 validator only capped meeting_day length at 40 chars,
+-- so production rows may carry abbreviated forms (`Tue`, `Thurs`), plural
+-- forms (`Tuesdays`), case drift, or true free-text (`Every other Wed`).
+-- Two passes:
+--   (a) Map well-known abbreviations / plurals to the canonical Capitalized
+--       day name via a lowercase-trim CASE expression. Idempotent: already
+--       canonical values pass through unchanged.
+--   (b) Any value that still isn't in the canonical Sunday-Saturday set is
+--       cleared to NULL. NULL is allowed by the CHECK, so the row survives
+--       and an admin can re-set the day via /admin/groups. We emit a NOTICE
+--       with the count so operators see this happened during deploy.
 -- ---------------------------------------------------------------------------
 
-update public.groups
-   set meeting_day = initcap(lower(meeting_day))
- where meeting_day is not null
-   and meeting_day <> initcap(lower(meeting_day));
+do $$
+declare
+  v_nulled_count int := 0;
+begin
+  update public.groups
+     set meeting_day = case lower(btrim(meeting_day))
+       when 'sun'        then 'Sunday'
+       when 'sunday'     then 'Sunday'
+       when 'sundays'    then 'Sunday'
+       when 'mon'        then 'Monday'
+       when 'monday'     then 'Monday'
+       when 'mondays'    then 'Monday'
+       when 'tue'        then 'Tuesday'
+       when 'tues'       then 'Tuesday'
+       when 'tuesday'    then 'Tuesday'
+       when 'tuesdays'   then 'Tuesday'
+       when 'wed'        then 'Wednesday'
+       when 'weds'       then 'Wednesday'
+       when 'wednesday'  then 'Wednesday'
+       when 'wednesdays' then 'Wednesday'
+       when 'thu'        then 'Thursday'
+       when 'thur'       then 'Thursday'
+       when 'thurs'      then 'Thursday'
+       when 'thursday'   then 'Thursday'
+       when 'thursdays'  then 'Thursday'
+       when 'fri'        then 'Friday'
+       when 'friday'     then 'Friday'
+       when 'fridays'    then 'Friday'
+       when 'sat'        then 'Saturday'
+       when 'saturday'   then 'Saturday'
+       when 'saturdays'  then 'Saturday'
+       else meeting_day
+     end
+   where meeting_day is not null;
+
+  update public.groups
+     set meeting_day = null
+   where meeting_day is not null
+     and meeting_day not in (
+       'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
+     );
+  get diagnostics v_nulled_count = row_count;
+
+  if v_nulled_count > 0 then
+    raise notice
+      'Phase 5A.5: cleared meeting_day on % row(s) with non-canonical values; admins can re-set them via /admin/groups.',
+      v_nulled_count;
+  end if;
+end$$;
 
 do $$
 begin
