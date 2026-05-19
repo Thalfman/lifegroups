@@ -10,6 +10,7 @@
 // retained for backward compatibility with merged migration
 // 20260518140000_phase5a6_group_calendar.sql but ignored everywhere.
 
+import { isoWeekNumberOf } from "@/lib/admin/check-in-due";
 import { CHURCH_TIMEZONE } from "@/lib/leader/validation";
 import type { GroupCalendarEventsRow } from "@/types/database";
 import type {
@@ -154,17 +155,6 @@ function dayOfWeekIso(iso: string): number {
   return new Date(`${iso}T00:00:00Z`).getUTCDay();
 }
 
-// ISO week number (1..53) for a YYYY-MM-DD date. Matches the convention
-// used by lib/admin/check-in-due.ts so bi-weekly parity is consistent.
-function isoWeekNumberOfDate(iso: string): number | null {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(anchor.getTime())) return null;
-  const dayNum = anchor.getUTCDay() || 7;
-  anchor.setUTCDate(anchor.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(anchor.getUTCFullYear(), 0, 1));
-  return Math.ceil(((anchor.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
-
 // Normalize "HH:mm:ss" (Postgres `time`) or "HH:mm" to "HH:mm". Returns
 // null when the input is unparseable.
 export function normalizeHhMm(value: string | null | undefined): string | null {
@@ -236,7 +226,7 @@ function groupMeetsOnDate(
   if (dayOfWeekIso(iso) !== meetingDayIndex) return false;
   if (schedule.meetingFrequency === "weekly") return true;
   if (schedule.meetingFrequency === "biweekly") {
-    const week = isoWeekNumberOfDate(iso);
+    const week = isoWeekNumberOf(iso);
     if (week == null) return true; // unparseable — surface a meeting rather than hide
     const isOdd = week % 2 === 1;
     if (schedule.meetingWeekParity === "odd") return isOdd;
@@ -257,15 +247,29 @@ export function generateMonthOccurrences(
 ): GeneratedOccurrence[] {
   const bounds = monthBounds(monthIso);
   if (!bounds) return [];
+  return generateOccurrencesInRange(schedule, bounds.firstIso, bounds.lastIso);
+}
+
+// Generate cadence-driven occurrences for any [fromIso, toIso] date
+// range (inclusive). Used by the monthly calendar grid (via
+// `generateMonthOccurrences`) and by the leader dashboard's upcoming-
+// events strip, which needs occurrences over the next 8 weeks so default
+// meetings show up even when no override row has been saved.
+export function generateOccurrencesInRange(
+  schedule: GroupSchedule,
+  fromIso: string,
+  toIso: string,
+): GeneratedOccurrence[] {
   if (!schedule.meetingDay || !schedule.meetingTime) return [];
   const dayIndex = DAY_INDEX[schedule.meetingDay];
   if (dayIndex == null) return [];
   const meetingTime = normalizeHhMm(schedule.meetingTime);
   if (!meetingTime) return [];
+  if (fromIso > toIso) return [];
 
   const occurrences: GeneratedOccurrence[] = [];
-  let cursor = bounds.firstIso;
-  while (cursor <= bounds.lastIso) {
+  let cursor = fromIso;
+  while (cursor <= toIso) {
     if (groupMeetsOnDate(schedule, cursor, dayIndex)) {
       occurrences.push({
         date: cursor,

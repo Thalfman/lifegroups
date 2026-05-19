@@ -170,6 +170,7 @@ export default async function CheckInPage({
   });
   const calendarOverride = pickCalendarOverrideForOccurrence(
     (calendarEventsResult.data ?? []).map((e) => ({
+      id: e.id,
       event_date: e.event_date,
       status: e.status,
       archived_at: e.archived_at,

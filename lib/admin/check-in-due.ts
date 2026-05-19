@@ -14,7 +14,7 @@ import {
   effectiveCheckInDueOffsetHours,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
-import type { GroupMetricSettingsRow } from "@/types/database";
+import type { GroupCalendarEventsRow, GroupMetricSettingsRow } from "@/types/database";
 import type {
   GroupCalendarEventStatus,
   MeetingFrequency,
@@ -189,9 +189,14 @@ function meetingOccurrenceInWeek(
   };
 }
 
-// ISO week number (1..53) for the Monday-of-week given by `meetingWeekIso`.
-// Used to determine whether a bi-weekly group's parity matches this week.
-function isoWeekNumberOf(meetingWeekIso: string): number | null {
+// ISO week number (1..53) for any YYYY-MM-DD date. Works on a Monday
+// (the legacy call site `groupMeetsInWeek` passes the Monday-of-week
+// per `lib/leader/validation.isoWeekStart`) as well as on arbitrary
+// calendar dates (used by the occurrence generator in
+// `lib/calendar/occurrences.ts` when iterating day-by-day). Exported so
+// the calendar generator and the cadence check stay aligned on a single
+// week-number implementation.
+export function isoWeekNumberOf(meetingWeekIso: string): number | null {
   const anchor = new Date(`${meetingWeekIso}T00:00:00Z`);
   if (Number.isNaN(anchor.getTime())) return null;
   // Standard ISO week calculation: nearest Thursday is in the right year,
@@ -259,6 +264,7 @@ export type CheckInDueInput = {
 // column is retained on the table for historical rows but no longer
 // participates in check-in due math or UI.
 export type CalendarEventLite = {
+  id: string;
   event_date: string; // YYYY-MM-DD
   status: GroupCalendarEventStatus;
   archived_at: string | null;
@@ -281,17 +287,53 @@ export type CalendarOverride = {
 // `occurrenceDate` and isn't archived. When `occurrenceDate` is null
 // (group missing meeting_day, or off-parity bi-weekly week), no
 // override resolution is possible.
+//
+// The schema enforces one active row per (group_id, event_date) via the
+// `group_calendar_events_active_one_per_day` partial unique index, so
+// in practice there is at most one match per call. We still gather all
+// matches and prefer the scheduled row (over an off / cancelled row
+// from a malformed historical state) and then break ties on the lowest
+// `id` so the result is deterministic across calls and platforms even
+// if the constraint were ever loosened.
 export function pickCalendarOverrideForOccurrence(
   events: ReadonlyArray<CalendarEventLite>,
   occurrenceDate: string | null,
 ): CalendarOverride | null {
   if (!occurrenceDate) return null;
+  const matches = events.filter(
+    (e) => e.archived_at == null && e.event_date === occurrenceDate,
+  );
+  if (matches.length === 0) return null;
+  const sorted = [...matches].sort((a, b) => {
+    const aScheduled = a.status === "scheduled" ? 0 : 1;
+    const bScheduled = b.status === "scheduled" ? 0 : 1;
+    if (aScheduled !== bScheduled) return aScheduled - bScheduled;
+    return a.id.localeCompare(b.id);
+  });
+  const chosen = sorted[0];
+  return { status: chosen.status, date: chosen.event_date };
+}
+
+// Group calendar events by group_id, narrowed to the CalendarEventLite
+// shape consumed by the override resolver. Used by both the admin
+// check-ins review (`lib/admin/check-ins.ts`) and the admin dashboard
+// (`lib/dashboard/queries.ts`); kept here next to the lite type so the
+// two call paths stay aligned automatically.
+export function buildCalendarEventsByGroup(
+  events: ReadonlyArray<GroupCalendarEventsRow>,
+): Map<string, CalendarEventLite[]> {
+  const m = new Map<string, CalendarEventLite[]>();
   for (const e of events) {
-    if (e.archived_at != null) continue;
-    if (e.event_date !== occurrenceDate) continue;
-    return { status: e.status, date: e.event_date };
+    const list = m.get(e.group_id) ?? [];
+    list.push({
+      id: e.id,
+      event_date: e.event_date,
+      status: e.status,
+      archived_at: e.archived_at,
+    });
+    m.set(e.group_id, list);
   }
-  return null;
+  return m;
 }
 
 // Compute the cadence's expected meeting date (YYYY-MM-DD) for the

@@ -33,17 +33,16 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import {
+  buildCalendarEventsByGroup,
   computeCheckInDue,
   expectedMeetingDateForWeek,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
   pickCalendarOverrideForOccurrence,
-  type CalendarEventLite,
 } from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
-  GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMetricSettingsRow,
@@ -331,22 +330,6 @@ function addDaysIsoForWeek(iso: string, days: number): string {
   return anchor.toISOString().slice(0, 10);
 }
 
-function buildCalendarEventsByGroupCheckIns(
-  events: GroupCalendarEventsRow[],
-): Map<string, CalendarEventLite[]> {
-  const m = new Map<string, CalendarEventLite[]>();
-  for (const e of events) {
-    const list = m.get(e.group_id) ?? [];
-    list.push({
-      event_date: e.event_date,
-      status: e.status,
-      archived_at: e.archived_at,
-    });
-    m.set(e.group_id, list);
-  }
-  return m;
-}
-
 function deriveSessionStatus(
   session: AttendanceSessionsRow | null,
 ): SessionReviewStatus {
@@ -481,7 +464,7 @@ export async function fetchAdminWeeklyCheckInReview(
   const sessions = sessionsResult.data ?? [];
   const healthUpdates = healthResult.data ?? [];
   const metricSettings = metricSettingsResult.data ?? [];
-  const calendarEventsByGroup = buildCalendarEventsByGroupCheckIns(
+  const calendarEventsByGroup = buildCalendarEventsByGroup(
     calendarEventsResult.data ?? [],
   );
 
