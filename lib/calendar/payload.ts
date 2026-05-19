@@ -4,6 +4,12 @@
 // one source of truth for input shape, coercion rules, and friendly
 // labels. Mirrors the ValidationResult contract in lib/admin/validation.ts
 // and lib/leader/validation.ts.
+//
+// Phase 5A.6 correction: calendar editor no longer collects per-event
+// start_time / end_time. Meeting time is inherited from the group
+// schedule (Phase 5A.5) at render time, and the server always writes
+// NULL into the time columns. The columns remain on the table for
+// schema continuity but are unused.
 
 import type {
   GroupCalendarEventStatus,
@@ -15,16 +21,13 @@ export type ValidationResult<T> =
   | { ok: false; errors: string[] };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const HH_MM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Calendar dates are bounded to a reasonable planning horizon: 1 year
-// in the past, 2 years in the future. This prevents typo dates
-// (2999-01-01) and pairs with the read-window widths chosen on
-// /leader/[groupId]/calendar (+52 weeks future) and
-// /admin/groups/[groupId]/calendar (+52 weeks future) so newly
-// created events stay visible from the calendar surface that created
-// them.
+// in the past, 2 years in the future. Prevents typo dates (2999-01-01)
+// and pairs with the read-window widths chosen on the calendar pages
+// (52 weeks future) so a newly-created event stays visible from the
+// surface that created it.
 const PAST_BOUND_DAYS = 365;
 const FUTURE_BOUND_DAYS = 365 * 2;
 
@@ -84,10 +87,6 @@ function isWithinPlanningHorizon(value: string, now: Date): boolean {
   return parsed >= minDate && parsed <= maxDate;
 }
 
-function isHhMm(value: string): boolean {
-  return HH_MM_RE.test(value);
-}
-
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_RE.test(value);
 }
@@ -102,8 +101,6 @@ function isEventStatus(value: unknown): value is GroupCalendarEventStatus {
 
 export type CalendarEventWritablePayload = {
   event_date: string; // YYYY-MM-DD
-  start_time: string | null; // HH:mm
-  end_time: string | null; // HH:mm
   event_type: GroupCalendarEventType;
   status: GroupCalendarEventStatus;
   title: string | null;
@@ -120,10 +117,6 @@ export type CalendarEventUpdatePayload = CalendarEventWritablePayload & {
 
 export type CalendarEventArchivePayload = {
   event_id: string;
-};
-
-export type CalendarEventGroupIdPayload = {
-  group_id: string;
 };
 
 // Coerce status / event_type for off and cancelled so the form is
@@ -155,24 +148,6 @@ function validateWritable(
     errors.push(
       "event_date must be within the planning horizon: 1 year in the past or 2 years in the future.",
     );
-  }
-
-  const startRaw = readOptionalString(input.start_time);
-  const endRaw = readOptionalString(input.end_time);
-  if (startRaw !== undefined && !isHhMm(startRaw)) {
-    errors.push("start_time must be in HH:mm form (24-hour).");
-  }
-  if (endRaw !== undefined && !isHhMm(endRaw)) {
-    errors.push("end_time must be in HH:mm form (24-hour).");
-  }
-  if (
-    startRaw !== undefined &&
-    endRaw !== undefined &&
-    isHhMm(startRaw) &&
-    isHhMm(endRaw) &&
-    endRaw <= startRaw
-  ) {
-    errors.push("end_time must be later than start_time.");
   }
 
   const rawStatus = trimString(input.status) ?? "";
@@ -208,8 +183,6 @@ function validateWritable(
     ok: true,
     value: {
       event_date: eventDate,
-      start_time: startRaw ?? null,
-      end_time: endRaw ?? null,
       event_type,
       status,
       title: title ?? null,
@@ -305,6 +278,7 @@ export function eventDisplayLabel(event: {
 }
 
 // All event type options ordered for the create / edit form select.
+// Excludes off / cancelled which are status-coerced.
 export const EVENT_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
   { value: "study", label: EVENT_TYPE_LABELS.study },
   { value: "community_night", label: EVENT_TYPE_LABELS.community_night },

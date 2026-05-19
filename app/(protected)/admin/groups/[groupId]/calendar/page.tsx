@@ -4,8 +4,11 @@ import { PastoralAppShell } from "@/components/pastoral/shell";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { CalendarEventList } from "@/components/calendar/calendar-event-list";
-import { CalendarEventForm } from "@/components/calendar/calendar-event-form";
-import { CalendarEventActions } from "@/components/calendar/calendar-event-actions";
+import {
+  CalendarMonthGrid,
+  describeSchedule,
+} from "@/components/calendar/calendar-month-grid";
+import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-actions";
 import { requireAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -13,7 +16,16 @@ import {
   fetchGroupCalendarEvents,
   fetchGroupsByIds,
 } from "@/lib/supabase/read-models";
-import { isoWeekStart } from "@/lib/leader/validation";
+import {
+  churchMonthIso,
+  generateMonthOccurrences,
+  mergeOverrides,
+  monthBounds,
+  monthLabel,
+  shiftMonthIso,
+  todayChurchIso,
+  toSavedOverrides,
+} from "@/lib/calendar/occurrences";
 import type { GroupsRow } from "@/types/database";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
@@ -26,13 +38,17 @@ import {
 export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
-type Search = { archived?: string };
+type Search = { archived?: string; month?: string };
 
-function addDays(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
-}
+const navLinkStyle: React.CSSProperties = {
+  fontFamily: fontSans,
+  fontSize: 12,
+  color: P.ink,
+  textDecoration: "none",
+  padding: "6px 10px",
+  borderRadius: 999,
+  border: `1px solid ${P.line}`,
+};
 
 export default async function AdminGroupCalendarPage({
   params,
@@ -50,21 +66,19 @@ export default async function AdminGroupCalendarPage({
   const client = await createSupabaseServerClient();
   if (!client) notFound();
 
-  const todayWeek = isoWeekStart(new Date());
-  // Admins get a wider window: 12 weeks past + 52 weeks future. The
-  // future bound matches the calendar payload validator's planning
-  // horizon so any validly-created event stays visible here.
-  const fromDate = addDays(todayWeek, -12 * 7);
-  const toDate = addDays(todayWeek, 52 * 7);
+  const monthIso =
+    typeof search.month === "string" && /^\d{4}-\d{2}$/.test(search.month)
+      ? search.month
+      : churchMonthIso();
+  const bounds = monthBounds(monthIso);
+  if (!bounds) notFound();
 
   const [groupResult, eventsResult] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),
     fetchGroupCalendarEvents(client, {
       groupId,
-      fromDate,
-      toDate,
-      // Archived tab scopes to archived-only; default tab stays
-      // active-only. Mirrors the leader calendar route.
+      fromDate: bounds.firstIso,
+      toDate: bounds.lastIso,
       archivedOnly: showArchived,
     }),
   ]);
@@ -72,12 +86,28 @@ export default async function AdminGroupCalendarPage({
   if (groupResult.error) throw groupResult.error;
   const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
   if (!group) notFound();
-  // Fail loudly on a calendar read failure rather than rendering an
-  // empty calendar -- an admin could think there are no events and
-  // create a conflicting one while existing rows are just unreadable.
   if (eventsResult.error) throw eventsResult.error;
 
   const events = eventsResult.data ?? [];
+  const todayIso = todayChurchIso();
+  const generated = generateMonthOccurrences(
+    {
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      meetingFrequency: group.meeting_frequency,
+      meetingWeekParity: group.meeting_week_parity,
+    },
+    monthIso,
+  );
+  const resolved = mergeOverrides(generated, toSavedOverrides(events), group.meeting_time);
+  const scheduleSummary = describeSchedule({
+    meetingDay: group.meeting_day,
+    meetingTime: group.meeting_time,
+    meetingFrequency: group.meeting_frequency,
+    meetingWeekParity: group.meeting_week_parity,
+  });
+  const prevMonth = shiftMonthIso(monthIso, -1);
+  const nextMonth = shiftMonthIso(monthIso, 1);
 
   return (
     <PastoralAppShell
@@ -87,10 +117,10 @@ export default async function AdminGroupCalendarPage({
       titleItalic={showArchived ? "— archived" : "— calendar"}
       lede={
         group.lifecycle_status === "closed"
-          ? "This group is closed. Admins can still correct calendar events here; leaders cannot edit while it is closed."
-          : "Manage the group's calendar — rotations, special nights, OFF weeks, and cancellations. Changes flow through audit so you can see who set what."
+          ? "This group is closed. Admins can still correct calendar occurrences here; leaders cannot edit while it is closed."
+          : "Click any date to set the gathering type or mark it OFF / Cancelled. Time is inherited from the group's schedule."
       }
-      contentMaxWidth={880}
+      contentMaxWidth={920}
       headerSlot={
         <>
           <UserPill
@@ -111,6 +141,7 @@ export default async function AdminGroupCalendarPage({
             fontFamily: fontSans,
             fontSize: 12,
             color: P.ink3,
+            flexWrap: "wrap",
           }}
         >
           <Link href="/admin/groups" style={{ color: P.ink2, textDecoration: "none" }}>
@@ -125,11 +156,11 @@ export default async function AdminGroupCalendarPage({
               color: showArchived ? P.ink3 : P.ink,
             }}
           >
-            Upcoming
+            Calendar
           </Link>
           <span aria-hidden="true">·</span>
           <Link
-            href={`/admin/groups/${groupId}/calendar?archived=1`}
+            href={`/admin/groups/${groupId}/calendar?archived=1&month=${monthIso}`}
             style={{
               textDecoration: showArchived ? "underline" : "none",
               fontWeight: showArchived ? 600 : 400,
@@ -141,14 +172,86 @@ export default async function AdminGroupCalendarPage({
         </nav>
 
         {!showArchived ? (
-          <section
-            style={{
-              background: P.surface,
-              border: `1px solid ${P.line}`,
-              borderRadius: 14,
-              padding: "18px 20px",
-            }}
-          >
+          <>
+            <section
+              style={{
+                background: P.surface,
+                border: `1px solid ${P.line}`,
+                borderRadius: 14,
+                padding: "14px 18px",
+                display: "flex",
+                gap: 14,
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <div
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: P.ink3,
+                    fontWeight: 600,
+                  }}
+                >
+                  {monthLabel(monthIso)}
+                </div>
+                <div
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 13,
+                    color: P.ink2,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {scheduleSummary ?? <ScheduleGap group={group} />}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {prevMonth ? (
+                  <Link
+                    href={`/admin/groups/${groupId}/calendar?month=${prevMonth}`}
+                    style={navLinkStyle}
+                  >
+                    ← {monthLabel(prevMonth)}
+                  </Link>
+                ) : null}
+                <Link
+                  href={`/admin/groups/${groupId}/calendar`}
+                  style={navLinkStyle}
+                >
+                  This month
+                </Link>
+                {nextMonth ? (
+                  <Link
+                    href={`/admin/groups/${groupId}/calendar?month=${nextMonth}`}
+                    style={navLinkStyle}
+                  >
+                    {monthLabel(nextMonth)} →
+                  </Link>
+                ) : null}
+              </div>
+            </section>
+
+            <CalendarMonthGrid
+              monthIso={monthIso}
+              todayIso={todayIso}
+              occurrences={resolved}
+              groupId={groupId}
+              groupMeetingTime={group.meeting_time}
+              actions={{
+                create: adminCreateCalendarEvent,
+                update: adminUpdateCalendarEvent,
+                archive: adminArchiveCalendarEvent,
+              }}
+              canEdit={true}
+            />
+          </>
+        ) : (
+          <section style={{ display: "grid", gap: 10 }}>
             <h2
               style={{
                 fontFamily: fontSans,
@@ -157,57 +260,57 @@ export default async function AdminGroupCalendarPage({
                 textTransform: "uppercase",
                 color: P.ink3,
                 fontWeight: 600,
-                margin: "0 0 10px",
+                margin: 0,
               }}
             >
-              Add a calendar event
+              Archived overrides · {monthLabel(monthIso)}
             </h2>
-            <CalendarEventForm
-              action={adminCreateCalendarEvent}
-              mode="create"
-              groupId={groupId}
-              submitLabel="Add event"
-              successMessage="Event added."
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                margin: 0,
+              }}
+            >
+              Past overrides that were cleared. Restoring re-applies the override on the calendar grid.
+            </p>
+            <CalendarEventList
+              events={events}
+              emptyMessage="No archived overrides for this month."
+              archivedSeparate={false}
+              renderActions={(event) => (
+                <ArchivedRestoreButton
+                  eventId={event.id}
+                  groupId={groupId}
+                  action={adminRestoreCalendarEvent}
+                />
+              )}
             />
           </section>
-        ) : null}
-
-        <section style={{ display: "grid", gap: 10 }}>
-          <h2
-            style={{
-              fontFamily: fontSans,
-              fontSize: 12,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-              margin: 0,
-            }}
-          >
-            {showArchived ? "Archived events" : "Calendar"}
-          </h2>
-          <CalendarEventList
-            events={events}
-            emptyMessage={
-              showArchived
-                ? "No archived events for this group."
-                : "No calendar events yet. Add the first one above."
-            }
-            archivedSeparate={!showArchived}
-            renderActions={(event) => (
-              <CalendarEventActions
-                event={event}
-                groupId={groupId}
-                actions={{
-                  update: adminUpdateCalendarEvent,
-                  archive: adminArchiveCalendarEvent,
-                  restore: adminRestoreCalendarEvent,
-                }}
-              />
-            )}
-          />
-        </section>
+        )}
       </div>
     </PastoralAppShell>
+  );
+}
+
+function ScheduleGap({ group }: { group: GroupsRow }) {
+  const missing: string[] = [];
+  if (!group.meeting_day) missing.push("meeting day");
+  if (!group.meeting_time) missing.push("meeting time");
+  if (
+    group.meeting_frequency === "biweekly" &&
+    group.meeting_week_parity == null
+  ) {
+    missing.push("bi-weekly parity");
+  }
+  return (
+    <>
+      Schedule incomplete (missing {missing.join(", ") || "fields"}). Set them in{" "}
+      <Link href={`/admin/groups`} style={{ color: P.terra, textDecoration: "underline" }}>
+        group management
+      </Link>
+      {" "}so the calendar can generate occurrences. Special one-off events can still be added by clicking a date.
+    </>
   );
 }

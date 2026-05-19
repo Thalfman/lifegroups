@@ -60,12 +60,14 @@ import {
   type MetricDefaults,
 } from "@/lib/admin/metrics";
 import {
+  buildCalendarEventsByGroup,
   computeCheckInDue,
+  expectedMeetingDateForWeek,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
-  pickCalendarOverrideForWeek,
-  type CalendarEventLite,
+  pickCalendarOverrideForOccurrence,
 } from "@/lib/admin/check-in-due";
+import { generateOccurrencesInRange } from "@/lib/calendar/occurrences";
 import { eventDisplayLabel } from "@/lib/calendar/payload";
 import type {
   AttendanceRecordsRow,
@@ -100,22 +102,6 @@ function addDaysIsoForWeek(iso: string, days: number): string {
   return anchor.toISOString().slice(0, 10);
 }
 
-function buildCalendarEventsByGroup(
-  events: GroupCalendarEventsRow[],
-): Map<string, CalendarEventLite[]> {
-  const m = new Map<string, CalendarEventLite[]>();
-  for (const e of events) {
-    const list = m.get(e.group_id) ?? [];
-    list.push({
-      event_date: e.event_date,
-      start_time: e.start_time,
-      status: e.status,
-      archived_at: e.archived_at,
-    });
-    m.set(e.group_id, list);
-  }
-  return m;
-}
 
 function fallback<T>(data: T, error?: string): DashboardResult<T> {
   return { source: "fallback", data, error };
@@ -707,9 +693,14 @@ export async function getAdminDashboardData(
       const hasCapacityConfigured =
         override?.capacity_override != null || g.capacity != null;
       const groupEventsForWeek = calendarEventsByGroup.get(g.id) ?? [];
-      const calendarOverride = pickCalendarOverrideForWeek(
+      const occurrenceDate = expectedMeetingDateForWeek(selectedWeek, {
+        meetingDay: g.meeting_day,
+        meetingFrequency: g.meeting_frequency,
+        meetingWeekParity: g.meeting_week_parity,
+      });
+      const calendarOverride = pickCalendarOverrideForOccurrence(
         groupEventsForWeek,
-        selectedWeek,
+        occurrenceDate,
       );
       const dueResult = computeCheckInDue({
         group: {
@@ -944,32 +935,65 @@ async function buildLeaderGroupDashboard(
     leaderNote: currentWeekSession?.leader_note ?? null,
   };
 
-  // Upcoming-events strip: at most 2 upcoming events (today onwards),
-  // sorted by date / start_time. Pre-resolve the friendly label so the
-  // client component stays simple. The floor must be today's calendar
-  // date in the church-local timezone (not UTC, not the ISO-week
-  // Monday) -- otherwise a leader checking the dashboard on Wednesday
-  // would see Monday's already-past meeting in the "next up" strip,
-  // and around local-midnight UTC drift could hide same-day events or
-  // include yesterday's.
+  // Upcoming-events strip: at most 2 upcoming events from today onwards.
+  // Phase 5A.6 correction: after dropping form-first event creation,
+  // default meetings are generated from the group's schedule and
+  // typically have no DB row. The strip must include those generated
+  // occurrences so a group that meets weekly and has no explicit
+  // overrides still shows "next up" entries. Saved override rows merge
+  // onto the same date and replace the gathering type / status. OFF /
+  // cancelled overrides are kept in the list so the leader can see what
+  // they previously published. Meeting time is always inherited from
+  // the group schedule.
+  //
+  // The floor is today's church-local calendar date so a Wednesday view
+  // doesn't show Monday's already-past meeting; the ceiling is the same
+  // 8-week horizon used by the calendar fetch so the merge is complete.
   const todayIso = localTodayIso();
-  const upcomingEvents = calendarEvents
-    .filter((e) => e.archived_at == null && e.event_date >= todayIso)
-    .sort((a, b) => {
-      if (a.event_date !== b.event_date)
-        return a.event_date < b.event_date ? -1 : 1;
-      const aTime = a.start_time ?? "";
-      const bTime = b.start_time ?? "";
-      if (aTime === bTime) return 0;
-      return aTime < bTime ? -1 : 1;
-    })
+  const horizonEndIso = addDaysIsoForWeek(todayIso, 8 * 7);
+  const generated = generateOccurrencesInRange(
+    {
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      meetingFrequency: group.meeting_frequency,
+      meetingWeekParity: group.meeting_week_parity,
+    },
+    todayIso,
+    horizonEndIso,
+  );
+  const overridesByDate = new Map<string, GroupCalendarEventsRow>();
+  for (const e of calendarEvents) {
+    if (e.archived_at != null) continue;
+    if (e.event_date < todayIso) continue;
+    overridesByDate.set(e.event_date, e);
+  }
+  const dates = new Set<string>([
+    ...generated.map((g) => g.date),
+    ...overridesByDate.keys(),
+  ]);
+  const upcomingEvents = Array.from(dates)
+    .sort()
     .slice(0, 2)
-    .map((e) => ({
-      date: e.event_date,
-      label: eventDisplayLabel({ title: e.title, event_type: e.event_type }),
-      status: e.status,
-      startTime: e.start_time,
-    }));
+    .map((date) => {
+      const override = overridesByDate.get(date);
+      if (override) {
+        return {
+          date,
+          label: eventDisplayLabel({
+            title: override.title,
+            event_type: override.event_type,
+          }),
+          status: override.status,
+          startTime: group.meeting_time,
+        };
+      }
+      return {
+        date,
+        label: eventDisplayLabel({ title: null, event_type: "study" }),
+        status: "scheduled" as const,
+        startTime: group.meeting_time,
+      };
+    });
 
   return {
     group: {
