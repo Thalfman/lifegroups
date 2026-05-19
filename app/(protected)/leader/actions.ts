@@ -3,8 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentSession } from "@/lib/auth/session";
-import { isLeaderRole } from "@/lib/auth/roles";
+import { requireLeaderActor } from "@/lib/auth/session";
 import {
   validateLeaderCheckinPayload,
   isoWeekStart,
@@ -18,31 +17,6 @@ import {
 import { rpcLeaderSubmitGroupCheckin } from "@/lib/leader/rpc";
 
 const REVALIDATE_LEADER = "/leader";
-
-async function requireLeaderActor(): Promise<
-  | { ok: true; profileId: string; assignedGroupIds: string[] }
-  | { ok: false; error: string }
-> {
-  const session = await getCurrentSession();
-  if (!session) return { ok: false, error: "You need to sign in to do that." };
-  if (!session.profile) return { ok: false, error: "Your account isn't set up yet." };
-  if (session.profile.status !== "active")
-    return { ok: false, error: "Your account isn't active." };
-  // Admins who haven't been explicitly assigned as a leader of the
-  // target group are routed through admin tools instead. The Phase 5B.0
-  // workflow is for *leaders* (or co-leaders) actually doing the
-  // weekly check-in.
-  if (!isLeaderRole(session.profile.role))
-    return {
-      ok: false,
-      error: "Only an assigned leader or co-leader can submit this check-in.",
-    };
-  return {
-    ok: true,
-    profileId: session.profile.id,
-    assignedGroupIds: session.assignedGroupIds,
-  };
-}
 
 function parseAttendanceFormField(raw: FormDataEntryValue | null): unknown {
   if (raw === null) return [];

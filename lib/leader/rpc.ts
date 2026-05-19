@@ -4,6 +4,10 @@
 // Database type, so the wrapper hides the `as never` cast.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import type {
+  GroupCalendarEventStatus,
+  GroupCalendarEventType,
+} from "@/types/enums";
 
 type RpcResult = { data: string | null; error: { message: string } | null };
 
@@ -49,6 +53,74 @@ export async function rpcLeaderUpdateFollowUpStatus(
 ): Promise<RpcResult> {
   const r = await client.rpc(
     "leader_update_follow_up_status" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+// Phase 5A.6 group calendar leader RPCs.
+
+export type LeaderCreateGroupCalendarEventArgs = {
+  p_group_id: string;
+  p_event_date: string;
+  p_start_time: string | null;
+  p_end_time: string | null;
+  p_event_type: GroupCalendarEventType;
+  p_status: GroupCalendarEventStatus;
+  p_title: string | null;
+  p_description: string | null;
+};
+
+export async function rpcLeaderCreateGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: LeaderCreateGroupCalendarEventArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "leader_create_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export type LeaderUpdateGroupCalendarEventArgs = {
+  p_event_id: string;
+  p_event_date: string;
+  p_start_time: string | null;
+  p_end_time: string | null;
+  p_event_type: GroupCalendarEventType;
+  p_status: GroupCalendarEventStatus;
+  p_title: string | null;
+  p_description: string | null;
+};
+
+export async function rpcLeaderUpdateGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: LeaderUpdateGroupCalendarEventArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "leader_update_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcLeaderArchiveGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: { p_event_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "leader_archive_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcLeaderRestoreGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: { p_event_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "leader_restore_group_calendar_event" as never,
     args as never,
   );
   return { data: (r.data as string | null) ?? null, error: r.error };

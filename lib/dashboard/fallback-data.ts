@@ -6,6 +6,7 @@ import type {
   LeaderDashboardData,
   PipelineStageCount,
   SetupGapRow,
+  UpcomingCalendarEvent,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
 import { pipelineStageLabel } from "./labels";
@@ -30,6 +31,27 @@ const fallbackPipelineBreakdown: PipelineStageCount[] = GUEST_PIPELINE_STAGES.ma
 
 const FALLBACK_WEEK = "2026-05-18";
 const FALLBACK_WEEK_LABEL = "Week of May 18, 2026";
+
+// Phase 5A.6 demo calendar for the leader fallback group. Models the
+// 5-week rotation (Community Night, Men's Transformation, Study,
+// Women's Transformation, Study) starting at the fallback week with
+// one OFF date and one Cancelled date sprinkled in. Used by
+// /leader-preview and the seasonal sketches on /admin-preview when no
+// Supabase client is configured.
+const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
+  {
+    date: "2026-05-19", // Tuesday: Community Night
+    label: "Community Night",
+    status: "scheduled",
+    startTime: "19:00",
+  },
+  {
+    date: "2026-05-26", // Tuesday: Men's Transformation
+    label: "Men’s Transformation",
+    status: "scheduled",
+    startTime: "19:00",
+  },
+];
 
 const cap = (
   partial: Omit<CapacityGroupRow, "warningPct" | "fullPct">,
@@ -552,6 +574,7 @@ export const LEADER_FALLBACK: LeaderDashboardData = {
         submittedAt: null,
         leaderNote: null,
       },
+      upcomingEvents: fallbackLeaderUpcoming,
     },
   ],
 };

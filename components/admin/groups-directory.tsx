@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
@@ -403,7 +404,7 @@ function GroupCard({
             {metaLine(group)}
           </div>
         </div>
-        {!isClosed && !editing ? (
+        {!editing ? (
           <div
             style={{
               display: "flex",
@@ -413,14 +414,34 @@ function GroupCard({
               justifyContent: "flex-end",
             }}
           >
-            <PButton
-              type="button"
-              tone="terra"
-              size="sm"
-              onClick={() => setEditing(true)}
+            <Link
+              href={`/admin/groups/${group.id}/calendar`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                borderRadius: 8,
+                background: P.surface,
+                border: `1px solid ${P.line}`,
+                color: P.ink,
+                fontFamily: fontBody,
+                fontSize: 13,
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
             >
-              Edit
-            </PButton>
+              Calendar
+            </Link>
+            {!isClosed ? (
+              <PButton
+                type="button"
+                tone="terra"
+                size="sm"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </PButton>
+            ) : null}
           </div>
         ) : null}
       </header>

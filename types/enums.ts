@@ -12,3 +12,15 @@ export type FollowUpStatus = 'open' | 'in_progress' | 'done' | 'snoozed';
 export type FollowUpPriority = 'low' | 'normal' | 'high';
 export type MeetingFrequency = 'weekly' | 'biweekly' | 'monthly';
 export type MeetingWeekParity = 'odd' | 'even';
+export type GroupCalendarEventType =
+  | 'study'
+  | 'community_night'
+  | 'mens_transformation'
+  | 'womens_transformation'
+  | 'social'
+  | 'service'
+  | 'prayer'
+  | 'off'
+  | 'cancelled'
+  | 'other';
+export type GroupCalendarEventStatus = 'scheduled' | 'off' | 'cancelled';

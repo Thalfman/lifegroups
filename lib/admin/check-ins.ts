@@ -20,6 +20,7 @@ import {
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupCalendarEvents,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
@@ -35,10 +36,13 @@ import {
   computeCheckInDue,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
+  pickCalendarOverrideForWeek,
+  type CalendarEventLite,
 } from "@/lib/admin/check-in-due";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
+  GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMetricSettingsRow,
@@ -320,6 +324,29 @@ function isLeaderPulse(value: GroupHealthStatus | null | undefined): value is Le
   return value === "healthy" || value === "watch" || value === "needs_follow_up";
 }
 
+function addDaysIsoForWeek(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
+function buildCalendarEventsByGroupCheckIns(
+  events: GroupCalendarEventsRow[],
+): Map<string, CalendarEventLite[]> {
+  const m = new Map<string, CalendarEventLite[]>();
+  for (const e of events) {
+    const list = m.get(e.group_id) ?? [];
+    list.push({
+      event_date: e.event_date,
+      start_time: e.start_time,
+      status: e.status,
+      archived_at: e.archived_at,
+    });
+    m.set(e.group_id, list);
+  }
+  return m;
+}
+
 function deriveSessionStatus(
   session: AttendanceSessionsRow | null,
 ): SessionReviewStatus {
@@ -395,6 +422,8 @@ export async function fetchAdminWeeklyCheckInReview(
   meetingWeek: string,
   now: Date = new Date(),
 ): Promise<WeeklyReviewData> {
+  const weekEnd = addDaysIsoForWeek(meetingWeek, 6);
+
   const [
     groupsResult,
     leadersResult,
@@ -403,6 +432,7 @@ export async function fetchAdminWeeklyCheckInReview(
     healthResult,
     metricDefaultsResult,
     metricSettingsResult,
+    calendarEventsResult,
   ] = await Promise.all([
     fetchAllGroups(client),
     fetchAllGroupLeaders(client, { activeOnly: true }),
@@ -416,6 +446,11 @@ export async function fetchAdminWeeklyCheckInReview(
     fetchLatestHealthUpdates(client, { updateWeek: meetingWeek }),
     fetchMetricDefaults(client),
     fetchAllGroupMetricSettings(client),
+    fetchGroupCalendarEvents(client, {
+      fromDate: meetingWeek,
+      toDate: weekEnd,
+      includeArchived: false,
+    }),
   ]);
 
   const errors: WeeklyReviewErrors = { ...EMPTY_WEEKLY_ERRORS };
@@ -427,6 +462,7 @@ export async function fetchAdminWeeklyCheckInReview(
   errors.settings =
     metricDefaultsResult.error?.message ??
     metricSettingsResult.error?.message ??
+    calendarEventsResult.error?.message ??
     null;
 
   const groups = (groupsResult.data ?? []).filter(
@@ -437,6 +473,9 @@ export async function fetchAdminWeeklyCheckInReview(
   const sessions = sessionsResult.data ?? [];
   const healthUpdates = healthResult.data ?? [];
   const metricSettings = metricSettingsResult.data ?? [];
+  const calendarEventsByGroup = buildCalendarEventsByGroupCheckIns(
+    calendarEventsResult.data ?? [],
+  );
 
   const sessionIds = sessions.map((s) => s.id);
   const recordsResult = await fetchAttendanceRecordsForSessions(client, sessionIds);
@@ -476,6 +515,10 @@ export async function fetchAdminWeeklyCheckInReview(
     const health = healthByGroup.get(g.id) ?? null;
     const submitterName =
       session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
+    const calendarOverride = pickCalendarOverrideForWeek(
+      calendarEventsByGroup.get(g.id) ?? [],
+      meetingWeek,
+    );
     const dueResult = computeCheckInDue({
       group: {
         meetingDay: g.meeting_day,
@@ -487,6 +530,7 @@ export async function fetchAdminWeeklyCheckInReview(
       defaults,
       meetingWeek,
       now,
+      calendarOverride,
     });
     // Any non-"missing" session counts as the leader having checked in for
     // the week. submitted / admin_entered are the obvious cases; did_not_meet

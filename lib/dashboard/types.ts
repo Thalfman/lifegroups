@@ -3,6 +3,7 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
+  GroupCalendarEventStatus,
   GroupHealthStatus,
   GroupLifecycleStatus,
   GuestPipelineStage,
@@ -225,12 +226,24 @@ export interface LeaderCurrentWeek {
   leaderNote: string | null;
 }
 
+// Phase 5A.6: the compact upcoming-events strip on each leader group
+// card pre-resolves the friendly label (title or fallback event_type
+// label) so the client component doesn't need to import the label
+// helper.
+export interface UpcomingCalendarEvent {
+  date: string; // YYYY-MM-DD
+  label: string;
+  status: GroupCalendarEventStatus;
+  startTime: string | null;
+}
+
 export interface LeaderGroupDashboard {
   group: LeaderGroupSummary;
   recentSessions: LeaderSessionStatusRow[];
   healthPulse: LeaderHealthPulse;
   followUps: FollowUpItem[];
   currentWeek: LeaderCurrentWeek;
+  upcomingEvents: UpcomingCalendarEvent[];
 }
 
 export interface LeaderDashboardData {

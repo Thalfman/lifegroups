@@ -170,6 +170,23 @@ export interface GroupMetricSettingsRow {
   updated_at: Timestamp;
 }
 
+export interface GroupCalendarEventsRow {
+  id: UUID;
+  group_id: UUID;
+  event_date: DateString;
+  start_time: string | null;
+  end_time: string | null;
+  event_type: E.GroupCalendarEventType;
+  status: E.GroupCalendarEventStatus;
+  title: string | null;
+  description: string | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  archived_at: Timestamp | null;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -252,6 +269,15 @@ export interface Database {
         Row: GroupMetricSettingsRow;
         Insert: InsertOf<GroupMetricSettingsRow, 'created_at' | 'updated_at'>;
         Update: Partial<GroupMetricSettingsRow>;
+        Relationships: [];
+      };
+      group_calendar_events: {
+        Row: GroupCalendarEventsRow;
+        Insert: InsertOf<
+          GroupCalendarEventsRow,
+          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'created_by' | 'updated_by'
+        >;
+        Update: Partial<GroupCalendarEventsRow>;
         Relationships: [];
       };
     };
@@ -411,6 +437,74 @@ export interface Database {
       };
       leader_update_follow_up_status: {
         Args: { p_follow_up_id: UUID; p_status: E.FollowUpStatus };
+        Returns: UUID;
+      };
+      admin_create_group_calendar_event: {
+        Args: {
+          p_group_id: UUID;
+          p_event_date: DateString;
+          p_start_time: string | null;
+          p_end_time: string | null;
+          p_event_type: E.GroupCalendarEventType;
+          p_status: E.GroupCalendarEventStatus;
+          p_title: string | null;
+          p_description: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_group_calendar_event: {
+        Args: {
+          p_event_id: UUID;
+          p_event_date: DateString;
+          p_start_time: string | null;
+          p_end_time: string | null;
+          p_event_type: E.GroupCalendarEventType;
+          p_status: E.GroupCalendarEventStatus;
+          p_title: string | null;
+          p_description: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_archive_group_calendar_event: {
+        Args: { p_event_id: UUID };
+        Returns: UUID;
+      };
+      admin_restore_group_calendar_event: {
+        Args: { p_event_id: UUID };
+        Returns: UUID;
+      };
+      leader_create_group_calendar_event: {
+        Args: {
+          p_group_id: UUID;
+          p_event_date: DateString;
+          p_start_time: string | null;
+          p_end_time: string | null;
+          p_event_type: E.GroupCalendarEventType;
+          p_status: E.GroupCalendarEventStatus;
+          p_title: string | null;
+          p_description: string | null;
+        };
+        Returns: UUID;
+      };
+      leader_update_group_calendar_event: {
+        Args: {
+          p_event_id: UUID;
+          p_event_date: DateString;
+          p_start_time: string | null;
+          p_end_time: string | null;
+          p_event_type: E.GroupCalendarEventType;
+          p_status: E.GroupCalendarEventStatus;
+          p_title: string | null;
+          p_description: string | null;
+        };
+        Returns: UUID;
+      };
+      leader_archive_group_calendar_event: {
+        Args: { p_event_id: UUID };
+        Returns: UUID;
+      };
+      leader_restore_group_calendar_event: {
+        Args: { p_event_id: UUID };
         Returns: UUID;
       };
     };

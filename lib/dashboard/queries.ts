@@ -7,6 +7,7 @@ import {
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupCalendarEvents,
   fetchGroupsByIds,
   fetchGuests,
   fetchLatestHealthUpdates,
@@ -62,10 +63,14 @@ import {
   computeCheckInDue,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
+  pickCalendarOverrideForWeek,
+  type CalendarEventLite,
 } from "@/lib/admin/check-in-due";
+import { eventDisplayLabel } from "@/lib/calendar/payload";
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
+  GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -87,6 +92,29 @@ function describeWeek(meetingWeekIso: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+function addDaysIsoForWeek(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
+function buildCalendarEventsByGroup(
+  events: GroupCalendarEventsRow[],
+): Map<string, CalendarEventLite[]> {
+  const m = new Map<string, CalendarEventLite[]>();
+  for (const e of events) {
+    const list = m.get(e.group_id) ?? [];
+    list.push({
+      event_date: e.event_date,
+      start_time: e.start_time,
+      status: e.status,
+      archived_at: e.archived_at,
+    });
+    m.set(e.group_id, list);
+  }
+  return m;
 }
 
 function fallback<T>(data: T, error?: string): DashboardResult<T> {
@@ -553,6 +581,12 @@ export async function getAdminDashboardData(
   const selectedWeek = options.selectedWeek ?? currentWeek;
 
   try {
+    // Phase 5A.6: batch-fetch calendar events for the selected week so
+    // the derived rows below can resolve calendar overrides without a
+    // per-group round trip. We fetch a one-week window (Mon..Sun) -- the
+    // override resolver narrows further.
+    const weekEnd = addDaysIsoForWeek(selectedWeek, 6);
+
     const [
       groupsResult,
       activeGroupCountResult,
@@ -565,6 +599,7 @@ export async function getAdminDashboardData(
       profilesResult,
       metricDefaultsResult,
       metricSettingsResult,
+      calendarEventsResult,
     ] = await Promise.all([
       fetchAllGroups(client),
       fetchActiveGroupCount(client),
@@ -577,6 +612,11 @@ export async function getAdminDashboardData(
       fetchProfilesForAdmin(client),
       fetchMetricDefaults(client),
       fetchAllGroupMetricSettings(client),
+      fetchGroupCalendarEvents(client, {
+        fromDate: selectedWeek,
+        toDate: weekEnd,
+        includeArchived: false,
+      }),
     ]);
 
     const firstError =
@@ -590,7 +630,8 @@ export async function getAdminDashboardData(
       leadersResult.error ||
       profilesResult.error ||
       metricDefaultsResult.error ||
-      metricSettingsResult.error;
+      metricSettingsResult.error ||
+      calendarEventsResult.error;
     if (firstError) return fallback(ADMIN_FALLBACK, firstError.message);
 
     const groups = groupsResult.data ?? [];
@@ -602,6 +643,8 @@ export async function getAdminDashboardData(
     const leaders = leadersResult.data ?? [];
     const profiles = profilesResult.data ?? [];
     const metricSettings = metricSettingsResult.data ?? [];
+    const calendarEvents = calendarEventsResult.data ?? [];
+    const calendarEventsByGroup = buildCalendarEventsByGroup(calendarEvents);
 
     const groupsById = new Map(groups.map((g) => [g.id, g] as const));
     const profilesById = new Map(profiles.map((p) => [p.id, p] as const));
@@ -663,6 +706,11 @@ export async function getAdminDashboardData(
       const hasMeetingDayTime = Boolean(g.meeting_day && g.meeting_time);
       const hasCapacityConfigured =
         override?.capacity_override != null || g.capacity != null;
+      const groupEventsForWeek = calendarEventsByGroup.get(g.id) ?? [];
+      const calendarOverride = pickCalendarOverrideForWeek(
+        groupEventsForWeek,
+        selectedWeek,
+      );
       const dueResult = computeCheckInDue({
         group: {
           meetingDay: g.meeting_day,
@@ -677,6 +725,7 @@ export async function getAdminDashboardData(
         // (Codex P2: "use selected week when computing due dates").
         meetingWeek: selectedWeek,
         now,
+        calendarOverride,
       });
       // Any session status other than "no_session" / "not_submitted"
       // counts as the leader having checked in for the week. We use
@@ -794,6 +843,7 @@ export async function getAdminDashboardData(
 async function buildLeaderGroupDashboard(
   client: AppSupabaseClient,
   group: GroupsRow,
+  calendarEvents: GroupCalendarEventsRow[] = [],
 ): Promise<LeaderGroupDashboard> {
   const [sessionsResult, membershipsResult, healthUpdatesResult, followUpsResult] =
     await Promise.all([
@@ -894,6 +944,28 @@ async function buildLeaderGroupDashboard(
     leaderNote: currentWeekSession?.leader_note ?? null,
   };
 
+  // Upcoming-events strip: at most 2 upcoming events (today onwards),
+  // sorted by date / start_time. Pre-resolve the friendly label so the
+  // client component stays simple.
+  const todayIso = currentWeekIso; // Monday of this week is the floor; events earlier in the week are already past at this point
+  const upcomingEvents = calendarEvents
+    .filter((e) => e.archived_at == null && e.event_date >= todayIso)
+    .sort((a, b) => {
+      if (a.event_date !== b.event_date)
+        return a.event_date < b.event_date ? -1 : 1;
+      const aTime = a.start_time ?? "";
+      const bTime = b.start_time ?? "";
+      if (aTime === bTime) return 0;
+      return aTime < bTime ? -1 : 1;
+    })
+    .slice(0, 2)
+    .map((e) => ({
+      date: e.event_date,
+      label: eventDisplayLabel({ title: e.title, event_type: e.event_type }),
+      status: e.status,
+      startTime: e.start_time,
+    }));
+
   return {
     group: {
       groupId: group.id,
@@ -916,6 +988,7 @@ async function buildLeaderGroupDashboard(
     },
     followUps: followUpItems,
     currentWeek,
+    upcomingEvents,
   };
 }
 
@@ -927,16 +1000,35 @@ export async function getLeaderDashboardData(
   if (options.assignedGroupIds.length === 0) return live({ groups: [] });
 
   try {
-    const groupsResult = await fetchGroupsByIds(client, [
-      ...options.assignedGroupIds,
+    const todayIso = isoWeekStart(new Date());
+    const horizonEnd = addDaysIsoForWeek(todayIso, 8 * 7);
+    const [groupsResult, calendarEventsResult] = await Promise.all([
+      fetchGroupsByIds(client, [...options.assignedGroupIds]),
+      fetchGroupCalendarEvents(client, {
+        groupIds: [...options.assignedGroupIds],
+        fromDate: todayIso,
+        toDate: horizonEnd,
+        includeArchived: false,
+      }),
     ]);
     if (groupsResult.error)
       return fallback(LEADER_FALLBACK, groupsResult.error.message);
+    if (calendarEventsResult.error)
+      return fallback(LEADER_FALLBACK, calendarEventsResult.error.message);
     const groups = groupsResult.data ?? [];
     if (groups.length === 0) return live({ groups: [] });
 
+    const eventsByGroup = new Map<string, GroupCalendarEventsRow[]>();
+    for (const e of calendarEventsResult.data ?? []) {
+      const list = eventsByGroup.get(e.group_id) ?? [];
+      list.push(e);
+      eventsByGroup.set(e.group_id, list);
+    }
+
     const dashboards = await Promise.all(
-      groups.map((g) => buildLeaderGroupDashboard(client, g)),
+      groups.map((g) =>
+        buildLeaderGroupDashboard(client, g, eventsByGroup.get(g.id) ?? []),
+      ),
     );
     return live({ groups: dashboards });
   } catch (err) {

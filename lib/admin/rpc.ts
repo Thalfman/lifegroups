@@ -18,6 +18,8 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
+  GroupCalendarEventStatus,
+  GroupCalendarEventType,
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
@@ -258,5 +260,73 @@ export async function rpcAdminUpdateFollowUpStatus(
   args: AdminUpdateFollowUpStatusArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_update_follow_up_status" as never, args as never);
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+// Phase 5A.6 group calendar admin RPCs.
+
+export type AdminCreateGroupCalendarEventArgs = {
+  p_group_id: string;
+  p_event_date: string;
+  p_start_time: string | null;
+  p_end_time: string | null;
+  p_event_type: GroupCalendarEventType;
+  p_status: GroupCalendarEventStatus;
+  p_title: string | null;
+  p_description: string | null;
+};
+
+export async function rpcAdminCreateGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: AdminCreateGroupCalendarEventArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_create_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export type AdminUpdateGroupCalendarEventArgs = {
+  p_event_id: string;
+  p_event_date: string;
+  p_start_time: string | null;
+  p_end_time: string | null;
+  p_event_type: GroupCalendarEventType;
+  p_status: GroupCalendarEventStatus;
+  p_title: string | null;
+  p_description: string | null;
+};
+
+export async function rpcAdminUpdateGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: AdminUpdateGroupCalendarEventArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_update_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminArchiveGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: { p_event_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_archive_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: (r.data as string | null) ?? null, error: r.error };
+}
+
+export async function rpcAdminRestoreGroupCalendarEvent(
+  client: AppSupabaseClient,
+  args: { p_event_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_restore_group_calendar_event" as never,
+    args as never,
+  );
   return { data: (r.data as string | null) ?? null, error: r.error };
 }
