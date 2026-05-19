@@ -70,6 +70,11 @@ export default async function LeaderCalendarPage({
   if (groupResult.error) throw groupResult.error;
   const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
   if (!group) notFound();
+  // Fail loudly on a calendar read failure rather than rendering an
+  // empty calendar -- otherwise a leader could think there are no
+  // events and create a conflicting one while existing rows are just
+  // unreadable (permission glitch / transient DB error).
+  if (eventsResult.error) throw eventsResult.error;
 
   const events = eventsResult.data ?? [];
   const groupClosed = group.lifecycle_status === "closed";

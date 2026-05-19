@@ -73,6 +73,26 @@ export function CalendarEventList({
     );
   }
 
+  // archivedSeparate=true: split into an active list + a collapsible
+  // archived section (the default "upcoming" view).
+  // archivedSeparate=false: render every row inline -- used by the
+  // archived-only tab, where the caller has already scoped the fetch to
+  // archived events and expects them all to render.
+  if (!archivedSeparate) {
+    return (
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+        {events.map((event) => (
+          <CalendarEventRow
+            key={event.id}
+            event={event}
+            renderActions={renderActions}
+            archived={event.archived_at != null}
+          />
+        ))}
+      </ul>
+    );
+  }
+
   const active = events.filter((e) => e.archived_at == null);
   const archived = events.filter((e) => e.archived_at != null);
 
@@ -100,7 +120,7 @@ export function CalendarEventList({
         </div>
       )}
 
-      {archivedSeparate && archived.length > 0 ? (
+      {archived.length > 0 ? (
         <details
           style={{
             border: `1px solid ${P.line}`,

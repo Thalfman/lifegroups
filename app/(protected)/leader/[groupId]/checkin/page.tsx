@@ -109,6 +109,11 @@ export default async function CheckInPage({
   if (membershipsResult.error) throw membershipsResult.error;
   if (sessionResult.error) throw sessionResult.error;
   if (healthResult.error) throw healthResult.error;
+  // Fail closed on calendar read errors. Silently dropping back to
+  // null would compute due dates from the default cadence and could
+  // show "due Tuesday 7pm" for a week that was actually marked OFF or
+  // Cancelled -- exactly the wrong UX. Better to surface the error.
+  if (calendarEventsResult.error) throw calendarEventsResult.error;
 
   const memberships = membershipsResult.data ?? [];
   const memberIds = memberships.map((m) => m.member_id);
@@ -153,17 +158,17 @@ export default async function CheckInPage({
   // Phase 5A.6: if a leader has published a calendar event for this
   // week, that event overrides the default meeting_day / meeting_time
   // for due-date math. OFF / cancelled events suppress the due timestamp.
-  const calendarOverride = calendarEventsResult.error
-    ? null
-    : pickCalendarOverrideForWeek(
-        (calendarEventsResult.data ?? []).map((e) => ({
-          event_date: e.event_date,
-          start_time: e.start_time,
-          status: e.status,
-          archived_at: e.archived_at,
-        })),
-        meetingWeek,
-      );
+  // The error case is handled above (we throw) so we can trust the data
+  // here.
+  const calendarOverride = pickCalendarOverrideForWeek(
+    (calendarEventsResult.data ?? []).map((e) => ({
+      event_date: e.event_date,
+      start_time: e.start_time,
+      status: e.status,
+      archived_at: e.archived_at,
+    })),
+    meetingWeek,
+  );
   const dueResult = computeCheckInDue({
     group: {
       meetingDay: group.meeting_day,

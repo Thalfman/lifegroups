@@ -68,6 +68,10 @@ export default async function AdminGroupCalendarPage({
   if (groupResult.error) throw groupResult.error;
   const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
   if (!group) notFound();
+  // Fail loudly on a calendar read failure rather than rendering an
+  // empty calendar -- an admin could think there are no events and
+  // create a conflicting one while existing rows are just unreadable.
+  if (eventsResult.error) throw eventsResult.error;
 
   const events = eventsResult.data ?? [];
 

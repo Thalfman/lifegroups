@@ -169,6 +169,16 @@ drop policy if exists group_calendar_events_leader_read on public.group_calendar
 create policy group_calendar_events_leader_read on public.group_calendar_events
   for select to authenticated using (public.auth_is_leader_of(group_id));
 
+-- Table-level SELECT grant for `authenticated`. RLS sits on top of
+-- table-level privileges in Postgres; without this grant a fresh
+-- Supabase deploy returns "permission denied for table
+-- group_calendar_events" before any policy evaluates. Mirrors the
+-- Phase 5A.2 hardening migration which grants SELECT on every other
+-- operational table to authenticated. Anon receives no grant -- the
+-- two SELECT policies above are scoped `to authenticated`, so anon
+-- callers are denied at the policy layer.
+grant select on public.group_calendar_events to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 6. Admin write RPCs.
 --
