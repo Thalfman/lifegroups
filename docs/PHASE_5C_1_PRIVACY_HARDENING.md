@@ -31,7 +31,8 @@ contracts (without overbuilding column-level RLS).
 ## What changed in this phase
 
 1. **`lib/supabase/read-models.ts`** — strengthened JSDoc contracts on the
-   leader-side surface:
+   leader-side surface, **and narrowed the second leader-reachable
+   follow-ups reader so the SQL-level privacy claim is also honest**:
    - `LEADER_FOLLOW_UP_COLUMNS` now carries a privacy-contract docstring
      stating "every leader-facing query MUST select via this constant or a
      narrower allowlist, never `select("*")`" and points at this hardening
@@ -43,27 +44,46 @@ contracts (without overbuilding column-level RLS).
      PostgREST predicate and at the RLS layer).
    - `fetchFollowUpsForAdmin` gets a "**Admin-only** — do not call from any
      leader code path" warning JSDoc.
+   - **`fetchOpenFollowUps`** (dashboard summary helper used by both
+     `getAdminDashboardData` *and* the per-group leader dashboard
+     `buildLeaderGroupDashboard`) previously did `select("*")` and
+     returned `FollowUpsRow[]`. It is now narrowed to select via
+     `LEADER_FOLLOW_UP_COLUMNS` and return `LeaderFollowUpRow[]`.
+     Even though both downstream consumers projected to a narrow
+     `FollowUpItem` view-model (so `admin_private_note` never reached
+     the rendered output), the SQL read fetched the column over the
+     wire on a leader request path. Narrowing the helper makes the
+     boundary true at the network/SQL layer as well, not just at the
+     rendered-output layer.
+2. **`lib/dashboard/queries.ts`** — type-only follow-ons to the
+   `fetchOpenFollowUps` narrowing: `DerivedGroupRow.followUpsForGroup`,
+   the internal `followUpsByGroup` map, the `toFollowUpItem` parameter,
+   and the two `.map((row: ...) => toFollowUpItem(...))` annotations now
+   all use `LeaderFollowUpRow` instead of `FollowUpsRow`. No runtime
+   behavior changes; the dashboard summary already only read narrowing-
+   safe fields. (The `FollowUpsRow` import is dropped.)
 
-2. **`components/leader/leader-follow-ups-section.tsx`** — added a privacy
+3. **`components/leader/leader-follow-ups-section.tsx`** — added a privacy
    contract docstring above the `LeaderFollowUpItem` view-model type
    explaining that it has no `adminPrivateNote` field by design, the
    mapping in `/leader/page.tsx` never reads `admin_private_note`, and the
    upstream reader does not select the column. Anyone widening this type
    in the future is steered to check the upstream constraint.
 
-3. **Empty states** (`/admin/guests`, `/admin/follow-ups`) now distinguish
+4. **Empty states** (`/admin/guests`, `/admin/follow-ups`) now distinguish
    "no rows in the system yet" from "no rows match these filters". The
    former points users to the in-page create form with a short pastoral
    sentence; the latter keeps the existing "adjust filters" copy.
 
-4. **Documentation** — this file plus `docs/PHASE_5C_1_VERIFICATION.md`,
+5. **Documentation** — this file plus `docs/PHASE_5C_1_VERIFICATION.md`,
    and the phase tracker in `README.md` + `docs/ROADMAP.md` is updated to
    mark 5C.0 ✅ and 5C.1 current.
 
 No new RPCs, no new migrations, no new RLS policies, no new tables, no
-schema changes, and no service-role usage. The Phase 5C.0 codepaths are
-unchanged at runtime — only documentation and one client-side empty-state
-branch are touched.
+schema changes, and no service-role usage. The runtime change set is
+small and intentional: `fetchOpenFollowUps` now selects fewer columns
+(specifically not `admin_private_note`); everything else is JSDoc, type
+narrowing, doc updates, and one client-side empty-state branch.
 
 ## Privacy boundary, end-to-end
 
@@ -72,34 +92,52 @@ follow_ups table  (admin_private_note column exists)
         │
         │  select * (admin) ─────────► fetchFollowUpsForAdmin → FollowUpsRow → /admin/follow-ups (admin only)
         │
-        └─ select LEADER_FOLLOW_UP_COLUMNS (leader)
+        ├─ select LEADER_FOLLOW_UP_COLUMNS (leader follow-up section)
+        │                     │
+        │                     ▼
+        │              LeaderFollowUpRow                  ← Omit<FollowUpsRow, "admin_private_note">
+        │                     │
+        │                     ▼  (mapped in /leader/page.tsx)
+        │              LeaderFollowUpItem                 ← has leaderVisibleNote only
+        │                     │
+        │                     ▼
+        │          LeaderFollowUpsSection (RSC → HTML)
+        │
+        └─ select LEADER_FOLLOW_UP_COLUMNS (dashboard summary, fetchOpenFollowUps)
                               │
                               ▼
-                       LeaderFollowUpRow                  ← Omit<FollowUpsRow, "admin_private_note">
+                       LeaderFollowUpRow[]
                               │
-                              ▼   (mapped in /leader/page.tsx)
-                       LeaderFollowUpItem                 ← has leaderVisibleNote only
+                              ├──► toFollowUpItem(...) → FollowUpItem[] (narrow view-model)
+                              │     used by /admin (admin dashboard) and /leader (per-group card)
                               │
-                              ▼
-                   LeaderFollowUpsSection (RSC → HTML)
-                              │
-                              ▼
-                       Leader's browser
-                       (no admin_private_note anywhere
-                        in component props, RSC payload,
-                        rendered HTML, or page source)
+                              └──► .length-only counters on DerivedGroupRow.followUpsForGroup
+                                   (admin dashboard attention queue)
+
+   In neither leader-reachable path does admin_private_note leave SQL.
+   The view-models exposed to /leader components carry only the
+   leader-visible fields, and the rendered HTML / RSC payload contains
+   neither the field name nor any admin-private content.
 ```
 
 Three independent layers prevent leakage to a leader:
 
-1. **Runtime / SQL**: `fetchFollowUpsForLeader` selects via
-   `LEADER_FOLLOW_UP_COLUMNS`, which does not list `admin_private_note`.
+1. **Runtime / SQL**: every leader-reachable `follow_ups` reader selects
+   via `LEADER_FOLLOW_UP_COLUMNS` (which does not list `admin_private_note`).
+   That includes both `fetchFollowUpsForLeader` (the dedicated leader
+   reader for the `/leader` follow-up section) and `fetchOpenFollowUps`
+   (the dashboard-summary helper used by the per-group leader dashboard
+   in `buildLeaderGroupDashboard`).
 2. **Compile time**: `LeaderFollowUpRow` is `Omit<FollowUpsRow, "admin_private_note">`,
    so any future code that tries to read `row.admin_private_note` after a
-   `fetchFollowUpsForLeader` call fails to compile.
+   `fetchFollowUpsForLeader` or `fetchOpenFollowUps` call fails to
+   compile.
 3. **View model**: `LeaderFollowUpItem` (the prop type for the leader UI)
    has only `leaderVisibleNote`. The mapping in `/leader/page.tsx` never
-   references `admin_private_note`.
+   references `admin_private_note`. The dashboard's `FollowUpItem`
+   view-model (in `lib/dashboard/types.ts`) likewise omits both notes
+   entirely — it only carries id, title, type, priority, status, due
+   date, and the related group name.
 
 ## Leader visibility rules (verified this phase)
 
@@ -205,7 +243,14 @@ view is a one-line code change.
 
 - `lib/supabase/read-models.ts` — JSDoc privacy contracts on
   `LEADER_FOLLOW_UP_COLUMNS`, `LeaderFollowUpRow`,
-  `fetchFollowUpsForLeader`, and `fetchFollowUpsForAdmin`.
+  `fetchFollowUpsForLeader`, and `fetchFollowUpsForAdmin`; narrowed
+  `fetchOpenFollowUps` to select via `LEADER_FOLLOW_UP_COLUMNS` and
+  return `LeaderFollowUpRow[]`.
+- `lib/dashboard/queries.ts` — type-only follow-ons: `LeaderFollowUpRow`
+  is imported and used in place of `FollowUpsRow` for
+  `DerivedGroupRow.followUpsForGroup`, the internal `followUpsByGroup`
+  map, `toFollowUpItem`'s parameter, and the two `.map` annotations.
+  `FollowUpsRow` is no longer imported here.
 - `components/leader/leader-follow-ups-section.tsx` — privacy contract
   docstring on `LeaderFollowUpItem`.
 - `components/admin/guests/guests-shell.tsx` — distinguished
@@ -218,4 +263,4 @@ view is a one-line code change.
 - `docs/PHASE_5C_1_VERIFICATION.md` — manual + grep + SQL verification
   checklist.
 
-No code outside these eight files changed.
+No code outside these nine files changed.

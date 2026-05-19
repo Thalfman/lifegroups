@@ -109,18 +109,18 @@ grep -rniE "for (insert|update|delete)" supabase/migrations/
 
 Sign in as each role and confirm:
 
-| Path | super_admin | ministry_admin | leader |
+| Path | super_admin | ministry_admin | leader / co_leader |
 |---|---|---|---|
 | `/admin/guests` | ✅ loads | ✅ loads | ❌ `/unauthorized` |
 | `/admin/follow-ups` | ✅ loads | ✅ loads | ❌ `/unauthorized` |
 | `/admin/super-admin` | ✅ audit log visible | ❌ `/unauthorized` | ❌ `/unauthorized` |
-| `/leader` | ✅ loads (admins can see leader page too via role hierarchy) | n/a | ✅ loads with assigned content |
+| `/leader` | ❌ `/unauthorized` (route guard is `requireLeader()` = `["leader","co_leader"]`) | ❌ `/unauthorized` | ✅ loads with assigned content |
 | `/admin` dashboard | ✅ | ✅ | ❌ |
 | `/admin/check-ins/[groupId]` | ✅ | ✅ | ❌ |
 | `/admin/people` | ✅ | ✅ | ❌ |
 | `/admin/groups` | ✅ | ✅ | ❌ |
 | `/admin/settings` | ✅ | ✅ | ❌ |
-| `/leader/[groupId]/checkin` | n/a | n/a | ✅ for assigned groups |
+| `/leader/[groupId]/checkin` | ❌ `/unauthorized` | ❌ `/unauthorized` | ✅ for assigned groups |
 
 ## 4. Guest pipeline workflow (admin)
 

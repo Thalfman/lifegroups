@@ -15,6 +15,7 @@ import {
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
   fetchProfilesForAdmin,
+  type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
@@ -60,7 +61,6 @@ import {
 import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
-  FollowUpsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -104,7 +104,7 @@ function countPipeline(
 }
 
 function toFollowUpItem(
-  row: FollowUpsRow,
+  row: LeaderFollowUpRow,
   groupsById: Map<string, GroupsRow>,
 ): FollowUpItem {
   return {
@@ -178,7 +178,7 @@ type DerivedGroupRow = {
   hasLeader: boolean;
   hasMeetingDayTime: boolean;
   hasCapacityConfigured: boolean;
-  followUpsForGroup: FollowUpsRow[];
+  followUpsForGroup: LeaderFollowUpRow[];
 };
 
 const ATTENTION_PRIORITY: Record<AttentionReason, number> = {
@@ -602,7 +602,7 @@ export async function getAdminDashboardData(
         (membershipsByGroup.get(m.group_id) ?? 0) + 1,
       );
     }
-    const followUpsByGroup = new Map<string, FollowUpsRow[]>();
+    const followUpsByGroup = new Map<string, LeaderFollowUpRow[]>();
     for (const fu of followUps) {
       if (!fu.related_group_id) continue;
       const list = followUpsByGroup.get(fu.related_group_id) ?? [];
@@ -696,7 +696,7 @@ export async function getAdminDashboardData(
       (g) => g.pipeline_stage !== "placed" && g.pipeline_stage !== "not_now",
     ).length;
 
-    const followUpItems = followUps.map((row: FollowUpsRow) =>
+    const followUpItems = followUps.map((row: LeaderFollowUpRow) =>
       toFollowUpItem(row, groupsById),
     );
 
@@ -804,7 +804,7 @@ async function buildLeaderGroupDashboard(
   if (newGuestsResult.error) throw newGuestsResult.error;
   const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
 
-  const followUpItems = followUps.map((row: FollowUpsRow) =>
+  const followUpItems = followUps.map((row: LeaderFollowUpRow) =>
     toFollowUpItem(row, new Map([[group.id, group]])),
   );
 

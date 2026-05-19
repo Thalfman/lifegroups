@@ -124,19 +124,32 @@ export async function fetchGuests(client: ReadClient): Promise<ReadResult<Guests
   return { data: data ?? [], error: null };
 }
 
+/**
+ * Open follow-ups summary helper used by both the admin dashboard
+ * (`getAdminDashboardData`) and the per-group leader dashboard
+ * (`buildLeaderGroupDashboard`).
+ *
+ * Selects via {@link LEADER_FOLLOW_UP_COLUMNS} and returns
+ * {@link LeaderFollowUpRow}, i.e. **never** includes `admin_private_note`.
+ * Admin surfaces that genuinely need the admin-private note (only
+ * `/admin/follow-ups` today) must use {@link fetchFollowUpsForAdmin}
+ * instead. The narrowing here matters because this helper is reachable
+ * from the leader request path — Phase 5C.1 hardened it so the SQL-level
+ * privacy claim holds, not just the rendered-output claim.
+ */
 export async function fetchOpenFollowUps(
   client: ReadClient,
   options: { groupId?: string; limit?: number } = {},
-): Promise<ReadResult<FollowUpsRow[]>> {
+): Promise<ReadResult<LeaderFollowUpRow[]>> {
   let query = client
     .from("follow_ups")
-    .select("*")
+    .select(LEADER_FOLLOW_UP_COLUMNS)
     .in("status", ["open", "in_progress"])
     .order("priority", { ascending: false })
     .order("due_date", { ascending: true, nullsFirst: false });
   if (options.groupId) query = query.eq("related_group_id", options.groupId);
   if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<LeaderFollowUpRow[]>();
   if (error) return { data: null, error: wrapError("fetchOpenFollowUps", error) };
   return { data: data ?? [], error: null };
 }
