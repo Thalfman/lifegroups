@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ next?: string | string[] }>;
+type SearchParams = Promise<{ next?: string | string[]; reset?: string | string[] }>;
 
 export default async function LoginPage({
   searchParams,
@@ -18,6 +18,9 @@ export default async function LoginPage({
   const nextRaw = params.next;
   const nextValue = Array.isArray(nextRaw) ? nextRaw[0] : nextRaw;
   const next = nextValue && isSafeNextPath(nextValue) ? nextValue : null;
+  const resetRaw = params.reset;
+  const resetValue = Array.isArray(resetRaw) ? resetRaw[0] : resetRaw;
+  const showResetSuccess = resetValue === "ok";
   const configured = isSupabaseConfigured();
 
   return (
@@ -65,29 +68,15 @@ export default async function LoginPage({
             }}
           >
             <PSeal />
-            <div>
-              <div
-                style={{
-                  fontFamily: fontDisplay,
-                  fontSize: 18,
-                  fontWeight: 600,
-                  letterSpacing: -0.2,
-                }}
-              >
-                Fox Valley Church
-              </div>
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 10,
-                  letterSpacing: 2.5,
-                  textTransform: "uppercase",
-                  color: P.ink2,
-                  marginTop: 2,
-                }}
-              >
-                Life Groups
-              </div>
+            <div
+              style={{
+                fontFamily: fontSans,
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: -0.2,
+              }}
+            >
+              Fox Valley Church Life Groups
             </div>
           </Link>
 
@@ -96,18 +85,15 @@ export default async function LoginPage({
             <h2
               style={{
                 fontFamily: fontDisplay,
-                fontSize: "clamp(34px, 5vw, 48px)",
-                lineHeight: 1.05,
+                fontSize: "clamp(32px, 4.5vw, 44px)",
+                lineHeight: 1.1,
                 margin: "20px 0 18px",
-                fontWeight: 500,
-                letterSpacing: -1,
+                fontWeight: 600,
+                letterSpacing: -0.5,
                 color: P.ink,
               }}
             >
-              Come back in.{" "}
-              <span style={{ fontStyle: "italic", color: P.terra }}>
-                Your people are here.
-              </span>
+              Welcome back.
             </h2>
             <p
               style={{
@@ -118,8 +104,8 @@ export default async function LoginPage({
                 margin: 0,
               }}
             >
-              One sign-in shows your assigned groups, the week&apos;s check-in,
-              and any follow-ups admins have routed your way.
+              Supporting Life Groups as they care for people and build
+              meaningful relationships.
             </p>
           </div>
 
@@ -163,14 +149,14 @@ export default async function LoginPage({
             <h3
               style={{
                 fontFamily: fontDisplay,
-                fontSize: "clamp(26px, 4vw, 32px)",
-                margin: "0 0 18px",
-                fontWeight: 500,
-                letterSpacing: -0.5,
+                fontSize: "clamp(24px, 3.5vw, 28px)",
+                margin: "0 0 14px",
+                fontWeight: 600,
+                letterSpacing: -0.3,
                 color: P.ink,
               }}
             >
-              Welcome back to your dashboard.
+              Sign in
             </h3>
             <p
               style={{
@@ -182,8 +168,28 @@ export default async function LoginPage({
                 lineHeight: 1.55,
               }}
             >
-              Ministry admins, staff, and life group leaders.
+              For ministry admins and Life Group leaders.
             </p>
+
+            {showResetSuccess ? (
+              <div
+                role="status"
+                style={{
+                  background: P.surface,
+                  border: `1px solid ${P.line}`,
+                  borderLeft: `3px solid ${P.sage}`,
+                  borderRadius: 10,
+                  padding: "12px 16px",
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink2,
+                  lineHeight: 1.5,
+                  marginBottom: 18,
+                }}
+              >
+                Password updated. Sign in.
+              </div>
+            ) : null}
 
             {!configured ? (
               <div
@@ -216,37 +222,22 @@ export default async function LoginPage({
                 marginTop: 20,
                 marginBottom: 0,
                 textAlign: "center",
-                fontStyle: "italic",
                 lineHeight: 1.55,
               }}
             >
-              Not a user yet? Ask a ministry admin to invite you, or browse the{" "}
+              Not a user yet? Ask a ministry admin to invite you.
+              <br />
               <Link
-                href="/admin-preview"
+                href="/forgot-password"
                 style={{
                   color: P.terra,
                   fontFamily: fontSans,
-                  fontStyle: "normal",
                   fontWeight: 600,
                   textDecoration: "underline",
                 }}
               >
-                admin
-              </Link>{" "}
-              and{" "}
-              <Link
-                href="/leader-preview"
-                style={{
-                  color: P.terra,
-                  fontFamily: fontSans,
-                  fontStyle: "normal",
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                }}
-              >
-                leader
-              </Link>{" "}
-              design previews.
+                Forgot password?
+              </Link>
             </p>
           </div>
         </section>

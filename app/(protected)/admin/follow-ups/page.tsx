@@ -72,10 +72,9 @@ export default async function AdminFollowUpsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5C.0 · Follow-ups"
-      title="The stewardship queue,"
-      titleItalic="kept in one place."
-      lede="Every open thread tied to a group, a member, a guest, or a leader. Mark a follow-up in progress when you start it; mark it done when it lands. Leaders see only the items assigned to them or tied to their groups."
+      eyebrow="Follow-ups"
+      title="Follow-ups"
+      lede="Open follow-ups tied to a group, member, guest, or leader. Mark in progress when you start. Mark done when it lands. Leaders see only the items assigned to them."
       headerSlot={
         <>
           <UserPill

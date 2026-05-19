@@ -69,10 +69,9 @@ export default async function AdminGuestsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5C.0 · Guests"
-      title="From first visit,"
-      titleItalic="to a group that fits."
-      lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or an email — this is your manual record of who's coming and what comes next."
+      eyebrow="Guests"
+      title="Guests"
+      lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record."
       headerSlot={
         <>
           <UserPill

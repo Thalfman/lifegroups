@@ -48,16 +48,14 @@ export default async function UnauthorizedPage() {
           <PSeal />
           <div
             style={{
-              fontFamily: fontDisplay,
+              fontFamily: fontSans,
               fontSize: 16,
               fontWeight: 600,
+              letterSpacing: -0.2,
               color: P.ink,
             }}
           >
-            Fox Valley ·{" "}
-            <span style={{ fontStyle: "italic", color: P.ink2, fontWeight: 400 }}>
-              Life Groups
-            </span>
+            Fox Valley Church Life Groups
           </div>
         </Link>
       </header>
@@ -95,22 +93,20 @@ export default async function UnauthorizedPage() {
               margin: "14px 0 8px",
             }}
           >
-            Access not available
+            No access
           </div>
           <h1
             style={{
               fontFamily: fontDisplay,
-              fontSize: "clamp(28px, 4vw, 38px)",
+              fontSize: "clamp(28px, 4vw, 36px)",
               margin: 0,
-              fontWeight: 500,
-              letterSpacing: -1,
-              lineHeight: 1.05,
+              fontWeight: 600,
+              letterSpacing: -0.5,
+              lineHeight: 1.1,
               color: P.ink,
             }}
           >
-            Not quite{" "}
-            <span style={{ fontStyle: "italic", color: P.terra }}>through</span>{" "}
-            yet.
+            You don&apos;t have access.
           </h1>
           <p
             style={{
@@ -122,10 +118,9 @@ export default async function UnauthorizedPage() {
               lineHeight: 1.6,
             }}
           >
-            Your account doesn&apos;t have access to that dashboard.
             {isSignedIn && !hasLinkedProfile
-              ? " Your sign-in succeeded, but your auth user isn't linked to a ministry profile yet — please ask a ministry admin to link your account."
-              : " If you think this is wrong, contact a ministry admin."}
+              ? "Your sign-in worked, but your account isn't linked to a ministry profile yet. Ask a ministry admin to invite you."
+              : "Your account doesn't have access here. If you think this is wrong, contact a ministry admin."}
           </p>
           <div
             style={{

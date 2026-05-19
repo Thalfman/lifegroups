@@ -56,10 +56,9 @@ export default async function AdminCheckInsPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5B.1 · Check-ins"
-      title="This week,"
-      titleItalic="at a glance."
-      lede="A read-only sweep of who turned in their group check-in, who hasn't, and which groups raised a follow-up signal. Closed groups stay out of the totals."
+      eyebrow="Check-ins"
+      title="Check-ins this week"
+      lede="Who turned in their group check-in this week, and which groups raised a follow-up signal. Closed groups aren't counted."
       headerSlot={
         <>
           <UserPill

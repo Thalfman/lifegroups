@@ -26,12 +26,10 @@ import type {
 
 export const dynamic = "force-dynamic";
 
-// Profiles whose current role is super_admin cannot be reassigned via
-// this form -- both because the actor can't change their own role and
-// because we never demote the bootstrapped owner from the app surface.
-// Every other current role (ministry_admin, leader, co_leader, and the
-// deprecated staff_viewer) IS reassignable so operators have a path to
-// migrate accounts off staff_viewer.
+// Every active profile except super_admin is reassignable through this form.
+// Self-target and super_admin are both blocked (the bootstrap owner isn't
+// demoted from the app surface). Legacy staff_viewer accounts remain
+// reassignable so operators can migrate them to an active role.
 function isAssignableTargetRole(
   role: ProfilesRow["role"],
 ): role is Exclude<ProfilesRow["role"], "super_admin"> {
@@ -169,13 +167,6 @@ function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
           : "audit_events readable; the panel above is the canonical surface.",
       tone: !hasClient || errors.audit ? "warn" : "ok",
     },
-    {
-      key: "staff_view_deprecated",
-      label: "Staff View deprecated",
-      description:
-        "The /staff route was removed in Phase 5B.0. staff_viewer remains in the enum for compat only.",
-      tone: "info",
-    },
   ];
 }
 
@@ -276,9 +267,8 @@ export default async function AdminSuperAdminPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.3 · Super admin"
-      title="Owner controls,"
-      titleItalic="held quietly."
+      eyebrow="Super admin"
+      title="Super admin"
       lede="The audit log and the one workflow that can change someone&rsquo;s role. Use it sparingly."
       headerSlot={
         <>

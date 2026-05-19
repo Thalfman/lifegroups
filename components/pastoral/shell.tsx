@@ -75,16 +75,14 @@ export function PastoralAppShell({
           <PSeal />
           <div
             style={{
-              fontFamily: fontDisplay,
+              fontFamily: fontSans,
               fontSize: 16,
               fontWeight: 600,
+              letterSpacing: -0.2,
               color: P.ink,
             }}
           >
-            Fox Valley ·{" "}
-            <span style={{ fontStyle: "italic", color: P.ink2, fontWeight: 400 }}>
-              Life Groups
-            </span>
+            Fox Valley Church Life Groups
           </div>
         </Link>
 

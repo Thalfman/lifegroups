@@ -1,5 +1,4 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { Phase5A3Notice } from "@/components/admin/phase-5a3-notice";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import { RoleChangeForm, type AssignableProfile } from "@/components/admin/forms/role-change-form";
@@ -7,7 +6,6 @@ import {
   SystemStatusChecklist,
   type ChecklistRow,
 } from "@/components/admin/system-status-checklist";
-import { StaffViewDeprecatedNote } from "@/components/admin/staff-view-deprecated-note";
 import { P, fontBody } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
@@ -42,8 +40,6 @@ export function SuperAdminConsoleShell({ data }: { data: SuperAdminConsoleData }
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      <Phase5A3Notice />
-
       {anyError ? (
         <div
           role="alert"
@@ -91,8 +87,6 @@ export function SuperAdminConsoleShell({ data }: { data: SuperAdminConsoleData }
       </section>
 
       <SystemStatusChecklist rows={data.checklist} />
-
-      <StaffViewDeprecatedNote />
     </div>
   );
 }

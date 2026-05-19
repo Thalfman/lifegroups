@@ -76,9 +76,8 @@ export default async function AdminPeoplePage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.4 · Manage people"
-      title="The whole church,"
-      titleItalic="known by name."
+      eyebrow="People"
+      title="People"
       lede="Search the directory, swap leader / co-leader roles, add new people, and place them in groups. Members are non-login participant records — they never sign in."
       headerSlot={
         <>

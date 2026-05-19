@@ -221,13 +221,13 @@ export default async function CheckInPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Leader · Weekly check-in"
+      eyebrow="Check-in"
       title={group.name}
       titleItalic={existingSession ? "— update" : "— this week"}
       lede={
         existingSession
           ? "You already saved a check-in for this week. Make any changes and submit again — we'll keep the record current."
-          : "Mark who came, jot a quick note, and submit. The whole thing takes a minute."
+          : "Mark who came, jot a quick note, and submit. It only takes a minute."
       }
       contentMaxWidth={720}
       headerSlot={

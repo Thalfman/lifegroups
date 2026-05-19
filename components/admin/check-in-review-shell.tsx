@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
-import { Phase5B1Notice } from "@/components/admin/phase-5b1-notice";
 import { WeekSelector } from "@/components/admin/week-selector";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
@@ -445,8 +444,6 @@ export function CheckInReviewShell({
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      <Phase5B1Notice />
-
       {anyError ? (
         <ErrorBanner>
           Some sections couldn&rsquo;t load. The page below shows what we did
