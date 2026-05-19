@@ -55,6 +55,15 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That status isn't allowed here. Leaders can mark follow-ups in progress or done.",
   invalid_status_transition:
     "That follow-up has already been closed or moved past this step. Refresh to see the latest state.",
+  // Phase 5A.6 group calendar tokens.
+  missing_event:
+    "We couldn't find that calendar event. Refresh and try again.",
+  event_already_archived:
+    "That calendar event is already archived. Restore it before editing.",
+  event_not_archived:
+    "That calendar event isn't archived — there's nothing to restore.",
+  date_conflict:
+    "There's already an active event on that date for this group. Edit or archive the existing one first.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

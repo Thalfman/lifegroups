@@ -38,6 +38,15 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That follow-up has already been closed or moved past this step. Refresh to see the latest.",
   forbidden_target:
     "That follow-up isn't yours to update. Only the assigned person or a group leader can move it.",
+  // Phase 5A.6 group calendar tokens.
+  missing_event:
+    "We couldn't find that calendar event. Refresh and try again.",
+  event_already_archived:
+    "That calendar event is already archived. Restore it before editing.",
+  event_not_archived:
+    "That calendar event isn't archived — there's nothing to restore.",
+  date_conflict:
+    "There's already an active event on that date for your group. Edit or archive the existing one first.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

@@ -5,6 +5,7 @@ import { PButton } from "@/components/pastoral/button";
 import { EmptyState, StatusCard } from "@/components/dashboard/cards";
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
 import { LeaderQuickDidNotMeet } from "@/components/leader/quick-did-not-meet";
+import { UpcomingEventsStrip } from "@/components/calendar/upcoming-events-strip";
 import { mapHealthToBadge, mapLifecycleToBadge } from "@/lib/dashboard/badge-map";
 import {
   followUpPriorityLabel,
@@ -35,7 +36,10 @@ export function LeaderGroupCard({
   dashboard: LeaderGroupDashboard;
   preview?: boolean;
 }) {
-  const { group, recentSessions, healthPulse, followUps, currentWeek } = dashboard;
+  const { group, recentSessions, healthPulse, followUps, currentWeek, upcomingEvents } = dashboard;
+  const calendarHref = preview
+    ? "/leader-preview"
+    : `/leader/${group.groupId}/calendar`;
   const lifecycle = mapLifecycleToBadge(group.lifecycleStatus);
   const health = mapHealthToBadge(group.healthStatus);
   const closed = group.lifecycleStatus === "closed";
@@ -121,6 +125,12 @@ export function LeaderGroupCard({
           <HealthBadge {...health} />
         </div>
       </header>
+
+      <UpcomingEventsStrip
+        events={upcomingEvents}
+        calendarHref={calendarHref}
+        eyebrow="Calendar · next up"
+      />
 
       <div
         style={{

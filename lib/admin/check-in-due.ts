@@ -15,7 +15,11 @@ import {
   type MetricDefaults,
 } from "@/lib/admin/metrics";
 import type { GroupMetricSettingsRow } from "@/types/database";
-import type { MeetingFrequency, MeetingWeekParity } from "@/types/enums";
+import type {
+  GroupCalendarEventStatus,
+  MeetingFrequency,
+  MeetingWeekParity,
+} from "@/types/enums";
 
 // Canonical Sunday-Saturday names map to JS Date.getDay() (0 = Sunday).
 const DAY_INDEX: Record<string, number> = {
@@ -243,6 +247,96 @@ export type CheckInDueInput = {
   meetingWeekParity: MeetingWeekParity | null;
 };
 
+// Phase 5A.6: a leader-published calendar event for the week being
+// reviewed, narrowed to the fields the due-date helper needs. The
+// resolver is in this same file so the dashboard, the admin check-ins
+// surface, and the leader check-in page all reach due-date math through
+// one entry point.
+export type CalendarEventLite = {
+  event_date: string; // YYYY-MM-DD
+  start_time: string | null;
+  status: GroupCalendarEventStatus;
+  archived_at: string | null;
+};
+
+export type CalendarOverride = {
+  status: GroupCalendarEventStatus;
+  date: string; // YYYY-MM-DD of the calendar event
+  startTime: string | null; // null falls back to the group's default meeting_time
+};
+
+// MVP override rule:
+// For each calendar week we use at most one active event per group as
+// the override. If multiple active events exist in the same week:
+//   * prefer scheduled over off / cancelled (a leader publishing an
+//     explicit meeting on top of a cancelled rotation expresses intent
+//     to meet)
+//   * among scheduled, take the earliest event_date and earliest
+//     start_time
+//   * if no scheduled events exist, take the earliest off / cancelled
+//     event so the suppression applies once for the week
+// Multi-event weeks (multiple scheduled meetings in one ISO week) are
+// documented as a future limitation in docs/PHASE_5A_6_GROUP_CALENDAR.md.
+export function pickCalendarOverrideForWeek(
+  events: CalendarEventLite[],
+  meetingWeekIso: string,
+): CalendarOverride | null {
+  const weekEnd = addDaysIso(meetingWeekIso, 6);
+  if (weekEnd == null) return null;
+
+  const inWindow = events.filter(
+    (e) =>
+      e.archived_at == null &&
+      e.event_date >= meetingWeekIso &&
+      e.event_date <= weekEnd,
+  );
+  if (inWindow.length === 0) return null;
+
+  const scheduled = inWindow.filter((e) => e.status === "scheduled");
+  const pool = scheduled.length > 0 ? scheduled : inWindow;
+
+  // Sort by (event_date, start_time). Treat null start_time as "earliest"
+  // for off / cancelled rows (they don't have a time) and "no preference"
+  // for scheduled rows (any time wins over no-time).
+  const sorted = [...pool].sort((a, b) => {
+    if (a.event_date !== b.event_date)
+      return a.event_date < b.event_date ? -1 : 1;
+    const aTime = a.start_time ?? "";
+    const bTime = b.start_time ?? "";
+    if (aTime === bTime) return 0;
+    return aTime < bTime ? -1 : 1;
+  });
+  const chosen = sorted[0];
+  return {
+    status: chosen.status,
+    date: chosen.event_date,
+    startTime: chosen.start_time,
+  };
+}
+
+function addDaysIso(iso: string, days: number): string | null {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(anchor.getTime())) return null;
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
+function parseIsoDateParts(iso: string): {
+  year: number;
+  month: number;
+  day: number;
+  dayOfWeek: number;
+} | null {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(anchor.getTime())) return null;
+  return {
+    year: anchor.getUTCFullYear(),
+    month: anchor.getUTCMonth() + 1,
+    day: anchor.getUTCDate(),
+    dayOfWeek: anchor.getUTCDay(),
+  };
+}
+
 export type CheckInDueResult = {
   // Church-local wall-clock parts for the "due" instant. Null when we
   // don't have enough information (missing day/time, or the group isn't
@@ -279,6 +373,11 @@ export function computeCheckInDue(args: {
   // the helper uses the current ISO week of `now` (church-local).
   meetingWeek?: string;
   now?: Date;
+  // Phase 5A.6: when a leader has published a calendar event for the
+  // relevant week, the override takes precedence over cadence + default
+  // meeting_day / meeting_time. Resolve via pickCalendarOverrideForWeek
+  // before calling this helper.
+  calendarOverride?: CalendarOverride | null;
 }): CheckInDueResult {
   const offsetHours = effectiveCheckInDueOffsetHours(
     args.override,
@@ -286,6 +385,68 @@ export function computeCheckInDue(args: {
   );
   const now = args.now ?? new Date();
   const nowParts = churchClockParts(now);
+
+  const empty = (isScheduled: boolean): CheckInDueResult => ({
+    due: null,
+    offsetHours,
+    isOverdue: false,
+    minutesUntilDue: 0,
+    isScheduledThisWeek: isScheduled,
+  });
+
+  // ---- Phase 0: explicit calendar override ------------------------------
+  //
+  // If a leader has published a calendar event for the week, it is the
+  // source of truth. OFF / cancelled overrides bypass cadence entirely
+  // (no due date, not scheduled this week, not overdue). Scheduled
+  // overrides bypass the cadence + parity gate and the default
+  // meeting_day -- the event_date and start_time win.
+  const override = args.calendarOverride ?? null;
+  if (override) {
+    if (override.status === "off" || override.status === "cancelled") {
+      return empty(false);
+    }
+    // scheduled override
+    const parts = parseIsoDateParts(override.date);
+    const timeParts =
+      parseMeetingTime(override.startTime) ??
+      parseMeetingTime(args.group.meetingTime);
+    if (!parts || !timeParts) {
+      // Override is malformed; treat the week as scheduled-but-unresolved
+      // (same shape as a group missing day/time) so the row stays in
+      // review surfaces without a due timestamp.
+      return empty(true);
+    }
+    const candidateMeeting = {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: timeParts.hour,
+      minute: timeParts.minute,
+      dayOfWeek: parts.dayOfWeek,
+    };
+    const meetingMinutes = ymdHmToMinutes(
+      candidateMeeting.year,
+      candidateMeeting.month,
+      candidateMeeting.day,
+      candidateMeeting.hour,
+      candidateMeeting.minute,
+    );
+    const dueMinutes = meetingMinutes + offsetHours * 60;
+    const nowMinutes = churchWallClockMinutes(now);
+    const minutesUntilDue = dueMinutes - nowMinutes;
+    const dueParts = addMinutesToChurchClock(
+      candidateMeeting,
+      offsetHours * 60,
+    );
+    return {
+      due: dueParts,
+      offsetHours,
+      isOverdue: minutesUntilDue < 0,
+      minutesUntilDue,
+      isScheduledThisWeek: true,
+    };
+  }
 
   // ---- Phase 1: cadence-only gate ---------------------------------------
   //
@@ -304,14 +465,6 @@ export function computeCheckInDue(args: {
     args.group.meetingFrequency,
     args.group.meetingWeekParity,
   );
-
-  const empty = (isScheduled: boolean): CheckInDueResult => ({
-    due: null,
-    offsetHours,
-    isOverdue: false,
-    minutesUntilDue: 0,
-    isScheduledThisWeek: isScheduled,
-  });
 
   if (!scheduled) {
     // Bi-weekly off-parity: not meeting this week, no due date.

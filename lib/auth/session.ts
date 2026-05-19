@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfilesRow } from "@/types/database";
-import type { UserRole } from "./roles";
+import { isLeaderRole, type UserRole } from "./roles";
 
 export type CurrentSession = {
   authUser: { id: string; email: string | null };
@@ -90,6 +90,31 @@ export async function requireAdminSession(): Promise<
   if (session.profile.role !== "super_admin" && session.profile.role !== "ministry_admin")
     return { ok: false, error: "Only ministry admins can perform that action." };
   return { ok: true, session: session as CurrentSession & { profile: ProfilesRow } };
+}
+
+// Server-action variant for leader workflows. Returns the actor's
+// profile id + assigned group ids so callers can run a defense-in-depth
+// group-membership check before hitting an RPC. Shared by Phase 5B.0
+// check-in writes and Phase 5A.6 calendar writes.
+export async function requireLeaderActor(): Promise<
+  | { ok: true; profileId: string; assignedGroupIds: string[] }
+  | { ok: false; error: string }
+> {
+  const session = await getCurrentSession();
+  if (!session) return { ok: false, error: "You need to sign in to do that." };
+  if (!session.profile) return { ok: false, error: "Your account isn't set up yet." };
+  if (session.profile.status !== "active")
+    return { ok: false, error: "Your account isn't active." };
+  if (!isLeaderRole(session.profile.role))
+    return {
+      ok: false,
+      error: "Only an assigned leader or co-leader can do that.",
+    };
+  return {
+    ok: true,
+    profileId: session.profile.id,
+    assignedGroupIds: session.assignedGroupIds,
+  };
 }
 
 // Server-action variant for the Phase 5A.3 super-admin-only console.

@@ -10,6 +10,7 @@ import {
   fetchActiveMemberships,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupCalendarEvents,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
@@ -24,6 +25,7 @@ import {
   computeCheckInDue,
   formatCheckInDueLabel,
   formatCheckInDueRelative,
+  pickCalendarOverrideForWeek,
 } from "@/lib/admin/check-in-due";
 import type {
   AttendanceSessionsRow,
@@ -69,6 +71,11 @@ export default async function CheckInPage({
   if (!client) notFound();
 
   const meetingWeek = isoWeekStart(new Date());
+  const weekEnd = (() => {
+    const anchor = new Date(`${meetingWeek}T00:00:00Z`);
+    anchor.setUTCDate(anchor.getUTCDate() + 6);
+    return anchor.toISOString().slice(0, 10);
+  })();
 
   const [
     groupResult,
@@ -76,12 +83,19 @@ export default async function CheckInPage({
     sessionResult,
     healthResult,
     metricDefaultsResult,
+    calendarEventsResult,
   ] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),
     fetchActiveMemberships(client, { groupId }),
     fetchAttendanceSessions(client, { groupId, meetingWeek }),
     fetchLatestHealthUpdates(client, { groupId }),
     fetchMetricDefaults(client),
+    fetchGroupCalendarEvents(client, {
+      groupId,
+      fromDate: meetingWeek,
+      toDate: weekEnd,
+      includeArchived: false,
+    }),
   ]);
 
   if (groupResult.error) throw groupResult.error;
@@ -95,6 +109,11 @@ export default async function CheckInPage({
   if (membershipsResult.error) throw membershipsResult.error;
   if (sessionResult.error) throw sessionResult.error;
   if (healthResult.error) throw healthResult.error;
+  // Fail closed on calendar read errors. Silently dropping back to
+  // null would compute due dates from the default cadence and could
+  // show "due Tuesday 7pm" for a week that was actually marked OFF or
+  // Cancelled -- exactly the wrong UX. Better to surface the error.
+  if (calendarEventsResult.error) throw calendarEventsResult.error;
 
   const memberships = membershipsResult.data ?? [];
   const memberIds = memberships.map((m) => m.member_id);
@@ -136,6 +155,20 @@ export default async function CheckInPage({
   const metricDefaults = metricDefaultsResult.error
     ? BUILT_IN_METRIC_DEFAULTS
     : decodeMetricDefaults(metricDefaultsResult.data ?? null);
+  // Phase 5A.6: if a leader has published a calendar event for this
+  // week, that event overrides the default meeting_day / meeting_time
+  // for due-date math. OFF / cancelled events suppress the due timestamp.
+  // The error case is handled above (we throw) so we can trust the data
+  // here.
+  const calendarOverride = pickCalendarOverrideForWeek(
+    (calendarEventsResult.data ?? []).map((e) => ({
+      event_date: e.event_date,
+      start_time: e.start_time,
+      status: e.status,
+      archived_at: e.archived_at,
+    })),
+    meetingWeek,
+  );
   const dueResult = computeCheckInDue({
     group: {
       meetingDay: group.meeting_day,
@@ -151,6 +184,7 @@ export default async function CheckInPage({
     // (the same `meetingWeek` we hand to the form) so a bi-weekly group's
     // parity check is judged against this week, not whatever "now" is.
     meetingWeek,
+    calendarOverride,
   });
   const dueLabel = formatCheckInDueLabel(dueResult.due);
   const dueRelative = formatCheckInDueRelative(dueResult);

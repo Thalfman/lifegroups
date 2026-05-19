@@ -5,6 +5,7 @@ import type {
   AttendanceSessionsRow,
   AuditEventsRow,
   FollowUpsRow,
+  GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -219,6 +220,74 @@ export async function fetchNewGuestsForGroupSince(
     .gte("first_attended_date", sinceIsoDate);
   if (error) return { data: null, error: wrapError("fetchNewGuestsForGroupSince", error) };
   return { data: data ?? [], error: null };
+}
+
+// Phase 5A.6 group calendar readers. RLS already scopes these to
+// admin / staff_viewer / leader-of-group via the SELECT policies in
+// supabase/migrations/20260518140000_phase5a6_group_calendar.sql, so
+// callers can pass arbitrary filters and the database enforces access.
+//
+// Archive filter precedence: archivedOnly > includeArchived. Use
+// archivedOnly:true for the leader / admin "Archived" tabs; the
+// includeArchived:true escape hatch returns both active and archived
+// rows and is reserved for surfaces that explicitly want the full set
+// (none in this phase).
+export type CalendarEventReadOptions = {
+  groupId?: string;
+  groupIds?: string[];
+  fromDate?: string; // YYYY-MM-DD inclusive
+  toDate?: string; // YYYY-MM-DD inclusive
+  includeArchived?: boolean; // default false (active only)
+  archivedOnly?: boolean; // when true, returns only archived rows
+};
+
+// Match the fetchAttendanceRecordsForSessions defensive cap so a
+// week-wide admin batch (events across all groups) can't silently
+// truncate at PostgREST's default 1000-row cap. The override resolver
+// depends on a *complete* per-group event set -- truncation would
+// produce some groups evaluated as if they had no calendar override.
+const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
+
+export async function fetchGroupCalendarEvents(
+  client: ReadClient,
+  options: CalendarEventReadOptions = {},
+): Promise<ReadResult<GroupCalendarEventsRow[]>> {
+  let query = client
+    .from("group_calendar_events")
+    .select("*")
+    .order("event_date", { ascending: true })
+    .order("start_time", { ascending: true, nullsFirst: true });
+  if (options.groupId) query = query.eq("group_id", options.groupId);
+  if (options.groupIds) {
+    if (options.groupIds.length === 0) return { data: [], error: null };
+    query = query.in("group_id", options.groupIds);
+  }
+  if (options.fromDate) query = query.gte("event_date", options.fromDate);
+  if (options.toDate) query = query.lte("event_date", options.toDate);
+  if (options.archivedOnly) {
+    query = query.not("archived_at", "is", null);
+  } else if (!options.includeArchived) {
+    query = query.is("archived_at", null);
+  }
+  query = query.range(0, CALENDAR_EVENTS_PAGE_LIMIT - 1);
+  const { data, error } = await query;
+  if (error) return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
+  return { data: data ?? [], error: null };
+}
+
+export async function fetchUpcomingCalendarEventsForGroups(
+  client: ReadClient,
+  groupIds: string[],
+  fromDate: string,
+  toDate: string,
+): Promise<ReadResult<GroupCalendarEventsRow[]>> {
+  if (groupIds.length === 0) return { data: [], error: null };
+  return fetchGroupCalendarEvents(client, {
+    groupIds,
+    fromDate,
+    toDate,
+    includeArchived: false,
+  });
 }
 
 export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
