@@ -139,6 +139,17 @@ export function AdminDashboard({
           cta="Open follow-ups"
         />
         <DrillDownCard
+          eyebrow="Calendar"
+          title="Ministry rhythm"
+          rows={[
+            { label: "Who is meeting this month" },
+            { label: "OFF weeks and cancelled gatherings" },
+            { label: "Community Night / Transformation cycles" },
+          ]}
+          href="/admin/calendar"
+          cta="View ministry calendar"
+        />
+        <DrillDownCard
           eyebrow="Settings"
           title="Thresholds & defaults"
           rows={[
