@@ -82,12 +82,12 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             : action === "enable"
               ? await testAccountsEnable()
               : await testAccountsDisable();
-        if (!result.ok) {
-          setErrors(result.errors);
-        } else {
+        if (result.ok) {
           setStatus(result.value);
           setWarnings(result.value.warnings ?? []);
           if (!result.value.ok) setErrors(result.value.errors);
+        } else {
+          setErrors(result.errors);
         }
         setPending(null);
       });
