@@ -15,14 +15,14 @@ const TONE_STYLE: Record<
   { color: string; background: string; border: string; glyph: string; word: string }
 > = {
   ok: {
-    color: "#3e4f29",
+    color: P.sageTextStrong,
     background: P.sageSoft,
     border: P.sage,
     glyph: "OK",
     word: "Good",
   },
   warn: {
-    color: "#7d3621",
+    color: P.terraTextStrong,
     background: P.terraSoft,
     border: P.terra,
     glyph: "—",

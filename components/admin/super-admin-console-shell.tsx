@@ -65,11 +65,11 @@ const STATUS_STYLE: Record<
   StatusTone,
   { background: string; border: string; color: string }
 > = {
-  good: { background: P.sageSoft, border: P.sage, color: "#3e4f29" },
-  warning: { background: P.mustardSoft, border: P.mustard, color: "#6f4f13" },
-  blocked: { background: P.terraSoft, border: P.terra, color: "#7d3621" },
+  good: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
+  warning: { background: P.mustardSoft, border: P.mustard, color: P.mustardTextStrong },
+  blocked: { background: P.terraSoft, border: P.terra, color: P.terraTextStrong },
   disabled: { background: P.surface, border: P.line, color: P.ink3 },
-  active: { background: P.sageSoft, border: P.sage, color: "#3e4f29" },
+  active: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
   planned: { background: P.surface, border: P.line, color: P.ink2 },
 };
 
@@ -257,7 +257,7 @@ function ErrorBanner() {
         padding: "12px 14px",
         fontFamily: fontBody,
         fontSize: 13,
-        color: "#7d3621",
+        color: P.terraTextStrong,
       }}
     >
       Some sections could not load. The page below shows what did load; retry in a
@@ -288,9 +288,7 @@ export function SuperAdminConsoleShell({
   }
 
   return (
-    <div
-      className="lg-super-admin-command-layout"
-    >
+    <div className="lg-super-admin-command-layout">
       <SectionRail />
 
       <div style={{ display: "grid", gap: 36, minWidth: 0 }}>
@@ -323,8 +321,8 @@ export function SuperAdminConsoleShell({
               <MetricRow label="Legacy staff_viewer rows" value={legacyStaffViewers} />
             </CommandCard>
             <CommandCard
-              title="Test account posture"
-              description={testAccountsSummary.description}
+              title="Initial test-account snapshot"
+              description={`${testAccountsSummary.description} Live status updates in the Test tools panel below after any action.`}
               status={{ label: testAccountsSummary.label, tone: testAccountsSummary.tone }}
             />
           </div>
@@ -430,19 +428,14 @@ export function SuperAdminConsoleShell({
           <SystemStatusChecklist rows={data.checklist} />
         </CommandSection>
 
-        <div id="test-tools" style={{ display: "grid", gap: 18, scrollMarginTop: 20 }}>
-          <SectionHeader
-            eyebrow="Test tools"
-            title="Controlled testing tools"
-            description="The current test account tooling remains intact and isolated from normal app authorization."
-          />
-          <CommandCard
-            title="Current test account status"
-            description={testAccountsSummary.description}
-            status={{ label: testAccountsSummary.label, tone: testAccountsSummary.tone }}
-          />
+        <CommandSection
+          id="test-tools"
+          eyebrow="Test tools"
+          title="Controlled testing tools"
+          description="The current test account tooling remains intact and isolated from normal app authorization."
+        >
           {testAccountsPanel}
-        </div>
+        </CommandSection>
 
         <div id="audit" style={{ scrollMarginTop: 20 }}>
           <AuditTrailSection
@@ -499,7 +492,7 @@ export function SuperAdminConsoleShell({
               style={{
                 fontFamily: fontBody,
                 fontSize: 13,
-                color: "#7d3621",
+                color: P.terraTextStrong,
                 lineHeight: 1.55,
                 margin: 0,
               }}

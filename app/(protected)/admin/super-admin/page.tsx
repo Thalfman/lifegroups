@@ -263,40 +263,51 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
   };
 }
 
+function buildTestAccountsSummary(
+  result: Awaited<ReturnType<typeof testAccountsStatus>>,
+): SuperAdminTestAccountsSummary {
+  if (!result.ok) {
+    return {
+      label: "Unknown",
+      tone: "warning",
+      description:
+        result.errors[0] ??
+        "Test account status could not be loaded from the existing Edge Function.",
+    };
+  }
+
+  if (!result.value.ok) {
+    return {
+      label: "Blocked",
+      tone: "blocked",
+      description:
+        result.value.errors[0] ??
+        "The test account Edge Function returned a blocked status.",
+    };
+  }
+
+  if (result.value.enabledOverall) {
+    return {
+      label: "Active",
+      tone: "warning",
+      description:
+        "Known-password test accounts are active. Keep them visible for testing and disable them before launch.",
+    };
+  }
+
+  return {
+    label: "Disabled",
+    tone: "good",
+    description:
+      "Known test accounts are not currently enabled according to the existing Edge Function status.",
+  };
+}
+
 export default async function AdminSuperAdminPage() {
   const session = await requireSuperAdmin();
   const data = await loadData(session.profile.id);
   const initialTestAccounts = await testAccountsStatus();
-  const testAccountsSummary: SuperAdminTestAccountsSummary =
-    initialTestAccounts.ok && initialTestAccounts.value.ok
-      ? initialTestAccounts.value.enabledOverall
-        ? {
-            label: "Active",
-            tone: "warning",
-            description:
-              "Known-password test accounts are active. Keep them visible for testing and disable them before launch.",
-          }
-        : {
-            label: "Disabled",
-            tone: "good",
-            description:
-              "Known test accounts are not currently enabled according to the existing Edge Function status.",
-          }
-      : initialTestAccounts.ok
-        ? {
-            label: "Blocked",
-            tone: "blocked",
-            description:
-              initialTestAccounts.value.errors[0] ??
-              "The test account Edge Function returned a blocked status.",
-          }
-        : {
-            label: "Unknown",
-            tone: "warning",
-            description:
-              initialTestAccounts.errors[0] ??
-              "Test account status could not be loaded from the existing Edge Function.",
-          };
+  const testAccountsSummary = buildTestAccountsSummary(initialTestAccounts);
 
   return (
     <PastoralAppShell
