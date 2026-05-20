@@ -62,6 +62,7 @@ export default async function AdminMasterCalendarPage({
 
   return (
     <PastoralAppShell
+      persona="admin"
       navItems={navItemsForRole(session.profile.role)}
       currentUser={{
         name: session.profile.full_name,

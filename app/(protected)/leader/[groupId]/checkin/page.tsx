@@ -220,6 +220,7 @@ export default async function CheckInPage({
 
   return (
     <PastoralAppShell
+      persona="leader"
       navItems={navItemsForRole(session.profile.role)}
       currentUser={{
         name: session.profile.full_name,

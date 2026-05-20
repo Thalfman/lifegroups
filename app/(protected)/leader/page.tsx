@@ -55,6 +55,7 @@ export default async function LeaderPage({
 
   return (
     <PastoralAppShell
+      persona="leader"
       navItems={navItemsForRole(session.profile.role)}
       currentUser={{
         name: session.profile.full_name,

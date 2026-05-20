@@ -18,6 +18,37 @@ export const P = {
   mustardSoft: "#f0dfb5",
 } as const;
 
+// Token references for the new Life Groups Prototype design system.
+// Values come from CSS variables declared in `app/globals.css`. Use these
+// instead of hex hard-codes in any new component.
+export const T = {
+  bg: "var(--c-bg)",
+  surface: "var(--c-surface)",
+  surfaceAlt: "var(--c-surfaceAlt)",
+  sidebar: "var(--c-sidebar)",
+  line: "var(--c-line)",
+  lineSoft: "var(--c-lineSoft)",
+  ink: "var(--c-ink)",
+  ink2: "var(--c-ink2)",
+  ink3: "var(--c-ink3)",
+  ink4: "var(--c-ink4)",
+  sage: "var(--c-sage)",
+  sageDeep: "var(--c-sageDeep)",
+  sageSoft: "var(--c-sageSoft)",
+  sageTint: "var(--c-sageTint)",
+  clay: "var(--c-clay)",
+  claySoft: "var(--c-claySoft)",
+  clayTint: "var(--c-clayTint)",
+  amber: "var(--c-amber)",
+  amberSoft: "var(--c-amberSoft)",
+  rose: "var(--c-rose)",
+  roseSoft: "var(--c-roseSoft)",
+  blue: "var(--c-blue)",
+  blueSoft: "var(--c-blueSoft)",
+  shadow: "var(--c-shadow)",
+  shadowLg: "var(--c-shadowLg)",
+} as const;
+
 export const fontDisplay = "var(--font-display)";
 export const fontBody = "var(--font-body)";
 export const fontSans = "var(--font-sans)";
