@@ -37,16 +37,25 @@ the same patterns can be reused by future phases without divergence.
 
 **Filter bar** (`components/admin/admin-master-calendar-shell.tsx`)
 - Replaced the old "wall of checkboxes" filters with a **compact chip-row**:
-  - `Group`, `Type`, `Status` are now collapsible `<details>` chips with a
-    summary that reads `Label · N` (no panel state, no extra dependency).
-    The expanded panel is a popover-style card with a max height so it
-    never dominates the page when many groups exist.
-  - `Day` is a single 7-letter chip row (S M T W T F S), each chip 26px,
-    no fieldset chrome.
+  - `Group`, `Type`, `Status` are now **controlled** dropdown chips —
+    single open-popover state in the parent so opening one closes any
+    other, plus click-outside and Escape close the active one. Summary
+    reads `Label · N` so the panel never dominates the page when many
+    groups exist.
+  - Popover positioning is viewport-aware: if the trigger sits in the
+    right half of the viewport, the popover right-aligns instead of
+    left-aligning so it never overflows the right edge. `max-width` is
+    clamped to `min(320px, calc(100vw - 24px))`.
+  - `Day` is a single 7-letter chip row (S M T W T F S), 32px chips on
+    desktop / 40px on mobile, all on a 44px / 48px row to meet the
+    mobile tap-target minimum.
   - `Leader / co-leader` is a normal-height chip-shaped `<select>` with a
     custom caret. The "stretched panel" feel is gone.
 - Filter card is now a `Card` primitive (no inline border / shadow rules).
 - Active filters tint sage; reset button only shows when filters are set.
+- All chip-style trigger controls are ≥ 36px tall on desktop and
+  ≥ 44px tall on mobile (enforced via `lg-m-cal-filter-trigger`,
+  `lg-m-cal-day-row`, and `lg-m-cal-day-chip` rules in `app/globals.css`).
 
 **Month / List toggle** (`components/admin/admin-master-calendar-shell.tsx`)
 - Replaced the bespoke `ViewToggle` with the shared `SegmentedControl`

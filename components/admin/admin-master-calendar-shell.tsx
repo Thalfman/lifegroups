@@ -254,6 +254,32 @@ function FilterBar({
     () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
     [groups],
   );
+
+  // Mutual-exclusion state: at most one dropdown popover is open at a
+  // time. Stored in the parent so opening one closes any other. Refs
+  // power the click-outside / Escape handlers below.
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const filterRowRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (openDropdown === null) return;
+    const onMouseDown = (event: MouseEvent) => {
+      const root = filterRowRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && root.contains(event.target)) return;
+      setOpenDropdown(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenDropdown(null);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openDropdown]);
+
   return (
     <Card padded={false} style={{ padding: "12px 14px" }}>
       <div
@@ -309,6 +335,7 @@ function FilterBar({
           </div>
         </div>
         <div
+          ref={filterRowRef}
           className="lg-m-master-calendar-filters"
           style={{
             display: "flex",
@@ -318,23 +345,32 @@ function FilterBar({
           }}
         >
           <FilterDropdown
+            id="group"
             label="Group"
             options={groupOptions}
             value={groupFilter}
             onChange={setGroupFilter}
+            isOpen={openDropdown === "group"}
+            onOpenChange={(open) => setOpenDropdown(open ? "group" : null)}
             scrollable
           />
           <FilterDropdown<GroupCalendarEventType>
+            id="type"
             label="Type"
             options={ALL_TYPE_OPTIONS}
             value={typeFilter}
             onChange={setTypeFilter}
+            isOpen={openDropdown === "type"}
+            onOpenChange={(open) => setOpenDropdown(open ? "type" : null)}
           />
           <FilterDropdown<GroupCalendarEventStatus>
+            id="status"
             label="Status"
             options={EVENT_STATUS_OPTIONS}
             value={statusFilter}
             onChange={setStatusFilter}
+            isOpen={openDropdown === "status"}
+            onOpenChange={(open) => setOpenDropdown(open ? "status" : null)}
           />
           <DayChips value={dayFilter} onChange={setDayFilter} />
           <LeaderSelect
@@ -354,53 +390,70 @@ function FilterBar({
   );
 }
 
-// Compact <details> chip used for Group / Type / Status filters. Closed by
-// default; the summary shows "Label · N" so it never dominates the page.
-// Stays a native <details> so no extra dependency or client-state plumbing.
+// Controlled chip-shaped dropdown. Single source of truth for which
+// dropdown is open lives in the parent FilterBar, so opening one closes
+// any other and click-outside / Escape close the active one.
 function FilterDropdown<V extends string | number>({
+  id,
   label,
   options,
   value,
   onChange,
+  isOpen,
+  onOpenChange,
   scrollable = false,
 }: {
+  id: string;
   label: string;
   options: { value: V; label: string }[];
   value: V[];
   onChange: (next: V[]) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   scrollable?: boolean;
 }) {
   const selectedSet = useMemo(() => new Set(value), [value]);
   const count = value.length;
   const summaryText = count === 0 ? "All" : `${count}`;
   const isActive = count > 0;
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  // Right-align the popover when the trigger sits in the right half of
+  // the viewport — keeps the 220–320px popover inside the viewport on
+  // narrow widths without measuring the popover itself.
+  const [alignRight, setAlignRight] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const triggerCenter = rect.left + rect.width / 2;
+    setAlignRight(triggerCenter > window.innerWidth / 2);
+  }, [isOpen]);
+
   return (
-    <details
-      style={{
-        position: "relative",
-        margin: 0,
-      }}
-    >
-      <summary
+    <div style={{ position: "relative", margin: 0 }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => onOpenChange(!isOpen)}
+        className="lg-m-cal-filter-trigger"
         style={{
-          listStyle: "none",
           cursor: "pointer",
           display: "inline-flex",
           alignItems: "center",
           gap: 8,
-          padding: "7px 12px",
+          padding: "8px 12px",
           borderRadius: 999,
-          background: isActive
-            ? "var(--c-sageSoft)"
-            : "var(--c-surfaceAlt)",
-          border: `1px solid ${
-            isActive ? "var(--c-sage)" : "var(--c-line)"
-          }`,
+          background: isActive ? "var(--c-sageSoft)" : "var(--c-surfaceAlt)",
+          border: `1px solid ${isActive ? "var(--c-sage)" : "var(--c-line)"}`,
           color: isActive ? "var(--c-sageDeep)" : "var(--c-ink2)",
           fontFamily: "var(--font-body)",
           fontSize: 12.5,
           fontWeight: 500,
-          minHeight: 32,
+          minHeight: 36,
           whiteSpace: "nowrap",
         }}
       >
@@ -413,9 +466,7 @@ function FilterDropdown<V extends string | number>({
             minWidth: 22,
             padding: "1px 7px",
             borderRadius: 999,
-            background: isActive
-              ? "var(--c-surface)"
-              : "transparent",
+            background: isActive ? "var(--c-surface)" : "transparent",
             border: isActive ? "none" : "1px solid var(--c-line)",
             color: isActive ? "var(--c-sageDeep)" : "var(--c-ink3)",
             fontSize: 11,
@@ -430,67 +481,76 @@ function FilterDropdown<V extends string | number>({
         >
           ▾
         </span>
-      </summary>
-      <div
-        style={{
-          position: "absolute",
-          top: "calc(100% + 6px)",
-          left: 0,
-          minWidth: 220,
-          maxWidth: 320,
-          background: "var(--c-surface)",
-          border: "1px solid var(--c-line)",
-          borderRadius: 12,
-          boxShadow: "var(--c-shadowLg)",
-          padding: 10,
-          zIndex: 5,
-          display: "grid",
-          gap: 6,
-          maxHeight: scrollable ? 280 : undefined,
-          overflowY: scrollable ? "auto" : undefined,
-        }}
-      >
-        {options.map((opt) => {
-          const checked = selectedSet.has(opt.value);
-          return (
-            <label
-              key={String(opt.value)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 8px",
-                borderRadius: 8,
-                cursor: "pointer",
-                background: checked
-                  ? "var(--c-sageSoft)"
-                  : "transparent",
-                color: checked ? "var(--c-sageDeep)" : "var(--c-ink2)",
-                fontFamily: "var(--font-body)",
-                fontSize: 13,
-                userSelect: "none",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) => {
-                  if (e.target.checked) onChange([...value, opt.value]);
-                  else onChange(value.filter((v) => v !== opt.value));
+      </button>
+      {isOpen ? (
+        <div
+          role="listbox"
+          aria-label={label}
+          id={`filter-popover-${id}`}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            // Anchor to the trigger edge nearest the viewport center so
+            // the popover never overflows the right edge on narrow
+            // screens.
+            ...(alignRight ? { right: 0 } : { left: 0 }),
+            minWidth: 220,
+            maxWidth: "min(320px, calc(100vw - 24px))",
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-line)",
+            borderRadius: 12,
+            boxShadow: "var(--c-shadowLg)",
+            padding: 10,
+            zIndex: 5,
+            display: "grid",
+            gap: 6,
+            maxHeight: scrollable ? 280 : undefined,
+            overflowY: scrollable ? "auto" : undefined,
+          }}
+        >
+          {options.map((opt) => {
+            const checked = selectedSet.has(opt.value);
+            return (
+              <label
+                key={String(opt.value)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  background: checked ? "var(--c-sageSoft)" : "transparent",
+                  color: checked ? "var(--c-sageDeep)" : "var(--c-ink2)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  userSelect: "none",
+                  minHeight: 36,
                 }}
-                style={{ accentColor: "var(--c-sage)", margin: 0 }}
-              />
-              <span>{opt.label}</span>
-            </label>
-          );
-        })}
-      </div>
-    </details>
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    if (e.target.checked) onChange([...value, opt.value]);
+                    else onChange(value.filter((v) => v !== opt.value));
+                  }}
+                  style={{ accentColor: "var(--c-sage)", margin: 0 }}
+                />
+                <span>{opt.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 // Compact 7-letter weekday chip row. Toggling a chip filters by that
-// weekday index (0=Sun..6=Sat).
+// weekday index (0=Sun..6=Sat). Visual chip is 32×32 on desktop with
+// generous padding around the row so the row total is ≥ 44px tall; on
+// mobile the chips and row both bump up via a globals.css rule.
 function DayChips({
   value,
   onChange,
@@ -503,15 +563,16 @@ function DayChips({
     <div
       role="group"
       aria-label="Meeting day"
+      className="lg-m-cal-day-row"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 4,
-        padding: "3px 6px 3px 10px",
+        padding: "4px 8px 4px 12px",
         borderRadius: 999,
         background: "var(--c-surfaceAlt)",
         border: "1px solid var(--c-line)",
-        minHeight: 32,
+        minHeight: 44,
       }}
     >
       <span
@@ -540,22 +601,24 @@ function DayChips({
               if (checked) onChange(value.filter((v) => v !== idx));
               else onChange([...value, idx]);
             }}
+            className="lg-m-cal-day-chip"
             style={{
-              width: 26,
-              height: 26,
+              width: 32,
+              height: 32,
               borderRadius: 999,
               border: checked
                 ? "1px solid var(--c-sage)"
                 : "1px solid transparent",
-              background: checked
-                ? "var(--c-sageSoft)"
-                : "transparent",
+              background: checked ? "var(--c-sageSoft)" : "transparent",
               color: checked ? "var(--c-sageDeep)" : "var(--c-ink3)",
               fontFamily: "var(--font-body)",
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
               padding: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             {letter}
@@ -578,19 +641,16 @@ function LeaderSelect({
   const isActive = value !== "";
   return (
     <label
+      className="lg-m-cal-filter-trigger"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
         padding: "0 4px 0 12px",
         borderRadius: 999,
-        background: isActive
-          ? "var(--c-sageSoft)"
-          : "var(--c-surfaceAlt)",
-        border: `1px solid ${
-          isActive ? "var(--c-sage)" : "var(--c-line)"
-        }`,
-        minHeight: 32,
+        background: isActive ? "var(--c-sageSoft)" : "var(--c-surfaceAlt)",
+        border: `1px solid ${isActive ? "var(--c-sage)" : "var(--c-line)"}`,
+        minHeight: 36,
       }}
     >
       <span
@@ -617,7 +677,7 @@ function LeaderSelect({
           fontFamily: "var(--font-body)",
           fontSize: 12.5,
           fontWeight: 500,
-          padding: "6px 24px 6px 4px",
+          padding: "8px 24px 8px 4px",
           maxWidth: 180,
           cursor: "pointer",
           outline: "none",
