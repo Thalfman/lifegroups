@@ -65,7 +65,7 @@ export default async function AdminCheckInDetailPage({
   const client = await createSupabaseServerClient();
   const data = client
     ? await fetchAdminCheckInDetail(client, groupId, meetingWeek)
-    : emptyDetail(groupId, meetingWeek, "Supabase is not configured in this environment.");
+    : emptyDetail(groupId, meetingWeek, "The database is not configured in this environment.");
 
   if (!data.errors.group && data.group === null && client) notFound();
 

@@ -1,11 +1,5 @@
 import { PastoralAppShell } from "@/components/pastoral/shell";
 import { EmptyState } from "@/components/dashboard/cards";
-import { DataSourceBadge } from "@/components/dashboard/data-source-badge";
-import {
-  ConfiguredDataNotice,
-  DashboardErrorNotice,
-  FallbackDataNotice,
-} from "@/components/dashboard/notices";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { LeaderGroupCard } from "@/components/dashboard/leader-group-card";
@@ -40,7 +34,7 @@ export default async function LeaderPage({
   const params = (await searchParams) ?? {};
   const savedNoticeVisible = params.checkin === "saved";
   const client = await createSupabaseServerClient();
-  const { source, data, error } = await getLeaderDashboardData(client, {
+  const { data } = await getLeaderDashboardData(client, {
     assignedGroupIds: session.assignedGroupIds,
   });
 
@@ -74,7 +68,6 @@ export default async function LeaderPage({
       contentMaxWidth={720}
       headerSlot={
         <>
-          <DataSourceBadge source={source} />
           <UserPill
             name={session.profile.full_name}
             email={session.profile.email}
@@ -85,8 +78,6 @@ export default async function LeaderPage({
       }
     >
       <div style={{ display: "grid", gap: 14 }}>
-        {source === "live" ? <ConfiguredDataNotice /> : <FallbackDataNotice />}
-        {error ? <DashboardErrorNotice message={error} /> : null}
         {savedNoticeVisible ? (
           <div
             role="status"

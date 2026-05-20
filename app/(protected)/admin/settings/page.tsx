@@ -20,9 +20,9 @@ const EMPTY_DATA: SettingsShellData = {
   groups: [],
   groupMetricSettings: [],
   errors: {
-    defaults: "Supabase is not configured in this environment.",
-    groups: "Supabase is not configured in this environment.",
-    overrides: "Supabase is not configured in this environment.",
+    defaults: "The database is not configured in this environment.",
+    groups: "The database is not configured in this environment.",
+    overrides: "The database is not configured in this environment.",
   },
 };
 

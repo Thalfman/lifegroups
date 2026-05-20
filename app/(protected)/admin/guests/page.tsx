@@ -23,10 +23,10 @@ const EMPTY_DATA: GuestsManagementData = {
   ownerProfiles: [],
   openFollowUpsByGuest: {},
   errors: {
-    guests: "Supabase is not configured in this environment.",
-    groups: "Supabase is not configured in this environment.",
-    profiles: "Supabase is not configured in this environment.",
-    followUps: "Supabase is not configured in this environment.",
+    guests: "The database is not configured in this environment.",
+    groups: "The database is not configured in this environment.",
+    profiles: "The database is not configured in this environment.",
+    followUps: "The database is not configured in this environment.",
   },
 };
 

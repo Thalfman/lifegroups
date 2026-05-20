@@ -98,7 +98,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
   const handleEnable = useCallback(() => {
     const remote = status?.isRemoteSupabase === true;
     const message = remote
-      ? "You are about to enable test login accounts on a REMOTE Supabase project. These accounts have known passwords. Proceed?"
+      ? "You are about to enable test login accounts on a REMOTE database. These accounts have known passwords. Proceed?"
       : "Enable test login accounts? Their passwords are known to anyone with the env file.";
     run("enable", message);
   }, [run, status]);
@@ -134,7 +134,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           color: P.ink,
         }}
       >
-        These are real Supabase Auth users that sign in through the normal /login page.
+        These are real user accounts that sign in through the normal /login page.
         Passwords live only in the Edge Function environment — never displayed here.
       </div>
 
@@ -166,7 +166,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               <StatePill state={status?.enabledOverall ? "active" : "missing"} />
             </span>
             <span>
-              Supabase target:{" "}
+              Database target:{" "}
               {status?.isRemoteSupabase === undefined
                 ? "unknown"
                 : status.isRemoteSupabase

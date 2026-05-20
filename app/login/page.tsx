@@ -208,8 +208,8 @@ export default async function LoginPage({
                   marginBottom: 18,
                 }}
               >
-                Authentication is not configured on this deployment. Set the
-                Supabase environment variables to enable sign-in.
+                Authentication is not configured on this deployment.
+                Configure the authentication backend to enable sign-in.
               </div>
             ) : null}
 
