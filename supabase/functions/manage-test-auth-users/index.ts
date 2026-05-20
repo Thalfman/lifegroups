@@ -2,18 +2,26 @@
 //
 // Runs in Deno on Supabase's trusted edge runtime. Holds the service-role
 // key and uses it only after verifying the caller is an active
-// `super_admin` profile.
+// `super_admin` profile (`diagnose` is the exception — see below).
 //
-// Actions: status | enable | disable
+// Actions:
+//   status | enable | disable - require an active super_admin profile.
+//   diagnose                  - any signed-in user. Returns a safe
+//                               snapshot of the caller auth user id,
+//                               profile-lookup outcome (including safe
+//                               PostgREST error code/message/details/
+//                               hint when it fails), and env presence
+//                               by name. Used to troubleshoot why the
+//                               role gate fails on the other actions.
 //
-// Never returns passwords, tokens, the service-role key, or full env
-// dumps. Errors are redacted of known secret values.
+// Never returns passwords, tokens, the service-role key, auth headers,
+// or full env dumps. Errors are redacted of known secret values.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { KNOWN_TEST_EMAILS, TEST_GROUP_SPECS, TEST_USER_SPECS, type TestUserSpec } from "./known-test-emails.ts";
 
-type Action = "status" | "enable" | "disable";
+type Action = "status" | "enable" | "disable" | "diagnose";
 
 type UserSummary = {
   key: TestUserSpec["key"];
@@ -28,6 +36,32 @@ type UserSummary = {
 
 type GroupsSummary = Record<"a" | "b", "exists" | "created" | "archived" | "missing">;
 
+type PostgrestErrorPayload = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+type DiagnosticsReport = {
+  callerAuthUserId: string | null;
+  profileLookup: {
+    queried: boolean;
+    succeeded: boolean;
+    rowCount: number;
+    profile?: { email: string | null; role: string | null; status: string | null };
+    postgrestError?: PostgrestErrorPayload;
+  };
+  envPresent: Record<string, boolean>;
+};
+
+// Surfaced on 409 duplicate_profiles_for_auth_user. `rowCountSeen` is
+// bounded by the query's `.limit(2)` so the real count may be higher.
+type DuplicateProfileInfo = {
+  authUserId: string;
+  rowCountSeen: number;
+};
+
 type ResponseBody = {
   ok: boolean;
   action: Action | "unknown";
@@ -39,6 +73,9 @@ type ResponseBody = {
   code?: string;
   message?: string;
   missing?: string[];
+  postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
+  diagnostics?: DiagnosticsReport;
   summary: UserSummary[];
   groups: GroupsSummary;
   warnings: string[];
@@ -117,6 +154,46 @@ function redact(message: string, secrets: Set<string>): string {
   }
   out = out.replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]");
   return out;
+}
+
+// Returns presence booleans for the env names this function expects.
+// Never returns values. Safe to include in the response body.
+// `enableTestAuthUsersRaw` is the RAW value of ENABLE_TEST_AUTH_USERS
+// (any non-empty string counts as set) so an explicit "false" still
+// reports as set — operators need to distinguish "not configured" from
+// "configured to false".
+function buildEnvPresence(env: {
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  anonKey: string;
+  enableTestAuthUsersRaw: string;
+  passwords: Record<string, string>;
+}): Record<string, boolean> {
+  return {
+    SUPABASE_URL: env.supabaseUrl.length > 0,
+    SUPABASE_SERVICE_ROLE_KEY: env.serviceRoleKey.length > 0,
+    SUPABASE_ANON_KEY: env.anonKey.length > 0,
+    ENABLE_TEST_AUTH_USERS: env.enableTestAuthUsersRaw.length > 0,
+    TEST_ADMIN_PASSWORD: (env.passwords.TEST_ADMIN_PASSWORD ?? "").length > 0,
+    TEST_LEADER1_PASSWORD: (env.passwords.TEST_LEADER1_PASSWORD ?? "").length > 0,
+    TEST_LEADER2_PASSWORD: (env.passwords.TEST_LEADER2_PASSWORD ?? "").length > 0,
+    TEST_COLEADER_PASSWORD: (env.passwords.TEST_COLEADER_PASSWORD ?? "").length > 0,
+  };
+}
+
+// Runs each PostgREST diagnostic field through `redact()` defensively.
+// PostgREST text rarely contains secrets, but applying redact is cheap.
+function redactPostgrestError(
+  pgErr: { code?: string; message?: string; details?: string; hint?: string } | null | undefined,
+  secrets: Set<string>,
+): PostgrestErrorPayload | undefined {
+  if (!pgErr) return undefined;
+  const safe: PostgrestErrorPayload = {};
+  if (pgErr.code) safe.code = redact(String(pgErr.code), secrets);
+  if (pgErr.message) safe.message = redact(String(pgErr.message), secrets);
+  if (pgErr.details) safe.details = redact(String(pgErr.details), secrets);
+  if (pgErr.hint) safe.hint = redact(String(pgErr.hint), secrets);
+  return safe;
 }
 
 function jsonResponse(body: ResponseBody, status: number): Response {
@@ -617,13 +694,14 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(body, 400);
   }
   const action = parsed.action;
-  if (action !== "status" && action !== "enable" && action !== "disable") {
+  if (action !== "status" && action !== "enable" && action !== "disable" && action !== "diagnose") {
     const body = emptyResponse("unknown");
     body.errors.push("invalid_action");
     return jsonResponse(body, 400);
   }
 
-  const enableFlag = isTruthyEnv(Deno.env.get("ENABLE_TEST_AUTH_USERS"));
+  const enableTestAuthUsersRaw = Deno.env.get("ENABLE_TEST_AUTH_USERS") ?? "";
+  const enableFlag = isTruthyEnv(enableTestAuthUsersRaw);
   const missingEnv = listMissingEnv(action, {
     supabaseUrl,
     serviceRoleKey,
@@ -679,65 +757,130 @@ Deno.serve(async (req: Request) => {
   // Profile lookup uses the service-role client so the trusted Edge
   // Function can read the caller's profile row regardless of RLS. The
   // caller identity has already been proven by the verified JWT above.
-  let profileRow: { id: string; role: string; status: string } | null;
-  try {
-    const { data: profile, error } = await service
+  //
+  // `.limit(2)` instead of `.maybeSingle()` so PostgREST does NOT throw
+  // PGRST116 on duplicates; we get to distinguish zero / one / many rows
+  // from a real query failure and surface safe details for each case.
+  type ProfileLookupResult =
+    | { kind: "ok"; row: { id: string; email: string | null; role: string; status: string } }
+    | { kind: "none" }
+    | { kind: "duplicate"; count: number }
+    | { kind: "error"; pg: PostgrestErrorPayload };
+
+  async function lookupCallerProfile(): Promise<ProfileLookupResult> {
+    const { data: rows, error } = await service
       .from("profiles")
-      .select("id, role, status")
+      .select("id, email, role, status, auth_user_id")
       .eq("auth_user_id", callerAuthId)
-      .maybeSingle();
+      .limit(2);
     if (error) {
-      // PostgREST error code, e.g. "PGRST116", "42501" — safe to log.
-      const pgCode = (error as { code?: string }).code ?? "unknown";
-      console.log(JSON.stringify({
-        event: "auth.profile",
-        action,
-        authUserId: callerAuthId,
-        profileFound: false,
-        errorClass: "PostgrestError",
-        pgCode,
-      }));
-      const body = emptyResponse(action);
-      body.code = "authorization_check_failed";
-      body.message = "The Edge Function could not verify your role.";
-      body.errors.push("authorization_check_failed");
-      body.errors.push(redact(`profile_lookup:PostgrestError:${pgCode}`, secrets));
-      return jsonResponse(body, 500);
+      const pg = redactPostgrestError(error as { code?: string; message?: string; details?: string; hint?: string }, secrets) ?? {};
+      return { kind: "error", pg };
     }
-    profileRow = profile as { id: string; role: string; status: string } | null;
-  } catch (err) {
-    const errorClass = err instanceof Error ? err.constructor.name : typeof err;
-    console.log(JSON.stringify({
-      event: "auth.profile",
-      action,
-      authUserId: callerAuthId,
-      profileFound: false,
-      errorClass,
-    }));
-    const body = emptyResponse(action);
-    body.code = "authorization_check_failed";
-    body.message = "The Edge Function could not verify your role.";
-    body.errors.push("authorization_check_failed");
-    body.errors.push(redact(`profile_lookup:${errorClass}`, secrets));
-    return jsonResponse(body, 500);
+    const list = (rows ?? []) as Array<{
+      id: string;
+      email: string | null;
+      role: string;
+      status: string;
+      auth_user_id: string | null;
+    }>;
+    if (list.length === 0) return { kind: "none" };
+    if (list.length > 1) return { kind: "duplicate", count: list.length };
+    const r = list[0];
+    return { kind: "ok", row: { id: r.id, email: r.email, role: r.role, status: r.status } };
   }
 
+  // Diagnose short-circuits the role gate so an operator can see what
+  // the function actually observes. Any signed-in caller may invoke it.
+  if (action === "diagnose") {
+    const lookup = await lookupCallerProfile();
+    const profileLookup: DiagnosticsReport["profileLookup"] = {
+      queried: true,
+      succeeded: lookup.kind !== "error",
+      rowCount:
+        lookup.kind === "ok" ? 1
+        : lookup.kind === "duplicate" ? lookup.count
+        : 0,
+    };
+    if (lookup.kind === "ok") {
+      profileLookup.profile = {
+        email: lookup.row.email,
+        role: lookup.row.role,
+        status: lookup.row.status,
+      };
+    }
+    if (lookup.kind === "error") {
+      profileLookup.postgrestError = lookup.pg;
+    }
+
+    console.log(JSON.stringify({
+      event: "auth.diagnose",
+      action,
+      authUserId: callerAuthId,
+      lookupKind: lookup.kind,
+      rowCount: profileLookup.rowCount,
+      pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
+    }));
+
+    const body = emptyResponse("diagnose");
+    body.isRemoteSupabase = isRemoteSupabase;
+    body.ok = true;
+    body.code = "diagnose_ok";
+    body.message = "Diagnostic snapshot of the Edge Function's view of the caller.";
+    body.diagnostics = {
+      callerAuthUserId: callerAuthId,
+      profileLookup,
+      envPresent: buildEnvPresence({
+        supabaseUrl, serviceRoleKey, anonKey, enableTestAuthUsersRaw, passwords,
+      }),
+    };
+    return jsonResponse(body, 200);
+  }
+
+  let profileRow: { id: string; email: string | null; role: string; status: string };
+  const lookup = await lookupCallerProfile();
   console.log(JSON.stringify({
     event: "auth.profile",
     action,
     authUserId: callerAuthId,
-    profileFound: profileRow !== null,
-    profileRole: profileRow?.role,
-    profileStatus: profileRow?.status,
+    lookupKind: lookup.kind,
+    rowCount:
+      lookup.kind === "ok" ? 1
+      : lookup.kind === "duplicate" ? lookup.count
+      : 0,
+    pgCode: lookup.kind === "error" ? lookup.pg.code : undefined,
   }));
 
-  if (!profileRow) {
+  if (lookup.kind === "error") {
+    const body = emptyResponse(action);
+    body.code = "profile_lookup_query_failed";
+    body.message = "The Edge Function could not query profiles with the configured elevated key.";
+    body.postgrestError = lookup.pg;
+    body.errors.push("profile_lookup_query_failed");
+    return jsonResponse(body, 500);
+  }
+  if (lookup.kind === "none") {
     const body = emptyResponse(action);
     body.code = "profile_not_found";
     body.message = "No app profile is linked to the signed-in auth user.";
     body.errors.push("profile_not_found");
     return jsonResponse(body, 403);
   }
+  if (lookup.kind === "duplicate") {
+    const body = emptyResponse(action);
+    body.code = "duplicate_profiles_for_auth_user";
+    body.message =
+      "Multiple profile rows are linked to the signed-in auth user. " +
+      "Resolve the duplicate before retrying.";
+    body.duplicateProfileInfo = {
+      authUserId: callerAuthId,
+      rowCountSeen: lookup.count,
+    };
+    body.errors.push("duplicate_profiles_for_auth_user");
+    return jsonResponse(body, 409);
+  }
+  profileRow = lookup.row;
+
   if (profileRow.status !== "active") {
     const body = emptyResponse(action);
     body.code = "profile_not_active";
@@ -759,8 +902,14 @@ Deno.serve(async (req: Request) => {
       result = await handleStatus(service, isRemoteSupabase);
     } else if (action === "enable") {
       result = await handleEnable(service, passwords, isRemoteSupabase);
-    } else {
+    } else if (action === "disable") {
       result = await handleDisable(service, isRemoteSupabase);
+    } else {
+      // Unreachable: "diagnose" short-circuited above and the action
+      // validator rejects anything else.
+      const body = emptyResponse(action);
+      body.errors.push("invalid_action");
+      return jsonResponse(body, 400);
     }
     result.errors = result.errors.map((e) => redact(e, secrets));
     result.warnings = result.warnings.map((w) => redact(w, secrets));

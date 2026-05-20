@@ -18,14 +18,41 @@ export type TestAccountUserRow = {
   skipReason: string | null;
 };
 
+export type PostgrestErrorPayload = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+export type DuplicateProfileInfo = {
+  authUserId: string;
+  rowCountSeen: number;
+};
+
+export type DiagnosticsReport = {
+  callerAuthUserId: string | null;
+  profileLookup: {
+    queried: boolean;
+    succeeded: boolean;
+    rowCount: number;
+    profile?: { email: string | null; role: string | null; status: string | null };
+    postgrestError?: PostgrestErrorPayload;
+  };
+  envPresent: Record<string, boolean>;
+};
+
 export type TestAccountsResponse = {
   ok: boolean;
-  action: "status" | "enable" | "disable" | "unknown";
+  action: "status" | "enable" | "disable" | "diagnose" | "unknown";
   enabledOverall?: boolean;
   isRemoteSupabase?: boolean;
   code?: string;
   message?: string;
   missing?: string[];
+  postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
+  diagnostics?: DiagnosticsReport;
   summary: TestAccountUserRow[];
   groups: Record<"a" | "b", "exists" | "created" | "archived" | "missing">;
   warnings: string[];
@@ -62,6 +89,11 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
   forbidden: "Only the super admin can manage test accounts.",
   authorization_check_failed:
     "The Edge Function hit a runtime error while checking your role. See Supabase function logs for event:auth.profile to identify the cause.",
+  profile_lookup_query_failed:
+    "The Edge Function could not query the profiles table with its elevated key. The PostgREST diagnostics below identify the underlying cause (RLS denial, malformed query, or other Postgres-side error).",
+  duplicate_profiles_for_auth_user:
+    "Multiple app profiles are linked to the same auth user. Open the Supabase Studio profiles table, find the rows with that auth_user_id, and remove or relink the duplicate.",
+  diagnose_ok: "Diagnostic snapshot retrieved.",
   // Disabled flag (HTTP 403/500 depending on path; the new pre-flight
   // surfaces this via `missing_edge_function_env` with
   // `ENABLE_TEST_AUTH_USERS` in `missing[]`).
@@ -126,6 +158,8 @@ function buildErrorLines(args: {
   status: number | null;
   code: string;
   missing: string[] | undefined;
+  postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
 }): string[] {
   const lines: string[] = [];
   const statusLabel = args.status ?? "?";
@@ -134,11 +168,22 @@ function buildErrorLines(args: {
   if (args.missing && args.missing.length > 0) {
     lines.push(`Missing Edge Function secrets: ${args.missing.join(", ")}`);
   }
+  if (args.postgrestError) {
+    const pg = args.postgrestError;
+    if (pg.code) lines.push(`PostgREST code: ${pg.code}`);
+    if (pg.message) lines.push(`PostgREST message: ${pg.message}`);
+    if (pg.details) lines.push(`PostgREST details: ${pg.details}`);
+    if (pg.hint) lines.push(`PostgREST hint: ${pg.hint}`);
+  }
+  if (args.duplicateProfileInfo) {
+    const d = args.duplicateProfileInfo;
+    lines.push(`Duplicate profile rows: auth_user_id=${d.authUserId} rowCount≥${d.rowCountSeen}`);
+  }
   return lines.map(redact);
 }
 
 async function callEdgeFn(
-  action: "status" | "enable" | "disable",
+  action: "status" | "enable" | "disable" | "diagnose",
 ): Promise<ActionResult<TestAccountsResponse>> {
   const auth = await requireSuperAdminSession();
   if (!auth.ok) return actionFail([auth.error]);
@@ -158,7 +203,13 @@ async function callEdgeFn(
       body?.errors?.[0] ??
       tokenForStatus(status);
     return actionFail(
-      buildErrorLines({ status, code, missing: body?.missing }),
+      buildErrorLines({
+        status,
+        code,
+        missing: body?.missing,
+        postgrestError: body?.postgrestError,
+        duplicateProfileInfo: body?.duplicateProfileInfo,
+      }),
     );
   }
   if (!data) {
@@ -189,4 +240,8 @@ export async function testAccountsDisable(): Promise<ActionResult<TestAccountsRe
   const result = await callEdgeFn("disable");
   if (result.ok) revalidatePath(REVALIDATE_PATH);
   return result;
+}
+
+export async function testAccountsDiagnose(): Promise<ActionResult<TestAccountsResponse>> {
+  return callEdgeFn("diagnose");
 }
