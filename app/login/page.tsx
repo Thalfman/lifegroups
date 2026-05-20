@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
+import { POrnament, PSeal } from "@/components/pastoral/atoms";
 import { LoginForm } from "./login-form";
 import { isSafeNextPath } from "./next-path";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -33,212 +33,222 @@ export default async function LoginPage({
         color: P.ink,
         position: "relative",
         overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "48px 24px",
       }}
     >
       <div aria-hidden="true" style={paperGrain} />
 
       <div
         style={{
+          minHeight: "100vh",
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
           position: "relative",
           zIndex: 1,
-          width: "100%",
-          maxWidth: 460,
-          display: "flex",
-          flexDirection: "column",
-          gap: 28,
         }}
+        className="login-grid"
       >
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <div
+        <aside
+          style={{
+            padding: "clamp(32px, 6vw, 56px) clamp(24px, 6vw, 64px)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            gap: 40,
+            background: P.surface,
+            borderRight: `1px solid ${P.line}`,
+          }}
+        >
+          <Link
+            href="/"
             style={{
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
               gap: 14,
-              lineHeight: 1.1,
-            }}
-          >
-            <Image
-              src="/logo.png"
-              alt="Fox Valley Church"
-              width={40}
-              height={40}
-              priority
-              style={{
-                width: 40,
-                height: 40,
-                objectFit: "contain",
-                display: "block",
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                lineHeight: 1.1,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: fontDisplay,
-                  fontSize: 18,
-                  fontWeight: 500,
-                  color: P.ink,
-                }}
-              >
-                Life Groups
-              </span>
-              <span
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 10.5,
-                  letterSpacing: 1.8,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 600,
-                  marginTop: 4,
-                }}
-              >
-                Fox Valley Church
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <h2
-          style={{
-            margin: 0,
-            textAlign: "center",
-            fontFamily: fontDisplay,
-            fontSize: 30,
-            lineHeight: 1.15,
-            fontWeight: 400,
-            color: P.ink,
-            letterSpacing: -0.3,
-          }}
-        >
-          Welcome back.{" "}
-          <span style={{ fontStyle: "italic", color: P.ink2 }}>
-            Let&rsquo;s shepherd well.
-          </span>
-        </h2>
-
-        <div
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 14,
-            padding: 28,
-            boxShadow:
-              "0 1px 2px rgba(60,45,30,0.04), 0 4px 14px rgba(60,45,30,0.04)",
-          }}
-        >
-          {showResetSuccess ? (
-            <div
-              role="status"
-              style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderLeft: `3px solid ${P.sage}`,
-                borderRadius: 10,
-                padding: "12px 16px",
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                lineHeight: 1.5,
-                marginBottom: 14,
-              }}
-            >
-              Password updated. Sign in.
-            </div>
-          ) : null}
-
-          {!configured ? (
-            <div
-              role="status"
-              style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderLeft: `3px solid ${P.mustard}`,
-                borderRadius: 10,
-                padding: "12px 16px",
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                lineHeight: 1.5,
-                marginBottom: 14,
-              }}
-            >
-              Authentication is not configured on this deployment.
-              Configure the authentication backend to enable sign-in.
-            </div>
-          ) : null}
-
-          <LoginForm next={next} />
-        </div>
-
-        <div
-          style={{
-            padding: "16px 18px",
-            borderLeft: `2px solid ${P.sage}`,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 14,
-              lineHeight: 1.6,
-              fontStyle: "italic",
-              color: P.ink2,
-              textWrap: "pretty",
-            }}
-          >
-            &ldquo;Jesus Christ is the one we proclaim, admonishing and
-            teaching everyone with all wisdom, so that we may present everyone
-            fully mature in Christ.&rdquo;
-          </div>
-          <div
-            style={{
-              marginTop: 10,
-              fontFamily: fontSans,
-              fontSize: 10.5,
-              letterSpacing: 1.6,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
-            Colossians 1:28
-          </div>
-        </div>
-
-        <div
-          style={{
-            textAlign: "center",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink3,
-          }}
-        >
-          New leader?{" "}
-          <a
-            href="mailto:ministry@foxvalleychurch.org"
-            style={{
-              color: P.sageTextStrong,
+              color: "inherit",
               textDecoration: "none",
-              fontWeight: 500,
             }}
           >
-            Email the ministry team.
-          </a>
-        </div>
+            <PSeal />
+            <div
+              style={{
+                fontFamily: fontSans,
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: -0.2,
+              }}
+            >
+              Fox Valley Church Life Groups
+            </div>
+          </Link>
+
+          <div style={{ maxWidth: 520 }}>
+            <POrnament w={100} />
+            <h2
+              style={{
+                fontFamily: fontDisplay,
+                fontSize: "clamp(32px, 4.5vw, 44px)",
+                lineHeight: 1.1,
+                margin: "20px 0 18px",
+                fontWeight: 600,
+                letterSpacing: -0.5,
+                color: P.ink,
+              }}
+            >
+              Welcome back.
+            </h2>
+            <p
+              style={{
+                fontSize: 16,
+                color: P.ink2,
+                lineHeight: 1.65,
+                fontFamily: fontBody,
+                margin: 0,
+              }}
+            >
+              Supporting Life Groups as they care for people and build
+              meaningful relationships.
+            </p>
+          </div>
+
+          <div
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+              fontStyle: "italic",
+              maxWidth: 480,
+              lineHeight: 1.55,
+            }}
+          >
+            &ldquo;As iron sharpens iron, so one person sharpens another.&rdquo;
+            — Prov. 27:17
+          </div>
+        </aside>
+
+        <section
+          style={{
+            padding: "clamp(32px, 6vw, 56px) clamp(24px, 6vw, 64px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 400 }}>
+            <div
+              style={{
+                fontFamily: fontSans,
+                fontSize: 11,
+                letterSpacing: 2.5,
+                textTransform: "uppercase",
+                color: P.terra,
+                fontWeight: 600,
+                marginBottom: 14,
+              }}
+            >
+              Sign in
+            </div>
+            <h3
+              style={{
+                fontFamily: fontDisplay,
+                fontSize: "clamp(24px, 3.5vw, 28px)",
+                margin: "0 0 14px",
+                fontWeight: 600,
+                letterSpacing: -0.3,
+                color: P.ink,
+              }}
+            >
+              Sign in
+            </h3>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 14,
+                color: P.ink2,
+                marginTop: 0,
+                marginBottom: 24,
+                lineHeight: 1.55,
+              }}
+            >
+              For ministry admins and Life Group leaders.
+            </p>
+
+            {showResetSuccess ? (
+              <div
+                role="status"
+                style={{
+                  background: P.surface,
+                  border: `1px solid ${P.line}`,
+                  borderLeft: `3px solid ${P.sage}`,
+                  borderRadius: 10,
+                  padding: "12px 16px",
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink2,
+                  lineHeight: 1.5,
+                  marginBottom: 18,
+                }}
+              >
+                Password updated. Sign in.
+              </div>
+            ) : null}
+
+            {!configured ? (
+              <div
+                role="status"
+                style={{
+                  background: P.surface,
+                  border: `1px solid ${P.line}`,
+                  borderLeft: `3px solid ${P.mustard}`,
+                  borderRadius: 10,
+                  padding: "12px 16px",
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink2,
+                  lineHeight: 1.5,
+                  marginBottom: 18,
+                }}
+              >
+                Authentication is not configured on this deployment.
+                Configure the authentication backend to enable sign-in.
+              </div>
+            ) : null}
+
+            <LoginForm next={next} />
+
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink3,
+                marginTop: 20,
+                marginBottom: 0,
+                textAlign: "center",
+                lineHeight: 1.55,
+              }}
+            >
+              Not a user yet? Ask a ministry admin to invite you.
+              <br />
+              <Link
+                href="/forgot-password"
+                style={{
+                  color: P.terra,
+                  fontFamily: fontSans,
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                }}
+              >
+                Forgot password?
+              </Link>
+            </p>
+          </div>
+        </section>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .login-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
