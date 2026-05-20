@@ -36,6 +36,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/people", label: "People" });
     items.push({ href: "/admin/groups", label: "Groups" });
+    items.push({ href: "/admin/calendar", label: "Calendar" });
     items.push({ href: "/admin/check-ins", label: "Check-ins" });
     items.push({ href: "/admin/guests", label: "Guests" });
     items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
