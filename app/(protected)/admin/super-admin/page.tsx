@@ -91,7 +91,7 @@ function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
       label: "Database configured",
       description: hasClient
         ? "Server client built; reads and writes can reach the database."
-        : "Database environment variables are not set in this environment.",
+        : "Database environment variables are not set.",
       tone: hasClient ? "ok" : "warn",
     },
     {

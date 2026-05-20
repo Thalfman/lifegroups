@@ -134,7 +134,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           color: P.ink,
         }}
       >
-        These are real authentication users that sign in through the normal /login page.
+        These are real user accounts that sign in through the normal /login page.
         Passwords live only in the Edge Function environment — never displayed here.
       </div>
 
