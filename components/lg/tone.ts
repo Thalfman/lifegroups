@@ -40,7 +40,7 @@ export interface CapacityToneResult {
 }
 
 export function capacityTone({ members, capacity }: CapacityInput): CapacityToneResult {
-  if (capacity == null) return { tone: "ghost", label: "Unknown", pct: null };
+  if (capacity == null || capacity <= 0) return { tone: "ghost", label: "Unknown", pct: null };
   const pct = (members / capacity) * 100;
   if (pct >= 100) return { tone: "clay", label: "Full", pct };
   if (pct >= 80) return { tone: "amber", label: "Warning", pct };

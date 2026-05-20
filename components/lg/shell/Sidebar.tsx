@@ -36,7 +36,7 @@ export function Sidebar({
         flexDirection: "column",
         fontFamily: "var(--font-body)",
         minHeight: asDrawer ? "100vh" : undefined,
-        height: asDrawer ? "100vh" : "100vh",
+        height: "100vh",
         position: asDrawer ? "static" : "sticky",
         top: 0,
         overflowY: "auto",
