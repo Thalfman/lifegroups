@@ -121,15 +121,31 @@ message. Mapping:
 
 | Status / code                              | Meaning                                                                                              | Fix                                                                                                                  |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `401 missing_or_invalid_session`           | Your access token didn't reach the function (expired/missing).                                       | Sign out and back in at `/login`, then retry.                                                                        |
-| `403 super_admin_required` / `forbidden`   | The signed-in user is not an active `super_admin`.                                                   | Sign in as the real super_admin.                                                                                     |
+| `401 missing_authorization_header`         | The Next.js app didn't send the signed-in user's bearer token to the Edge Function.                  | Sign out and back in at `/login`, then retry. If it persists, the SSR session cookie isn't being forwarded.          |
+| `401 invalid_or_expired_session`           | Supabase Auth rejected the bearer token (expired, revoked, or for a different project).              | Sign out and back in at `/login`, then retry.                                                                        |
+| `403 profile_not_found`                    | The auth user is valid but no row in `profiles` has `auth_user_id = <your-auth-user-id>`.            | Ask an existing super admin to create / link your profile.                                                           |
+| `403 profile_not_active`                   | Your profile exists but `status` is not `active` (it's `inactive` or `invited`).                     | Ask an existing super admin to reactivate the profile.                                                               |
+| `403 super_admin_required` / `forbidden`   | The signed-in profile is active but its `role` is not `super_admin`.                                 | Sign in as the real super_admin. The panel is only usable by the actual super_admin.                                 |
 | `404 function_not_deployed_or_wrong_name`  | The function isn't deployed under that name in this project.                                         | `supabase functions deploy manage-test-auth-users`.                                                                  |
+| `500 authorization_check_failed`           | The Edge Function hit a runtime error while querying `profiles` for your role (e.g. stale service-role key, schema mismatch). | Check the Supabase function logs for `event:"auth.profile"` — the structured log line names the `errorClass` / `pgCode`. Common cause: rotated `SUPABASE_SERVICE_ROLE_KEY` not picked up by the function. |
 | `500 missing_edge_function_env`            | Required Edge Function secrets are missing. The panel lists which ones in a third bullet.            | Add the listed secrets in Supabase Dashboard → Edge Functions → `manage-test-auth-users` → Secrets, then redeploy.    |
 | `500 test_account_seed_failed` (or other)  | The function ran but a step failed (schema mismatch, transient DB error, etc.).                      | Check Supabase function logs; check per-row `errors[]` in the panel; retry.                                          |
 
 The panel never displays passwords, the service-role key, JWTs, or
 stack traces. Free-text error fragments are redacted server-side and
 client-side before render.
+
+**Important constraints on the panel:**
+
+- The Test Accounts panel is only usable when signed in as the real
+  `super_admin`. None of the four `test.*@lifegroups.local` accounts
+  can open it (they're not `super_admin`), so test accounts cannot
+  enable or disable themselves.
+- **Vercel environment variables do not replace Edge Function
+  secrets.** `ENABLE_TEST_AUTH_USERS` and `TEST_*_PASSWORD` must be
+  set in Supabase Dashboard → Edge Functions →
+  `manage-test-auth-users` → Secrets, followed by a redeploy.
+  Setting them in Vercel has no effect on the Edge Function runtime.
 
 ### From the panel
 

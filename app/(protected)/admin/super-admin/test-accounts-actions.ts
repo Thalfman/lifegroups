@@ -47,13 +47,21 @@ const FN_ERROR_MESSAGES: Record<string, string> = {
     "Your session token didn't reach the Edge Function. Sign out, sign back in, and retry.",
   missing_or_invalid_session:
     "Your session is missing or invalid. Sign out and back in, then retry.",
+  invalid_or_expired_session:
+    "Your Supabase session is invalid or expired. Sign out and back in, then retry.",
+  // Legacy token kept for rolling deploys of older Edge Function versions.
   unauthorized:
     "Your session is no longer valid. Sign out and back in, then retry.",
   // Role-gate problems (HTTP 403).
-  forbidden: "Only the super admin can manage test accounts.",
+  profile_not_found:
+    "Your auth user has no linked app profile. Ask an existing super admin to create one.",
+  profile_not_active:
+    "Your app profile is not active. Ask an existing super admin to reactivate it.",
   super_admin_required: "Only the super admin can manage test accounts.",
+  // Legacy token kept for rolling deploys of older Edge Function versions.
+  forbidden: "Only the super admin can manage test accounts.",
   authorization_check_failed:
-    "The Edge Function couldn't verify your role. Try again in a moment.",
+    "The Edge Function hit a runtime error while checking your role. See Supabase function logs for event:auth.profile to identify the cause.",
   // Disabled flag (HTTP 403/500 depending on path; the new pre-flight
   // surfaces this via `missing_edge_function_env` with
   // `ENABLE_TEST_AUTH_USERS` in `missing[]`).

@@ -598,8 +598,12 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
-  if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
+  const hasAuthHeader = !!authHeader && authHeader.toLowerCase().startsWith("bearer ");
+  console.log(JSON.stringify({ event: "auth.header", hasAuthHeader }));
+  if (!hasAuthHeader) {
     const body = emptyResponse("unknown");
+    body.code = "missing_authorization_header";
+    body.message = "Authorization header is missing or malformed.";
     body.errors.push("missing_authorization_header");
     return jsonResponse(body, 401);
   }
@@ -637,7 +641,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const anon = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: authHeader! } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -647,9 +651,23 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error(error.message);
     if (!data?.user?.id) throw new Error("no_user");
     callerAuthId = data.user.id;
+    console.log(JSON.stringify({
+      event: "auth.jwt",
+      action,
+      jwtVerified: true,
+      authUserId: callerAuthId,
+    }));
   } catch (err) {
+    console.log(JSON.stringify({
+      event: "auth.jwt",
+      action,
+      jwtVerified: false,
+      errorClass: err instanceof Error ? err.constructor.name : typeof err,
+    }));
     const body = emptyResponse(action);
-    body.errors.push("unauthorized");
+    body.code = "invalid_or_expired_session";
+    body.message = "Supabase Auth could not verify the bearer token.";
+    body.errors.push("invalid_or_expired_session");
     body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
     return jsonResponse(body, 401);
   }
@@ -658,24 +676,81 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Profile lookup uses the service-role client so the trusted Edge
+  // Function can read the caller's profile row regardless of RLS. The
+  // caller identity has already been proven by the verified JWT above.
+  let profileRow: { id: string; role: string; status: string } | null;
   try {
     const { data: profile, error } = await service
       .from("profiles")
       .select("id, role, status")
       .eq("auth_user_id", callerAuthId)
       .maybeSingle();
-    if (error) throw new Error(`profile lookup failed: ${error.message}`);
-    const p = profile as { id: string; role: string; status: string } | null;
-    if (!p || p.status !== "active" || p.role !== "super_admin") {
+    if (error) {
+      // PostgREST error code, e.g. "PGRST116", "42501" — safe to log.
+      const pgCode = (error as { code?: string }).code ?? "unknown";
+      console.log(JSON.stringify({
+        event: "auth.profile",
+        action,
+        authUserId: callerAuthId,
+        profileFound: false,
+        errorClass: "PostgrestError",
+        pgCode,
+      }));
       const body = emptyResponse(action);
-      body.errors.push("forbidden");
-      return jsonResponse(body, 403);
+      body.code = "authorization_check_failed";
+      body.message = "The Edge Function could not verify your role.";
+      body.errors.push("authorization_check_failed");
+      body.errors.push(redact(`profile_lookup:PostgrestError:${pgCode}`, secrets));
+      return jsonResponse(body, 500);
     }
+    profileRow = profile as { id: string; role: string; status: string } | null;
   } catch (err) {
+    const errorClass = err instanceof Error ? err.constructor.name : typeof err;
+    console.log(JSON.stringify({
+      event: "auth.profile",
+      action,
+      authUserId: callerAuthId,
+      profileFound: false,
+      errorClass,
+    }));
     const body = emptyResponse(action);
+    body.code = "authorization_check_failed";
+    body.message = "The Edge Function could not verify your role.";
     body.errors.push("authorization_check_failed");
-    body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
+    body.errors.push(redact(`profile_lookup:${errorClass}`, secrets));
     return jsonResponse(body, 500);
+  }
+
+  console.log(JSON.stringify({
+    event: "auth.profile",
+    action,
+    authUserId: callerAuthId,
+    profileFound: profileRow !== null,
+    profileRole: profileRow?.role,
+    profileStatus: profileRow?.status,
+  }));
+
+  if (!profileRow) {
+    const body = emptyResponse(action);
+    body.code = "profile_not_found";
+    body.message = "No app profile is linked to the signed-in auth user.";
+    body.errors.push("profile_not_found");
+    return jsonResponse(body, 403);
+  }
+  if (profileRow.status !== "active") {
+    const body = emptyResponse(action);
+    body.code = "profile_not_active";
+    body.message = "The signed-in profile is not active.";
+    body.errors.push("profile_not_active");
+    return jsonResponse(body, 403);
+  }
+  if (profileRow.role !== "super_admin") {
+    const body = emptyResponse(action);
+    body.code = "super_admin_required";
+    body.message = "Only super_admin profiles can manage test accounts.";
+    body.errors.push("super_admin_required");
+    return jsonResponse(body, 403);
   }
 
   try {
