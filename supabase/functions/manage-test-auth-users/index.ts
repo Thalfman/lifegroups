@@ -55,6 +55,13 @@ type DiagnosticsReport = {
   envPresent: Record<string, boolean>;
 };
 
+// Surfaced on 409 duplicate_profiles_for_auth_user. `rowCountSeen` is
+// bounded by the query's `.limit(2)` so the real count may be higher.
+type DuplicateProfileInfo = {
+  authUserId: string;
+  rowCountSeen: number;
+};
+
 type ResponseBody = {
   ok: boolean;
   action: Action | "unknown";
@@ -67,6 +74,7 @@ type ResponseBody = {
   message?: string;
   missing?: string[];
   postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
   diagnostics?: DiagnosticsReport;
   summary: UserSummary[];
   groups: GroupsSummary;
@@ -97,10 +105,6 @@ function listMissingEnv(
     passwords: Record<string, string>;
   },
 ): string[] {
-  // Diagnose must run even when some env is missing so it can REPORT
-  // which env names are set or absent. Its handler surfaces presence
-  // booleans inside the diagnostics payload instead of bailing here.
-  if (action === "diagnose") return [];
   const missing: string[] = [];
   if (!env.supabaseUrl) missing.push("SUPABASE_URL");
   if (!env.serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
@@ -154,18 +158,22 @@ function redact(message: string, secrets: Set<string>): string {
 
 // Returns presence booleans for the env names this function expects.
 // Never returns values. Safe to include in the response body.
+// `enableTestAuthUsersRaw` is the RAW value of ENABLE_TEST_AUTH_USERS
+// (any non-empty string counts as set) so an explicit "false" still
+// reports as set — operators need to distinguish "not configured" from
+// "configured to false".
 function buildEnvPresence(env: {
   supabaseUrl: string;
   serviceRoleKey: string;
   anonKey: string;
-  enableFlag: boolean;
+  enableTestAuthUsersRaw: string;
   passwords: Record<string, string>;
 }): Record<string, boolean> {
   return {
     SUPABASE_URL: env.supabaseUrl.length > 0,
     SUPABASE_SERVICE_ROLE_KEY: env.serviceRoleKey.length > 0,
     SUPABASE_ANON_KEY: env.anonKey.length > 0,
-    ENABLE_TEST_AUTH_USERS: env.enableFlag,
+    ENABLE_TEST_AUTH_USERS: env.enableTestAuthUsersRaw.length > 0,
     TEST_ADMIN_PASSWORD: (env.passwords.TEST_ADMIN_PASSWORD ?? "").length > 0,
     TEST_LEADER1_PASSWORD: (env.passwords.TEST_LEADER1_PASSWORD ?? "").length > 0,
     TEST_LEADER2_PASSWORD: (env.passwords.TEST_LEADER2_PASSWORD ?? "").length > 0,
@@ -692,7 +700,8 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(body, 400);
   }
 
-  const enableFlag = isTruthyEnv(Deno.env.get("ENABLE_TEST_AUTH_USERS"));
+  const enableTestAuthUsersRaw = Deno.env.get("ENABLE_TEST_AUTH_USERS") ?? "";
+  const enableFlag = isTruthyEnv(enableTestAuthUsersRaw);
   const missingEnv = listMissingEnv(action, {
     supabaseUrl,
     serviceRoleKey,
@@ -822,7 +831,7 @@ Deno.serve(async (req: Request) => {
       callerAuthUserId: callerAuthId,
       profileLookup,
       envPresent: buildEnvPresence({
-        supabaseUrl, serviceRoleKey, anonKey, enableFlag, passwords,
+        supabaseUrl, serviceRoleKey, anonKey, enableTestAuthUsersRaw, passwords,
       }),
     };
     return jsonResponse(body, 200);
@@ -848,10 +857,6 @@ Deno.serve(async (req: Request) => {
     body.message = "The Edge Function could not query profiles with the configured elevated key.";
     body.postgrestError = lookup.pg;
     body.errors.push("profile_lookup_query_failed");
-    if (lookup.pg.code) body.errors.push(`pg.code:${lookup.pg.code}`);
-    if (lookup.pg.message) body.errors.push(`pg.message:${lookup.pg.message}`);
-    if (lookup.pg.details) body.errors.push(`pg.details:${lookup.pg.details}`);
-    if (lookup.pg.hint) body.errors.push(`pg.hint:${lookup.pg.hint}`);
     return jsonResponse(body, 500);
   }
   if (lookup.kind === "none") {
@@ -867,8 +872,11 @@ Deno.serve(async (req: Request) => {
     body.message =
       "Multiple profile rows are linked to the signed-in auth user. " +
       "Resolve the duplicate before retrying.";
+    body.duplicateProfileInfo = {
+      authUserId: callerAuthId,
+      rowCountSeen: lookup.count,
+    };
     body.errors.push("duplicate_profiles_for_auth_user");
-    body.errors.push(`auth_user_id=${callerAuthId} rowCount=${lookup.count}`);
     return jsonResponse(body, 409);
   }
   profileRow = lookup.row;

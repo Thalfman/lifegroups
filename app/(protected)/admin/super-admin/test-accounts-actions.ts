@@ -25,6 +25,11 @@ export type PostgrestErrorPayload = {
   hint?: string;
 };
 
+export type DuplicateProfileInfo = {
+  authUserId: string;
+  rowCountSeen: number;
+};
+
 export type DiagnosticsReport = {
   callerAuthUserId: string | null;
   profileLookup: {
@@ -46,6 +51,7 @@ export type TestAccountsResponse = {
   message?: string;
   missing?: string[];
   postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
   diagnostics?: DiagnosticsReport;
   summary: TestAccountUserRow[];
   groups: Record<"a" | "b", "exists" | "created" | "archived" | "missing">;
@@ -153,6 +159,7 @@ function buildErrorLines(args: {
   code: string;
   missing: string[] | undefined;
   postgrestError?: PostgrestErrorPayload;
+  duplicateProfileInfo?: DuplicateProfileInfo;
 }): string[] {
   const lines: string[] = [];
   const statusLabel = args.status ?? "?";
@@ -167,6 +174,10 @@ function buildErrorLines(args: {
     if (pg.message) lines.push(`PostgREST message: ${pg.message}`);
     if (pg.details) lines.push(`PostgREST details: ${pg.details}`);
     if (pg.hint) lines.push(`PostgREST hint: ${pg.hint}`);
+  }
+  if (args.duplicateProfileInfo) {
+    const d = args.duplicateProfileInfo;
+    lines.push(`Duplicate profile rows: auth_user_id=${d.authUserId} rowCount≥${d.rowCountSeen}`);
   }
   return lines.map(redact);
 }
@@ -197,6 +208,7 @@ async function callEdgeFn(
         code,
         missing: body?.missing,
         postgrestError: body?.postgrestError,
+        duplicateProfileInfo: body?.duplicateProfileInfo,
       }),
     );
   }
