@@ -14,6 +14,7 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import { statusStripeColor } from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
 
@@ -128,6 +129,9 @@ function GridCellView({
         background: baseBg,
         border: `1px solid ${P.line}`,
         borderRadius: 10,
+        boxShadow: cell.isToday
+          ? `inset 0 0 0 1px ${P.terra}`
+          : undefined,
       }}
     >
       <div
@@ -167,13 +171,15 @@ function GridCellView({
             style={{
               fontFamily: fontSans,
               fontSize: 11,
-              color: P.terra,
+              color: P.terraTextStrong,
               background: "transparent",
               border: "none",
-              padding: "2px 0",
+              padding: "2px 4px",
+              borderRadius: 6,
               textAlign: "left",
               cursor: "pointer",
               fontWeight: 600,
+              alignSelf: "start",
             }}
           >
             +{overflow} more
@@ -208,17 +214,12 @@ function OccurrencePill({
         textAlign: "left",
         background: P.surface,
         border: `1px solid ${P.line}`,
-        borderLeft: `3px solid ${
-          occurrence.status === "off"
-            ? "#8a8166"
-            : occurrence.status === "cancelled"
-              ? P.terra
-              : P.sage
-        }`,
+        borderLeft: `3px solid ${statusStripeColor(occurrence.status)}`,
         borderRadius: 6,
         padding: "4px 6px",
         cursor: "pointer",
         fontFamily: fontBody,
+        boxShadow: "0 1px 0 rgba(58, 42, 26, 0.04)",
       }}
     >
       <span

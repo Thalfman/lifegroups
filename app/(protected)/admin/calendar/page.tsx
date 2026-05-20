@@ -43,6 +43,14 @@ const navLinkStyle: React.CSSProperties = {
   border: `1px solid ${P.line}`,
 };
 
+const navLinkActiveStyle: React.CSSProperties = {
+  ...navLinkStyle,
+  color: P.terraTextStrong,
+  background: P.terraSoft,
+  border: `1px solid ${P.terra}`,
+  fontWeight: 600,
+};
+
 export default async function AdminMasterCalendarPage({
   searchParams,
 }: {
@@ -59,6 +67,7 @@ export default async function AdminMasterCalendarPage({
   const todayIso = todayChurchIso();
   const prevMonth = shiftMonthIso(monthIso, -1);
   const nextMonth = shiftMonthIso(monthIso, 1);
+  const isCurrentMonth = monthIso === churchMonthIso();
 
   return (
     <PastoralAppShell
@@ -114,7 +123,11 @@ export default async function AdminMasterCalendarPage({
                 ← {monthLabel(prevMonth)}
               </Link>
             ) : null}
-            <Link href="/admin/calendar" style={navLinkStyle}>
+            <Link
+              href="/admin/calendar"
+              aria-current={isCurrentMonth ? "page" : undefined}
+              style={isCurrentMonth ? navLinkActiveStyle : navLinkStyle}
+            >
               This month
             </Link>
             {nextMonth ? (

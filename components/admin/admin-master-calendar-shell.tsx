@@ -8,6 +8,7 @@ import {
 } from "./admin-master-calendar-grid";
 import { AdminMasterCalendarList } from "./admin-master-calendar-list";
 import { AdminMasterCalendarDrawer } from "./admin-master-calendar-drawer";
+import { AdminCalendarLegend } from "./admin-calendar-legend";
 import {
   WEEKDAY_HEADERS,
   monthBounds,
@@ -154,18 +155,23 @@ export function AdminMasterCalendarShell({
         onReset={resetFilters}
         viewMode={viewMode}
         onChangeView={setViewModeManual}
+        filteredCount={filtered.length}
+        totalCount={occurrences.length}
       />
 
       {filtered.length === 0 ? (
-        <EmptyState />
+        <EmptyState hasActiveFilters={hasActiveFilters} />
       ) : viewMode === "month" ? (
-        <AdminMasterCalendarGrid
-          monthIso={monthIso}
-          todayIso={todayIso}
-          occurrences={filtered}
-          onSelect={onSelect}
-          onMoreFromDay={onMoreFromDay}
-        />
+        <>
+          <AdminCalendarLegend />
+          <AdminMasterCalendarGrid
+            monthIso={monthIso}
+            todayIso={todayIso}
+            occurrences={filtered}
+            onSelect={onSelect}
+            onMoreFromDay={onMoreFromDay}
+          />
+        </>
       ) : (
         <AdminMasterCalendarList
           occurrences={filtered}
@@ -197,7 +203,7 @@ function ViewToggle({
     fontFamily: fontSans,
     fontSize: 12,
     fontWeight: active ? 700 : 500,
-    color: active ? P.surface : P.ink2,
+    color: active ? P.surface : P.ink3,
     background: active ? P.terra : "transparent",
     border: "none",
     padding: "8px 14px",
@@ -239,7 +245,13 @@ function ViewToggle({
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
+  const primary = hasActiveFilters
+    ? "No group meetings match these filters."
+    : "No group meetings on the calendar for this month.";
+  const secondary = hasActiveFilters
+    ? "Try clearing a filter or pick a different month."
+    : "Try a neighboring month, or check group schedules for OFF weeks.";
   return (
     <div
       style={{
@@ -251,9 +263,13 @@ function EmptyState() {
         fontFamily: fontBody,
         fontSize: 14,
         color: P.ink2,
+        display: "grid",
+        gap: 6,
+        justifyItems: "center",
       }}
     >
-      No group meetings match these filters.
+      <div style={{ fontWeight: 600, color: P.ink }}>{primary}</div>
+      <div style={{ fontSize: 13, color: P.ink3 }}>{secondary}</div>
     </div>
   );
 }
@@ -275,6 +291,8 @@ function FilterBar({
   onReset,
   viewMode,
   onChangeView,
+  filteredCount,
+  totalCount,
 }: {
   groups: MasterCalendarGroupSummary[];
   leaderOptions: MasterCalendarLeader[];
@@ -292,18 +310,25 @@ function FilterBar({
   onReset: () => void;
   viewMode: ViewMode;
   onChangeView: (next: ViewMode) => void;
+  filteredCount: number;
+  totalCount: number;
 }) {
   const groupOptions = useMemo(
     () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
     [groups],
   );
+  // Show the {n}/{m} hint only when filters are active AND there's
+  // something left to show. When filteredCount === 0 the EmptyState
+  // carries the message; doubling up reads as noise.
+  const showHint = hasActiveFilters && filteredCount > 0;
   return (
     <section
       style={{
         background: P.surface,
         border: `1px solid ${P.line}`,
+        borderLeft: `3px solid ${P.terra}`,
         borderRadius: 14,
-        padding: "12px 14px",
+        padding: "12px 14px 12px 17px",
         display: "grid",
         gap: 10,
       }}
@@ -319,15 +344,36 @@ function FilterBar({
       >
         <div
           style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
-          Filters
+          <div
+            style={{
+              fontFamily: fontSans,
+              fontSize: 11,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 600,
+            }}
+          >
+            Filters
+          </div>
+          {showHint ? (
+            <div
+              aria-live="polite"
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink3,
+              }}
+            >
+              {filteredCount} of {totalCount} shown
+            </div>
+          ) : null}
         </div>
         <div
           style={{

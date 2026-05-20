@@ -142,12 +142,12 @@ function DrawerBody({
             background: "transparent",
             border: `1px solid ${P.line}`,
             borderRadius: 999,
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             cursor: "pointer",
             color: P.ink2,
             fontFamily: fontSans,
-            fontSize: 14,
+            fontSize: 18,
             lineHeight: 1,
           }}
         >
@@ -219,6 +219,17 @@ function Field({
   value: string;
   multiline?: boolean;
 }) {
+  // Multiline values (today: Description only) read as quoted notes —
+  // 2px line on the left, italic body, slightly muted ink. Keeps prose
+  // visually distinct from short factual fields above it.
+  const multilineStyle = multiline
+    ? {
+        borderLeft: `2px solid ${P.line}`,
+        paddingLeft: 10,
+        color: P.ink2,
+        fontStyle: "italic" as const,
+      }
+    : {};
   return (
     <div style={{ display: "grid", gap: 3 }}>
       <span
@@ -240,6 +251,7 @@ function Field({
           color: P.ink,
           lineHeight: 1.45,
           whiteSpace: multiline ? "pre-wrap" : "normal",
+          ...multilineStyle,
         }}
       >
         {value}
