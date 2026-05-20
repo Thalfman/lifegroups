@@ -1,12 +1,9 @@
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader } from "@/components/lg/PageHeader";
+import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import { buildWeekOptions, validateWeekParam } from "@/lib/admin/check-ins";
-import { navItemsForRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +14,7 @@ export default async function AdminPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const session = await requireAdmin();
+  await requireAdmin();
   const params = (await searchParams) ?? {};
   const selectedWeek = validateWeekParam(params.week);
   const weekOptions = buildWeekOptions(new Date());
@@ -28,30 +25,13 @@ export default async function AdminPage({
   });
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="This week"
-      title="This week"
-      lede="Supporting Life Groups as they tell and show the story of Jesus. See what needs attention this week."
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <div style={{ display: "grid", gap: 14 }}>
-        <AdminDashboard data={data} weekOptions={weekOptions} />
-      </div>
-    </PastoralAppShell>
+    <>
+      <PageHeader
+        eyebrow="This week"
+        title="This week"
+        lede="Supporting Life Groups as they tell and show the story of Jesus. See what needs attention this week."
+      />
+      <DashboardClient data={data} weekOptions={weekOptions} />
+    </>
   );
 }

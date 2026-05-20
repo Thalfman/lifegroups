@@ -1,12 +1,9 @@
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import {
   GroupManagementShell,
   type GroupManagementData,
 } from "@/components/admin/group-management-shell";
 import { requireAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchActiveMemberships,
@@ -95,32 +92,20 @@ async function loadData(): Promise<GroupManagementData> {
 }
 
 export default async function AdminGroupsPage() {
-  const session = await requireAdmin();
+  await requireAdmin();
   const data = await loadData();
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Groups"
-      title="Groups"
-      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it. Archived groups stay in the record and can be restored."
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <GroupManagementShell data={data} />
-    </PastoralAppShell>
+    <>
+      <PageHeader
+        eyebrow="Groups"
+        title="Groups"
+        italic="& lifecycle"
+        lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it. Archived groups stay in the record and can be restored."
+      />
+      <PageBody>
+        <GroupManagementShell data={data} />
+      </PageBody>
+    </>
   );
 }

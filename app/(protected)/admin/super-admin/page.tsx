@@ -1,6 +1,4 @@
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import {
   SuperAdminConsoleShell,
   type SuperAdminConsoleData,
@@ -10,7 +8,6 @@ import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import type { AssignableProfile } from "@/components/admin/forms/role-change-form";
 import type { ChecklistRow } from "@/components/admin/system-status-checklist";
 import { requireSuperAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { testAccountsStatus } from "./test-accounts-actions";
 import {
@@ -310,37 +307,25 @@ export default async function AdminSuperAdminPage() {
   const testAccountsSummary = buildTestAccountsSummary(initialTestAccounts);
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Super admin"
-      title="Super Admin Command Center"
-      lede="Owner and operator control plane for launch readiness, access, diagnostics, test tools, audit, maintenance, and guarded danger actions."
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <SuperAdminConsoleShell
-        data={data}
-        testAccountsSummary={testAccountsSummary}
-        testAccountsPanel={
-          <TestAccountsPanel
-            initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
-            initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
-          />
-        }
+    <>
+      <PageHeader
+        eyebrow="Super admin"
+        title="Command"
+        italic="center"
+        lede="Owner and operator control plane for launch readiness, access, diagnostics, test tools, audit, maintenance, and guarded danger actions."
       />
-    </PastoralAppShell>
+      <PageBody>
+        <SuperAdminConsoleShell
+          data={data}
+          testAccountsSummary={testAccountsSummary}
+          testAccountsPanel={
+            <TestAccountsPanel
+              initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
+              initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
+            />
+          }
+        />
+      </PageBody>
+    </>
   );
 }

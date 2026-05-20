@@ -1,12 +1,9 @@
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import {
   GuestsManagementShell,
   type GuestsManagementData,
 } from "@/components/admin/guests/guests-shell";
 import { requireAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAllGroups,
@@ -63,32 +60,20 @@ async function loadData(): Promise<GuestsManagementData> {
 }
 
 export default async function AdminGuestsPage() {
-  const session = await requireAdmin();
+  await requireAdmin();
   const data = await loadData();
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Guests"
-      title="Guests"
-      lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record."
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <GuestsManagementShell data={data} />
-    </PastoralAppShell>
+    <>
+      <PageHeader
+        eyebrow="Guests"
+        title="Guests"
+        italic="& invitations"
+        lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record."
+      />
+      <PageBody>
+        <GuestsManagementShell data={data} />
+      </PageBody>
+    </>
   );
 }

@@ -49,3 +49,56 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
   }
   return items;
 }
+
+export type AdminNavGroupKey = "top" | "manage" | "shepherd" | "system";
+
+export interface AdminNavItem {
+  href: string;
+  label: string;
+  icon: string;
+}
+
+export interface AdminNavGroup {
+  group: AdminNavGroupKey;
+  label: string;
+  items: AdminNavItem[];
+}
+
+export function adminNavGroups(role: UserRole): AdminNavGroup[] {
+  const groups: AdminNavGroup[] = [
+    {
+      group: "top",
+      label: "",
+      items: [{ href: "/admin", label: "This week", icon: "sun" }],
+    },
+    {
+      group: "manage",
+      label: "Manage",
+      items: [
+        { href: "/admin/people", label: "People", icon: "people" },
+        { href: "/admin/groups", label: "Groups", icon: "groups" },
+        { href: "/admin/check-ins", label: "Check-ins", icon: "check" },
+      ],
+    },
+    {
+      group: "shepherd",
+      label: "Shepherd",
+      items: [
+        { href: "/admin/guests", label: "Guests", icon: "sprout" },
+        { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
+        { href: "/admin/calendar", label: "Calendar", icon: "cal" },
+      ],
+    },
+    {
+      group: "system",
+      label: "System",
+      items: [
+        { href: "/admin/settings", label: "Settings", icon: "cog" },
+        ...(role === "super_admin"
+          ? [{ href: "/admin/super-admin", label: "Super admin", icon: "star" }]
+          : []),
+      ],
+    },
+  ];
+  return groups;
+}

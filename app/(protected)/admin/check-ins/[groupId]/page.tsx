@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { CheckInDetailShell } from "@/components/admin/check-in-detail-shell";
 import { requireAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAdminCheckInDetail,
@@ -55,7 +52,7 @@ export default async function AdminCheckInDetailPage({
   params: Promise<Params>;
   searchParams?: Promise<SearchParams>;
 }) {
-  const session = await requireAdmin();
+  await requireAdmin();
   const { groupId } = await params;
   if (!UUID_RE.test(groupId)) notFound();
 
@@ -70,30 +67,17 @@ export default async function AdminCheckInDetailPage({
   if (!data.errors.group && data.group === null && client) notFound();
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Check-in detail"
-      title={data.group?.name ?? "Group"}
-      titleItalic="this week."
-      lede="Read the leader's full note, see who showed up, and confirm the health pulse for the week."
-      contentMaxWidth={840}
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <CheckInDetailShell data={data} meetingWeek={meetingWeek} />
-    </PastoralAppShell>
+    <>
+      <PageHeader
+        eyebrow="Check-in detail"
+        title={data.group?.name ?? "Group"}
+        italic="this week."
+        lede="Read the leader's full note, see who showed up, and confirm the health pulse for the week."
+        maxWidth={920}
+      />
+      <PageBody maxWidth={920}>
+        <CheckInDetailShell data={data} meetingWeek={meetingWeek} />
+      </PageBody>
+    </>
   );
 }

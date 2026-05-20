@@ -6,6 +6,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        // shadcn token bridge (HSL-driven; kept for existing shadcn parts)
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: "hsl(var(--card))",
@@ -22,6 +23,39 @@ export default {
         "destructive-foreground": "hsl(var(--destructive-foreground))",
         border: "hsl(var(--border))",
         ring: "hsl(var(--ring))",
+        // Warm pastoral palette — direct CSS-var bindings
+        bg: "var(--c-bg)",
+        surface: "var(--c-surface)",
+        surfaceAlt: "var(--c-surfaceAlt)",
+        sidebar: "var(--c-sidebar)",
+        line: "var(--c-line)",
+        lineSoft: "var(--c-lineSoft)",
+        ink: "var(--c-ink)",
+        ink2: "var(--c-ink2)",
+        ink3: "var(--c-ink3)",
+        ink4: "var(--c-ink4)",
+        sage: "var(--c-sage)",
+        sageDeep: "var(--c-sageDeep)",
+        sageSoft: "var(--c-sageSoft)",
+        sageTint: "var(--c-sageTint)",
+        clay: "var(--c-clay)",
+        claySoft: "var(--c-claySoft)",
+        clayTint: "var(--c-clayTint)",
+        amber: "var(--c-amber)",
+        amberSoft: "var(--c-amberSoft)",
+        rose: "var(--c-rose)",
+        roseSoft: "var(--c-roseSoft)",
+        blue: "var(--c-blue)",
+        blueSoft: "var(--c-blueSoft)",
+      },
+      fontFamily: {
+        display: ["var(--font-newsreader)", "Source Serif 4", "Georgia", "serif"],
+        sans: ["var(--font-geist)", "Inter Tight", "-apple-system", "system-ui", "sans-serif"],
+        mono: ["var(--font-jetbrains)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+      },
+      boxShadow: {
+        soft: "0 1px 2px rgba(60, 45, 30, 0.04), 0 4px 14px rgba(60, 45, 30, 0.04)",
+        softLg: "0 2px 4px rgba(60, 45, 30, 0.05), 0 12px 32px rgba(60, 45, 30, 0.08)",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -3,29 +3,73 @@
 @tailwind utilities;
 
 :root {
-  --background: 40 45% 98%;
-  --foreground: 222 30% 16%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 30% 16%;
-  --primary: 154 38% 35%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 41 34% 92%;
-  --secondary-foreground: 222 28% 22%;
-  --muted: 40 25% 94%;
-  --muted-foreground: 220 12% 42%;
-  --accent: 153 25% 89%;
-  --accent-foreground: 155 42% 24%;
-  --destructive: 0 68% 52%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 40 20% 85%;
-  --ring: 154 38% 35%;
+  /* Warm pastoral palette — surfaces */
+  --c-bg: oklch(0.982 0.008 82);
+  --c-surface: oklch(0.995 0.004 80);
+  --c-surfaceAlt: oklch(0.965 0.012 80);
+  --c-sidebar: oklch(0.945 0.013 85);
+  --c-line: oklch(0.89 0.014 82);
+  --c-lineSoft: oklch(0.93 0.012 82);
+
+  /* Ink — warm-toned blacks for text */
+  --c-ink: oklch(0.22 0.02 60);
+  --c-ink2: oklch(0.42 0.018 60);
+  --c-ink3: oklch(0.58 0.015 60);
+  --c-ink4: oklch(0.72 0.012 60);
+
+  /* Accents */
+  --c-sage: oklch(0.48 0.07 148);
+  --c-sageDeep: oklch(0.38 0.07 148);
+  --c-sageSoft: oklch(0.93 0.04 145);
+  --c-sageTint: oklch(0.965 0.022 145);
+  --c-clay: oklch(0.58 0.12 48);
+  --c-claySoft: oklch(0.93 0.045 50);
+  --c-clayTint: oklch(0.965 0.022 50);
+
+  /* Status */
+  --c-amber: oklch(0.7 0.13 80);
+  --c-amberSoft: oklch(0.94 0.045 85);
+  --c-rose: oklch(0.58 0.13 25);
+  --c-roseSoft: oklch(0.94 0.04 25);
+  --c-blue: oklch(0.55 0.08 235);
+  --c-blueSoft: oklch(0.94 0.025 235);
+
+  /* Shadows */
+  --c-shadow: 0 1px 2px rgba(60, 45, 30, 0.04), 0 4px 14px rgba(60, 45, 30, 0.04);
+  --c-shadowLg: 0 2px 4px rgba(60, 45, 30, 0.05), 0 12px 32px rgba(60, 45, 30, 0.08);
+
+  /* Density */
+  --space-card: 20px;
+  --space-row: 14px;
+  --space-gap: 14px;
+  --font-scale: 1;
+
+  /* Fonts */
+  --font-display: var(--font-newsreader), "Source Serif 4", Georgia, serif;
+  --font-body: var(--font-geist), "Inter Tight", -apple-system, system-ui, sans-serif;
+  --font-sans: var(--font-geist), "Inter Tight", -apple-system, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* shadcn token bridge — re-pointed at the new palette so existing
+     shadcn components (and the legacy leader chrome) blend in. */
+  --background: 82 30% 96%;
+  --foreground: 30 16% 18%;
+  --card: 80 30% 99%;
+  --card-foreground: 30 16% 18%;
+  --primary: 148 28% 38%;
+  --primary-foreground: 60 30% 98%;
+  --secondary: 80 20% 93%;
+  --secondary-foreground: 30 16% 22%;
+  --muted: 80 20% 95%;
+  --muted-foreground: 60 8% 42%;
+  --accent: 145 22% 92%;
+  --accent-foreground: 148 30% 28%;
+  --destructive: 25 65% 50%;
+  --destructive-foreground: 60 30% 98%;
+  --border: 82 18% 84%;
+  --ring: 148 28% 38%;
 
   --radius: 0.875rem;
-
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-display: var(--font-inter), system-ui, sans-serif;
-  --font-body: var(--font-inter), system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 @layer base {
@@ -39,7 +83,11 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1,
@@ -194,6 +242,44 @@
     white-space: nowrap !important;
   }
 
+  /* New LG shell: sidebar collapses to drawer on mobile */
+  .lg-shell-sidebar {
+    display: none !important;
+  }
+  .lg-shell-main {
+    grid-column: 1 / -1 !important;
+  }
+  .lg-shell-mobile-trigger {
+    display: inline-flex !important;
+  }
+  .lg-shell-pageheader {
+    padding: 22px 16px 16px !important;
+  }
+  .lg-shell-pagebody {
+    padding: 0 16px 32px !important;
+  }
+  .lg-shell-pageheader h1 {
+    font-size: calc(30px * var(--font-scale)) !important;
+  }
+  .lg-shell-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .lg-shell-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .lg-shell-grid-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .lg-shell-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .lg-shell-grid-7 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .lg-shell-topbar {
+    padding: 0 16px !important;
+  }
+
   /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */
   .lg-m-input {
     width: 100% !important;
@@ -267,5 +353,12 @@
   .lg-m-master-calendar-filters > * {
     width: 100% !important;
     align-self: stretch !important;
+  }
+}
+
+/* Desktop: hide the mobile trigger button */
+@media (min-width: 768px) {
+  .lg-shell-mobile-trigger {
+    display: none !important;
   }
 }
