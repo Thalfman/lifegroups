@@ -123,7 +123,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {anyError ? (
         <div role="alert" style={alertStyle}>
           One or more reads failed. The page shows what we did get; retry in a
-          moment or check the Supabase connection.
+          moment or check the database connection.
         </div>
       ) : null}
 

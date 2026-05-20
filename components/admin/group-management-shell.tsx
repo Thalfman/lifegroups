@@ -50,7 +50,7 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
       {anyError ? (
         <div role="alert" style={alertStyle}>
           One or more reads failed. The page below shows what we did get; retry
-          in a moment or check the Supabase connection.
+          in a moment or check the database connection.
         </div>
       ) : null}
 

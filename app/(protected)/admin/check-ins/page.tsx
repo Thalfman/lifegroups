@@ -26,7 +26,7 @@ const EMPTY_DATA: (meetingWeek: string) => WeeklyReviewData = (meetingWeek) => (
     needsFollowUp: 0,
   },
   errors: {
-    groups: "Supabase is not configured in this environment.",
+    groups: "The database is not configured in this environment.",
     leaders: null,
     profiles: null,
     sessions: null,

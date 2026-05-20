@@ -272,7 +272,7 @@ export function CheckInDetailShell({
       {anyError ? (
         <ErrorBanner>
           Some sections couldn&rsquo;t load. The page below shows what we did
-          get; retry in a moment or check the Supabase connection.
+          get; retry in a moment or check the database connection.
         </ErrorBanner>
       ) : null}
 

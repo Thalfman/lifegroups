@@ -25,11 +25,11 @@ const EMPTY_DATA: AdminFollowUpsData = {
   guests: [],
   assigneeProfiles: [],
   errors: {
-    followUps: "Supabase is not configured in this environment.",
-    groups: "Supabase is not configured in this environment.",
-    members: "Supabase is not configured in this environment.",
-    guests: "Supabase is not configured in this environment.",
-    profiles: "Supabase is not configured in this environment.",
+    followUps: "The database is not configured in this environment.",
+    groups: "The database is not configured in this environment.",
+    members: "The database is not configured in this environment.",
+    guests: "The database is not configured in this environment.",
+    profiles: "The database is not configured in this environment.",
   },
 };
 

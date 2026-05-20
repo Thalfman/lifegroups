@@ -64,7 +64,7 @@ async function callEdgeFn(
   if (!auth.ok) return actionFail([auth.error]);
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Supabase is not configured on this deployment."]);
+  if (!client) return actionFail(["The database is not configured on this deployment."]);
 
   const { data, error } = await client.functions.invoke<TestAccountsResponse>(
     "manage-test-auth-users",

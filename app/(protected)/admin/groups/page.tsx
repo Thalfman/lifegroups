@@ -32,12 +32,12 @@ const EMPTY_DATA: GroupManagementData = {
   metricDefaults: BUILT_IN_METRIC_DEFAULTS,
   groupMetricSettings: [],
   errors: {
-    groups: "Supabase is not configured in this environment.",
-    leaders: "Supabase is not configured in this environment.",
-    profiles: "Supabase is not configured in this environment.",
-    memberships: "Supabase is not configured in this environment.",
-    sessions: "Supabase is not configured in this environment.",
-    settings: "Supabase is not configured in this environment.",
+    groups: "The database is not configured in this environment.",
+    leaders: "The database is not configured in this environment.",
+    profiles: "The database is not configured in this environment.",
+    memberships: "The database is not configured in this environment.",
+    sessions: "The database is not configured in this environment.",
+    settings: "The database is not configured in this environment.",
   },
 };
 

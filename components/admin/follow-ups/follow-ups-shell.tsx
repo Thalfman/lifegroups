@@ -183,7 +183,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
       {anyError ? (
         <div role="alert" style={alertStyle}>
           One or more reads failed. The page below shows what we did get; retry in
-          a moment or check the Supabase connection.
+          a moment or check the database connection.
           {errors.followUps ? (
             <p style={errorTextStyle}>{errors.followUps}</p>
           ) : null}
