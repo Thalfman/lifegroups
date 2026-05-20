@@ -123,6 +123,12 @@
   }
 }
 
+/* Sign-in form: field container shows a sage border when its input is focused.
+   Inline styles can't express :focus-within, so it lives here. */
+.lg-login-field:focus-within {
+  border-color: #6a7d4f;
+}
+
 /* ---------------------------------------------------------------------------
    Mobile UX overrides (≤ 767px)
    - Plain CSS classes (no Tailwind responsive variants) so they can attach to

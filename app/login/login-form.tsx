@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { ArrowRight, Heart } from "lucide-react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { PButton } from "@/components/pastoral/button";
 import { loginAction, type LoginFormState } from "./actions";
 
 const INITIAL_STATE: LoginFormState = {};
@@ -28,6 +29,17 @@ const inputStyle = {
   fontSize: 14,
   color: P.ink,
   padding: 0,
+};
+
+const fieldShellStyle = {
+  display: "flex" as const,
+  alignItems: "center" as const,
+  gap: 8,
+  padding: "11px 13px",
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  borderRadius: 9,
+  transition: "border-color .15s",
 };
 
 export function LoginForm({ next }: { next: string | null }) {
@@ -57,22 +69,11 @@ export function LoginForm({ next }: { next: string | null }) {
         </p>
       ) : null}
 
-      <label style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <label htmlFor="email" style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         <span style={labelStyle}>Email</span>
-        <div
-          className="lg-login-field"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "11px 13px",
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 9,
-            transition: "border-color .15s",
-          }}
-        >
+        <div className="lg-login-field" style={fieldShellStyle}>
           <input
+            id="email"
             name="email"
             type="email"
             inputMode="email"
@@ -88,22 +89,11 @@ export function LoginForm({ next }: { next: string | null }) {
         </div>
       </label>
 
-      <label style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <label htmlFor="password" style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         <span style={labelStyle}>Password</span>
-        <div
-          className="lg-login-field"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "11px 13px",
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 9,
-            transition: "border-color .15s",
-          }}
-        >
+        <div className="lg-login-field" style={fieldShellStyle}>
           <input
+            id="password"
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
@@ -157,34 +147,27 @@ export function LoginForm({ next }: { next: string | null }) {
         </Link>
       </div>
 
-      <button
+      <PButton
         type="submit"
         disabled={pending}
         style={{
           marginTop: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
           width: "100%",
           padding: "13px 20px",
           background: P.sage,
-          color: "#fdfcf9",
+          color: P.surface,
           border: `1px solid ${P.sage}`,
           borderRadius: 9,
-          fontFamily: fontSans,
           fontSize: 14,
           fontWeight: 600,
           letterSpacing: 0.2,
-          cursor: pending ? "not-allowed" : "pointer",
-          opacity: pending ? 0.65 : 1,
           boxShadow:
             "0 1px 2px rgba(60,45,30,0.04), 0 4px 14px rgba(60,45,30,0.04)",
         }}
       >
         {pending ? "Signing in…" : "Sign in"}
         {pending ? null : <ArrowRight size={15} strokeWidth={1.8} />}
-      </button>
+      </PButton>
 
       <div
         style={{
@@ -227,12 +210,6 @@ export function LoginForm({ next }: { next: string | null }) {
           .
         </div>
       </div>
-
-      <style>{`
-        .lg-login-field:focus-within {
-          border-color: ${P.sage} !important;
-        }
-      `}</style>
     </form>
   );
 }
