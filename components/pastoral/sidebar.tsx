@@ -26,7 +26,9 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Persona } from "@/lib/auth/roles";
+import { UserPill } from "@/components/auth/user-pill";
+import { LogoutButton } from "@/components/auth/logout-button";
+import type { Persona, UserRole } from "@/lib/auth/roles";
 
 export type SidebarItem = {
   key: string;
@@ -428,17 +430,54 @@ function NavList({
   );
 }
 
+type SidebarUser = { name: string; email: string | null; role: UserRole };
+
 type SidebarContentProps = {
   persona: Persona;
   availablePersonas: Persona[];
   items: SidebarItem[];
+  currentUser?: SidebarUser;
+  // When `true`, the user identity + sign-out footer renders below the
+  // Verse card. We pass `true` in the mobile drawer so users on small
+  // screens (where the topbar's UserPill + LogoutButton are hidden via
+  // `lg-m-userpill-text` / `lg-m-signout-hide`) still have a sign-out
+  // path. Desktop sidebar leaves this off so the topbar stays the single
+  // visible identity surface.
+  showUserBlock?: boolean;
   onNavigate?: () => void;
 };
+
+function SidebarUserBlock({ user }: { user: SidebarUser }) {
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 12,
+        borderRadius: 10,
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-line)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <UserPill
+        name={user.name}
+        email={user.email}
+        role={user.role}
+        variant="drawer"
+      />
+      <LogoutButton className="" />
+    </div>
+  );
+}
 
 function SidebarContent({
   persona,
   availablePersonas,
   items,
+  currentUser,
+  showUserBlock,
   onNavigate,
 }: SidebarContentProps) {
   const pathname = usePathname();
@@ -457,6 +496,9 @@ function SidebarContent({
       <NavList items={items} activeHref={activeHref} onNavigate={onNavigate} />
       <div style={{ marginTop: "auto", paddingTop: 16 }}>
         <Verse />
+        {showUserBlock && currentUser ? (
+          <SidebarUserBlock user={currentUser} />
+        ) : null}
       </div>
     </div>
   );
@@ -545,11 +587,13 @@ export function TopBar({
   persona,
   availablePersonas,
   items,
+  currentUser,
   trailing,
 }: {
   persona: Persona;
   availablePersonas: Persona[];
   items: SidebarItem[];
+  currentUser?: SidebarUser;
   trailing?: ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -647,6 +691,8 @@ export function TopBar({
         persona={persona}
         availablePersonas={availablePersonas}
         items={items}
+        currentUser={currentUser}
+        showUserBlock
       />
     </div>
   );

@@ -116,6 +116,7 @@ export function PastoralAppShell({
           persona={effectivePersona}
           availablePersonas={availablePersonas}
           items={sidebarItems}
+          currentUser={currentUser}
           trailing={trailing}
         />
 
