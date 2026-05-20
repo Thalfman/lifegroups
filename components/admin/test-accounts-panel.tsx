@@ -5,6 +5,7 @@ import { SectionHeader } from "@/components/layout/shell";
 import { PButton } from "@/components/pastoral/button";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
+  testAccountsDiagnose,
   testAccountsDisable,
   testAccountsEnable,
   testAccountsStatus,
@@ -16,7 +17,7 @@ type Props = {
   initialErrors: string[];
 };
 
-type Pending = "enable" | "disable" | "refresh" | null;
+type Pending = "enable" | "disable" | "refresh" | "diagnose" | null;
 
 const STATE_DOT: Record<string, { color: string; label: string }> = {
   exists: { color: P.sage, label: "exists" },
@@ -69,19 +70,21 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
   const [, startTransition] = useTransition();
 
   const run = useCallback(
-    (action: "status" | "enable" | "disable", confirmText: string | null) => {
+    (action: "status" | "enable" | "disable" | "diagnose", confirmText: string | null) => {
       if (confirmText && !window.confirm(confirmText)) return;
-      const tag: Pending = action === "status" ? "refresh" : action;
+      const tag: Pending =
+        action === "status" ? "refresh"
+        : action === "diagnose" ? "diagnose"
+        : action;
       setPending(tag);
       setErrors([]);
       setWarnings([]);
       startTransition(async () => {
         const result =
-          action === "status"
-            ? await testAccountsStatus()
-            : action === "enable"
-              ? await testAccountsEnable()
-              : await testAccountsDisable();
+          action === "status" ? await testAccountsStatus()
+          : action === "enable" ? await testAccountsEnable()
+          : action === "disable" ? await testAccountsDisable()
+          : await testAccountsDiagnose();
         if (result.ok) {
           setStatus(result.value);
           setWarnings(result.value.warnings ?? []);
@@ -112,6 +115,10 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
 
   const handleRefresh = useCallback(() => {
     run("status", null);
+  }, [run]);
+
+  const handleDiagnose = useCallback(() => {
+    run("diagnose", null);
   }, [run]);
 
   return (
@@ -190,6 +197,14 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               {pending === "refresh" ? "Refreshing…" : "Refresh status"}
             </PButton>
             <PButton
+              tone="ghost"
+              size="sm"
+              onClick={handleDiagnose}
+              disabled={pending !== null}
+            >
+              {pending === "diagnose" ? "Diagnosing…" : "Diagnose"}
+            </PButton>
+            <PButton
               tone="solid"
               size="sm"
               onClick={handleEnable}
@@ -259,6 +274,92 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             </tbody>
           </table>
         </div>
+
+        {status?.diagnostics ? (
+          <div
+            role="region"
+            aria-label="Edge Function diagnostics"
+            style={{
+              background: P.surface,
+              border: `1px solid ${P.line}`,
+              borderRadius: 8,
+              padding: "12px 14px",
+              fontFamily: fontSans,
+              fontSize: 13,
+              color: P.ink,
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <strong style={{ fontSize: 13 }}>Edge Function diagnostics</strong>
+            <div style={{ display: "grid", gap: 4, fontFamily: fontSans, fontSize: 12 }}>
+              <div>
+                Caller auth user id:{" "}
+                <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                  {status.diagnostics.callerAuthUserId ?? "(none)"}
+                </code>
+              </div>
+              <div>
+                Profile query succeeded:{" "}
+                <strong>{status.diagnostics.profileLookup.succeeded ? "yes" : "no"}</strong>
+              </div>
+              <div>
+                Profile row count:{" "}
+                <strong>{status.diagnostics.profileLookup.rowCount}</strong>
+              </div>
+              {status.diagnostics.profileLookup.profile ? (
+                <div>
+                  Profile: email=
+                  <code>{status.diagnostics.profileLookup.profile.email ?? "(null)"}</code>
+                  {" "}role=
+                  <code>{status.diagnostics.profileLookup.profile.role ?? "(null)"}</code>
+                  {" "}status=
+                  <code>{status.diagnostics.profileLookup.profile.status ?? "(null)"}</code>
+                </div>
+              ) : null}
+              {status.diagnostics.profileLookup.postgrestError ? (
+                <div
+                  style={{
+                    background: P.terraSoft,
+                    border: `1px solid ${P.terra}`,
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                    color: "#7d3621",
+                    display: "grid",
+                    gap: 2,
+                  }}
+                >
+                  <div><strong>PostgREST error</strong></div>
+                  {status.diagnostics.profileLookup.postgrestError.code ? (
+                    <div>code: <code>{status.diagnostics.profileLookup.postgrestError.code}</code></div>
+                  ) : null}
+                  {status.diagnostics.profileLookup.postgrestError.message ? (
+                    <div>message: {status.diagnostics.profileLookup.postgrestError.message}</div>
+                  ) : null}
+                  {status.diagnostics.profileLookup.postgrestError.details ? (
+                    <div>details: {status.diagnostics.profileLookup.postgrestError.details}</div>
+                  ) : null}
+                  {status.diagnostics.profileLookup.postgrestError.hint ? (
+                    <div>hint: {status.diagnostics.profileLookup.postgrestError.hint}</div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <strong style={{ fontSize: 12 }}>Env presence (names only)</strong>
+              <ul style={{ margin: "4px 0 0 18px", padding: 0, fontFamily: fontSans, fontSize: 12 }}>
+                {Object.entries(status.diagnostics.envPresent).map(([name, present]) => (
+                  <li key={name}>
+                    <code>{name}</code>:{" "}
+                    <span style={{ color: present ? P.sage : P.terra }}>
+                      {present ? "set" : "missing"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : null}
 
         {warnings.length > 0 ? (
           <div
