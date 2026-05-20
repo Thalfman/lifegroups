@@ -293,6 +293,10 @@ function FilterBar({
   viewMode: ViewMode;
   onChangeView: (next: ViewMode) => void;
 }) {
+  const groupOptions = useMemo(
+    () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
+    [groups],
+  );
   return (
     <section
       style={{
@@ -351,7 +355,7 @@ function FilterBar({
         }}
       >
         <GroupsDetailsField
-          options={groups.map((g) => ({ value: g.groupId, label: g.groupName }))}
+          options={groupOptions}
           value={groupFilter}
           onChange={setGroupFilter}
         />
@@ -415,18 +419,17 @@ function GroupsDetailsField({
     >
       <summary
         style={{
+          display: "list-item",
           cursor: "pointer",
           padding: "2px 0",
         }}
       >
-        <span
+        <div
           style={{
-            display: "inline-flex",
+            display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             gap: 8,
-            width: "calc(100% - 1.2em)",
-            verticalAlign: "middle",
           }}
         >
           <span
@@ -454,7 +457,7 @@ function GroupsDetailsField({
           >
             {summaryRight}
           </span>
-        </span>
+        </div>
       </summary>
       <div
         style={{
