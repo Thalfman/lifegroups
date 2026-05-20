@@ -152,9 +152,9 @@ export function AdminMasterCalendarShell({
         setLeaderFilter={setLeaderFilter}
         hasActiveFilters={hasActiveFilters}
         onReset={resetFilters}
+        viewMode={viewMode}
+        onChangeView={setViewModeManual}
       />
-
-      <ViewToggle viewMode={viewMode} onChange={setViewModeManual} />
 
       {filtered.length === 0 ? (
         <EmptyState />
@@ -273,6 +273,8 @@ function FilterBar({
   setLeaderFilter,
   hasActiveFilters,
   onReset,
+  viewMode,
+  onChangeView,
 }: {
   groups: MasterCalendarGroupSummary[];
   leaderOptions: MasterCalendarLeader[];
@@ -288,6 +290,8 @@ function FilterBar({
   setLeaderFilter: (next: string) => void;
   hasActiveFilters: boolean;
   onReset: () => void;
+  viewMode: ViewMode;
+  onChangeView: (next: ViewMode) => void;
 }) {
   return (
     <section
@@ -295,9 +299,9 @@ function FilterBar({
         background: P.surface,
         border: `1px solid ${P.line}`,
         borderRadius: 14,
-        padding: "14px 16px",
+        padding: "12px 14px",
         display: "grid",
-        gap: 12,
+        gap: 10,
       }}
     >
       <div
@@ -321,11 +325,21 @@ function FilterBar({
         >
           Filters
         </div>
-        {hasActiveFilters ? (
-          <PButton type="button" onClick={onReset} tone="ghost" size="sm">
-            Reset filters
-          </PButton>
-        ) : null}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          {hasActiveFilters ? (
+            <PButton type="button" onClick={onReset} tone="ghost" size="sm">
+              Reset filters
+            </PButton>
+          ) : null}
+          <ViewToggle viewMode={viewMode} onChange={onChangeView} />
+        </div>
       </div>
       <div
         className="lg-m-master-calendar-filters"
@@ -333,10 +347,10 @@ function FilterBar({
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 10,
+          alignItems: "start",
         }}
       >
-        <MultiCheckboxField
-          label="Group"
+        <GroupsDetailsField
           options={groups.map((g) => ({ value: g.groupId, label: g.groupName }))}
           value={groupFilter}
           onChange={setGroupFilter}
@@ -376,6 +390,114 @@ function FilterBar({
   );
 }
 
+function GroupsDetailsField({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const count = value.length;
+  const summaryRight = count === 0 ? "All" : `${count} selected`;
+  return (
+    <details
+      style={{
+        border: `1px solid ${P.line2}`,
+        borderRadius: 10,
+        background: P.bg,
+        padding: "6px 10px",
+        alignSelf: "start",
+        margin: 0,
+      }}
+    >
+      <summary
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+          listStyle: "revert",
+          padding: "2px 0",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: fontSans,
+            fontSize: 10,
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            color: P.ink3,
+            fontWeight: 700,
+          }}
+        >
+          Group
+        </span>
+        <span
+          style={{
+            fontFamily: fontBody,
+            fontSize: 11,
+            color: count > 0 ? P.terra : P.ink3,
+            background: count > 0 ? P.terraSoft : "transparent",
+            border: `1px solid ${count > 0 ? P.terra : P.line}`,
+            padding: "1px 8px",
+            borderRadius: 999,
+          }}
+        >
+          {summaryRight}
+        </span>
+      </summary>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          paddingTop: 8,
+          maxHeight: 220,
+          overflowY: "auto",
+          paddingRight: 2,
+        }}
+      >
+        {options.map((opt) => {
+          const checked = value.includes(opt.value);
+          return (
+            <label
+              key={opt.value}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 999,
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: checked ? P.terra : P.ink2,
+                background: checked ? P.terraSoft : P.surface,
+                border: `1px solid ${checked ? P.terra : P.line}`,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  if (e.target.checked) onChange([...value, opt.value]);
+                  else onChange(value.filter((v) => v !== opt.value));
+                }}
+                style={{ accentColor: P.terra, margin: 0 }}
+              />
+              {opt.label}
+            </label>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 function MultiCheckboxField<V extends string | number>({
   label,
   options,
@@ -392,9 +514,10 @@ function MultiCheckboxField<V extends string | number>({
       style={{
         border: `1px solid ${P.line2}`,
         borderRadius: 10,
-        padding: "8px 10px",
+        padding: "6px 10px",
         margin: 0,
         background: P.bg,
+        alignSelf: "start",
       }}
     >
       <legend
@@ -416,6 +539,9 @@ function MultiCheckboxField<V extends string | number>({
           flexWrap: "wrap",
           gap: 6,
           paddingTop: 4,
+          maxHeight: 96,
+          overflowY: "auto",
+          paddingRight: 2,
         }}
       >
         {options.map((opt) => {
@@ -472,10 +598,11 @@ function SelectField({
       style={{
         border: `1px solid ${P.line2}`,
         borderRadius: 10,
-        padding: "8px 10px",
+        padding: "6px 10px",
         background: P.bg,
         display: "grid",
         gap: 4,
+        alignSelf: "start",
       }}
     >
       <div
