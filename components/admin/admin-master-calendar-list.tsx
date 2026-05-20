@@ -169,9 +169,9 @@ function OccurrenceCard({
             <PBadge tone="healthy">{typeLabel}</PBadge>
           )}
           {clock ? <span>{clock}</span> : null}
-          {occurrence.leaderNames.length > 0 ? (
+          {occurrence.leaders.length > 0 ? (
             <span style={{ color: P.ink3 }}>
-              · {occurrence.leaderNames.join(", ")}
+              · {occurrence.leaders.map((l) => l.name).join(", ")}
             </span>
           ) : null}
         </div>

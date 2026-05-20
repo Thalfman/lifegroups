@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { loadMasterCalendar } from "@/lib/admin/master-calendar";
 import {
   churchMonthIso,
+  monthBounds,
   monthLabel,
   shiftMonthIso,
   todayChurchIso,
@@ -20,10 +21,16 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = { month?: string | string[] };
 
+// Tight month validation: a YYYY-MM string is only accepted when it
+// also resolves to valid month bounds. This rejects out-of-range
+// inputs like `?month=2026-13` that the regex alone would let through
+// and that would otherwise render an empty calendar with a bogus
+// month label.
 function pickMonthParam(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (typeof raw !== "string") return null;
-  return /^\d{4}-\d{2}$/.test(raw) ? raw : null;
+  if (!/^\d{4}-\d{2}$/.test(raw)) return null;
+  return monthBounds(raw) ? raw : null;
 }
 
 const navLinkStyle: React.CSSProperties = {
@@ -123,7 +130,7 @@ export default async function AdminMasterCalendarPage({
           todayIso={todayIso}
           occurrences={data.occurrences}
           groups={data.groups}
-          leaderNamesUnique={data.leaderNamesUnique}
+          leaderOptions={data.leaderOptions}
         />
       </div>
     </PastoralAppShell>

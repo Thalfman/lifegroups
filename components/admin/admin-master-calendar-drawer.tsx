@@ -177,8 +177,8 @@ function DrawerBody({
         <Field
           label="Leader / co-leader"
           value={
-            occurrence.leaderNames.length > 0
-              ? occurrence.leaderNames.join(", ")
+            occurrence.leaders.length > 0
+              ? occurrence.leaders.map((l) => l.name).join(", ")
               : "Unassigned"
           }
         />

@@ -21,6 +21,7 @@ import {
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   MasterCalendarGroupSummary,
+  MasterCalendarLeader,
   MasterOccurrence,
 } from "@/lib/admin/master-calendar";
 import type {
@@ -36,23 +37,18 @@ const ALL_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
   { value: "cancelled", label: friendlyEventTypeLabel("cancelled") },
 ];
 
-function utcWeekdayIndex(iso: string): number {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return d.getUTCDay();
-}
-
 export function AdminMasterCalendarShell({
   monthIso,
   todayIso,
   occurrences,
   groups,
-  leaderNamesUnique,
+  leaderOptions,
 }: {
   monthIso: string;
   todayIso: string;
   occurrences: MasterOccurrence[];
   groups: MasterCalendarGroupSummary[];
-  leaderNamesUnique: string[];
+  leaderOptions: MasterCalendarLeader[];
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const userToggledRef = useRef(false);
@@ -85,6 +81,9 @@ export function AdminMasterCalendarShell({
     [],
   );
   const [dayFilter, setDayFilter] = useState<number[]>([]); // 0=Sun..6=Sat
+  // Leader filter keyed on profile_id so two profiles with the same
+  // display name don't collapse into one option (and so picking one
+  // doesn't over-match the other).
   const [leaderFilter, setLeaderFilter] = useState<string>("");
 
   // Selected occurrence for the drawer. We use a composite key
@@ -98,8 +97,9 @@ export function AdminMasterCalendarShell({
       if (groupFilter.length > 0 && !groupFilter.includes(o.groupId)) return false;
       if (typeFilter.length > 0 && !typeFilter.includes(o.eventType)) return false;
       if (statusFilter.length > 0 && !statusFilter.includes(o.status)) return false;
-      if (dayFilter.length > 0 && !dayFilter.includes(utcWeekdayIndex(o.date))) return false;
-      if (leaderFilter && !o.leaderNames.includes(leaderFilter)) return false;
+      if (dayFilter.length > 0 && !dayFilter.includes(o.weekdayIndex)) return false;
+      if (leaderFilter && !o.leaders.some((l) => l.profileId === leaderFilter))
+        return false;
       return true;
     });
   }, [occurrences, groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter]);
@@ -140,7 +140,7 @@ export function AdminMasterCalendarShell({
     <div style={{ display: "grid", gap: 16 }}>
       <FilterBar
         groups={groups}
-        leaderNamesUnique={leaderNamesUnique}
+        leaderOptions={leaderOptions}
         groupFilter={groupFilter}
         setGroupFilter={setGroupFilter}
         typeFilter={typeFilter}
@@ -261,7 +261,7 @@ function EmptyState() {
 
 function FilterBar({
   groups,
-  leaderNamesUnique,
+  leaderOptions,
   groupFilter,
   setGroupFilter,
   typeFilter,
@@ -276,7 +276,7 @@ function FilterBar({
   onReset,
 }: {
   groups: MasterCalendarGroupSummary[];
-  leaderNamesUnique: string[];
+  leaderOptions: MasterCalendarLeader[];
   groupFilter: string[];
   setGroupFilter: (next: string[]) => void;
   typeFilter: GroupCalendarEventType[];
@@ -369,7 +369,10 @@ function FilterBar({
           onChange={setLeaderFilter}
           options={[
             { value: "", label: "All leaders" },
-            ...leaderNamesUnique.map((n) => ({ value: n, label: n })),
+            ...leaderOptions.map((l) => ({
+              value: l.profileId,
+              label: l.name,
+            })),
           ]}
         />
       </div>

@@ -29,6 +29,14 @@ import type {
   MeetingWeekParity,
 } from "@/types/enums";
 
+// Leader identity carries both profile_id (stable filter key) and the
+// rendered display name. Two leaders with the same full_name remain
+// distinct because we key on profileId, not name.
+export type MasterCalendarLeader = {
+  profileId: string;
+  name: string;
+};
+
 // Strict shape: only fields the calendar UI renders. We do not surface
 // admin_notes (groups), admin_private_note (follow_ups, irrelevant
 // here), or any other admin-only fields.
@@ -40,11 +48,12 @@ export type MasterCalendarGroupSummary = {
   meetingTime: string | null;
   meetingFrequency: MeetingFrequency;
   meetingWeekParity: MeetingWeekParity | null;
-  leaderNames: string[];
+  leaders: MasterCalendarLeader[];
 };
 
 export type MasterOccurrence = MasterCalendarGroupSummary & {
   date: string; // YYYY-MM-DD
+  weekdayIndex: number; // 0=Sun..6=Sat, derived from `date` (UTC)
   inheritedMeetingTime: string | null;
   eventType: GroupCalendarEventType;
   status: GroupCalendarEventStatus;
@@ -58,8 +67,14 @@ export type MasterOccurrence = MasterCalendarGroupSummary & {
 export type MasterCalendarData = {
   occurrences: MasterOccurrence[];
   groups: MasterCalendarGroupSummary[];
-  leaderNamesUnique: string[];
+  // Unique leaders across all visible groups, deduped by profileId.
+  // Two profiles sharing a display name remain distinct entries.
+  leaderOptions: MasterCalendarLeader[];
 };
+
+function weekdayIndexFromIso(iso: string): number {
+  return new Date(`${iso}T00:00:00Z`).getUTCDay();
+}
 
 export async function loadMasterCalendar(
   client: AppSupabaseClient,
@@ -67,7 +82,7 @@ export async function loadMasterCalendar(
 ): Promise<MasterCalendarData> {
   const bounds = monthBounds(monthIso);
   if (!bounds) {
-    return { occurrences: [], groups: [], leaderNamesUnique: [] };
+    return { occurrences: [], groups: [], leaderOptions: [] };
   }
 
   const [groupsResult, leadersResult, profilesResult] = await Promise.all([
@@ -86,7 +101,7 @@ export async function loadMasterCalendar(
     (g) => g.lifecycle_status !== "closed",
   );
   if (visibleGroups.length === 0) {
-    return { occurrences: [], groups: [], leaderNamesUnique: [] };
+    return { occurrences: [], groups: [], leaderOptions: [] };
   }
 
   const profileNameById = new Map<string, string>();
@@ -95,14 +110,20 @@ export async function loadMasterCalendar(
     profileNameById.set(p.id, display);
   }
 
-  const leadersByGroup = new Map<string, string[]>();
+  // Dedupe assignments by profile_id so two distinct profiles with the
+  // same display name remain separate entries. A group can list the
+  // same profile only once even if there are multiple active rows.
+  const leadersByGroup = new Map<string, Map<string, MasterCalendarLeader>>();
   for (const row of leadersResult.data ?? []) {
     if (!row.active) continue;
     if (row.role !== "leader" && row.role !== "co_leader") continue;
     const name = profileNameById.get(row.profile_id);
     if (!name) continue;
-    const bucket = leadersByGroup.get(row.group_id) ?? [];
-    if (!bucket.includes(name)) bucket.push(name);
+    const bucket =
+      leadersByGroup.get(row.group_id) ?? new Map<string, MasterCalendarLeader>();
+    if (!bucket.has(row.profile_id)) {
+      bucket.set(row.profile_id, { profileId: row.profile_id, name });
+    }
     leadersByGroup.set(row.group_id, bucket);
   }
 
@@ -130,31 +151,32 @@ export async function loadMasterCalendar(
       meetingTime: g.meeting_time,
       meetingFrequency: g.meeting_frequency,
       meetingWeekParity: g.meeting_week_parity,
-      leaderNames: (leadersByGroup.get(g.id) ?? [])
-        .slice()
-        .sort((a, b) => a.localeCompare(b)),
+      leaders: Array.from((leadersByGroup.get(g.id) ?? new Map()).values()).sort(
+        (a, b) => a.name.localeCompare(b.name),
+      ),
     }),
   );
 
+  // Iterate groupSummaries directly (O(N) total over groups) instead of
+  // looking each summary up by id (which would be O(N^2)).
   const occurrences: MasterOccurrence[] = [];
-  for (const group of visibleGroups) {
-    const summary = groupSummaries.find((s) => s.groupId === group.id);
-    if (!summary) continue;
+  for (const summary of groupSummaries) {
     const generated = generateMonthOccurrences(
       {
-        meetingDay: group.meeting_day,
-        meetingTime: group.meeting_time,
-        meetingFrequency: group.meeting_frequency,
-        meetingWeekParity: group.meeting_week_parity,
+        meetingDay: summary.meetingDay,
+        meetingTime: summary.meetingTime,
+        meetingFrequency: summary.meetingFrequency,
+        meetingWeekParity: summary.meetingWeekParity,
       },
       monthIso,
     );
-    const saved = toSavedOverrides(eventsByGroup.get(group.id) ?? []);
-    const resolved = mergeOverrides(generated, saved, group.meeting_time);
+    const saved = toSavedOverrides(eventsByGroup.get(summary.groupId) ?? []);
+    const resolved = mergeOverrides(generated, saved, summary.meetingTime);
     for (const r of resolved) {
       occurrences.push({
         ...summary,
         date: r.date,
+        weekdayIndex: weekdayIndexFromIso(r.date),
         inheritedMeetingTime: r.meetingTime,
         eventType: r.eventType,
         status: r.status,
@@ -172,13 +194,24 @@ export async function loadMasterCalendar(
     return a.groupName.localeCompare(b.groupName);
   });
 
-  const leaderNamesUnique = Array.from(
-    new Set(groupSummaries.flatMap((g) => g.leaderNames)),
-  ).sort((a, b) => a.localeCompare(b));
+  // Build the unique leader options list: dedupe by profileId across
+  // every visible group's leader list. Distinct profiles with the same
+  // display name stay as separate entries.
+  const leaderOptionsMap = new Map<string, MasterCalendarLeader>();
+  for (const group of groupSummaries) {
+    for (const l of group.leaders) {
+      if (!leaderOptionsMap.has(l.profileId)) {
+        leaderOptionsMap.set(l.profileId, l);
+      }
+    }
+  }
+  const leaderOptions = Array.from(leaderOptionsMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   return {
     occurrences,
     groups: groupSummaries,
-    leaderNamesUnique,
+    leaderOptions,
   };
 }
