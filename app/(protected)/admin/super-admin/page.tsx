@@ -5,11 +5,13 @@ import {
   SuperAdminConsoleShell,
   type SuperAdminConsoleData,
 } from "@/components/admin/super-admin-console-shell";
+import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import type { AssignableProfile } from "@/components/admin/forms/role-change-form";
 import type { ChecklistRow } from "@/components/admin/system-status-checklist";
 import { requireSuperAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { testAccountsStatus } from "./test-accounts-actions";
 import {
   fetchAllGroupLeaders,
   fetchAllGroups,
@@ -263,6 +265,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
 export default async function AdminSuperAdminPage() {
   const session = await requireSuperAdmin();
   const data = await loadData(session.profile.id);
+  const initialTestAccounts = await testAccountsStatus();
 
   return (
     <PastoralAppShell
@@ -286,7 +289,13 @@ export default async function AdminSuperAdminPage() {
         </>
       }
     >
-      <SuperAdminConsoleShell data={data} />
+      <div style={{ display: "grid", gap: 36 }}>
+        <SuperAdminConsoleShell data={data} />
+        <TestAccountsPanel
+          initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
+          initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
+        />
+      </div>
     </PastoralAppShell>
   );
 }
