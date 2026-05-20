@@ -230,6 +230,107 @@ export function SectionLabel({
   );
 }
 
+// Small colored dot used in operational status rows (test accounts,
+// system status checklist, etc.). Reads the same color tokens as Pill.
+export type StatusDotTone = "sage" | "clay" | "amber" | "rose" | "blue" | "neutral" | "ghost";
+
+const DOT_COLORS: Record<StatusDotTone, string> = {
+  sage: "var(--c-sage)",
+  clay: "var(--c-clay)",
+  amber: "var(--c-amber)",
+  rose: "var(--c-rose)",
+  blue: "var(--c-blue)",
+  neutral: "var(--c-ink3)",
+  ghost: "var(--c-ink4)",
+};
+
+export function StatusDot({
+  tone = "neutral",
+  size = 8,
+  style,
+}: {
+  tone?: StatusDotTone;
+  size?: number;
+  style?: CSSProperties;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        borderRadius: 999,
+        background: DOT_COLORS[tone],
+        flexShrink: 0,
+        ...style,
+      }}
+    />
+  );
+}
+
+// Segmented control matching the PersonaSwitcher chrome (surfaceAlt tray,
+// surface bg + shadow on active). Use for Month/List style toggles.
+export function SegmentedControl<V extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  size = "md",
+}: {
+  options: { value: V; label: ReactNode }[];
+  value: V;
+  onChange: (next: V) => void;
+  ariaLabel?: string;
+  size?: "sm" | "md";
+}) {
+  const pad = size === "sm" ? "5px 10px" : "7px 14px";
+  const fs = size === "sm" ? 12 : 13;
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      style={{
+        display: "inline-flex",
+        background: "var(--c-surfaceAlt)",
+        border: "1px solid var(--c-line)",
+        borderRadius: 999,
+        padding: 3,
+        gap: 2,
+      }}
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
+            style={{
+              padding: pad,
+              borderRadius: 999,
+              border: "none",
+              background: active ? "var(--c-surface)" : "transparent",
+              color: active ? "var(--c-ink)" : "var(--c-ink3)",
+              fontFamily: "var(--font-body)",
+              fontSize: fs,
+              fontWeight: active ? 600 : 500,
+              letterSpacing: 0.1,
+              cursor: "pointer",
+              boxShadow: active ? "var(--c-shadow)" : "none",
+              transition: "background .12s, color .12s",
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Health pulse → visual treatment. Mirrors the prototype's helper.
 export function healthTone(pulse: string | null | undefined): {
   tone: PillTone;

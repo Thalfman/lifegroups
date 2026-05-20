@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +8,19 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { Pill, type PillTone } from "@/components/pastoral/primitives";
 import { PLinkButton } from "@/components/pastoral/button";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 
-function statusTone(status: MasterOccurrence["status"]): PTone {
-  if (status === "off") return "pause";
-  if (status === "cancelled") return "followup";
-  return "healthy";
+function statusPillTone(status: MasterOccurrence["status"]): PillTone {
+  if (status === "off") return "neutral";
+  if (status === "cancelled") return "clay";
+  return "sage";
 }
 
 export function AdminMasterCalendarDrawer({
@@ -42,7 +40,7 @@ export function AdminMasterCalendarDrawer({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(58, 42, 26, 0.45)",
+            background: "rgba(60, 45, 30, 0.38)",
             zIndex: 60,
           }}
         />
@@ -57,12 +55,12 @@ export function AdminMasterCalendarDrawer({
             width: "min(560px, 92vw)",
             maxHeight: "92dvh",
             overflowY: "auto",
-            background: P.bg,
-            border: `1px solid ${P.line}`,
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-line)",
             borderRadius: 14,
             padding: 0,
             zIndex: 61,
-            boxShadow: "0 18px 48px rgba(58, 42, 26, 0.22)",
+            boxShadow: "var(--c-shadowLg)",
             display: "flex",
             flexDirection: "column",
           }}
@@ -89,7 +87,6 @@ function DrawerBody({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const tone = statusTone(occurrence.status);
   const sourceLabel = occurrence.isGenerated ? "Generated" : "Override";
   const groupCalendarHref = `/admin/groups/${occurrence.groupId}/calendar?month=${monthIso}`;
   const groupDetailHref = `/admin/groups/${occurrence.groupId}`;
@@ -99,8 +96,8 @@ function DrawerBody({
       <header
         style={{
           padding: "18px 20px",
-          borderBottom: `1px solid ${P.line}`,
-          background: P.surface,
+          borderBottom: "1px solid var(--c-line)",
+          background: "var(--c-surfaceAlt)",
           display: "grid",
           gap: 6,
           position: "relative",
@@ -108,12 +105,12 @@ function DrawerBody({
       >
         <DialogTitle
           style={{
-            fontFamily: fontSans,
+            fontFamily: "var(--font-body)",
             fontSize: 11,
             letterSpacing: 1.8,
             textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 700,
+            color: "var(--c-ink3)",
+            fontWeight: 600,
             margin: 0,
           }}
         >
@@ -121,12 +118,13 @@ function DrawerBody({
         </DialogTitle>
         <DialogDescription
           style={{
-            fontFamily: fontBody,
-            fontSize: 18,
-            fontWeight: 600,
-            color: P.ink,
+            fontFamily: "var(--font-display)",
+            fontSize: 22,
+            fontWeight: 500,
+            color: "var(--c-ink)",
             margin: 0,
-            lineHeight: 1.3,
+            lineHeight: 1.2,
+            letterSpacing: -0.3,
           }}
         >
           {occurrence.groupName}
@@ -139,14 +137,14 @@ function DrawerBody({
             position: "absolute",
             top: 10,
             right: 10,
-            background: "transparent",
-            border: `1px solid ${P.line}`,
+            background: "var(--c-surface)",
+            border: "1px solid var(--c-line)",
             borderRadius: 999,
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             cursor: "pointer",
-            color: P.ink2,
-            fontFamily: fontSans,
+            color: "var(--c-ink2)",
+            fontFamily: "var(--font-body)",
             fontSize: 14,
             lineHeight: 1,
           }}
@@ -158,13 +156,21 @@ function DrawerBody({
       <div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {occurrence.status !== "scheduled" ? (
-            <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
+            <Pill tone={statusPillTone(occurrence.status)} size="lg">
+              {friendlyEventStatusLabel(occurrence.status)}
+            </Pill>
           ) : (
-            <PBadge tone="healthy">{typeLabel}</PBadge>
+            <Pill tone="sage" size="lg">
+              {typeLabel}
+            </Pill>
           )}
-          <PBadge tone="neutral">{sourceLabel}</PBadge>
+          <Pill tone="neutral" size="lg">
+            {sourceLabel}
+          </Pill>
           {!occurrence.isMeetingOccurrence ? (
-            <PBadge tone="watch">Special</PBadge>
+            <Pill tone="amber" size="lg">
+              Special
+            </Pill>
           ) : null}
         </div>
 
@@ -190,8 +196,8 @@ function DrawerBody({
 
       <footer
         style={{
-          borderTop: `1px solid ${P.line}`,
-          background: P.surface,
+          borderTop: "1px solid var(--c-line)",
+          background: "var(--c-surfaceAlt)",
           padding: "14px 20px",
           display: "flex",
           gap: 10,
@@ -220,25 +226,25 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <div style={{ display: "grid", gap: 3 }}>
+    <div style={{ display: "grid", gap: 4 }}>
       <span
         style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.2,
+          fontFamily: "var(--font-body)",
+          fontSize: 10.5,
+          letterSpacing: 1.4,
           textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 700,
+          color: "var(--c-ink3)",
+          fontWeight: 600,
         }}
       >
         {label}
       </span>
       <span
         style={{
-          fontFamily: fontBody,
+          fontFamily: "var(--font-body)",
           fontSize: 14,
-          color: P.ink,
-          lineHeight: 1.45,
+          color: "var(--c-ink)",
+          lineHeight: 1.5,
           whiteSpace: multiline ? "pre-wrap" : "normal",
         }}
       >
