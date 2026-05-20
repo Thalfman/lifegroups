@@ -170,10 +170,6 @@
   .lg-m-form-2up {
     grid-template-columns: 1fr !important;
   }
-  .lg-m-table-scroll {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
 
   /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */
   .lg-m-input {
@@ -226,9 +222,6 @@
   }
   .lg-m-sticky-submit > * {
     flex: 1 1 auto !important;
-  }
-  .lg-m-sticky-spacer {
-    height: 76px !important;
   }
 
   /* Calendar ------------------------------------------------------------- */

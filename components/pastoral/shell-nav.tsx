@@ -126,7 +126,9 @@ export function ShellNav({
               top: 0,
               left: 0,
               bottom: 0,
-              height: "100vh",
+              // 100dvh respects dynamic browser chrome (iOS Safari, Chrome
+              // Android toolbars) so the drawer footer stays reachable.
+              height: "100dvh",
               width: "min(320px, 86vw)",
               background: P.bg,
               borderRight: `1px solid ${P.line}`,

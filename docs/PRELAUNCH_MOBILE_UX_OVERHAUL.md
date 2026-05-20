@@ -48,12 +48,10 @@ The class catalog (see `app/globals.css`):
 | `lg-m-grid-stack` | Collapses any grid to a single column |
 | `lg-m-filterbar` | Collapses filter bars to single column, full-width children |
 | `lg-m-form-2up` | Collapses two-up form rows to one column |
-| `lg-m-table-scroll` | Adds horizontal scroll fallback for wide tables |
 | `lg-m-input` | `width: 100%`, larger padding, 16 px font (kills iOS auto-zoom) |
 | `lg-m-roster-row` | Tighter padding for member/follow-up rows |
 | `lg-m-attbtn` | 44 × 44 attendance button (Apple HIG min tap target) |
 | `lg-m-sticky-submit` | Sticky bottom submit bar inside long forms |
-| `lg-m-sticky-spacer` | Reserves bottom space below sticky submit |
 | `lg-m-cal-cell` | Calendar day cell: `min-height: 56 px`, tighter padding |
 | `lg-m-cal-pill` | Calendar pill: 10 px font |
 | `lg-m-cal-weekdays` | Weekday header row: 9 px font |

@@ -21,7 +21,6 @@ export function UserPill({
         display: "flex",
         alignItems: "center",
         gap: 10,
-        flexDirection: isDrawer ? "row" : "row",
       }}
     >
       <div
