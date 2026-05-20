@@ -33,6 +33,12 @@ type ResponseBody = {
   action: Action | "unknown";
   enabledOverall?: boolean;
   isRemoteSupabase?: boolean;
+  // Optional structured-error fields. When `code` is set, callers should
+  // prefer it over parsing the free-text `errors[]` strings. `missing`
+  // lists secret NAMES only — never values.
+  code?: string;
+  message?: string;
+  missing?: string[];
   summary: UserSummary[];
   groups: GroupsSummary;
   warnings: string[];
@@ -48,6 +54,38 @@ const DEMO_SAFE_GROUP_NAMES: Record<"A" | "B", string[]> = {
 
 function isTruthyEnv(v: string | undefined): boolean {
   return v === "true";
+}
+
+// Lists missing required Edge Function secret NAMES for the given action.
+// Returns an empty array when nothing is missing. Never returns values.
+function listMissingEnv(
+  action: Action,
+  env: {
+    supabaseUrl: string;
+    serviceRoleKey: string;
+    anonKey: string;
+    enableFlag: boolean;
+    passwords: Record<string, string>;
+  },
+): string[] {
+  const missing: string[] = [];
+  if (!env.supabaseUrl) missing.push("SUPABASE_URL");
+  if (!env.serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (!env.anonKey) missing.push("SUPABASE_ANON_KEY");
+  if (action === "enable" || action === "disable") {
+    if (!env.enableFlag) missing.push("ENABLE_TEST_AUTH_USERS");
+  }
+  if (action === "enable") {
+    for (const name of [
+      "TEST_ADMIN_PASSWORD",
+      "TEST_LEADER1_PASSWORD",
+      "TEST_LEADER2_PASSWORD",
+      "TEST_COLEADER_PASSWORD",
+    ]) {
+      if (!env.passwords[name]) missing.push(name);
+    }
+  }
+  return missing;
 }
 
 function classifyUrlIsRemote(rawUrl: string): boolean {
@@ -543,7 +581,6 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const enableFlag = isTruthyEnv(Deno.env.get("ENABLE_TEST_AUTH_USERS"));
   const passwords: Record<string, string> = {
     TEST_ADMIN_PASSWORD: Deno.env.get("TEST_ADMIN_PASSWORD") ?? "",
     TEST_LEADER1_PASSWORD: Deno.env.get("TEST_LEADER1_PASSWORD") ?? "",
@@ -558,12 +595,6 @@ Deno.serve(async (req: Request) => {
     const body = emptyResponse("unknown");
     body.errors.push("method_not_allowed");
     return jsonResponse(body, 405);
-  }
-
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-    const body = emptyResponse("unknown");
-    body.errors.push("function_not_configured");
-    return jsonResponse(body, 500);
   }
 
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
@@ -586,6 +617,23 @@ Deno.serve(async (req: Request) => {
     const body = emptyResponse("unknown");
     body.errors.push("invalid_action");
     return jsonResponse(body, 400);
+  }
+
+  const enableFlag = isTruthyEnv(Deno.env.get("ENABLE_TEST_AUTH_USERS"));
+  const missingEnv = listMissingEnv(action, {
+    supabaseUrl,
+    serviceRoleKey,
+    anonKey,
+    enableFlag,
+    passwords,
+  });
+  if (missingEnv.length > 0) {
+    const body = emptyResponse(action);
+    body.code = "missing_edge_function_env";
+    body.message = "Missing required Edge Function configuration.";
+    body.missing = missingEnv;
+    body.errors.push("missing_edge_function_env");
+    return jsonResponse(body, 500);
   }
 
   const anon = createClient(supabaseUrl, anonKey, {
@@ -628,12 +676,6 @@ Deno.serve(async (req: Request) => {
     body.errors.push("authorization_check_failed");
     body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
     return jsonResponse(body, 500);
-  }
-
-  if ((action === "enable" || action === "disable") && !enableFlag) {
-    const body = emptyResponse(action);
-    body.errors.push("test_auth_users_disabled");
-    return jsonResponse(body, 403);
   }
 
   try {
