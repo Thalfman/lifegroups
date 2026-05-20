@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
@@ -210,19 +211,22 @@ function CommandSection({
 function SectionRail() {
   return (
     <nav
+      className="lg-super-admin-section-rail"
       aria-label="Super admin command center sections"
       style={{
         ...cardStyle,
         padding: 12,
         position: "sticky",
         top: 20,
+        maxHeight: "calc(100vh - 40px)",
+        overflowY: "auto",
         display: "grid",
         gap: 4,
         alignSelf: "start",
       }}
     >
       {COMMAND_SECTIONS.map((section) => (
-        <a
+        <Link
           key={section.id}
           href={`#${section.id}`}
           style={{
@@ -236,7 +240,7 @@ function SectionRail() {
           }}
         >
           {section.label}
-        </a>
+        </Link>
       ))}
     </nav>
   );
@@ -276,18 +280,16 @@ export function SuperAdminConsoleShell({
   const readinessTone: StatusTone =
     errorCount > 0 || checklistWarningCount > 0 ? "warning" : "good";
   const readinessLabel = readinessTone === "good" ? "Good" : "Warning";
-  const profiles = Array.from(data.profilesById.values());
-  const legacyStaffViewers = profiles.filter((p) => p.role === "staff_viewer").length;
-  const activeProfiles = profiles.filter((p) => p.status === "active").length;
+  let legacyStaffViewers = 0;
+  let activeProfiles = 0;
+  for (const profile of data.profilesById.values()) {
+    if (profile.role === "staff_viewer") legacyStaffViewers += 1;
+    if (profile.status === "active") activeProfiles += 1;
+  }
 
   return (
     <div
-      className="lg-m-grid-stack"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "220px minmax(0, 1fr)",
-        gap: 24,
-      }}
+      className="lg-super-admin-command-layout"
     >
       <SectionRail />
 
@@ -403,7 +405,7 @@ export function SuperAdminConsoleShell({
               description="Capacity, check-in due timing, and health thresholds stay in the day-to-day admin settings page."
               status={{ label: "Linked", tone: "active" }}
             >
-              <a
+              <Link
                 href="/admin/settings"
                 style={{
                   color: P.terra,
@@ -414,7 +416,7 @@ export function SuperAdminConsoleShell({
                 }}
               >
                 Open admin settings
-              </a>
+              </Link>
             </CommandCard>
           </div>
         </CommandSection>
