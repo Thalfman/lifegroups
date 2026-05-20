@@ -34,6 +34,7 @@ export function SummaryCards({ summary }: { summary: AdminSummary }) {
         Weekly overview
       </h2>
       <div
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",

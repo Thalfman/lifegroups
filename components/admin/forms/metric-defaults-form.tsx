@@ -49,7 +49,7 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         keep its current value.
       </p>
 
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="default_group_capacity" style={fieldLabelStyle}>
             Default group capacity

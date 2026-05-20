@@ -300,6 +300,7 @@ export function CheckInForm({
           name="meeting_date"
           value={meetingDate}
           onChange={(e) => setMeetingDate(e.target.value)}
+          className="lg-m-input"
           style={inputStyle}
         />
       </FieldSet>
@@ -345,6 +346,7 @@ export function CheckInForm({
                 return (
                   <li
                     key={member.id}
+                    className="lg-m-roster-row"
                     style={{
                       display: "flex",
                       flexWrap: "wrap",
@@ -389,6 +391,7 @@ export function CheckInForm({
                             onClick={() => setMember(member.id, opt.value)}
                             aria-label={`Mark ${member.fullName} ${opt.full.toLowerCase()}`}
                             aria-pressed={selected}
+                            className="lg-m-attbtn"
                             style={{
                               width: 40,
                               height: 40,
@@ -429,6 +432,7 @@ export function CheckInForm({
           rows={3}
           maxLength={1000}
           placeholder="Discussion went deep around forgiveness this week…"
+          className="lg-m-input"
           style={{ ...inputStyle, resize: "vertical", minHeight: 90 }}
         />
       </FieldSet>
@@ -492,6 +496,7 @@ export function CheckInForm({
       </FieldSet>
 
       <div
+        className="lg-m-sticky-submit"
         style={{
           display: "flex",
           flexWrap: "wrap",

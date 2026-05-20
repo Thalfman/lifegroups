@@ -221,6 +221,11 @@ export default async function CheckInPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Check-in"
       title={group.name}
       titleItalic={existingSession ? "— update" : "— this week"}

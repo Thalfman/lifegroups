@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default function ForgotPasswordPage() {
   return (
     <div
+      className="lg-m-noscrollx"
       style={{
         background: P.bg,
         minHeight: "100vh",

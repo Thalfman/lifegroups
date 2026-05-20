@@ -176,6 +176,7 @@ function OverrideSummaryRow({
 
   return (
     <article
+      className="lg-m-grid-stack"
       style={{
         background: P.surface,
         border: `1px solid ${P.line}`,

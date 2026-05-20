@@ -46,7 +46,7 @@ export function GroupCreateForm() {
         Create a new Life Group. The name is required &mdash; everything else can
         be filled in later as the group settles into a rhythm.
       </p>
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="group-name" style={fieldLabelStyle}>
             Group name

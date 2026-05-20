@@ -213,6 +213,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
           description="Filter by priority, due window, person, group, or guest. Open items come first."
         />
         <div
+          className="lg-m-filterbar"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",

@@ -235,6 +235,7 @@ function ReviewCard({
       }}
     >
       <header
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr auto",
@@ -464,6 +465,7 @@ export function CheckInReviewShell({
           selectId="check-in-week"
         />
         <div
+          className="lg-m-grid-stack"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",

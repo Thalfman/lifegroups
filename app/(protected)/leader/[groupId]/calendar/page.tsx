@@ -116,6 +116,11 @@ export default async function LeaderCalendarPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Calendar"
       title={group.name}
       titleItalic={showArchived ? "— archived" : "— calendar"}

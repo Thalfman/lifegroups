@@ -34,14 +34,14 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
   const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
-    items.push({ href: "/admin/people", label: "Manage People" });
-    items.push({ href: "/admin/groups", label: "Manage Groups" });
-    items.push({ href: "/admin/check-ins", label: "Check-Ins" });
+    items.push({ href: "/admin/people", label: "People" });
+    items.push({ href: "/admin/groups", label: "Groups" });
+    items.push({ href: "/admin/check-ins", label: "Check-ins" });
     items.push({ href: "/admin/guests", label: "Guests" });
-    items.push({ href: "/admin/follow-ups", label: "Follow-Ups" });
+    items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
     items.push({ href: "/admin/settings", label: "Settings" });
     if (role === "super_admin") {
-      items.push({ href: "/admin/super-admin", label: "Super Admin" });
+      items.push({ href: "/admin/super-admin", label: "Super admin" });
     }
   } else if (isLeaderRole(role)) {
     items.push({ href: "/leader", label: "My Groups" });

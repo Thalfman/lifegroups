@@ -36,6 +36,11 @@ export default async function AdminPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="This week"
       title="This week"
       lede="Supporting Life Groups as they tell and show the story of Jesus. See what needs attention this week."

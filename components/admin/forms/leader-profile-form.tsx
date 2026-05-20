@@ -33,7 +33,7 @@ export function LeaderProfileForm() {
         through the documented Supabase Auth setup &mdash; this form just creates
         the profile row.
       </p>
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="leader-full_name" style={fieldLabelStyle}>
             Full name

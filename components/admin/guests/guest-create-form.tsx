@@ -54,7 +54,7 @@ export function GuestCreateForm({
         Only the full name is required. Everything else is optional and can be
         filled in as the conversation unfolds.
       </p>
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="guest-full_name" style={fieldLabelStyle}>
             Full name

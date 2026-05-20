@@ -32,6 +32,7 @@ export default async function HomePage() {
 
   return (
     <div
+      className="lg-m-noscrollx"
       style={{
         background: P.bg,
         minHeight: "100vh",

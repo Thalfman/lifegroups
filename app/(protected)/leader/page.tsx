@@ -62,6 +62,11 @@ export default async function LeaderPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="This week"
       title="Welcome back,"
       titleItalic={greetingName(session.profile.full_name)}

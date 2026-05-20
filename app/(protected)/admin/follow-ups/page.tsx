@@ -72,6 +72,11 @@ export default async function AdminFollowUpsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Follow-ups"
       title="Follow-ups"
       lede="Open follow-ups tied to a group, member, guest, or leader. Mark in progress when you start. Mark done when it lands. Leaders see only the items assigned to them."

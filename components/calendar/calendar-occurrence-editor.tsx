@@ -286,7 +286,10 @@ function EditorModal({
               <input type="hidden" name="event_type" value={lockedEventType} />
             ) : null}
 
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+            <div
+              className="lg-m-form-2up"
+              style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}
+            >
               <div>
                 <label htmlFor={statusId} style={fieldLabelStyle}>
                   Status
@@ -345,6 +348,7 @@ function EditorModal({
                 placeholder={
                   showEventTypeSelect ? "e.g. Week 3 of the rotation" : "Optional reason"
                 }
+                className="lg-m-input"
                 style={fieldInputStyle}
               />
             </div>
@@ -359,6 +363,7 @@ function EditorModal({
                 maxLength={1000}
                 rows={3}
                 defaultValue={occurrence.description ?? ""}
+                className="lg-m-input"
                 style={{ ...fieldInputStyle, lineHeight: 1.5, resize: "vertical" }}
               />
             </div>

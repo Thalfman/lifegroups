@@ -25,6 +25,7 @@ export default async function LoginPage({
 
   return (
     <div
+      className="lg-m-noscrollx"
       style={{
         background: P.bg,
         minHeight: "100vh",

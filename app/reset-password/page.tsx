@@ -46,6 +46,7 @@ export default async function ResetPasswordPage({
 
   return (
     <div
+      className="lg-m-noscrollx"
       style={{
         background: P.bg,
         minHeight: "100vh",

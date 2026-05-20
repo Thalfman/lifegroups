@@ -32,7 +32,7 @@ export function MemberForm() {
         Members are non-auth participant records &mdash; they never sign in. Email
         and phone are optional; capture whatever the leader already has.
       </p>
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="member-full_name" style={fieldLabelStyle}>
             Full name

@@ -118,7 +118,7 @@ export function GroupMetricOverridesForm({
         >
           <input type="hidden" name="group_id" value={selected.id} />
 
-          <div style={formGridStyle}>
+          <div className="lg-m-grid-stack" style={formGridStyle}>
             <div>
               <label htmlFor="capacity_override" style={fieldLabelStyle}>
                 Capacity override

@@ -68,6 +68,7 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
           description="Leader profiles get a sign-in. Members are participant records only — they don't sign in. Use the assign section below to place them in a group."
         />
         <div
+          className="lg-m-grid-stack"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
