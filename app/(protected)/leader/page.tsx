@@ -57,14 +57,12 @@ export default async function LeaderPage({
   const lede =
     groupCount === 0
       ? "No active assignments yet. A ministry admin will route a group your way."
-      : groupCount === 1
-        ? "One group, every week. Two minutes on the couch — then you're done."
-        : `${groupCount} groups, every week. Two minutes on the couch each — then you're done.`;
+      : "Help your group stay connected. Submit this week's check-in and follow up well.";
 
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Leader · This week"
+      eyebrow="This week"
       title="Welcome back,"
       titleItalic={greetingName(session.profile.full_name)}
       lede={lede}

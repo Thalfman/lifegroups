@@ -36,10 +36,9 @@ export default async function AdminPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Ministry command center"
-      title="Life Groups,"
-      titleItalic="this week."
-      lede="What needs attention, what changed, and where to click next."
+      eyebrow="This week"
+      title="This week"
+      lede="Supporting Life Groups as they tell and show the story of Jesus. See what needs attention this week."
       headerSlot={
         <>
           <DataSourceBadge source={source} />

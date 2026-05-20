@@ -101,10 +101,9 @@ export default async function AdminGroupsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.4 · Manage groups"
-      title="Every Life Group,"
-      titleItalic="held in view."
-      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it; archived groups stay in the record and can be restored."
+      eyebrow="Groups"
+      title="Groups"
+      lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it. Archived groups stay in the record and can be restored."
       headerSlot={
         <>
           <UserPill

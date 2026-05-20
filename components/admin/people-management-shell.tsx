@@ -1,5 +1,4 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { Phase5A4Notice } from "@/components/admin/phase-5a4-notice";
 import { PeopleDirectory } from "@/components/admin/people-directory";
 import { GroupAssignmentsSection } from "@/components/admin/group-assignments-section";
 import { LeaderProfileForm } from "@/components/admin/forms/leader-profile-form";
@@ -47,8 +46,6 @@ export function PeopleManagementShell({ data }: { data: PeopleManagementData }) 
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      <Phase5A4Notice />
-
       <PeopleDirectory
         profiles={data.profiles}
         members={data.members}

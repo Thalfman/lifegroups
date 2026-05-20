@@ -58,9 +58,8 @@ export default async function AdminSettingsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
-      eyebrow="Phase 5A.4 · Settings"
-      title="Ministry operations,"
-      titleItalic="tuned."
+      eyebrow="Settings"
+      title="Settings"
       lede="Set the defaults the dashboard uses to flag warnings, then apply per-group overrides when a group needs its own thresholds."
       headerSlot={
         <>

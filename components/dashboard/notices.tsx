@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontMono, fontSans } from "@/lib/pastoral";
+import { P, fontBody, fontMono } from "@/lib/pastoral";
 
 type NoticeTone = "sage" | "mustard" | "terra" | "ink";
 
@@ -76,26 +75,6 @@ export function FallbackDataNotice({ style }: { style?: CSSProperties }) {
       <code style={codeStyle}>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
       <code style={codeStyle}>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to read
       live data.
-    </Notice>
-  );
-}
-
-export function PublicPreviewNotice({ style }: { style?: CSSProperties }) {
-  return (
-    <Notice tone="mustard" style={style}>
-      Public design preview — demo data only.{" "}
-      <Link
-        href="/login"
-        style={{
-          color: P.terra,
-          fontFamily: fontSans,
-          fontWeight: 600,
-          textDecoration: "underline",
-        }}
-      >
-        Sign in
-      </Link>{" "}
-      to see your real ministry data.
     </Notice>
   );
 }

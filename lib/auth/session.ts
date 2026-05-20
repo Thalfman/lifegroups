@@ -70,8 +70,6 @@ export async function requireRole(
 }
 
 export const requireAdmin = () => requireRole(["super_admin", "ministry_admin"] as const);
-export const requireAdminOrStaff = () =>
-  requireRole(["super_admin", "ministry_admin", "staff_viewer"] as const);
 export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
 export const requireLeader = () => requireRole(["leader", "co_leader"] as const);
 

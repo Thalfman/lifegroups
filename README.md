@@ -45,9 +45,8 @@ This repository contains the Life Group Operations Dashboard web app built with 
 - `npm run build`
 
 ## Public vs. protected routes
-- **Public**: `/`, `/admin-preview`, `/leader-preview`, `/login`, `/unauthorized`. The
-  preview routes always render fallback demo data so the design demo stays
-  visible without secrets.
+- **Public**: `/`, `/login`, `/forgot-password`, `/reset-password`,
+  `/unauthorized`. The landing page is a minimal sign-in entry point.
 - **Protected (sign-in required)**: `/admin`, `/admin/people`,
   `/admin/groups`, `/admin/check-ins`, `/admin/guests`,
   `/admin/follow-ups`, `/admin/settings`, `/admin/super-admin`, and

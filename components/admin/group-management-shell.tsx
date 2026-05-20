@@ -1,5 +1,4 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { Phase5A4Notice } from "@/components/admin/phase-5a4-notice";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
@@ -48,8 +47,6 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      <Phase5A4Notice />
-
       {anyError ? (
         <div role="alert" style={alertStyle}>
           One or more reads failed. The page below shows what we did get; retry

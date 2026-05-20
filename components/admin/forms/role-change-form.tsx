@@ -15,9 +15,9 @@ import type { ActionResult } from "@/lib/admin/action-result";
 import type { UserRole } from "@/types/enums";
 
 // Any active profile whose current role is NOT super_admin can be the
-// target of a role change -- including profiles still set to the
-// deprecated staff_viewer value, so the operator has a documented path
-// to migrate them off it.
+// target of a role change. Legacy staff_viewer accounts are reassignable
+// here so operators have a documented migration path off the deprecated
+// role.
 type AssignableProfile = {
   id: string;
   full_name: string;
@@ -28,8 +28,8 @@ type AssignableProfile = {
 type State = ActionResult<{ id: string }> | undefined;
 
 // Roles the super admin is allowed to assign through the UI. super_admin
-// and staff_viewer are intentionally absent: the RPC enforces both, and
-// hiding them from the select gives a clean defense-in-depth surface.
+// is omitted (bootstrap procedure only); the legacy no-access role is
+// omitted by validator and never appears in the select.
 const ASSIGNABLE_ROLES = [
   { value: "ministry_admin", label: ROLE_LABELS.ministry_admin },
   { value: "leader", label: ROLE_LABELS.leader },
@@ -64,11 +64,9 @@ export function RoleChangeForm({
           lineHeight: 1.5,
         }}
       >
-        Change a profile&rsquo;s role. The super admin role is intentionally
-        omitted &mdash; promotion to super_admin happens through the
-        documented bootstrap procedure, not the app. The deprecated
-        staff_viewer value is omitted for the same reason. You can&rsquo;t
-        change your own role here.
+        Change a profile&rsquo;s role. Promotion to super admin happens
+        through the documented bootstrap procedure, not the app. You
+        can&rsquo;t change your own role here.
       </p>
       <div
         style={{

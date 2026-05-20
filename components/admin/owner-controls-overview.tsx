@@ -33,8 +33,7 @@ export function OwnerControlsOverview() {
           <strong style={{ color: P.ink }}>Role management.</strong> The
           only place to change a profile&rsquo;s role. The super_admin role
           itself can&rsquo;t be assigned from the app (bootstrap procedure),
-          the deprecated staff_viewer role can&rsquo;t be re-introduced, and
-          you can&rsquo;t change your own role.
+          and you can&rsquo;t change your own role.
         </p>
         <p style={{ margin: 0 }}>
           <strong style={{ color: P.ink }}>System status.</strong> A short

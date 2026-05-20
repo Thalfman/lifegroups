@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
 import { PAvatar, PBadge } from "@/components/pastoral/atoms";
-import { PButton } from "@/components/pastoral/button";
 import { EmptyState, StatusCard } from "@/components/dashboard/cards";
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
 import { LeaderQuickDidNotMeet } from "@/components/leader/quick-did-not-meet";
@@ -31,15 +30,11 @@ function describeWeek(meetingWeekIso: string): string {
 
 export function LeaderGroupCard({
   dashboard,
-  preview = false,
 }: {
   dashboard: LeaderGroupDashboard;
-  preview?: boolean;
 }) {
   const { group, recentSessions, healthPulse, followUps, currentWeek, upcomingEvents } = dashboard;
-  const calendarHref = preview
-    ? "/leader-preview"
-    : `/leader/${group.groupId}/calendar`;
+  const calendarHref = `/leader/${group.groupId}/calendar`;
   const lifecycle = mapLifecycleToBadge(group.lifecycleStatus);
   const health = mapHealthToBadge(group.healthStatus);
   const closed = group.lifecycleStatus === "closed";
@@ -245,22 +240,6 @@ export function LeaderGroupCard({
             This group is closed. Check-ins are turned off; ask an admin to
             reopen it if it should be active again.
           </div>
-        ) : preview ? (
-          <PButton
-            tone="ghost"
-            disabled
-            style={{
-              background: P.surface,
-              color: P.terra,
-              border: "none",
-              width: "100%",
-              fontWeight: 600,
-              opacity: 0.95,
-            }}
-            title="Preview — sign in as a leader to start a real check-in."
-          >
-            {ctaLabel}
-          </PButton>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             <Link
