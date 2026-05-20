@@ -400,6 +400,7 @@ function GroupsDetailsField({
   onChange: (next: string[]) => void;
 }) {
   const count = value.length;
+  const selectedSet = useMemo(() => new Set(value), [value]);
   const summaryRight = count === 0 ? "All" : `${count} selected`;
   return (
     <details
@@ -414,39 +415,45 @@ function GroupsDetailsField({
     >
       <summary
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
           cursor: "pointer",
-          listStyle: "revert",
           padding: "2px 0",
         }}
       >
         <span
           style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 700,
+            display: "inline-flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            width: "calc(100% - 1.2em)",
+            verticalAlign: "middle",
           }}
         >
-          Group
-        </span>
-        <span
-          style={{
-            fontFamily: fontBody,
-            fontSize: 11,
-            color: count > 0 ? P.terra : P.ink3,
-            background: count > 0 ? P.terraSoft : "transparent",
-            border: `1px solid ${count > 0 ? P.terra : P.line}`,
-            padding: "1px 8px",
-            borderRadius: 999,
-          }}
-        >
-          {summaryRight}
+          <span
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 700,
+            }}
+          >
+            Group
+          </span>
+          <span
+            style={{
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: count > 0 ? P.terra : P.ink3,
+              background: count > 0 ? P.terraSoft : "transparent",
+              border: `1px solid ${count > 0 ? P.terra : P.line}`,
+              padding: "1px 8px",
+              borderRadius: 999,
+            }}
+          >
+            {summaryRight}
+          </span>
         </span>
       </summary>
       <div
@@ -461,7 +468,7 @@ function GroupsDetailsField({
         }}
       >
         {options.map((opt) => {
-          const checked = value.includes(opt.value);
+          const checked = selectedSet.has(opt.value);
           return (
             <label
               key={opt.value}
