@@ -98,11 +98,7 @@ async function extractErrorBody(
   try {
     const text = await ctx.clone().text();
     if (!text) return { status, body: null };
-    try {
-      return { status, body: JSON.parse(text) as Partial<TestAccountsResponse> };
-    } catch {
-      return { status, body: null };
-    }
+    return { status, body: JSON.parse(text) as Partial<TestAccountsResponse> };
   } catch {
     return { status, body: null };
   }
