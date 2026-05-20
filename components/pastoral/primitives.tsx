@@ -18,7 +18,7 @@ const PILL_TONES: Record<PillTone, { bg: string; fg: string; bd: string }> = {
   neutral: { bg: "var(--c-surfaceAlt)", fg: "var(--c-ink2)", bd: "var(--c-line)" },
   sage: { bg: "var(--c-sageSoft)", fg: "var(--c-sageDeep)", bd: "transparent" },
   clay: { bg: "var(--c-claySoft)", fg: "var(--c-clay)", bd: "transparent" },
-  amber: { bg: "var(--c-amberSoft)", fg: "oklch(0.45 0.13 70)", bd: "transparent" },
+  amber: { bg: "var(--c-amberSoft)", fg: "var(--c-amberDeep)", bd: "transparent" },
   rose: { bg: "var(--c-roseSoft)", fg: "var(--c-rose)", bd: "transparent" },
   blue: { bg: "var(--c-blueSoft)", fg: "var(--c-blue)", bd: "transparent" },
   ghost: { bg: "transparent", fg: "var(--c-ink3)", bd: "var(--c-line)" },
@@ -87,8 +87,8 @@ export function Card({
 export type LgButtonTone = "sage" | "clay" | "ghost" | "quiet";
 
 const BUTTON_TONES: Record<LgButtonTone, { bg: string; fg: string; bd: string }> = {
-  sage: { bg: "var(--c-sage)", fg: "#fdfcf9", bd: "var(--c-sage)" },
-  clay: { bg: "var(--c-clay)", fg: "#fdfcf9", bd: "var(--c-clay)" },
+  sage: { bg: "var(--c-sage)", fg: "var(--c-onSage)", bd: "var(--c-sage)" },
+  clay: { bg: "var(--c-clay)", fg: "var(--c-onSage)", bd: "var(--c-clay)" },
   ghost: { bg: "var(--c-surface)", fg: "var(--c-ink)", bd: "var(--c-line)" },
   quiet: { bg: "transparent", fg: "var(--c-ink2)", bd: "var(--c-line)" },
 };
@@ -142,7 +142,7 @@ export type LgAvatarTone = "sage" | "clay" | "amber" | "blue";
 const AVATAR_TONES: Record<LgAvatarTone, { bg: string; fg: string }> = {
   sage: { bg: "var(--c-sageSoft)", fg: "var(--c-sageDeep)" },
   clay: { bg: "var(--c-claySoft)", fg: "var(--c-clay)" },
-  amber: { bg: "var(--c-amberSoft)", fg: "oklch(0.45 0.13 70)" },
+  amber: { bg: "var(--c-amberSoft)", fg: "var(--c-amberDeep)" },
   blue: { bg: "var(--c-blueSoft)", fg: "var(--c-blue)" },
 };
 
@@ -155,7 +155,7 @@ export function LgAvatar({
   size?: number;
   tone?: LgAvatarTone;
 }) {
-  const initials = (name || "?")
+  const initials = (name.trim() || "?")
     .split(/\s+/)
     .map((s) => s[0])
     .slice(0, 2)

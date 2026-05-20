@@ -6,7 +6,7 @@ type Tone = "sage" | "rose" | "amber" | "clay" | "neutral";
 const TONE_COLOR: Record<Tone, string> = {
   sage: "var(--c-sage)",
   rose: "var(--c-rose)",
-  amber: "oklch(0.55 0.13 70)",
+  amber: "var(--c-amberAccent)",
   clay: "var(--c-clay)",
   neutral: "var(--c-ink3)",
 };

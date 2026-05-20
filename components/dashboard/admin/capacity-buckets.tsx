@@ -10,7 +10,7 @@ type Bucket = {
 
 const BUCKETS: Bucket[] = [
   { key: "full", label: "Full", tone: "clay", bar: "var(--c-clay)" },
-  { key: "warning", label: "Warning", tone: "amber", bar: "oklch(0.7 0.13 80)" },
+  { key: "warning", label: "Warning", tone: "amber", bar: "var(--c-amber)" },
   { key: "ok", label: "OK", tone: "sage", bar: "var(--c-sage)" },
   { key: "unknown", label: "Unknown", tone: "ghost", bar: "var(--c-ink4)" },
   { key: "excluded", label: "Excluded", tone: "neutral", bar: "var(--c-ink4)" },

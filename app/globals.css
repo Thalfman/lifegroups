@@ -52,8 +52,12 @@
   --c-claySoft: oklch(0.93 0.045 50);
   --c-clayTint: oklch(0.965 0.022 50);
 
-  --c-amber:     oklch(0.7 0.13 80);
-  --c-amberSoft: oklch(0.94 0.045 85);
+  --c-amber:       oklch(0.7 0.13 80);
+  --c-amberSoft:   oklch(0.94 0.045 85);
+  --c-amberAccent: oklch(0.55 0.13 70); /* mid amber — summary tile accent stripes */
+  --c-amberDeep:   oklch(0.45 0.13 70); /* dark amber — text on amber-soft */
+  /* Stays cream in both themes so it always contrasts on sage / clay buttons. */
+  --c-onSage:      #fdfcf9;
   --c-rose:      oklch(0.58 0.13 25);
   --c-roseSoft:  oklch(0.94 0.04 25);
   --c-blue:      oklch(0.55 0.08 235);
@@ -88,7 +92,7 @@
   }
 
   ::selection {
-    background: oklch(0.93 0.04 145);
+    background: var(--c-sageSoft);
   }
 
   ::-webkit-scrollbar {
