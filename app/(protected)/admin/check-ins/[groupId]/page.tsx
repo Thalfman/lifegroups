@@ -72,6 +72,11 @@ export default async function AdminCheckInDetailPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Check-in detail"
       title={data.group?.name ?? "Group"}
       titleItalic="this week."

@@ -110,7 +110,7 @@ export function GroupAssignmentsSection({
                   <PBadge tone="neutral">{group.lifecycle_status.replace(/_/g, " ")}</PBadge>
                 </header>
 
-                <div style={twoColumnStyle}>
+                <div className="lg-m-grid-stack" style={twoColumnStyle}>
                   <Subsection title={`Leaders (${activeLeaders.length})`}>
                     {leadersError ? (
                       <SoftError>Couldn&rsquo;t load leader assignments.</SoftError>

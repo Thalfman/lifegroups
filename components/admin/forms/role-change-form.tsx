@@ -69,6 +69,7 @@ export function RoleChangeForm({
         can&rsquo;t change your own role here.
       </p>
       <div
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 160px auto",

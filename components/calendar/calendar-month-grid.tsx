@@ -66,6 +66,7 @@ export function CalendarMonthGrid({
       }}
     >
       <div
+        className="lg-m-cal-weekdays"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
@@ -134,6 +135,7 @@ function GridCellView({
 
   const cellInner = (
     <div
+      className="lg-m-cal-cell"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -240,6 +242,7 @@ function OccurrencePill({
       }}
     >
       <div
+        className="lg-m-cal-pill"
         style={{
           fontFamily: fontBody,
           fontSize: 12,

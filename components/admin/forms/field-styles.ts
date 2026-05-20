@@ -38,6 +38,15 @@ export const formGridStyle: CSSProperties = {
   alignItems: "end",
 };
 
+// Apply alongside `style={formGridStyle}` to collapse to a single column at
+// ≤767px. (CSS in app/globals.css overrides the inline gridTemplateColumns
+// with !important inside the mobile media query.)
+export const formGridMobileClass = "lg-m-grid-stack";
+
+// Apply on form inputs/textareas/selects to widen tap targets and set the
+// font-size to 16px so iOS doesn't auto-zoom on focus.
+export const fieldInputClass = "lg-m-input";
+
 export const formNoteStyle: CSSProperties = {
   fontFamily: fontBody,
   fontSize: 13,

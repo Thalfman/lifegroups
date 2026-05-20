@@ -101,6 +101,11 @@ export default async function AdminGroupsPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Groups"
       title="Groups"
       lede="Filter by lifecycle, health, or meeting day. Capacity stays Unknown until you set it. Archived groups stay in the record and can be restored."

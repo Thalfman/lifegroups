@@ -270,6 +270,7 @@ export function LeaderGroupCard({
       </div>
 
       <div
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -564,6 +565,7 @@ export function LeaderGroupCard({
             {group.members.map((member, i, arr) => (
               <li
                 key={member.id}
+                className="lg-m-roster-row"
                 style={{
                   display: "flex",
                   flexWrap: "wrap",

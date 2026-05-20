@@ -68,3 +68,178 @@
     @apply rounded-xl border border-border bg-muted/45;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Mobile UX overrides (≤ 767px)
+   - Plain CSS classes (no Tailwind responsive variants) so they can attach to
+     inline-styled components without touching their `style` props.
+   - Rules use `!important` so they beat React inline `style={{...}}`
+     declarations (which are not themselves `!important`). Desktop is
+     unaffected because none of these rules apply at ≥ 768px.
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .lg-m-noscrollx {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Shell + header ------------------------------------------------------- */
+  .lg-m-shell-header {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+  }
+  .lg-m-shell-main {
+    padding: 18px 14px !important;
+  }
+  .lg-m-shell-brand-text {
+    font-size: 14px !important;
+    letter-spacing: -0.1px !important;
+  }
+  .lg-m-shell-title {
+    font-size: 28px !important;
+    line-height: 1.08 !important;
+  }
+  .lg-m-shell-titlerow {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+  }
+  .lg-m-shell-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+  .lg-m-shell-actions > * {
+    flex: 1 1 auto !important;
+  }
+
+  /* Nav drawer ----------------------------------------------------------- */
+  .lg-m-nav-desktop {
+    display: none !important;
+  }
+  .lg-m-nav-trigger {
+    display: inline-flex !important;
+  }
+  .lg-m-nav-drawer-list {
+    display: grid !important;
+    gap: 4px !important;
+    padding: 8px !important;
+  }
+  .lg-m-nav-drawer-link {
+    display: block !important;
+    padding: 14px 16px !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+    font-style: normal !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    white-space: normal !important;
+  }
+
+  /* User pill / sign-out ------------------------------------------------- */
+  .lg-m-userpill {
+    gap: 6px !important;
+  }
+  .lg-m-userpill-text {
+    display: none !important;
+  }
+  .lg-m-signout-hide {
+    display: none !important;
+  }
+
+  /* Layout helpers ------------------------------------------------------- */
+  .lg-m-grid-stack {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .lg-m-filterbar {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .lg-m-filterbar > * {
+    width: 100% !important;
+  }
+  .lg-m-form-2up {
+    grid-template-columns: 1fr !important;
+  }
+  .lg-m-table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */
+  .lg-m-input {
+    width: 100% !important;
+    padding: 12px 14px !important;
+    font-size: 16px !important;
+  }
+  /* Global mobile guard: every form control gets ≥16px font on mobile so
+     iOS Safari doesn't auto-zoom on focus. Width stays as authored. */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Check-in roster ------------------------------------------------------ */
+  .lg-m-roster-row {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+  .lg-m-attbtn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* Sticky submit footer ------------------------------------------------- */
+  .lg-m-sticky-submit {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: #fbf6e8 !important;
+    padding: 12px 14px !important;
+    margin-left: -14px !important;
+    margin-right: -14px !important;
+    margin-bottom: -18px !important;
+    border-top: 1px solid #e3d4af !important;
+    z-index: 5;
+    display: flex !important;
+    gap: 10px !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  .lg-m-sticky-submit > * {
+    flex: 1 1 auto !important;
+  }
+  .lg-m-sticky-spacer {
+    height: 76px !important;
+  }
+
+  /* Calendar ------------------------------------------------------------- */
+  .lg-m-cal-cell {
+    min-height: 56px !important;
+    padding: 4px !important;
+  }
+  .lg-m-cal-pill {
+    font-size: 10px !important;
+  }
+  .lg-m-cal-weekdays {
+    font-size: 9px !important;
+  }
+}

@@ -37,6 +37,7 @@ export function AssignLeaderForm({
     <form ref={formRef} action={formAction} style={{ display: "grid", gap: 10 }}>
       <input type="hidden" name="group_id" value={groupId} />
       <div
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 140px auto",

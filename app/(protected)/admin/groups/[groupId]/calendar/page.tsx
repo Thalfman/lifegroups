@@ -112,6 +112,11 @@ export default async function AdminGroupCalendarPage({
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Admin · Group calendar"
       title={group.name}
       titleItalic={showArchived ? "— archived" : "— calendar"}

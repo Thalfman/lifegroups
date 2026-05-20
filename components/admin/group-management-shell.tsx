@@ -99,6 +99,7 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
 function ClosedGroupCard({ group }: { group: GroupsRow }) {
   return (
     <article
+      className="lg-m-grid-stack"
       style={{
         background: P.surface,
         border: `1px dashed ${P.line}`,

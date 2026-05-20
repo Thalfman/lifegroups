@@ -127,6 +127,7 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
           description="A live count by stage. The pipeline is manual — no auto-advance, no SMS, no email. You're the one moving people forward."
         />
         <div
+          className="lg-m-grid-stack"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
@@ -165,6 +166,7 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
           description="Use search and filters to find the right person, then update their stage, assignment, owner, or notes inline."
         />
         <div
+          className="lg-m-filterbar"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",

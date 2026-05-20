@@ -6,20 +6,32 @@ export function UserPill({
   name,
   email,
   role,
+  variant = "header",
 }: {
   name: string;
   email: string | null;
   role: UserRole;
+  variant?: "header" | "drawer";
 }) {
+  const isDrawer = variant === "drawer";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div
+      className={isDrawer ? undefined : "lg-m-userpill"}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flexDirection: isDrawer ? "row" : "row",
+      }}
+    >
       <div
+        className={isDrawer ? undefined : "lg-m-userpill-text"}
         style={{
           display: "flex",
           flexDirection: "column",
-          alignItems: "flex-end",
+          alignItems: isDrawer ? "flex-start" : "flex-end",
           gap: 2,
-          textAlign: "right",
+          textAlign: isDrawer ? "left" : "right",
           minWidth: 0,
         }}
       >
@@ -27,9 +39,9 @@ export function UserPill({
           style={{
             fontFamily: fontBody,
             fontStyle: "italic",
-            fontSize: 13,
+            fontSize: isDrawer ? 14 : 13,
             color: P.ink,
-            lineHeight: 1.1,
+            lineHeight: 1.15,
           }}
         >
           {name}
@@ -38,9 +50,10 @@ export function UserPill({
           <span
             style={{
               fontFamily: fontSans,
-              fontSize: 10.5,
+              fontSize: isDrawer ? 12 : 10.5,
               color: P.ink3,
-              lineHeight: 1.1,
+              lineHeight: 1.15,
+              wordBreak: "break-all",
             }}
           >
             {email}
@@ -59,12 +72,13 @@ export function UserPill({
             borderRadius: 999,
             padding: "2px 8px",
             marginTop: 2,
+            alignSelf: isDrawer ? "flex-start" : "flex-end",
           }}
         >
           {ROLE_LABELS[role]}
         </span>
       </div>
-      <PAvatar name={name} size={32} tone="terra" />
+      <PAvatar name={name} size={isDrawer ? 40 : 32} tone="terra" />
     </div>
   );
 }

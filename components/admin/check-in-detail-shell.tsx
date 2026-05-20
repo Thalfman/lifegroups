@@ -96,6 +96,7 @@ function FieldRow({
 }) {
   return (
     <div
+      className="lg-m-grid-stack"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(120px, 160px) 1fr",

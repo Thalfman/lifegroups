@@ -210,6 +210,7 @@ function FilterBar({
 }) {
   return (
     <div
+      className="lg-m-filterbar"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(220px, 1fr) repeat(3, auto)",
@@ -227,6 +228,7 @@ function FilterBar({
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search by name, description, location…"
         aria-label="Search groups"
+        className="lg-m-input"
         style={{
           padding: "10px 12px",
           borderRadius: 8,
@@ -449,6 +451,7 @@ function GroupCard({
       {!editing ? (
         <>
           <div
+            className="lg-m-grid-stack"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",

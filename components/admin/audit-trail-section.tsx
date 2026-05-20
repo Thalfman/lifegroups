@@ -285,6 +285,7 @@ export function AuditTrailSection({
             return (
               <li
                 key={event.id}
+                className="lg-m-grid-stack"
                 style={{
                   background: P.surface,
                   padding: "12px 16px",

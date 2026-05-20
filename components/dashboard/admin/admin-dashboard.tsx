@@ -31,6 +31,7 @@ export function AdminDashboard({
       <SummaryCards summary={data.summary} />
 
       <section
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, auto) 1fr",
@@ -59,6 +60,7 @@ export function AdminDashboard({
       />
 
       <section
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",

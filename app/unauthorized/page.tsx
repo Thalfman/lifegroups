@@ -14,6 +14,7 @@ export default async function UnauthorizedPage() {
 
   return (
     <div
+      className="lg-m-noscrollx"
       style={{
         background: P.bg,
         minHeight: "100vh",
@@ -27,6 +28,7 @@ export default async function UnauthorizedPage() {
       <div aria-hidden="true" style={paperGrain} />
 
       <header
+        className="lg-m-shell-header"
         style={{
           padding: "18px 36px",
           background: P.surface,

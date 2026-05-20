@@ -127,6 +127,7 @@ export function GuestCard({
       </header>
 
       <dl
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
@@ -191,6 +192,7 @@ export function GuestCard({
         >
           <input type="hidden" name="guest_id" value={guest.id} />
           <div
+            className="lg-m-grid-stack"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",

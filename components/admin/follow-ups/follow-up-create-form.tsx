@@ -74,7 +74,7 @@ export function FollowUpCreateForm({
         — group, member, guest — and assign someone if you want them to own it.
         Notes are optional and capped at 1000 characters each.
       </p>
-      <div style={formGridStyle}>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
           <label htmlFor="fu-title" style={fieldLabelStyle}>
             Title

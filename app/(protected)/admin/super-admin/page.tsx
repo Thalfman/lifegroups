@@ -267,6 +267,11 @@ export default async function AdminSuperAdminPage() {
   return (
     <PastoralAppShell
       navItems={navItemsForRole(session.profile.role)}
+      currentUser={{
+        name: session.profile.full_name,
+        email: session.profile.email,
+        role: session.profile.role,
+      }}
       eyebrow="Super admin"
       title="Super admin"
       lede="The audit log and the one workflow that can change someone&rsquo;s role. Use it sparingly."

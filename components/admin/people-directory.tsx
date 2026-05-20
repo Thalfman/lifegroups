@@ -204,6 +204,7 @@ function FilterBar({
 }) {
   return (
     <div
+      className="lg-m-filterbar"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(220px, 1fr) auto auto",
@@ -221,6 +222,7 @@ function FilterBar({
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search by name or email…"
         aria-label="Search people"
+        className="lg-m-input"
         style={{
           padding: "10px 12px",
           borderRadius: 8,

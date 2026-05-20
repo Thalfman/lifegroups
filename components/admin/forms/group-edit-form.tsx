@@ -55,6 +55,7 @@ export function GroupEditForm({
     >
       <input type="hidden" name="group_id" value={group.id} />
       <div
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
