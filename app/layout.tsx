@@ -5,7 +5,7 @@ import "./globals.css";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-newsreader",
   display: "swap",
@@ -13,7 +13,7 @@ const newsreader = Newsreader({
 
 const geist = Geist({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-geist",
   display: "swap",
 });
