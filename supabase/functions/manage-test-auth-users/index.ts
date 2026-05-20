@@ -597,8 +597,8 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(body, 405);
   }
 
-  const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization");
-  const hasAuthHeader = !!authHeader && authHeader.toLowerCase().startsWith("bearer ");
+  const authHeader = req.headers.get("Authorization");
+  const hasAuthHeader = authHeader?.toLowerCase().startsWith("bearer ") ?? false;
   console.log(JSON.stringify({ event: "auth.header", hasAuthHeader }));
   if (!hasAuthHeader) {
     const body = emptyResponse("unknown");
