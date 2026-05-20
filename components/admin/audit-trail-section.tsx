@@ -1,5 +1,5 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { Card } from "@/components/pastoral/primitives";
+import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
   GroupsRow,
@@ -265,79 +265,79 @@ export function AuditTrailSection({
           description="Once you add or assign someone above, the change will land here for the record."
         />
       ) : (
-        <Card padded={false} style={{ overflow: "hidden" }}>
-          <ol
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gap: 0,
-            }}
-          >
-            {events.map((event, idx) => {
-              const actor = event.actor_profile_id
-                ? profilesById.get(event.actor_profile_id)
-                : null;
-              return (
-                <li
-                  key={event.id}
-                  className="lg-m-grid-stack"
-                  style={{
-                    padding: "12px 18px",
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto",
-                    gap: 12,
-                    alignItems: "center",
-                    borderTop: idx === 0 ? "none" : "1px solid var(--c-lineSoft)",
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontSize: 14,
-                        color: "var(--c-ink)",
-                        fontWeight: 500,
-                        marginBottom: 3,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {summarize(event, profilesById, membersById, groupsById)}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontSize: 11,
-                        color: "var(--c-ink3)",
-                        letterSpacing: 0.2,
-                        display: "flex",
-                        gap: 8,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span>
-                        {ACTION_LABELS[event.action] ?? event.action} · {event.entity_type}
-                      </span>
-                      {actor ? <span>by {actor.full_name}</span> : null}
-                    </div>
+        <ol
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 1,
+            background: P.line2,
+            border: `1px solid ${P.line}`,
+            borderRadius: 10,
+            overflow: "hidden",
+          }}
+        >
+          {events.map((event) => {
+            const actor = event.actor_profile_id
+              ? profilesById.get(event.actor_profile_id)
+              : null;
+            return (
+              <li
+                key={event.id}
+                className="lg-m-grid-stack"
+                style={{
+                  background: P.surface,
+                  padding: "12px 16px",
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto",
+                  gap: 12,
+                  alignItems: "center",
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: fontDisplay,
+                      fontSize: 14,
+                      color: P.ink,
+                      fontWeight: 500,
+                      marginBottom: 2,
+                    }}
+                  >
+                    {summarize(event, profilesById, membersById, groupsById)}
                   </div>
                   <div
                     style={{
-                      fontFamily: "var(--font-body)",
+                      fontFamily: fontSans,
                       fontSize: 11,
-                      color: "var(--c-ink3)",
-                      whiteSpace: "nowrap",
-                      letterSpacing: 0.2,
+                      color: P.ink3,
+                      letterSpacing: 0.3,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
                     }}
                   >
-                    {formatTimestamp(event.created_at)}
+                    <span>
+                      {ACTION_LABELS[event.action] ?? event.action} · {event.entity_type}
+                    </span>
+                    {actor ? <span>by {actor.full_name}</span> : null}
                   </div>
-                </li>
-              );
-            })}
-          </ol>
-        </Card>
+                </div>
+                <div
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: 11,
+                    color: P.ink3,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {formatTimestamp(event.created_at)}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
     </section>
   );
@@ -345,37 +345,38 @@ export function AuditTrailSection({
 
 function Empty({ title, description }: { title: string; description: string }) {
   return (
-    <Card
-      padded={false}
+    <div
       style={{
-        padding: "26px 24px",
+        background: P.surface,
+        border: `1px dashed ${P.line}`,
+        borderRadius: 10,
+        padding: "22px 24px",
         textAlign: "center",
       }}
     >
       <div
         style={{
-          fontFamily: "var(--font-display)",
+          fontFamily: fontDisplay,
           fontSize: 16,
-          color: "var(--c-ink)",
+          color: P.ink,
           fontWeight: 500,
           marginBottom: 6,
-          letterSpacing: -0.2,
         }}
       >
         {title}
       </div>
       <p
         style={{
-          fontFamily: "var(--font-body)",
+          fontFamily: fontBody,
           fontSize: 13,
-          color: "var(--c-ink2)",
+          color: P.ink2,
           margin: 0,
           lineHeight: 1.5,
         }}
       >
         {description}
       </p>
-    </Card>
+    </div>
   );
 }
 
@@ -383,13 +384,13 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        background: "var(--c-claySoft)",
-        border: "1px solid var(--c-clay)",
-        borderRadius: 10,
+        background: P.terraSoft,
+        border: `1px solid ${P.terra}`,
+        borderRadius: 8,
         padding: "12px 14px",
-        fontFamily: "var(--font-body)",
+        fontFamily: fontBody,
         fontSize: 13,
-        color: "var(--c-clay)",
+        color: "#7d3621",
       }}
     >
       {children}

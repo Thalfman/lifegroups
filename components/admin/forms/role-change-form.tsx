@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminUpdateProfileRole } from "@/app/(protected)/admin/super-admin/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { P, fontBody } from "@/lib/pastoral";
 import {
   errorTextStyle,
   fieldLabelStyle,
@@ -53,26 +54,14 @@ export function RoleChangeForm({
   const noOptions = profiles.length === 0;
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 14 }}>
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 11,
-          letterSpacing: 1.8,
-          textTransform: "uppercase",
-          color: "var(--c-ink3)",
-          fontWeight: 600,
-        }}
-      >
-        Change a role
-      </div>
+    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
       <p
         style={{
-          fontFamily: "var(--font-body)",
+          fontFamily: fontBody,
           fontSize: 13,
-          color: "var(--c-ink2)",
+          color: P.ink2,
           margin: 0,
-          lineHeight: 1.55,
+          lineHeight: 1.5,
         }}
       >
         Change a profile&rsquo;s role. Promotion to super admin happens
@@ -83,7 +72,7 @@ export function RoleChangeForm({
         className="lg-m-grid-stack"
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 180px auto",
+          gridTemplateColumns: "1fr 160px auto",
           gap: 12,
           alignItems: "end",
         }}
@@ -133,7 +122,7 @@ export function RoleChangeForm({
           </select>
         </div>
         <div>
-          <PButton type="submit" tone="solid" size="md" disabled={pending || noOptions}>
+          <PButton type="submit" tone="terra" size="md" disabled={pending || noOptions}>
             {pending ? "Saving…" : "Change role"}
           </PButton>
         </div>
@@ -141,9 +130,9 @@ export function RoleChangeForm({
       {noOptions ? (
         <p
           style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 12.5,
-            color: "var(--c-ink3)",
+            fontFamily: fontBody,
+            fontSize: 12,
+            color: P.ink3,
             margin: 0,
           }}
         >

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Pill, type PillTone } from "@/components/pastoral/primitives";
+import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import {
   WEEKDAY_HEADERS,
   dayNumberLabel,
@@ -12,25 +12,17 @@ import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 
 export type DayClickPayload = { date: string };
 
 const MAX_PILLS_PER_CELL = 3;
 
-// Different statuses get visually distinct left stripes on the pills so
-// OFF and Cancelled are never confused with each other or with normal
-// scheduled meetings.
-function stripeColor(status: MasterOccurrence["status"]): string {
-  if (status === "off") return "var(--c-ink4)";
-  if (status === "cancelled") return "var(--c-clay)";
-  return "var(--c-sage)";
-}
-
-function statusPillTone(status: MasterOccurrence["status"]): PillTone {
-  if (status === "off") return "neutral";
-  if (status === "cancelled") return "clay";
-  return "sage";
+function statusTone(status: MasterOccurrence["status"]): PTone {
+  if (status === "off") return "pause";
+  if (status === "cancelled") return "followup";
+  return "healthy";
 }
 
 export function AdminMasterCalendarGrid({
@@ -55,18 +47,27 @@ export function AdminMasterCalendarGrid({
   }
 
   return (
-    <Card padded={false} style={{ padding: 16, display: "grid", gap: 10 }}>
+    <div
+      style={{
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 14,
+        padding: 16,
+        display: "grid",
+        gap: 10,
+      }}
+    >
       <div
         className="lg-m-cal-weekdays"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
           gap: 6,
-          fontFamily: "var(--font-body)",
+          fontFamily: fontSans,
           fontSize: 10,
-          letterSpacing: 1.6,
+          letterSpacing: 1.5,
           textTransform: "uppercase",
-          color: "var(--c-ink3)",
+          color: P.ink3,
           fontWeight: 600,
         }}
       >
@@ -93,7 +94,7 @@ export function AdminMasterCalendarGrid({
           />
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -108,9 +109,9 @@ function GridCellView({
   onSelect: (o: MasterOccurrence) => void;
   onMoreFromDay: (payload: DayClickPayload) => void;
 }) {
-  const baseBg = cell.inMonth ? "var(--c-surface)" : "var(--c-surfaceAlt)";
-  const dayColor = cell.inMonth ? "var(--c-ink2)" : "var(--c-ink4)";
-  const opacity = cell.inMonth ? 1 : 0.85;
+  const baseBg = cell.inMonth ? P.bg : P.surface;
+  const dayColor = cell.inMonth ? P.ink2 : P.ink3;
+  const opacity = cell.inMonth ? 1 : 0.55;
   const visible = occurrences.slice(0, MAX_PILLS_PER_CELL);
   const overflow = occurrences.length - visible.length;
 
@@ -121,11 +122,11 @@ function GridCellView({
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        minHeight: 100,
+        minHeight: 96,
         padding: "8px 8px 10px",
         opacity,
         background: baseBg,
-        border: "1px solid var(--c-lineSoft)",
+        border: `1px solid ${P.line}`,
         borderRadius: 10,
       }}
     >
@@ -133,11 +134,11 @@ function GridCellView({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          fontFamily: "var(--font-body)",
+          gap: 4,
+          fontFamily: fontSans,
           fontSize: 11,
           fontWeight: 600,
-          color: cell.isToday ? "var(--c-clay)" : dayColor,
+          color: cell.isToday ? P.terra : dayColor,
         }}
       >
         {dayNumberLabel(cell.date)}
@@ -147,7 +148,7 @@ function GridCellView({
               fontSize: 9,
               letterSpacing: 1,
               textTransform: "uppercase",
-              color: "var(--c-clay)",
+              color: P.terra,
               fontWeight: 700,
             }}
           >
@@ -157,27 +158,22 @@ function GridCellView({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {visible.map((o) => (
-          <OccurrencePill
-            key={`${o.groupId}|${o.date}`}
-            occurrence={o}
-            onClick={() => onSelect(o)}
-          />
+          <OccurrencePill key={`${o.groupId}|${o.date}`} occurrence={o} onClick={() => onSelect(o)} />
         ))}
         {overflow > 0 ? (
           <button
             type="button"
             onClick={() => onMoreFromDay({ date: cell.date })}
             style={{
-              fontFamily: "var(--font-body)",
+              fontFamily: fontSans,
               fontSize: 11,
-              color: "var(--c-clay)",
+              color: P.terra,
               background: "transparent",
               border: "none",
               padding: "2px 0",
               textAlign: "left",
               cursor: "pointer",
               fontWeight: 600,
-              letterSpacing: 0.1,
             }}
           >
             +{overflow} more
@@ -197,13 +193,8 @@ function OccurrencePill({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
+  const tone = statusTone(occurrence.status);
   const showStatusBadge = occurrence.status !== "scheduled";
-  const isCancelled = occurrence.status === "cancelled";
-  const isOff = occurrence.status === "off";
-  // Cancelled titles get a strikethrough so the OFF/Cancelled distinction
-  // is readable even at the smallest pill size.
-  const titleDecoration = isCancelled ? "line-through" : "none";
-  const titleColor = isCancelled || isOff ? "var(--c-ink3)" : "var(--c-ink)";
 
   return (
     <button
@@ -215,26 +206,30 @@ function OccurrencePill({
         flexDirection: "column",
         gap: 2,
         textAlign: "left",
-        background: "var(--c-surfaceAlt)",
-        border: "1px solid var(--c-lineSoft)",
-        borderLeft: `3px solid ${stripeColor(occurrence.status)}`,
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderLeft: `3px solid ${
+          occurrence.status === "off"
+            ? "#8a8166"
+            : occurrence.status === "cancelled"
+              ? P.terra
+              : P.sage
+        }`,
         borderRadius: 6,
         padding: "4px 6px",
         cursor: "pointer",
-        fontFamily: "var(--font-body)",
+        fontFamily: fontBody,
       }}
     >
       <span
-        className="lg-m-cal-pill"
         style={{
           fontSize: 11.5,
-          color: titleColor,
+          color: P.ink,
           fontWeight: 600,
           lineHeight: 1.2,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          textDecoration: titleDecoration,
         }}
       >
         {occurrence.groupName}
@@ -245,16 +240,14 @@ function OccurrencePill({
           alignItems: "center",
           gap: 4,
           flexWrap: "wrap",
-          fontFamily: "var(--font-body)",
+          fontFamily: fontSans,
           fontSize: 10,
-          color: "var(--c-ink3)",
+          color: P.ink3,
           letterSpacing: 0.2,
         }}
       >
         {showStatusBadge ? (
-          <Pill tone={statusPillTone(occurrence.status)}>
-            {friendlyEventStatusLabel(occurrence.status)}
-          </Pill>
+          <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
         ) : (
           <span>{typeLabel}</span>
         )}

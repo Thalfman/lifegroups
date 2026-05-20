@@ -3,11 +3,7 @@
 import { useCallback, useState, useTransition } from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { PButton } from "@/components/pastoral/button";
-import {
-  Card,
-  StatusDot,
-  type StatusDotTone,
-} from "@/components/pastoral/primitives";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   testAccountsDiagnose,
   testAccountsDisable,
@@ -23,38 +19,44 @@ type Props = {
 
 type Pending = "enable" | "disable" | "refresh" | "diagnose" | null;
 
-// State labels coming back from the Edge Function are mapped onto the
-// shared StatusDot tones so every operational row in the console reads
-// from the same color vocabulary.
-const STATE_TONE: Record<string, { tone: StatusDotTone; label: string }> = {
-  exists: { tone: "sage", label: "exists" },
-  active: { tone: "sage", label: "active" },
-  created: { tone: "sage", label: "created" },
-  updated: { tone: "sage", label: "updated" },
-  added: { tone: "sage", label: "added" },
-  archived: { tone: "neutral", label: "archived" },
-  missing: { tone: "clay", label: "missing" },
-  deleted: { tone: "neutral", label: "deleted" },
-  inactive: { tone: "neutral", label: "inactive" },
-  deactivated: { tone: "neutral", label: "deactivated" },
-  none: { tone: "neutral", label: "none" },
-  skipped: { tone: "amber", label: "skipped" },
+const STATE_DOT: Record<string, { color: string; label: string }> = {
+  exists: { color: P.sage, label: "exists" },
+  active: { color: P.sage, label: "active" },
+  created: { color: P.sage, label: "created" },
+  updated: { color: P.sage, label: "updated" },
+  added: { color: P.sage, label: "added" },
+  archived: { color: P.ink3, label: "archived" },
+  missing: { color: P.terra, label: "missing" },
+  deleted: { color: P.ink3, label: "deleted" },
+  inactive: { color: P.ink3, label: "inactive" },
+  deactivated: { color: P.ink3, label: "deactivated" },
+  none: { color: P.ink3, label: "none" },
+  skipped: { color: P.mustard, label: "skipped" },
 };
 
 function StatePill({ state }: { state: string }) {
-  const cfg = STATE_TONE[state] ?? { tone: "neutral" as const, label: state };
+  const cfg = STATE_DOT[state] ?? { color: P.ink3, label: state };
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        fontFamily: "var(--font-body)",
-        fontSize: 12.5,
-        color: "var(--c-ink)",
+        fontFamily: fontSans,
+        fontSize: 12,
+        color: P.ink,
       }}
     >
-      <StatusDot tone={cfg.tone} />
+      <span
+        aria-hidden
+        style={{
+          display: "inline-block",
+          width: 8,
+          height: 8,
+          borderRadius: 999,
+          background: cfg.color,
+        }}
+      />
       {cfg.label}
     </span>
   );
@@ -130,20 +132,29 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
       <div
         role="note"
         style={{
-          background: "var(--c-amberSoft)",
-          border: "1px solid var(--c-amber)",
-          borderRadius: 10,
+          background: P.mustardSoft,
+          border: `1px solid ${P.mustard}`,
+          borderRadius: 8,
           padding: "10px 14px",
-          fontFamily: "var(--font-body)",
+          fontFamily: fontBody,
           fontSize: 13,
-          color: "var(--c-amberDeep)",
+          color: P.ink,
         }}
       >
         These are real user accounts that sign in through the normal /login page.
         Passwords live only in the Edge Function environment — never displayed here.
       </div>
 
-      <Card padded={false} style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
+      <div
+        style={{
+          background: P.surface,
+          border: `1px solid ${P.line}`,
+          borderRadius: 10,
+          padding: "18px 22px",
+          display: "grid",
+          gap: 14,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -151,41 +162,29 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             gap: 16,
             alignItems: "center",
             justifyContent: "space-between",
-            fontFamily: "var(--font-body)",
-            fontSize: 12.5,
-            color: "var(--c-ink2)",
+            fontFamily: fontSans,
+            fontSize: 12,
+            color: P.ink2,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 18,
-              rowGap: 8,
-              alignItems: "center",
-            }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "var(--c-ink3)" }}>Overall</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+            <span>
+              Overall:{" "}
               <StatePill state={status?.enabledOverall ? "active" : "missing"} />
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "var(--c-ink3)" }}>Database</span>
-              <span style={{ color: "var(--c-ink)" }}>
-                {status?.isRemoteSupabase === undefined
-                  ? "unknown"
-                  : status.isRemoteSupabase
-                    ? "remote"
-                    : "local"}
-              </span>
+            <span>
+              Database target:{" "}
+              {status?.isRemoteSupabase === undefined
+                ? "unknown"
+                : status.isRemoteSupabase
+                  ? "remote"
+                  : "local"}
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "var(--c-ink3)" }}>Group A</span>
-              <StatePill state={status?.groups?.a ?? "missing"} />
+            <span>
+              Group A: <StatePill state={status?.groups?.a ?? "missing"} />
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "var(--c-ink3)" }}>Group B</span>
-              <StatePill state={status?.groups?.b ?? "missing"} />
+            <span>
+              Group B: <StatePill state={status?.groups?.b ?? "missing"} />
             </span>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -229,22 +228,13 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              fontFamily: "var(--font-body)",
+              fontFamily: fontSans,
               fontSize: 13,
-              color: "var(--c-ink)",
+              color: P.ink,
             }}
           >
             <thead>
-              <tr
-                style={{
-                  textAlign: "left",
-                  borderBottom: "1px solid var(--c-line)",
-                  color: "var(--c-ink3)",
-                  fontSize: 11,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                }}
-              >
+              <tr style={{ textAlign: "left", borderBottom: `1px solid ${P.line}` }}>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Email</th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Role</th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Auth user</th>
@@ -256,30 +246,27 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             </thead>
             <tbody>
               {(status?.summary ?? []).map((row) => (
-                <tr
-                  key={row.key}
-                  style={{ borderBottom: "1px solid var(--c-lineSoft)" }}
-                >
-                  <td style={{ padding: "10px 6px" }}>{row.email}</td>
-                  <td style={{ padding: "10px 6px" }}>{row.role}</td>
-                  <td style={{ padding: "10px 6px" }}>
+                <tr key={row.key} style={{ borderBottom: `1px solid ${P.line2}` }}>
+                  <td style={{ padding: "8px 6px" }}>{row.email}</td>
+                  <td style={{ padding: "8px 6px" }}>{row.role}</td>
+                  <td style={{ padding: "8px 6px" }}>
                     <StatePill state={row.authUser} />
                   </td>
-                  <td style={{ padding: "10px 6px" }}>
+                  <td style={{ padding: "8px 6px" }}>
                     <StatePill state={row.profile} />
                   </td>
-                  <td style={{ padding: "10px 6px" }}>{row.groupName ?? "—"}</td>
-                  <td style={{ padding: "10px 6px" }}>
+                  <td style={{ padding: "8px 6px" }}>{row.groupName ?? "—"}</td>
+                  <td style={{ padding: "8px 6px" }}>
                     <StatePill state={row.groupAssignment} />
                   </td>
-                  <td style={{ padding: "10px 6px", color: "var(--c-ink2)" }}>
+                  <td style={{ padding: "8px 6px", color: P.ink2 }}>
                     {row.skipReason ?? ""}
                   </td>
                 </tr>
               ))}
               {(status?.summary ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: "14px 6px", color: "var(--c-ink3)" }}>
+                  <td colSpan={7} style={{ padding: "12px 6px", color: P.ink3 }}>
                     No status yet. Click Refresh status to load.
                   </td>
                 </tr>
@@ -293,22 +280,22 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             role="region"
             aria-label="Edge Function diagnostics"
             style={{
-              background: "var(--c-surfaceAlt)",
-              border: "1px solid var(--c-lineSoft)",
-              borderRadius: 10,
+              background: P.surface,
+              border: `1px solid ${P.line}`,
+              borderRadius: 8,
               padding: "12px 14px",
-              fontFamily: "var(--font-body)",
+              fontFamily: fontSans,
               fontSize: 13,
-              color: "var(--c-ink)",
+              color: P.ink,
               display: "grid",
               gap: 10,
             }}
           >
             <strong style={{ fontSize: 13 }}>Edge Function diagnostics</strong>
-            <div style={{ display: "grid", gap: 4, fontFamily: "var(--font-body)", fontSize: 12 }}>
+            <div style={{ display: "grid", gap: 4, fontFamily: fontSans, fontSize: 12 }}>
               <div>
                 Caller auth user id:{" "}
-                <code style={{ fontFamily: "var(--font-mono)" }}>
+                <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
                   {status.diagnostics.callerAuthUserId ?? "(none)"}
                 </code>
               </div>
@@ -333,11 +320,11 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               {status.diagnostics.profileLookup.postgrestError ? (
                 <div
                   style={{
-                    background: "var(--c-claySoft)",
-                    border: "1px solid var(--c-clay)",
-                    borderRadius: 8,
+                    background: P.terraSoft,
+                    border: `1px solid ${P.terra}`,
+                    borderRadius: 6,
                     padding: "8px 10px",
-                    color: "var(--c-clay)",
+                    color: "#7d3621",
                     display: "grid",
                     gap: 2,
                   }}
@@ -360,19 +347,11 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             </div>
             <div>
               <strong style={{ fontSize: 12 }}>Env presence (names only)</strong>
-              <ul
-                style={{
-                  margin: "4px 0 0 18px",
-                  padding: 0,
-                  fontFamily: "var(--font-body)",
-                  fontSize: 12,
-                }}
-              >
+              <ul style={{ margin: "4px 0 0 18px", padding: 0, fontFamily: fontSans, fontSize: 12 }}>
                 {Object.entries(status.diagnostics.envPresent).map(([name, present]) => (
-                  <li key={name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <StatusDot tone={present ? "sage" : "clay"} />
-                    <code>{name}</code>
-                    <span style={{ color: "var(--c-ink3)" }}>
+                  <li key={name}>
+                    <code>{name}</code>:{" "}
+                    <span style={{ color: present ? P.sage : P.terra }}>
                       {present ? "set" : "missing"}
                     </span>
                   </li>
@@ -386,13 +365,13 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           <div
             role="status"
             style={{
-              background: "var(--c-amberSoft)",
-              border: "1px solid var(--c-amber)",
-              borderRadius: 10,
+              background: P.mustardSoft,
+              border: `1px solid ${P.mustard}`,
+              borderRadius: 8,
               padding: "10px 12px",
-              fontFamily: "var(--font-body)",
+              fontFamily: fontBody,
               fontSize: 13,
-              color: "var(--c-amberDeep)",
+              color: P.ink,
             }}
           >
             <strong>Warnings:</strong>
@@ -408,13 +387,13 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           <div
             role="alert"
             style={{
-              background: "var(--c-claySoft)",
-              border: "1px solid var(--c-clay)",
-              borderRadius: 10,
+              background: P.terraSoft,
+              border: `1px solid ${P.terra}`,
+              borderRadius: 8,
               padding: "10px 12px",
-              fontFamily: "var(--font-body)",
+              fontFamily: fontBody,
               fontSize: 13,
-              color: "var(--c-clay)",
+              color: "#7d3621",
             }}
           >
             <strong>Errors:</strong>
@@ -425,7 +404,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             </ul>
           </div>
         ) : null}
-      </Card>
+      </div>
     </section>
   );
 }
