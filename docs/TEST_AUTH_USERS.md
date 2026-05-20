@@ -39,7 +39,9 @@ A "Test accounts" panel under `/admin/super-admin` (visible only to
 
 ### One-time setup
 
-1. **Set the Edge Function secrets.** From the repo root with the
+1. **Set the Edge Function secrets.** Two equivalent paths — pick one.
+
+   **Path A — Supabase CLI (laptop):** From the repo root with the
    Supabase CLI authenticated against the target project:
 
    ```sh
@@ -51,9 +53,17 @@ A "Test accounts" panel under `/admin/super-admin` (visible only to
      TEST_COLEADER_PASSWORD='...'
    ```
 
+   **Path B — Supabase Dashboard (mobile or browser):** See
+   [Adding Edge Function secrets from Supabase mobile/browser](#adding-edge-function-secrets-from-supabase-mobilebrowser)
+   below.
+
    `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_ANON_KEY`
    are auto-injected by Supabase into every Edge Function — you don't
    set them yourself.
+
+   `ALLOW_TEST_USERS_ON_REMOTE_SUPABASE` is **not** an Edge Function
+   secret. It's only read by the manual Node CLI scripts in `scripts/`.
+   Don't add it to the Edge Function.
 
 2. **Deploy the Edge Function:**
 
@@ -68,6 +78,58 @@ A "Test accounts" panel under `/admin/super-admin` (visible only to
 
 3. **Sign in as super_admin** and open `/admin/super-admin`. The
    "Test accounts" panel renders at the bottom of the page.
+
+### Adding Edge Function secrets from Supabase mobile/browser
+
+The Supabase Dashboard works fine on mobile — you don't need a laptop
+to set or rotate these secrets.
+
+1. Open the Supabase Dashboard for the target project.
+2. **Edge Functions** → tap **`manage-test-auth-users`** → **Secrets**
+   tab → **Add new secret**.
+3. Add each row below. Use real, strong passwords for the four
+   `TEST_*_PASSWORD` entries — these placeholders are documentation
+   only, not real values to copy:
+
+   ```
+   ENABLE_TEST_AUTH_USERS=true
+   TEST_ADMIN_PASSWORD=<strong-password>
+   TEST_LEADER1_PASSWORD=<strong-password>
+   TEST_LEADER2_PASSWORD=<strong-password>
+   TEST_COLEADER_PASSWORD=<strong-password>
+   ```
+
+4. After saving, redeploy the function (or wait for the next cold
+   start — new secret values are picked up on the next invocation).
+5. Reopen `/admin/super-admin` and tap **Refresh status** to confirm.
+
+> ⚠️ **Vercel env vars are not Supabase Edge Function secrets.** Setting
+> `TEST_ADMIN_PASSWORD` (etc.) in Vercel has no effect on the Edge
+> Function. Vercel env vars and Supabase Edge Function secrets are
+> two separate stores. Always add these in the Supabase Dashboard,
+> never in Vercel.
+
+> ⚠️ **Never commit real passwords.** The repo only knows secret
+> *names*. Real values live only in Supabase Edge Function secrets and
+> (for the manual scripts) the operator's local `.env.local`.
+
+### Interpreting panel errors
+
+The panel now surfaces the HTTP status and a structured error code
+instead of the generic "Edge Function returned a non-2xx status code"
+message. Mapping:
+
+| Status / code                              | Meaning                                                                                              | Fix                                                                                                                  |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `401 missing_or_invalid_session`           | Your access token didn't reach the function (expired/missing).                                       | Sign out and back in at `/login`, then retry.                                                                        |
+| `403 super_admin_required` / `forbidden`   | The signed-in user is not an active `super_admin`.                                                   | Sign in as the real super_admin.                                                                                     |
+| `404 function_not_deployed_or_wrong_name`  | The function isn't deployed under that name in this project.                                         | `supabase functions deploy manage-test-auth-users`.                                                                  |
+| `500 missing_edge_function_env`            | Required Edge Function secrets are missing. The panel lists which ones in a third bullet.            | Add the listed secrets in Supabase Dashboard → Edge Functions → `manage-test-auth-users` → Secrets, then redeploy.    |
+| `500 test_account_seed_failed` (or other)  | The function ran but a step failed (schema mismatch, transient DB error, etc.).                      | Check Supabase function logs; check per-row `errors[]` in the panel; retry.                                          |
+
+The panel never displays passwords, the service-role key, JWTs, or
+stack traces. Free-text error fragments are redacted server-side and
+client-side before render.
 
 ### From the panel
 
