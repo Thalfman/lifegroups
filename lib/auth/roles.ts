@@ -30,15 +30,6 @@ export function defaultLandingPathForRole(role: UserRole): string {
   return "/unauthorized";
 }
 
-export type Persona = "admin" | "leader";
-
-export function availablePersonasForRole(role: UserRole): Persona[] {
-  if (role === "super_admin") return ["admin", "leader"];
-  if (role === "ministry_admin") return ["admin"];
-  if (isLeaderRole(role)) return ["leader"];
-  return [];
-}
-
 export function navItemsForRole(role: UserRole): { href: string; label: string }[] {
   const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
   if (isAdminRole(role)) {

@@ -1,25 +1,16 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { fontBody, fontDisplay } from "@/lib/pastoral";
-import {
-  Sidebar,
-  TopBar,
-  sidebarForPersona,
-  type SidebarItem,
-} from "@/components/pastoral/sidebar";
-import type { ShellNavItem } from "@/components/pastoral/shell-nav";
+import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
+import { PSeal, POrnament } from "@/components/pastoral/atoms";
+import { ShellNav, type ShellNavItem } from "@/components/pastoral/shell-nav";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
-import {
-  availablePersonasForRole,
-  type Persona,
-  type UserRole,
-} from "@/lib/auth/roles";
+import type { UserRole } from "@/lib/auth/roles";
 
 export type PastoralShellNavItem = ShellNavItem;
 
 export function PastoralAppShell({
-  persona,
-  navItems: _navItems,
+  navItems,
   eyebrow,
   title,
   titleItalic,
@@ -29,12 +20,8 @@ export function PastoralAppShell({
   currentUser,
   children,
   contentMaxWidth = 1240,
-  contentPad,
+  contentPad = "36px 36px",
 }: {
-  persona?: Persona;
-  // Legacy: kept for backwards-compatibility with the previous top-nav shell.
-  // The new sidebar derives its items from `persona` + the user's role; this
-  // prop is intentionally ignored. Eslint underscore-prefix signals the intent.
   navItems?: PastoralShellNavItem[];
   eyebrow?: ReactNode;
   title?: ReactNode;
@@ -42,55 +29,36 @@ export function PastoralAppShell({
   lede?: ReactNode;
   actions?: ReactNode;
   headerSlot?: ReactNode;
+  // When provided, the mobile drawer renders a footer with the user identity
+  // block + a sign-out button. Desktop header layout is unchanged.
   currentUser?: { name: string; email: string | null; role: UserRole };
   children: ReactNode;
   contentMaxWidth?: number;
-  // Kept on the API for backwards-compatibility; not consumed by the new shell.
   contentPad?: string;
 }) {
-  void _navItems;
-  void contentPad;
-
-  const effectivePersona: Persona = persona ?? "admin";
-  const role = currentUser?.role;
-  const availablePersonas: Persona[] = role
-    ? availablePersonasForRole(role)
-    : [effectivePersona];
-  const includeSuperAdmin = role === "super_admin";
-  const sidebarItems: SidebarItem[] = sidebarForPersona(effectivePersona, {
-    includeSuperAdmin,
-  });
-
-  const trailing = currentUser ? (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-      }}
-    >
-      <UserPill
-        name={currentUser.name}
-        email={currentUser.email}
-        role={currentUser.role}
-      />
-      <LogoutButton className="lg-m-signout-hide" />
-    </div>
-  ) : (
-    headerSlot
-  );
+  const mobileUser = currentUser ? (
+    <UserPill
+      name={currentUser.name}
+      email={currentUser.email}
+      role={currentUser.role}
+      variant="drawer"
+    />
+  ) : null;
+  const mobileSignOut = currentUser ? <LogoutButton className="" /> : null;
 
   return (
     <div
       className="lg-m-noscrollx"
       style={{
-        display: "flex",
+        background: P.bg,
         minHeight: "100vh",
-        background: "var(--c-bg)",
-        color: "var(--c-ink)",
         fontFamily: fontBody,
+        color: P.ink,
+        position: "relative",
       }}
     >
+      <div aria-hidden="true" style={paperGrain} />
+
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:shadow focus:ring-2 focus:ring-ring"
@@ -98,174 +66,165 @@ export function PastoralAppShell({
         Skip to content
       </a>
 
-      <Sidebar
-        persona={effectivePersona}
-        availablePersonas={availablePersonas}
-        items={sidebarItems}
-      />
-
-      <div
+      <header
+        className="lg-m-shell-header"
         style={{
-          flex: 1,
-          minWidth: 0,
+          padding: "18px 36px",
+          background: P.surface,
+          borderBottom: `1px solid ${P.line}`,
           display: "flex",
-          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 24,
+          flexWrap: "wrap",
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        <TopBar
-          persona={effectivePersona}
-          availablePersonas={availablePersonas}
-          items={sidebarItems}
-          currentUser={currentUser}
-          trailing={trailing}
-        />
-
-        <main
-          id="main"
-          className="lg-m-shell-main"
+        <Link
+          href="/"
           style={{
-            flex: 1,
-            overflow: "auto",
-            background: "var(--c-bg)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            color: "inherit",
+            textDecoration: "none",
+            minWidth: 0,
           }}
         >
-          {(title || titleItalic || eyebrow || lede || actions) && (
-            <PageHeader
-              eyebrow={eyebrow}
-              title={title}
-              titleItalic={titleItalic}
-              lede={lede}
-              actions={actions}
-              maxWidth={contentMaxWidth}
-            />
-          )}
-          <PageBody maxWidth={contentMaxWidth}>{children}</PageBody>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function PageHeader({
-  eyebrow,
-  title,
-  titleItalic,
-  lede,
-  actions,
-  maxWidth,
-}: {
-  eyebrow?: ReactNode;
-  title?: ReactNode;
-  titleItalic?: ReactNode;
-  lede?: ReactNode;
-  actions?: ReactNode;
-  maxWidth: number;
-}) {
-  return (
-    <div
-      className="lg-m-shell-pageheader"
-      style={{
-        padding: "36px 40px 24px",
-        maxWidth,
-        margin: "0 auto",
-        width: "100%",
-      }}
-    >
-      <div
-        className="lg-m-shell-titlerow"
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 28,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          {eyebrow ? (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 11,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "var(--c-clay)",
-                fontWeight: 600,
-                marginBottom: 10,
-              }}
-            >
-              {eyebrow}
-            </div>
-          ) : null}
-          {(title || titleItalic) && (
-            <h1
-              className="lg-m-shell-title"
-              style={{
-                margin: 0,
-                fontFamily: fontDisplay,
-                fontSize: "calc(38px * var(--font-scale))",
-                lineHeight: 1.08,
-                fontWeight: 400,
-                color: "var(--c-ink)",
-                letterSpacing: "-0.025em",
-              }}
-            >
-              {title}
-              {titleItalic ? (
-                <>
-                  {title ? " " : null}
-                  <span style={{ fontStyle: "italic", color: "var(--c-ink2)" }}>
-                    {titleItalic}
-                  </span>
-                </>
-              ) : null}
-            </h1>
-          )}
-          {lede ? (
-            <p
-              style={{
-                margin: "12px 0 0",
-                maxWidth: 640,
-                fontFamily: fontBody,
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: "var(--c-ink2)",
-              }}
-            >
-              {lede}
-            </p>
-          ) : null}
-        </div>
-        {actions ? (
+          <PSeal />
           <div
-            className="lg-m-shell-actions"
+            className="lg-m-shell-brand-text"
             style={{
-              display: "flex",
-              gap: 10,
-              flexShrink: 0,
-              flexWrap: "wrap",
+              fontFamily: fontSans,
+              fontSize: 16,
+              fontWeight: 600,
+              letterSpacing: -0.2,
+              color: P.ink,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
-            {actions}
+            Fox Valley Church Life Groups
           </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+        </Link>
 
-function PageBody({ children, maxWidth }: { children: ReactNode; maxWidth: number }) {
-  return (
-    <div
-      className="lg-m-shell-pagebody"
-      style={{
-        padding: "0 40px 64px",
-        maxWidth,
-        margin: "0 auto",
-        width: "100%",
-      }}
-    >
-      {children}
+        {navItems && navItems.length > 1 ? (
+          <ShellNav
+            items={navItems}
+            mobileUser={mobileUser}
+            mobileSignOut={mobileSignOut}
+          />
+        ) : (
+          <div />
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+          }}
+        >
+          {headerSlot}
+        </div>
+      </header>
+
+      <main
+        id="main"
+        className="lg-m-shell-main"
+        style={{
+          padding: contentPad,
+          maxWidth: contentMaxWidth,
+          margin: "0 auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {(title || titleItalic || eyebrow || lede || actions) && (
+          <div
+            className="lg-m-shell-titlerow"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+              gap: 20,
+              marginBottom: 32,
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <POrnament w={80} />
+              {eyebrow ? (
+                <div
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: 11,
+                    letterSpacing: 2.2,
+                    textTransform: "uppercase",
+                    color: P.ink3,
+                    fontWeight: 600,
+                    margin: "14px 0 8px",
+                  }}
+                >
+                  {eyebrow}
+                </div>
+              ) : null}
+              {(title || titleItalic) && (
+                <h1
+                  className="lg-m-shell-title"
+                  style={{
+                    fontFamily: fontDisplay,
+                    fontSize: "clamp(34px, 5vw, 54px)",
+                    margin: 0,
+                    fontWeight: 500,
+                    letterSpacing: "-0.025em",
+                    lineHeight: 1.02,
+                    color: P.ink,
+                  }}
+                >
+                  {title}
+                  {titleItalic ? (
+                    <>
+                      {title ? " " : null}
+                      <span style={{ fontStyle: "italic", color: P.terra }}>
+                        {titleItalic}
+                      </span>
+                    </>
+                  ) : null}
+                </h1>
+              )}
+              {lede ? (
+                <p
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 16,
+                    color: P.ink2,
+                    margin: "14px 0 0",
+                    maxWidth: 600,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {lede}
+                </p>
+              ) : null}
+            </div>
+            {actions ? (
+              <div
+                className="lg-m-shell-actions"
+                style={{ display: "flex", gap: 10, flexShrink: 0, flexWrap: "wrap" }}
+              >
+                {actions}
+              </div>
+            ) : null}
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }
