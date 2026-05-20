@@ -40,7 +40,13 @@ const bareInputStyle: React.CSSProperties = {
   padding: 0,
 };
 
-export function LoginForm({ next }: { next: string | null }) {
+export function LoginForm({
+  next,
+  resetOk = false,
+}: {
+  next: string | null;
+  resetOk?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(loginAction, INITIAL_STATE);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -50,6 +56,24 @@ export function LoginForm({ next }: { next: string | null }) {
       style={{ display: "flex", flexDirection: "column", gap: 12 }}
     >
       {next ? <input type="hidden" name="next" value={next} /> : null}
+
+      {resetOk && !state.error ? (
+        <p
+          role="status"
+          style={{
+            background: "var(--c-sageTint)",
+            border: "1px solid var(--c-sage)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            fontFamily: "var(--font-sans)",
+            fontSize: 12.5,
+            color: "var(--c-ink2)",
+            margin: 0,
+          }}
+        >
+          Password updated. Sign in.
+        </p>
+      ) : null}
 
       {state.error ? (
         <p
