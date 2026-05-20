@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  /* shadcn HSL tokens — DO NOT remove. components/ui/* depends on these. */
   --background: 40 45% 98%;
   --foreground: 222 30% 16%;
   --card: 0 0% 100%;
@@ -22,10 +23,50 @@
 
   --radius: 0.875rem;
 
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-display: var(--font-inter), system-ui, sans-serif;
-  --font-body: var(--font-inter), system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* Font variable aliases. next/font/google injects --font-display / --font-body /
+     --font-mono on <html>. --font-sans is aliased to body so older code that
+     reads var(--font-sans) keeps working. */
+  --font-sans: var(--font-body), "Inter Tight", -apple-system, system-ui, sans-serif;
+
+  /* Life Groups Prototype tokens (oklch warm pastoral palette) ---------------
+     Layered on top of the shadcn tokens above. Components reference these via
+     `var(--c-*)`. Light theme only. */
+  --c-bg:         oklch(0.982 0.008 82);
+  --c-surface:    oklch(0.995 0.004 80);
+  --c-surfaceAlt: oklch(0.965 0.012 80);
+  --c-sidebar:    oklch(0.945 0.013 85);
+  --c-line:       oklch(0.89 0.014 82);
+  --c-lineSoft:   oklch(0.93 0.012 82);
+
+  --c-ink:  oklch(0.22 0.02 60);
+  --c-ink2: oklch(0.42 0.018 60);
+  --c-ink3: oklch(0.58 0.015 60);
+  --c-ink4: oklch(0.72 0.012 60);
+
+  --c-sage:     oklch(0.48 0.07 148);
+  --c-sageDeep: oklch(0.38 0.07 148);
+  --c-sageSoft: oklch(0.93 0.04 145);
+  --c-sageTint: oklch(0.965 0.022 145);
+
+  --c-clay:     oklch(0.58 0.12 48);
+  --c-claySoft: oklch(0.93 0.045 50);
+  --c-clayTint: oklch(0.965 0.022 50);
+
+  --c-amber:     oklch(0.7 0.13 80);
+  --c-amberSoft: oklch(0.94 0.045 85);
+  --c-rose:      oklch(0.58 0.13 25);
+  --c-roseSoft:  oklch(0.94 0.04 25);
+  --c-blue:      oklch(0.55 0.08 235);
+  --c-blueSoft:  oklch(0.94 0.025 235);
+
+  --c-shadow:   0 1px 2px rgba(60, 45, 30, 0.04), 0 4px 14px rgba(60, 45, 30, 0.04);
+  --c-shadowLg: 0 2px 4px rgba(60, 45, 30, 0.05), 0 12px 32px rgba(60, 45, 30, 0.08);
+
+  /* Density spacing (balanced default — prototype Tweaks panel could change these). */
+  --space-row: 14px;
+  --space-gap: 14px;
+  --space-card: 20px;
+  --font-scale: 1;
 }
 
 @layer base {
@@ -40,6 +81,27 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--font-body), "Inter Tight", -apple-system, system-ui, sans-serif;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: oklch(0.93 0.04 145);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--c-line);
+    border-radius: 999px;
+    border: 2px solid var(--c-bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--c-ink4);
   }
 
   h1,
@@ -102,7 +164,7 @@
     flex-wrap: nowrap !important;
   }
   .lg-m-shell-main {
-    padding: 18px 14px !important;
+    /* padding now lives on PageHeader / PageBody; main is just the scroll container */
   }
   .lg-m-shell-brand-text {
     font-size: 14px !important;
@@ -124,6 +186,39 @@
   }
   .lg-m-shell-actions > * {
     flex: 1 1 auto !important;
+  }
+
+  /* Sidebar + topbar (Life Groups Prototype layout) --------------------- */
+  .lg-m-sidebar {
+    display: none !important;
+  }
+  .lg-m-topbar {
+    padding: 0 14px !important;
+  }
+  .lg-m-topbar-trigger {
+    display: inline-flex !important;
+  }
+  .lg-m-topbar-search {
+    display: none !important;
+  }
+  .lg-m-shell-pageheader {
+    padding: 18px 14px 10px !important;
+  }
+  .lg-m-shell-pagebody {
+    padding: 0 14px 32px !important;
+  }
+  .lg-m-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .lg-m-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .lg-m-attention-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .lg-m-attention-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
   }
 
   /* Nav drawer ----------------------------------------------------------- */

@@ -1,26 +1,22 @@
 import Link from "next/link";
-import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { ChevronRight } from "lucide-react";
+import { Pill, type PillTone } from "@/components/pastoral/primitives";
 import { attentionReasonLabel } from "@/lib/dashboard/queries";
-import type {
-  AttentionItem,
-  AttentionReason,
-} from "@/lib/dashboard/types";
-import { meetingLine } from "./shared";
+import type { AttentionItem, AttentionReason } from "@/lib/dashboard/types";
 
 const VISIBLE_LIMIT = 6;
 
-function toneFor(reason: AttentionReason): PTone {
+function toneFor(reason: AttentionReason): PillTone {
   switch (reason) {
     case "follow_up_open":
     case "health_needs_follow_up":
-    case "capacity_full":
     case "missing_check_in":
-      return "followup";
+      return "rose";
+    case "capacity_full":
+      return "clay";
     case "capacity_warning":
     case "health_watch":
-      return "watch";
+      return "amber";
     case "capacity_unknown":
     case "no_leader":
     case "no_members":
@@ -29,23 +25,28 @@ function toneFor(reason: AttentionReason): PTone {
   }
 }
 
-function ReasonBadges({
-  primary,
-  secondary,
-}: {
-  primary: AttentionReason;
-  secondary: AttentionReason[];
-}) {
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <PBadge tone={toneFor(primary)}>{attentionReasonLabel(primary)}</PBadge>
-      {secondary.map((reason) => (
-        <PBadge key={reason} tone={toneFor(reason)} outline>
-          {attentionReasonLabel(reason)}
-        </PBadge>
-      ))}
-    </div>
-  );
+function shortReason(reason: AttentionReason): string {
+  switch (reason) {
+    case "follow_up_open":
+    case "health_needs_follow_up":
+      return "Care";
+    case "missing_check_in":
+      return "Missing";
+    case "capacity_full":
+      return "Full";
+    case "capacity_warning":
+      return "Warning";
+    case "health_watch":
+      return "Watch";
+    case "capacity_unknown":
+      return "Capacity";
+    case "no_leader":
+      return "No leader";
+    case "no_members":
+      return "Setup";
+    case "missing_meeting_day_time":
+      return "Setup";
+  }
 }
 
 export function AttentionList({
@@ -58,231 +59,126 @@ export function AttentionList({
   const visible = items.slice(0, VISIBLE_LIMIT);
   const overflow = Math.max(0, items.length - visible.length);
 
+  if (visible.length === 0) {
+    return (
+      <div
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 13,
+          color: "var(--c-ink3)",
+          padding: "20px 4px",
+          fontStyle: "italic",
+        }}
+      >
+        Quiet stretch. No groups are flagged for follow-up this week — check
+        back after leaders submit their next check-ins.
+      </div>
+    );
+  }
+
   return (
-    <StatusCard
-      title="Groups needing attention"
-      eyebrow="Action queue"
-      action={
-        items.length > 0
-          ? `${items.length} ${items.length === 1 ? "group" : "groups"}`
-          : null
-      }
-    >
-      {visible.length === 0 ? (
-        <EmptyState
-          title="Quiet stretch"
-          description="No groups are flagged for follow-up this week. Check back after leaders submit their next check-ins."
-        />
-      ) : (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 12,
-          }}
-        >
-          {visible.map((item) => {
-            const meta = meetingLine(item.meetingDay, item.meetingTime);
-            const capacityLabel =
-              item.effectiveCapacity != null
-                ? `${item.activeMemberCount} / ${item.effectiveCapacity} members`
-                : `${item.activeMemberCount} members · capacity unknown`;
-            return (
-              <li
-                key={item.groupId}
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {visible.map((item, idx) => {
+        const tone = toneFor(item.reason);
+        const reasonLabel = shortReason(item.reason);
+        const detail = secondaryDetail(item);
+        const last = idx === visible.length - 1;
+        return (
+          <Link
+            key={item.groupId}
+            href={`/admin/check-ins/${item.groupId}?week=${meetingWeek}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "96px 1fr auto",
+              alignItems: "center",
+              gap: 16,
+              padding: "12px 0",
+              borderBottom: last ? "none" : "1px solid var(--c-lineSoft)",
+              textDecoration: "none",
+              color: "inherit",
+            }}
+            title={attentionReasonLabel(item.reason)}
+          >
+            <div>
+              <Pill tone={tone}>{reasonLabel}</Pill>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
                 style={{
-                  background: P.surface,
-                  border: `1px solid ${P.line}`,
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                  display: "grid",
-                  gap: 8,
+                  fontFamily: "var(--font-body)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--c-ink)",
+                  marginBottom: 2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: fontDisplay,
-                        fontSize: 17,
-                        fontWeight: 600,
-                        color: P.ink,
-                      }}
-                    >
-                      {item.groupName}
-                    </div>
-                    {item.leaderNames.length > 0 ? (
-                      <div
-                        style={{
-                          fontFamily: fontBody,
-                          fontSize: 13,
-                          color: P.ink2,
-                        }}
-                      >
-                        {item.leaderNames.join(" · ")}
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          fontFamily: fontBody,
-                          fontSize: 13,
-                          color: P.ink3,
-                          fontStyle: "italic",
-                        }}
-                      >
-                        No leaders assigned
-                      </div>
-                    )}
-                  </div>
-                  <ReasonBadges
-                    primary={item.reason}
-                    secondary={item.secondaryReasons}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 13,
-                    color: P.ink2,
-                  }}
-                >
-                  {item.detail}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap",
-                    fontFamily: fontBody,
-                    fontSize: 12.5,
-                    color: P.ink3,
-                  }}
-                >
-                  <span>{capacityLabel}</span>
-                  {meta ? <span>· {meta}</span> : null}
-                  {item.excludedFromCapacity ? (
-                    <span>· Excluded from capacity</span>
-                  ) : null}
-                  {item.dueLabel ? (
-                    <span
-                      style={{
-                        color: item.isOverdue ? "#7d3621" : P.ink3,
-                      }}
-                    >
-                      ·{" "}
-                      {item.isOverdue
-                        ? `Overdue (was due ${item.dueLabel})`
-                        : `Check-in due ${item.dueLabel}`}
-                      {item.dueRelative ? ` · ${item.dueRelative}` : ""}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap",
-                    fontFamily: fontSans,
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    letterSpacing: 0.4,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  <Link
-                    href={`/admin/check-ins/${item.groupId}?week=${meetingWeek}`}
-                    style={{
-                      color: P.ink,
-                      textDecoration: "none",
-                      borderBottom: `1px solid ${P.line}`,
-                      paddingBottom: 1,
-                    }}
-                  >
-                    View check-in →
-                  </Link>
-                  <Link
-                    href="/admin/groups"
-                    style={{
-                      color: P.ink2,
-                      textDecoration: "none",
-                      borderBottom: `1px solid ${P.line}`,
-                      paddingBottom: 1,
-                    }}
-                  >
-                    Open group setup
-                  </Link>
-                  {(item.reason === "capacity_full" ||
-                    item.reason === "capacity_warning" ||
-                    item.reason === "capacity_unknown" ||
-                    item.secondaryReasons.includes("capacity_full") ||
-                    item.secondaryReasons.includes("capacity_warning") ||
-                    item.secondaryReasons.includes("capacity_unknown")) ? (
-                    <Link
-                      href="/admin/settings"
-                      style={{
-                        color: P.ink2,
-                        textDecoration: "none",
-                        borderBottom: `1px solid ${P.line}`,
-                        paddingBottom: 1,
-                      }}
-                    >
-                      Adjust thresholds
-                    </Link>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-          {overflow > 0 ? (
-            <li
+                {item.groupName}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 12.5,
+                  color: "var(--c-ink2)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {detail}
+              </div>
+            </div>
+            <div
               style={{
-                fontFamily: fontBody,
-                fontSize: 12.5,
-                color: P.ink3,
-                textAlign: "center",
-                fontStyle: "italic",
-                paddingTop: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                color: "var(--c-ink3)",
               }}
             >
-              +{overflow} more {overflow === 1 ? "group" : "groups"} —{" "}
-              <Link
-                href="/admin/groups"
+              <span
                 style={{
-                  color: P.ink2,
-                  textDecoration: "underline",
-                  fontStyle: "normal",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 11.5,
                 }}
               >
-                see all in Groups
-              </Link>
-              {" · "}
-              <Link
-                href={`/admin/check-ins?week=${meetingWeek}`}
-                style={{
-                  color: P.ink2,
-                  textDecoration: "underline",
-                  fontStyle: "normal",
-                }}
-              >
-                review check-ins
-              </Link>
-            </li>
-          ) : null}
-        </ul>
-      )}
-    </StatusCard>
+                {item.leaderNames.length > 0 ? item.leaderNames.join(" · ") : "—"}
+              </span>
+              <ChevronRight size={14} aria-hidden="true" strokeWidth={1.6} />
+            </div>
+          </Link>
+        );
+      })}
+      {overflow > 0 ? (
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 12.5,
+            color: "var(--c-ink3)",
+            textAlign: "center",
+            fontStyle: "italic",
+            padding: "12px 0 0",
+          }}
+        >
+          +{overflow} more {overflow === 1 ? "group" : "groups"} —{" "}
+          <Link
+            href={`/admin/check-ins?week=${meetingWeek}`}
+            style={{ color: "var(--c-ink2)", textDecoration: "underline", fontStyle: "normal" }}
+          >
+            review check-ins
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
+}
+
+function secondaryDetail(item: AttentionItem): string {
+  const base = item.detail;
+  if (item.dueLabel && item.isOverdue) {
+    return `${base} · Overdue (was due ${item.dueLabel})`;
+  }
+  return base;
 }

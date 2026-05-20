@@ -1,88 +1,136 @@
-import { P } from "@/lib/pastoral";
-import { MetricCard } from "@/components/dashboard/cards";
+import type { ReactNode } from "react";
 import type { AdminSummary } from "@/lib/dashboard/types";
 
-function plural(n: number, singular: string, plural: string): string {
-  return n === 1 ? singular : plural;
+type Tone = "sage" | "rose" | "amber" | "clay" | "neutral";
+
+const TONE_COLOR: Record<Tone, string> = {
+  sage: "var(--c-sage)",
+  rose: "var(--c-rose)",
+  amber: "oklch(0.55 0.13 70)",
+  clay: "var(--c-clay)",
+  neutral: "var(--c-ink3)",
+};
+
+function plural(n: number, s: string, p: string): string {
+  return n === 1 ? s : p;
 }
 
 export function SummaryCards({ summary }: { summary: AdminSummary }) {
-  const missingMeta =
+  const submittedHint =
+    summary.activeGroupCount === 0 ? "no active groups" : `of ${summary.activeGroupCount}`;
+  const missingHint =
     summary.missingCheckIns === 0
-      ? "Every active group is in for the week"
-      : `${summary.missingCheckIns} ${plural(summary.missingCheckIns, "group hasn't", "groups haven't")} checked in`;
-  const submittedMeta =
-    summary.activeGroupCount === 0
-      ? "No active groups yet"
-      : `${summary.submittedCheckIns} of ${summary.activeGroupCount} active groups`;
-  const followUpMeta =
-    summary.needsFollowUp === 0
-      ? "Quiet week on the pulse"
-      : `${plural(summary.needsFollowUp, "Group flagged", "Groups flagged")} for follow-up`;
-  const capacityMeta =
-    summary.capacityWatch === 0
-      ? "No groups at or near the threshold"
-      : `${plural(summary.capacityWatch, "Group at or near", "Groups at or near")} capacity`;
-  const unknownMeta =
-    summary.unknownCapacity === 0
-      ? "Every group has a capacity set"
-      : `${plural(summary.unknownCapacity, "Group missing", "Groups missing")} a capacity value`;
+      ? "all in for the week"
+      : `${plural(summary.missingCheckIns, "group hasn't", "groups haven't")} checked in`;
+  const followUpHint =
+    summary.needsFollowUp === 0 ? "quiet week" : "from leader pulse";
+  const capacityHint = summary.capacityWatch === 0 ? "below thresholds" : "near/at capacity";
+  const unknownHint =
+    summary.unknownCapacity === 0 ? "every group has one" : "set a ceiling";
+
+  const tiles: { label: string; value: number; hint: string; tone: Tone }[] = [
+    { label: "Active groups", value: summary.activeGroupCount, hint: "open in the directory", tone: "sage" },
+    { label: "Submitted check-ins", value: summary.submittedCheckIns, hint: submittedHint, tone: "sage" },
+    { label: "Missing check-ins", value: summary.missingCheckIns, hint: missingHint, tone: summary.missingCheckIns > 0 ? "rose" : "neutral" },
+    { label: "Needs follow-up", value: summary.needsFollowUp, hint: followUpHint, tone: summary.needsFollowUp > 0 ? "amber" : "neutral" },
+    { label: "Capacity watch", value: summary.capacityWatch, hint: capacityHint, tone: summary.capacityWatch > 0 ? "clay" : "neutral" },
+    { label: "Unknown capacity", value: summary.unknownCapacity, hint: unknownHint, tone: "neutral" },
+  ];
 
   return (
-    <section aria-labelledby="weekly-overview">
+    <section
+      aria-labelledby="weekly-overview"
+      className="lg-m-summary-grid"
+      style={{
+        display: "grid",
+        gap: 12,
+        gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+      }}
+    >
       <h2 id="weekly-overview" className="sr-only">
         Weekly overview
       </h2>
-      <div
-        className="lg-m-grid-stack"
+      {tiles.map((t) => (
+        <SummaryTile key={t.label} {...t} />
+      ))}
+    </section>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: ReactNode;
+  value: number;
+  hint?: ReactNode;
+  tone: Tone;
+}) {
+  return (
+    <div
+      style={{
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-line)",
+        borderRadius: 12,
+        padding: "16px 16px 14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <span
+        aria-hidden="true"
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
+          position: "absolute",
+          left: 0,
+          top: 12,
+          bottom: 12,
+          width: 2,
+          background: TONE_COLOR[tone],
+          borderRadius: "0 2px 2px 0",
+        }}
+      />
+      <div
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 11,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+          color: "var(--c-ink3)",
+          fontWeight: 600,
         }}
       >
-        <MetricCard
-          title="Active groups"
-          value={String(summary.activeGroupCount)}
-          meta="Open Life Groups in the directory"
-          accent={P.sage}
-        />
-        <MetricCard
-          title="Submitted check-ins"
-          value={String(summary.submittedCheckIns)}
-          meta={submittedMeta}
-          accent={P.ink}
-          valueColor={P.ink}
-        />
-        <MetricCard
-          title="Missing check-ins"
-          value={String(summary.missingCheckIns)}
-          meta={missingMeta}
-          accent={P.terra}
-          valueColor={summary.missingCheckIns > 0 ? P.terra : P.ink}
-        />
-        <MetricCard
-          title="Needs follow-up"
-          value={String(summary.needsFollowUp)}
-          meta={followUpMeta}
-          accent={P.mustard}
-          valueColor={summary.needsFollowUp > 0 ? P.mustard : P.ink}
-        />
-        <MetricCard
-          title="Capacity watch"
-          value={String(summary.capacityWatch)}
-          meta={capacityMeta}
-          accent={P.terra}
-          valueColor={summary.capacityWatch > 0 ? P.terra : P.ink}
-        />
-        <MetricCard
-          title="Unknown capacity"
-          value={String(summary.unknownCapacity)}
-          meta={unknownMeta}
-          accent={P.ink3}
-          valueColor={P.ink}
-        />
+        {label}
       </div>
-    </section>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 34,
+            fontWeight: 400,
+            color: "var(--c-ink)",
+            letterSpacing: -0.5,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {hint ? (
+          <span
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: 11.5,
+              color: "var(--c-ink3)",
+            }}
+          >
+            {hint}
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }
