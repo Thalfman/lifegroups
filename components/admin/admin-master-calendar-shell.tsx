@@ -15,7 +15,6 @@ import {
 import {
   EVENT_STATUS_OPTIONS,
   EVENT_TYPE_OPTIONS,
-  friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
@@ -350,10 +349,7 @@ function FilterBar({
         />
         <MultiCheckboxField<GroupCalendarEventStatus>
           label="Status"
-          options={EVENT_STATUS_OPTIONS.map((o) => ({
-            value: o.value,
-            label: friendlyEventStatusLabel(o.value),
-          }))}
+          options={EVENT_STATUS_OPTIONS}
           value={statusFilter}
           onChange={(next) => setStatusFilter(next)}
         />
