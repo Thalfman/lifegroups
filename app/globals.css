@@ -235,4 +235,14 @@
   .lg-m-cal-weekdays {
     font-size: 9px !important;
   }
+
+  /* Admin master-calendar filters --------------------------------------- */
+  .lg-m-master-calendar-filters {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .lg-m-master-calendar-filters > * {
+    width: 100% !important;
+    align-self: stretch !important;
+  }
 }
