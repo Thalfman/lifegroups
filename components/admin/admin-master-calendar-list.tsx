@@ -17,6 +17,16 @@ function statusTone(status: MasterOccurrence["status"]): PTone {
   return "healthy";
 }
 
+// Mirror of the pill borderLeft mapping in
+// admin-master-calendar-grid.tsx (OccurrencePill). Keep these two
+// ladders in sync so the list card and the month pill always agree
+// on what each status looks like at a glance.
+function statusStripeColor(status: MasterOccurrence["status"]): string {
+  if (status === "off") return "#8a8166";
+  if (status === "cancelled") return P.terra;
+  return P.sage;
+}
+
 export function AdminMasterCalendarList({
   occurrences,
   fromIso,
@@ -91,6 +101,8 @@ export function AdminMasterCalendarList({
               color: P.ink3,
               fontWeight: 700,
               margin: 0,
+              paddingBottom: 6,
+              borderBottom: `1px solid ${P.line2}`,
             }}
           >
             {dateLabel(date)}
@@ -116,13 +128,15 @@ function OccurrenceCard({
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
+  const stripe = statusStripeColor(occurrence.status);
   return (
     <li
       style={{
         background: P.bg,
         border: `1px solid ${P.line2}`,
+        borderLeft: `3px solid ${stripe}`,
         borderRadius: 10,
-        padding: 12,
+        padding: "12px 12px 12px 15px",
         display: "grid",
         gap: 8,
       }}
@@ -180,11 +194,11 @@ function OccurrenceCard({
         href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
         style={{
           fontFamily: fontSans,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: 600,
           color: P.terra,
           textDecoration: "none",
-          letterSpacing: 0.4,
+          letterSpacing: 1.2,
           textTransform: "uppercase",
           alignSelf: "start",
         }}

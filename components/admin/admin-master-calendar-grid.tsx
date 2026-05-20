@@ -128,6 +128,9 @@ function GridCellView({
         background: baseBg,
         border: `1px solid ${P.line}`,
         borderRadius: 10,
+        boxShadow: cell.isToday
+          ? `inset 0 0 0 1px ${P.terra}`
+          : undefined,
       }}
     >
       <div
@@ -167,13 +170,15 @@ function GridCellView({
             style={{
               fontFamily: fontSans,
               fontSize: 11,
-              color: P.terra,
+              color: P.terraTextStrong,
               background: "transparent",
               border: "none",
-              padding: "2px 0",
+              padding: "2px 4px",
+              borderRadius: 6,
               textAlign: "left",
               cursor: "pointer",
               fontWeight: 600,
+              alignSelf: "start",
             }}
           >
             +{overflow} more
@@ -219,6 +224,7 @@ function OccurrencePill({
         padding: "4px 6px",
         cursor: "pointer",
         fontFamily: fontBody,
+        boxShadow: "0 1px 0 rgba(58, 42, 26, 0.04)",
       }}
     >
       <span
