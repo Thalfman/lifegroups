@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import {
   SuperAdminConsoleShell,
   type SuperAdminConsoleData,
+  type SuperAdminTestAccountsSummary,
 } from "@/components/admin/super-admin-console-shell";
 import { TestAccountsPanel } from "@/components/admin/test-accounts-panel";
 import type { AssignableProfile } from "@/components/admin/forms/role-change-form";
@@ -266,6 +267,36 @@ export default async function AdminSuperAdminPage() {
   const session = await requireSuperAdmin();
   const data = await loadData(session.profile.id);
   const initialTestAccounts = await testAccountsStatus();
+  const testAccountsSummary: SuperAdminTestAccountsSummary =
+    initialTestAccounts.ok && initialTestAccounts.value.ok
+      ? initialTestAccounts.value.enabledOverall
+        ? {
+            label: "Active",
+            tone: "warning",
+            description:
+              "Known-password test accounts are active. Keep them visible for testing and disable them before launch.",
+          }
+        : {
+            label: "Disabled",
+            tone: "good",
+            description:
+              "Known test accounts are not currently enabled according to the existing Edge Function status.",
+          }
+      : initialTestAccounts.ok
+        ? {
+            label: "Blocked",
+            tone: "blocked",
+            description:
+              initialTestAccounts.value.errors[0] ??
+              "The test account Edge Function returned a blocked status.",
+          }
+        : {
+            label: "Unknown",
+            tone: "warning",
+            description:
+              initialTestAccounts.errors[0] ??
+              "Test account status could not be loaded from the existing Edge Function.",
+          };
 
   return (
     <PastoralAppShell
@@ -276,8 +307,8 @@ export default async function AdminSuperAdminPage() {
         role: session.profile.role,
       }}
       eyebrow="Super admin"
-      title="Super admin"
-      lede="The audit log and the one workflow that can change someone&rsquo;s role. Use it sparingly."
+      title="Super Admin Command Center"
+      lede="Owner and operator control plane for launch readiness, access, diagnostics, test tools, audit, maintenance, and guarded danger actions."
       headerSlot={
         <>
           <UserPill
@@ -289,13 +320,16 @@ export default async function AdminSuperAdminPage() {
         </>
       }
     >
-      <div style={{ display: "grid", gap: 36 }}>
-        <SuperAdminConsoleShell data={data} />
-        <TestAccountsPanel
-          initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
-          initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
-        />
-      </div>
+      <SuperAdminConsoleShell
+        data={data}
+        testAccountsSummary={testAccountsSummary}
+        testAccountsPanel={
+          <TestAccountsPanel
+            initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
+            initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
+          />
+        }
+      />
     </PastoralAppShell>
   );
 }
