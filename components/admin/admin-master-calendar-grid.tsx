@@ -14,6 +14,7 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import { statusStripeColor } from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
 
@@ -213,13 +214,7 @@ function OccurrencePill({
         textAlign: "left",
         background: P.surface,
         border: `1px solid ${P.line}`,
-        borderLeft: `3px solid ${
-          occurrence.status === "off"
-            ? "#8a8166"
-            : occurrence.status === "cancelled"
-              ? P.terra
-              : P.sage
-        }`,
+        borderLeft: `3px solid ${statusStripeColor(occurrence.status)}`,
         borderRadius: 6,
         padding: "4px 6px",
         cursor: "pointer",

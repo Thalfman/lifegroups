@@ -10,21 +10,12 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import { statusStripeColor } from "./admin-master-calendar-status";
 
 function statusTone(status: MasterOccurrence["status"]): PTone {
   if (status === "off") return "pause";
   if (status === "cancelled") return "followup";
   return "healthy";
-}
-
-// Mirror of the pill borderLeft mapping in
-// admin-master-calendar-grid.tsx (OccurrencePill). Keep these two
-// ladders in sync so the list card and the month pill always agree
-// on what each status looks like at a glance.
-function statusStripeColor(status: MasterOccurrence["status"]): string {
-  if (status === "off") return "#8a8166";
-  if (status === "cancelled") return P.terra;
-  return P.sage;
 }
 
 export function AdminMasterCalendarList({

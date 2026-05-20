@@ -160,7 +160,7 @@ export function AdminMasterCalendarShell({
       />
 
       {filtered.length === 0 ? (
-        <EmptyState />
+        <EmptyState hasActiveFilters={hasActiveFilters} />
       ) : viewMode === "month" ? (
         <>
           <AdminCalendarLegend />
@@ -245,7 +245,13 @@ function ViewToggle({
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
+  const primary = hasActiveFilters
+    ? "No group meetings match these filters."
+    : "No group meetings on the calendar for this month.";
+  const secondary = hasActiveFilters
+    ? "Try clearing a filter or pick a different month."
+    : "Try a neighboring month, or check group schedules for OFF weeks.";
   return (
     <div
       style={{
@@ -262,12 +268,8 @@ function EmptyState() {
         justifyItems: "center",
       }}
     >
-      <div style={{ fontWeight: 600, color: P.ink }}>
-        No group meetings match these filters.
-      </div>
-      <div style={{ fontSize: 13, color: P.ink3 }}>
-        Try clearing a filter or pick a different month.
-      </div>
+      <div style={{ fontWeight: 600, color: P.ink }}>{primary}</div>
+      <div style={{ fontSize: 13, color: P.ink3 }}>{secondary}</div>
     </div>
   );
 }

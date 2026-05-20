@@ -1,15 +1,15 @@
 "use client";
 
 import { P, fontSans } from "@/lib/pastoral";
+import { statusStripeColor } from "./admin-master-calendar-status";
 
-// Mirror of the status → left-stripe color mapping in
-// admin-master-calendar-grid.tsx (OccurrencePill borderLeft). If that
-// mapping changes, update this swatch set so the legend keeps telling
-// the truth about what each color means.
+// Swatches are derived from the same statusStripeColor() helper the
+// grid and list use, so the legend always tells the truth about what
+// each colored bar means.
 const SWATCHES: { label: string; color: string }[] = [
-  { label: "Scheduled", color: P.sage },
-  { label: "Cancelled", color: P.terra },
-  { label: "OFF week", color: "#8a8166" },
+  { label: "Scheduled", color: statusStripeColor("scheduled") },
+  { label: "Cancelled", color: statusStripeColor("cancelled") },
+  { label: "OFF week", color: statusStripeColor("off") },
 ];
 
 export function AdminCalendarLegend() {
