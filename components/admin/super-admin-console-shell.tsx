@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
+import { Card, Pill, type PillTone } from "@/components/pastoral/primitives";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import {
@@ -11,7 +12,6 @@ import {
   SystemStatusChecklist,
   type ChecklistRow,
 } from "@/components/admin/system-status-checklist";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
   GroupsRow,
@@ -49,36 +49,45 @@ export type SuperAdminConsoleData = {
   };
 };
 
+// Sections in the rail are reordered for Phase 2 hierarchy:
+// orientation → diagnostics → operational standard → access → audit
+// → planned/info. The rail copy stays scannable for the rare full-page
+// scroll.
 const COMMAND_SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "access", label: "Access" },
-  { id: "features", label: "Features" },
-  { id: "settings", label: "Settings" },
   { id: "diagnostics", label: "Diagnostics" },
-  { id: "test-tools", label: "Test tools" },
-  { id: "audit", label: "Audit" },
+  { id: "test-tools", label: "Test accounts" },
+  { id: "access", label: "Role management" },
+  { id: "audit", label: "Audit trail" },
+  { id: "features", label: "Feature visibility" },
+  { id: "settings", label: "Settings" },
   { id: "maintenance", label: "Maintenance" },
   { id: "danger-zone", label: "Danger Zone" },
 ] as const;
 
-const STATUS_STYLE: Record<
-  StatusTone,
-  { background: string; border: string; color: string }
-> = {
-  good: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
-  warning: { background: P.mustardSoft, border: P.mustard, color: P.mustardTextStrong },
-  blocked: { background: P.terraSoft, border: P.terra, color: P.terraTextStrong },
-  disabled: { background: P.surface, border: P.line, color: P.ink3 },
-  active: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
-  planned: { background: P.surface, border: P.line, color: P.ink2 },
-};
+// Maps the super-admin "StatusTone" labels (good/warning/blocked/…) onto
+// the shared Pill primitive's tone system so every status chip in the
+// command center renders from one design vocabulary.
+function pillToneFor(status: StatusTone): PillTone {
+  switch (status) {
+    case "good":
+    case "active":
+      return "sage";
+    case "warning":
+      return "amber";
+    case "blocked":
+      return "clay";
+    case "planned":
+      return "neutral";
+    case "disabled":
+    default:
+      return "ghost";
+  }
+}
 
-const cardStyle: CSSProperties = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  padding: "18px 22px",
-};
+function StatusBadge({ label, tone }: { label: string; tone: StatusTone }) {
+  return <Pill tone={pillToneFor(tone)}>{label}</Pill>;
+}
 
 const cardGridStyle: CSSProperties = {
   display: "grid",
@@ -92,32 +101,6 @@ const twoCardGridStyle: CSSProperties = {
   gap: 14,
 };
 
-function StatusBadge({ label, tone }: { label: string; tone: StatusTone }) {
-  const s = STATUS_STYLE[tone];
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        border: `1px solid ${s.border}`,
-        borderRadius: 999,
-        background: s.background,
-        color: s.color,
-        fontFamily: fontSans,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: 1.1,
-        lineHeight: 1,
-        padding: "6px 9px",
-        textTransform: "uppercase",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
 function CommandCard({
   title,
   description,
@@ -130,7 +113,7 @@ function CommandCard({
   children?: ReactNode;
 }) {
   return (
-    <div style={{ ...cardStyle, display: "grid", gap: 10, alignContent: "start" }}>
+    <Card padded={false} style={{ padding: "18px 20px", display: "grid", gap: 10, alignContent: "start" }}>
       <div
         style={{
           display: "flex",
@@ -141,12 +124,13 @@ function CommandCard({
       >
         <h3
           style={{
-            fontFamily: fontDisplay,
-            fontSize: 18,
-            fontWeight: 600,
+            fontFamily: "var(--font-display)",
+            fontSize: 17,
+            fontWeight: 500,
             letterSpacing: -0.2,
-            color: P.ink,
+            color: "var(--c-ink)",
             margin: 0,
+            lineHeight: 1.25,
           }}
         >
           {title}
@@ -155,17 +139,17 @@ function CommandCard({
       </div>
       <p
         style={{
-          fontFamily: fontBody,
+          fontFamily: "var(--font-body)",
           fontSize: 13,
-          color: P.ink2,
-          lineHeight: 1.5,
+          color: "var(--c-ink2)",
+          lineHeight: 1.55,
           margin: 0,
         }}
       >
         {description}
       </p>
       {children}
-    </div>
+    </Card>
   );
 }
 
@@ -176,13 +160,13 @@ function MetricRow({ label, value }: { label: string; value: string | number }) 
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
-        fontFamily: fontSans,
-        fontSize: 12,
-        color: P.ink2,
+        fontFamily: "var(--font-body)",
+        fontSize: 12.5,
+        color: "var(--c-ink2)",
       }}
     >
       <span>{label}</span>
-      <strong style={{ color: P.ink }}>{value}</strong>
+      <strong style={{ color: "var(--c-ink)", fontWeight: 600 }}>{value}</strong>
     </div>
   );
 }
@@ -214,15 +198,18 @@ function SectionRail() {
       className="lg-super-admin-section-rail"
       aria-label="Super admin command center sections"
       style={{
-        ...cardStyle,
-        padding: 12,
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-line)",
+        borderRadius: 14,
+        padding: 8,
         position: "sticky",
         top: 20,
         maxHeight: "calc(100vh - 40px)",
         overflowY: "auto",
         display: "grid",
-        gap: 4,
+        gap: 2,
         alignSelf: "start",
+        boxShadow: "var(--c-shadow)",
       }}
     >
       {COMMAND_SECTIONS.map((section) => (
@@ -231,11 +218,11 @@ function SectionRail() {
           href={`#${section.id}`}
           style={{
             borderRadius: 8,
-            color: P.ink2,
-            fontFamily: fontSans,
+            color: "var(--c-ink2)",
+            fontFamily: "var(--font-body)",
             fontSize: 13,
-            fontWeight: 600,
-            padding: "9px 10px",
+            fontWeight: 500,
+            padding: "9px 12px",
             textDecoration: "none",
           }}
         >
@@ -251,13 +238,13 @@ function ErrorBanner() {
     <div
       role="alert"
       style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
+        background: "var(--c-claySoft)",
+        border: "1px solid var(--c-clay)",
+        borderRadius: 10,
         padding: "12px 14px",
-        fontFamily: fontBody,
+        fontFamily: "var(--font-body)",
         fontSize: 13,
-        color: P.terraTextStrong,
+        color: "var(--c-clay)",
       }}
     >
       Some sections could not load. The page below shows what did load; retry in a
@@ -297,8 +284,8 @@ export function SuperAdminConsoleShell({
         <CommandSection
           id="overview"
           eyebrow="Overview"
-          title="Launch readiness at a glance"
-          description="Current owner controls organized around readiness, access, diagnostics, test tooling, audit visibility, and guarded maintenance."
+          title="Owner & operator control plane"
+          description="A quiet console for the owner account. The cards below summarize readiness, access, and the test-tooling pattern that newer operational controls will follow."
         >
           <div className="lg-m-grid-stack" style={cardGridStyle}>
             <CommandCard
@@ -321,8 +308,8 @@ export function SuperAdminConsoleShell({
               <MetricRow label="Legacy staff_viewer rows" value={legacyStaffViewers} />
             </CommandCard>
             <CommandCard
-              title="Initial test-account snapshot"
-              description={`${testAccountsSummary.description} Live status updates in the Test tools panel below after any action.`}
+              title="Test accounts snapshot"
+              description={`${testAccountsSummary.description} Live status updates in the Test accounts panel below after any action.`}
               status={{ label: testAccountsSummary.label, tone: testAccountsSummary.tone }}
             />
           </div>
@@ -330,8 +317,26 @@ export function SuperAdminConsoleShell({
         </CommandSection>
 
         <CommandSection
+          id="diagnostics"
+          eyebrow="Diagnostics"
+          title="System status checklist"
+          description="Foundational data and audit-access readout. Useful after a fresh deploy or seed. Deeper read-only launch checks can be added in a later phase."
+        >
+          <SystemStatusChecklist rows={data.checklist} />
+        </CommandSection>
+
+        <CommandSection
+          id="test-tools"
+          eyebrow="Test accounts"
+          title="Operational standard for future controls"
+          description="Test-account tooling stays isolated from normal app authorization. Its status / refresh / diagnose / enable / disable layout is the visual standard newer operational controls will follow."
+        >
+          {testAccountsPanel}
+        </CommandSection>
+
+        <CommandSection
           id="access"
-          eyebrow="Access"
+          eyebrow="Role management"
           title="Role workflow and profile oversight"
           description="The existing owner-only role workflow stays narrow: no self role changes, no super-admin assignment, and no legacy no-access product UI."
         >
@@ -356,16 +361,26 @@ export function SuperAdminConsoleShell({
               <MetricRow label="Legacy staff_viewer rows" value={legacyStaffViewers} />
             </CommandCard>
           </div>
-          <div style={cardStyle}>
+          <Card padded={false} style={{ padding: "18px 20px" }}>
             <RoleChangeForm profiles={data.assignableProfiles} />
-          </div>
+          </Card>
         </CommandSection>
+
+        <div id="audit" style={{ scrollMarginTop: 20 }}>
+          <AuditTrailSection
+            events={data.auditEvents}
+            profilesById={data.profilesById}
+            membersById={data.membersById}
+            groupsById={data.groupsById}
+            error={data.errors.audit}
+          />
+        </div>
 
         <CommandSection
           id="features"
-          eyebrow="Features"
+          eyebrow="Feature visibility"
           title="Safe feature visibility controls"
-          description="Planned owner controls for allowlisted feature visibility. This phase adds the landing place only."
+          description="Planned owner controls for allowlisted feature visibility. This phase keeps the landing place only — no new toggles ship yet."
         >
           <div className="lg-m-grid-stack" style={cardGridStyle}>
             <CommandCard
@@ -406,46 +421,18 @@ export function SuperAdminConsoleShell({
               <Link
                 href="/admin/settings"
                 style={{
-                  color: P.terra,
-                  fontFamily: fontSans,
+                  color: "var(--c-clay)",
+                  fontFamily: "var(--font-body)",
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   textDecoration: "none",
                 }}
               >
-                Open admin settings
+                Open admin settings →
               </Link>
             </CommandCard>
           </div>
         </CommandSection>
-
-        <CommandSection
-          id="diagnostics"
-          eyebrow="Diagnostics"
-          title="Read-only system diagnostics"
-          description="Current diagnostics use the existing status checklist. Later phases can add deeper read-only launch checks."
-        >
-          <SystemStatusChecklist rows={data.checklist} />
-        </CommandSection>
-
-        <CommandSection
-          id="test-tools"
-          eyebrow="Test tools"
-          title="Controlled testing tools"
-          description="The current test account tooling remains intact and isolated from normal app authorization."
-        >
-          {testAccountsPanel}
-        </CommandSection>
-
-        <div id="audit" style={{ scrollMarginTop: 20 }}>
-          <AuditTrailSection
-            events={data.auditEvents}
-            profilesById={data.profilesById}
-            membersById={data.membersById}
-            groupsById={data.groupsById}
-            error={data.errors.audit}
-          />
-        </div>
 
         <CommandSection
           id="maintenance"
@@ -475,14 +462,15 @@ export function SuperAdminConsoleShell({
         <CommandSection
           id="danger-zone"
           eyebrow="Danger Zone"
-          title="Guarded permanent actions"
-          description="Permanent purge tools are intentionally absent in this phase. Future actions require server-side impact summaries, type-to-confirm, and audit rows."
+          title="No destructive actions in this release"
+          description="Permanent purge tools, hard deletes, raw SQL, schema editors, and auth bypasses are intentionally absent. Any future destructive action will require server-side impact summaries, type-to-confirm, and audit rows."
         >
-          <div
+          <Card
+            padded={false}
             style={{
-              ...cardStyle,
-              background: P.terraSoft,
-              borderColor: P.terra,
+              padding: "16px 20px",
+              background: "var(--c-claySoft)",
+              borderColor: "var(--c-clay)",
               display: "grid",
               gap: 10,
             }}
@@ -490,9 +478,9 @@ export function SuperAdminConsoleShell({
             <StatusBadge label="Blocked" tone="blocked" />
             <p
               style={{
-                fontFamily: fontBody,
+                fontFamily: "var(--font-body)",
                 fontSize: 13,
-                color: P.terraTextStrong,
+                color: "var(--c-clay)",
                 lineHeight: 1.55,
                 margin: 0,
               }}
@@ -500,7 +488,7 @@ export function SuperAdminConsoleShell({
               No purge action, broad delete, raw SQL, schema editor, or auth bypass is
               available from this command center shell.
             </p>
-          </div>
+          </Card>
         </CommandSection>
       </div>
     </div>
