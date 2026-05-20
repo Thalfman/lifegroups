@@ -2,7 +2,7 @@
 
 > Status: design notes only. This document does **not** authorize code
 > changes. Every implementation it references is gated by the strict
-> checklist in §11.
+> checklist in §9.
 
 ## 0. Source
 
@@ -91,8 +91,8 @@ The two palettes are tonally close. **Direct OKLCH→HSL conversion
 is not needed for route-scoped polish** — the existing `P.sage`,
 `P.terra`, `P.mustard`, and `--background`/`--card` values cover
 ~80% of the prototype's surface vocabulary. The gaps (`rose`, `blue`,
-formal `amber` token) are global additions and belong in §6 (risky)
-not §5 (safe).
+formal `amber` token) are global additions and belong in §4 (risky)
+not §3 (safe).
 
 ### Typography (prototype)
 
@@ -127,7 +127,7 @@ not §5 (safe).
   `gap: 12`, `padding: 20`) inside `PCard` and dashboard components,
   with mobile overrides via the `lg-m-*` classes in `globals.css`.
 - Adopting a density token globally would interact with those mobile
-  `!important` overrides — see §6.
+  `!important` overrides — see §4.
 
 ### Card pattern
 
