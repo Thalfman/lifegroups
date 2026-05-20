@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
-import { Card, SegmentedControl } from "@/components/pastoral/primitives";
 import {
   AdminMasterCalendarGrid,
   type DayClickPayload,
@@ -18,6 +17,7 @@ import {
   EVENT_TYPE_OPTIONS,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -35,9 +35,6 @@ const ALL_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
   { value: "off", label: friendlyEventTypeLabel("off") },
   { value: "cancelled", label: friendlyEventTypeLabel("cancelled") },
 ];
-
-// Single-letter weekday labels keep the day filter compact on mobile.
-const WEEKDAY_SHORT = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 export function AdminMasterCalendarShell({
   monthIso,
@@ -76,6 +73,7 @@ export function AdminMasterCalendarShell({
     setViewMode(next);
   };
 
+  // Filter state.
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<GroupCalendarEventType[]>([]);
   const [statusFilter, setStatusFilter] = useState<GroupCalendarEventStatus[]>(
@@ -83,11 +81,13 @@ export function AdminMasterCalendarShell({
   );
   const [dayFilter, setDayFilter] = useState<number[]>([]); // 0=Sun..6=Sat
   // Leader filter keyed on profile_id so two profiles with the same
-  // display name don't collapse into one option.
+  // display name don't collapse into one option (and so picking one
+  // doesn't over-match the other).
   const [leaderFilter, setLeaderFilter] = useState<string>("");
 
-  // Composite key (groupId|date): the master view has multiple occurrences
-  // per date but at most one per group/date.
+  // Selected occurrence for the drawer. We use a composite key
+  // (groupId|date) since the master view has multiple occurrences per
+  // date but at most one per group/date.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [listAnchorDate, setListAnchorDate] = useState<string | null>(null);
 
@@ -186,32 +186,75 @@ export function AdminMasterCalendarShell({
   );
 }
 
+function ViewToggle({
+  viewMode,
+  onChange,
+}: {
+  viewMode: ViewMode;
+  onChange: (next: ViewMode) => void;
+}) {
+  const itemStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily: fontSans,
+    fontSize: 12,
+    fontWeight: active ? 700 : 500,
+    color: active ? P.surface : P.ink2,
+    background: active ? P.terra : "transparent",
+    border: "none",
+    padding: "8px 14px",
+    cursor: "pointer",
+    borderRadius: 999,
+  });
+  return (
+    <div
+      role="tablist"
+      aria-label="Calendar view"
+      style={{
+        display: "inline-flex",
+        alignSelf: "start",
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 999,
+        padding: 3,
+      }}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={viewMode === "month"}
+        onClick={() => onChange("month")}
+        style={itemStyle(viewMode === "month")}
+      >
+        Month
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={viewMode === "list"}
+        onClick={() => onChange("list")}
+        style={itemStyle(viewMode === "list")}
+      >
+        List
+      </button>
+    </div>
+  );
+}
+
 function EmptyState() {
   return (
-    <Card style={{ padding: "36px 18px", textAlign: "center" }}>
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 11,
-          letterSpacing: 1.8,
-          textTransform: "uppercase",
-          color: "var(--c-ink3)",
-          fontWeight: 600,
-          marginBottom: 6,
-        }}
-      >
-        No matches
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 14,
-          color: "var(--c-ink2)",
-        }}
-      >
-        No group meetings match these filters. Try clearing one or more.
-      </div>
-    </Card>
+    <div
+      style={{
+        background: P.surface,
+        border: `1px dashed ${P.line}`,
+        borderRadius: 14,
+        padding: "32px 18px",
+        textAlign: "center",
+        fontFamily: fontBody,
+        fontSize: 14,
+        color: P.ink2,
+      }}
+    >
+      No group meetings match these filters.
+    </div>
   );
 }
 
@@ -254,38 +297,131 @@ function FilterBar({
     () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
     [groups],
   );
-
-  // Mutual-exclusion state: at most one dropdown popover is open at a
-  // time. Stored in the parent so opening one closes any other. Refs
-  // power the click-outside / Escape handlers below.
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const filterRowRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (openDropdown === null) return;
-    const onMouseDown = (event: MouseEvent) => {
-      const root = filterRowRef.current;
-      if (!root) return;
-      if (event.target instanceof Node && root.contains(event.target)) return;
-      setOpenDropdown(null);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenDropdown(null);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openDropdown]);
-
   return (
-    <Card padded={false} style={{ padding: "12px 14px" }}>
+    <section
+      style={{
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 14,
+        padding: "12px 14px",
+        display: "grid",
+        gap: 10,
+      }}
+    >
       <div
         style={{
-          display: "grid",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: fontSans,
+            fontSize: 11,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            color: P.ink3,
+            fontWeight: 600,
+          }}
+        >
+          Filters
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          {hasActiveFilters ? (
+            <PButton type="button" onClick={onReset} tone="ghost" size="sm">
+              Reset filters
+            </PButton>
+          ) : null}
+          <ViewToggle viewMode={viewMode} onChange={onChangeView} />
+        </div>
+      </div>
+      <div
+        className="lg-m-master-calendar-filters"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 10,
+          alignItems: "start",
+        }}
+      >
+        <GroupsDetailsField
+          options={groupOptions}
+          value={groupFilter}
+          onChange={setGroupFilter}
+        />
+        <MultiCheckboxField<GroupCalendarEventType>
+          label="Gathering type"
+          options={ALL_TYPE_OPTIONS}
+          value={typeFilter}
+          onChange={(next) => setTypeFilter(next)}
+        />
+        <MultiCheckboxField<GroupCalendarEventStatus>
+          label="Status"
+          options={EVENT_STATUS_OPTIONS}
+          value={statusFilter}
+          onChange={(next) => setStatusFilter(next)}
+        />
+        <MultiCheckboxField<number>
+          label="Meeting day"
+          options={WEEKDAY_HEADERS.map((wd, i) => ({ value: i, label: wd }))}
+          value={dayFilter}
+          onChange={(next) => setDayFilter(next)}
+        />
+        <SelectField
+          label="Leader / co-leader"
+          value={leaderFilter}
+          onChange={setLeaderFilter}
+          options={[
+            { value: "", label: "All leaders" },
+            ...leaderOptions.map((l) => ({
+              value: l.profileId,
+              label: l.name,
+            })),
+          ]}
+        />
+      </div>
+    </section>
+  );
+}
+
+function GroupsDetailsField({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const count = value.length;
+  const selectedSet = useMemo(() => new Set(value), [value]);
+  const summaryRight = count === 0 ? "All" : `${count} selected`;
+  return (
+    <details
+      style={{
+        border: `1px solid ${P.line2}`,
+        borderRadius: 10,
+        background: P.bg,
+        padding: "6px 10px",
+        alignSelf: "start",
+        margin: 0,
+      }}
+    >
+      <summary
+        style={{
+          display: "list-item",
+          cursor: "pointer",
+          padding: "2px 0",
         }}
       >
         <div
@@ -293,404 +429,215 @@ function FilterBar({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 11,
-              letterSpacing: 1.8,
-              textTransform: "uppercase",
-              color: "var(--c-ink3)",
-              fontWeight: 600,
-            }}
-          >
-            Filters
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            {hasActiveFilters ? (
-              <PButton type="button" onClick={onReset} tone="ghost" size="sm">
-                Reset filters
-              </PButton>
-            ) : null}
-            <SegmentedControl
-              ariaLabel="Calendar view"
-              size="sm"
-              value={viewMode}
-              onChange={onChangeView}
-              options={[
-                { value: "month", label: "Month" },
-                { value: "list", label: "List" },
-              ]}
-            />
-          </div>
-        </div>
-        <div
-          ref={filterRowRef}
-          className="lg-m-master-calendar-filters"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
             gap: 8,
           }}
         >
-          <FilterDropdown
-            id="group"
-            label="Group"
-            options={groupOptions}
-            value={groupFilter}
-            onChange={setGroupFilter}
-            isOpen={openDropdown === "group"}
-            onOpenChange={(open) => setOpenDropdown(open ? "group" : null)}
-            scrollable
-          />
-          <FilterDropdown<GroupCalendarEventType>
-            id="type"
-            label="Type"
-            options={ALL_TYPE_OPTIONS}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            isOpen={openDropdown === "type"}
-            onOpenChange={(open) => setOpenDropdown(open ? "type" : null)}
-          />
-          <FilterDropdown<GroupCalendarEventStatus>
-            id="status"
-            label="Status"
-            options={EVENT_STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            isOpen={openDropdown === "status"}
-            onOpenChange={(open) => setOpenDropdown(open ? "status" : null)}
-          />
-          <DayChips value={dayFilter} onChange={setDayFilter} />
-          <LeaderSelect
-            value={leaderFilter}
-            onChange={setLeaderFilter}
-            options={[
-              { value: "", label: "All leaders" },
-              ...leaderOptions.map((l) => ({
-                value: l.profileId,
-                label: l.name,
-              })),
-            ]}
-          />
+          <span
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 700,
+            }}
+          >
+            Group
+          </span>
+          <span
+            style={{
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: count > 0 ? P.terra : P.ink3,
+              background: count > 0 ? P.terraSoft : "transparent",
+              border: `1px solid ${count > 0 ? P.terra : P.line}`,
+              padding: "1px 8px",
+              borderRadius: 999,
+            }}
+          >
+            {summaryRight}
+          </span>
         </div>
+      </summary>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          paddingTop: 8,
+          maxHeight: 220,
+          overflowY: "auto",
+          paddingRight: 2,
+        }}
+      >
+        {options.map((opt) => {
+          const checked = selectedSet.has(opt.value);
+          return (
+            <label
+              key={opt.value}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 999,
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: checked ? P.terra : P.ink2,
+                background: checked ? P.terraSoft : P.surface,
+                border: `1px solid ${checked ? P.terra : P.line}`,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  if (e.target.checked) onChange([...value, opt.value]);
+                  else onChange(value.filter((v) => v !== opt.value));
+                }}
+                style={{ accentColor: P.terra, margin: 0 }}
+              />
+              {opt.label}
+            </label>
+          );
+        })}
       </div>
-    </Card>
+    </details>
   );
 }
 
-// Controlled chip-shaped dropdown. Single source of truth for which
-// dropdown is open lives in the parent FilterBar, so opening one closes
-// any other and click-outside / Escape close the active one.
-function FilterDropdown<V extends string | number>({
-  id,
+function MultiCheckboxField<V extends string | number>({
   label,
   options,
   value,
   onChange,
-  isOpen,
-  onOpenChange,
-  scrollable = false,
 }: {
-  id: string;
   label: string;
   options: { value: V; label: string }[];
   value: V[];
   onChange: (next: V[]) => void;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  scrollable?: boolean;
 }) {
-  const selectedSet = useMemo(() => new Set(value), [value]);
-  const count = value.length;
-  const summaryText = count === 0 ? "All" : `${count}`;
-  const isActive = count > 0;
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  // Right-align the popover when the trigger sits in the right half of
-  // the viewport — keeps the 220–320px popover inside the viewport on
-  // narrow widths without measuring the popover itself.
-  const [alignRight, setAlignRight] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    const triggerCenter = rect.left + rect.width / 2;
-    setAlignRight(triggerCenter > window.innerWidth / 2);
-  }, [isOpen]);
-
   return (
-    <div style={{ position: "relative", margin: 0 }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        onClick={() => onOpenChange(!isOpen)}
-        className="lg-m-cal-filter-trigger"
-        style={{
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 12px",
-          borderRadius: 999,
-          background: isActive ? "var(--c-sageSoft)" : "var(--c-surfaceAlt)",
-          border: `1px solid ${isActive ? "var(--c-sage)" : "var(--c-line)"}`,
-          color: isActive ? "var(--c-sageDeep)" : "var(--c-ink2)",
-          fontFamily: "var(--font-body)",
-          fontSize: 12.5,
-          fontWeight: 500,
-          minHeight: 36,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span>{label}</span>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: 22,
-            padding: "1px 7px",
-            borderRadius: 999,
-            background: isActive ? "var(--c-surface)" : "transparent",
-            border: isActive ? "none" : "1px solid var(--c-line)",
-            color: isActive ? "var(--c-sageDeep)" : "var(--c-ink3)",
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-        >
-          {summaryText}
-        </span>
-        <span
-          aria-hidden="true"
-          style={{ fontSize: 10, lineHeight: 1, opacity: 0.7 }}
-        >
-          ▾
-        </span>
-      </button>
-      {isOpen ? (
-        <div
-          role="listbox"
-          aria-label={label}
-          id={`filter-popover-${id}`}
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            // Anchor to the trigger edge nearest the viewport center so
-            // the popover never overflows the right edge on narrow
-            // screens.
-            ...(alignRight ? { right: 0 } : { left: 0 }),
-            minWidth: 220,
-            maxWidth: "min(320px, calc(100vw - 24px))",
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-line)",
-            borderRadius: 12,
-            boxShadow: "var(--c-shadowLg)",
-            padding: 10,
-            zIndex: 5,
-            display: "grid",
-            gap: 6,
-            maxHeight: scrollable ? 280 : undefined,
-            overflowY: scrollable ? "auto" : undefined,
-          }}
-        >
-          {options.map((opt) => {
-            const checked = selectedSet.has(opt.value);
-            return (
-              <label
-                key={String(opt.value)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  background: checked ? "var(--c-sageSoft)" : "transparent",
-                  color: checked ? "var(--c-sageDeep)" : "var(--c-ink2)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: 13,
-                  userSelect: "none",
-                  minHeight: 36,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
-                    if (e.target.checked) onChange([...value, opt.value]);
-                    else onChange(value.filter((v) => v !== opt.value));
-                  }}
-                  style={{ accentColor: "var(--c-sage)", margin: 0 }}
-                />
-                <span>{opt.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// Compact 7-letter weekday chip row. Toggling a chip filters by that
-// weekday index (0=Sun..6=Sat). Visual chip is 32×32 on desktop with
-// generous padding around the row so the row total is ≥ 44px tall; on
-// mobile the chips and row both bump up via a globals.css rule.
-function DayChips({
-  value,
-  onChange,
-}: {
-  value: number[];
-  onChange: (next: number[]) => void;
-}) {
-  const selected = useMemo(() => new Set(value), [value]);
-  return (
-    <div
-      role="group"
-      aria-label="Meeting day"
-      className="lg-m-cal-day-row"
+    <fieldset
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px 4px 12px",
-        borderRadius: 999,
-        background: "var(--c-surfaceAlt)",
-        border: "1px solid var(--c-line)",
-        minHeight: 44,
+        border: `1px solid ${P.line2}`,
+        borderRadius: 10,
+        padding: "6px 10px",
+        margin: 0,
+        background: P.bg,
+        alignSelf: "start",
       }}
     >
-      <span
+      <legend
         style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 11,
-          letterSpacing: 1.4,
+          fontFamily: fontSans,
+          fontSize: 10,
+          letterSpacing: 1.2,
           textTransform: "uppercase",
-          color: "var(--c-ink3)",
-          fontWeight: 600,
+          color: P.ink3,
+          fontWeight: 700,
+          padding: "0 4px",
         }}
       >
-        Day
-      </span>
-      {WEEKDAY_SHORT.map((letter, idx) => {
-        const checked = selected.has(idx);
-        const fullLabel = WEEKDAY_HEADERS[idx];
-        return (
-          <button
-            key={idx}
-            type="button"
-            aria-pressed={checked}
-            aria-label={fullLabel}
-            title={fullLabel}
-            onClick={() => {
-              if (checked) onChange(value.filter((v) => v !== idx));
-              else onChange([...value, idx]);
-            }}
-            className="lg-m-cal-day-chip"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 999,
-              border: checked
-                ? "1px solid var(--c-sage)"
-                : "1px solid transparent",
-              background: checked ? "var(--c-sageSoft)" : "transparent",
-              color: checked ? "var(--c-sageDeep)" : "var(--c-ink3)",
-              fontFamily: "var(--font-body)",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              padding: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {letter}
-          </button>
-        );
-      })}
-    </div>
+        {label}
+      </legend>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          paddingTop: 4,
+          maxHeight: 96,
+          overflowY: "auto",
+          paddingRight: 2,
+        }}
+      >
+        {options.map((opt) => {
+          const checked = value.includes(opt.value);
+          return (
+            <label
+              key={String(opt.value)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 999,
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: checked ? P.terra : P.ink2,
+                background: checked ? P.terraSoft : P.surface,
+                border: `1px solid ${checked ? P.terra : P.line}`,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  if (e.target.checked) onChange([...value, opt.value]);
+                  else onChange(value.filter((v) => v !== opt.value));
+                }}
+                style={{ accentColor: P.terra, margin: 0 }}
+              />
+              {opt.label}
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
-function LeaderSelect({
+function SelectField({
+  label,
   value,
   onChange,
   options,
 }: {
+  label: string;
   value: string;
   onChange: (next: string) => void;
   options: { value: string; label: string }[];
 }) {
-  const isActive = value !== "";
   return (
-    <label
-      className="lg-m-cal-filter-trigger"
+    <div
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "0 4px 0 12px",
-        borderRadius: 999,
-        background: isActive ? "var(--c-sageSoft)" : "var(--c-surfaceAlt)",
-        border: `1px solid ${isActive ? "var(--c-sage)" : "var(--c-line)"}`,
-        minHeight: 36,
+        border: `1px solid ${P.line2}`,
+        borderRadius: 10,
+        padding: "6px 10px",
+        background: P.bg,
+        display: "grid",
+        gap: 4,
+        alignSelf: "start",
       }}
     >
-      <span
+      <div
         style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 11,
-          letterSpacing: 1.4,
+          fontFamily: fontSans,
+          fontSize: 10,
+          letterSpacing: 1.2,
           textTransform: "uppercase",
-          color: isActive ? "var(--c-sageDeep)" : "var(--c-ink3)",
-          fontWeight: 600,
-          whiteSpace: "nowrap",
+          color: P.ink3,
+          fontWeight: 700,
         }}
       >
-        Leader
-      </span>
+        {label}
+      </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{
-          appearance: "none",
-          background: "transparent",
-          border: "none",
-          color: isActive ? "var(--c-sageDeep)" : "var(--c-ink2)",
-          fontFamily: "var(--font-body)",
-          fontSize: 12.5,
-          fontWeight: 500,
-          padding: "8px 24px 8px 4px",
-          maxWidth: 180,
-          cursor: "pointer",
-          outline: "none",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          // Inline caret via SVG so we can keep the chip-height styling
-          // without a giant native browser arrow eating vertical space.
-          backgroundImage:
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%239c8a6d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 8px center",
-          backgroundSize: "12px 12px",
+          fontFamily: fontBody,
+          fontSize: 13,
+          background: P.surface,
+          color: P.ink,
+          border: `1px solid ${P.line}`,
+          borderRadius: 8,
+          padding: "6px 8px",
         }}
       >
         {options.map((opt) => (
@@ -699,6 +646,6 @@ function LeaderSelect({
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }

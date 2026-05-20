@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
-import { Card, Pill, type PillTone } from "@/components/pastoral/primitives";
+import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import {
   friendlyEventStatusLabel,
   friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 
-function statusPillTone(status: MasterOccurrence["status"]): PillTone {
-  if (status === "off") return "neutral";
-  if (status === "cancelled") return "clay";
-  return "sage";
+function statusTone(status: MasterOccurrence["status"]): PTone {
+  if (status === "off") return "pause";
+  if (status === "cancelled") return "followup";
+  return "healthy";
 }
 
 export function AdminMasterCalendarList({
@@ -62,68 +63,45 @@ export function AdminMasterCalendarList({
   }
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div
+      style={{
+        display: "grid",
+        gap: 14,
+      }}
+    >
       {grouped.map(([date, dayOccurrences]) => (
-        <DayGroup
+        <section
           key={date}
-          date={date}
-          occurrences={dayOccurrences}
-          anchorDate={anchorDate}
-          anchorRef={anchorRef}
-          onSelect={onSelect}
-        />
-      ))}
-    </div>
-  );
-}
-
-function DayGroup({
-  date,
-  occurrences,
-  anchorDate,
-  anchorRef,
-  onSelect,
-}: {
-  date: string;
-  occurrences: MasterOccurrence[];
-  anchorDate: string | null;
-  anchorRef: React.RefObject<HTMLDivElement | null>;
-  onSelect: (o: MasterOccurrence) => void;
-}) {
-  return (
-    <div ref={date === anchorDate ? anchorRef : undefined}>
-      <Card padded={false} style={{ padding: "14px 16px", display: "grid", gap: 10 }}>
-        <h3
+          ref={date === anchorDate ? anchorRef : undefined}
           style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 11,
-            letterSpacing: 1.8,
-            textTransform: "uppercase",
-            color: "var(--c-ink3)",
-            fontWeight: 600,
-            margin: 0,
-          }}
-        >
-          {dateLabel(date)}
-        </h3>
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
+            background: P.surface,
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
+            padding: "14px 16px",
             display: "grid",
-            gap: 8,
+            gap: 10,
           }}
         >
-          {occurrences.map((o) => (
-            <OccurrenceCard
-              key={`${o.groupId}|${o.date}`}
-              occurrence={o}
-              onSelect={onSelect}
-            />
-          ))}
-        </ul>
-      </Card>
+          <h3
+            style={{
+              fontFamily: fontSans,
+              fontSize: 12,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            {dateLabel(date)}
+          </h3>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+            {dayOccurrences.map((o) => (
+              <OccurrenceCard key={`${o.groupId}|${o.date}`} occurrence={o} onSelect={onSelect} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
@@ -137,12 +115,12 @@ function OccurrenceCard({
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
-  const isCancelled = occurrence.status === "cancelled";
+  const tone = statusTone(occurrence.status);
   return (
     <li
       style={{
-        background: "var(--c-surfaceAlt)",
-        border: "1px solid var(--c-lineSoft)",
+        background: P.bg,
+        border: `1px solid ${P.line2}`,
         borderRadius: 10,
         padding: 12,
         display: "grid",
@@ -159,18 +137,17 @@ function OccurrenceCard({
           textAlign: "left",
           cursor: "pointer",
           display: "grid",
-          gap: 6,
+          gap: 4,
           minHeight: 44,
         }}
       >
         <div
           style={{
-            fontFamily: "var(--font-body)",
+            fontFamily: fontBody,
             fontSize: 15,
             fontWeight: 600,
-            color: "var(--c-ink)",
+            color: P.ink,
             lineHeight: 1.3,
-            textDecoration: isCancelled ? "line-through" : "none",
           }}
         >
           {occurrence.groupName}
@@ -181,21 +158,19 @@ function OccurrenceCard({
             alignItems: "center",
             gap: 8,
             flexWrap: "wrap",
-            fontFamily: "var(--font-body)",
-            fontSize: 12.5,
-            color: "var(--c-ink2)",
+            fontFamily: fontSans,
+            fontSize: 12,
+            color: P.ink2,
           }}
         >
           {occurrence.status !== "scheduled" ? (
-            <Pill tone={statusPillTone(occurrence.status)}>
-              {friendlyEventStatusLabel(occurrence.status)}
-            </Pill>
+            <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
           ) : (
-            <Pill tone="sage">{typeLabel}</Pill>
+            <PBadge tone="healthy">{typeLabel}</PBadge>
           )}
           {clock ? <span>{clock}</span> : null}
           {occurrence.leaders.length > 0 ? (
-            <span style={{ color: "var(--c-ink3)" }}>
+            <span style={{ color: P.ink3 }}>
               · {occurrence.leaders.map((l) => l.name).join(", ")}
             </span>
           ) : null}
@@ -204,17 +179,14 @@ function OccurrenceCard({
       <Link
         href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
         style={{
-          fontFamily: "var(--font-body)",
+          fontFamily: fontSans,
           fontSize: 12,
           fontWeight: 600,
-          color: "var(--c-clay)",
+          color: P.terra,
           textDecoration: "none",
-          letterSpacing: 0.3,
+          letterSpacing: 0.4,
+          textTransform: "uppercase",
           alignSelf: "start",
-          padding: "6px 10px",
-          borderRadius: 999,
-          border: "1px solid var(--c-line)",
-          background: "var(--c-surface)",
         }}
       >
         Open group calendar →

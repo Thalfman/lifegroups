@@ -1,11 +1,5 @@
 import { SectionHeader } from "@/components/layout/shell";
-import {
-  Card,
-  Pill,
-  StatusDot,
-  type PillTone,
-  type StatusDotTone,
-} from "@/components/pastoral/primitives";
+import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 
 export type ChecklistTone = "ok" | "warn" | "info";
 
@@ -16,13 +10,31 @@ export type ChecklistRow = {
   tone: ChecklistTone;
 };
 
-const TONE_MAP: Record<
+const TONE_STYLE: Record<
   ChecklistTone,
-  { dot: StatusDotTone; pill: PillTone; word: string }
+  { color: string; background: string; border: string; glyph: string; word: string }
 > = {
-  ok: { dot: "sage", pill: "sage", word: "Good" },
-  warn: { dot: "clay", pill: "clay", word: "Missing" },
-  info: { dot: "neutral", pill: "neutral", word: "Note" },
+  ok: {
+    color: P.sageTextStrong,
+    background: P.sageSoft,
+    border: P.sage,
+    glyph: "OK",
+    word: "Good",
+  },
+  warn: {
+    color: P.terraTextStrong,
+    background: P.terraSoft,
+    border: P.terra,
+    glyph: "—",
+    word: "Missing",
+  },
+  info: {
+    color: P.ink2,
+    background: P.surface,
+    border: P.line,
+    glyph: "·",
+    word: "Note",
+  },
 };
 
 export function SystemStatusChecklist({ rows }: { rows: ChecklistRow[] }) {
@@ -33,64 +45,93 @@ export function SystemStatusChecklist({ rows }: { rows: ChecklistRow[] }) {
         title="What&rsquo;s in place"
         description="A quick read of the foundational data and audit access. Useful after a fresh deploy or a seed import."
       />
-      <Card padded={false} style={{ overflow: "hidden" }}>
-        <ol
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 0,
-          }}
-        >
-          {rows.map((row, idx) => {
-            const t = TONE_MAP[row.tone];
-            return (
-              <li
-                key={row.key}
+      <ol
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gap: 1,
+          background: P.line2,
+          border: `1px solid ${P.line}`,
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        {rows.map((row) => {
+          const t = TONE_STYLE[row.tone];
+          return (
+            <li
+              key={row.key}
+              style={{
+                background: P.surface,
+                padding: "12px 16px",
+                display: "grid",
+                gridTemplateColumns: "auto 1fr auto",
+                gap: 14,
+                alignItems: "center",
+              }}
+            >
+              <span
+                aria-hidden="true"
                 style={{
-                  padding: "12px 18px",
-                  display: "grid",
-                  gridTemplateColumns: "auto 1fr auto",
-                  gap: 14,
+                  width: 34,
+                  height: 24,
+                  borderRadius: 999,
+                  background: t.background,
+                  border: `1px solid ${t.border}`,
+                  color: t.color,
+                  fontFamily: fontSans,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  display: "inline-flex",
                   alignItems: "center",
-                  borderTop: idx === 0 ? "none" : "1px solid var(--c-lineSoft)",
+                  justifyContent: "center",
                 }}
               >
-                <StatusDot tone={t.dot} size={10} />
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: 14,
-                      color: "var(--c-ink)",
-                      fontWeight: 500,
-                      marginBottom: 3,
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    {row.label}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: 12,
-                      color: "var(--c-ink3)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {row.description}
-                  </div>
+                {t.glyph}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: fontDisplay,
+                    fontSize: 14,
+                    color: P.ink,
+                    fontWeight: 500,
+                    marginBottom: 2,
+                  }}
+                >
+                  {row.label}
                 </div>
-                <Pill tone={t.pill}>
-                  <span className="sr-only">Status: </span>
-                  {t.word}
-                </Pill>
-              </li>
-            );
-          })}
-        </ol>
-      </Card>
+                <div
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 12,
+                    color: P.ink3,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {row.description}
+                </div>
+              </div>
+              <span
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 11,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: t.color,
+                  fontWeight: 600,
+                }}
+              >
+                <span className="sr-only">Status: </span>
+                {t.word}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

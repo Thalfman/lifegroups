@@ -4,7 +4,6 @@ import { PastoralAppShell } from "@/components/pastoral/shell";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
-import { Card } from "@/components/pastoral/primitives";
 import { requireAdmin } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -16,6 +15,7 @@ import {
   shiftMonthIso,
   todayChurchIso,
 } from "@/lib/calendar/occurrences";
+import { P, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
@@ -34,15 +34,13 @@ function pickMonthParam(value: string | string[] | undefined): string | null {
 }
 
 const navLinkStyle: React.CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontSize: 12.5,
-  fontWeight: 500,
-  color: "var(--c-ink2)",
+  fontFamily: fontSans,
+  fontSize: 12,
+  color: P.ink,
   textDecoration: "none",
-  padding: "7px 12px",
+  padding: "6px 10px",
   borderRadius: 999,
-  border: "1px solid var(--c-line)",
-  background: "var(--c-surface)",
+  border: `1px solid ${P.line}`,
 };
 
 export default async function AdminMasterCalendarPage({
@@ -85,10 +83,12 @@ export default async function AdminMasterCalendarPage({
         </>
       }
     >
-      <div style={{ display: "grid", gap: 16 }}>
-        <Card
-          padded={false}
+      <div style={{ display: "grid", gap: 18 }}>
+        <section
           style={{
+            background: P.surface,
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
             padding: "14px 18px",
             display: "flex",
             gap: 14,
@@ -99,11 +99,12 @@ export default async function AdminMasterCalendarPage({
         >
           <div
             style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 20,
-              fontWeight: 500,
-              color: "var(--c-ink)",
-              letterSpacing: -0.3,
+              fontFamily: fontSans,
+              fontSize: 11,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 600,
             }}
           >
             {monthLabel(monthIso)}
@@ -123,7 +124,7 @@ export default async function AdminMasterCalendarPage({
               </Link>
             ) : null}
           </div>
-        </Card>
+        </section>
 
         <AdminMasterCalendarShell
           monthIso={monthIso}
