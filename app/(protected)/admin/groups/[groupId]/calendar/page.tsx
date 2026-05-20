@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { Card } from "@/components/lg/Card";
 import { CalendarEventList } from "@/components/calendar/calendar-event-list";
 import {
   CalendarMonthGrid,
@@ -10,7 +9,6 @@ import {
 } from "@/components/calendar/calendar-month-grid";
 import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-actions";
 import { requireAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchGroupCalendarEvents,
@@ -27,7 +25,6 @@ import {
   toSavedOverrides,
 } from "@/lib/calendar/occurrences";
 import type { GroupsRow } from "@/types/database";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   adminArchiveCalendarEvent,
   adminCreateCalendarEvent,
@@ -41,13 +38,14 @@ type Params = { groupId: string };
 type Search = { archived?: string; month?: string };
 
 const navLinkStyle: React.CSSProperties = {
-  fontFamily: fontSans,
+  fontFamily: "var(--font-body)",
   fontSize: 12,
-  color: P.ink,
+  color: "var(--c-ink)",
   textDecoration: "none",
   padding: "6px 10px",
   borderRadius: 999,
-  border: `1px solid ${P.line}`,
+  border: "1px solid var(--c-line)",
+  background: "var(--c-surface)",
 };
 
 export default async function AdminGroupCalendarPage({
@@ -61,7 +59,7 @@ export default async function AdminGroupCalendarPage({
   const search = (await searchParams) ?? {};
   const showArchived = search.archived === "1";
 
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const client = await createSupabaseServerClient();
   if (!client) notFound();
@@ -110,192 +108,186 @@ export default async function AdminGroupCalendarPage({
   const nextMonth = shiftMonthIso(monthIso, 1);
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Admin · Group calendar"
-      title={group.name}
-      titleItalic={showArchived ? "— archived" : "— calendar"}
-      lede={
-        group.lifecycle_status === "closed"
-          ? "This group is closed. Admins can still correct calendar occurrences here; leaders cannot edit while it is closed."
-          : "Click any date to set the gathering type or mark it OFF / Cancelled. Time is inherited from the group's schedule."
-      }
-      contentMaxWidth={920}
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <div style={{ display: "grid", gap: 18 }}>
-        <nav
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink3,
-            flexWrap: "wrap",
-          }}
-        >
-          <Link href="/admin/groups" style={{ color: P.ink2, textDecoration: "none" }}>
-            ← Back to groups
-          </Link>
-          <span aria-hidden="true">·</span>
-          <Link
-            href={`/admin/groups/${groupId}/calendar`}
+    <>
+      <PageHeader
+        eyebrow="Admin · Group calendar"
+        title={group.name}
+        italic={showArchived ? "— archived" : "— calendar"}
+        lede={
+          group.lifecycle_status === "closed"
+            ? "This group is closed. Admins can still correct calendar occurrences here; leaders cannot edit while it is closed."
+            : "Click any date to set the gathering type or mark it OFF / Cancelled. Time is inherited from the group's schedule."
+        }
+        maxWidth={920}
+      />
+      <PageBody maxWidth={920}>
+        <div style={{ display: "grid", gap: 18 }}>
+          <nav
             style={{
-              textDecoration: showArchived ? "none" : "underline",
-              fontWeight: showArchived ? 400 : 600,
-              color: showArchived ? P.ink3 : P.ink,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              fontFamily: "var(--font-body)",
+              fontSize: 12,
+              color: "var(--c-ink3)",
+              flexWrap: "wrap",
             }}
           >
-            Calendar
-          </Link>
-          <span aria-hidden="true">·</span>
-          <Link
-            href={`/admin/groups/${groupId}/calendar?archived=1&month=${monthIso}`}
-            style={{
-              textDecoration: showArchived ? "underline" : "none",
-              fontWeight: showArchived ? 600 : 400,
-              color: showArchived ? P.ink : P.ink3,
-            }}
-          >
-            Archived
-          </Link>
-        </nav>
-
-        {!showArchived ? (
-          <>
-            <section
+            <Link
+              href="/admin/groups"
+              style={{ color: "var(--c-ink2)", textDecoration: "none" }}
+            >
+              ← Back to groups
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              href={`/admin/groups/${groupId}/calendar`}
               style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderRadius: 14,
-                padding: "14px 18px",
-                display: "flex",
-                gap: 14,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
+                textDecoration: showArchived ? "none" : "underline",
+                fontWeight: showArchived ? 400 : 600,
+                color: showArchived ? "var(--c-ink3)" : "var(--c-ink)",
               }}
             >
-              <div style={{ display: "grid", gap: 4 }}>
+              Calendar
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              href={`/admin/groups/${groupId}/calendar?archived=1&month=${monthIso}`}
+              style={{
+                textDecoration: showArchived ? "underline" : "none",
+                fontWeight: showArchived ? 600 : 400,
+                color: showArchived ? "var(--c-ink)" : "var(--c-ink3)",
+              }}
+            >
+              Archived
+            </Link>
+          </nav>
+
+          {!showArchived ? (
+            <>
+              <Card style={{ padding: "14px 18px" }}>
                 <div
                   style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    color: P.ink3,
-                    fontWeight: 600,
+                    display: "flex",
+                    gap: 14,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {monthLabel(monthIso)}
-                </div>
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 13,
-                    color: P.ink2,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {scheduleSummary ?? <ScheduleGap group={group} />}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                {prevMonth ? (
-                  <Link
-                    href={`/admin/groups/${groupId}/calendar?month=${prevMonth}`}
-                    style={navLinkStyle}
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontSize: 18,
+                        color: "var(--c-ink)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {monthLabel(monthIso)}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: 13,
+                        color: "var(--c-ink2)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {scheduleSummary ?? <ScheduleGap group={group} />}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
                   >
-                    ← {monthLabel(prevMonth)}
-                  </Link>
-                ) : null}
-                <Link
-                  href={`/admin/groups/${groupId}/calendar`}
-                  style={navLinkStyle}
-                >
-                  This month
-                </Link>
-                {nextMonth ? (
-                  <Link
-                    href={`/admin/groups/${groupId}/calendar?month=${nextMonth}`}
-                    style={navLinkStyle}
-                  >
-                    {monthLabel(nextMonth)} →
-                  </Link>
-                ) : null}
-              </div>
+                    {prevMonth ? (
+                      <Link
+                        href={`/admin/groups/${groupId}/calendar?month=${prevMonth}`}
+                        style={navLinkStyle}
+                      >
+                        ← {monthLabel(prevMonth)}
+                      </Link>
+                    ) : null}
+                    <Link
+                      href={`/admin/groups/${groupId}/calendar`}
+                      style={navLinkStyle}
+                    >
+                      This month
+                    </Link>
+                    {nextMonth ? (
+                      <Link
+                        href={`/admin/groups/${groupId}/calendar?month=${nextMonth}`}
+                        style={navLinkStyle}
+                      >
+                        {monthLabel(nextMonth)} →
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              </Card>
+
+              <CalendarMonthGrid
+                monthIso={monthIso}
+                todayIso={todayIso}
+                occurrences={resolved}
+                groupId={groupId}
+                groupMeetingTime={group.meeting_time}
+                actions={{
+                  create: adminCreateCalendarEvent,
+                  update: adminUpdateCalendarEvent,
+                  archive: adminArchiveCalendarEvent,
+                }}
+                canEdit={true}
+              />
+            </>
+          ) : (
+            <section style={{ display: "grid", gap: 10 }}>
+              <h2
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "var(--c-ink3)",
+                  fontWeight: 600,
+                  margin: 0,
+                }}
+              >
+                Archived overrides · {monthLabel(monthIso)}
+              </h2>
+              <p
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  color: "var(--c-ink2)",
+                  margin: 0,
+                }}
+              >
+                Past overrides that were cleared. Restoring re-applies the
+                override on the calendar grid.
+              </p>
+              <CalendarEventList
+                events={events}
+                emptyMessage="No archived overrides for this month."
+                archivedSeparate={false}
+                renderActions={(event) => (
+                  <ArchivedRestoreButton
+                    eventId={event.id}
+                    groupId={groupId}
+                    action={adminRestoreCalendarEvent}
+                  />
+                )}
+              />
             </section>
-
-            <CalendarMonthGrid
-              monthIso={monthIso}
-              todayIso={todayIso}
-              occurrences={resolved}
-              groupId={groupId}
-              groupMeetingTime={group.meeting_time}
-              actions={{
-                create: adminCreateCalendarEvent,
-                update: adminUpdateCalendarEvent,
-                archive: adminArchiveCalendarEvent,
-              }}
-              canEdit={true}
-            />
-          </>
-        ) : (
-          <section style={{ display: "grid", gap: 10 }}>
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 12,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 600,
-                margin: 0,
-              }}
-            >
-              Archived overrides · {monthLabel(monthIso)}
-            </h2>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                margin: 0,
-              }}
-            >
-              Past overrides that were cleared. Restoring re-applies the override on the calendar grid.
-            </p>
-            <CalendarEventList
-              events={events}
-              emptyMessage="No archived overrides for this month."
-              archivedSeparate={false}
-              renderActions={(event) => (
-                <ArchivedRestoreButton
-                  eventId={event.id}
-                  groupId={groupId}
-                  action={adminRestoreCalendarEvent}
-                />
-              )}
-            />
-          </section>
-        )}
-      </div>
-    </PastoralAppShell>
+          )}
+        </div>
+      </PageBody>
+    </>
   );
 }
 
@@ -312,7 +304,10 @@ function ScheduleGap({ group }: { group: GroupsRow }) {
   return (
     <>
       Schedule incomplete (missing {missing.join(", ") || "fields"}). Set them in{" "}
-      <Link href={`/admin/groups`} style={{ color: P.terra, textDecoration: "underline" }}>
+      <Link
+        href={`/admin/groups`}
+        style={{ color: "var(--c-clay)", textDecoration: "underline" }}
+      >
         group management
       </Link>
       {" "}so the calendar can generate occurrences. Special one-off events can still be added by clicking a date.

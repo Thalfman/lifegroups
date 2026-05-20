@@ -1,9 +1,6 @@
-import { PastoralAppShell } from "@/components/pastoral/shell";
-import { UserPill } from "@/components/auth/user-pill";
-import { LogoutButton } from "@/components/auth/logout-button";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
 import { requireAdmin } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildWeekOptions,
@@ -43,7 +40,7 @@ export default async function AdminCheckInsPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const session = await requireAdmin();
+  await requireAdmin();
   const params = (await searchParams) ?? {};
   const meetingWeek = validateWeekParam(params.week);
   const weekOptions = buildWeekOptions(new Date());
@@ -54,32 +51,20 @@ export default async function AdminCheckInsPage({
     : EMPTY_DATA(meetingWeek);
 
   return (
-    <PastoralAppShell
-      navItems={navItemsForRole(session.profile.role)}
-      currentUser={{
-        name: session.profile.full_name,
-        email: session.profile.email,
-        role: session.profile.role,
-      }}
-      eyebrow="Check-ins"
-      title="Check-ins this week"
-      lede="Who turned in their group check-in this week, and which groups raised a follow-up signal. Closed groups aren't counted."
-      headerSlot={
-        <>
-          <UserPill
-            name={session.profile.full_name}
-            email={session.profile.email}
-            role={session.profile.role}
-          />
-          <LogoutButton />
-        </>
-      }
-    >
-      <CheckInReviewShell
-        data={data}
-        meetingWeek={meetingWeek}
-        weekOptions={weekOptions}
+    <>
+      <PageHeader
+        eyebrow="Check-ins"
+        title="Check-ins"
+        italic="this week"
+        lede="Who turned in their group check-in this week, and which groups raised a follow-up signal. Closed groups aren't counted."
       />
-    </PastoralAppShell>
+      <PageBody>
+        <CheckInReviewShell
+          data={data}
+          meetingWeek={meetingWeek}
+          weekOptions={weekOptions}
+        />
+      </PageBody>
+    </>
   );
 }
