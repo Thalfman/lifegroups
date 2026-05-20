@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
 import { loginAction, type LoginFormState } from "./actions";
 
@@ -127,7 +128,7 @@ export function LoginForm({ next }: { next: string | null }) {
         </div>
       </div>
 
-      <a
+      <Link
         href="/forgot-password"
         style={{
           alignSelf: "flex-end",
@@ -139,7 +140,7 @@ export function LoginForm({ next }: { next: string | null }) {
         }}
       >
         Forgot password?
-      </a>
+      </Link>
 
       <button
         type="submit"
@@ -207,7 +208,7 @@ export function LoginForm({ next }: { next: string | null }) {
           <a
             href="https://www.foxvalleychurch.org/life-groups"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             style={{ color: "var(--c-clay)", fontWeight: 500 }}
           >
             Find a Life Group
