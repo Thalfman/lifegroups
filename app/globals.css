@@ -67,6 +67,12 @@
   .surface-subtle {
     @apply rounded-xl border border-border bg-muted/45;
   }
+
+  .lg-super-admin-command-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+    gap: 24px;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -169,6 +175,23 @@
   }
   .lg-m-form-2up {
     grid-template-columns: 1fr !important;
+  }
+  .lg-super-admin-command-layout {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .lg-super-admin-section-rail {
+    position: static !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    gap: 6px !important;
+    padding: 10px !important;
+  }
+  .lg-super-admin-section-rail > a {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
   }
 
   /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */

@@ -8,10 +8,13 @@ export const P = {
   line: "#e3d4af",
   line2: "#ebe0c2",
   terra: "#b85a3c",
+  terraTextStrong: "#7d3621",
   terraSoft: "#f2d7c8",
   sage: "#6a7d4f",
+  sageTextStrong: "#3e4f29",
   sageSoft: "#dfe4ce",
   mustard: "#c8964a",
+  mustardTextStrong: "#6f4f13",
   mustardSoft: "#f0dfb5",
 } as const;
 
