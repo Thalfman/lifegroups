@@ -23,6 +23,23 @@
 --         transaction. Records the count in audit metadata so
 --         reviewers see the cascade at a glance.
 --
+--   * Race-safety: admin_assign_shepherd_to_over_shepherd now locks
+--     the shepherd's profile row (FOR UPDATE) so a concurrent
+--     admin_deactivate_profile cannot flip status to inactive between
+--     the eligibility check and the assignment insert. The over_shepherds
+--     row is also locked FOR UPDATE so a concurrent archive (via
+--     admin_update_over_shepherd) cannot flip active to false between
+--     the eligibility check and the insert.
+--
+--   * UTC-ahead clamping: admins in a time zone ahead of UTC can
+--     legitimately create an assignment dated UTC current_date + 1
+--     (the validator and assign RPC both allow up to +1 day). The
+--     archive cascade in admin_update_over_shepherd and the default
+--     v_ended_at in admin_end_shepherd_coverage_assignment now clamp
+--     to greatest(current_date, assigned_at) per row so the new CHECK
+--     constraint (ended_at >= assigned_at) is never violated by the
+--     same-day clear-coverage or archive flows.
+--
 -- New error tokens raised by these functions (mapped to friendly
 -- messages by lib/admin/action-result.ts):
 --   invalid_assigned_at_before_prior, invalid_ended_at_before_start.
@@ -83,12 +100,17 @@ begin
   end if;
 
   -- Same target gating as SC.1A: only active leader/co_leader profiles
-  -- are eligible coverage subjects.
+  -- are eligible coverage subjects. FOR UPDATE serializes against
+  -- admin_deactivate_profile, which UPDATEs profiles and takes an
+  -- implicit row lock — so even though the deactivate RPC does not
+  -- explicitly FOR UPDATE itself, blocking on the row here prevents
+  -- the race where a profile flips to inactive between this read and
+  -- the assignment insert.
   select id, role, status
     into v_target
     from public.profiles
    where id = p_shepherd_profile_id
-   limit 1;
+   for update;
   if v_target.id is null then
     raise exception 'missing_profile';
   end if;
@@ -99,11 +121,17 @@ begin
     raise exception 'missing_profile';
   end if;
 
+  -- FOR UPDATE on the over-shepherd row serializes against a concurrent
+  -- admin_update_over_shepherd archive transition. Without the lock, a
+  -- racing archive could flip active=false between this check and the
+  -- insert below, leaving a new active assignment pointing at an
+  -- archived over-shepherd — the very contradictory state the
+  -- inactive_over_shepherd guard is meant to prevent.
   select id, active
     into v_over_shepherd
     from public.over_shepherds
    where id = p_over_shepherd_id
-   limit 1;
+   for update;
   if v_over_shepherd.id is null then
     raise exception 'missing_over_shepherd';
   end if;
@@ -193,12 +221,13 @@ begin
   if p_assignment_id is null then
     raise exception 'invalid_input';
   end if;
-  v_ended_at := coalesce(p_ended_at, current_date);
 
-  if v_ended_at > ((now() at time zone 'UTC')::date + 1) then
-    raise exception 'invalid_input';
-  end if;
-
+  -- Load and lock the assignment first so the assigned_at is available
+  -- for the default-clamp below. v_existing.assigned_at can legitimately
+  -- be UTC current_date + 1 (an admin in a UTC-ahead time zone created
+  -- the assignment dated tomorrow UTC). Defaulting v_ended_at to a bare
+  -- current_date would then trip the assigned_at >= v_ended_at guard
+  -- below and break the "Clear coverage" same-day flow for those admins.
   select id, shepherd_profile_id, over_shepherd_id, active, assigned_at
     into v_existing
     from public.shepherd_coverage_assignments
@@ -207,6 +236,22 @@ begin
   if v_existing.id is null or v_existing.active is not true then
     raise exception 'missing_assignment';
   end if;
+
+  if p_ended_at is null then
+    -- Clamp the default to the assignment's start date so a same-day
+    -- clear from a UTC-ahead admin never produces ended_at < assigned_at.
+    v_ended_at := greatest(current_date, v_existing.assigned_at);
+  else
+    v_ended_at := p_ended_at;
+  end if;
+
+  if v_ended_at > ((now() at time zone 'UTC')::date + 1) then
+    raise exception 'invalid_input';
+  end if;
+  -- Explicit p_ended_at values earlier than assigned_at are still
+  -- rejected — silently clamping a caller-supplied value would hide
+  -- bad input. The clamp above only applies when no end date was
+  -- supplied at all.
   if v_ended_at < v_existing.assigned_at then
     raise exception 'invalid_ended_at_before_start';
   end if;
@@ -326,14 +371,23 @@ begin
   -- still actively covering becomes orphaned. Closing those rows here
   -- keeps the table consistent with inactive_over_shepherd guards in
   -- admin_assign_shepherd_to_over_shepherd, and matches the broader
-  -- "deactivate-profile cascades to group_leaders" pattern. ended_at
-  -- is set to current_date (CHECK constraint: ended_at >= assigned_at
-  -- always holds because assigned_at <= today by construction).
+  -- "deactivate-profile cascades to group_leaders" pattern.
+  --
+  -- ended_at is computed per row as greatest(current_date, assigned_at).
+  -- Plain current_date can violate the CHECK constraint when an
+  -- assignment was created with a UTC+1 assigned_at (an admin in a
+  -- UTC-ahead time zone): assigned_at = current_date + 1 then breaks
+  -- ended_at >= assigned_at and aborts the whole transaction,
+  -- preventing the archive entirely. Clamping per row keeps the
+  -- cascade safe across all valid assigned_at values.
   if v_active = false and v_existing.active = true then
     with closed as (
       update public.shepherd_coverage_assignments
          set active = false,
-             ended_at = current_date,
+             ended_at = greatest(
+               current_date,
+               public.shepherd_coverage_assignments.assigned_at
+             ),
              updated_at = now()
        where over_shepherd_id = p_over_shepherd_id
          and active = true
