@@ -22,6 +22,40 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+// Minimal structured logger. Mirrors the field conventions in
+// lib/observability/logger.ts but inlined here because Deno cannot resolve
+// imports from the Next.js workspace (`@/lib/*`). Caller redacts message
+// strings via the existing redact() helpers before passing them in.
+type LogLevel = "info" | "warn" | "error";
+type EdgeLogContext = {
+  event: string;
+  outcome?: "ok" | "fail" | "denied";
+  request_id: string;
+  latency_ms?: number;
+  error_code?: string;
+  [k: string]: unknown;
+};
+function newRequestId(): string {
+  return globalThis.crypto.randomUUID();
+}
+function logJson(level: LogLevel, ctx: EdgeLogContext): void {
+  const payload = { ts: new Date().toISOString(), level, ...ctx };
+  let line: string;
+  try {
+    line = JSON.stringify(payload);
+  } catch {
+    line = JSON.stringify({ ts: payload.ts, level, event: ctx.event, _serialize_error: true });
+  }
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+}
+function emailDomain(email: string): string | null {
+  const at = email.lastIndexOf("@");
+  if (at < 0 || at === email.length - 1) return null;
+  return email.slice(at + 1).toLowerCase();
+}
+
 type Role = "ministry_admin" | "leader" | "co_leader";
 type AuthUserState = "invited" | "existing_reused";
 type GroupAssignmentState = "none" | "created" | "reactivated" | "already_active";
@@ -263,6 +297,10 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const requestId = newRequestId();
+  const startMs = performance.now();
+  const elapsed = (): number => Math.round(performance.now() - startMs);
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -270,17 +308,39 @@ Deno.serve(async (req: Request) => {
   const secrets = buildSecretSet(serviceRoleKey);
 
   if (req.method !== "POST") {
+    logJson("warn", {
+      event: "invite.method_not_allowed",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "method_not_allowed",
+      http_method: req.method,
+    });
     const body = emptyResponse();
     body.code = "method_not_allowed";
     body.errors.push("method_not_allowed");
     return jsonResponse(body, 405);
   }
 
+  logJson("info", {
+    event: "invite.attempt",
+    request_id: requestId,
+    caller_present: (req.headers.get("Authorization")?.toLowerCase().startsWith("bearer ") ?? false),
+  });
+
   const missing: string[] = [];
   if (!supabaseUrl) missing.push("SUPABASE_URL");
   if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
   if (!anonKey) missing.push("SUPABASE_ANON_KEY");
   if (missing.length > 0) {
+    logJson("error", {
+      event: "invite.misconfigured",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "missing_edge_function_env",
+      missing_count: missing.length,
+    });
     const body = emptyResponse();
     body.code = "missing_edge_function_env";
     body.message = "Missing required Edge Function configuration.";
@@ -292,6 +352,13 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization");
   const hasAuthHeader = authHeader?.toLowerCase().startsWith("bearer ") ?? false;
   if (!hasAuthHeader) {
+    logJson("warn", {
+      event: "invite.unauthorized",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "missing_authorization_header",
+    });
     const body = emptyResponse();
     body.code = "missing_authorization_header";
     body.message = "Authorization header is missing or malformed.";
@@ -303,6 +370,13 @@ Deno.serve(async (req: Request) => {
   try {
     parsed = await req.json();
   } catch {
+    logJson("warn", {
+      event: "invite.validation_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "invalid_json_body",
+    });
     const body = emptyResponse();
     body.code = "invalid_json_body";
     body.errors.push("invalid_json_body");
@@ -322,6 +396,13 @@ Deno.serve(async (req: Request) => {
     if (!data?.user?.id) throw new Error("no_user");
     callerAuthId = data.user.id;
   } catch (err) {
+    logJson("warn", {
+      event: "invite.unauthorized",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "invalid_or_expired_session",
+    });
     const body = emptyResponse();
     body.code = "invalid_or_expired_session";
     body.message = "Supabase Auth could not verify the bearer token.";
@@ -337,6 +418,14 @@ Deno.serve(async (req: Request) => {
   // Caller profile lookup (super_admin gate).
   const lookup = await lookupCallerProfile(service, callerAuthId, secrets);
   if (lookup.kind === "error") {
+    logJson("error", {
+      event: "invite.profile_lookup_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "profile_lookup_query_failed",
+      pg_code: lookup.pg.code,
+    });
     const body = emptyResponse();
     body.code = "profile_lookup_query_failed";
     body.message = "The Edge Function could not query profiles with the configured elevated key.";
@@ -345,12 +434,27 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(body, 500);
   }
   if (lookup.kind === "none") {
+    logJson("warn", {
+      event: "invite.unauthorized",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "profile_not_found",
+    });
     const body = emptyResponse();
     body.code = "profile_not_found";
     body.errors.push("profile_not_found");
     return jsonResponse(body, 403);
   }
   if (lookup.kind === "duplicate") {
+    logJson("error", {
+      event: "invite.profile_lookup_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "duplicate_profiles_for_auth_user",
+      row_count: lookup.count,
+    });
     const body = emptyResponse();
     body.code = "duplicate_profiles_for_auth_user";
     body.duplicateProfileInfo = { authUserId: callerAuthId, rowCountSeen: lookup.count };
@@ -359,12 +463,29 @@ Deno.serve(async (req: Request) => {
   }
   const callerProfile = lookup.row;
   if (callerProfile.status !== "active") {
+    logJson("warn", {
+      event: "invite.unauthorized",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "profile_not_active",
+      actor_profile_id: callerProfile.id,
+    });
     const body = emptyResponse();
     body.code = "profile_not_active";
     body.errors.push("profile_not_active");
     return jsonResponse(body, 403);
   }
   if (callerProfile.role !== "super_admin") {
+    logJson("warn", {
+      event: "invite.unauthorized",
+      outcome: "denied",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "super_admin_required",
+      actor_profile_id: callerProfile.id,
+      actor_role: callerProfile.role,
+    });
     const body = emptyResponse();
     body.code = "super_admin_required";
     body.errors.push("super_admin_required");
@@ -374,12 +495,22 @@ Deno.serve(async (req: Request) => {
   // Payload validation.
   const v = validatePayload(parsed);
   if (!v.ok) {
+    logJson("warn", {
+      event: "invite.validation_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "invalid_payload",
+      actor_profile_id: callerProfile.id,
+      error_count: v.errors.length,
+    });
     const body = emptyResponse();
     body.code = "invalid_payload";
     body.errors.push("invalid_payload", ...v.errors);
     return jsonResponse(body, 400);
   }
   const payload = v.value;
+  const target_email_domain = emailDomain(payload.email);
 
   // Auth user resolve / invite.
   let authId: string;
@@ -395,6 +526,17 @@ Deno.serve(async (req: Request) => {
         redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
       });
       if (error || !data?.user?.id) {
+        logJson("error", {
+          event: "invite.rpc_failed",
+          outcome: "fail",
+          request_id: requestId,
+          latency_ms: elapsed(),
+          error_code: "invite_failed",
+          stage: "auth_admin_invite",
+          actor_profile_id: callerProfile.id,
+          target_email_domain,
+          target_role: payload.role,
+        });
         const body = emptyResponse();
         body.code = "invite_failed";
         body.errors.push("invite_failed");
@@ -405,6 +547,18 @@ Deno.serve(async (req: Request) => {
       authUserState = "invited";
     }
   } catch (err) {
+    logJson("error", {
+      event: "invite.rpc_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "invite_failed",
+      stage: "auth_resolve",
+      actor_profile_id: callerProfile.id,
+      target_email_domain,
+      target_role: payload.role,
+      error_message: redact(err instanceof Error ? err.message : String(err), secrets),
+    });
     const body = emptyResponse();
     body.code = "invite_failed";
     body.errors.push("invite_failed");
@@ -429,6 +583,19 @@ Deno.serve(async (req: Request) => {
 
   if (rpcErr) {
     const mapped = mapRpcToken(rpcErr.message ?? "");
+    logJson("error", {
+      event: "invite.rpc_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: mapped.code,
+      stage: "super_admin_complete_invite",
+      actor_profile_id: callerProfile.id,
+      target_email_domain,
+      target_role: payload.role,
+      auth_user_state: authUserState,
+      pg_code: (rpcErr as PostgrestErrorPayload).code,
+    });
     const body = emptyResponse();
     body.code = mapped.code;
     body.errors.push(mapped.code);
@@ -449,11 +616,33 @@ Deno.serve(async (req: Request) => {
     group_assignment_state?: GroupAssignmentState;
   };
   if (!rpcResult.profile_id) {
+    logJson("error", {
+      event: "invite.rpc_failed",
+      outcome: "fail",
+      request_id: requestId,
+      latency_ms: elapsed(),
+      error_code: "rpc_no_data",
+      stage: "super_admin_complete_invite",
+      actor_profile_id: callerProfile.id,
+    });
     const body = emptyResponse();
     body.code = "db_error";
     body.errors.push("db_error", "RPC returned no profile id");
     return jsonResponse(body, 500);
   }
+
+  logJson("info", {
+    event: "invite.success",
+    outcome: "ok",
+    request_id: requestId,
+    latency_ms: elapsed(),
+    actor_profile_id: callerProfile.id,
+    target_email_domain,
+    target_role: payload.role,
+    auth_user_state: authUserState,
+    group_assignment_state: rpcResult.group_assignment_state ?? "none",
+    new_profile_id: rpcResult.profile_id,
+  });
 
   const body: ResponseBody = {
     ok: true,
