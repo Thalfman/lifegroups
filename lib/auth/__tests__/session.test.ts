@@ -208,6 +208,50 @@ describe("requireRole (page-route guard)", () => {
   });
 });
 
+describe("trust-boundary guards", () => {
+  it("treats a malformed profile row as backend_error", async () => {
+    const malformed = {
+      id: "p-bad",
+      auth_user_id: "auth-admin",
+      // Role is not one of the documented UserRole literals.
+      role: "not_a_role",
+      status: "active",
+    };
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-admin", email: "admin@example.com" },
+        profile: malformed as unknown as ProfileFixture,
+      }),
+    );
+    const { requireRole } = await loadSession();
+    await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
+      __redirect: "/unauthorized?reason=unavailable",
+    });
+    const { log } = await import("@/lib/observability/logger");
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error_code: "profile_shape_invalid" }),
+    );
+  });
+
+  it("treats malformed leader rows as backend_error", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [{ group_id: 42 }] as unknown as { group_id: string }[],
+      }),
+    );
+    const { requireRole } = await loadSession();
+    await expect(requireRole(["leader"])).rejects.toMatchObject({
+      __redirect: "/unauthorized?reason=unavailable",
+    });
+    const { log } = await import("@/lib/observability/logger");
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error_code: "leader_rows_shape_invalid" }),
+    );
+  });
+});
+
 describe("requireAdminSession (server-action guard)", () => {
   it("returns ok:false on backend_error with a generic transient message", async () => {
     mockCreateClient.mockResolvedValueOnce(

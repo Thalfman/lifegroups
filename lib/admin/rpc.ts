@@ -26,6 +26,7 @@ import type {
   RoleInGroup,
   UserRole,
 } from "@/types/enums";
+import { readUuidRpcData } from "./rpc-helpers";
 
 type RpcResult = { data: string | null; error: { message: string } | null };
 
@@ -34,7 +35,7 @@ export async function rpcAdminCreateLeaderProfile(
   args: { p_full_name: string; p_email: string; p_phone: string | null },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_create_leader_profile" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminCreateMember(
@@ -42,7 +43,7 @@ export async function rpcAdminCreateMember(
   args: { p_full_name: string; p_email: string | null; p_phone: string | null },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_create_member" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminAssignLeaderToGroup(
@@ -50,7 +51,7 @@ export async function rpcAdminAssignLeaderToGroup(
   args: { p_group_id: string; p_profile_id: string; p_role: RoleInGroup },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_assign_leader_to_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminAssignMemberToGroup(
@@ -58,7 +59,7 @@ export async function rpcAdminAssignMemberToGroup(
   args: { p_group_id: string; p_member_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_assign_member_to_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminDeactivateProfile(
@@ -66,7 +67,7 @@ export async function rpcAdminDeactivateProfile(
   args: { p_profile_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_deactivate_profile" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminDeactivateMember(
@@ -74,7 +75,7 @@ export async function rpcAdminDeactivateMember(
   args: { p_member_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_deactivate_member" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.2 group management RPCs.
@@ -96,7 +97,7 @@ export async function rpcAdminCreateGroup(
   args: GroupRpcArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_create_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminUpdateGroup(
@@ -104,7 +105,7 @@ export async function rpcAdminUpdateGroup(
   args: GroupRpcArgs & { p_group_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_update_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminCloseGroup(
@@ -112,7 +113,7 @@ export async function rpcAdminCloseGroup(
   args: { p_group_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_close_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminReopenGroup(
@@ -120,7 +121,7 @@ export async function rpcAdminReopenGroup(
   args: { p_group_id: string },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_reopen_group" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.3 super admin role management RPC.
@@ -130,7 +131,7 @@ export async function rpcSuperAdminUpdateProfileRole(
   args: { p_profile_id: string; p_new_role: UserRole },
 ): Promise<RpcResult> {
   const r = await client.rpc("super_admin_update_profile_role" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.4 admin settings + leader-role-swap RPCs.
@@ -140,7 +141,7 @@ export async function rpcAdminUpdateMetricDefaults(
   args: { p_settings: Record<string, unknown> },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_update_metric_defaults" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminUpsertGroupMetricSettings(
@@ -160,7 +161,7 @@ export async function rpcAdminUpsertGroupMetricSettings(
     "admin_upsert_group_metric_settings" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.5 reset-to-defaults helper. Takes no arguments; the RPC
@@ -173,7 +174,7 @@ export async function rpcAdminResetMetricDefaults(
     "admin_reset_metric_defaults" as never,
     {} as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminChangeLeaderRole(
@@ -181,7 +182,7 @@ export async function rpcAdminChangeLeaderRole(
   args: { p_profile_id: string; p_new_role: "leader" | "co_leader" },
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_change_leader_role" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5C.0 guest + follow-up admin RPCs.
@@ -203,7 +204,7 @@ export async function rpcAdminCreateGuest(
   args: AdminCreateGuestArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_create_guest" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export type AdminUpdateGuestPipelineArgs = {
@@ -222,7 +223,7 @@ export async function rpcAdminUpdateGuestPipeline(
   args: AdminUpdateGuestPipelineArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_update_guest_pipeline" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export type AdminCreateFollowUpArgs = {
@@ -243,7 +244,7 @@ export async function rpcAdminCreateFollowUp(
   args: AdminCreateFollowUpArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_create_follow_up" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export type AdminUpdateFollowUpStatusArgs = {
@@ -260,7 +261,7 @@ export async function rpcAdminUpdateFollowUpStatus(
   args: AdminUpdateFollowUpStatusArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("admin_update_follow_up_status" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.6 group calendar admin RPCs.
@@ -284,7 +285,7 @@ export async function rpcAdminCreateGroupCalendarEvent(
     "admin_create_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export type AdminUpdateGroupCalendarEventArgs = {
@@ -306,7 +307,7 @@ export async function rpcAdminUpdateGroupCalendarEvent(
     "admin_update_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminArchiveGroupCalendarEvent(
@@ -317,7 +318,7 @@ export async function rpcAdminArchiveGroupCalendarEvent(
     "admin_archive_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcAdminRestoreGroupCalendarEvent(
@@ -328,5 +329,5 @@ export async function rpcAdminRestoreGroupCalendarEvent(
     "admin_restore_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }

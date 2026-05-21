@@ -37,6 +37,43 @@ export type CurrentSession = Extract<SessionResult, { kind: "authenticated" }>;
 const TRANSIENT_ERROR_MESSAGE =
   "Service is temporarily unavailable. Please try again.";
 
+// Trust-boundary guards. Validate the Supabase response shape before
+// trusting it as a typed domain row — every page hits this code path,
+// so a driver bug or schema drift should surface as a controlled
+// backend_error rather than tunnelling through to role checks.
+
+const VALID_USER_ROLES = new Set<UserRole>([
+  "super_admin",
+  "ministry_admin",
+  "staff_viewer",
+  "leader",
+  "co_leader",
+]);
+const VALID_PROFILE_STATUSES = new Set(["active", "inactive", "invited"]);
+
+function isProfilesRow(v: unknown): v is ProfilesRow {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const r = v as Record<string, unknown>;
+  if (typeof r.id !== "string" || r.id.length === 0) return false;
+  if (r.auth_user_id !== null && typeof r.auth_user_id !== "string") return false;
+  if (typeof r.role !== "string" || !VALID_USER_ROLES.has(r.role as UserRole)) {
+    return false;
+  }
+  if (typeof r.status !== "string" || !VALID_PROFILE_STATUSES.has(r.status)) {
+    return false;
+  }
+  return true;
+}
+
+function isLeaderRowArray(v: unknown): v is { group_id: string }[] {
+  if (!Array.isArray(v)) return false;
+  return v.every((row) => {
+    if (row === null || typeof row !== "object") return false;
+    const gid = (row as Record<string, unknown>).group_id;
+    return typeof gid === "string" && gid.length > 0;
+  });
+}
+
 export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "anonymous" };
@@ -67,7 +104,26 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
       message: profileQuery.error.message,
     };
   }
-  const profile = profileQuery.data as ProfilesRow | null;
+  const rawProfile: unknown = profileQuery.data;
+  if (rawProfile !== null && rawProfile !== undefined && !isProfilesRow(rawProfile)) {
+    log.error({
+      event: "session_lookup_failed",
+      outcome: "fail",
+      stage: "profile_lookup",
+      error_code: "profile_shape_invalid",
+    });
+    return {
+      kind: "backend_error",
+      stage: "profile_lookup",
+      message: "Profile row failed validation",
+    };
+  }
+  // Cast is safe: rawProfile is either null/undefined or has been
+  // structurally validated by isProfilesRow above. Supabase's
+  // generated row type is intentionally incompatible with our
+  // hand-rolled ProfilesRow (see lib/admin/rpc.ts file-level note),
+  // so an explicit assertion after the runtime guard is required.
+  const profile: ProfilesRow | null = (rawProfile ?? null) as ProfilesRow | null;
 
   if (!profile) {
     return { kind: "profile_missing", authUser };
@@ -95,8 +151,22 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
         message: leaderRows.error.message,
       };
     }
-    const rows = (leaderRows.data ?? []) as { group_id: string }[];
-    assignedGroupIds = rows.map((row) => row.group_id);
+    const leaderData: unknown = leaderRows.data ?? [];
+    if (!isLeaderRowArray(leaderData)) {
+      log.error({
+        event: "session_lookup_failed",
+        outcome: "fail",
+        stage: "leader_assignments",
+        actor_role: profile.role,
+        error_code: "leader_rows_shape_invalid",
+      });
+      return {
+        kind: "backend_error",
+        stage: "leader_assignments",
+        message: "Leader assignment rows failed validation",
+      };
+    }
+    assignedGroupIds = leaderData.map((row) => row.group_id);
   }
 
   return { kind: "authenticated", authUser, profile, assignedGroupIds };
