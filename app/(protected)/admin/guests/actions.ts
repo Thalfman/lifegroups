@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCreateGuestPayload,
   validateUpdateGuestPipelinePayload,
@@ -75,15 +76,27 @@ export async function adminCreateGuest(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<CreateGuestPayload>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.guests.create");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, CREATE_GUEST_KEYS);
   const v = validateCreateGuestPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminCreateGuest(client, {
     p_full_name: v.value.full_name,
@@ -97,10 +110,25 @@ export async function adminCreateGuest(
     p_notes: v.value.notes,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The guest wasn't saved. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The guest wasn't saved. Please try again."]);
+  }
 
   revalidateAll();
+  ctx.finish("ok", {
+    actor_role,
+    new_guest_id: data,
+    pipeline_stage: v.value.pipeline_stage,
+  });
   return actionOk({ id: data });
 }
 
@@ -110,15 +138,27 @@ export async function adminUpdateGuestPipeline(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<UpdateGuestPipelinePayload>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.guests.update_pipeline");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, UPDATE_GUEST_KEYS);
   const v = validateUpdateGuestPipelinePayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpdateGuestPipeline(client, {
     p_guest_id: v.value.guest_id,
@@ -131,9 +171,29 @@ export async function adminUpdateGuestPipeline(
     p_notes: v.value.notes,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The guest wasn't updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_guest_id: v.value.guest_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_guest_id: v.value.guest_id,
+    });
+    return actionFail(["The guest wasn't updated. Please try again."]);
+  }
 
   revalidateAll();
+  ctx.finish("ok", {
+    actor_role,
+    target_guest_id: v.value.guest_id,
+    pipeline_stage: v.value.pipeline_stage,
+  });
   return actionOk({ id: data });
 }

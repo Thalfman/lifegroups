@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateAdminUpdateFollowUpStatusPayload,
   validateCreateFollowUpPayload,
@@ -79,15 +80,27 @@ export async function adminCreateFollowUp(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<CreateFollowUpPayload>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.follow_ups.create");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, CREATE_FOLLOW_UP_KEYS);
   const v = validateCreateFollowUpPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminCreateFollowUp(client, {
     p_type: v.value.type,
@@ -102,10 +115,26 @@ export async function adminCreateFollowUp(
     p_admin_private_note: v.value.admin_private_note,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The follow-up wasn't saved. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The follow-up wasn't saved. Please try again."]);
+  }
 
   revalidateAll();
+  ctx.finish("ok", {
+    actor_role,
+    new_follow_up_id: data,
+    follow_up_type: v.value.type,
+    priority: v.value.priority,
+  });
   return actionOk({ id: data });
 }
 
@@ -115,15 +144,27 @@ export async function adminUpdateFollowUpStatus(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<AdminUpdateFollowUpStatusPayload>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.follow_ups.update_status");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, UPDATE_STATUS_KEYS);
   const v = validateAdminUpdateFollowUpStatusPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpdateFollowUpStatus(client, {
     p_follow_up_id: v.value.follow_up_id,
@@ -134,9 +175,29 @@ export async function adminUpdateFollowUpStatus(
     p_admin_private_note: v.value.admin_private_note,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The status wasn't updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_follow_up_id: v.value.follow_up_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_follow_up_id: v.value.follow_up_id,
+    });
+    return actionFail(["The status wasn't updated. Please try again."]);
+  }
 
   revalidateAll();
+  ctx.finish("ok", {
+    actor_role,
+    target_follow_up_id: v.value.follow_up_id,
+    new_status: v.value.status,
+  });
   return actionOk({ id: data });
 }

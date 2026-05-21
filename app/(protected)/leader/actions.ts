@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireLeaderActor } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateLeaderCheckinPayload,
   isoWeekStart,
@@ -63,24 +64,47 @@ export async function leaderSubmitGroupCheckin(
   _prev: LeaderCheckinActionResult | undefined,
   input: FormData | Record<string, unknown>,
 ): Promise<LeaderCheckinActionResult> {
+  const ctx = startActionLog("leader.checkin.submit");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const v = validateLeaderCheckinPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail(v.errors);
+  }
 
   // Defense-in-depth: refuse to even hit the RPC if the leader isn't
   // assigned to the group they're submitting for. The RPC will also
   // reject with not_leader_of_group, but bailing here saves a round trip.
   if (!auth.assignedGroupIds.includes(v.value.group_id)) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
     return actionFail([
       "Only an assigned leader or co-leader can submit this check-in.",
     ]);
   }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderSubmitGroupCheckin(client, {
     p_group_id: v.value.group_id,
@@ -93,11 +117,32 @@ export async function leaderSubmitGroupCheckin(
     p_attendance: v.value.attendance,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The check-in didn't save. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The check-in didn't save. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_LEADER);
   revalidatePath(`/leader/${v.value.group_id}/checkin`);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: v.value.group_id,
+    checkin_status: v.value.status,
+    new_session_id: data,
+  });
   return actionOk({ session_id: data });
 }
 
@@ -112,8 +157,13 @@ export async function leaderQuickMarkDidNotMeet(
   _prev: LeaderCheckinActionResult | undefined,
   input: FormData | { group_id?: string },
 ): Promise<LeaderCheckinActionResult> {
+  const ctx = startActionLog("leader.checkin.quick_did_not_meet");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const groupId =
     input instanceof FormData
@@ -131,16 +181,34 @@ export async function leaderQuickMarkDidNotMeet(
     follow_up_needed: false,
     attendance: [],
   });
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail(v.errors);
+  }
 
   if (!auth.assignedGroupIds.includes(v.value.group_id)) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
     return actionFail([
       "Only an assigned leader or co-leader can submit this check-in.",
     ]);
   }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderSubmitGroupCheckin(client, {
     p_group_id: v.value.group_id,
@@ -153,10 +221,30 @@ export async function leaderQuickMarkDidNotMeet(
     p_attendance: v.value.attendance,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The check-in didn't save. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The check-in didn't save. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_LEADER);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: v.value.group_id,
+    new_session_id: data,
+  });
   return actionOk({ session_id: data });
 }
 

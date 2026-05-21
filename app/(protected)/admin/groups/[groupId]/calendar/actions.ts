@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCalendarEventCreatePayload,
   validateCalendarEventIdPayload,
@@ -53,15 +54,27 @@ export async function adminCreateCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.calendar.create_event");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = payloadFromInput(input);
   const v = validateCalendarEventCreatePayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminCreateGroupCalendarEvent(client, {
     p_group_id: v.value.group_id,
@@ -75,10 +88,31 @@ export async function adminCreateCalendarEvent(
     p_title: v.value.title,
     p_description: v.value.description,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not created. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The calendar event was not created. Please try again."]);
+  }
 
   revalidateAdminCalendar(v.value.group_id);
+  ctx.finish("ok", {
+    actor_role,
+    target_group_id: v.value.group_id,
+    event_type: v.value.event_type,
+    new_event_id: data,
+  });
   return actionOk({ id: data });
 }
 
@@ -86,15 +120,27 @@ export async function adminUpdateCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.calendar.update_event");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = payloadFromInput(input);
   const v = validateCalendarEventUpdatePayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpdateGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
@@ -106,11 +152,31 @@ export async function adminUpdateCalendarEvent(
     p_title: v.value.title,
     p_description: v.value.description,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not updated. Please try again."]);
+  }
 
   const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
   if (groupId) revalidateAdminCalendar(groupId);
+  ctx.finish("ok", {
+    actor_role,
+    target_event_id: v.value.event_id,
+    target_group_id: groupId,
+  });
   return actionOk({ id: data });
 }
 
@@ -118,24 +184,56 @@ export async function adminArchiveCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.calendar.archive_event");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = payloadFromInput(input);
   const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminArchiveGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not archived. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not archived. Please try again."]);
+  }
 
   const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
   if (groupId) revalidateAdminCalendar(groupId);
+  ctx.finish("ok", {
+    actor_role,
+    target_event_id: v.value.event_id,
+    target_group_id: groupId,
+  });
   return actionOk({ id: data });
 }
 
@@ -143,23 +241,55 @@ export async function adminRestoreCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.calendar.restore_event");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = payloadFromInput(input);
   const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminRestoreGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not restored. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not restored. Please try again."]);
+  }
 
   const groupId = typeof raw.group_id === "string" ? raw.group_id : null;
   if (groupId) revalidateAdminCalendar(groupId);
+  ctx.finish("ok", {
+    actor_role,
+    target_event_id: v.value.event_id,
+    target_group_id: groupId,
+  });
   return actionOk({ id: data });
 }

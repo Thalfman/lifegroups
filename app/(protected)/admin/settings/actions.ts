@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
@@ -100,31 +101,58 @@ export async function adminUpdateMetricDefaults(
   _prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.settings.update_metric_defaults");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readMetricDefaultsForm(input);
   const v = validateMetricDefaultsPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   if (Object.keys(v.value).length === 0) {
+    ctx.finish("fail", { error_code: "empty_diff", actor_role });
     return actionFail(["Nothing to change. Adjust a field before saving."]);
   }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpdateMetricDefaults(client, {
     p_settings: v.value as Record<string, unknown>,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The settings were not saved. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The settings were not saved. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH_SETTINGS);
   revalidatePath(REVALIDATE_PATH_GROUPS);
   revalidatePath(REVALIDATE_PATH_ADMIN);
   revalidatePath(REVALIDATE_PATH_LEADER);
+  ctx.finish("ok", {
+    actor_role,
+    changed_field_count: Object.keys(v.value).length,
+  });
   return actionOk({ id: data });
 }
 
@@ -132,15 +160,27 @@ export async function adminUpsertGroupMetricSettings(
   _prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.settings.upsert_group_metric_settings");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readGroupMetricForm(input);
   const v = validateGroupMetricSettingsPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpsertGroupMetricSettings(client, {
     p_group_id: v.value.group_id,
@@ -155,13 +195,29 @@ export async function adminUpsertGroupMetricSettings(
       v.value.check_in_due_offset_hours_override,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The override was not saved. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The override was not saved. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH_SETTINGS);
   revalidatePath(REVALIDATE_PATH_GROUPS);
   revalidatePath(REVALIDATE_PATH_ADMIN);
   revalidatePath(REVALIDATE_PATH_LEADER);
+  ctx.finish("ok", { actor_role, target_group_id: v.value.group_id });
   return actionOk({ id: data });
 }
 
@@ -172,21 +228,40 @@ export async function adminResetMetricDefaults(
   _prev: ActionResult<{ id: string }> | undefined,
   _input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.settings.reset_metric_defaults");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminResetMetricDefaults(client);
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data)
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
     return actionFail(["The defaults were not reset. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH_SETTINGS);
   revalidatePath(REVALIDATE_PATH_GROUPS);
   revalidatePath(REVALIDATE_PATH_ADMIN);
   revalidatePath(REVALIDATE_PATH_LEADER);
+  ctx.finish("ok", { actor_role });
   return actionOk({ id: data });
 }

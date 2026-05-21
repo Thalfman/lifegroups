@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireLeaderActor } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCalendarEventCreatePayload,
   validateCalendarEventIdPayload,
@@ -79,24 +80,47 @@ export async function leaderCreateCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("leader.calendar.create_event");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const v = validateCalendarEventCreatePayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail(v.errors);
+  }
 
   // Defense-in-depth: the RPC also enforces auth_is_leader_of(group_id),
   // but rejecting locally avoids surfacing a generic insufficient_privilege
   // error to a leader who tampered with the form's hidden group_id field.
   if (!auth.assignedGroupIds.includes(v.value.group_id)) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
     return actionFail([
       "Only the assigned leader or co-leader can manage that group's calendar.",
     ]);
   }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderCreateGroupCalendarEvent(client, {
     p_group_id: v.value.group_id,
@@ -110,10 +134,31 @@ export async function leaderCreateCalendarEvent(
     p_title: v.value.title,
     p_description: v.value.description,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not created. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The calendar event was not created. Please try again."]);
+  }
 
   revalidateLeaderCalendar(v.value.group_id);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: v.value.group_id,
+    event_type: v.value.event_type,
+    new_event_id: data,
+  });
   return actionOk({ id: data });
 }
 
@@ -121,18 +166,43 @@ export async function leaderUpdateCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("leader.calendar.update_event");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) return actionFail([ownership.error]);
+  if (!ownership.ok) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail([ownership.error]);
+  }
 
   const v = validateCalendarEventUpdatePayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderUpdateGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
@@ -144,10 +214,32 @@ export async function leaderUpdateCalendarEvent(
     p_title: v.value.title,
     p_description: v.value.description,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not updated. Please try again."]);
+  }
 
   revalidateLeaderCalendar(ownership.groupId);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: ownership.groupId,
+    target_event_id: v.value.event_id,
+  });
   return actionOk({ id: data });
 }
 
@@ -155,26 +247,73 @@ export async function leaderArchiveCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("leader.calendar.archive_event");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) return actionFail([ownership.error]);
+  if (!ownership.ok) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail([ownership.error]);
+  }
 
   const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderArchiveGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not archived. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not archived. Please try again."]);
+  }
 
   revalidateLeaderCalendar(ownership.groupId);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: ownership.groupId,
+    target_event_id: v.value.event_id,
+  });
   return actionOk({ id: data });
 }
 
@@ -182,25 +321,72 @@ export async function leaderRestoreCalendarEvent(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("leader.calendar.restore_event");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) return actionFail([ownership.error]);
+  if (!ownership.ok) {
+    ctx.finish("denied", {
+      error_code: "not_assigned",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail([ownership.error]);
+  }
 
   const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderRestoreGroupCalendarEvent(client, {
     p_event_id: v.value.event_id,
   });
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The calendar event was not restored. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_group_id: ownership.groupId,
+      target_event_id: v.value.event_id,
+    });
+    return actionFail(["The calendar event was not restored. Please try again."]);
+  }
 
   revalidateLeaderCalendar(ownership.groupId);
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_group_id: ownership.groupId,
+    target_event_id: v.value.event_id,
+  });
   return actionOk({ id: data });
 }
