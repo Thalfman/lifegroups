@@ -39,6 +39,8 @@ async function listAll(path) {
   const blockers = [];
   const pr = await gh(`/repos/${owner}/${repo}/pulls/${prNumber}`);
   const startSha = pr.head.sha;
+  const headCommit = await gh(`/repos/${owner}/${repo}/commits/${startSha}`);
+  const headDate = new Date(headCommit.commit.committer.date);
 
   if (pr.head?.repo?.fork) blockers.push('PR is from a fork.');
 
@@ -52,8 +54,10 @@ async function listAll(path) {
   if (!comments.some((c) => c.body?.includes(`claude-trigger:${prNumber}:${startSha}`) || c.body?.includes(`dry-run:${prNumber}:${startSha}:`))) blockers.push('No Claude cycle marker for current head SHA.');
 
   const reviewComments = await listAll(`/repos/${owner}/${repo}/pulls/${prNumber}/comments`);
-  const unresolvedActionable = reviewComments.filter((c) => c.commit_id === startSha && [CODEX_ACTOR, GEMINI_ACTOR].includes(c.user?.login) && actionableRegex.test(c.body || ''));
-  if (unresolvedActionable.length > 0) blockers.push(`Unresolved actionable review comments remain: ${unresolvedActionable.length}.`);
+  const unresolvedReviewActionable = reviewComments.filter((c) => c.commit_id === startSha && [CODEX_ACTOR, GEMINI_ACTOR].includes(c.user?.login) && actionableRegex.test(c.body || ''));
+  const unresolvedIssueActionable = comments.filter((c) => new Date(c.created_at) >= headDate && [CODEX_ACTOR, GEMINI_ACTOR].includes(c.user?.login) && actionableRegex.test(c.body || ''));
+  const unresolvedActionableCount = unresolvedReviewActionable.length + unresolvedIssueActionable.length;
+  if (unresolvedActionableCount > 0) blockers.push(`Unresolved actionable comments remain: ${unresolvedActionableCount}.`);
 
   const checks = await gh(`/repos/${owner}/${repo}/commits/${startSha}/check-runs`);
   const badChecks = checks.check_runs.filter((c) => c.status !== 'completed' || c.conclusion !== 'success');

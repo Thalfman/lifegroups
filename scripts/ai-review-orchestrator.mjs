@@ -73,9 +73,9 @@ async function processPr(pr) {
 
   const sensitiveChanged = files.some((f) => isSensitivePath(f.filename));
 
-  const codexThumb = issueComments.some((c) => c.user?.login === CODEX_ACTOR && Number(c.reactions?.['+1'] || 0) > 0);
+  const codexIssue = issueComments.some((c) => c.user?.login === CODEX_ACTOR && new Date(c.created_at) >= headDate);
   const codexReview = reviews.some((r) => r.user?.login === CODEX_ACTOR && new Date(r.submitted_at || 0) >= headDate);
-  const codexComplete = codexThumb || codexReview;
+  const codexComplete = codexIssue || codexReview;
 
   const geminiIssue = issueComments.some((c) => c.user?.login === GEMINI_ACTOR && new Date(c.created_at) >= headDate);
   const geminiInline = reviewComments.some((c) => c.user?.login === GEMINI_ACTOR && (c.commit_id === headSha || new Date(c.created_at) >= headDate));
