@@ -152,10 +152,9 @@ declare
   v_target record;
   v_existing record;
   v_summary text;
-  v_new_status public.shepherd_care_status;
-  v_new_next_touchpoint date;
-  v_new_summary text;
   v_new_id uuid;
+  v_inserted_id uuid;
+  v_was_just_created boolean;
   v_persisted_status public.shepherd_care_status;
   v_persisted_next_touchpoint date;
   v_persisted_summary text;
@@ -214,62 +213,77 @@ begin
     raise exception 'missing_profile';
   end if;
 
+  -- Race-safety + audit accuracy strategy:
+  --
+  -- The naive ON CONFLICT DO UPDATE pattern has two issues when two
+  -- admins concurrently perform the first upsert for the same shepherd:
+  --   1. Each transaction's pre-insert SELECT FOR UPDATE returns no
+  --      row (none exists yet), so neither holds a row lock that would
+  --      serialize the writers.
+  --   2. The audit `before` snapshot is null for the second writer
+  --      even though a real row (from the first writer) was just
+  --      updated by the merge — making the audit diff inaccurate in
+  --      the exact race this RPC is supposed to handle.
+  --
+  -- Restructure as INSERT-DO-NOTHING → SELECT FOR UPDATE → UPDATE:
+  --   * The DO NOTHING insert atomically guarantees the row exists.
+  --   * The subsequent SELECT FOR UPDATE takes an exclusive row lock,
+  --     so a second concurrent caller blocks here until the first
+  --     transaction commits.
+  --   * The UPDATE then runs against a row whose pre-state has been
+  --     captured into v_existing under the lock, so both the audit
+  --     `before` and `after` payloads match the persisted row state.
+  --   * `case when p_set_X then ... else <table>.X end` in the UPDATE
+  --     keeps each transaction's write surface limited to its intended
+  --     changes (defense-in-depth, redundant with the lock).
+
+  insert into public.shepherd_care_profiles (shepherd_profile_id, current_status)
+  values (p_shepherd_profile_id, 'healthy'::public.shepherd_care_status)
+  on conflict (shepherd_profile_id) do nothing
+  returning id into v_inserted_id;
+
+  -- RETURNING on ON CONFLICT DO NOTHING returns the inserted row only
+  -- when a row was actually inserted; a no-op (existing row) sets the
+  -- variable to NULL. We surface this in the audit metadata so a
+  -- reviewer can distinguish "first write created the row with
+  -- defaults, then we updated it" from a subsequent edit.
+  v_was_just_created := v_inserted_id is not null;
+
   select id, current_status, next_touchpoint_due, admin_summary
     into v_existing
     from public.shepherd_care_profiles
    where shepherd_profile_id = p_shepherd_profile_id
    for update;
 
-  v_new_status := case
-    when p_set_current_status then coalesce(p_current_status, 'healthy'::public.shepherd_care_status)
-    else coalesce(v_existing.current_status, 'healthy'::public.shepherd_care_status)
-  end;
-  v_new_next_touchpoint := case
-    when p_set_next_touchpoint_due then p_next_touchpoint_due
-    else v_existing.next_touchpoint_due
-  end;
-  v_new_summary := case
-    when p_set_admin_summary then v_summary
-    else v_existing.admin_summary
-  end;
-
-  -- Race-safety: when two admins write to the same shepherd's care row
-  -- at nearly the same time and the row doesn't exist yet, each
-  -- transaction's v_existing snapshot will be null. A naive `set field =
-  -- excluded.field` in DO UPDATE would let the second transaction
-  -- overwrite the first's intended field with its own stale fallback
-  -- value (computed from v_existing = null). Branching DO UPDATE on the
-  -- caller's _set_ flag keeps each transaction's write surface limited
-  -- to the fields it actually intended to change, so a concurrent
-  -- write's unrelated fields are preserved verbatim.
-  insert into public.shepherd_care_profiles (
-    shepherd_profile_id, current_status, next_touchpoint_due, admin_summary
-  ) values (
-    p_shepherd_profile_id, v_new_status, v_new_next_touchpoint, v_new_summary
-  )
-  on conflict (shepherd_profile_id) do update
-    set current_status      = case
-                                when p_set_current_status then excluded.current_status
-                                else public.shepherd_care_profiles.current_status
-                              end,
-        next_touchpoint_due = case
-                                when p_set_next_touchpoint_due then excluded.next_touchpoint_due
-                                else public.shepherd_care_profiles.next_touchpoint_due
-                              end,
-        admin_summary       = case
-                                when p_set_admin_summary then excluded.admin_summary
-                                else public.shepherd_care_profiles.admin_summary
-                              end,
-        updated_at          = now()
+  update public.shepherd_care_profiles
+     set current_status = case
+                            when p_set_current_status
+                              then coalesce(p_current_status, public.shepherd_care_profiles.current_status)
+                            else public.shepherd_care_profiles.current_status
+                          end,
+         next_touchpoint_due = case
+                                 when p_set_next_touchpoint_due then p_next_touchpoint_due
+                                 else public.shepherd_care_profiles.next_touchpoint_due
+                               end,
+         admin_summary = case
+                           when p_set_admin_summary then v_summary
+                           else public.shepherd_care_profiles.admin_summary
+                         end,
+         updated_at = now()
+   where shepherd_profile_id = p_shepherd_profile_id
   returning id, current_status, next_touchpoint_due, admin_summary
        into v_new_id, v_persisted_status, v_persisted_next_touchpoint, v_persisted_summary;
 
   -- Note bodies are intentionally NOT stored in audit metadata. We
   -- only record presence so the audit log remains shareable without
-  -- leaking pastoral context. The `after` block uses the persisted
-  -- row values (via RETURNING) rather than the pre-conflict
-  -- v_new_* staged values, so the audit trail matches the row
-  -- state even when a concurrent transaction won part of the merge.
+  -- leaking pastoral context. Both `before` (from the SELECT FOR
+  -- UPDATE snapshot) and `after` (from the UPDATE's RETURNING) reflect
+  -- the actual persisted row state under the row lock, so the audit
+  -- trail stays accurate even when a concurrent transaction has just
+  -- written. `was_just_created` distinguishes first-creates from
+  -- subsequent edits (the empty defaults in `before` for a first
+  -- create are technically the row state pre-UPDATE, not a lost
+  -- prior value).
   insert into public.audit_events
     (actor_profile_id, action, entity_type, entity_id, metadata)
   values (
@@ -291,7 +305,8 @@ begin
       'shepherd_profile_id', p_shepherd_profile_id,
       'status_set', p_set_current_status,
       'next_touchpoint_set', p_set_next_touchpoint_due,
-      'summary_set', p_set_admin_summary
+      'summary_set', p_set_admin_summary,
+      'was_just_created', v_was_just_created
     )
   );
 
