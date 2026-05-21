@@ -113,23 +113,34 @@ function redactPostgrestError(
 }
 
 // Paginated search; returns the first matching auth user (case-insensitive).
+// supabase-js v2.45's GoTrueAdminApi exposes `listUsers`, `getUserById`,
+// `createUser`, `updateUserById`, `deleteUser`, and `inviteUserByEmail` --
+// but NOT a direct `getUserByEmail`. Until that lands upstream we pull
+// pages with the largest allowed `perPage` and bail when a partial page is
+// returned (natural end-of-list). The hard page cap is intentionally high
+// so it does not silently mask an existing user on a large tenant; a
+// healthy tenant terminates via `users.length < perPage` long before the
+// cap is reached.
 async function findAuthUserByEmail(
   client: SupabaseClient,
   email: string,
 ): Promise<{ id: string; email: string | null } | null> {
   const target = email.toLowerCase();
-  let page = 1;
   const perPage = 200;
-  for (;;) {
+  const maxPages = 500; // 100k users with perPage=200
+  for (let page = 1; page <= maxPages; page += 1) {
     const { data, error } = await client.auth.admin.listUsers({ page, perPage });
     if (error) throw new Error(`listUsers failed on page ${page}: ${error.message}`);
     const users = data?.users ?? [];
     const match = users.find((u) => (u.email ?? "").toLowerCase() === target);
     if (match) return { id: match.id, email: match.email ?? null };
     if (users.length < perPage) return null;
-    page += 1;
-    if (page > 50) return null;
   }
+  // Tenant exceeds maxPages -- surface as a failure rather than risk a
+  // false-negative that would mis-route the flow into "invite new user".
+  throw new Error(
+    `listUsers exceeded ${maxPages} pages (perPage=${perPage}); could not confirm whether the email is already registered`,
+  );
 }
 
 type CallerProfileLookup =

@@ -32,6 +32,36 @@
 -- historical row (manual bootstrap inserts, Supabase Studio edits) and
 -- adds a CHECK constraint so the email-based relink path in
 -- super_admin_complete_invite cannot miss matches due to mixed case.
+--
+-- Preflight: if two existing rows differ only by email case
+-- (e.g. 'Alice@x.com' AND 'alice@x.com'), the lower() backfill below
+-- would violate the existing UNIQUE(email) constraint and abort the
+-- migration mid-flight. Detect the collision first and raise a clear
+-- error so the operator can resolve the duplicate manually (decide
+-- which row to keep, merge or deactivate the other) before re-running.
+do $$
+declare
+  v_collision_count int;
+  v_sample text;
+begin
+  select count(*), max(lower_email)
+    into v_collision_count, v_sample
+    from (
+      select lower(email) as lower_email
+        from public.profiles
+       where email is not null
+       group by lower(email)
+      having count(*) > 1
+    ) collisions;
+
+  if v_collision_count > 0 then
+    raise exception
+      'phase5a7_email_canonicalization_blocked: % email value(s) would collide after lowercasing (sample: %). Resolve the duplicates in public.profiles before re-running this migration.',
+      v_collision_count, v_sample;
+  end if;
+end;
+$$;
+
 update public.profiles
    set email = lower(email)
  where email is not null and email <> lower(email);
@@ -155,13 +185,22 @@ begin
       'auth_user_id_set', v_existing_auth is not null,
       'auth_user_id_changed', v_existing_auth is distinct from p_auth_user_id
     );
-    update public.profiles
-       set auth_user_id = p_auth_user_id,
-           full_name    = v_full_name,
-           phone        = v_phone,
-           role         = p_role,
-           status       = 'active'::public.profile_status
-     where id = v_existing_id;
+    -- profiles.auth_user_id is UNIQUE. If the resolved auth user is
+    -- already linked to a different profile row, this update will fail
+    -- with unique_violation; surface a stable conflict token so the UI
+    -- offers retry / manual fixup guidance instead of a generic db_error.
+    begin
+      update public.profiles
+         set auth_user_id = p_auth_user_id,
+             full_name    = v_full_name,
+             phone        = v_phone,
+             role         = p_role,
+             status       = 'active'::public.profile_status
+       where id = v_existing_id;
+    exception
+      when unique_violation then
+        raise exception 'profile_write_conflict';
+    end;
     v_profile_id := v_existing_id;
   else
     begin
@@ -200,9 +239,33 @@ begin
      for update;
 
     if not found then
-      insert into public.group_leaders (group_id, profile_id, role, active)
-      values (p_group_id, v_profile_id, p_role::public.role_in_group, true);
-      v_group_state := 'created';
+      -- The (group_id, profile_id, role) UNIQUE constraint means a
+      -- parallel writer could insert the same triple between our SELECT
+      -- and INSERT. Catch the race, re-read the row state, and report
+      -- the correct outcome instead of bubbling unique_violation as a
+      -- generic db_error.
+      begin
+        insert into public.group_leaders (group_id, profile_id, role, active)
+        values (p_group_id, v_profile_id, p_role::public.role_in_group, true);
+        v_group_state := 'created';
+      exception
+        when unique_violation then
+          select active into v_gl_active
+            from public.group_leaders
+           where group_id = p_group_id
+             and profile_id = v_profile_id
+             and role = p_role::public.role_in_group;
+          if v_gl_active then
+            v_group_state := 'already_active';
+          else
+            update public.group_leaders
+               set active = true
+             where group_id = p_group_id
+               and profile_id = v_profile_id
+               and role = p_role::public.role_in_group;
+            v_group_state := 'reactivated';
+          end if;
+      end;
     elsif v_gl_active then
       v_group_state := 'already_active';
     else
