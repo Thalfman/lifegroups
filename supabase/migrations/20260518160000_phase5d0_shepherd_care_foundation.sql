@@ -146,6 +146,9 @@ declare
   v_new_next_touchpoint date;
   v_new_summary text;
   v_new_id uuid;
+  v_persisted_status public.shepherd_care_status;
+  v_persisted_next_touchpoint date;
+  v_persisted_summary text;
 begin
   if not public.auth_is_admin() then
     raise exception 'insufficient_privilege';
@@ -239,11 +242,15 @@ begin
                                 else public.shepherd_care_profiles.admin_summary
                               end,
         updated_at          = now()
-  returning id into v_new_id;
+  returning id, current_status, next_touchpoint_due, admin_summary
+       into v_new_id, v_persisted_status, v_persisted_next_touchpoint, v_persisted_summary;
 
   -- Note bodies are intentionally NOT stored in audit metadata. We
   -- only record presence so the audit log remains shareable without
-  -- leaking pastoral context.
+  -- leaking pastoral context. The `after` block uses the persisted
+  -- row values (via RETURNING) rather than the pre-conflict
+  -- v_new_* staged values, so the audit trail matches the row
+  -- state even when a concurrent transaction won part of the merge.
   insert into public.audit_events
     (actor_profile_id, action, entity_type, entity_id, metadata)
   values (
@@ -258,9 +265,9 @@ begin
         'has_summary', v_existing.admin_summary is not null
       ),
       'after', jsonb_build_object(
-        'current_status', v_new_status,
-        'next_touchpoint_due', v_new_next_touchpoint,
-        'has_summary', v_new_summary is not null
+        'current_status', v_persisted_status,
+        'next_touchpoint_due', v_persisted_next_touchpoint,
+        'has_summary', v_persisted_summary is not null
       ),
       'shepherd_profile_id', p_shepherd_profile_id,
       'status_set', p_set_current_status,
@@ -304,9 +311,9 @@ declare
   v_notes text;
   v_care_profile_id uuid;
   v_interaction_id uuid;
-  v_prev_status public.shepherd_care_status;
-  v_prev_last_contact date;
-  v_prev_next_touchpoint date;
+  v_persisted_status public.shepherd_care_status;
+  v_persisted_last_contact date;
+  v_persisted_next_touchpoint date;
 begin
   if not public.auth_is_admin() then
     raise exception 'insufficient_privilege';
@@ -377,7 +384,7 @@ begin
         end,
         updated_at = now()
   returning id, current_status, last_contact_at, next_touchpoint_due
-       into v_care_profile_id, v_prev_status, v_prev_last_contact, v_prev_next_touchpoint;
+       into v_care_profile_id, v_persisted_status, v_persisted_last_contact, v_persisted_next_touchpoint;
 
   insert into public.shepherd_care_interactions (
     care_profile_id, interaction_at, interaction_type, notes, created_by_profile_id
@@ -402,9 +409,9 @@ begin
         'shepherd_profile_id', p_shepherd_profile_id,
         'next_touchpoint_set', p_set_next_touchpoint_due,
         'status_set', p_set_current_status,
-        'current_status', v_prev_status,
-        'last_contact_at', v_prev_last_contact,
-        'next_touchpoint_due', v_prev_next_touchpoint
+        'current_status', v_persisted_status,
+        'last_contact_at', v_persisted_last_contact,
+        'next_touchpoint_due', v_persisted_next_touchpoint
       )
     )
   );
