@@ -22,14 +22,26 @@ function getSiteUrl(): string | null {
   return raw.replace(/\/+$/, "");
 }
 
-async function extractClientIp(): Promise<string> {
+// Returns a client IP only when the source header is one the platform sets
+// itself (i.e. not attacker-spoofable). On Vercel that's `x-vercel-forwarded-for`;
+// on Cloudflare that's `cf-connecting-ip`. `x-forwarded-for`/`x-real-ip` are
+// trusted only when the deployment opts in via TRUST_FORWARDED_FOR=true,
+// since they are easy to forge on direct-to-app setups. Returns `null` when
+// no trusted IP is available — the rate limiter then skips its per-IP bucket
+// for that request to avoid all "unknown" callers sharing a single window.
+async function extractClientIp(): Promise<string | null> {
   const h = await headers();
-  const fwd = h.get("x-forwarded-for");
-  if (fwd) {
-    const first = fwd.split(",")[0]?.trim();
-    if (first) return first;
+  const vercel = h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+  if (vercel) return vercel;
+  const cf = h.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  if (process.env.TRUST_FORWARDED_FOR === "true") {
+    const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (fwd) return fwd;
+    const real = h.get("x-real-ip")?.trim();
+    if (real) return real;
   }
-  return h.get("x-real-ip")?.trim() || "unknown";
+  return null;
 }
 
 // Always returns the same generic success state so the form cannot be
@@ -62,7 +74,7 @@ export async function forgotPasswordAction(
       route_or_action: ROUTE,
       request_id: requestId,
       email_hash: emailHash,
-      ip_present: ip !== "unknown",
+      ip_present: ip !== null,
       which: limit.which,
     });
     return { submitted: true };

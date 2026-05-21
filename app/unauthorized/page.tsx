@@ -7,10 +7,23 @@ import { getCurrentSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
-export default async function UnauthorizedPage() {
+type Reason = "unavailable" | undefined;
+
+export default async function UnauthorizedPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ reason?: string }>;
+}) {
   const session = await getCurrentSession();
-  const isSignedIn = session.kind !== "anonymous";
-  const hasLinkedProfile = session.kind === "authenticated";
+  const sp = (await searchParams) ?? {};
+  const reason: Reason = sp.reason === "unavailable" ? "unavailable" : undefined;
+  // Backend transient failures surface here via /unauthorized?reason=unavailable
+  // and also when the session itself is in backend_error state. Show a
+  // service-unavailable message in that case so users don't try to
+  // self-remediate a misdiagnosed "account not linked" path.
+  const isUnavailable = reason === "unavailable" || session.kind === "backend_error";
+  const isSignedIn = !isUnavailable && session.kind !== "anonymous";
+  const hasLinkedProfile = !isUnavailable && session.kind === "authenticated";
 
   return (
     <div
@@ -95,7 +108,7 @@ export default async function UnauthorizedPage() {
               margin: "14px 0 8px",
             }}
           >
-            No access
+            {isUnavailable ? "Service unavailable" : "No access"}
           </div>
           <h1
             style={{
@@ -108,7 +121,9 @@ export default async function UnauthorizedPage() {
               color: P.ink,
             }}
           >
-            You don&apos;t have access.
+            {isUnavailable
+              ? "We can’t reach the service right now."
+              : "You don’t have access."}
           </h1>
           <p
             style={{
@@ -120,9 +135,11 @@ export default async function UnauthorizedPage() {
               lineHeight: 1.6,
             }}
           >
-            {isSignedIn && !hasLinkedProfile
-              ? "Your sign-in worked, but your account isn't linked to a ministry profile yet. Ask a ministry admin to invite you."
-              : "Your account doesn't have access here. If you think this is wrong, contact a ministry admin."}
+            {isUnavailable
+              ? "This is usually temporary. Please try again in a minute. If it keeps happening, contact a ministry admin."
+              : isSignedIn && !hasLinkedProfile
+                ? "Your sign-in worked, but your account isn't linked to a ministry profile yet. Ask a ministry admin to invite you."
+                : "Your account doesn't have access here. If you think this is wrong, contact a ministry admin."}
           </p>
           <div
             style={{

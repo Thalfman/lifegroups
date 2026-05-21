@@ -9,7 +9,14 @@ import { log } from "@/lib/observability/logger";
 // When Upstash env vars are missing the limiter is null and callers proceed
 // without enforcement — the local-dev experience stays frictionless and a
 // `rate_limit_disabled` warn line surfaces in deployments that forgot to
-// wire credentials.
+// wire credentials. Upstash backend failures are caught and fail open so
+// password-reset stays available; a `rate_limit_backend_error` line is
+// emitted for ops visibility.
+//
+// When the caller cannot determine a client IP (no trusted forwarded
+// header present) it passes `ip: null` so the per-IP bucket is skipped,
+// preventing all `unknown`-keyed callers from sharing a single bucket and
+// throttling each other (a cross-user denial of service).
 
 type LimiterPair = {
   ip: Ratelimit;
@@ -45,7 +52,7 @@ function getLimiters(): LimiterPair | null {
 }
 
 export type ForgotPasswordLimitInput = {
-  ip: string;
+  ip: string | null;
   emailHash: string;
   requestId?: string;
 };
@@ -68,12 +75,32 @@ export async function checkForgotPasswordLimit(
     return { configured: false };
   }
 
-  const [ipRes, emailRes] = await Promise.all([
-    limiters.ip.limit(input.ip),
-    limiters.email.limit(input.emailHash),
-  ]);
+  try {
+    const ipPromise = input.ip
+      ? limiters.ip.limit(input.ip)
+      : Promise.resolve({ success: true });
+    const [ipRes, emailRes] = await Promise.all([
+      ipPromise,
+      limiters.email.limit(input.emailHash),
+    ]);
 
-  if (!ipRes.success) return { configured: true, allowed: false, which: "ip" };
-  if (!emailRes.success) return { configured: true, allowed: false, which: "email" };
-  return { configured: true, allowed: true };
+    if (input.ip && !ipRes.success) {
+      return { configured: true, allowed: false, which: "ip" };
+    }
+    if (!emailRes.success) {
+      return { configured: true, allowed: false, which: "email" };
+    }
+    return { configured: true, allowed: true };
+  } catch (err) {
+    // Fail open: a Redis outage or rotated token must not take down the
+    // password-reset path. Emit a structured event so ops can react.
+    log.error({
+      event: "rate_limit_backend_error",
+      outcome: "fail",
+      route_or_action: "forgot-password",
+      request_id: input.requestId,
+      error_message: err instanceof Error ? err.message : String(err),
+    });
+    return { configured: true, allowed: true };
+  }
 }
