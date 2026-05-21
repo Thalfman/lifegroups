@@ -22,6 +22,7 @@ import type {
   ProfileStatus,
   UserRole,
 } from "@/types/enums";
+import { isUuid } from "@/lib/shared/uuid";
 
 type ReadClient = AppSupabaseClient;
 
@@ -30,6 +31,26 @@ export type ReadResult<T> = { data: T; error: null } | { data: null; error: Erro
 function wrapError(prefix: string, err: unknown): Error {
   if (err instanceof Error) return new Error(`${prefix}: ${err.message}`);
   return new Error(`${prefix}: ${String(err)}`);
+}
+
+// Trust-boundary guards for settings rows. Validate the discriminating
+// fields before letting a Supabase response be treated as the typed row;
+// guard failures route through the same wrapError channel as PostgREST
+// errors so callers don't need a new branch.
+
+function isAppSettingsRow(v: unknown): v is AppSettingsRow {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const r = v as Record<string, unknown>;
+  return (
+    typeof r.setting_key === "string" &&
+    typeof r.setting_value === "object" &&
+    r.setting_value !== null
+  );
+}
+
+function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  return isUuid((v as Record<string, unknown>).group_id);
 }
 
 export async function fetchAllGroups(client: ReadClient): Promise<ReadResult<GroupsRow[]>> {
@@ -355,7 +376,14 @@ export async function fetchMetricDefaults(
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
   if (error) return { data: null, error: wrapError("fetchMetricDefaults", error) };
-  return { data: (data as AppSettingsRow | null) ?? null, error: null };
+  if (data === null || data === undefined) return { data: null, error: null };
+  if (!isAppSettingsRow(data)) {
+    return {
+      data: null,
+      error: wrapError("fetchMetricDefaults", new Error("shape_invalid")),
+    };
+  }
+  return { data, error: null };
 }
 
 // Returns every row in group_metric_settings. RLS on the table restricts
@@ -382,7 +410,14 @@ export async function fetchGroupMetricSettings(
     .maybeSingle();
   if (error)
     return { data: null, error: wrapError("fetchGroupMetricSettings", error) };
-  return { data: (data as GroupMetricSettingsRow | null) ?? null, error: null };
+  if (data === null || data === undefined) return { data: null, error: null };
+  if (!isGroupMetricSettingsRow(data)) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupMetricSettings", new Error("shape_invalid")),
+    };
+  }
+  return { data, error: null };
 }
 
 // ---------------------------------------------------------------------------

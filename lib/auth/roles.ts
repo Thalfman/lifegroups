@@ -15,6 +15,21 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 const ADMIN_ROLES: ReadonlySet<UserRole> = new Set(["super_admin", "ministry_admin"]);
 const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
 
+// Single source of truth for the full UserRole set. Used at trust
+// boundaries (session profile read) to validate that an incoming role
+// string is actually a known role.
+export const USER_ROLES: ReadonlySet<UserRole> = new Set([
+  "super_admin",
+  "ministry_admin",
+  "staff_viewer",
+  "leader",
+  "co_leader",
+]);
+
+export function isUserRole(value: unknown): value is UserRole {
+  return typeof value === "string" && USER_ROLES.has(value as UserRole);
+}
+
 export function isAdminRole(role: UserRole): boolean {
   return ADMIN_ROLES.has(role);
 }

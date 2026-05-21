@@ -17,6 +17,7 @@ import type {
   GroupsRow,
 } from "@/types/database";
 import type { GroupHealthStatus } from "@/types/enums";
+import { isRecord } from "@/lib/admin/validation";
 
 // ---------------------------------------------------------------------------
 // Defaults decoding
@@ -74,7 +75,8 @@ function readJsonIntOrNull(
 }
 
 export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults {
-  const source = (row?.setting_value as Record<string, unknown> | null) ?? null;
+  const raw = row?.setting_value;
+  const source: Record<string, unknown> | null = isRecord(raw) ? raw : null;
   return {
     default_group_capacity: readJsonIntOrNull(
       source,

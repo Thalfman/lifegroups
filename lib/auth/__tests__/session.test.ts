@@ -32,9 +32,18 @@ type ProfileFixture = {
   updated_at: string;
 };
 
+// IDs must be UUIDs — the session-path trust-boundary guard validates
+// shape including UUID format on profile.id and group_leaders.group_id.
+const PROFILE_ADMIN_ID = "11111111-1111-1111-1111-111111111111";
+const PROFILE_LEADER_ID = "22222222-2222-2222-2222-222222222222";
+const AUTH_ADMIN_ID = "33333333-3333-3333-3333-333333333333";
+const AUTH_LEADER_ID = "44444444-4444-4444-4444-444444444444";
+const GROUP_1_ID = "55555555-5555-5555-5555-555555555555";
+const GROUP_2_ID = "66666666-6666-6666-6666-666666666666";
+
 const PROFILE_ADMIN: ProfileFixture = {
-  id: "p-admin",
-  auth_user_id: "auth-admin",
+  id: PROFILE_ADMIN_ID,
+  auth_user_id: AUTH_ADMIN_ID,
   full_name: "Admin A",
   email: "admin@example.com",
   phone: null,
@@ -46,8 +55,8 @@ const PROFILE_ADMIN: ProfileFixture = {
 
 const PROFILE_LEADER: ProfileFixture = {
   ...PROFILE_ADMIN,
-  id: "p-leader",
-  auth_user_id: "auth-leader",
+  id: PROFILE_LEADER_ID,
+  auth_user_id: AUTH_LEADER_ID,
   email: "leader@example.com",
   role: "leader",
 };
@@ -199,12 +208,56 @@ describe("requireRole (page-route guard)", () => {
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
-        leaderRows: [{ group_id: "g1" }, { group_id: "g2" }],
+        leaderRows: [{ group_id: GROUP_1_ID }, { group_id: GROUP_2_ID }],
       }),
     );
     const { requireRole } = await loadSession();
     const result = await requireRole(["leader"]);
-    expect(result.assignedGroupIds).toEqual(["g1", "g2"]);
+    expect(result.assignedGroupIds).toEqual([GROUP_1_ID, GROUP_2_ID]);
+  });
+});
+
+describe("trust-boundary guards", () => {
+  it("treats a malformed profile row as backend_error", async () => {
+    const malformed = {
+      id: PROFILE_ADMIN_ID,
+      auth_user_id: AUTH_ADMIN_ID,
+      // Role is not one of the documented UserRole literals.
+      role: "not_a_role",
+      status: "active",
+    };
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-admin", email: "admin@example.com" },
+        profile: malformed as unknown as ProfileFixture,
+      }),
+    );
+    const { requireRole } = await loadSession();
+    await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
+      __redirect: "/unauthorized?reason=unavailable",
+    });
+    const { log } = await import("@/lib/observability/logger");
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error_code: "profile_shape_invalid" }),
+    );
+  });
+
+  it("treats malformed leader rows as backend_error", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [{ group_id: 42 }] as unknown as { group_id: string }[],
+      }),
+    );
+    const { requireRole } = await loadSession();
+    await expect(requireRole(["leader"])).rejects.toMatchObject({
+      __redirect: "/unauthorized?reason=unavailable",
+    });
+    const { log } = await import("@/lib/observability/logger");
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error_code: "leader_rows_shape_invalid" }),
+    );
   });
 });
 
@@ -263,15 +316,15 @@ describe("requireLeaderActor (server-action guard)", () => {
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
-        leaderRows: [{ group_id: "g1" }],
+        leaderRows: [{ group_id: GROUP_1_ID }],
       }),
     );
     const { requireLeaderActor } = await loadSession();
     const r = await requireLeaderActor();
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.profileId).toBe("p-leader");
-      expect(r.assignedGroupIds).toEqual(["g1"]);
+      expect(r.profileId).toBe(PROFILE_LEADER_ID);
+      expect(r.assignedGroupIds).toEqual([GROUP_1_ID]);
     }
   });
 
