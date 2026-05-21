@@ -146,6 +146,27 @@ function redactPostgrestError(
   return safe;
 }
 
+// Defense-in-depth against the timing side channel between the
+// "existing user" branch (paginated listUsers) and the "new user" branch
+// (single inviteUserByEmail). The super-admin gate is the real access
+// control; this pad just keeps a probe from distinguishing branches.
+// Floor dominates observed p99 listUsers latency on tenants up to ~10k
+// auth users; jitter window adds 250–650ms of noise on top so the total
+// elapsed at the RPC call settles in ~1450–1850ms regardless of branch.
+const INVITE_TIMING_FLOOR_MS = 1200;
+
+function jitterMs(): number {
+  return 250 + Math.floor(Math.random() * 400);
+}
+
+async function padToFloor(startMs: number, floorMs: number): Promise<void> {
+  const elapsed = performance.now() - startMs;
+  const remaining = floorMs - elapsed + jitterMs();
+  if (remaining > 0) {
+    await new Promise<void>((r) => setTimeout(r, remaining));
+  }
+}
+
 // Paginated search; returns the first matching auth user (case-insensitive).
 // supabase-js v2.45's GoTrueAdminApi exposes `listUsers`, `getUserById`,
 // `createUser`, `updateUserById`, `deleteUser`, and `inviteUserByEmail` --
@@ -565,6 +586,12 @@ Deno.serve(async (req: Request) => {
     body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
     return jsonResponse(body, 500);
   }
+
+  // Level wall-clock timing between the "existing user" (paginated
+  // listUsers) and "new user" (single inviteUserByEmail) branches before
+  // we issue the RPC so the response time can't be used to enumerate
+  // which emails are already registered.
+  await padToFloor(startMs, INVITE_TIMING_FLOOR_MS);
 
   // Single atomic RPC: profile upsert + group_leaders + audit, one txn.
   const { data: rpcData, error: rpcErr } = await service.rpc(
