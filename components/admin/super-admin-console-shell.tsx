@@ -7,6 +7,7 @@ import {
   RoleChangeForm,
   type AssignableProfile,
 } from "@/components/admin/forms/role-change-form";
+import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
 import {
   SystemStatusChecklist,
   type ChecklistRow,
@@ -35,6 +36,7 @@ export type SuperAdminTestAccountsSummary = {
 
 export type SuperAdminConsoleData = {
   assignableProfiles: AssignableProfile[];
+  inviteUserGroups: { id: string; name: string }[];
   auditEvents: AuditEventsRow[];
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
@@ -358,6 +360,9 @@ export function SuperAdminConsoleShell({
           </div>
           <div style={cardStyle}>
             <RoleChangeForm profiles={data.assignableProfiles} />
+          </div>
+          <div style={cardStyle}>
+            <InviteUserForm groups={data.inviteUserGroups} />
           </div>
         </CommandSection>
 
