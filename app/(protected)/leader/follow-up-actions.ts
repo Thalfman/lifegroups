@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { isLeaderRole } from "@/lib/auth/roles";
 import { log } from "@/lib/observability/logger";
+import { startActionLog } from "@/lib/observability/instrument";
 import { validateLeaderUpdateFollowUpStatusPayload } from "@/lib/admin/validation";
 import {
   type ActionResult,
@@ -71,24 +72,61 @@ export async function leaderUpdateFollowUpStatus(
   _prev: ActionResult<{ id: string }> | undefined,
   input: FormData | { follow_up_id: string; status: "in_progress" | "done" },
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("leader.follow_up.update_status");
+
   const auth = await requireLeaderActor();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
 
   const raw = payloadFromInput(input);
   const v = validateLeaderUpdateFollowUpStatusPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", {
+      error_code: "validation_failed",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", {
+      error_code: "supabase_not_configured",
+      actor_profile_id: auth.profileId,
+    });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcLeaderUpdateFollowUpStatus(client, {
     p_follow_up_id: v.value.follow_up_id,
     p_status: v.value.status,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The follow-up wasn't updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_profile_id: auth.profileId,
+      target_follow_up_id: v.value.follow_up_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_profile_id: auth.profileId,
+      target_follow_up_id: v.value.follow_up_id,
+    });
+    return actionFail(["The follow-up wasn't updated. Please try again."]);
+  }
 
   revalidateAll();
+  ctx.finish("ok", {
+    actor_profile_id: auth.profileId,
+    target_follow_up_id: v.value.follow_up_id,
+    new_status: v.value.status,
+  });
   return actionOk({ id: data });
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
+import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCreateGroupPayload,
   validateUpdateGroupPayload,
@@ -74,22 +75,45 @@ export async function adminCreateGroup(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<GroupWritablePayload>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.groups.create");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, GROUP_KEYS);
   const v = validateCreateGroupPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminCreateGroup(client, payloadToRpcArgs(v.value));
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The group was not created. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The group was not created. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH);
+  ctx.finish("ok", { actor_role, new_group_id: data });
   return actionOk({ id: data });
 }
 
@@ -101,25 +125,53 @@ export async function adminUpdateGroup(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<GroupWritablePayload & { group_id: string }>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.groups.update");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, UPDATE_GROUP_KEYS);
   const v = validateUpdateGroupPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminUpdateGroup(client, {
     p_group_id: v.value.group_id,
     ...payloadToRpcArgs(v.value),
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The group was not updated. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The group was not updated. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH);
+  ctx.finish("ok", { actor_role, target_group_id: v.value.group_id });
   return actionOk({ id: data });
 }
 
@@ -131,24 +183,52 @@ export async function adminCloseGroup(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<{ group_id: string }>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.groups.close");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, GROUP_ID_KEYS);
   const v = validateGroupIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminCloseGroup(client, {
     p_group_id: v.value.group_id,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The group was not closed. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The group was not closed. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH);
+  ctx.finish("ok", { actor_role, target_group_id: v.value.group_id });
   return actionOk({ id: data });
 }
 
@@ -158,23 +238,51 @@ export async function adminReopenGroup(
   _prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<{ group_id: string }>,
 ): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.groups.reopen");
+
   const auth = await requireAdminSession();
-  if (!auth.ok) return actionFail([auth.error]);
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
 
   const raw = readFromForm(input, GROUP_ID_KEYS);
   const v = validateGroupIdPayload(raw);
-  if (!v.ok) return actionFail(v.errors);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["Database is not configured."]);
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
 
   const { data, error } = await rpcAdminReopenGroup(client, {
     p_group_id: v.value.group_id,
   });
 
-  if (error) return actionFail([mapRpcError(error.message)]);
-  if (!data) return actionFail(["The group was not reopened. Please try again."]);
+  if (error) {
+    ctx.finish("fail", {
+      error_code: "rpc_error",
+      rpc_token: error.message,
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", {
+      error_code: "rpc_no_data",
+      actor_role,
+      target_group_id: v.value.group_id,
+    });
+    return actionFail(["The group was not reopened. Please try again."]);
+  }
 
   revalidatePath(REVALIDATE_PATH);
+  ctx.finish("ok", { actor_role, target_group_id: v.value.group_id });
   return actionOk({ id: data });
 }
