@@ -24,6 +24,7 @@ type LimiterPair = {
 };
 
 let cached: LimiterPair | null | undefined;
+let disabledWarned = false;
 
 function build(): LimiterPair | null {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
@@ -67,11 +68,14 @@ export async function checkForgotPasswordLimit(
 ): Promise<ForgotPasswordLimitResult> {
   const limiters = getLimiters();
   if (!limiters) {
-    log.warn({
-      event: "rate_limit_disabled",
-      route_or_action: "forgot-password",
-      request_id: input.requestId,
-    });
+    if (!disabledWarned) {
+      disabledWarned = true;
+      log.warn({
+        event: "rate_limit_disabled",
+        route_or_action: "forgot-password",
+        request_id: input.requestId,
+      });
+    }
     return { configured: false };
   }
 

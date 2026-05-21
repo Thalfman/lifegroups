@@ -22,24 +22,33 @@ function getSiteUrl(): string | null {
   return raw.replace(/\/+$/, "");
 }
 
-// Returns a client IP only when the source header is one the platform sets
-// itself (i.e. not attacker-spoofable). On Vercel that's `x-vercel-forwarded-for`;
-// on Cloudflare that's `cf-connecting-ip`. `x-forwarded-for`/`x-real-ip` are
-// trusted only when the deployment opts in via TRUST_FORWARDED_FOR=true,
-// since they are easy to forge on direct-to-app setups. Returns `null` when
-// no trusted IP is available — the rate limiter then skips its per-IP bucket
-// for that request to avoid all "unknown" callers sharing a single window.
+// Returns a client IP only when the deployment has explicitly declared
+// which proxy header to trust via TRUSTED_PROXY. Otherwise returns null
+// and the per-IP bucket is skipped — preventing both header spoofing (on
+// self-hosted/direct-to-origin deploys where platform headers are
+// attacker-controlled) and the cross-user shared-bucket DoS that would
+// happen if every IP-less request hashed to the same key.
+//
+// Accepted values:
+//   - "vercel"     -> trust x-vercel-forwarded-for
+//   - "cloudflare" -> trust cf-connecting-ip
+//   - "generic"    -> trust x-forwarded-for (first) then x-real-ip; only set
+//                     this when the deployment terminates at a proxy that
+//                     overwrites these headers.
+//   - unset/other  -> no per-IP throttle (per-email throttle still applies)
 async function extractClientIp(): Promise<string | null> {
   const h = await headers();
-  const vercel = h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
-  if (vercel) return vercel;
-  const cf = h.get("cf-connecting-ip")?.trim();
-  if (cf) return cf;
-  if (process.env.TRUST_FORWARDED_FOR === "true") {
+  const trusted = process.env.TRUSTED_PROXY?.trim().toLowerCase();
+  if (trusted === "vercel") {
+    return h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || null;
+  }
+  if (trusted === "cloudflare") {
+    return h.get("cf-connecting-ip")?.trim() || null;
+  }
+  if (trusted === "generic") {
     const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (fwd) return fwd;
-    const real = h.get("x-real-ip")?.trim();
-    if (real) return real;
+    return h.get("x-real-ip")?.trim() || null;
   }
   return null;
 }
