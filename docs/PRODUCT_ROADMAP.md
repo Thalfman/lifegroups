@@ -145,7 +145,8 @@ the stale phase-number signal from `README.md` and `docs/`.
 - `docs/SHEPHERD_CARE_TRACKER_PLAN.md`
 - `docs/LAUNCH_PLANNING_PLAN.md`
 - `docs/archive/README.md`
-- `docs/archive/<moved phase docs>`
+- `docs/archive/` (all historical phase specs and verification logs;
+  see [`docs/archive/README.md`](./archive/README.md) for the full list)
 
 **Security / privacy.** Docs only. No data-path or policy changes.
 

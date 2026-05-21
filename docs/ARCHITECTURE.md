@@ -97,7 +97,7 @@
 - Adds the canonical role model documentation above and the super_admin
   bootstrap workflow in `supabase/dev/README.md` +
   `supabase/dev/link_super_admin.sql.example`.
-- Introduces `docs/PHASE_5A_ADMIN_MANAGEMENT.md` to pre-commit to a narrow,
+- Introduces `docs/archive/PHASE_5A_ADMIN_MANAGEMENT.md` to pre-commit to a narrow,
   allowlisted scope for the first admin write workflows so they cannot
   drift into a generic database editor.
 - No app code, no migrations, no new RLS policies.
@@ -110,6 +110,6 @@
   preview pages render demo data when env vars are missing and protected
   pages compile cleanly (the redirect to `/login` runs at request time).
 - The first narrow write workflows (admin people & role management) ship in
-  Phase 5A (`docs/PHASE_5A_ADMIN_MANAGEMENT.md`). The broader operational
+  Phase 5A (`docs/archive/PHASE_5A_ADMIN_MANAGEMENT.md`). The broader operational
   write workflows (attendance submission, guest capture, follow-up updates,
   admin review queues) ship in Phase 5B once Phase 5A is verified.

@@ -60,8 +60,11 @@ Computed live as Julian edits assumptions.
 - **Capacity gap** — `projected_demand - current_capacity` (positive
   number = need more groups).
 - **Recommended new groups** —
-  `ceil(capacity_gap * (1 + launch_buffer_pct) / avg_group_size)`,
-  floored to zero.
+  `ceil((projected_demand * (1 + launch_buffer_pct) - current_capacity) / avg_group_size)`,
+  floored to zero. The buffer is applied to total projected demand (matching
+  the § 4 definition of `launch_buffer_pct` as headroom above demand), so a
+  zero-gap state still produces a recommendation when a non-zero buffer is
+  configured.
 - **Leader need** — `recommended_new_groups * leaders_per_group_factor`.
 - **Launch timeline** — suggested launch milestone given the planning
   window (e.g. "Launch 2 by July to be ready for August demand").

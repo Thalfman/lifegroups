@@ -269,7 +269,10 @@ implementation PR.
 - `admin_upsert_care_profile(shepherd_profile_id, summary, status,
   next_touchpoint_due)`.
 - `admin_log_care_interaction(care_profile_id, interaction_at,
-  interaction_type, notes)`.
+  interaction_type, notes)` — inserts the interaction row **and**
+  updates `last_contact_at` on the parent `shepherd_care_profiles` row in
+  the same transaction, so the denormalized field used by the directory
+  and dashboard (§ 7, § 8) stays accurate without per-read aggregation.
 - `admin_set_next_touchpoint(care_profile_id, next_touchpoint_due)`.
 - (A1 only) `admin_create_care_follow_up`, `admin_update_care_follow_up_status`.
 - Each RPC writes a matching `audit_events` row in the same
