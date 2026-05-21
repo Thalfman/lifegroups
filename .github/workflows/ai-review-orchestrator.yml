@@ -1,0 +1,43 @@
+name: AI Review Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run mode (true/false)
+        required: false
+        default: 'true'
+        type: string
+      pr_number:
+        description: Optional PR number (scan all open PRs if omitted)
+        required: false
+        type: string
+  schedule:
+    - cron: '*/10 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run orchestrator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          ORCHESTRATOR_DRY_RUN: ${{ inputs.dry_run || 'true' }}
+          ORCHESTRATOR_PR_NUMBER: ${{ inputs.pr_number || '' }}
+          CODEX_ACTOR_LOGIN: ${{ vars.CODEX_ACTOR_LOGIN }}
+          GEMINI_ACTOR_LOGIN: ${{ vars.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]' }}
+          CLAUDE_TRIGGER: ${{ vars.CLAUDE_TRIGGER || '@claude' }}
+          ALLOWED_PR_AUTHORS: ${{ vars.ALLOWED_PR_AUTHORS || '' }}
+        run: node scripts/ai-review-orchestrator.mjs
