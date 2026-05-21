@@ -933,6 +933,43 @@ export async function fetchOverShepherdByIdForAdmin(
   return { data: data as OverShepherdsRow, error: null };
 }
 
+function projectCoverageAssignmentRows(
+  rows: unknown[],
+): ActiveShepherdCoverageAssignmentSummary[] {
+  const summaries: ActiveShepherdCoverageAssignmentSummary[] = [];
+  for (const r of rows as Array<{
+    id: string;
+    shepherd_profile_id: string;
+    over_shepherd_id: string;
+    assigned_at: string;
+    over_shepherd:
+      | { id: string; full_name: string; active: boolean }
+      | { id: string; full_name: string; active: boolean }[]
+      | null;
+  }>) {
+    const embedded = Array.isArray(r.over_shepherd)
+      ? r.over_shepherd[0] ?? null
+      : r.over_shepherd;
+    if (embedded === null) continue;
+    summaries.push({
+      id: r.id,
+      shepherd_profile_id: r.shepherd_profile_id,
+      over_shepherd_id: r.over_shepherd_id,
+      assigned_at: r.assigned_at,
+      over_shepherd: {
+        id: embedded.id,
+        full_name: embedded.full_name,
+        active: embedded.active,
+      },
+    });
+  }
+  return summaries;
+}
+
+const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
+  "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
+  "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active )";
+
 /**
  * Admin-only list of currently active coverage assignments, joined with
  * the active over-shepherd's display name. One row per active
@@ -946,10 +983,7 @@ export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
 ): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary[]>> {
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
-    .select(
-      "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
-        "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active )",
-    )
+    .select(ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT)
     .eq("active", true);
   if (error) {
     return {
@@ -957,36 +991,100 @@ export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
       error: wrapError("fetchActiveShepherdCoverageAssignmentsForAdmin", error),
     };
   }
-  // PostgREST's auto-detected foreign-key relationship returns the
-  // embedded row as an object (not an array) because the column is a
-  // single-uuid FK. We project explicitly into our typed summary shape.
+  return {
+    data: projectCoverageAssignmentRows((data ?? []) as unknown[]),
+    error: null,
+  };
+}
+
+/**
+ * Admin-only single-row lookup for the active coverage assignment of one
+ * shepherd. Used by the per-shepherd detail page so it doesn't pay the
+ * cost of scanning the whole assignments table. Returns null when no
+ * active row exists.
+ */
+export async function fetchActiveShepherdCoverageAssignmentByShepherdId(
+  client: ReadClient,
+  shepherdProfileId: string,
+): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary | null>> {
+  const { data, error } = await client
+    .from("shepherd_coverage_assignments")
+    .select(ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT)
+    .eq("shepherd_profile_id", shepherdProfileId)
+    .eq("active", true)
+    .maybeSingle();
+  if (error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchActiveShepherdCoverageAssignmentByShepherdId",
+        error,
+      ),
+    };
+  }
+  if (data === null || data === undefined) return { data: null, error: null };
+  const [summary] = projectCoverageAssignmentRows([data as unknown]);
+  return { data: summary ?? null, error: null };
+}
+
+export type ShepherdCoveredByOverShepherd = {
+  assignment: Pick<
+    ShepherdCoverageAssignmentsRow,
+    "id" | "shepherd_profile_id" | "over_shepherd_id" | "assigned_at"
+  >;
+  shepherd: Pick<ProfilesRow, "id" | "full_name">;
+};
+
+/**
+ * Admin-only list of shepherds currently covered by one over-shepherd,
+ * joined with the shepherd's display name. Filters at the database
+ * level on `over_shepherd_id` + `active = true` so the over-shepherd
+ * detail page doesn't pull every active assignment in the org.
+ */
+export async function fetchShepherdsCoveredByOverShepherdForAdmin(
+  client: ReadClient,
+  overShepherdId: string,
+): Promise<ReadResult<ShepherdCoveredByOverShepherd[]>> {
+  const { data, error } = await client
+    .from("shepherd_coverage_assignments")
+    .select(
+      "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
+        "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey ( id, full_name )",
+    )
+    .eq("over_shepherd_id", overShepherdId)
+    .eq("active", true);
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdsCoveredByOverShepherdForAdmin", error),
+    };
+  }
   const rows = (data ?? []) as unknown as Array<{
     id: string;
     shepherd_profile_id: string;
     over_shepherd_id: string;
     assigned_at: string;
-    over_shepherd:
-      | { id: string; full_name: string; active: boolean }
-      | { id: string; full_name: string; active: boolean }[]
+    shepherd:
+      | { id: string; full_name: string }
+      | { id: string; full_name: string }[]
       | null;
   }>;
-  const summaries: ActiveShepherdCoverageAssignmentSummary[] = [];
-  for (const row of rows) {
-    const embedded = Array.isArray(row.over_shepherd)
-      ? row.over_shepherd[0] ?? null
-      : row.over_shepherd;
+  const out: ShepherdCoveredByOverShepherd[] = [];
+  for (const r of rows) {
+    const embedded = Array.isArray(r.shepherd)
+      ? r.shepherd[0] ?? null
+      : r.shepherd;
     if (embedded === null) continue;
-    summaries.push({
-      id: row.id,
-      shepherd_profile_id: row.shepherd_profile_id,
-      over_shepherd_id: row.over_shepherd_id,
-      assigned_at: row.assigned_at,
-      over_shepherd: {
-        id: embedded.id,
-        full_name: embedded.full_name,
-        active: embedded.active,
+    out.push({
+      assignment: {
+        id: r.id,
+        shepherd_profile_id: r.shepherd_profile_id,
+        over_shepherd_id: r.over_shepherd_id,
+        assigned_at: r.assigned_at,
       },
+      shepherd: { id: embedded.id, full_name: embedded.full_name },
     });
   }
-  return { data: summaries, error: null };
+  out.sort((a, b) => a.shepherd.full_name.localeCompare(b.shepherd.full_name));
+  return { data: out, error: null };
 }

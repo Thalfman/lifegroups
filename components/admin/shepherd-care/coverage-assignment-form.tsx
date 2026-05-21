@@ -52,86 +52,101 @@ export function CoverageAssignmentForm({
     undefined,
   );
 
-  if (activeOverShepherds.length === 0) {
-    return (
-      <p style={{ ...formNoteStyle, color: P.ink2 }}>
-        No active over-shepherds yet. Add one from the over-shepherd
-        manager before assigning coverage.
-      </p>
-    );
-  }
+  const hasActiveOverShepherds = activeOverShepherds.length > 0;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <form action={assignAction} style={{ display: "grid", gap: 12 }}>
-        <input
-          type="hidden"
-          name="shepherd_profile_id"
-          value={shepherdProfileId}
-        />
-        <p style={formNoteStyle}>
-          {currentOverShepherdId
-            ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
-            : "Assign an over-shepherd to cover this leader. The over-shepherd will not see anything in the app; this is for Julian's tracking only."}
-        </p>
-        <div className="lg-m-grid-stack" style={formGridStyle}>
-          <div>
-            <label htmlFor="cov-over_shepherd_id" style={fieldLabelStyle}>
-              Over-shepherd
-            </label>
-            <select
-              id="cov-over_shepherd_id"
-              name="over_shepherd_id"
-              required
-              defaultValue={currentOverShepherdId ?? ""}
-              style={fieldSelectStyle}
-            >
-              <option value="" disabled>
-                Select…
-              </option>
-              {activeOverShepherds.map((os) => (
-                <option key={os.id} value={os.id}>
-                  {os.full_name}
+      {hasActiveOverShepherds ? (
+        <form action={assignAction} style={{ display: "grid", gap: 12 }}>
+          <input
+            type="hidden"
+            name="shepherd_profile_id"
+            value={shepherdProfileId}
+          />
+          <p style={formNoteStyle}>
+            {currentOverShepherdId
+              ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
+              : "Assign an over-shepherd to cover this leader. The over-shepherd will not see anything in the app; this is for Julian's tracking only."}
+          </p>
+          <div className="lg-m-grid-stack" style={formGridStyle}>
+            <div>
+              <label htmlFor="cov-over_shepherd_id" style={fieldLabelStyle}>
+                Over-shepherd
+              </label>
+              <select
+                id="cov-over_shepherd_id"
+                name="over_shepherd_id"
+                required
+                defaultValue={currentOverShepherdId ?? ""}
+                style={fieldSelectStyle}
+              >
+                <option value="" disabled>
+                  Select…
                 </option>
+                {activeOverShepherds.map((os) => (
+                  <option key={os.id} value={os.id}>
+                    {os.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="cov-assigned_at" style={fieldLabelStyle}>
+                Assigned date
+              </label>
+              <input
+                id="cov-assigned_at"
+                name="assigned_at"
+                type="date"
+                defaultValue={todayLocalIso()}
+                max={todayLocalIso()}
+                style={fieldInputStyle}
+              />
+            </div>
+            <div>
+              <PButton
+                type="submit"
+                tone="solid"
+                size="md"
+                disabled={assignPending}
+              >
+                {assignPending
+                  ? "Saving…"
+                  : currentOverShepherdId
+                    ? "Reassign coverage"
+                    : "Assign coverage"}
+              </PButton>
+            </div>
+          </div>
+          {assignState && !assignState.ok ? (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+              {assignState.errors.map((err, i) => (
+                <li key={i}>
+                  <p style={errorTextStyle}>{err}</p>
+                </li>
               ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="cov-assigned_at" style={fieldLabelStyle}>
-              Assigned date
-            </label>
-            <input
-              id="cov-assigned_at"
-              name="assigned_at"
-              type="date"
-              defaultValue={todayLocalIso()}
-              max={todayLocalIso()}
-              style={fieldInputStyle}
-            />
-          </div>
-          <div>
-            <PButton type="submit" tone="solid" size="md" disabled={assignPending}>
-              {assignPending
-                ? "Saving…"
-                : currentOverShepherdId
-                  ? "Reassign coverage"
-                  : "Assign coverage"}
-            </PButton>
-          </div>
-        </div>
-        {assignState && !assignState.ok ? (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-            {assignState.errors.map((err, i) => (
-              <li key={i}>
-                <p style={errorTextStyle}>{err}</p>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {assignState?.ok ? (
-          <p style={successTextStyle}>Coverage assigned.</p>
-        ) : null}
-      </form>
+            </ul>
+          ) : null}
+          {assignState?.ok ? (
+            <p style={successTextStyle}>Coverage assigned.</p>
+          ) : null}
+        </form>
+      ) : !currentAssignmentId ? (
+        // No active over-shepherds and no active assignment to clear —
+        // surface the empty state directly.
+        <p style={{ ...formNoteStyle, color: P.ink2 }}>
+          No active over-shepherds yet. Add one from the over-shepherd
+          manager before assigning coverage.
+        </p>
+      ) : (
+        // No active over-shepherds, but an active assignment exists
+        // (the assigned over-shepherd was archived after the assignment
+        // was made). Allow clearing so admins aren't stuck.
+        <p style={{ ...formNoteStyle, color: P.ink2 }}>
+          The current over-shepherd is archived. Reactivate them from the
+          over-shepherd manager, or clear coverage below.
+        </p>
+      )}
 
       {currentAssignmentId ? (
         <form

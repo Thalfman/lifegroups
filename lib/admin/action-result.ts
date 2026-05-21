@@ -71,6 +71,10 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That over-shepherd is inactive. Reactivate them before assigning coverage.",
   missing_assignment:
     "That assignment isn't active. Refresh the page and try again.",
+  invalid_assigned_at_before_prior:
+    "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
+  invalid_ended_at_before_start:
+    "The end date can't be earlier than the assignment's start date.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

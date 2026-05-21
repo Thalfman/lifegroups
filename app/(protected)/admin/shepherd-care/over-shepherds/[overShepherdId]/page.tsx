@@ -5,13 +5,13 @@ import { OverShepherdEditForm } from "@/components/admin/shepherd-care/over-shep
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchOverShepherdByIdForAdmin,
-  type ActiveShepherdCoverageAssignmentSummary,
+  fetchShepherdsCoveredByOverShepherdForAdmin,
+  type ShepherdCoveredByOverShepherd,
 } from "@/lib/supabase/read-models";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
-import type { OverShepherdsRow, ProfilesRow } from "@/types/database";
+import type { OverShepherdsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -22,94 +22,39 @@ const cardStyle = {
   padding: 20,
 };
 
-async function loadDetail(overShepherdId: string): Promise<
+type DetailResult =
   | {
       kind: "ok";
       overShepherd: OverShepherdsRow;
-      coveredShepherds: Array<{
-        profile: Pick<ProfilesRow, "id" | "full_name">;
-        assignment: ActiveShepherdCoverageAssignmentSummary;
-      }>;
+      coveredShepherds: ShepherdCoveredByOverShepherd[];
       error: string | null;
     }
   | { kind: "not_found" }
   | { kind: "db_unavailable" }
-> {
+  | { kind: "load_error"; message: string };
+
+async function loadDetail(overShepherdId: string): Promise<DetailResult> {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "db_unavailable" };
 
-  const [overShepherdRes, assignmentsRes] = await Promise.all([
+  const [overShepherdRes, coveredRes] = await Promise.all([
     fetchOverShepherdByIdForAdmin(client, overShepherdId),
-    fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+    fetchShepherdsCoveredByOverShepherdForAdmin(client, overShepherdId),
   ]);
+  // Block the edit form entirely when the over-shepherd record fails to
+  // load. Returning a dummy "Unknown" record would let an admin submit
+  // the edit form and overwrite the real record with placeholder
+  // values; surface the error instead.
   if (overShepherdRes.error) {
-    return {
-      kind: "ok",
-      overShepherd: {
-        id: overShepherdId,
-        full_name: "Unknown",
-        email: null,
-        phone: null,
-        active: false,
-        notes: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        archived_at: null,
-      },
-      coveredShepherds: [],
-      error: overShepherdRes.error.message,
-    };
+    return { kind: "load_error", message: overShepherdRes.error.message };
   }
   if (!overShepherdRes.data) return { kind: "not_found" };
-
-  const myAssignments = (assignmentsRes.data ?? []).filter(
-    (a) => a.over_shepherd_id === overShepherdId,
-  );
-
-  let coveredShepherds: Array<{
-    profile: Pick<ProfilesRow, "id" | "full_name">;
-    assignment: ActiveShepherdCoverageAssignmentSummary;
-  }> = [];
-  if (myAssignments.length > 0) {
-    const shepherdIds = myAssignments.map((a) => a.shepherd_profile_id);
-    const { data, error } = await client
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", shepherdIds);
-    if (error) {
-      return {
-        kind: "ok",
-        overShepherd: overShepherdRes.data,
-        coveredShepherds: [],
-        error: error.message,
-      };
-    }
-    const byId = new Map<string, Pick<ProfilesRow, "id" | "full_name">>();
-    for (const p of (data ?? []) as Pick<ProfilesRow, "id" | "full_name">[]) {
-      byId.set(p.id, p);
-    }
-    coveredShepherds = myAssignments
-      .map((a) => {
-        const profile = byId.get(a.shepherd_profile_id);
-        if (!profile) return null;
-        return { profile, assignment: a };
-      })
-      .filter(
-        (
-          entry,
-        ): entry is {
-          profile: Pick<ProfilesRow, "id" | "full_name">;
-          assignment: ActiveShepherdCoverageAssignmentSummary;
-        } => entry !== null,
-      )
-      .sort((a, b) => a.profile.full_name.localeCompare(b.profile.full_name));
-  }
 
   return {
     kind: "ok",
     overShepherd: overShepherdRes.data,
-    coveredShepherds,
-    error: assignmentsRes.error?.message ?? null,
+    coveredShepherds: coveredRes.data ?? [],
+    error: coveredRes.error?.message ?? null,
   };
 }
 
@@ -141,6 +86,45 @@ export default async function AdminOverShepherdEditPage({
           >
             Back to over-shepherds
           </Link>
+        </PageBody>
+      </>
+    );
+  }
+  if (detail.kind === "load_error") {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Shepherd care"
+          title="Over-"
+          italic="shepherds"
+          lede="We couldn't load this over-shepherd."
+        />
+        <PageBody>
+          <div style={{ display: "grid", gap: 20 }}>
+            <p
+              style={{
+                fontFamily: fontBody,
+                color: "#923220",
+                background: P.terraSoft,
+                padding: "10px 14px",
+                borderRadius: 8,
+                margin: 0,
+              }}
+            >
+              {detail.message}
+            </p>
+            <Link
+              href="/admin/shepherd-care/over-shepherds"
+              style={{
+                fontFamily: fontBody,
+                color: P.ink2,
+                fontSize: 13,
+                textDecoration: "underline",
+              }}
+            >
+              ← Back to over-shepherds
+            </Link>
+          </div>
         </PageBody>
       </>
     );
@@ -235,14 +219,14 @@ export default async function AdminOverShepherdEditPage({
                 {detail.coveredShepherds.map((entry) => (
                   <li key={entry.assignment.id}>
                     <Link
-                      href={`/admin/shepherd-care/${entry.profile.id}`}
+                      href={`/admin/shepherd-care/${entry.shepherd.id}`}
                       style={{
                         fontFamily: fontBody,
                         color: P.ink,
                         textDecoration: "underline",
                       }}
                     >
-                      {entry.profile.full_name}
+                      {entry.shepherd.full_name}
                     </Link>
                   </li>
                 ))}

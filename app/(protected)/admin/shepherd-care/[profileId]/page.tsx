@@ -9,7 +9,7 @@ import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-c
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
   fetchOverShepherdsForAdmin,
   fetchShepherdCareInteractionsForAdmin,
@@ -90,10 +90,10 @@ async function loadDetail(profileId: string): Promise<
   }
   if (profile.data.status !== "active") return { kind: "not_found" };
 
-  const [careResult, overShepherdsRes, assignmentsRes] = await Promise.all([
+  const [careResult, overShepherdsRes, coverageRes] = await Promise.all([
     fetchShepherdCareProfileByShepherdId(client, profileId),
     fetchOverShepherdsForAdmin(client, { includeArchived: false }),
-    fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
   ]);
   if (careResult.error) {
     return {
@@ -119,11 +119,6 @@ async function loadDetail(profileId: string): Promise<
     else interactions = inter.data;
   }
 
-  const coverage =
-    (assignmentsRes.data ?? []).find(
-      (a) => a.shepherd_profile_id === profileId,
-    ) ?? null;
-
   return {
     kind: "ok",
     profileFullName: profile.data.full_name,
@@ -131,11 +126,11 @@ async function loadDetail(profileId: string): Promise<
     care: careResult.data,
     interactions,
     activeOverShepherds: overShepherdsRes.data ?? [],
-    coverage,
+    coverage: coverageRes.data ?? null,
     error:
       interactionError ??
       overShepherdsRes.error?.message ??
-      assignmentsRes.error?.message ??
+      coverageRes.error?.message ??
       null,
   };
 }
