@@ -35,11 +35,17 @@ const INTERACTION_TYPES: ShepherdCareInteractionType[] = [
 
 const STATUSES: ShepherdCareStatus[] = ["healthy", "watch", "needs_attention"];
 
-function todayIso(): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-    .toISOString()
-    .slice(0, 10);
+// Client-side date bounds use UTC to match the server validator, which
+// rejects `interaction_at > current_date + 1` (Postgres). The `defaultValue`
+// stays on UTC today; the `max` allows UTC today + 1 so a caller in a
+// time zone ahead of UTC can still pick their local current date without
+// a stale-feeling round-trip rejection.
+function todayUtcIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function tomorrowUtcIso(): string {
+  return new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 }
 
 export function LogInteractionForm({
@@ -75,8 +81,8 @@ export function LogInteractionForm({
             name="interaction_at"
             type="date"
             required
-            defaultValue={todayIso()}
-            max={todayIso()}
+            defaultValue={todayUtcIso()}
+            max={tomorrowUtcIso()}
             style={fieldInputStyle}
           />
         </div>

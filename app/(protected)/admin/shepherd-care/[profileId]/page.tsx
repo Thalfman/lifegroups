@@ -12,6 +12,7 @@ import {
   fetchShepherdCareInteractionsForAdmin,
   fetchShepherdCareProfileByShepherdId,
 } from "@/lib/supabase/read-models";
+import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
@@ -44,19 +45,6 @@ const cardStyle = {
   borderRadius: 12,
   padding: 20,
 };
-
-function formatDate(value: string | null): string {
-  if (!value) return "Never";
-  const [y, m, d] = value.split("-").map((p) => Number.parseInt(p, 10));
-  if (!y || !m || !d) return value;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return date.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 async function loadDetail(profileId: string): Promise<
   | { kind: "ok"; profileFullName: string; profileRole: string; care: ShepherdCareProfilesRow | null; interactions: ShepherdCareInteractionsRow[]; error: string | null }
@@ -216,14 +204,14 @@ export default async function AdminShepherdCareDetailPage({
               </div>
               <div>
                 <span style={labelStyle}>Last contact</span>
-                <div style={valueStyle}>{formatDate(detail.care?.last_contact_at ?? null)}</div>
+                <div style={valueStyle}>
+                  {formatIsoDateOr(detail.care?.last_contact_at ?? null, "Never")}
+                </div>
               </div>
               <div>
                 <span style={labelStyle}>Next touchpoint</span>
                 <div style={valueStyle}>
-                  {detail.care?.next_touchpoint_due
-                    ? formatDate(detail.care.next_touchpoint_due)
-                    : "—"}
+                  {formatIsoDateOr(detail.care?.next_touchpoint_due ?? null)}
                 </div>
               </div>
             </div>

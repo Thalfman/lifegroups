@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
 import { ShepherdCareStatusBadge } from "./status-badge";
 
@@ -42,21 +43,6 @@ const roleLabel: Record<string, string> = {
   leader: "Leader",
   co_leader: "Co-leader",
 };
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  // Intl.DateTimeFormat is locale-aware but we want a stable short form
-  // regardless of server locale. Parse the ISO date directly.
-  const [y, m, d] = value.split("-").map((p) => Number.parseInt(p, 10));
-  if (!y || !m || !d) return value;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return date.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export function ShepherdCareDirectoryTable({
   entries,
@@ -110,13 +96,13 @@ export function ShepherdCareDirectoryTable({
                 </td>
                 <td style={tdStyle}>
                   {lastContact ? (
-                    formatDate(lastContact)
+                    formatIsoDate(lastContact)
                   ) : (
                     <span style={{ color: P.ink3 }}>Never</span>
                   )}
                 </td>
                 <td style={tdStyle}>
-                  {nextTouchpoint ? formatDate(nextTouchpoint) : "—"}
+                  {nextTouchpoint ? formatIsoDate(nextTouchpoint) : "—"}
                 </td>
                 <td style={tdStyle}>
                   {entry.needs_attention ? (

@@ -159,6 +159,14 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Defense-in-depth: callers that bypass the validation layer (e.g. a
+  -- direct RPC call from a future internal tool) must still update at
+  -- least one field. Without this guard, every call would create an
+  -- empty row + audit event with zero intended change.
+  if not (p_set_current_status or p_set_next_touchpoint_due or p_set_admin_summary) then
+    raise exception 'invalid_input';
+  end if;
+
   if p_set_admin_summary then
     v_summary := nullif(btrim(coalesce(p_admin_summary, '')), '');
     if v_summary is not null and length(v_summary) > 2000 then
@@ -203,15 +211,33 @@ begin
     else v_existing.admin_summary
   end;
 
+  -- Race-safety: when two admins write to the same shepherd's care row
+  -- at nearly the same time and the row doesn't exist yet, each
+  -- transaction's v_existing snapshot will be null. A naive `set field =
+  -- excluded.field` in DO UPDATE would let the second transaction
+  -- overwrite the first's intended field with its own stale fallback
+  -- value (computed from v_existing = null). Branching DO UPDATE on the
+  -- caller's _set_ flag keeps each transaction's write surface limited
+  -- to the fields it actually intended to change, so a concurrent
+  -- write's unrelated fields are preserved verbatim.
   insert into public.shepherd_care_profiles (
     shepherd_profile_id, current_status, next_touchpoint_due, admin_summary
   ) values (
     p_shepherd_profile_id, v_new_status, v_new_next_touchpoint, v_new_summary
   )
   on conflict (shepherd_profile_id) do update
-    set current_status     = excluded.current_status,
-        next_touchpoint_due = excluded.next_touchpoint_due,
-        admin_summary       = excluded.admin_summary,
+    set current_status      = case
+                                when p_set_current_status then excluded.current_status
+                                else public.shepherd_care_profiles.current_status
+                              end,
+        next_touchpoint_due = case
+                                when p_set_next_touchpoint_due then excluded.next_touchpoint_due
+                                else public.shepherd_care_profiles.next_touchpoint_due
+                              end,
+        admin_summary       = case
+                                when p_set_admin_summary then excluded.admin_summary
+                                else public.shepherd_care_profiles.admin_summary
+                              end,
         updated_at          = now()
   returning id into v_new_id;
 
@@ -296,8 +322,10 @@ begin
     raise exception 'invalid_input';
   end if;
   -- Future-dated interactions are rejected; they're a foot-gun for the
-  -- last_contact_at / needs-attention rollups.
-  if p_interaction_at > current_date then
+  -- last_contact_at / needs-attention rollups. A one-day buffer past
+  -- `current_date` accommodates callers in time zones ahead of UTC,
+  -- where local "today" can already be tomorrow on the server clock.
+  if p_interaction_at > current_date + 1 then
     raise exception 'invalid_input';
   end if;
 

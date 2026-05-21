@@ -277,6 +277,33 @@ describe("validateLogShepherdCareInteractionPayload", () => {
     }
   });
 
+  it("allows interaction_at on UTC today + 1 for timezones ahead of UTC", () => {
+    const r = validateLogShepherdCareInteractionPayload(
+      {
+        shepherd_profile_id: UUID_A,
+        interaction_at: "2026-05-22",
+        interaction_type: "call",
+      },
+      { todayIso: "2026-05-21" },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects interaction_at two days ahead of UTC today", () => {
+    const r = validateLogShepherdCareInteractionPayload(
+      {
+        shepherd_profile_id: UUID_A,
+        interaction_at: "2026-05-23",
+        interaction_type: "call",
+      },
+      { todayIso: "2026-05-21" },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /future/i.test(e))).toBe(true);
+    }
+  });
+
   it("rejects an invalid interaction type", () => {
     const r = validateLogShepherdCareInteractionPayload(
       {

@@ -88,6 +88,15 @@ the audit metadata — only presence flags.
 Edits the care profile without logging an interaction. Tri-state
 `_set_` flags let the admin update one field without clobbering others.
 Validates that the target is a leader / co_leader with `status='active'`.
+Rejects calls with all `_set_` flags false (`invalid_input`) so a direct
+RPC caller can't bypass form validation to create empty rows or noisy
+audit events.
+
+The `ON CONFLICT ... DO UPDATE` branches each field on its `_set_`
+flag (writing `excluded.<col>` when set, otherwise preserving
+`public.shepherd_care_profiles.<col>`). This keeps a concurrent
+first-time write from a second admin from clobbering the first admin's
+field with the second transaction's stale fallback value.
 
 Error tokens: `insufficient_privilege`, `invalid_input`, `missing_profile`.
 Audit action: `admin.upsert_shepherd_care_profile`.
@@ -101,7 +110,12 @@ transaction). Updates `last_contact_at` via
 an out-of-order backfill of an older date never regresses the current
 last_contact value.
 
-Rejects future-dated interactions (`p_interaction_at > current_date`).
+Rejects future-dated interactions
+(`p_interaction_at > current_date + 1`). The one-day buffer past
+`current_date` accommodates callers in time zones ahead of UTC, where
+local "today" can already be tomorrow on the server clock. The
+TS validator and the client form's `max` attribute mirror this with
+`UTC today + 1 day`.
 
 Error tokens: `insufficient_privilege`, `invalid_input`, `missing_profile`.
 Audit action: `admin.log_shepherd_care_interaction`.

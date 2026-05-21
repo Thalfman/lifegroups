@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
+import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareInteractionsRow } from "@/types/database";
 
 const itemStyle: CSSProperties = {
@@ -50,18 +51,6 @@ const emptyStyle: CSSProperties = {
   fontSize: 13,
 };
 
-function formatDate(value: string): string {
-  const [y, m, d] = value.split("-").map((p) => Number.parseInt(p, 10));
-  if (!y || !m || !d) return value;
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return date.toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export function InteractionTimeline({
   interactions,
 }: {
@@ -74,7 +63,7 @@ export function InteractionTimeline({
     <div role="list">
       {interactions.map((row) => (
         <div key={row.id} role="listitem" style={itemStyle}>
-          <div style={stampStyle}>{formatDate(row.interaction_at)}</div>
+          <div style={stampStyle}>{formatIsoDate(row.interaction_at)}</div>
           <div>
             <div style={typeStyle}>
               {shepherdCareInteractionTypeLabel(row.interaction_type)}

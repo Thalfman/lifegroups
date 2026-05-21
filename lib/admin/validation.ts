@@ -1223,6 +1223,12 @@ function todayIsoUtc(now: Date = new Date()): string {
     .slice(0, 10);
 }
 
+function addDaysToIsoDate(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map((p) => Number.parseInt(p, 10));
+  const utc = Date.UTC(y, m - 1, d) + days * 86_400_000;
+  return new Date(utc).toISOString().slice(0, 10);
+}
+
 export type UpsertShepherdCareProfilePayload = {
   shepherd_profile_id: string;
   set_current_status: boolean;
@@ -1328,8 +1334,13 @@ export function validateLogShepherdCareInteractionPayload(
   } else if (!isIsoDate(interactionAt)) {
     errors.push("Interaction date must be YYYY-MM-DD.");
   } else {
+    // Allow up to UTC today + 1 day so callers in time zones ahead of
+    // UTC (e.g. Sydney at 8am local is still yesterday on the UTC
+    // server) can log an interaction on their local current date. The
+    // SQL guard mirrors this with `current_date + 1`.
     const today = options.todayIso ?? todayIsoUtc();
-    if (interactionAt > today) {
+    const cap = addDaysToIsoDate(today, 1);
+    if (interactionAt > cap) {
       errors.push("Interaction date can't be in the future.");
     }
   }

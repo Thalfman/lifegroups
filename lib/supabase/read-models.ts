@@ -644,9 +644,28 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
  */
 export const SHEPHERD_CARE_STALE_DAYS = 60;
 
+// Directory cards never render the admin_summary, so omit it from the
+// projected care row to keep the response payload small and avoid
+// shipping note bodies anywhere the directory is rendered.
+export type ShepherdCareDirectorySummary = Pick<
+  ShepherdCareProfilesRow,
+  | "id"
+  | "shepherd_profile_id"
+  | "current_status"
+  | "last_contact_at"
+  | "next_touchpoint_due"
+  | "archived_at"
+  | "created_at"
+  | "updated_at"
+>;
+
+const SHEPHERD_CARE_DIRECTORY_COLUMNS =
+  "id, shepherd_profile_id, current_status, last_contact_at, " +
+  "next_touchpoint_due, archived_at, created_at, updated_at";
+
 export type ShepherdCareDirectoryEntry = {
   profile: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">;
-  care: ShepherdCareProfilesRow | null;
+  care: ShepherdCareDirectorySummary | null;
   needs_attention: boolean;
 };
 
@@ -660,7 +679,7 @@ function differenceInDaysIso(today: string, then: string): number {
 }
 
 function computeNeedsAttention(
-  care: ShepherdCareProfilesRow | null,
+  care: ShepherdCareDirectorySummary | null,
   todayIso: string,
 ): boolean {
   if (care === null) return true;
@@ -697,19 +716,29 @@ export async function fetchShepherdCareDirectoryForAdmin(
     };
   }
 
-  const careQuery = await client
-    .from("shepherd_care_profiles")
-    .select(SHEPHERD_CARE_PROFILE_COLUMNS);
-  if (careQuery.error) {
-    return {
-      data: null,
-      error: wrapError("fetchShepherdCareDirectoryForAdmin/care", careQuery.error),
-    };
-  }
+  const shepherdIds = (profilesQuery.data ?? []).map(
+    (p) => (p as { id: string }).id,
+  );
 
-  const careByShepherdId = new Map<string, ShepherdCareProfilesRow>();
-  for (const row of (careQuery.data ?? []) as ShepherdCareProfilesRow[]) {
-    careByShepherdId.set(row.shepherd_profile_id, row);
+  // Filter care rows down to the visible shepherd ids so the response
+  // doesn't ship every care row in the database to the directory page.
+  // Skipping the fetch entirely when there are no shepherd ids keeps
+  // the PostgREST `.in("col", [])` edge case off the wire.
+  const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
+  if (shepherdIds.length > 0) {
+    const careQuery = await client
+      .from("shepherd_care_profiles")
+      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS)
+      .in("shepherd_profile_id", shepherdIds);
+    if (careQuery.error) {
+      return {
+        data: null,
+        error: wrapError("fetchShepherdCareDirectoryForAdmin/care", careQuery.error),
+      };
+    }
+    for (const row of (careQuery.data ?? []) as ShepherdCareDirectorySummary[]) {
+      careByShepherdId.set(row.shepherd_profile_id, row);
+    }
   }
 
   const today =
