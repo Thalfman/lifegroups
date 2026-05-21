@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { isLeaderRole } from "@/lib/auth/roles";
-import { log } from "@/lib/observability/logger";
 import { startActionLog } from "@/lib/observability/instrument";
 import { validateLeaderUpdateFollowUpStatusPayload } from "@/lib/admin/validation";
 import {
@@ -21,33 +20,35 @@ function revalidateAll(): void {
   for (const path of REVALIDATE_PATHS) revalidatePath(path);
 }
 
-async function requireLeaderActor(): Promise<
+// Returns the kind so the caller can emit a single terminal log line with
+// the correct outcome (denied vs fail) and stage. Logging stays at the
+// callsite to avoid the helper duplicating the per-action outcome line.
+type RequireLeaderResult =
   | { ok: true; profileId: string }
-  | { ok: false; error: string }
-> {
+  | { ok: false; kind: "anonymous" | "profile_missing" | "inactive" | "not_leader"; error: string }
+  | { ok: false; kind: "backend_error"; stage: "profile_lookup" | "leader_assignments"; error: string };
+
+async function requireLeaderActor(): Promise<RequireLeaderResult> {
   const session = await getCurrentSession();
   switch (session.kind) {
     case "anonymous":
-      return { ok: false, error: "You need to sign in to do that." };
+      return { ok: false, kind: "anonymous", error: "You need to sign in to do that." };
     case "profile_missing":
-      return { ok: false, error: "Your account isn't set up yet." };
+      return { ok: false, kind: "profile_missing", error: "Your account isn't set up yet." };
     case "backend_error":
-      log.error({
-        event: "auth_guard_backend_error",
-        outcome: "fail",
-        route_or_action: "leaderUpdateFollowUpStatus",
-        stage: session.stage,
-      });
       return {
         ok: false,
+        kind: "backend_error",
+        stage: session.stage,
         error: "Service is temporarily unavailable. Please try again.",
       };
     case "authenticated": {
       if (session.profile.status !== "active")
-        return { ok: false, error: "Your account isn't active." };
+        return { ok: false, kind: "inactive", error: "Your account isn't active." };
       if (!isLeaderRole(session.profile.role))
         return {
           ok: false,
+          kind: "not_leader",
           error: "Only an assigned leader or co-leader can update this follow-up.",
         };
       return { ok: true, profileId: session.profile.id };
@@ -76,7 +77,15 @@ export async function leaderUpdateFollowUpStatus(
 
   const auth = await requireLeaderActor();
   if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
+    if (auth.kind === "backend_error") {
+      // Transient backend failure -- surface as "fail" (with stage) rather
+      // than "denied", which would imply the user was authenticated and
+      // refused. The auth_backend_error code is the same taxonomy used by
+      // the central session helper in lib/auth/session.ts.
+      ctx.finish("fail", { error_code: "auth_backend_error", stage: auth.stage });
+    } else {
+      ctx.finish("denied", { error_code: "auth_denied", reason: auth.kind });
+    }
     return actionFail([auth.error]);
   }
 

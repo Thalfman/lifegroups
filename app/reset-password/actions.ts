@@ -54,9 +54,11 @@ export async function resetPasswordAction(
 
   const { error } = await client.auth.updateUser({ password });
   if (error) {
+    // Log only the stable error.code, not the raw message. Supabase auth
+    // error messages can occasionally include user-supplied input or other
+    // sensitive context; the code alone is enough to triage by category.
     ctx.finish("fail", {
       error_code: error.code ?? "update_user_failed",
-      error_message: error.message,
     });
     return { error: GENERIC_UPDATE_FAILED };
   }

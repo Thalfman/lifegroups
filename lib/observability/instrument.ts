@@ -5,6 +5,14 @@
 // Imperative rather than a higher-order wrapper because the existing actions
 // return discriminated ActionResult<T> shapes with many early exits — keeping
 // control flow in the action avoids forcing every callsite into a closure.
+//
+// finish() is idempotent: the first call wins and subsequent calls are
+// no-ops. That makes it safe to wrap an action body in a try/finally with a
+// safety-net `ctx.finish("fail", { error_code: "unhandled_exception" })` in
+// the finally block, so an unexpected throw still emits one terminal line.
+// We don't roll that wrapper across every action by default — explicit
+// returns are easier to read — but the pattern is available where actions
+// have logic that might throw outside the typed RPC error path.
 
 import { log, type LogContext, type LogOutcome } from "./logger";
 import { newCorrelationId } from "./identifiers";
