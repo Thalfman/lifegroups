@@ -14,6 +14,8 @@ import type {
   GuestsRow,
   MembersRow,
   ProfilesRow,
+  ShepherdCareInteractionsRow,
+  ShepherdCareProfilesRow,
 } from "@/types/database";
 import type {
   FollowUpStatus,
@@ -607,4 +609,209 @@ export async function fetchRecentAuditEvents(
   const { data, error } = await query;
   if (error) return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
   return { data: data ?? [], error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5D.0 — Shepherd care tracker (admin-only) read models.
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin-only column allowlist for shepherd_care_profiles. Used by every
+ * shepherd-care reader so `select("*")` never leaks here. The table-level
+ * RLS already restricts SELECT to super_admin / ministry_admin (NOT
+ * staff_viewer); this allowlist is the defensive belt-and-braces.
+ *
+ * If you add a column, also extend `ShepherdCareProfilesRow` in
+ * types/database.ts.
+ */
+export const SHEPHERD_CARE_PROFILE_COLUMNS =
+  "id, shepherd_profile_id, current_status, last_contact_at, " +
+  "next_touchpoint_due, admin_summary, archived_at, created_at, updated_at";
+
+/**
+ * Admin-only column allowlist for shepherd_care_interactions. Same
+ * privacy posture as the profile constant above — never used outside an
+ * admin code path.
+ */
+export const SHEPHERD_CARE_INTERACTION_COLUMNS =
+  "id, care_profile_id, interaction_at, interaction_type, notes, " +
+  "created_by_profile_id, created_at";
+
+/**
+ * Days-since-last-contact threshold used by the SC.1A "needs attention"
+ * filter. Hard-coded for the first slice; revisit once Julian has
+ * tried the workflow and may want a configurable threshold.
+ */
+export const SHEPHERD_CARE_STALE_DAYS = 60;
+
+export type ShepherdCareDirectoryEntry = {
+  profile: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">;
+  care: ShepherdCareProfilesRow | null;
+  needs_attention: boolean;
+};
+
+function differenceInDaysIso(today: string, then: string): number {
+  // Both inputs are YYYY-MM-DD; Date.parse with the ISO string at midnight UTC
+  // is stable across server timezones. Truncate the result to whole days.
+  const a = Date.parse(`${today}T00:00:00Z`);
+  const b = Date.parse(`${then}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return Number.POSITIVE_INFINITY;
+  return Math.floor((a - b) / 86_400_000);
+}
+
+function computeNeedsAttention(
+  care: ShepherdCareProfilesRow | null,
+  todayIso: string,
+): boolean {
+  if (care === null) return true;
+  if (care.last_contact_at === null) return true;
+  if (care.next_touchpoint_due !== null && care.next_touchpoint_due < todayIso) {
+    return true;
+  }
+  if (differenceInDaysIso(todayIso, care.last_contact_at) > SHEPHERD_CARE_STALE_DAYS) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Admin-only directory of leader / co_leader profiles joined with the
+ * matching shepherd_care_profiles row (or null when no care row exists
+ * yet). The join is computed in TS so leaders with no care row still
+ * appear in the directory as "needs first contact".
+ */
+export async function fetchShepherdCareDirectoryForAdmin(
+  client: ReadClient,
+  options: { todayIso?: string } = {},
+): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
+  const profilesQuery = await client
+    .from("profiles")
+    .select("id, full_name, email, role, status")
+    .in("role", ["leader", "co_leader"])
+    .eq("status", "active")
+    .order("full_name", { ascending: true });
+  if (profilesQuery.error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareDirectoryForAdmin/profiles", profilesQuery.error),
+    };
+  }
+
+  const careQuery = await client
+    .from("shepherd_care_profiles")
+    .select(SHEPHERD_CARE_PROFILE_COLUMNS);
+  if (careQuery.error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareDirectoryForAdmin/care", careQuery.error),
+    };
+  }
+
+  const careByShepherdId = new Map<string, ShepherdCareProfilesRow>();
+  for (const row of (careQuery.data ?? []) as ShepherdCareProfilesRow[]) {
+    careByShepherdId.set(row.shepherd_profile_id, row);
+  }
+
+  const today =
+    options.todayIso ??
+    new Date(
+      Date.UTC(
+        new Date().getUTCFullYear(),
+        new Date().getUTCMonth(),
+        new Date().getUTCDate(),
+      ),
+    )
+      .toISOString()
+      .slice(0, 10);
+
+  const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
+    (p) => {
+      const profile = p as Pick<
+        ProfilesRow,
+        "id" | "full_name" | "email" | "role" | "status"
+      >;
+      const care = careByShepherdId.get(profile.id) ?? null;
+      return {
+        profile,
+        care,
+        needs_attention: computeNeedsAttention(care, today),
+      };
+    },
+  );
+
+  return { data: entries, error: null };
+}
+
+/**
+ * Admin-only single-profile read keyed by the LEADER's profile id (not
+ * the care_profile row id). Returns null when no care row exists yet —
+ * the caller renders the page in "needs first contact" state.
+ */
+export async function fetchShepherdCareProfileByShepherdId(
+  client: ReadClient,
+  shepherdProfileId: string,
+): Promise<ReadResult<ShepherdCareProfilesRow | null>> {
+  const { data, error } = await client
+    .from("shepherd_care_profiles")
+    .select(SHEPHERD_CARE_PROFILE_COLUMNS)
+    .eq("shepherd_profile_id", shepherdProfileId)
+    .maybeSingle();
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareProfileByShepherdId", error),
+    };
+  }
+  if (data === null || data === undefined) return { data: null, error: null };
+  return { data: data as ShepherdCareProfilesRow, error: null };
+}
+
+/**
+ * Admin-only interaction history for one care profile. Append-only
+ * ordering: most recent first by `interaction_at`, tiebreak by
+ * `created_at` so multiple touches on the same day stay stable.
+ */
+export async function fetchShepherdCareInteractionsForAdmin(
+  client: ReadClient,
+  careProfileId: string,
+): Promise<ReadResult<ShepherdCareInteractionsRow[]>> {
+  const { data, error } = await client
+    .from("shepherd_care_interactions")
+    .select(SHEPHERD_CARE_INTERACTION_COLUMNS)
+    .eq("care_profile_id", careProfileId)
+    .order("interaction_at", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareInteractionsForAdmin", error),
+    };
+  }
+  return {
+    data: (data ?? []) as ShepherdCareInteractionsRow[],
+    error: null,
+  };
+}
+
+/**
+ * Single-profile lookup by leader profile id, used by the detail page to
+ * resolve the leader's profile and validate role gating. Admin-only.
+ */
+export async function fetchAdminShepherdProfileById(
+  client: ReadClient,
+  shepherdProfileId: string,
+): Promise<ReadResult<Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status"> | null>> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, full_name, email, role, status")
+    .eq("id", shepherdProfileId)
+    .maybeSingle();
+  if (error) {
+    return { data: null, error: wrapError("fetchAdminShepherdProfileById", error) };
+  }
+  if (data === null || data === undefined) return { data: null, error: null };
+  return {
+    data: data as Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">,
+    error: null,
+  };
 }

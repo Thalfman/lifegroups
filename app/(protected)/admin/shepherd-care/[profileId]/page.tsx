@@ -1,0 +1,297 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PageBody, PageHeader } from "@/components/lg/PageHeader";
+import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
+import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
+import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
+import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-care-profile-form";
+import { requireAdmin } from "@/lib/auth/session";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  fetchAdminShepherdProfileById,
+  fetchShepherdCareInteractionsForAdmin,
+  fetchShepherdCareProfileByShepherdId,
+} from "@/lib/supabase/read-models";
+import { isUuid } from "@/lib/shared/uuid";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type {
+  ShepherdCareInteractionsRow,
+  ShepherdCareProfilesRow,
+} from "@/types/database";
+
+export const dynamic = "force-dynamic";
+
+const labelStyle = {
+  display: "block",
+  fontFamily: fontSans,
+  fontSize: 10,
+  letterSpacing: 1.6,
+  textTransform: "uppercase" as const,
+  color: P.ink3,
+  fontWeight: 600,
+  marginBottom: 4,
+};
+
+const valueStyle = {
+  fontFamily: fontBody,
+  fontSize: 14,
+  color: P.ink,
+};
+
+const cardStyle = {
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  borderRadius: 12,
+  padding: 20,
+};
+
+function formatDate(value: string | null): string {
+  if (!value) return "Never";
+  const [y, m, d] = value.split("-").map((p) => Number.parseInt(p, 10));
+  if (!y || !m || !d) return value;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+async function loadDetail(profileId: string): Promise<
+  | { kind: "ok"; profileFullName: string; profileRole: string; care: ShepherdCareProfilesRow | null; interactions: ShepherdCareInteractionsRow[]; error: string | null }
+  | { kind: "not_found" }
+  | { kind: "db_unavailable" }
+> {
+  const client = await createSupabaseServerClient();
+  if (!client) return { kind: "db_unavailable" };
+
+  const profile = await fetchAdminShepherdProfileById(client, profileId);
+  if (profile.error) {
+    return {
+      kind: "ok",
+      profileFullName: "Unknown",
+      profileRole: "—",
+      care: null,
+      interactions: [],
+      error: profile.error.message,
+    };
+  }
+  if (!profile.data) return { kind: "not_found" };
+
+  // Only leaders / co-leaders are valid care targets. Reject everything
+  // else with 404 so admins can't open care for the wrong role.
+  if (profile.data.role !== "leader" && profile.data.role !== "co_leader") {
+    return { kind: "not_found" };
+  }
+  if (profile.data.status !== "active") return { kind: "not_found" };
+
+  const careResult = await fetchShepherdCareProfileByShepherdId(client, profileId);
+  if (careResult.error) {
+    return {
+      kind: "ok",
+      profileFullName: profile.data.full_name,
+      profileRole: profile.data.role,
+      care: null,
+      interactions: [],
+      error: careResult.error.message,
+    };
+  }
+
+  let interactions: ShepherdCareInteractionsRow[] = [];
+  let interactionError: string | null = null;
+  if (careResult.data) {
+    const inter = await fetchShepherdCareInteractionsForAdmin(
+      client,
+      careResult.data.id,
+    );
+    if (inter.error) interactionError = inter.error.message;
+    else interactions = inter.data;
+  }
+
+  return {
+    kind: "ok",
+    profileFullName: profile.data.full_name,
+    profileRole: profile.data.role,
+    care: careResult.data,
+    interactions,
+    error: interactionError,
+  };
+}
+
+export default async function AdminShepherdCareDetailPage({
+  params,
+}: {
+  params: Promise<{ profileId: string }>;
+}) {
+  await requireAdmin();
+
+  const { profileId } = await params;
+  if (!isUuid(profileId)) notFound();
+
+  const detail = await loadDetail(profileId);
+  if (detail.kind === "not_found") notFound();
+  if (detail.kind === "db_unavailable") {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Shepherd care"
+          title="Shepherd"
+          italic="care"
+          lede="Database is not configured in this environment."
+        />
+        <PageBody>
+          <Link
+            href="/admin/shepherd-care"
+            style={{ color: P.ink2, textDecoration: "underline" }}
+          >
+            Back to directory
+          </Link>
+        </PageBody>
+      </>
+    );
+  }
+
+  const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Shepherd care"
+        title={detail.profileFullName}
+        lede="Care notes here are admin-only. They never appear on leader or member surfaces."
+      />
+      <PageBody>
+        <div style={{ display: "grid", gap: 20 }}>
+          <div>
+            <Link
+              href="/admin/shepherd-care"
+              style={{
+                fontFamily: fontBody,
+                color: P.ink2,
+                fontSize: 13,
+                textDecoration: "underline",
+              }}
+            >
+              ← Back to directory
+            </Link>
+          </div>
+          {detail.error ? (
+            <p
+              style={{
+                fontFamily: fontBody,
+                color: "#923220",
+                background: P.terraSoft,
+                padding: "10px 14px",
+                borderRadius: 8,
+                margin: 0,
+              }}
+            >
+              {detail.error}
+            </p>
+          ) : null}
+
+          <section style={cardStyle} aria-label="Care summary">
+            <div
+              className="lg-m-grid-stack"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: 18,
+              }}
+            >
+              <div>
+                <span style={labelStyle}>Role</span>
+                <div style={valueStyle}>{roleLabel}</div>
+              </div>
+              <div>
+                <span style={labelStyle}>Current status</span>
+                <div style={valueStyle}>
+                  {detail.care ? (
+                    <ShepherdCareStatusBadge status={detail.care.current_status} />
+                  ) : (
+                    <span style={{ color: P.ink3 }}>Not set</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <span style={labelStyle}>Last contact</span>
+                <div style={valueStyle}>{formatDate(detail.care?.last_contact_at ?? null)}</div>
+              </div>
+              <div>
+                <span style={labelStyle}>Next touchpoint</span>
+                <div style={valueStyle}>
+                  {detail.care?.next_touchpoint_due
+                    ? formatDate(detail.care.next_touchpoint_due)
+                    : "—"}
+                </div>
+              </div>
+            </div>
+            {detail.care?.admin_summary ? (
+              <div style={{ marginTop: 16 }}>
+                <span style={labelStyle}>Admin summary</span>
+                <p
+                  style={{
+                    ...valueStyle,
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {detail.care.admin_summary}
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          <section style={cardStyle} aria-label="Log interaction">
+            <h2
+              style={{
+                fontFamily: fontSans,
+                fontSize: 14,
+                letterSpacing: 0.6,
+                margin: "0 0 12px",
+                color: P.ink,
+              }}
+            >
+              Log interaction
+            </h2>
+            <LogInteractionForm shepherdProfileId={profileId} />
+          </section>
+
+          <section style={cardStyle} aria-label="Update care profile">
+            <h2
+              style={{
+                fontFamily: fontSans,
+                fontSize: 14,
+                letterSpacing: 0.6,
+                margin: "0 0 12px",
+                color: P.ink,
+              }}
+            >
+              Update care profile
+            </h2>
+            <UpdateCareProfileForm
+              shepherdProfileId={profileId}
+              current={detail.care}
+            />
+          </section>
+
+          <section style={cardStyle} aria-label="Interaction history">
+            <h2
+              style={{
+                fontFamily: fontSans,
+                fontSize: 14,
+                letterSpacing: 0.6,
+                margin: "0 0 12px",
+                color: P.ink,
+              }}
+            >
+              Interaction history
+            </h2>
+            <InteractionTimeline interactions={detail.interactions} />
+          </section>
+        </div>
+      </PageBody>
+    </>
+  );
+}

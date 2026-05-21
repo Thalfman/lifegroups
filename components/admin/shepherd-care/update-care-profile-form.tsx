@@ -1,0 +1,149 @@
+"use client";
+
+import { useActionState } from "react";
+import { PButton } from "@/components/pastoral/button";
+import { adminUpsertShepherdCareProfile } from "@/app/(protected)/admin/shepherd-care/actions";
+import {
+  errorTextStyle,
+  fieldInputStyle,
+  fieldLabelStyle,
+  fieldSelectStyle,
+  formGridStyle,
+  formNoteStyle,
+  successTextStyle,
+} from "@/components/admin/forms/field-styles";
+import { shepherdCareStatusLabel } from "@/lib/dashboard/labels";
+import { P, fontBody } from "@/lib/pastoral";
+import type { ActionResult } from "@/lib/admin/action-result";
+import type { ShepherdCareProfilesRow } from "@/types/database";
+import type { ShepherdCareStatus } from "@/types/enums";
+
+type State = ActionResult<{ id: string }> | undefined;
+
+const STATUSES: ShepherdCareStatus[] = ["healthy", "watch", "needs_attention"];
+
+export function UpdateCareProfileForm({
+  shepherdProfileId,
+  current,
+}: {
+  shepherdProfileId: string;
+  current: ShepherdCareProfilesRow | null;
+}) {
+  const [state, formAction, pending] = useActionState<State, FormData>(
+    adminUpsertShepherdCareProfile,
+    undefined,
+  );
+
+  return (
+    <form action={formAction} style={{ display: "grid", gap: 12 }}>
+      <input type="hidden" name="shepherd_profile_id" value={shepherdProfileId} />
+      <p style={formNoteStyle}>
+        Edit the care state without logging an interaction. Tick the
+        matching checkbox for any field you want to change — unticked
+        fields are left as-is.
+      </p>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
+        <div>
+          <label htmlFor="ucp-current_status" style={fieldLabelStyle}>
+            Care status
+          </label>
+          <select
+            id="ucp-current_status"
+            name="current_status"
+            defaultValue={current?.current_status ?? "healthy"}
+            style={fieldSelectStyle}
+          >
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {shepherdCareStatusLabel(s)}
+              </option>
+            ))}
+          </select>
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 6,
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+            }}
+          >
+            <input type="checkbox" name="set_current_status" value="true" />
+            Update care status
+          </label>
+        </div>
+        <div>
+          <label htmlFor="ucp-next_touchpoint_due" style={fieldLabelStyle}>
+            Next touchpoint
+          </label>
+          <input
+            id="ucp-next_touchpoint_due"
+            name="next_touchpoint_due"
+            type="date"
+            defaultValue={current?.next_touchpoint_due ?? ""}
+            style={fieldInputStyle}
+          />
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 6,
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+            }}
+          >
+            <input type="checkbox" name="set_next_touchpoint_due" value="true" />
+            Update next touchpoint
+          </label>
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="ucp-admin_summary" style={fieldLabelStyle}>
+            Admin summary (max 2000 chars) — admin-only
+          </label>
+          <textarea
+            id="ucp-admin_summary"
+            name="admin_summary"
+            rows={3}
+            maxLength={2000}
+            defaultValue={current?.admin_summary ?? ""}
+            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            placeholder="High-level read on how this leader is doing."
+          />
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 6,
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+            }}
+          >
+            <input type="checkbox" name="set_admin_summary" value="true" />
+            Update summary
+          </label>
+        </div>
+        <div>
+          <PButton type="submit" tone="solid" size="md" disabled={pending}>
+            {pending ? "Saving…" : "Save profile"}
+          </PButton>
+        </div>
+      </div>
+      {state && !state.ok ? (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+          {state.errors.map((err, i) => (
+            <li key={i}>
+              <p style={errorTextStyle}>{err}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {state?.ok ? <p style={successTextStyle}>Care profile updated.</p> : null}
+    </form>
+  );
+}

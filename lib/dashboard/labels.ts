@@ -5,6 +5,8 @@ import type {
   FollowUpType,
   FollowUpPriority,
   AttendanceSessionStatus,
+  ShepherdCareInteractionType,
+  ShepherdCareStatus,
 } from "@/types/enums";
 
 const lifecycleLabels: Record<GroupLifecycleStatus, string> = {
@@ -84,4 +86,28 @@ export function followUpPriorityLabel(priority: FollowUpPriority): string {
 
 export function sessionStatusLabel(status: AttendanceSessionStatus): string {
   return sessionStatusLabels[status] ?? status;
+}
+
+const shepherdCareStatusLabels: Record<ShepherdCareStatus, string> = {
+  healthy: "Healthy",
+  watch: "Watch",
+  needs_attention: "Needs attention",
+};
+
+const shepherdCareInteractionTypeLabels: Record<ShepherdCareInteractionType, string> = {
+  call: "Call",
+  text: "Text",
+  in_person: "In person",
+  meeting: "Meeting",
+  other: "Other",
+};
+
+export function shepherdCareStatusLabel(status: ShepherdCareStatus): string {
+  return shepherdCareStatusLabels[status] ?? status;
+}
+
+export function shepherdCareInteractionTypeLabel(
+  type: ShepherdCareInteractionType,
+): string {
+  return shepherdCareInteractionTypeLabels[type] ?? type;
 }

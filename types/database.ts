@@ -187,6 +187,28 @@ export interface GroupCalendarEventsRow {
   archived_at: Timestamp | null;
 }
 
+export interface ShepherdCareProfilesRow {
+  id: UUID;
+  shepherd_profile_id: UUID;
+  current_status: E.ShepherdCareStatus;
+  last_contact_at: DateString | null;
+  next_touchpoint_due: DateString | null;
+  admin_summary: string | null;
+  archived_at: Timestamp | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ShepherdCareInteractionsRow {
+  id: UUID;
+  care_profile_id: UUID;
+  interaction_at: DateString;
+  interaction_type: E.ShepherdCareInteractionType;
+  notes: string | null;
+  created_by_profile_id: UUID;
+  created_at: Timestamp;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -278,6 +300,21 @@ export interface Database {
           'id' | 'created_at' | 'updated_at' | 'archived_at' | 'created_by' | 'updated_by'
         >;
         Update: Partial<GroupCalendarEventsRow>;
+        Relationships: [];
+      };
+      shepherd_care_profiles: {
+        Row: ShepherdCareProfilesRow;
+        Insert: InsertOf<
+          ShepherdCareProfilesRow,
+          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'current_status'
+        >;
+        Update: Partial<ShepherdCareProfilesRow>;
+        Relationships: [];
+      };
+      shepherd_care_interactions: {
+        Row: ShepherdCareInteractionsRow;
+        Insert: InsertOf<ShepherdCareInteractionsRow, 'id' | 'created_at'>;
+        Update: Partial<ShepherdCareInteractionsRow>;
         Relationships: [];
       };
     };
@@ -505,6 +542,31 @@ export interface Database {
       };
       leader_restore_group_calendar_event: {
         Args: { p_event_id: UUID };
+        Returns: UUID;
+      };
+      admin_upsert_shepherd_care_profile: {
+        Args: {
+          p_shepherd_profile_id: UUID;
+          p_current_status: E.ShepherdCareStatus;
+          p_set_current_status: boolean;
+          p_next_touchpoint_due: DateString | null;
+          p_set_next_touchpoint_due: boolean;
+          p_admin_summary: string | null;
+          p_set_admin_summary: boolean;
+        };
+        Returns: UUID;
+      };
+      admin_log_shepherd_care_interaction: {
+        Args: {
+          p_shepherd_profile_id: UUID;
+          p_interaction_at: DateString;
+          p_interaction_type: E.ShepherdCareInteractionType;
+          p_notes: string | null;
+          p_set_next_touchpoint_due: boolean;
+          p_next_touchpoint_due: DateString | null;
+          p_set_current_status: boolean;
+          p_current_status: E.ShepherdCareStatus;
+        };
         Returns: UUID;
       };
     };
