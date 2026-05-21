@@ -46,7 +46,7 @@ The schema deliberately separates two kinds of people:
   `auth.users` row in the current design.
 
 Phase 5A will introduce narrow admin workflows for creating and updating
-both kinds of records (see `docs/PHASE_5A_ADMIN_MANAGEMENT.md`). Neither
+both kinds of records (see `docs/archive/PHASE_5A_ADMIN_MANAGEMENT.md`). Neither
 write path exists today — Phase 4.1 only documents the model.
 
 ## Key relationships
