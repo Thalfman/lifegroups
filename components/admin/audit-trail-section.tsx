@@ -34,6 +34,11 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.upsert_group_metric_settings": "Updated group overrides",
   "admin.change_leader_role": "Changed leader role",
   "admin.reset_metric_defaults": "Reset metric defaults",
+  // Phase 5D.1 over-shepherd coverage tracking.
+  "admin.create_over_shepherd": "Added over-shepherd",
+  "admin.update_over_shepherd": "Updated over-shepherd",
+  "admin.assign_shepherd_coverage": "Assigned coverage",
+  "admin.end_shepherd_coverage": "Ended coverage",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -211,6 +216,43 @@ function summarize(
         return `Changed role of ${name} to ${afterRole}`;
       }
       return `Changed role of ${name}`;
+    }
+    case "admin.create_over_shepherd": {
+      const fullName = asString(after.full_name) ?? "(unknown)";
+      return `Added over-shepherd ${fullName}`;
+    }
+    case "admin.update_over_shepherd": {
+      const beforeName = isRecord(before) ? asString(before.full_name) : null;
+      const afterName = asString(after.full_name) ?? "(unknown)";
+      const beforeActive = isRecord(before)
+        ? typeof before.active === "boolean"
+          ? (before.active as boolean)
+          : null
+        : null;
+      const afterActive =
+        typeof after.active === "boolean" ? (after.active as boolean) : null;
+      if (beforeActive === true && afterActive === false) {
+        return `Archived over-shepherd ${afterName}`;
+      }
+      if (beforeActive === false && afterActive === true) {
+        return `Reactivated over-shepherd ${afterName}`;
+      }
+      if (beforeName && beforeName !== afterName) {
+        return `Renamed over-shepherd ${beforeName} → ${afterName}`;
+      }
+      return `Updated over-shepherd ${afterName}`;
+    }
+    case "admin.assign_shepherd_coverage": {
+      const shepherdId = asString(md.shepherd_profile_id);
+      const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
+      const replaced = asString(md.replaced_assignment_id);
+      const verb = replaced ? "Reassigned coverage for" : "Assigned coverage for";
+      return `${verb} ${shepherd?.full_name ?? "a shepherd"}`;
+    }
+    case "admin.end_shepherd_coverage": {
+      const shepherdId = asString(md.shepherd_profile_id);
+      const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
+      return `Ended coverage for ${shepherd?.full_name ?? "a shepherd"}`;
     }
     case "leader.submit_checkin":
     case "leader.update_checkin":

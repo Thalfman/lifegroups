@@ -209,6 +209,29 @@ export interface ShepherdCareInteractionsRow {
   created_at: Timestamp;
 }
 
+export interface OverShepherdsRow {
+  id: UUID;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  active: boolean;
+  notes: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  archived_at: Timestamp | null;
+}
+
+export interface ShepherdCoverageAssignmentsRow {
+  id: UUID;
+  shepherd_profile_id: UUID;
+  over_shepherd_id: UUID;
+  active: boolean;
+  assigned_at: DateString;
+  ended_at: DateString | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -315,6 +338,24 @@ export interface Database {
         Row: ShepherdCareInteractionsRow;
         Insert: InsertOf<ShepherdCareInteractionsRow, 'id' | 'created_at'>;
         Update: Partial<ShepherdCareInteractionsRow>;
+        Relationships: [];
+      };
+      over_shepherds: {
+        Row: OverShepherdsRow;
+        Insert: InsertOf<
+          OverShepherdsRow,
+          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'active'
+        >;
+        Update: Partial<OverShepherdsRow>;
+        Relationships: [];
+      };
+      shepherd_coverage_assignments: {
+        Row: ShepherdCoverageAssignmentsRow;
+        Insert: InsertOf<
+          ShepherdCoverageAssignmentsRow,
+          'id' | 'created_at' | 'updated_at' | 'ended_at' | 'active' | 'assigned_at'
+        >;
+        Update: Partial<ShepherdCoverageAssignmentsRow>;
         Relationships: [];
       };
     };
@@ -566,6 +607,41 @@ export interface Database {
           p_next_touchpoint_due: DateString | null;
           p_set_current_status: boolean;
           p_current_status: E.ShepherdCareStatus;
+        };
+        Returns: UUID;
+      };
+      admin_create_over_shepherd: {
+        Args: {
+          p_full_name: string;
+          p_email: string | null;
+          p_phone: string | null;
+          p_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_over_shepherd: {
+        Args: {
+          p_over_shepherd_id: UUID;
+          p_full_name: string;
+          p_email: string | null;
+          p_phone: string | null;
+          p_notes: string | null;
+          p_active: boolean;
+        };
+        Returns: UUID;
+      };
+      admin_assign_shepherd_to_over_shepherd: {
+        Args: {
+          p_shepherd_profile_id: UUID;
+          p_over_shepherd_id: UUID;
+          p_assigned_at: DateString | null;
+        };
+        Returns: UUID;
+      };
+      admin_end_shepherd_coverage_assignment: {
+        Args: {
+          p_assignment_id: UUID;
+          p_ended_at: DateString | null;
         };
         Returns: UUID;
       };

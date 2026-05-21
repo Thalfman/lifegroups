@@ -64,6 +64,13 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That calendar event isn't archived — there's nothing to restore.",
   date_conflict:
     "There's already an active event on that date for this group. Edit or archive the existing one first.",
+  // Phase 5D.1 over-shepherd coverage tokens.
+  missing_over_shepherd:
+    "We couldn't find that over-shepherd. Refresh the page and try again.",
+  inactive_over_shepherd:
+    "That over-shepherd is inactive. Reactivate them before assigning coverage.",
+  missing_assignment:
+    "That assignment isn't active. Refresh the page and try again.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

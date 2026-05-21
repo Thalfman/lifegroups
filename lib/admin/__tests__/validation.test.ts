@@ -5,9 +5,13 @@ import {
   guardAgainstStaffViewerAssignment,
   guardAgainstSuperAdminAssignment,
   validateAssignLeaderToGroupPayload,
+  validateAssignShepherdCoveragePayload,
   validateChangeUserRolePayload,
+  validateCreateOverShepherdPayload,
+  validateEndShepherdCoverageAssignmentPayload,
   validateInviteUserPayload,
   validateLogShepherdCareInteractionPayload,
+  validateUpdateOverShepherdPayload,
   validateUpsertShepherdCareProfilePayload,
 } from "@/lib/admin/validation";
 
@@ -375,5 +379,265 @@ describe("validateLogShepherdCareInteractionPayload", () => {
       expect(r.value.current_status).toBe("needs_attention");
       expect(r.value.notes).toBeNull();
     }
+  });
+});
+
+// Phase 5D.1 — over-shepherd coverage tracking (SC.2).
+
+describe("validateCreateOverShepherdPayload", () => {
+  it("rejects missing full_name", () => {
+    const r = validateCreateOverShepherdPayload({});
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /full name/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects oversized full_name", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "a".repeat(201),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects invalid email", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "Coach Carla",
+      email: "not-an-email",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /email/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects invalid phone", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "Coach Carla",
+      phone: "abc",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /phone/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects oversized notes", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "Coach Carla",
+      notes: "x".repeat(2001),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
+    }
+  });
+
+  it("accepts a happy-path create and canonicalizes email", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "  Coach Carla  ",
+      email: "  Carla@Example.COM  ",
+      phone: "  +1 (555) 123-4567  ",
+      notes: "  Long-time coach.  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.full_name).toBe("Coach Carla");
+      expect(r.value.email).toBe("carla@example.com");
+      expect(r.value.phone).toBe("+1 (555) 123-4567");
+      expect(r.value.notes).toBe("Long-time coach.");
+    }
+  });
+
+  it("accepts a create with only full_name and nulls the rest", () => {
+    const r = validateCreateOverShepherdPayload({
+      full_name: "Coach Carla",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.email).toBeNull();
+      expect(r.value.phone).toBeNull();
+      expect(r.value.notes).toBeNull();
+    }
+  });
+});
+
+describe("validateUpdateOverShepherdPayload", () => {
+  it("rejects non-uuid over_shepherd_id", () => {
+    const r = validateUpdateOverShepherdPayload({
+      over_shepherd_id: "nope",
+      full_name: "Coach Carla",
+      active: "true",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects missing full_name on update", () => {
+    const r = validateUpdateOverShepherdPayload({
+      over_shepherd_id: UUID_A,
+      active: "true",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /full name/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects invalid email on update", () => {
+    const r = validateUpdateOverShepherdPayload({
+      over_shepherd_id: UUID_A,
+      full_name: "Coach Carla",
+      email: "bogus",
+      active: "true",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("accepts a happy-path update and canonicalizes uuid + email", () => {
+    const r = validateUpdateOverShepherdPayload({
+      over_shepherd_id: UUID_A.toUpperCase(),
+      full_name: "Coach Carla",
+      email: "Carla@Example.com",
+      phone: "+1 555 123 4567",
+      notes: "Notes here.",
+      active: "false",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.over_shepherd_id).toBe(UUID_A);
+      expect(r.value.full_name).toBe("Coach Carla");
+      expect(r.value.email).toBe("carla@example.com");
+      expect(r.value.active).toBe(false);
+    }
+  });
+
+  it("treats missing active as false (form did not check the box)", () => {
+    const r = validateUpdateOverShepherdPayload({
+      over_shepherd_id: UUID_A,
+      full_name: "Coach Carla",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.active).toBe(false);
+  });
+});
+
+describe("validateAssignShepherdCoveragePayload", () => {
+  it("rejects non-uuid shepherd_profile_id", () => {
+    const r = validateAssignShepherdCoveragePayload({
+      shepherd_profile_id: "nope",
+      over_shepherd_id: UUID_B,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /shepherd_profile_id/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects non-uuid over_shepherd_id", () => {
+    const r = validateAssignShepherdCoveragePayload({
+      shepherd_profile_id: UUID_A,
+      over_shepherd_id: "nope",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /over_shepherd_id/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects future assigned_at", () => {
+    const r = validateAssignShepherdCoveragePayload(
+      {
+        shepherd_profile_id: UUID_A,
+        over_shepherd_id: UUID_B,
+        assigned_at: "2030-01-01",
+      },
+      { todayIso: "2026-05-21" },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /future/i.test(e))).toBe(true);
+    }
+  });
+
+  it("accepts a happy-path assign without assigned_at", () => {
+    const r = validateAssignShepherdCoveragePayload({
+      shepherd_profile_id: UUID_A.toUpperCase(),
+      over_shepherd_id: UUID_B.toUpperCase(),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.shepherd_profile_id).toBe(UUID_A);
+      expect(r.value.over_shepherd_id).toBe(UUID_B);
+      expect(r.value.assigned_at).toBeNull();
+    }
+  });
+
+  it("accepts assigned_at on UTC today + 1 buffer", () => {
+    const r = validateAssignShepherdCoveragePayload(
+      {
+        shepherd_profile_id: UUID_A,
+        over_shepherd_id: UUID_B,
+        assigned_at: "2026-05-22",
+      },
+      { todayIso: "2026-05-21" },
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.assigned_at).toBe("2026-05-22");
+  });
+
+  it("does not enforce role gating — the RPC is the authoritative gate", () => {
+    // The validator is shape-only. Any UUID pair is accepted at this
+    // layer; the RPC verifies the shepherd_profile_id is an active
+    // leader/co_leader and the over_shepherd_id is active.
+    const r = validateAssignShepherdCoveragePayload({
+      shepherd_profile_id: UUID_A,
+      over_shepherd_id: UUID_B,
+    });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("validateEndShepherdCoverageAssignmentPayload", () => {
+  it("rejects non-uuid assignment_id", () => {
+    const r = validateEndShepherdCoverageAssignmentPayload({
+      assignment_id: "nope",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects future ended_at", () => {
+    const r = validateEndShepherdCoverageAssignmentPayload(
+      {
+        assignment_id: UUID_A,
+        ended_at: "2030-01-01",
+      },
+      { todayIso: "2026-05-21" },
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /future/i.test(e))).toBe(true);
+    }
+  });
+
+  it("accepts a happy-path end without ended_at", () => {
+    const r = validateEndShepherdCoverageAssignmentPayload({
+      assignment_id: UUID_A.toUpperCase(),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.assignment_id).toBe(UUID_A);
+      expect(r.value.ended_at).toBeNull();
+    }
+  });
+
+  it("rejects malformed ended_at", () => {
+    const r = validateEndShepherdCoverageAssignmentPayload({
+      assignment_id: UUID_A,
+      ended_at: "not-a-date",
+    });
+    expect(r.ok).toBe(false);
   });
 });

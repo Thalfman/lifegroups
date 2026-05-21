@@ -378,3 +378,70 @@ export async function rpcAdminLogShepherdCareInteraction(
   );
   return { data: readUuidRpcData(r.data), error: r.error };
 }
+
+// Phase 5D.1 over-shepherd coverage tracking admin RPCs.
+
+export type AdminCreateOverShepherdArgs = {
+  p_full_name: string;
+  p_email: string | null;
+  p_phone: string | null;
+  p_notes: string | null;
+};
+
+export async function rpcAdminCreateOverShepherd(
+  client: AppSupabaseClient,
+  args: AdminCreateOverShepherdArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_create_over_shepherd" as never, args as never);
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export type AdminUpdateOverShepherdArgs = {
+  p_over_shepherd_id: string;
+  p_full_name: string;
+  p_email: string | null;
+  p_phone: string | null;
+  p_notes: string | null;
+  p_active: boolean;
+};
+
+export async function rpcAdminUpdateOverShepherd(
+  client: AppSupabaseClient,
+  args: AdminUpdateOverShepherdArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc("admin_update_over_shepherd" as never, args as never);
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export type AdminAssignShepherdToOverShepherdArgs = {
+  p_shepherd_profile_id: string;
+  p_over_shepherd_id: string;
+  p_assigned_at: string | null;
+};
+
+export async function rpcAdminAssignShepherdToOverShepherd(
+  client: AppSupabaseClient,
+  args: AdminAssignShepherdToOverShepherdArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_assign_shepherd_to_over_shepherd" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export type AdminEndShepherdCoverageAssignmentArgs = {
+  p_assignment_id: string;
+  p_ended_at: string | null;
+};
+
+export async function rpcAdminEndShepherdCoverageAssignment(
+  client: AppSupabaseClient,
+  args: AdminEndShepherdCoverageAssignmentArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_end_shepherd_coverage_assignment" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}

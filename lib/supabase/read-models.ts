@@ -13,9 +13,11 @@ import type {
   GroupsRow,
   GuestsRow,
   MembersRow,
+  OverShepherdsRow,
   ProfilesRow,
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
+  ShepherdCoverageAssignmentsRow,
 } from "@/types/database";
 import type {
   FollowUpStatus,
@@ -843,4 +845,148 @@ export async function fetchAdminShepherdProfileById(
     data: data as Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">,
     error: null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5D.1 — Over-shepherd coverage tracking (SC.2).
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin-only column allowlist for over_shepherds list reads. EXCLUDES
+ * `notes` — directory and summary cards never render note bodies, so
+ * the column doesn't leave the server. Use OVER_SHEPHERD_DETAIL_COLUMNS
+ * when loading a single record for the edit form.
+ */
+export const OVER_SHEPHERD_LIST_COLUMNS =
+  "id, full_name, email, phone, active, archived_at, created_at, updated_at";
+
+/**
+ * Admin-only column allowlist that INCLUDES `notes`. Used only by the
+ * over-shepherd edit form's loader.
+ */
+export const OVER_SHEPHERD_DETAIL_COLUMNS = `${OVER_SHEPHERD_LIST_COLUMNS}, notes`;
+
+export const SHEPHERD_COVERAGE_ASSIGNMENT_COLUMNS =
+  "id, shepherd_profile_id, over_shepherd_id, active, assigned_at, ended_at, created_at, updated_at";
+
+export type OverShepherdListRow = Pick<
+  OverShepherdsRow,
+  | "id"
+  | "full_name"
+  | "email"
+  | "phone"
+  | "active"
+  | "archived_at"
+  | "created_at"
+  | "updated_at"
+>;
+
+export type ActiveShepherdCoverageAssignmentSummary = Pick<
+  ShepherdCoverageAssignmentsRow,
+  "id" | "shepherd_profile_id" | "over_shepherd_id" | "assigned_at"
+> & {
+  over_shepherd: Pick<OverShepherdsRow, "id" | "full_name" | "active">;
+};
+
+/**
+ * Admin-only list of over-shepherds. Excludes notes from the projection
+ * so the directory and summary views never receive note bodies. RLS on
+ * the table additionally restricts SELECT to super_admin / ministry_admin.
+ */
+export async function fetchOverShepherdsForAdmin(
+  client: ReadClient,
+  options: { includeArchived?: boolean } = {},
+): Promise<ReadResult<OverShepherdListRow[]>> {
+  let query = client
+    .from("over_shepherds")
+    .select(OVER_SHEPHERD_LIST_COLUMNS)
+    .order("active", { ascending: false })
+    .order("full_name", { ascending: true });
+  if (!options.includeArchived) {
+    query = query.eq("active", true);
+  }
+  const { data, error } = await query;
+  if (error) {
+    return { data: null, error: wrapError("fetchOverShepherdsForAdmin", error) };
+  }
+  return { data: (data ?? []) as OverShepherdListRow[], error: null };
+}
+
+/**
+ * Admin-only single-record lookup including notes. Used only by the edit
+ * form loader — list/directory paths must use fetchOverShepherdsForAdmin
+ * (which omits notes).
+ */
+export async function fetchOverShepherdByIdForAdmin(
+  client: ReadClient,
+  overShepherdId: string,
+): Promise<ReadResult<OverShepherdsRow | null>> {
+  const { data, error } = await client
+    .from("over_shepherds")
+    .select(OVER_SHEPHERD_DETAIL_COLUMNS)
+    .eq("id", overShepherdId)
+    .maybeSingle();
+  if (error) {
+    return { data: null, error: wrapError("fetchOverShepherdByIdForAdmin", error) };
+  }
+  if (data === null || data === undefined) return { data: null, error: null };
+  return { data: data as OverShepherdsRow, error: null };
+}
+
+/**
+ * Admin-only list of currently active coverage assignments, joined with
+ * the active over-shepherd's display name. One row per active
+ * shepherd_profile_id (enforced by the partial unique index in
+ * 20260518170000_phase5d1_over_shepherd_coverage.sql). Callers key the
+ * returned array by shepherd_profile_id in memory to avoid N+1 reads
+ * from the directory page.
+ */
+export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
+  client: ReadClient,
+): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary[]>> {
+  const { data, error } = await client
+    .from("shepherd_coverage_assignments")
+    .select(
+      "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
+        "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active )",
+    )
+    .eq("active", true);
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchActiveShepherdCoverageAssignmentsForAdmin", error),
+    };
+  }
+  // PostgREST's auto-detected foreign-key relationship returns the
+  // embedded row as an object (not an array) because the column is a
+  // single-uuid FK. We project explicitly into our typed summary shape.
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    shepherd_profile_id: string;
+    over_shepherd_id: string;
+    assigned_at: string;
+    over_shepherd:
+      | { id: string; full_name: string; active: boolean }
+      | { id: string; full_name: string; active: boolean }[]
+      | null;
+  }>;
+  const summaries: ActiveShepherdCoverageAssignmentSummary[] = [];
+  for (const row of rows) {
+    const embedded = Array.isArray(row.over_shepherd)
+      ? row.over_shepherd[0] ?? null
+      : row.over_shepherd;
+    if (embedded === null) continue;
+    summaries.push({
+      id: row.id,
+      shepherd_profile_id: row.shepherd_profile_id,
+      over_shepherd_id: row.over_shepherd_id,
+      assigned_at: row.assigned_at,
+      over_shepherd: {
+        id: embedded.id,
+        full_name: embedded.full_name,
+        active: embedded.active,
+      },
+    });
+  }
+  return { data: summaries, error: null };
 }
