@@ -24,6 +24,8 @@ import type {
   MeetingFrequency,
   MeetingWeekParity,
   RoleInGroup,
+  ShepherdCareInteractionType,
+  ShepherdCareStatus,
   UserRole,
 } from "@/types/enums";
 import { readUuidRpcData } from "./rpc-helpers";
@@ -327,6 +329,51 @@ export async function rpcAdminRestoreGroupCalendarEvent(
 ): Promise<RpcResult> {
   const r = await client.rpc(
     "admin_restore_group_calendar_event" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+// Phase 5D.0 shepherd care tracker admin RPCs.
+
+export type AdminUpsertShepherdCareProfileArgs = {
+  p_shepherd_profile_id: string;
+  p_current_status: ShepherdCareStatus;
+  p_set_current_status: boolean;
+  p_next_touchpoint_due: string | null;
+  p_set_next_touchpoint_due: boolean;
+  p_admin_summary: string | null;
+  p_set_admin_summary: boolean;
+};
+
+export async function rpcAdminUpsertShepherdCareProfile(
+  client: AppSupabaseClient,
+  args: AdminUpsertShepherdCareProfileArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_upsert_shepherd_care_profile" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export type AdminLogShepherdCareInteractionArgs = {
+  p_shepherd_profile_id: string;
+  p_interaction_at: string;
+  p_interaction_type: ShepherdCareInteractionType;
+  p_notes: string | null;
+  p_set_next_touchpoint_due: boolean;
+  p_next_touchpoint_due: string | null;
+  p_set_current_status: boolean;
+  p_current_status: ShepherdCareStatus;
+};
+
+export async function rpcAdminLogShepherdCareInteraction(
+  client: AppSupabaseClient,
+  args: AdminLogShepherdCareInteractionArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_log_shepherd_care_interaction" as never,
     args as never,
   );
   return { data: readUuidRpcData(r.data), error: r.error };

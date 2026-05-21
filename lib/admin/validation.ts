@@ -6,6 +6,8 @@ import type {
   MeetingFrequency,
   MeetingWeekParity,
   RoleInGroup,
+  ShepherdCareInteractionType,
+  ShepherdCareStatus,
   UserRole,
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
@@ -1175,4 +1177,218 @@ export function validateInviteUserPayload(
   if (phone !== undefined) value.phone = phone;
   if (groupIdRaw !== undefined) value.group_id = normalizeUuid(groupIdRaw);
   return { ok: true, value };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5D.0 — Shepherd care tracker payloads.
+// ---------------------------------------------------------------------------
+
+const SHEPHERD_CARE_STATUSES: ReadonlySet<ShepherdCareStatus> = new Set([
+  "healthy",
+  "watch",
+  "needs_attention",
+]);
+
+const SHEPHERD_CARE_INTERACTION_TYPES: ReadonlySet<ShepherdCareInteractionType> = new Set([
+  "call",
+  "text",
+  "in_person",
+  "meeting",
+  "other",
+]);
+
+function isShepherdCareStatus(value: unknown): value is ShepherdCareStatus {
+  return (
+    typeof value === "string" &&
+    SHEPHERD_CARE_STATUSES.has(value as ShepherdCareStatus)
+  );
+}
+
+function isShepherdCareInteractionType(
+  value: unknown,
+): value is ShepherdCareInteractionType {
+  return (
+    typeof value === "string" &&
+    SHEPHERD_CARE_INTERACTION_TYPES.has(value as ShepherdCareInteractionType)
+  );
+}
+
+// Pure UTC "today" so a near-midnight server time doesn't flip the
+// future-date guard for an interaction the admin entered moments ago.
+function todayIsoUtc(now: Date = new Date()): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+function addDaysToIsoDate(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map((p) => Number.parseInt(p, 10));
+  const utc = Date.UTC(y, m - 1, d) + days * 86_400_000;
+  return new Date(utc).toISOString().slice(0, 10);
+}
+
+export type UpsertShepherdCareProfilePayload = {
+  shepherd_profile_id: string;
+  set_current_status: boolean;
+  current_status: ShepherdCareStatus;
+  set_next_touchpoint_due: boolean;
+  next_touchpoint_due: string | null;
+  set_admin_summary: boolean;
+  admin_summary: string | null;
+};
+
+export function validateUpsertShepherdCareProfilePayload(
+  input: unknown,
+): ValidationResult<UpsertShepherdCareProfilePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.shepherd_profile_id)) {
+    errors.push("shepherd_profile_id must be a uuid");
+  }
+
+  const setStatus = readBooleanFlag(input.set_current_status);
+  const setNext = readBooleanFlag(input.set_next_touchpoint_due);
+  const setSummary = readBooleanFlag(input.set_admin_summary);
+
+  let status: ShepherdCareStatus = "healthy";
+  if (setStatus) {
+    if (!isShepherdCareStatus(input.current_status)) {
+      errors.push("Status must be healthy, watch, or needs_attention.");
+    } else {
+      status = input.current_status;
+    }
+  }
+
+  const nextRaw = readOptionalString(input.next_touchpoint_due);
+  let next: string | null = null;
+  if (setNext && nextRaw !== undefined) {
+    if (!isIsoDate(nextRaw)) {
+      errors.push("Next touchpoint date must be YYYY-MM-DD.");
+    } else {
+      next = nextRaw;
+    }
+  }
+
+  const summaryRaw = readOptionalString(input.admin_summary);
+  let summary: string | null = null;
+  if (setSummary) {
+    if (summaryRaw !== undefined) {
+      if (summaryRaw.length > 2000) {
+        errors.push("Summary is too long (max 2000 characters).");
+      } else {
+        summary = summaryRaw;
+      }
+    }
+  }
+
+  // At least one _set_ flag must be true; an upsert that changes
+  // nothing would still write an audit row, which is wasteful.
+  if (!setStatus && !setNext && !setSummary) {
+    errors.push("Choose at least one field to update.");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      shepherd_profile_id: normalizeUuid(input.shepherd_profile_id as string),
+      set_current_status: setStatus,
+      current_status: status,
+      set_next_touchpoint_due: setNext,
+      next_touchpoint_due: setNext ? next : null,
+      set_admin_summary: setSummary,
+      admin_summary: setSummary ? summary : null,
+    },
+  };
+}
+
+export type LogShepherdCareInteractionPayload = {
+  shepherd_profile_id: string;
+  interaction_at: string;
+  interaction_type: ShepherdCareInteractionType;
+  notes: string | null;
+  set_next_touchpoint_due: boolean;
+  next_touchpoint_due: string | null;
+  set_current_status: boolean;
+  current_status: ShepherdCareStatus;
+};
+
+export function validateLogShepherdCareInteractionPayload(
+  input: unknown,
+  options: { todayIso?: string } = {},
+): ValidationResult<LogShepherdCareInteractionPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.shepherd_profile_id)) {
+    errors.push("shepherd_profile_id must be a uuid");
+  }
+
+  const interactionAt = trimString(input.interaction_at) ?? "";
+  if (interactionAt.length === 0) {
+    errors.push("Interaction date is required.");
+  } else if (!isIsoDate(interactionAt)) {
+    errors.push("Interaction date must be YYYY-MM-DD.");
+  } else {
+    // Allow up to UTC today + 1 day so callers in time zones ahead of
+    // UTC (e.g. Sydney at 8am local is still yesterday on the UTC
+    // server) can log an interaction on their local current date. The
+    // SQL guard mirrors this with `current_date + 1`.
+    const today = options.todayIso ?? todayIsoUtc();
+    const cap = addDaysToIsoDate(today, 1);
+    if (interactionAt > cap) {
+      errors.push("Interaction date can't be in the future.");
+    }
+  }
+
+  if (!isShepherdCareInteractionType(input.interaction_type)) {
+    errors.push("Interaction type must be call, text, in_person, meeting, or other.");
+  }
+
+  const notes = readOptionalString(input.notes);
+  if (notes !== undefined && notes.length > 2000) {
+    errors.push("Notes are too long (max 2000 characters).");
+  }
+
+  const setNext = readBooleanFlag(input.set_next_touchpoint_due);
+  const setStatus = readBooleanFlag(input.set_current_status);
+
+  const nextRaw = readOptionalString(input.next_touchpoint_due);
+  let next: string | null = null;
+  if (setNext && nextRaw !== undefined) {
+    if (!isIsoDate(nextRaw)) {
+      errors.push("Next touchpoint date must be YYYY-MM-DD.");
+    } else {
+      next = nextRaw;
+    }
+  }
+
+  let status: ShepherdCareStatus = "healthy";
+  if (setStatus) {
+    if (!isShepherdCareStatus(input.current_status)) {
+      errors.push("Status must be healthy, watch, or needs_attention.");
+    } else {
+      status = input.current_status;
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      shepherd_profile_id: normalizeUuid(input.shepherd_profile_id as string),
+      interaction_at: interactionAt,
+      interaction_type: input.interaction_type as ShepherdCareInteractionType,
+      notes: notes ?? null,
+      set_next_touchpoint_due: setNext,
+      next_touchpoint_due: setNext ? next : null,
+      set_current_status: setStatus,
+      current_status: status,
+    },
+  };
 }
