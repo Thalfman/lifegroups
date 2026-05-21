@@ -174,6 +174,7 @@ function buildNoClientData(): SuperAdminConsoleData {
   const notConfigured = "The database is not configured in this environment.";
   return {
     assignableProfiles: [],
+    inviteUserGroups: [],
     auditEvents: [],
     profilesById: new Map(),
     membersById: new Map(),
@@ -240,6 +241,13 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
 
   const assignableProfiles = buildAssignableProfiles(profiles, currentActorProfileId);
 
+  // Active-only, name-sorted view of groups for the Invite user form.
+  // Reuses the already-fetched groupsResult so no extra DB read.
+  const inviteUserGroups = groups
+    .filter((g) => g.lifecycle_status === "active")
+    .map((g) => ({ id: g.id, name: g.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const checklist = buildChecklist({
     hasClient: true,
     profiles,
@@ -251,6 +259,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
 
   return {
     assignableProfiles,
+    inviteUserGroups,
     auditEvents: auditEvents as AuditEventsRow[],
     profilesById,
     membersById,
