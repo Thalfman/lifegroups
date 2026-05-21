@@ -8,6 +8,8 @@ import type {
   RoleInGroup,
   UserRole,
 } from "@/types/enums";
+import { isUuid } from "@/lib/shared/uuid";
+import { isUserRole } from "@/lib/auth/roles";
 
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
@@ -18,15 +20,6 @@ export type ValidationResult<T> =
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // At least one digit; allow common phone punctuation; 7–20 chars total.
 const PHONE_RE = /^(?=[^\d]*\d)[+0-9().\- ]{7,20}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const USER_ROLES: ReadonlySet<UserRole> = new Set([
-  "super_admin",
-  "ministry_admin",
-  "staff_viewer",
-  "leader",
-  "co_leader",
-]);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -56,18 +49,10 @@ function isPhone(value: string): boolean {
   return PHONE_RE.test(value);
 }
 
-function isUuid(value: unknown): value is string {
-  return typeof value === "string" && UUID_RE.test(value);
-}
-
 // Postgres stores UUIDs lowercase; canonicalize before any equality check
 // so case-only variants of an actor's own id cannot bypass self-target guards.
 function normalizeUuid(value: string): string {
   return value.toLowerCase();
-}
-
-function isUserRole(value: unknown): value is UserRole {
-  return typeof value === "string" && USER_ROLES.has(value as UserRole);
 }
 
 export type CreateMinistryAdminPayload = {

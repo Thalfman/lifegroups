@@ -7,8 +7,7 @@
 // can't tunnel a non-uuid value into downstream call sites that expect
 // "is this the new row's id?" semantics.
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_RE } from "@/lib/shared/uuid";
 
 export function readUuidRpcData(data: unknown): string | null {
   if (typeof data !== "string") return null;

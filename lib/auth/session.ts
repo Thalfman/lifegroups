@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfilesRow } from "@/types/database";
 import { log } from "@/lib/observability/logger";
-import { isLeaderRole, type UserRole } from "./roles";
+import { isLeaderRole, isUserRole, type UserRole } from "./roles";
+import { isUuid } from "@/lib/shared/uuid";
 
 export type AuthUser = { id: string; email: string | null };
 
@@ -40,25 +41,18 @@ const TRANSIENT_ERROR_MESSAGE =
 // Trust-boundary guards. Validate the Supabase response shape before
 // trusting it as a typed domain row — every page hits this code path,
 // so a driver bug or schema drift should surface as a controlled
-// backend_error rather than tunnelling through to role checks.
+// backend_error rather than tunnelling through to role checks. UUID
+// regex + user-role set are imported from their canonical sources so a
+// future schema change only has to update one place.
 
-const VALID_USER_ROLES = new Set<UserRole>([
-  "super_admin",
-  "ministry_admin",
-  "staff_viewer",
-  "leader",
-  "co_leader",
-]);
 const VALID_PROFILE_STATUSES = new Set(["active", "inactive", "invited"]);
 
 function isProfilesRow(v: unknown): v is ProfilesRow {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   const r = v as Record<string, unknown>;
-  if (typeof r.id !== "string" || r.id.length === 0) return false;
-  if (r.auth_user_id !== null && typeof r.auth_user_id !== "string") return false;
-  if (typeof r.role !== "string" || !VALID_USER_ROLES.has(r.role as UserRole)) {
-    return false;
-  }
+  if (!isUuid(r.id)) return false;
+  if (r.auth_user_id !== null && !isUuid(r.auth_user_id)) return false;
+  if (!isUserRole(r.role)) return false;
   if (typeof r.status !== "string" || !VALID_PROFILE_STATUSES.has(r.status)) {
     return false;
   }
@@ -69,8 +63,7 @@ function isLeaderRowArray(v: unknown): v is { group_id: string }[] {
   if (!Array.isArray(v)) return false;
   return v.every((row) => {
     if (row === null || typeof row !== "object") return false;
-    const gid = (row as Record<string, unknown>).group_id;
-    return typeof gid === "string" && gid.length > 0;
+    return isUuid((row as Record<string, unknown>).group_id);
   });
 }
 

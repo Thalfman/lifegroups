@@ -22,6 +22,7 @@ import type {
   ProfileStatus,
   UserRole,
 } from "@/types/enums";
+import { isUuid } from "@/lib/shared/uuid";
 
 type ReadClient = AppSupabaseClient;
 
@@ -49,8 +50,7 @@ function isAppSettingsRow(v: unknown): v is AppSettingsRow {
 
 function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
-  const r = v as Record<string, unknown>;
-  return typeof r.group_id === "string" && r.group_id !== "";
+  return isUuid((v as Record<string, unknown>).group_id);
 }
 
 export async function fetchAllGroups(client: ReadClient): Promise<ReadResult<GroupsRow[]>> {
