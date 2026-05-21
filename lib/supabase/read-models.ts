@@ -968,7 +968,16 @@ function projectCoverageAssignmentRows(
 
 const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
   "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
-  "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active )";
+  "over_shepherd:over_shepherds!shepherd_coverage_assignments_over_shepherd_id_fkey ( id, full_name, active ), " +
+  "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey!inner ( id, role, status )";
+
+// Filter spec that excludes coverage rows whose shepherd has become
+// ineligible (deactivated or role moved off leader/co_leader). The
+// admin_deactivate_profile cascade in
+// 20260518180000_phase5d1_over_shepherd_coverage_hardening.sql closes
+// the row on deactivation, but role-change RPCs from earlier phases
+// don't, so this read-side filter is the belt-and-braces.
+const ELIGIBLE_SHEPHERD_ROLES = ["leader", "co_leader"] as const;
 
 /**
  * Admin-only list of currently active coverage assignments, joined with
@@ -981,10 +990,16 @@ const ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT =
 export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
   client: ReadClient,
 ): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary[]>> {
+  // The embedded `shepherd:profiles!...!inner` makes the join required,
+  // and the `shepherd.status` / `shepherd.role` filters apply to the
+  // joined row — so rows whose shepherd has been deactivated or moved
+  // off leader/co_leader are excluded from the result.
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
     .select(ACTIVE_COVERAGE_WITH_OVER_SHEPHERD_SELECT)
-    .eq("active", true);
+    .eq("active", true)
+    .eq("shepherd.status", "active")
+    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES as unknown as string[]);
   if (error) {
     return {
       data: null,
@@ -1045,14 +1060,20 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
   client: ReadClient,
   overShepherdId: string,
 ): Promise<ReadResult<ShepherdCoveredByOverShepherd[]>> {
+  // `!inner` makes the profiles join required; status/role filters
+  // exclude shepherds who have been deactivated or moved off
+  // leader/co_leader since their coverage row was created. Belt-and-
+  // braces against role-change RPCs that don't yet cascade.
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
     .select(
       "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
-        "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey ( id, full_name )",
+        "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey!inner ( id, full_name, role, status )",
     )
     .eq("over_shepherd_id", overShepherdId)
-    .eq("active", true);
+    .eq("active", true)
+    .eq("shepherd.status", "active")
+    .in("shepherd.role", ELIGIBLE_SHEPHERD_ROLES as unknown as string[]);
   if (error) {
     return {
       data: null,
@@ -1065,8 +1086,8 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
     over_shepherd_id: string;
     assigned_at: string;
     shepherd:
-      | { id: string; full_name: string }
-      | { id: string; full_name: string }[]
+      | { id: string; full_name: string; role: string; status: string }
+      | { id: string; full_name: string; role: string; status: string }[]
       | null;
   }>;
   const out: ShepherdCoveredByOverShepherd[] = [];

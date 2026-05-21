@@ -40,6 +40,15 @@
 --     constraint (ended_at >= assigned_at) is never violated by the
 --     same-day clear-coverage or archive flows.
 --
+--   * admin_deactivate_profile (originally introduced in
+--     20260518050000_phase5a1_admin_people_writes.sql) now also
+--     cascades a soft-end of every active shepherd_coverage_assignments
+--     row for the deactivated profile. Without it, deactivating a
+--     leader/co_leader left their coverage row active, so the
+--     over-shepherd's "Currently covers" view and the directory's
+--     unassigned counts would show ineligible shepherds as covered.
+--     Mirrors the existing group_leaders cascade.
+--
 -- New error tokens raised by these functions (mapped to friendly
 -- messages by lib/admin/action-result.ts):
 --   invalid_assigned_at_before_prior, invalid_ended_at_before_start.
@@ -423,5 +432,117 @@ begin
   );
 
   return p_over_shepherd_id;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- 5. admin_deactivate_profile — replace to cascade-close coverage rows.
+-- ---------------------------------------------------------------------------
+-- Originally defined in 20260518050000_phase5a1_admin_people_writes.sql.
+-- Adds a soft-end of any active shepherd_coverage_assignments rows for the
+-- deactivated profile, mirroring the existing group_leaders cascade so
+-- the underlying tables stay consistent without each reader having to
+-- filter for shepherd eligibility. ended_at is clamped to
+-- greatest(current_date, assigned_at) per row, same rationale as the
+-- archive cascade in admin_update_over_shepherd above.
+--
+-- All other behavior is preserved verbatim from the SC.1A definition;
+-- only the cascade block and the audit metadata gain a new field. The
+-- function signature and grants are unchanged, so no
+-- revoke/grant statements are needed here.
+create or replace function public.admin_deactivate_profile(
+  p_profile_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_actor uuid;
+  v_actor_role public.user_role;
+  v_target_role public.user_role;
+  v_previous_status public.profile_status;
+  v_assignments_deactivated integer;
+  v_coverage_deactivated integer;
+begin
+  if not public.auth_is_admin() then
+    raise exception 'insufficient_privilege';
+  end if;
+
+  v_actor := public.auth_profile_id();
+  if v_actor is null then
+    raise exception 'insufficient_privilege';
+  end if;
+
+  if p_profile_id = v_actor then
+    raise exception 'self_target_not_allowed';
+  end if;
+
+  v_actor_role := public.auth_role();
+
+  select role, status into v_target_role, v_previous_status
+    from public.profiles
+   where id = p_profile_id
+   limit 1;
+  if v_target_role is null then
+    raise exception 'missing_profile';
+  end if;
+
+  -- ministry_admin cannot deactivate super_admin.
+  if v_actor_role = 'ministry_admin' and v_target_role = 'super_admin' then
+    raise exception 'forbidden_target';
+  end if;
+
+  -- Status-only update (updated_at handled by the existing trigger).
+  update public.profiles
+     set status = 'inactive'::public.profile_status
+   where id = p_profile_id;
+
+  -- Cascade: deactivate any active group_leaders assignments.
+  with cleaned as (
+    update public.group_leaders
+       set active = false
+     where profile_id = p_profile_id
+       and active = true
+    returning 1
+  )
+  select count(*) into v_assignments_deactivated from cleaned;
+
+  -- Phase 5D.1 cascade: soft-end any active shepherd_coverage_assignments
+  -- where this profile was the covered shepherd. Without this, the
+  -- over-shepherd's "Currently covers" view and the directory's
+  -- unassigned counts include ineligible (inactive) shepherds. Clamping
+  -- ended_at to greatest(current_date, assigned_at) keeps the new
+  -- CHECK constraint satisfied even for assignments dated UTC+1.
+  with cleaned_coverage as (
+    update public.shepherd_coverage_assignments
+       set active = false,
+           ended_at = greatest(
+             current_date,
+             public.shepherd_coverage_assignments.assigned_at
+           ),
+           updated_at = now()
+     where shepherd_profile_id = p_profile_id
+       and active = true
+    returning 1
+  )
+  select count(*) into v_coverage_deactivated from cleaned_coverage;
+
+  insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
+  values (
+    v_actor,
+    'admin.deactivate_profile',
+    'profiles',
+    p_profile_id,
+    jsonb_build_object(
+      'before', jsonb_build_object('status', v_previous_status),
+      'after',  jsonb_build_object('status', 'inactive'),
+      'deactivated_group_leader_assignments_count', coalesce(v_assignments_deactivated, 0),
+      'deactivated_coverage_assignments_count', coalesce(v_coverage_deactivated, 0)
+    )
+  );
+
+  return p_profile_id;
 end;
 $$;
