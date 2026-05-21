@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function UnauthorizedPage() {
   const session = await getCurrentSession();
-  const hasLinkedProfile = !!session?.profile;
-  const isSignedIn = !!session;
+  const isSignedIn = session.kind !== "anonymous";
+  const hasLinkedProfile = session.kind === "authenticated";
 
   return (
     <div

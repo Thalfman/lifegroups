@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { isLeaderRole } from "@/lib/auth/roles";
+import { log } from "@/lib/observability/logger";
 import { validateLeaderUpdateFollowUpStatusPayload } from "@/lib/admin/validation";
 import {
   type ActionResult,
@@ -24,16 +25,33 @@ async function requireLeaderActor(): Promise<
   | { ok: false; error: string }
 > {
   const session = await getCurrentSession();
-  if (!session) return { ok: false, error: "You need to sign in to do that." };
-  if (!session.profile) return { ok: false, error: "Your account isn't set up yet." };
-  if (session.profile.status !== "active")
-    return { ok: false, error: "Your account isn't active." };
-  if (!isLeaderRole(session.profile.role))
-    return {
-      ok: false,
-      error: "Only an assigned leader or co-leader can update this follow-up.",
-    };
-  return { ok: true, profileId: session.profile.id };
+  switch (session.kind) {
+    case "anonymous":
+      return { ok: false, error: "You need to sign in to do that." };
+    case "profile_missing":
+      return { ok: false, error: "Your account isn't set up yet." };
+    case "backend_error":
+      log.error({
+        event: "auth_guard_backend_error",
+        outcome: "fail",
+        route_or_action: "leaderUpdateFollowUpStatus",
+        stage: session.stage,
+      });
+      return {
+        ok: false,
+        error: "Service is temporarily unavailable. Please try again.",
+      };
+    case "authenticated": {
+      if (session.profile.status !== "active")
+        return { ok: false, error: "Your account isn't active." };
+      if (!isLeaderRole(session.profile.role))
+        return {
+          ok: false,
+          error: "Only an assigned leader or co-leader can update this follow-up.",
+        };
+      return { ok: true, profileId: session.profile.id };
+    }
+  }
 }
 
 function payloadFromInput(input: unknown): Record<string, unknown> {

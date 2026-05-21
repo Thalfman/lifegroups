@@ -15,11 +15,19 @@ export default async function HomePage({
   searchParams: SignInSearchParams;
 }) {
   const session = await getCurrentSession();
-  if (session) {
-    if (session.profile?.status === "active") {
-      redirect(defaultLandingPathForRole(session.profile.role));
-    }
-    redirect("/unauthorized");
+  switch (session.kind) {
+    case "authenticated":
+      if (session.profile.status === "active") {
+        redirect(defaultLandingPathForRole(session.profile.role));
+      }
+      redirect("/unauthorized");
+    case "profile_missing":
+      redirect("/unauthorized");
+    case "backend_error":
+      redirect("/unauthorized?reason=unavailable");
+    case "anonymous":
+      // fall through to render the sign-in screen below
+      break;
   }
 
   const { next, resetOk } = await parseSignInSearchParams(searchParams);
