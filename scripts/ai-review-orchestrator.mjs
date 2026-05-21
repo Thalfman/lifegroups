@@ -73,7 +73,7 @@ async function processPr(pr) {
 
   const sensitiveChanged = files.some((f) => isSensitivePath(f.filename));
 
-  const codexThumb = issueComments.some((c) => c.user?.login === CODEX_ACTOR && /\+1|thumb/i.test(JSON.stringify(c.reactions || {})));
+  const codexThumb = issueComments.some((c) => c.user?.login === CODEX_ACTOR && Number(c.reactions?.['+1'] || 0) > 0);
   const codexReview = reviews.some((r) => r.user?.login === CODEX_ACTOR && new Date(r.submitted_at || 0) >= headDate);
   const codexComplete = codexThumb || codexReview;
 

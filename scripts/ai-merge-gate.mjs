@@ -2,6 +2,8 @@ const token = process.env.GITHUB_TOKEN;
 const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
 const prNumber = Number(process.env.MERGE_GATE_PR_NUMBER || '0');
 const dryRun = (process.env.MERGE_GATE_DRY_RUN ?? 'true').toLowerCase() !== 'false';
+const CODEX_ACTOR = process.env.CODEX_ACTOR_LOGIN || 'codex[bot]';
+const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
 
 if (!token || !owner || !repo || !prNumber) throw new Error('Missing required env vars');
 
@@ -50,7 +52,7 @@ async function listAll(path) {
   if (!comments.some((c) => c.body?.includes(`claude-trigger:${prNumber}:${startSha}`) || c.body?.includes(`dry-run:${prNumber}:${startSha}:`))) blockers.push('No Claude cycle marker for current head SHA.');
 
   const reviewComments = await listAll(`/repos/${owner}/${repo}/pulls/${prNumber}/comments`);
-  const unresolvedActionable = reviewComments.filter((c) => c.commit_id === startSha && actionableRegex.test(c.body || ''));
+  const unresolvedActionable = reviewComments.filter((c) => c.commit_id === startSha && [CODEX_ACTOR, GEMINI_ACTOR].includes(c.user?.login) && actionableRegex.test(c.body || ''));
   if (unresolvedActionable.length > 0) blockers.push(`Unresolved actionable review comments remain: ${unresolvedActionable.length}.`);
 
   const checks = await gh(`/repos/${owner}/${repo}/commits/${startSha}/check-runs`);
