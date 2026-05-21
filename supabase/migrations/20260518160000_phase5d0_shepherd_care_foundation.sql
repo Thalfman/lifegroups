@@ -113,6 +113,16 @@ create policy shepherd_care_interactions_admin_select
   on public.shepherd_care_interactions
   for select to authenticated using (public.auth_is_admin());
 
+-- Table-level SELECT grants for `authenticated`. RLS sits on top of
+-- table-level privileges in Postgres — without these grants, the
+-- policies above are never evaluated and admin reads fail with
+-- "permission denied" on a fresh deployment. Matches the pattern
+-- documented in 20260518070000_phase5a2_grants_hardening.sql. No
+-- INSERT / UPDATE / DELETE grants — writes only via the SECURITY
+-- DEFINER RPCs declared below.
+grant select on public.shepherd_care_profiles     to authenticated;
+grant select on public.shepherd_care_interactions to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 1. admin_upsert_shepherd_care_profile
 -- ---------------------------------------------------------------------------
@@ -166,7 +176,16 @@ begin
   -- direct RPC call from a future internal tool) must still update at
   -- least one field. Without this guard, every call would create an
   -- empty row + audit event with zero intended change.
-  if not (p_set_current_status or p_set_next_touchpoint_due or p_set_admin_summary) then
+  --
+  -- The flags are explicitly coalesced because `null OR null OR null`
+  -- evaluates to NULL in Postgres, and `IF NOT (NULL)` does NOT
+  -- execute — so a caller passing NULL for all three flags would
+  -- otherwise slip past this guard.
+  if not (
+    coalesce(p_set_current_status, false)
+    or coalesce(p_set_next_touchpoint_due, false)
+    or coalesce(p_set_admin_summary, false)
+  ) then
     raise exception 'invalid_input';
   end if;
 
