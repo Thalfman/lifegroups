@@ -28,50 +28,53 @@
 -- ---------------------------------------------------------------------------
 -- (a) Email canonicalization on profiles.
 -- ---------------------------------------------------------------------------
--- Existing admin_* RPCs already lowercase on insert. This backfills any
--- historical row (manual bootstrap inserts, Supabase Studio edits) and
--- adds a CHECK constraint so the email-based relink path in
--- super_admin_complete_invite cannot miss matches due to mixed case.
+-- Existing admin_* RPCs already lowercase + btrim on insert. This
+-- backfills any historical row (manual bootstrap inserts, Supabase Studio
+-- edits) and adds a CHECK constraint so the email-based relink path in
+-- super_admin_complete_invite cannot miss matches due to mixed case OR
+-- leading/trailing whitespace. The RPC lookup canonicalizes the inbound
+-- email via `lower(btrim(...))`; the stored value must match.
 --
--- Preflight: if two existing rows differ only by email case
--- (e.g. 'Alice@x.com' AND 'alice@x.com'), the lower() backfill below
--- would violate the existing UNIQUE(email) constraint and abort the
--- migration mid-flight. Detect the collision first and raise a clear
--- error so the operator can resolve the duplicate manually (decide
--- which row to keep, merge or deactivate the other) before re-running.
+-- Preflight: if two existing rows differ only by email case OR
+-- whitespace (e.g. 'Alice@x.com', 'alice@x.com', 'alice@x.com '), the
+-- backfill below would violate the existing UNIQUE(email) constraint
+-- and abort the migration mid-flight. Detect the collision first and
+-- raise a clear error so the operator can resolve the duplicate
+-- manually (decide which row to keep, merge or deactivate the other)
+-- before re-running.
 do $$
 declare
   v_collision_count int;
   v_sample text;
 begin
-  select count(*), max(lower_email)
+  select count(*), max(canonical_email)
     into v_collision_count, v_sample
     from (
-      select lower(email) as lower_email
+      select lower(btrim(email)) as canonical_email
         from public.profiles
        where email is not null
-       group by lower(email)
+       group by lower(btrim(email))
       having count(*) > 1
     ) collisions;
 
   if v_collision_count > 0 then
     raise exception
-      'phase5a7_email_canonicalization_blocked: % email value(s) would collide after lowercasing (sample: %). Resolve the duplicates in public.profiles before re-running this migration.',
+      'phase5a7_email_canonicalization_blocked: % email value(s) would collide after lower(btrim(email)) (sample: %). Resolve the duplicates in public.profiles before re-running this migration.',
       v_collision_count, v_sample;
   end if;
 end;
 $$;
 
 update public.profiles
-   set email = lower(email)
- where email is not null and email <> lower(email);
+   set email = lower(btrim(email))
+ where email is not null and email <> lower(btrim(email));
 
 alter table public.profiles
-  add constraint profiles_email_lowercase
-  check (email = lower(email)) not valid;
+  add constraint profiles_email_canonical
+  check (email = lower(btrim(email))) not valid;
 
 alter table public.profiles
-  validate constraint profiles_email_lowercase;
+  validate constraint profiles_email_canonical;
 
 -- ---------------------------------------------------------------------------
 -- (b) super_admin_complete_invite

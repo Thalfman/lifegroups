@@ -121,9 +121,10 @@ The Edge Function resolves a profile by canonical (lowercased) email:
   insert path races a concurrent writer, the unique-violation maps to
   `profile_write_conflict` and the caller can retry.
 
-A migration in this phase backfills `profiles.email` to lowercase and
-adds a `profiles_email_lowercase` CHECK constraint so the relink path
-cannot miss matches due to mixed case.
+A migration in this phase backfills `profiles.email` to
+`lower(btrim(email))` and adds a `profiles_email_canonical` CHECK
+constraint so the relink path cannot miss matches due to mixed case or
+stray whitespace.
 
 ## Profile status behavior
 
@@ -259,7 +260,7 @@ drop function if exists public.super_admin_complete_invite(
   uuid, uuid, text, text, public.user_role, text, uuid, text
 );
 
-alter table public.profiles drop constraint if exists profiles_email_lowercase;
+alter table public.profiles drop constraint if exists profiles_email_canonical;
 ```
 
 The email backfill is non-destructive — no rollback needed.
