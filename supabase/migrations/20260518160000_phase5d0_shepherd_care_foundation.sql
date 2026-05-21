@@ -363,10 +363,14 @@ begin
     raise exception 'invalid_input';
   end if;
   -- Future-dated interactions are rejected; they're a foot-gun for the
-  -- last_contact_at / needs-attention rollups. A one-day buffer past
-  -- `current_date` accommodates callers in time zones ahead of UTC,
-  -- where local "today" can already be tomorrow on the server clock.
-  if p_interaction_at > current_date + 1 then
+  -- last_contact_at / needs-attention rollups. The cap is anchored to
+  -- UTC explicitly (rather than `current_date`, which is evaluated in
+  -- the session time zone and would drift if the DB is ever deployed
+  -- on a non-UTC clock) so it always agrees with the TS validator's
+  -- `todayIsoUtc() + 1` cap. The +1 day buffer accommodates callers in
+  -- time zones ahead of UTC, where local "today" can already be
+  -- tomorrow on the server clock.
+  if p_interaction_at > ((now() at time zone 'UTC')::date + 1) then
     raise exception 'invalid_input';
   end if;
 
