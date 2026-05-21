@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
+import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
@@ -8,9 +9,13 @@ import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-c
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
+  fetchOverShepherdsForAdmin,
   fetchShepherdCareInteractionsForAdmin,
   fetchShepherdCareProfileByShepherdId,
+  type ActiveShepherdCoverageAssignmentSummary,
+  type OverShepherdListRow,
 } from "@/lib/supabase/read-models";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
@@ -47,7 +52,16 @@ const cardStyle = {
 };
 
 async function loadDetail(profileId: string): Promise<
-  | { kind: "ok"; profileFullName: string; profileRole: string; care: ShepherdCareProfilesRow | null; interactions: ShepherdCareInteractionsRow[]; error: string | null }
+  | {
+      kind: "ok";
+      profileFullName: string;
+      profileRole: string;
+      care: ShepherdCareProfilesRow | null;
+      interactions: ShepherdCareInteractionsRow[];
+      activeOverShepherds: OverShepherdListRow[];
+      coverage: ActiveShepherdCoverageAssignmentSummary | null;
+      error: string | null;
+    }
   | { kind: "not_found" }
   | { kind: "db_unavailable" }
 > {
@@ -62,6 +76,8 @@ async function loadDetail(profileId: string): Promise<
       profileRole: "—",
       care: null,
       interactions: [],
+      activeOverShepherds: [],
+      coverage: null,
       error: profile.error.message,
     };
   }
@@ -74,7 +90,11 @@ async function loadDetail(profileId: string): Promise<
   }
   if (profile.data.status !== "active") return { kind: "not_found" };
 
-  const careResult = await fetchShepherdCareProfileByShepherdId(client, profileId);
+  const [careResult, overShepherdsRes, coverageRes] = await Promise.all([
+    fetchShepherdCareProfileByShepherdId(client, profileId),
+    fetchOverShepherdsForAdmin(client, { includeArchived: false }),
+    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
+  ]);
   if (careResult.error) {
     return {
       kind: "ok",
@@ -82,6 +102,8 @@ async function loadDetail(profileId: string): Promise<
       profileRole: profile.data.role,
       care: null,
       interactions: [],
+      activeOverShepherds: overShepherdsRes.data ?? [],
+      coverage: null,
       error: careResult.error.message,
     };
   }
@@ -103,7 +125,13 @@ async function loadDetail(profileId: string): Promise<
     profileRole: profile.data.role,
     care: careResult.data,
     interactions,
-    error: interactionError,
+    activeOverShepherds: overShepherdsRes.data ?? [],
+    coverage: coverageRes.data ?? null,
+    error:
+      interactionError ??
+      overShepherdsRes.error?.message ??
+      coverageRes.error?.message ??
+      null,
   };
 }
 
@@ -229,6 +257,38 @@ export default async function AdminShepherdCareDetailPage({
                 </p>
               </div>
             ) : null}
+          </section>
+
+          <section style={cardStyle} aria-label="Over-shepherd coverage">
+            <h2
+              style={{
+                fontFamily: fontSans,
+                fontSize: 14,
+                letterSpacing: 0.6,
+                margin: "0 0 6px",
+                color: P.ink,
+              }}
+            >
+              Coverage
+            </h2>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                margin: "0 0 12px",
+              }}
+            >
+              {detail.coverage
+                ? `Currently covered by ${detail.coverage.over_shepherd.full_name}.`
+                : "No over-shepherd assigned yet."}
+            </p>
+            <CoverageAssignmentForm
+              shepherdProfileId={profileId}
+              activeOverShepherds={detail.activeOverShepherds}
+              currentAssignmentId={detail.coverage?.id ?? null}
+              currentOverShepherdId={detail.coverage?.over_shepherd_id ?? null}
+            />
           </section>
 
           <section style={cardStyle} aria-label="Log interaction">

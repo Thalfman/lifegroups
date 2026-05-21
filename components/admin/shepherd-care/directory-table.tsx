@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { formatIsoDate } from "@/lib/shared/date";
-import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
+import type {
+  ActiveShepherdCoverageAssignmentSummary,
+  ShepherdCareDirectoryEntry,
+} from "@/lib/supabase/read-models";
 import { ShepherdCareStatusBadge } from "./status-badge";
 
 const tableStyle: CSSProperties = {
@@ -46,8 +49,10 @@ const roleLabel: Record<string, string> = {
 
 export function ShepherdCareDirectoryTable({
   entries,
+  coverageByShepherdId,
 }: {
   entries: ShepherdCareDirectoryEntry[];
+  coverageByShepherdId: Map<string, ActiveShepherdCoverageAssignmentSummary>;
 }) {
   if (entries.length === 0) {
     return <div style={emptyStyle}>No leaders to show.</div>;
@@ -62,6 +67,7 @@ export function ShepherdCareDirectoryTable({
           <tr>
             <th style={thStyle}>Leader</th>
             <th style={thStyle}>Role</th>
+            <th style={thStyle}>Over-shepherd</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Last contact</th>
             <th style={thStyle}>Next touchpoint</th>
@@ -73,6 +79,7 @@ export function ShepherdCareDirectoryTable({
             const status = entry.care?.current_status ?? "healthy";
             const lastContact = entry.care?.last_contact_at ?? null;
             const nextTouchpoint = entry.care?.next_touchpoint_due ?? null;
+            const coverage = coverageByShepherdId.get(entry.profile.id) ?? null;
             return (
               <tr key={entry.profile.id}>
                 <td style={tdStyle}>
@@ -87,6 +94,15 @@ export function ShepherdCareDirectoryTable({
                   </div>
                 </td>
                 <td style={tdStyle}>{roleLabel[entry.profile.role] ?? entry.profile.role}</td>
+                <td style={tdStyle}>
+                  {coverage ? (
+                    <span style={{ color: P.ink }}>
+                      {coverage.over_shepherd.full_name}
+                    </span>
+                  ) : (
+                    <span style={{ color: P.ink3 }}>—</span>
+                  )}
+                </td>
                 <td style={tdStyle}>
                   {entry.care ? (
                     <ShepherdCareStatusBadge status={status} />
