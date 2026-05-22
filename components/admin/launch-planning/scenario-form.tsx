@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveLaunchPlanningScenario,
@@ -40,22 +40,37 @@ function pctValue(ratio: number): string {
 // Shared assumption-field grid. Used by both create and edit forms so the
 // LP.1 baseline form and the LP.2 scenario form expose the same set of
 // editable inputs in the same order.
+//
+// The `idPrefix` parameter scopes input `id` attributes so the create
+// panel and the edit panel can render at the same time without producing
+// duplicate IDs in the DOM (which would break label→input targeting and
+// fail accessibility audits).
+//
+// `required` is set on every numeric field so the scenario is always
+// stored as a complete snapshot. Without the required guard, blank
+// numerics would be dropped from the payload and the decoder would later
+// fall back to global metric defaults — meaning a saved scenario could
+// quietly change behavior when the defaults change.
 function AssumptionFields({
   defaults,
+  idPrefix,
 }: {
   defaults: LaunchPlanningAssumptions;
+  idPrefix: string;
 }) {
+  const fieldId = (name: string) => `${idPrefix}__${name}`;
   return (
     <>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
-          <label htmlFor="current_church_attendance" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("current_church_attendance")} style={fieldLabelStyle}>
             Current church attendance
           </label>
           <input
-            id="current_church_attendance"
+            id={fieldId("current_church_attendance")}
             name="current_church_attendance"
             type="number"
+            required
             min={0}
             max={100000}
             inputMode="numeric"
@@ -66,13 +81,14 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="expected_growth" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("expected_growth")} style={fieldLabelStyle}>
             Expected growth (people)
           </label>
           <input
-            id="expected_growth"
+            id={fieldId("expected_growth")}
             name="expected_growth"
             type="number"
+            required
             min={-100000}
             max={100000}
             inputMode="numeric"
@@ -86,11 +102,11 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="expected_growth_date" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("expected_growth_date")} style={fieldLabelStyle}>
             Expected growth date
           </label>
           <input
-            id="expected_growth_date"
+            id={fieldId("expected_growth_date")}
             name="expected_growth_date"
             type="date"
             defaultValue={defaults.expected_growth_date ?? ""}
@@ -100,13 +116,17 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="target_group_participation_pct" style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("target_group_participation_pct")}
+            style={fieldLabelStyle}
+          >
             Target group participation %
           </label>
           <input
-            id="target_group_participation_pct"
+            id={fieldId("target_group_participation_pct")}
             name="target_group_participation_pct"
             type="number"
+            required
             min={0}
             max={1}
             step={0.01}
@@ -121,13 +141,14 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="average_group_size" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("average_group_size")} style={fieldLabelStyle}>
             Average group size
           </label>
           <input
-            id="average_group_size"
+            id={fieldId("average_group_size")}
             name="average_group_size"
             type="number"
+            required
             min={1}
             max={500}
             inputMode="numeric"
@@ -140,13 +161,14 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="launch_buffer_pct" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("launch_buffer_pct")} style={fieldLabelStyle}>
             Launch buffer %
           </label>
           <input
-            id="launch_buffer_pct"
+            id={fieldId("launch_buffer_pct")}
             name="launch_buffer_pct"
             type="number"
+            required
             min={0}
             max={0.95}
             step={0.01}
@@ -161,13 +183,14 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor="leaders_per_new_group" style={fieldLabelStyle}>
+          <label htmlFor={fieldId("leaders_per_new_group")} style={fieldLabelStyle}>
             Leaders per new group
           </label>
           <input
-            id="leaders_per_new_group"
+            id={fieldId("leaders_per_new_group")}
             name="leaders_per_new_group"
             type="number"
+            required
             min={0}
             max={10}
             inputMode="numeric"
@@ -179,11 +202,11 @@ function AssumptionFields({
       </div>
 
       <div>
-        <label htmlFor="notes" style={fieldLabelStyle}>
+        <label htmlFor={fieldId("notes")} style={fieldLabelStyle}>
           Scenario notes
         </label>
         <textarea
-          id="notes"
+          id={fieldId("notes")}
           name="notes"
           rows={3}
           maxLength={2000}
@@ -265,7 +288,7 @@ export function CreateScenarioForm({
         </div>
       </div>
 
-      <AssumptionFields defaults={defaults} />
+      <AssumptionFields defaults={defaults} idPrefix="create_scenario" />
 
       <label
         style={{
@@ -332,11 +355,16 @@ export function EditScenarioForm({
     FormData
   >(adminSetCurrentLaunchPlanningScenario, undefined);
 
-  // Local mirror so the "Mark as current" checkbox reflects the row state on
-  // every render. The is_current value can change underneath us when
-  // another scenario is set current; the server-rendered prop is the
-  // source of truth at load time.
+  // Local mirror so the "Mark as current" checkbox reflects the row state.
+  // The is_current value can change underneath us when another scenario is
+  // set current (or when this scenario is promoted via the "Make current"
+  // sub-action below). When the prop changes after a server revalidation,
+  // resync the checkbox so a subsequent "Save scenario" submit doesn't
+  // silently clear is_current with a stale unchecked value.
   const [makeCurrent, setMakeCurrent] = useState<boolean>(scenario.is_current);
+  useEffect(() => {
+    setMakeCurrent(scenario.is_current);
+  }, [scenario.is_current]);
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -427,7 +455,10 @@ export function EditScenarioForm({
           </div>
         </div>
 
-        <AssumptionFields defaults={scenario.assumptions} />
+        <AssumptionFields
+          defaults={scenario.assumptions}
+          idPrefix={`edit_scenario_${scenario.id}`}
+        />
 
         <label
           style={{

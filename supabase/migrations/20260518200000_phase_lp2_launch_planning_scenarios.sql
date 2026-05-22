@@ -128,8 +128,17 @@ begin
     end if;
   end loop;
 
+  -- Integer-typed fields: reject any number whose JSON serialization
+  -- contains a decimal point. Casting `10.5` straight to ::int would
+  -- truncate to 10 and pass bounds, but the stored row would still be
+  -- 10.5 and the TS decoder (which requires an integer) would fall back
+  -- to defaults. Treating the cast result as authoritative would leave
+  -- a stored scenario whose math doesn't match its display.
   if p_assumptions ? 'current_church_attendance' then
     if jsonb_typeof(p_assumptions -> 'current_church_attendance') <> 'number' then
+      raise exception 'invalid_input';
+    end if;
+    if (p_assumptions ->> 'current_church_attendance') ~ '[.eE]' then
       raise exception 'invalid_input';
     end if;
     v_int := (p_assumptions ->> 'current_church_attendance')::int;
@@ -140,6 +149,9 @@ begin
 
   if p_assumptions ? 'expected_growth' then
     if jsonb_typeof(p_assumptions -> 'expected_growth') <> 'number' then
+      raise exception 'invalid_input';
+    end if;
+    if (p_assumptions ->> 'expected_growth') ~ '[.eE]' then
       raise exception 'invalid_input';
     end if;
     v_int := (p_assumptions ->> 'expected_growth')::int;
@@ -179,6 +191,9 @@ begin
     if jsonb_typeof(p_assumptions -> 'average_group_size') <> 'number' then
       raise exception 'invalid_input';
     end if;
+    if (p_assumptions ->> 'average_group_size') ~ '[.eE]' then
+      raise exception 'invalid_input';
+    end if;
     v_int := (p_assumptions ->> 'average_group_size')::int;
     if v_int < 1 or v_int > 500 then
       raise exception 'invalid_input';
@@ -197,6 +212,9 @@ begin
 
   if p_assumptions ? 'leaders_per_new_group' then
     if jsonb_typeof(p_assumptions -> 'leaders_per_new_group') <> 'number' then
+      raise exception 'invalid_input';
+    end if;
+    if (p_assumptions ->> 'leaders_per_new_group') ~ '[.eE]' then
       raise exception 'invalid_input';
     end if;
     v_int := (p_assumptions ->> 'leaders_per_new_group')::int;

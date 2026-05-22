@@ -165,7 +165,10 @@ export function ScenariosPanel({
       {/* ---------------------------------------------------------------- */}
       {selected ? (
         <div style={sectionStyle}>
-          <EditScenarioForm scenario={selected} />
+          {/* `key` forces a remount when the operator picks a different
+              scenario so the form's defaultValues + local state pick up
+              the new row instead of holding the prior selection. */}
+          <EditScenarioForm key={selected.id} scenario={selected} />
         </div>
       ) : null}
 
