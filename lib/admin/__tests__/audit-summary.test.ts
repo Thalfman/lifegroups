@@ -72,14 +72,17 @@ describe("AUDIT_ACTION_LABELS", () => {
 
 describe("summarizeAuditEvent — shepherd care", () => {
   it("logs an interaction with the shepherd's name and friendly type", () => {
+    // Production metadata shape: admin_log_shepherd_care_interaction
+    // nests shepherd_profile_id inside metadata.after (see migration
+    // 20260518160000_phase5d0_shepherd_care_foundation.sql, audit insert).
     const summary = summarizeAuditEvent(
       event("admin.log_shepherd_care_interaction", {
         after: {
           interaction_type: "call",
           interaction_at: "2026-05-20",
           has_notes: true,
+          shepherd_profile_id: UUID_SHEPHERD,
         },
-        shepherd_profile_id: UUID_SHEPHERD,
       }),
       mapsWithShepherd(),
     );
@@ -91,8 +94,11 @@ describe("summarizeAuditEvent — shepherd care", () => {
   it("falls back to 'a shepherd' when the profile isn't in the map", () => {
     const summary = summarizeAuditEvent(
       event("admin.log_shepherd_care_interaction", {
-        after: { interaction_type: "text", interaction_at: "2026-05-20" },
-        shepherd_profile_id: UUID_OTHER,
+        after: {
+          interaction_type: "text",
+          interaction_at: "2026-05-20",
+          shepherd_profile_id: UUID_OTHER,
+        },
       }),
       mapsWithShepherd(),
     );
@@ -105,8 +111,11 @@ describe("summarizeAuditEvent — shepherd care", () => {
     // through to the generic 'touchpoint' label.
     const summary = summarizeAuditEvent(
       event("admin.log_shepherd_care_interaction", {
-        after: { interaction_type: "meeting", interaction_at: "2026-05-20" },
-        shepherd_profile_id: UUID_SHEPHERD,
+        after: {
+          interaction_type: "meeting",
+          interaction_at: "2026-05-20",
+          shepherd_profile_id: UUID_SHEPHERD,
+        },
       }),
       mapsWithShepherd(),
     );
@@ -125,13 +134,36 @@ describe("summarizeAuditEvent — shepherd care", () => {
           interaction_type: "in_person",
           interaction_at: "2026-05-20",
           notes: "ANOTHER PRIVATE NOTE",
+          shepherd_profile_id: UUID_SHEPHERD,
         },
-        shepherd_profile_id: UUID_SHEPHERD,
       }),
       mapsWithShepherd(),
     );
     expect(summary).not.toContain("PRIVATE NOTE");
     expect(summary).not.toContain("ANOTHER PRIVATE");
+  });
+
+  it("regression: resolves shepherd_profile_id from metadata.after, not top-level", () => {
+    // The production RPC stores shepherd_profile_id under metadata.after
+    // (see migration 20260518160000_phase5d0_shepherd_care_foundation.sql).
+    // Earlier code read md.shepherd_profile_id from the top level, which is
+    // always undefined for real interaction rows, dropping the shepherd
+    // name from every audit summary. This test pins the canonical shape.
+    const summary = summarizeAuditEvent(
+      event("admin.log_shepherd_care_interaction", {
+        after: {
+          interaction_type: "call",
+          interaction_at: "2026-05-20",
+          has_notes: false,
+          shepherd_profile_id: UUID_SHEPHERD,
+        },
+        // Deliberately omit top-level shepherd_profile_id to mirror
+        // production payloads.
+      }),
+      mapsWithShepherd(),
+    );
+    expect(summary).toContain("Avery Bennett");
+    expect(summary).not.toContain("a shepherd");
   });
 
   it("renders 'Created care profile' on first upsert and 'Updated …' otherwise", () => {

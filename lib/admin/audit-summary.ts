@@ -343,7 +343,16 @@ export function summarizeAuditEvent(
       // Interaction audit metadata uses `has_notes` (boolean) — the
       // notes body is never written into the audit row. Render the
       // shepherd's name + interaction type + date.
-      const shepherdId = asString(md.shepherd_profile_id) ?? null;
+      //
+      // The RPC nests shepherd_profile_id under metadata.after (see
+      // admin_log_shepherd_care_interaction in
+      // 20260518160000_phase5d0_shepherd_care_foundation.sql). The
+      // top-level fallback is kept defensive in case a future RPC
+      // change moves it.
+      const shepherdId =
+        asString(after.shepherd_profile_id) ??
+        asString(md.shepherd_profile_id) ??
+        null;
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       const name = shepherd?.full_name ?? "a shepherd";
       const type = interactionTypeLabel(asString(after.interaction_type));
