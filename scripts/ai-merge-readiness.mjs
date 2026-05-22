@@ -10,7 +10,7 @@ const CODEX_ACTOR_EXACT = process.env.CODEX_ACTOR_LOGIN || '';
 const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
 const ALLOWED = new Set((process.env.ALLOWED_PR_AUTHORS || '').split(',').map((s) => s.trim()).filter(Boolean));
 const sensitivePaths = ['.github/workflows/', '.env', 'supabase/migrations/', 'supabase/functions/', 'middleware.', 'auth/', 'rls/', 'package-lock.json', 'pnpm-lock.yaml'];
-const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|vulnerability|regression|broken|should|recommend)\b/i;
+const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|vulnerability|regression|broken)\b/i;
 const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
 
 const isCodex = (login = '') => CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : login.toLowerCase().includes('codex');

@@ -15,13 +15,13 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   pull_request_review:
     types: [submitted]
   pull_request_review_comment:
-    types: [created]
+    types: [created, edited]
   issue_comment:
-    types: [created]
+    types: [created, edited]
   check_suite:
     types: [completed]
   status:
