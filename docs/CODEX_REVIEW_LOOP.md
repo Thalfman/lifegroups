@@ -36,7 +36,7 @@ A PR is ready only when all of these are true for the latest head SHA:
 - The PR head repo is this repository, not a fork.
 - GitHub reports the PR as mergeable.
 - Checks/statuses for the current head SHA are present and passing.
-- Codex left a `+1` reaction on the parent PR after the latest head commit timestamp.
+- Codex left a `+1` reaction on the parent PR after the latest GitHub-observed head commit event.
 - No unresolved current-head Codex review findings remain.
 - No newer commit exists after the Codex `+1` approval signal.
 - The quiet window has elapsed after the latest relevant Codex activity.
@@ -97,6 +97,10 @@ When `CODEX_ACTOR_LOGIN` is unset, the workflow trusts the installed Codex conne
 
 Completed check runs with `success`, `neutral`, or `skipped` conclusions count as passing, matching GitHub required-check semantics. Pending or failed checks still block ready notification.
 
+Only the latest check run per check/app identity is evaluated. Historical failed reruns for the same head SHA do not block readiness after GitHub reports a newer passing run.
+
+Review submissions are treated as history. For review-level change-request state, the loop considers the latest current-head review state per Codex actor so superseded or dismissed older `CHANGES_REQUESTED` reviews do not keep the PR blocked after a later Codex approval.
+
 ## Markers
 
 Markers are scoped by PR number and head SHA:
@@ -108,6 +112,8 @@ Markers are scoped by PR number and head SHA:
 - `codex-review-loop:ready`
 
 Old comments remain on the PR, but a new commit creates a new head SHA and invalidates older markers.
+
+Before posting a ready notification, the workflow re-fetches the PR and confirms the head SHA, draft state, open state, and mergeability are still current.
 
 ## Known Limitations
 

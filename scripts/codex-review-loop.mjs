@@ -217,8 +217,27 @@ function currentHeadCodexReviews(reviews, headSha, headDate) {
   ));
 }
 
+function latestReviewByCodexActor(reviews, headSha, headDate) {
+  const latestByActor = new Map();
+
+  for (const review of currentHeadCodexReviews(reviews, headSha, headDate)) {
+    const login = review.user?.login;
+    if (!login) continue;
+
+    const reviewTime = Date.parse(review.submitted_at || '');
+    const existing = latestByActor.get(login);
+    const existingTime = Date.parse(existing?.submitted_at || '');
+
+    if (!existing || reviewTime >= existingTime) {
+      latestByActor.set(login, review);
+    }
+  }
+
+  return [...latestByActor.values()];
+}
+
 function currentHeadFindingReviews(reviews, headSha, headDate) {
-  return currentHeadCodexReviews(reviews, headSha, headDate).filter((review) => (
+  return latestReviewByCodexActor(reviews, headSha, headDate).filter((review) => (
     review.state === 'CHANGES_REQUESTED'
     && (review.body || '').trim().length > 0
   ));
@@ -430,7 +449,7 @@ async function listCheckRuns(headSha) {
   const checkRuns = [];
   let page = 1;
   for (;;) {
-    const response = await github('GET', apiPath(`/commits/${headSha}/check-runs?filter=all&per_page=100&page=${page}`));
+    const response = await github('GET', apiPath(`/commits/${headSha}/check-runs?per_page=100&page=${page}`));
     const pageRuns = response.check_runs || [];
     checkRuns.push(...pageRuns);
     if (pageRuns.length < 100) return checkRuns;
@@ -539,14 +558,35 @@ async function getPull(prNumber) {
   return github('GET', apiPath(`/pulls/${prNumber}`));
 }
 
-async function loadPullData(pr) {
+async function loadHeadObservedDate(pr) {
   const headSha = pr.head.sha;
-  const commit = await github('GET', apiPath(`/commits/${headSha}`));
-  const headCommittedAt = commit.commit?.committer?.date || commit.commit?.author?.date;
-  if (!headCommittedAt) {
-    throw new Error(`Unable to determine commit timestamp for ${headSha}.`);
+
+  try {
+    const timelineEvents = await paginate(apiPath(`/issues/${pr.number}/timeline`));
+    const headCommitEvent = timelineEvents
+      .filter((event) => (
+        event.event === 'committed'
+        && event.sha === headSha
+        && event.created_at
+      ))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+
+    if (headCommitEvent) return new Date(headCommitEvent.created_at);
+  } catch (error) {
+    console.warn(`Unable to load PR #${pr.number} timeline for head timestamp: ${error.message}`);
   }
 
+  const fallback = pr.updated_at || pr.created_at;
+  if (!fallback) {
+    throw new Error(`Unable to determine GitHub-observed head timestamp for ${headSha}.`);
+  }
+
+  console.warn(`Using PR server timestamp fallback for PR #${pr.number} head ${headSha}: ${fallback}`);
+  return new Date(fallback);
+}
+
+async function loadPullData(pr) {
+  const headSha = pr.head.sha;
   const [
     files,
     issueComments,
@@ -554,6 +594,7 @@ async function loadPullData(pr) {
     reviews,
     parentReactions,
     checks,
+    headDate,
   ] = await Promise.all([
     paginate(apiPath(`/pulls/${pr.number}/files`)),
     paginate(apiPath(`/issues/${pr.number}/comments`)),
@@ -561,6 +602,7 @@ async function loadPullData(pr) {
     paginate(apiPath(`/pulls/${pr.number}/reviews`)),
     paginate(apiPath(`/issues/${pr.number}/reactions`)),
     evaluateChecks(headSha),
+    loadHeadObservedDate(pr),
   ]);
 
   return {
@@ -570,7 +612,7 @@ async function loadPullData(pr) {
     reviews,
     parentReactions,
     checks,
-    headDate: new Date(headCommittedAt),
+    headDate,
   };
 }
 
@@ -775,6 +817,16 @@ async function processPull(prSummary) {
   );
 
   if (ready) {
+    const readyPr = await getPull(prNumber);
+    if (readyPr.head.sha !== headSha) {
+      console.log(`PR #${prNumber}: head changed from ${headSha} to ${readyPr.head.sha} before ready notification; skipping stale ready state`);
+      return;
+    }
+    if (readyPr.state !== 'open' || readyPr.draft || readyPr.mergeable !== true) {
+      console.log(`PR #${prNumber}: ready state changed before notification; state=${readyPr.state} draft=${readyPr.draft} mergeable=${readyPr.mergeable}`);
+      return;
+    }
+
     await markReady(prNumber, headSha, issueComments, warnings);
     console.log(`PR #${prNumber}: ready at ${headSha}; checks=${checks.summary}`);
     return;
