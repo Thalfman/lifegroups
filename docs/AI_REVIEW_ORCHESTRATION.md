@@ -13,7 +13,7 @@ This repository uses GitHub Actions + `GITHUB_TOKEN` + GitHub REST API + install
 
 ## Trigger model
 
-**Event-driven plus scheduled fallback.** Both workflows react to repository activity in near-real-time; the 10-minute cron is a backup, not the primary trigger.
+**Event-driven plus scheduled fallback.** Both workflows react to repository activity where GitHub emits durable events; the 10-minute cron is a backup for integration latency and events that `GITHUB_TOKEN` comments cannot re-trigger.
 
 Event triggers wired into both workflows:
 
@@ -21,16 +21,17 @@ Event triggers wired into both workflows:
 - `pull_request_review` (submitted)
 - `pull_request_review_comment` (created; readiness also: edited)
 - `issue_comment` (created; readiness also: edited)
-- `check_suite` (completed)
-- `status`
+- Readiness only: `workflow_run` for the `CI` workflow (completed)
 
 `pull_request_target` is intentionally not used — running workflows with write access against untrusted fork code is an attack surface this repo does not need. Fork PR events are skipped at the job level; same-repo branches (e.g. `claude/...`) get full event coverage.
+
+Automation workflows check out the repository's default branch before running `scripts/ai-*.mjs`. That keeps write-permission automation from executing a modified orchestrator script from the PR branch being evaluated.
 
 Self-trigger loops from `github-actions[bot]` comments are filtered at the workflow `if:` boundary, and dedupe markers (see below) prevent duplicate posts even if a run slips through. Concurrency groups serialize bursts so an in-flight scan finishes processing every open PR before the next event-driven run starts.
 
 ## Automated flow
 
-Each step now fires as soon as the prior signal arrives instead of waiting for the next cron tick.
+Each step fires when a durable GitHub event arrives; the cron fills gaps caused by bot integration latency and `GITHUB_TOKEN` recursion protection.
 
 1. PR opens → `pull_request.opened` triggers the orchestrator.
 2. Orchestrator requests Codex/Gemini review when missing.
@@ -39,7 +40,7 @@ Each step now fires as soon as the prior signal arrives instead of waiting for t
 5. If actionable feedback exists, orchestrator tags Claude.
 6. Claude posts response and/or pushes fixes (push fires `pull_request.synchronize`).
 7. New commit resets the cycle for the new head SHA.
-8. Readiness workflow applies deterministic gates after each relevant event (PR update, review, comment, check completion, commit status).
+8. Readiness workflow applies deterministic gates after each relevant event (PR update, review, comment, CI workflow completion).
 9. When ready, readiness workflow mentions `@Thalfman` (or `READY_NOTIFY_LOGIN`) with manual-merge-ready notice and applies `ai/ready-to-merge`.
 10. Human reviews and clicks **Merge** manually.
 
@@ -66,6 +67,8 @@ Unset values keep automation enabled by default.
 - `CLAUDE_TRIGGER` (default: `@claude`)
 - `READY_NOTIFY_LOGIN` (default: `Thalfman`)
 - `ALLOWED_PR_AUTHORS` (optional comma-separated allowlist)
+- `AI_REVIEW_REQUIRED_CHECKS` (default: `lint + typecheck + test`)
+  - comma-separated check-run names required for readiness.
 
 ## Kill switches
 
@@ -94,7 +97,13 @@ These reactions are status hints only. Deterministic merge readiness still comes
 
 ## Sensitive-path and sensitive-term blocking
 
-If sensitive paths or terms are detected, automation blocks Claude triggering and readiness and posts manual-review-required state for that head SHA.
+If sensitive paths or terms are detected, automation blocks Claude triggering and readiness and posts manual-review-required state for that head SHA. A non-bot maintainer can resume readiness for that exact head SHA by commenting:
+
+```text
+AI sensitive review approved for <head-sha>
+```
+
+The approval is intentionally SHA-scoped so a later commit re-enters manual review.
 
 Sensitive paths include:
 - `.github/workflows/**`
@@ -125,13 +134,19 @@ Sensitive terms include:
 Readiness script only uses deterministic repository state:
 - PR status (not draft, mergeable, safe mergeable_state)
 - same-repo/non-fork rules
-- checks passing
+- configured required checks passing
 - current-head Codex + Gemini completion
 - no unresolved actionable AI feedback
-- no pending Claude response (if Claude was triggered)
+- current-head Claude completion marker if Claude was triggered and no new commit replaced that head SHA
 - no manual-review-required / max-cycles markers
-- no sensitive path/term blockers
+- no sensitive path/term blockers without a maintainer approval comment
 - no head-SHA race during evaluation
+
+Claude no-op responses must include the current-head completion marker requested by the orchestrator prompt:
+
+```html
+<!-- ai-review-orchestrator:claude-complete:<pr-number>:<head-sha>:no-op -->
+```
 
 ## Readiness notification behavior
 

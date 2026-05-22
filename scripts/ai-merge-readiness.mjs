@@ -1,3 +1,18 @@
+import {
+  ACTIONABLE_RE,
+  claudeCompletionMarker,
+  classifyRequiredChecks,
+  collectSensitiveWarnings,
+  formatSensitiveWarnings,
+  hasClaudeCompletion,
+  hasManualSensitiveApproval,
+  hasSensitiveWarnings,
+  isCodexLogin,
+  isGeminiLogin,
+  manualReviewRequiredMarker,
+  parseCsvSet,
+} from './ai-review-shared.mjs';
+
 const token = process.env.GITHUB_TOKEN;
 const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
 if (!token || !owner || !repo) throw new Error('Missing GITHUB_TOKEN or GITHUB_REPOSITORY');
@@ -8,37 +23,11 @@ const READY_NOTIFY_ENABLED = (process.env.AI_REVIEW_READY_NOTIFY_ENABLED || 'tru
 const READY_NOTIFY_LOGIN = process.env.READY_NOTIFY_LOGIN || 'Thalfman';
 const CODEX_ACTOR_EXACT = process.env.CODEX_ACTOR_LOGIN || '';
 const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
-const ALLOWED = new Set((process.env.ALLOWED_PR_AUTHORS || '').split(',').map((s) => s.trim()).filter(Boolean));
-const sensitivePaths = ['.github/workflows/', '.env', 'supabase/migrations/', 'supabase/functions/', 'middleware.', 'auth/', 'rls/', 'package-lock.json', 'pnpm-lock.yaml'];
-const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|vulnerability|regression|broken)\b/i;
-const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
+const ALLOWED = parseCsvSet(process.env.ALLOWED_PR_AUTHORS || '');
+const REQUIRED_CHECKS = process.env.AI_REVIEW_REQUIRED_CHECKS || '';
 
-const isCodex = (login = '') => CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : login.toLowerCase().includes('codex');
-const isGemini = (login = '') => {
-  if (!login) return false;
-  if (login === GEMINI_ACTOR) return true;
-  return login.toLowerCase().startsWith('gemini-code-assist');
-};
-const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
-const unique = (arr) => [...new Set(arr)];
-
-function collectSensitiveWarnings(files, comments) {
-  const warnings = { security: [], workflow: [], db: [], dependency: [] };
-  for (const f of files.map((x) => x.filename)) {
-    if (f.startsWith('.github/workflows/')) warnings.workflow.push(f);
-    if (f.startsWith('supabase/migrations/') || f.startsWith('supabase/functions/')) warnings.db.push(f);
-    if (f === 'package-lock.json' || f === 'pnpm-lock.yaml') warnings.dependency.push(f);
-    if (f.startsWith('middleware.') || f.startsWith('auth/') || f.startsWith('rls/')) warnings.security.push(f);
-  }
-  const terms = [/\bRLS\b/i, /SECURITY DEFINER/i, /audit_events/i, /admin_private_note/i, /role checks/i, /leader-facing read models/i];
-  for (const c of comments) {
-    for (const t of terms) {
-      if (t.test(c.body || '')) warnings.security.push(`discussion term matched: ${t.source}`);
-    }
-  }
-  for (const k of Object.keys(warnings)) warnings[k] = unique(warnings[k]);
-  return warnings;
-}
+const isCodex = (login = '') => isCodexLogin(login, CODEX_ACTOR_EXACT);
+const isGemini = (login = '') => isGeminiLogin(login, GEMINI_ACTOR);
 
 async function gh(path, init = {}) { const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } }); if (!res.ok) throw new Error(`${res.status} ${path}: ${await res.text()}`); return res.status === 204 ? null : res.json(); }
 async function listAll(path) { let page = 1; const out = []; while (true) { const batch = await gh(`${path}${path.includes('?') ? '&' : '?'}per_page=100&page=${page}`); if (!Array.isArray(batch) || batch.length === 0) break; out.push(...batch); page += 1; } return out; }
@@ -74,8 +63,9 @@ async function processPr(pr) {
   const sensitiveWarnings = collectSensitiveWarnings(files, [...issueComments, ...reviewComments, ...reviews]);
 
   if (!prNow.mergeable || ['blocked', 'dirty', 'unstable', 'draft', 'unknown'].includes(prNow.mergeable_state)) blockers.push(`PR mergeable_state is unsafe (${prNow.mergeable_state}).`);
-  const badChecks = checks.check_runs.filter((c) => c.status !== 'completed' || c.conclusion !== 'success');
-  if (badChecks.length) blockers.push('Checks are failing or pending.');
+  const requiredChecks = classifyRequiredChecks(checks.check_runs, REQUIRED_CHECKS);
+  if (requiredChecks.missing.length) blockers.push(`Required checks have not appeared yet: ${requiredChecks.missing.join(', ')}.`);
+  if (requiredChecks.blocking.length) blockers.push(`Required checks are failing or pending: ${requiredChecks.blocking.map((c) => c.name).join(', ')}.`);
 
   const codexComplete = issueComments.some((c) => isCodex(c.user?.login) && new Date(c.created_at) >= headDate)
     || reviewComments.some((c) => isCodex(c.user?.login) && (c.commit_id === headSha || new Date(c.created_at) >= headDate))
@@ -88,19 +78,26 @@ async function processPr(pr) {
   if (!codexComplete) blockers.push('No current-head Codex completion signal.');
   if (!geminiComplete) blockers.push('No current-head Gemini completion signal.');
 
+  const sensitiveApproval = hasManualSensitiveApproval(issueComments, pr.number, headSha);
+  const hasManualRequired = issueComments.some((c) => (c.body || '').includes(manualReviewRequiredMarker(pr.number, headSha)));
+  if (hasSensitiveWarnings(sensitiveWarnings) && !sensitiveApproval) {
+    blockers.push(`Sensitive areas require manual approval before readiness:\n${formatSensitiveWarnings(sensitiveWarnings)}`);
+  }
+  if (hasManualRequired && !sensitiveApproval) blockers.push('Manual-review-required marker exists for current head SHA.');
+
   const hasMax = issueComments.some((c) => (c.body || '').includes(`ai-review-orchestrator:state:${pr.number}:${headSha}:max-cycles-reached`));
   if (hasMax) blockers.push('Max-cycles-reached marker exists for current head SHA.');
 
   const triggerComments = issueComments.filter((c) => (c.body || '').includes(`ai-review-orchestrator:claude-trigger:${pr.number}:${headSha}`));
   if (triggerComments.length) {
     const lastTrigger = triggerComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-    const claudeResponded = issueComments.some((c) => (c.user?.login || '').toLowerCase().includes('claude') && new Date(c.created_at) > new Date(lastTrigger.created_at));
-    if (!claudeResponded) blockers.push('Claude trigger exists and Claude has not responded yet.');
+    const claudeCompleted = hasClaudeCompletion(issueComments, pr.number, headSha, new Date(lastTrigger.created_at));
+    if (!claudeCompleted) blockers.push(`Claude trigger exists without a current-head completion marker (${claudeCompletionMarker(pr.number, headSha)}).`);
   }
 
   const unresolvedActionable = [...reviewComments, ...issueComments].filter((c) => {
     const login = c.user?.login || '';
-    return (isCodex(login) || isGemini(login)) && new Date(c.created_at) >= headDate && actionableRegex.test(c.body || '');
+    return (isCodex(login) || isGemini(login)) && new Date(c.created_at) >= headDate && ACTIONABLE_RE.test(c.body || '');
   });
   if (unresolvedActionable.length) blockers.push('Unresolved actionable Codex/Gemini feedback remains for current head SHA.');
 
