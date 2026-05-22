@@ -48,33 +48,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Debug API access (posts results as PR #68 comment)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          set +e
-          LIST_STATUS=$(curl -sS -o /tmp/pulls.json -w "%{http_code}" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/pulls?state=open&per_page=1")
-          PROBE_STATUS=$(curl -sS -o /tmp/probe.json -w "%{http_code}" \
-            -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/issues/68/comments" \
-            -d '{}')
-          MSG="diag list=$LIST_STATUS probe=$PROBE_STATUS event=${GITHUB_EVENT_NAME} actor=${GITHUB_ACTOR} run=${GITHUB_RUN_ID}"
-          echo "$MSG"
-          POST_STATUS=$(curl -sS -o /tmp/posted.json -w "%{http_code}" \
-            -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/issues/68/comments" \
-            -d "{\"body\":\"<!-- ai-debug:probe --> $MSG\"}")
-          echo "diagnostic post status: $POST_STATUS"
-          echo "diagnostic post body (first 400b):"
-          head -c 400 /tmp/posted.json; echo
       - name: Run orchestrator
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
