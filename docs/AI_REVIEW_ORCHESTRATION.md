@@ -1,90 +1,122 @@
-# AI Review Orchestration
+# AI Review Orchestration (Manual Merge Readiness)
 
-## Architecture overview
+This repository uses GitHub Actions + `GITHUB_TOKEN` + GitHub REST API + installed GitHub integrations to automate AI review cycles.
 
-This implementation provides a phased orchestration harness using only GitHub Actions, `GITHUB_TOKEN`, GitHub REST API, and comment-based triggers for installed integrations (`@claude`, `@codex review`, `/gemini review`).
+## Important safety guarantee
 
-Components:
-- **Smoke test**: `.github/workflows/ai-review-smoke-test.yml`
-- **Orchestrator**: `.github/workflows/ai-review-orchestrator.yml` + `scripts/ai-review-orchestrator.mjs`
-- **Merge gate**: `.github/workflows/ai-merge-gate.yml` + `scripts/ai-merge-gate.mjs`
+**This system does not auto-merge and does not delete branches.**
 
-## State machine
+- It never calls the GitHub merge API.
+- It never enables GitHub auto-merge.
+- It never deletes branches.
 
-Per PR head SHA:
-1. Review requests are posted (manual/smoke-test phase).
-2. Codex/Gemini review completion is detected.
-3. If both complete and actionable comments exist, orchestrator triggers Claude.
-4. Claude pushes fixes, PR head SHA changes.
-5. Previous markers become stale; cycle restarts for new SHA.
-6. Merge gate evaluates deterministic rules and reports blockers or eligibility.
+## Automated flow
 
-State and dedupe markers used in PR comments:
-- `<!-- ai-review-orchestrator:state:{pr_number}:{head_sha}:{state_name} -->`
-- `<!-- ai-review-orchestrator:claude-trigger:{pr_number}:{head_sha} -->`
-- `<!-- ai-review-orchestrator:dry-run:{pr_number}:{head_sha}:{run_id} -->`
+1. PR opens.
+2. Orchestrator requests Codex/Gemini review when missing.
+3. Codex/Gemini review.
+4. Orchestrator waits until both complete for current head SHA.
+5. If actionable feedback exists, orchestrator tags Claude.
+6. Claude posts response and/or pushes fixes.
+7. New commit resets the cycle for the new head SHA.
+8. Readiness workflow applies deterministic gates.
+9. When ready, readiness workflow mentions `@Thalfman` (or `READY_NOTIFY_LOGIN`) with manual-merge-ready notice.
+10. Human reviews and clicks **Merge** manually.
 
-## What eyes means for Codex and Gemini
+## Workflows and scripts
 
-- 👀 is treated as **seen/in-progress only**.
-- It is **not** treated as completion for Gemini.
-- For Codex, thumbs-up and/or review output can indicate completion.
+- `.github/workflows/ai-review-orchestrator.yml`
+- `scripts/ai-review-orchestrator.mjs`
+- `.github/workflows/ai-merge-readiness.yml`
+- `scripts/ai-merge-readiness.mjs`
 
-## Why Gemini thumbs-up is not used
+## Variables (all optional)
 
-Gemini integrations can post comments/review summaries/inline comments without reliably using thumbs-up semantics. Completion is therefore inferred from Gemini-authored issue/review comments after current head SHA.
+Unset values keep automation enabled by default.
 
-## Why GitHub workflow is the merge judge, not an LLM
+- `AI_REVIEW_AUTOMATION_ENABLED` (default: `true`)
+  - exactly `false` disables scheduled review requests and Claude triggers.
+- `AI_REVIEW_REQUEST_REVIEWS` (default: `true`)
+  - exactly `false` disables automated `@codex review` and `/gemini review` requests.
+- `AI_REVIEW_READY_NOTIFY_ENABLED` (default: `true`)
+  - exactly `false` disables ready @mention notification.
+- `CODEX_ACTOR_LOGIN` (optional exact actor)
+  - unset: heuristic login contains `codex` (case-insensitive).
+- `GEMINI_ACTOR_LOGIN` (default: `gemini-code-assist[bot]`)
+- `CLAUDE_TRIGGER` (default: `@claude`)
+- `READY_NOTIFY_LOGIN` (default: `Thalfman`)
+- `ALLOWED_PR_AUTHORS` (optional comma-separated allowlist)
 
-Merging is deterministic and policy-driven. The merge gate script checks objective repository state (head SHA stability, check-run status, sensitive paths, markers, actionable comments) and only merges when all rules pass.
+## Kill switches
 
-## Required repository settings
+- Set `AI_REVIEW_AUTOMATION_ENABLED=false` to stop review requests and Claude triggers.
+- Set `AI_REVIEW_REQUEST_REVIEWS=false` to stop automated Codex/Gemini review requests.
+- Set `AI_REVIEW_READY_NOTIFY_ENABLED=false` to stop ready @mentions.
 
-- Keep Codex, Gemini, Claude integrations installed and permitted on repository PRs.
-- Ensure GitHub Actions has permissions to write PR comments.
-- Enable native **automatic head branch deletion** in repository settings (no custom branch deletion automation needed).
+## Completion signals
 
-## Manual smoke test steps
+- **Codex complete**: issue/review/review-comment after head commit timestamp, or Codex +1 reaction.
+- **Gemini complete**: issue/review/review-comment after head commit timestamp.
+- 👀 eyes is treated as seen/in-progress only.
+- Gemini thumbs-up is **not required** because integration behavior varies and comment/review output is the durable signal.
 
-1. Open a test PR.
-2. Run **AI Review Smoke Test** (`ai-review-smoke-test`) with `pr_number`.
-3. Confirm Claude responds to `github-actions[bot]` comment.
-4. Confirm Codex responds.
-5. Confirm Gemini responds.
-6. If any integration ignores bot-created comments, fallback is to have a human maintainer post equivalent trigger comments manually.
+## Sensitive-path and sensitive-term blocking
 
-## Run orchestrator in dry-run
+If sensitive paths or terms are detected, automation blocks Claude triggering and readiness and posts manual-review-required state for that head SHA.
 
-Run workflow **AI Review Orchestrator** with:
-- `dry_run=true` (default)
-- optional `pr_number`
+Sensitive paths include:
+- `.github/workflows/**`
+- `.env*`
+- `supabase/migrations/**`
+- `supabase/functions/**`
+- `middleware.*`
+- `auth/**`
+- `rls/**`
+- lockfiles
 
-Dry-run posts what would happen but does not tag Claude.
+Sensitive terms include:
+- `admin_private_note`
+- `SECURITY DEFINER`
+- `audit_events`
+- `role checks`
+- `leader-facing read models`
+- `RLS`
 
-## Enable real Claude trigger later
+## Max cycle limits
 
-When ready, run orchestrator with `dry_run=false` (manual dispatch first).
+- Claude trigger max: 2 per head SHA.
+- Claude trigger max: 3 total per PR.
+- When exceeded, orchestrator posts a max-cycles-reached marker and stops Claude triggering.
 
-## Run merge gate in dry-run
+## Deterministic readiness (not LLM-decided)
 
-Run workflow **AI Merge Gate** with:
-- `pr_number`
-- `dry_run=true` (default)
+Readiness script only uses deterministic repository state:
+- PR status (not draft, mergeable, safe mergeable_state)
+- same-repo/non-fork rules
+- checks passing
+- current-head Codex + Gemini completion
+- no unresolved actionable AI feedback
+- no pending Claude response (if Claude was triggered)
+- no manual-review-required / max-cycles markers
+- no sensitive path/term blockers
+- no head-SHA race during evaluation
 
-The workflow comments either blockers or:
-`AI merge gate passed in dry-run. This PR appears eligible for merge.`
+## Readiness notification behavior
 
-## Known limitations
+When ready, workflow posts a deduplicated comment with:
+- `@READY_NOTIFY_LOGIN AI review complete. This PR appears ready to merge manually.`
+- head SHA, completion statuses, checks, next step.
 
-- Integration actor logins can vary by installation; configure repository variables (`CODEX_ACTOR_LOGIN`, `GEMINI_ACTOR_LOGIN`) if defaults do not match.
-- Actionable-comment detection is keyword based and intentionally conservative.
-- Unresolved comment detection currently relies on latest-head review comments matching actionable keywords.
-- Merge gate is manual dispatch only in this phase.
+Also maintains labels:
+- ready: `ai/ready-to-merge`
+- blocked: `ai/blocked`
 
-## Manual verification before enabling real automation
+## Integration requirement for no-key operation
 
-- Verify all integrations respond to bot-authored comments.
-- Verify Codex and Gemini identity mapping (`CODEX_ACTOR_LOGIN`, `GEMINI_ACTOR_LOGIN`).
-- Verify sensitive-path and sensitive-term policy behavior on representative PRs.
-- Verify dry-run output quality and marker deduplication on multiple head SHA updates.
-- Verify check-run policy aligns with branch protection expectations.
+Installed Codex/Gemini/Claude integrations must respond to trigger comments authored by `github-actions[bot]` for this no-key setup to work.
+
+## Branch cleanup
+
+- Use GitHub native automatic head-branch deletion after merge, if desired.
+- Or delete branches manually after merge.
+- This automation does not delete branches.
