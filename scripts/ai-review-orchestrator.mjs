@@ -60,7 +60,7 @@ async function processPr(pr) {
   const codexCompleted = issueComments.some((c) => isCodex(c.user?.login) && new Date(c.created_at) >= headDate)
     || reviewComments.some((c) => isCodex(c.user?.login) && (c.commit_id === headSha || new Date(c.created_at) >= headDate))
     || reviews.some((r) => isCodex(r.user?.login) && new Date(r.submitted_at || 0) >= headDate)
-    || reactions.some((r) => isCodex(r.user?.login) && ['+1', 'hooray'].includes(r.content));
+    || reactions.some((r) => isCodex(r.user?.login) && ['+1', 'hooray'].includes(r.content) && new Date(r.created_at) >= headDate);
   const geminiCompleted = issueComments.some((c) => isGemini(c.user?.login) && new Date(c.created_at) >= headDate)
     || reviewComments.some((c) => isGemini(c.user?.login) && (c.commit_id === headSha || new Date(c.created_at) >= headDate))
     || reviews.some((r) => isGemini(r.user?.login) && new Date(r.submitted_at || 0) >= headDate);
