@@ -42,6 +42,12 @@ function collectSensitiveWarnings(files, comments) {
 
 async function gh(path, init = {}) { const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } }); if (!res.ok) throw new Error(`${res.status} ${path}: ${await res.text()}`); return res.status === 204 ? null : res.json(); }
 async function listAll(path) { let page = 1; const out = []; while (true) { const batch = await gh(`${path}${path.includes('?') ? '&' : '?'}per_page=100&page=${page}`); if (!Array.isArray(batch) || batch.length === 0) break; out.push(...batch); page += 1; } return out; }
+async function ensureIssueReaction(issueNumber, content) {
+  const reactions = await listAll(`/repos/${owner}/${repo}/issues/${issueNumber}/reactions`);
+  const exists = reactions.some((r) => r.user?.login === 'github-actions[bot]' && r.content === content);
+  if (exists || DRY_RUN) return;
+  await gh(`/repos/${owner}/${repo}/issues/${issueNumber}/reactions`, { method: 'POST', body: JSON.stringify({ content }) });
+}
 
 async function ensureLabel(name, color, description) {
   try { await gh(`/repos/${owner}/${repo}/labels/${encodeURIComponent(name)}`); }
@@ -127,7 +133,7 @@ async function processPr(pr) {
       if (sensitiveWarnings.workflow.length) warningLines.push(`- Workflow-sensitive areas changed: ${sensitiveWarnings.workflow.join(', ')}`);
       if (sensitiveWarnings.dependency.length) warningLines.push(`- Dependency-sensitive areas changed: ${sensitiveWarnings.dependency.join(', ')}`);
       const warningSection = warningLines.length ? `\nWarnings:\n${warningLines.join('\n')}\n` : '';
-      const body = `@${READY_NOTIFY_LOGIN} AI review complete. This PR appears ready to merge manually.\n${warningSection}\nCodex: complete\nGemini: complete\nClaude: ${triggerComments.length ? 'completed' : 'not needed'}\nChecks: passing\nActionable AI feedback: none remaining\n\nNext step: manually review the warnings, then click Merge if satisfied.\n\n${readyMarker}`;
+      const body = `@${READY_NOTIFY_LOGIN} ✅ AI review complete. This PR appears ready to merge manually.\n\nPR: #${pr.number}\nHead SHA: ${headSha}\nCodex: complete\nGemini: complete\nClaude: ${triggerComments.length ? 'completed' : 'not needed'}\nChecks: passing\nActionable AI feedback: none remaining\n${warningSection}\nNext step: manually review and click Merge.\n\n${readyMarker}`;
       await gh(`/repos/${owner}/${repo}/issues/${pr.number}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
     }
     if (!DRY_RUN) {
@@ -137,6 +143,7 @@ async function processPr(pr) {
       if (sensitiveWarnings.db.length) labels.push('ai/db-sensitive');
       if (sensitiveWarnings.dependency.length) labels.push('ai/dependency-sensitive');
       await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels`, { method: 'POST', body: JSON.stringify({ labels }) });
+      await ensureIssueReaction(pr.number, '+1');
       try { await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels/ai%2Fblocked`, { method: 'DELETE' }); } catch {}
     }
     return;
@@ -151,20 +158,7 @@ async function processPr(pr) {
     }
   }
 
-  const staleSentinel = '<!-- ai-merge-readiness:stale -->';
-  const stalePrefix = `~~STALE: new commit pushed; this readiness notification no longer applies.~~\n\n${staleSentinel}\n\n`;
-  const readyMarkerRegex = new RegExp(`<!--\\s*ai-merge-readiness:${pr.number}:([0-9a-f]{7,40}):ready\\s*-->`);
-  for (const c of issueComments) {
-    const cBody = c.body || '';
-    if (cBody.includes(staleSentinel)) continue;
-    const m = cBody.match(readyMarkerRegex);
-    if (!m || m[1] === headSha) continue;
-    if (DRY_RUN) {
-      console.log(`readiness DRY_RUN: would mark comment ${c.id} (ready marker SHA ${m[1]}) stale on PR #${pr.number}`);
-      continue;
-    }
-    await gh(`/repos/${owner}/${repo}/issues/comments/${c.id}`, { method: 'PATCH', body: JSON.stringify({ body: stalePrefix + cBody }) });
-  }
+
 
   if (!DRY_RUN) {
     await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels`, { method: 'POST', body: JSON.stringify({ labels: ['ai/blocked'] }) });
