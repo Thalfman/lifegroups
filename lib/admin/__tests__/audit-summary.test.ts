@@ -99,6 +99,21 @@ describe("summarizeAuditEvent — shepherd care", () => {
     expect(summary).toContain("a shepherd");
   });
 
+  it("renders 'meeting' as a friendly interaction type", () => {
+    // 'meeting' is part of the canonical shepherd_care_interaction_type
+    // enum (call | text | in_person | meeting | other). It must not fall
+    // through to the generic 'touchpoint' label.
+    const summary = summarizeAuditEvent(
+      event("admin.log_shepherd_care_interaction", {
+        after: { interaction_type: "meeting", interaction_at: "2026-05-20" },
+        shepherd_profile_id: UUID_SHEPHERD,
+      }),
+      mapsWithShepherd(),
+    );
+    expect(summary).toContain("meeting");
+    expect(summary).not.toContain("touchpoint");
+  });
+
   it("does NOT echo note bodies even if they accidentally appear in metadata", () => {
     // Defensive: the RPC only writes has_notes, but if a future change ever
     // started persisting raw text we want the summary helper to ignore it.
@@ -145,6 +160,30 @@ describe("summarizeAuditEvent — shepherd care", () => {
     expect(updated).toContain("needs_attention");
   });
 
+  it("does not treat event.entity_id as a profile id on upsert (entity is the care_profile_id)", () => {
+    // The RPC writes entity_id = care_profile_id, NOT the shepherd
+    // profile id. We deliberately seed UUID_SHEPHERD into profilesById
+    // and pass it as the *entity* — if the helper ever fell back to
+    // event.entity_id for the profile lookup it would render
+    // "Avery Bennett" instead of the safe "a shepherd" fallback.
+    const summary = summarizeAuditEvent(
+      event(
+        "admin.upsert_shepherd_care_profile",
+        {
+          // Intentionally omit md.shepherd_profile_id so only the
+          // (incorrect) entity_id fallback could match.
+          after: { current_status: "healthy", has_summary: false },
+          before: {},
+          was_just_created: false,
+        },
+        { entity_id: UUID_SHEPHERD },
+      ),
+      mapsWithShepherd(),
+    );
+    expect(summary).not.toContain("Avery Bennett");
+    expect(summary).toContain("a shepherd");
+  });
+
   it("never echoes the admin_summary text from the upsert metadata", () => {
     const summary = summarizeAuditEvent(
       event("admin.upsert_shepherd_care_profile", {
@@ -181,21 +220,47 @@ describe("summarizeAuditEvent — super admin invite", () => {
     expect(summary).toContain("ministry-admin");
   });
 
-  it("includes the group name when an assignment was attached", () => {
+  // The invite RPC emits `groupAssignmentState` as one of
+  //   "none" | "created" | "reactivated" | "already_active"
+  // (see admin_invite_user in 20260518150000_phase5a7_super_admin_invite.sql
+  // and InviteUserSuccess in invite-user-actions.ts). Cover all three
+  // group-attached states so future enum drift is caught.
+  it.each(["created", "reactivated", "already_active"] as const)(
+    "includes the group name when groupAssignmentState=%s",
+    (state) => {
+      const maps = emptyMaps();
+      maps.groupsById.set(UUID_GROUP, { id: UUID_GROUP, name: "Tuesday Night" });
+      const summary = summarizeAuditEvent(
+        event("super_admin.invite_user", {
+          email: "leader@example.org",
+          role: "leader",
+          groupAssignmentState: state,
+          groupId: UUID_GROUP,
+          after: { role: "leader", status: "active" },
+        }),
+        maps,
+      );
+      expect(summary).toContain("leader@example.org");
+      expect(summary).toContain("Tuesday Night");
+    },
+  );
+
+  it("omits the group fragment when groupAssignmentState=none", () => {
     const maps = emptyMaps();
     maps.groupsById.set(UUID_GROUP, { id: UUID_GROUP, name: "Tuesday Night" });
     const summary = summarizeAuditEvent(
       event("super_admin.invite_user", {
-        email: "leader@example.org",
-        role: "leader",
-        groupAssignmentState: "assigned",
-        groupId: UUID_GROUP,
-        after: { role: "leader", status: "active" },
+        email: "admin@example.org",
+        role: "ministry_admin",
+        groupAssignmentState: "none",
+        groupId: null,
+        after: { role: "ministry_admin", status: "active" },
       }),
       maps,
     );
-    expect(summary).toContain("leader@example.org");
-    expect(summary).toContain("Tuesday Night");
+    expect(summary).toContain("admin@example.org");
+    expect(summary).not.toContain("Tuesday Night");
+    expect(summary).not.toContain("assigned to");
   });
 });
 

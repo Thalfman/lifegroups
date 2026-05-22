@@ -81,6 +81,10 @@ function asNumber(v: unknown): number | null {
   return typeof v === "number" ? v : null;
 }
 
+// Mirrors the canonical `shepherd_care_interaction_type` enum
+// (call | text | in_person | meeting | other). The string returned
+// here is the lowercase noun used inline in the audit summary —
+// the user-facing capitalized label lives in `lib/dashboard/labels.ts`.
 function interactionTypeLabel(value: string | null): string {
   switch (value) {
     case "call":
@@ -89,10 +93,8 @@ function interactionTypeLabel(value: string | null): string {
       return "text";
     case "in_person":
       return "in-person visit";
-    case "email":
-      return "email";
-    case "note":
-      return "note";
+    case "meeting":
+      return "meeting";
     case "other":
       return "touchpoint";
     default:
@@ -128,7 +130,7 @@ export function summarizeAuditEvent(
       const profile = profileId ? profilesById.get(profileId) : undefined;
       const group = groupId ? groupsById.get(groupId) : undefined;
       return `Assigned ${profile?.full_name ?? "leader"} as ${role.replace(
-        "_",
+        /_/g,
         "-",
       )} to ${group?.name ?? "a group"}`;
     }
@@ -264,15 +266,20 @@ export function summarizeAuditEvent(
       // never trust unbounded free-text from the payload.
       const email = asString(md.email);
       const role = asString(after.role) ?? asString(md.role);
+      // Canonical `groupAssignmentState` enum from
+      // `admin_invite_user` and `InviteUserSuccess`:
+      //   "none" | "created" | "reactivated" | "already_active"
+      // Every non-"none" state implies a group is attached.
       const groupAssignmentState = asString(md.groupAssignmentState);
       const groupId = asString(md.groupId);
       const group = groupId ? groupsById.get(groupId) : undefined;
       const target = email ?? "user";
-      const rolePart = role ? ` as ${role.replace("_", "-")}` : "";
-      const groupPart =
-        groupAssignmentState === "assigned" && group
-          ? `, assigned to ${group.name}`
-          : "";
+      const rolePart = role ? ` as ${role.replace(/_/g, "-")}` : "";
+      const hasGroup =
+        groupAssignmentState !== null &&
+        groupAssignmentState !== "none" &&
+        group !== undefined;
+      const groupPart = hasGroup ? `, assigned to ${group!.name}` : "";
       return `Invited ${target}${rolePart}${groupPart}`;
     }
     case "admin.create_over_shepherd": {
@@ -316,8 +323,9 @@ export function summarizeAuditEvent(
       // Care profile audit metadata uses `has_summary` (boolean) — the
       // free-text admin_summary is never written into the audit row.
       // Render the shepherd's name (looked up locally) and the change type.
-      const shepherdId =
-        asString(md.shepherd_profile_id) ?? event.entity_id ?? null;
+      // Note: event.entity_id is the care_profile_id, NOT the shepherd
+      // profile id, so it can't fall back into profilesById.
+      const shepherdId = asString(md.shepherd_profile_id) ?? null;
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       const name = shepherd?.full_name ?? "a shepherd";
       const wasJustCreated = md.was_just_created === true;
