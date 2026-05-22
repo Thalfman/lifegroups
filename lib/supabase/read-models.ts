@@ -671,7 +671,7 @@ export type ShepherdCareDirectoryEntry = {
   needs_attention: boolean;
 };
 
-function differenceInDaysIso(today: string, then: string): number {
+export function differenceInDaysIso(today: string, then: string): number {
   // Both inputs are YYYY-MM-DD; Date.parse with the ISO string at midnight UTC
   // is stable across server timezones. Truncate the result to whole days.
   const a = Date.parse(`${today}T00:00:00Z`);
@@ -680,7 +680,7 @@ function differenceInDaysIso(today: string, then: string): number {
   return Math.floor((a - b) / 86_400_000);
 }
 
-function computeNeedsAttention(
+export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
 ): boolean {
@@ -820,6 +820,104 @@ export async function fetchShepherdCareInteractionsForAdmin(
   }
   return {
     data: (data ?? []) as ShepherdCareInteractionsRow[],
+    error: null,
+  };
+}
+
+/**
+ * Admin-only column allowlist for cross-shepherd recent interactions used by
+ * the Julian dashboard. EXCLUDES `notes` — the dashboard surfaces shepherd
+ * name, date, and interaction type only, then links to the per-shepherd
+ * detail page for note bodies.
+ */
+export const SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS =
+  "id, care_profile_id, interaction_at, interaction_type, created_at, " +
+  "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey ( " +
+    "shepherd_profile_id, " +
+    "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey ( id, full_name ) " +
+  ")";
+
+export type ShepherdCareRecentInteractionRow = {
+  id: string;
+  care_profile_id: string;
+  interaction_at: string;
+  interaction_type: ShepherdCareInteractionsRow["interaction_type"];
+  created_at: string;
+  shepherd_profile_id: string;
+  shepherd_full_name: string;
+};
+
+function projectRecentInteractionRows(
+  rows: unknown[],
+): ShepherdCareRecentInteractionRow[] {
+  const out: ShepherdCareRecentInteractionRow[] = [];
+  for (const r of rows as Array<{
+    id: string;
+    care_profile_id: string;
+    interaction_at: string;
+    interaction_type: ShepherdCareInteractionsRow["interaction_type"];
+    created_at: string;
+    care_profile:
+      | {
+          shepherd_profile_id: string;
+          shepherd:
+            | { id: string; full_name: string }
+            | { id: string; full_name: string }[]
+            | null;
+        }
+      | {
+          shepherd_profile_id: string;
+          shepherd:
+            | { id: string; full_name: string }
+            | { id: string; full_name: string }[]
+            | null;
+        }[]
+      | null;
+  }>) {
+    const cp = Array.isArray(r.care_profile)
+      ? r.care_profile[0] ?? null
+      : r.care_profile;
+    if (cp === null) continue;
+    const shepherd = Array.isArray(cp.shepherd) ? cp.shepherd[0] ?? null : cp.shepherd;
+    if (shepherd === null) continue;
+    out.push({
+      id: r.id,
+      care_profile_id: r.care_profile_id,
+      interaction_at: r.interaction_at,
+      interaction_type: r.interaction_type,
+      created_at: r.created_at,
+      shepherd_profile_id: cp.shepherd_profile_id,
+      shepherd_full_name: shepherd.full_name,
+    });
+  }
+  return out;
+}
+
+/**
+ * Admin-only cross-shepherd interactions feed used by the Julian dashboard.
+ * Returns the most recent N interactions across every care profile, ordered
+ * by `interaction_at desc` then `created_at desc`. Note bodies intentionally
+ * excluded from the projection — surface them only on the detail page.
+ */
+export async function fetchRecentShepherdCareInteractionsForAdmin(
+  client: ReadClient,
+  options: { limit?: number } = {},
+): Promise<ReadResult<ShepherdCareRecentInteractionRow[]>> {
+  const limit = options.limit ?? 10;
+  const { data, error } = await client
+    .from("shepherd_care_interactions")
+    .select(SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS)
+    .order("interaction_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchRecentShepherdCareInteractionsForAdmin", error),
+    };
+  }
+  return {
+    data: projectRecentInteractionRows((data ?? []) as unknown[]),
     error: null,
   };
 }

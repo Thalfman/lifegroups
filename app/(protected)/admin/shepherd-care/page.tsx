@@ -6,17 +6,27 @@ import {
   type CoverageFilter,
   type DirectoryFilter,
 } from "@/components/admin/shepherd-care/filter-chips";
-import { OverShepherdsSummaryCard } from "@/components/admin/shepherd-care/over-shepherds-summary-card";
+import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
+import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
+import { CoverageByOverShepherdCard } from "@/components/admin/shepherd-care/coverage-by-over-shepherd-card";
+import { UpcomingTouchpointsCard } from "@/components/admin/shepherd-care/upcoming-touchpoints-card";
+import { RecentInteractionsCard } from "@/components/admin/shepherd-care/recent-interactions-card";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchOverShepherdsForAdmin,
+  fetchRecentShepherdCareInteractionsForAdmin,
   fetchShepherdCareDirectoryForAdmin,
   type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
+  type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
+import {
+  buildShepherdCareDashboardModel,
+  countAllAttentionItems,
+} from "@/lib/admin/shepherd-care-dashboard";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody } from "@/lib/pastoral";
 
@@ -43,6 +53,7 @@ type LoadedData = {
   entries: ShepherdCareDirectoryEntry[];
   overShepherds: OverShepherdListRow[];
   assignments: ActiveShepherdCoverageAssignmentSummary[];
+  recentInteractions: ShepherdCareRecentInteractionRow[];
   error: string | null;
 };
 
@@ -53,21 +64,24 @@ async function loadData(): Promise<LoadedData> {
       entries: [],
       overShepherds: [],
       assignments: [],
+      recentInteractions: [],
       error: "Database is not configured in this environment.",
     };
   }
-  // The three reads are independent; run them in parallel to keep TTFB
-  // close to the cost of the slowest query.
-  const [directory, overShepherdsRes, assignmentsRes] = await Promise.all([
+  // All four reads are independent; run them in parallel so the page TTFB is
+  // bounded by the slowest query rather than their sum.
+  const [directory, overShepherdsRes, assignmentsRes, recentRes] = await Promise.all([
     fetchShepherdCareDirectoryForAdmin(client),
     fetchOverShepherdsForAdmin(client, { includeArchived: true }),
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+    fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
   ]);
   if (directory.error) {
     return {
       entries: [],
       overShepherds: [],
       assignments: [],
+      recentInteractions: [],
       error: directory.error.message,
     };
   }
@@ -75,9 +89,22 @@ async function loadData(): Promise<LoadedData> {
     entries: directory.data,
     overShepherds: overShepherdsRes.data ?? [],
     assignments: assignmentsRes.data ?? [],
+    recentInteractions: recentRes.data ?? [],
     error:
-      overShepherdsRes.error?.message ?? assignmentsRes.error?.message ?? null,
+      overShepherdsRes.error?.message ??
+      assignmentsRes.error?.message ??
+      recentRes.error?.message ??
+      null,
   };
+}
+
+function todayIso(): string {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
 }
 
 export default async function AdminShepherdCarePage({
@@ -91,7 +118,8 @@ export default async function AdminShepherdCarePage({
   const filter = resolveFilter(sp.filter);
   const coverage = resolveCoverage(sp.coverage);
 
-  const { entries, overShepherds, assignments, error } = await loadData();
+  const { entries, overShepherds, assignments, recentInteractions, error } =
+    await loadData();
 
   const coverageByShepherdId = new Map<
     string,
@@ -100,19 +128,18 @@ export default async function AdminShepherdCarePage({
   for (const a of assignments) {
     coverageByShepherdId.set(a.shepherd_profile_id, a);
   }
-  const shepherdCountByOverShepherdId = new Map<string, number>();
-  for (const a of assignments) {
-    shepherdCountByOverShepherdId.set(
-      a.over_shepherd_id,
-      (shepherdCountByOverShepherdId.get(a.over_shepherd_id) ?? 0) + 1,
-    );
-  }
-  const unassignedCount = entries.reduce(
-    (sum, e) => (coverageByShepherdId.has(e.profile.id) ? sum : sum + 1),
-    0,
-  );
 
-  const needsAttentionCount = entries.filter((e) => e.needs_attention).length;
+  const today = todayIso();
+  const dashboard = buildShepherdCareDashboardModel({
+    entries,
+    assignments,
+    overShepherds,
+    recentInteractions,
+    todayIso: today,
+  });
+  const totalAttention = countAllAttentionItems(entries, assignments, today);
+
+  const needsAttentionCount = dashboard.summary.needsAttention;
   const filteredByAttention =
     filter === "needs_attention"
       ? entries.filter((e) => e.needs_attention)
@@ -134,11 +161,41 @@ export default async function AdminShepherdCarePage({
       />
       <PageBody>
         <div style={{ display: "grid", gap: 18 }}>
-          <OverShepherdsSummaryCard
-            overShepherds={overShepherds}
-            shepherdCountById={shepherdCountByOverShepherdId}
-            unassignedCount={unassignedCount}
+          <ShepherdCareDashboardSummaryCards
+            summary={dashboard.summary}
+            filter={filter}
+            coverage={coverage}
           />
+          <CareAttentionQueue
+            items={dashboard.attentionQueue}
+            totalCount={totalAttention}
+          />
+          <div
+            className="lg-m-grid-stack"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: 18,
+            }}
+          >
+            <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />
+            <UpcomingTouchpointsCard items={dashboard.upcomingTouchpoints} />
+          </div>
+          <RecentInteractionsCard items={dashboard.recentInteractions} />
+          {error ? (
+            <p
+              style={{
+                fontFamily: fontBody,
+                color: "#923220",
+                background: P.terraSoft,
+                padding: "10px 14px",
+                borderRadius: 8,
+                margin: 0,
+              }}
+            >
+              {error}
+            </p>
+          ) : null}
           <div
             style={{
               display: "flex",
@@ -158,23 +215,9 @@ export default async function AdminShepherdCarePage({
               filter={filter}
               coverage={coverage}
               overShepherds={overShepherds}
-              unassignedCount={unassignedCount}
+              unassignedCount={dashboard.summary.unassignedCoverage}
             />
           </div>
-          {error ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
-              {error}
-            </p>
-          ) : null}
           <ShepherdCareDirectoryTable
             entries={visible}
             coverageByShepherdId={coverageByShepherdId}
