@@ -36,6 +36,14 @@ const READY_LOGIN = (READY_NOTIFY_LOGIN || 'Thalfman').trim() || 'Thalfman';
 const QUIET_WINDOW_MINUTES = parseInteger(CODEX_QUIET_WINDOW_MINUTES, 5, 0);
 const MAX_FIX_CYCLES = parseInteger(CODEX_MAX_FIX_CYCLES, 3, 0);
 const MAX_FIX_CYCLES_PER_SHA = parseInteger(CODEX_MAX_FIX_CYCLES_PER_SHA, 1, 0);
+const WORKFLOW_ACTOR_LOGIN = 'github-actions[bot]';
+const DEFAULT_CODEX_ACTOR_LOGINS = new Set([
+  'chatgpt-codex-connector',
+  'chatgpt-codex-connector[bot]',
+  'codex',
+  'codex[bot]',
+]);
+const PASSING_CHECK_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
 
 const LABELS = {
   ready: {
@@ -144,7 +152,11 @@ function isCodexLogin(login = '') {
   if (normalized.includes('supabase')) return false;
   if (normalized.includes('github-actions')) return false;
 
-  return normalized.includes('codex');
+  return DEFAULT_CODEX_ACTOR_LOGINS.has(normalized);
+}
+
+function isWorkflowMarkerComment(comment) {
+  return comment.user?.login === WORKFLOW_ACTOR_LOGIN;
 }
 
 function marker(kind, prNumber, headSha) {
@@ -152,11 +164,17 @@ function marker(kind, prNumber, headSha) {
 }
 
 function hasMarker(comments, exactMarker) {
-  return comments.some((comment) => (comment.body || '').includes(exactMarker));
+  return comments.some((comment) => (
+    isWorkflowMarkerComment(comment)
+    && (comment.body || '').includes(exactMarker)
+  ));
 }
 
 function findMarkerComment(comments, exactMarker) {
-  return comments.find((comment) => (comment.body || '').includes(exactMarker));
+  return comments.find((comment) => (
+    isWorkflowMarkerComment(comment)
+    && (comment.body || '').includes(exactMarker)
+  ));
 }
 
 function dateAfter(value, date) {
@@ -240,8 +258,14 @@ function fixRequestCounts(issueComments, prNumber, headSha) {
   const allPrefix = `codex-review-loop:fix-request:${prNumber}:`;
   const currentMarker = marker('fix-request', prNumber, headSha);
   return {
-    total: issueComments.filter((comment) => (comment.body || '').includes(allPrefix)).length,
-    currentHead: issueComments.filter((comment) => (comment.body || '').includes(currentMarker)).length,
+    total: issueComments.filter((comment) => (
+      isWorkflowMarkerComment(comment)
+      && (comment.body || '').includes(allPrefix)
+    )).length,
+    currentHead: issueComments.filter((comment) => (
+      isWorkflowMarkerComment(comment)
+      && (comment.body || '').includes(currentMarker)
+    )).length,
   };
 }
 
@@ -367,7 +391,7 @@ async function evaluateChecks(headSha) {
       failures.push(`${checkRun.name}: ${checkRun.status}`);
       continue;
     }
-    if (checkRun.conclusion !== 'success') {
+    if (!PASSING_CHECK_CONCLUSIONS.has(checkRun.conclusion)) {
       failures.push(`${checkRun.name}: ${checkRun.conclusion || 'missing conclusion'}`);
     }
   }

@@ -4,6 +4,8 @@ The old custom multi-agent PR orchestration has been removed. The repository now
 
 Claude may still be used manually as a builder, but this workflow does not auto-trigger Claude. Gemini is not part of the automation.
 
+The workflow checks out the repository default branch before running `scripts/codex-review-loop.mjs`. That keeps the write-token automation from executing a modified review-loop script from the PR branch being evaluated. During the bootstrap PR that first adds the script, the workflow skips if the script is not present on the default branch yet.
+
 ## Workflow
 
 1. A PR opens or receives a new commit.
@@ -63,6 +65,8 @@ When a PR is not ready, the workflow maintains one status comment per head SHA u
 
 Blocked or waiting comments do not mention `@Thalfman`. The workflow adds `ai/blocked` and removes `ai/ready-to-merge` while a PR is waiting.
 
+Loop markers only count when they were posted by `github-actions[bot]`. User-authored comments containing marker text are ignored for deduplication and max-cycle limits.
+
 ## Sensitive Changes
 
 Sensitive paths and terms are warnings, not hard blockers. They do not stop Codex review requests, Codex fix requests, or ready notification solely because they changed.
@@ -89,7 +93,9 @@ Optional repository variables:
 - `CODEX_ACTOR_LOGIN` sets the exact Codex actor login.
 - `READY_NOTIFY_LOGIN` controls the ready mention. Default: `Thalfman`.
 
-When `CODEX_ACTOR_LOGIN` is unset, the workflow treats logins containing `codex` case-insensitively as Codex, including `chatgpt-codex-connector`. It explicitly excludes Claude, Gemini, Vercel, Supabase, and `github-actions` actors.
+When `CODEX_ACTOR_LOGIN` is unset, the workflow trusts the installed Codex connector identities `chatgpt-codex-connector[bot]`, `chatgpt-codex-connector`, `codex[bot]`, and `codex`. It explicitly excludes Claude, Gemini, Vercel, Supabase, and `github-actions` actors.
+
+Completed check runs with `success`, `neutral`, or `skipped` conclusions count as passing, matching GitHub required-check semantics. Pending or failed checks still block ready notification.
 
 ## Markers
 
