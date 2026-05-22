@@ -50,32 +50,31 @@ jobs:
           node-version: '20'
       - name: Debug API access (posts results as PR #68 comment)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set +e
-          LIST_STATUS=$(curl -sS -o /tmp/pulls.json -w "%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=1")
-          PROBE_STATUS=$(curl -sS -o /tmp/probe.json -w "%{http_code}" -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/68/comments" -d '{}')
-          PROBE_BODY=$(head -c 500 /tmp/probe.json | tr '\n' ' ')
-          PERM_HEADERS=$(curl -sSI -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY" | grep -iE '^(x-accepted-github-permissions|x-oauth-scopes|x-ratelimit-remaining)' | tr -d '\r' | sed 's/^/    /')
-          BODY=$(cat <<EOF
-          <!-- ai-debug:probe -->
-          **Diagnostic probe** (event=\`$GITHUB_EVENT_NAME\`, actor=\`$GITHUB_ACTOR\`, run=$GITHUB_RUN_ID)
-
-          - \`GET /pulls?state=open\` → HTTP **$LIST_STATUS**
-          - \`POST /issues/68/comments\` with body \`{}\` → HTTP **$PROBE_STATUS** (expect 422 if write granted, 403 if not)
-          - probe response body (first 500 bytes): \`$PROBE_BODY\`
-          - relevant response headers:
-          \`\`\`
-          $PERM_HEADERS
-          \`\`\`
-          EOF
-          )
-          JSON_BODY=$(python3 -c "import json,sys; print(json.dumps({'body': sys.stdin.read()}))" <<<"$BODY")
-          POST_STATUS=$(curl -sS -o /tmp/posted.json -w "%{http_code}" -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/68/comments" -d "$JSON_BODY")
-          echo "diagnostic comment post status: $POST_STATUS"
-          echo "::group::diagnostic body"
-          echo "$BODY"
-          echo "::endgroup::"
+          LIST_STATUS=$(curl -sS -o /tmp/pulls.json -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/pulls?state=open&per_page=1")
+          PROBE_STATUS=$(curl -sS -o /tmp/probe.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/issues/68/comments" \
+            -d '{}')
+          MSG="diag list=$LIST_STATUS probe=$PROBE_STATUS event=${GITHUB_EVENT_NAME} actor=${GITHUB_ACTOR} run=${GITHUB_RUN_ID}"
+          echo "$MSG"
+          POST_STATUS=$(curl -sS -o /tmp/posted.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/issues/68/comments" \
+            -d "{\"body\":\"<!-- ai-debug:probe --> $MSG\"}")
+          echo "diagnostic post status: $POST_STATUS"
+          echo "diagnostic post body (first 400b):"
+          head -c 400 /tmp/posted.json; echo
       - name: Run orchestrator
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
