@@ -8,7 +8,10 @@ const AUTOMATION_ENABLED = (process.env.AI_REVIEW_AUTOMATION_ENABLED || 'true') 
 const REQUEST_REVIEWS_ENABLED = (process.env.AI_REVIEW_REQUEST_REVIEWS || 'true') !== 'false';
 const DRY_RUN = IS_AUTOMATIC_EVENT ? !AUTOMATION_ENABLED : (process.env.ORCHESTRATOR_DRY_RUN || 'true') !== 'false';
 const rawTargetPr = (process.env.ORCHESTRATOR_PR_NUMBER || '').trim();
-const TARGET_PR = /^\d+$/.test(rawTargetPr) ? Number(rawTargetPr) : null;
+if (rawTargetPr && !/^[1-9]\d*$/.test(rawTargetPr)) {
+  throw new Error(`Invalid ORCHESTRATOR_PR_NUMBER: ${JSON.stringify(rawTargetPr)}`);
+}
+const TARGET_PR = rawTargetPr ? Number(rawTargetPr) : null;
 const CODEX_ACTOR_EXACT = process.env.CODEX_ACTOR_LOGIN || '';
 const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
 const CLAUDE_TRIGGER = process.env.CLAUDE_TRIGGER || '@claude';
@@ -17,6 +20,7 @@ const ACTIONS_BOT = 'github-actions[bot]';
 
 const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|vulnerability|regression|broken)\b/i;
 const informationalRegex = /\b(info|nit|style|optional|fyi|question)\b/i;
+const commentTime = (c) => new Date(c.updated_at || c.created_at);
 const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
 const sensitivePaths = ['.github/workflows/', '.env', 'supabase/migrations/', 'supabase/functions/', 'middleware.', 'auth/', 'rls/', 'package-lock.json', 'pnpm-lock.yaml'];
 
@@ -93,7 +97,7 @@ async function processPr(pr) {
     if (!isAi) return false;
     const lower = login.toLowerCase();
     if (lower.includes('claude') || lower.includes('vercel') || lower.includes('supabase')) return false;
-    if (c.commit_id !== headSha && new Date(c.created_at) < headDate) return false;
+    if (c.commit_id !== headSha && commentTime(c) < headDate) return false;
     return !informationalRegex.test(c.body || '');
   });
 
@@ -105,7 +109,7 @@ async function processPr(pr) {
 
   const aiComments = [...reviewComments, ...issueComments].filter((c) => {
     const login = c.user?.login || '';
-    return (isCodex(login) || isGemini(login)) && !login.toLowerCase().includes('claude') && new Date(c.created_at) >= headDate;
+    return (isCodex(login) || isGemini(login)) && !login.toLowerCase().includes('claude') && commentTime(c) >= headDate;
   });
   const actionable = aiComments.filter((c) => {
     if (reviewComments.find((rc) => rc.id === c.id)) return !informationalRegex.test(c.body || '');
@@ -119,7 +123,7 @@ async function processPr(pr) {
       if (!(isCodex(login) || isGemini(login))) return false;
       const lower = login.toLowerCase();
       if (lower.includes('claude') || lower.includes('vercel') || lower.includes('supabase')) return false;
-      return c.commit_id !== headSha || informationalRegex.test(c.body || '') || new Date(c.created_at) < headDate;
+      return c.commit_id !== headSha || informationalRegex.test(c.body || '') || commentTime(c) < headDate;
     });
     for (const c of handledReviewComments) {
       await addReviewCommentReactionIfMissing(c.id, '+1');
@@ -130,7 +134,7 @@ async function processPr(pr) {
     return;
   }
 
-  if (!AUTOMATION_ENABLED || pr.draft) return;
+  if (!AUTOMATION_ENABLED) return;
 
   const triggerMarker = `<!-- ai-review-orchestrator:claude-trigger:${pr.number}:${headSha} -->`;
   const existingTriggers = issueComments.filter((c) => (c.body || '').includes(`ai-review-orchestrator:claude-trigger:${pr.number}:${headSha}`));
