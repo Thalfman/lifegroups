@@ -17,6 +17,7 @@ import type {
   GroupMembershipsRow,
   GroupMetricSettingsRow,
   GroupsRow,
+  LaunchPlanningScenariosRow,
 } from "@/types/database";
 import { isRecord } from "@/lib/admin/validation";
 import {
@@ -407,4 +408,103 @@ export function redactNotesForAudit(
     has_notes:
       typeof assumptions.notes === "string" && assumptions.notes.trim().length > 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// LP.2 — Scenario helpers (pure)
+// ---------------------------------------------------------------------------
+//
+// Scenarios are stored in their own table (see migration
+// 20260518200000_phase_lp2_launch_planning_scenarios.sql). The fetched
+// row's `assumptions` column is JSONB; the decoder reuses the same
+// fallback logic as the LP.1 baseline so missing fields cascade to the
+// configured metric defaults.
+
+export type LaunchPlanningScenarioStatus = "active" | "archived";
+
+// Pared-down view of the DB row that the UI cares about. Hides the
+// JSONB shape behind a typed `assumptions` object so callers can render
+// without reaching into raw column data.
+export type LaunchPlanningScenario = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_current: boolean;
+  archived_at: string | null;
+  status: LaunchPlanningScenarioStatus;
+  assumptions: LaunchPlanningAssumptions;
+  created_at: string;
+  updated_at: string;
+};
+
+// Decode a single scenarios row into a typed scenario. Reuses the LP.1
+// decoder so the assumption fallback chain (stored JSON → metric defaults →
+// built-in defaults) stays in one place. Wrap the raw assumptions in a
+// fake app_settings row shape so the decoder can read it without a second
+// implementation; assumptions are always an object thanks to the table's
+// CHECK constraint.
+export function decodeLaunchPlanningScenario(
+  row: LaunchPlanningScenariosRow,
+  metricDefaults?: Parameters<typeof decodeLaunchPlanningAssumptions>[1],
+): LaunchPlanningScenario {
+  const assumptions = decodeLaunchPlanningAssumptions(
+    {
+      id: row.id,
+      setting_key: "launch_planning_scenarios.assumptions",
+      setting_value: row.assumptions,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    } as AppSettingsRow,
+    metricDefaults,
+  );
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    is_current: row.is_current,
+    archived_at: row.archived_at,
+    status: row.archived_at == null ? "active" : "archived",
+    assumptions,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+// Pure filter for the active-list rendering. Mirrors the partial unique
+// index's "where archived_at is null" predicate so the UI can never show
+// an archived scenario in the active list.
+export function filterActiveScenarios<T extends { archived_at: string | null }>(
+  scenarios: readonly T[],
+): T[] {
+  return scenarios.filter((s) => s.archived_at == null);
+}
+
+export function findCurrentScenario(
+  scenarios: readonly LaunchPlanningScenario[],
+): LaunchPlanningScenario | null {
+  return (
+    scenarios.find((s) => s.is_current && s.status === "active") ?? null
+  );
+}
+
+// Computed view of a scenario for the comparison table. Bundles the
+// scenario metadata with the launch-plan outputs so the rendering layer
+// doesn't have to re-run `computeLaunchPlan` per column.
+export type LaunchPlanningScenarioComparisonEntry = {
+  scenario: LaunchPlanningScenario;
+  outputs: LaunchPlanningOutputs;
+};
+
+// Build the comparison model from a list of scenarios + the shared
+// capacity inputs. The inputs come from the dashboard read paths
+// (active groups, overrides, memberships) so every scenario gets compared
+// against the same effective capacity number.
+export function buildScenarioComparison(
+  scenarios: readonly LaunchPlanningScenario[],
+  inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">,
+): LaunchPlanningScenarioComparisonEntry[] {
+  return scenarios.map((scenario) => ({
+    scenario,
+    outputs: computeLaunchPlan(scenario.assumptions, inputs),
+  }));
 }

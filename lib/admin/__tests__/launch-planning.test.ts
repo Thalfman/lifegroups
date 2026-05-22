@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   buildLaunchPlanningInputs,
+  buildScenarioComparison,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
+  decodeLaunchPlanningScenario,
+  filterActiveScenarios,
+  findCurrentScenario,
   redactNotesForAudit,
   type LaunchPlanningAssumptions,
+  type LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
 import { BUILT_IN_METRIC_DEFAULTS, type MetricDefaults } from "@/lib/admin/metrics";
 import type {
@@ -13,6 +18,7 @@ import type {
   GroupMembershipsRow,
   GroupMetricSettingsRow,
   GroupsRow,
+  LaunchPlanningScenariosRow,
 } from "@/types/database";
 
 const ROW_ID = "00000000-0000-0000-0000-000000000001";
@@ -536,5 +542,186 @@ describe("redactNotesForAudit", () => {
       leaders_per_new_group: 1,
       has_notes: true,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LP.2 — scenario helpers
+// ---------------------------------------------------------------------------
+
+function scenarioRow(
+  overrides: Partial<LaunchPlanningScenariosRow> = {},
+): LaunchPlanningScenariosRow {
+  return {
+    id: overrides.id ?? "00000000-0000-0000-0000-000000000900",
+    name: overrides.name ?? "Expected",
+    description: overrides.description ?? null,
+    assumptions: overrides.assumptions ?? {
+      current_church_attendance: 150,
+      expected_growth: 30,
+      expected_growth_date: null,
+      target_group_participation_pct: 0.6,
+      average_group_size: 10,
+      launch_buffer_pct: 0.15,
+      leaders_per_new_group: 2,
+      notes: null,
+    },
+    is_current: overrides.is_current ?? false,
+    archived_at: overrides.archived_at ?? null,
+    created_by: overrides.created_by ?? null,
+    updated_by: overrides.updated_by ?? null,
+    created_at: overrides.created_at ?? "2026-01-01T00:00:00.000Z",
+    updated_at: overrides.updated_at ?? "2026-01-01T00:00:00.000Z",
+  };
+}
+
+describe("decodeLaunchPlanningScenario", () => {
+  it("decodes the stored row's assumptions via the LP.1 decoder", () => {
+    const row = scenarioRow({
+      name: "Conservative",
+      description: "Tight forecast",
+      assumptions: {
+        current_church_attendance: 100,
+        expected_growth: 10,
+        expected_growth_date: "2026-08-01",
+        target_group_participation_pct: 0.5,
+        average_group_size: 8,
+        launch_buffer_pct: 0.1,
+        leaders_per_new_group: 2,
+        notes: "Soft estimate",
+      },
+    });
+    const decoded = decodeLaunchPlanningScenario(row);
+    expect(decoded.name).toBe("Conservative");
+    expect(decoded.description).toBe("Tight forecast");
+    expect(decoded.status).toBe("active");
+    expect(decoded.assumptions.target_group_participation_pct).toBeCloseTo(0.5, 6);
+    expect(decoded.assumptions.notes).toBe("Soft estimate");
+  });
+
+  it("uses metric defaults as the average_group_size fallback for missing keys", () => {
+    const row = scenarioRow({
+      assumptions: { current_church_attendance: 200 },
+    });
+    const decoded = decodeLaunchPlanningScenario(row, {
+      default_group_capacity: 14,
+    });
+    expect(decoded.assumptions.average_group_size).toBe(14);
+  });
+
+  it("flags archived scenarios as status='archived'", () => {
+    const decoded = decodeLaunchPlanningScenario(
+      scenarioRow({ archived_at: "2026-02-01T00:00:00.000Z" }),
+    );
+    expect(decoded.status).toBe("archived");
+  });
+});
+
+describe("filterActiveScenarios", () => {
+  it("excludes archived scenarios", () => {
+    const rows = [
+      scenarioRow({ id: "00000000-0000-0000-0000-000000000a01", archived_at: null }),
+      scenarioRow({
+        id: "00000000-0000-0000-0000-000000000a02",
+        archived_at: "2026-02-01T00:00:00.000Z",
+      }),
+      scenarioRow({ id: "00000000-0000-0000-0000-000000000a03", archived_at: null }),
+    ];
+    const active = filterActiveScenarios(rows);
+    expect(active.map((r) => r.id)).toEqual([
+      "00000000-0000-0000-0000-000000000a01",
+      "00000000-0000-0000-0000-000000000a03",
+    ]);
+  });
+});
+
+describe("findCurrentScenario", () => {
+  function decode(row: LaunchPlanningScenariosRow): LaunchPlanningScenario {
+    return decodeLaunchPlanningScenario(row);
+  }
+
+  it("returns the current scenario when present", () => {
+    const scenarios = [
+      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000b01", is_current: false })),
+      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000b02", is_current: true })),
+    ];
+    expect(findCurrentScenario(scenarios)?.id).toBe(
+      "00000000-0000-0000-0000-000000000b02",
+    );
+  });
+
+  it("returns null when no scenario is current", () => {
+    const scenarios = [
+      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000c01", is_current: false })),
+    ];
+    expect(findCurrentScenario(scenarios)).toBeNull();
+  });
+
+  it("ignores is_current on archived scenarios (defense-in-depth)", () => {
+    // The DB partial unique index prevents this in production, but the
+    // helper should still be defensive against a stale row.
+    const scenarios = [
+      decode(
+        scenarioRow({
+          id: "00000000-0000-0000-0000-000000000d01",
+          is_current: true,
+          archived_at: "2026-02-01T00:00:00.000Z",
+        }),
+      ),
+    ];
+    expect(findCurrentScenario(scenarios)).toBeNull();
+  });
+});
+
+describe("buildScenarioComparison", () => {
+  it("computes outputs for each scenario against the shared capacity inputs", () => {
+    const conservative = decodeLaunchPlanningScenario(
+      scenarioRow({
+        id: "00000000-0000-0000-0000-000000000e01",
+        name: "Conservative",
+        assumptions: {
+          current_church_attendance: 100,
+          expected_growth: 0,
+          target_group_participation_pct: 0.5,
+          launch_buffer_pct: 0.1,
+          average_group_size: 10,
+          leaders_per_new_group: 2,
+        },
+      }),
+    );
+    const stretch = decodeLaunchPlanningScenario(
+      scenarioRow({
+        id: "00000000-0000-0000-0000-000000000e02",
+        name: "Stretch",
+        assumptions: {
+          current_church_attendance: 200,
+          expected_growth: 50,
+          target_group_participation_pct: 0.8,
+          launch_buffer_pct: 0.2,
+          average_group_size: 10,
+          leaders_per_new_group: 2,
+        },
+      }),
+    );
+    const comparison = buildScenarioComparison([conservative, stretch], {
+      effective_total_capacity: 80,
+    });
+    expect(comparison).toHaveLength(2);
+    expect(comparison[0].scenario.name).toBe("Conservative");
+    expect(comparison[1].scenario.name).toBe("Stretch");
+    // Stretch's recommended_new_groups must exceed Conservative's because
+    // demand is materially higher and capacity is the same.
+    expect(comparison[1].outputs.recommended_new_groups).toBeGreaterThan(
+      comparison[0].outputs.recommended_new_groups,
+    );
+    // Risk level should escalate for Stretch given the much higher demand
+    // and the same capacity.
+    expect(comparison[1].outputs.risk_level).toBe("launch_needed");
+  });
+
+  it("returns an empty list when no scenarios are passed", () => {
+    expect(
+      buildScenarioComparison([], { effective_total_capacity: 100 }),
+    ).toEqual([]);
   });
 });

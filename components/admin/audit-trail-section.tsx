@@ -39,6 +39,12 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.update_over_shepherd": "Updated over-shepherd",
   "admin.assign_shepherd_coverage": "Assigned coverage",
   "admin.end_shepherd_coverage": "Ended coverage",
+  // LP.1 / LP.2 launch planning.
+  "admin.update_launch_planning_assumptions": "Updated launch baseline",
+  "admin.create_launch_planning_scenario": "Created launch scenario",
+  "admin.update_launch_planning_scenario": "Updated launch scenario",
+  "admin.archive_launch_planning_scenario": "Archived launch scenario",
+  "admin.set_current_launch_planning_scenario": "Set current launch scenario",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -253,6 +259,47 @@ function summarize(
       const shepherdId = asString(md.shepherd_profile_id);
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       return `Ended coverage for ${shepherd?.full_name ?? "a shepherd"}`;
+    }
+    case "admin.update_launch_planning_assumptions": {
+      const submittedKeys = Array.isArray(md.submitted_keys)
+        ? (md.submitted_keys as unknown[]).filter(
+            (k): k is string => typeof k === "string",
+          )
+        : [];
+      return submittedKeys.length > 0
+        ? `Updated launch baseline (${submittedKeys.join(", ")})`
+        : "Updated launch baseline";
+    }
+    case "admin.create_launch_planning_scenario": {
+      const name = asString(after.name) ?? "(unnamed)";
+      const isCurrent = after.is_current === true;
+      return isCurrent
+        ? `Created launch scenario ${name} (current)`
+        : `Created launch scenario ${name}`;
+    }
+    case "admin.update_launch_planning_scenario": {
+      const beforeName = isRecord(before) ? asString(before.name) : null;
+      const afterName = asString(after.name) ?? "(unnamed)";
+      const beforeCurrent = isRecord(before) ? before.is_current === true : false;
+      const afterCurrent = after.is_current === true;
+      if (!beforeCurrent && afterCurrent) {
+        return `Made launch scenario ${afterName} current`;
+      }
+      if (beforeName && beforeName !== afterName) {
+        return `Renamed launch scenario ${beforeName} → ${afterName}`;
+      }
+      return `Updated launch scenario ${afterName}`;
+    }
+    case "admin.archive_launch_planning_scenario": {
+      const name =
+        (isRecord(before) ? asString(before.name) : null) ??
+        asString(after.name) ??
+        "(unnamed)";
+      return `Archived launch scenario ${name}`;
+    }
+    case "admin.set_current_launch_planning_scenario": {
+      const name = asString(after.name) ?? "(unnamed)";
+      return `Set current launch scenario to ${name}`;
     }
     case "leader.submit_checkin":
     case "leader.update_checkin":

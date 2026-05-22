@@ -7,11 +7,14 @@ import {
   validateAssignLeaderToGroupPayload,
   validateAssignShepherdCoveragePayload,
   validateChangeUserRolePayload,
+  validateCreateLaunchPlanningScenarioPayload,
   validateCreateOverShepherdPayload,
   validateEndShepherdCoverageAssignmentPayload,
   validateInviteUserPayload,
   validateLaunchPlanningAssumptionsPayload,
   validateLogShepherdCareInteractionPayload,
+  validateScenarioIdPayload,
+  validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
   validateUpsertShepherdCareProfilePayload,
 } from "@/lib/admin/validation";
@@ -782,5 +785,146 @@ describe("validateLaunchPlanningAssumptionsPayload", () => {
     if (r.ok) {
       expect(Object.keys(r.value)).toEqual(["launch_buffer_pct"]);
     }
+  });
+});
+
+describe("validateCreateLaunchPlanningScenarioPayload", () => {
+  it("requires a non-empty name", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "",
+      assumptions: {},
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /name is required/i.test(e))).toBe(true);
+    }
+  });
+
+  it("trims whitespace from the name", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "  Conservative  ",
+      assumptions: {},
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.name).toBe("Conservative");
+  });
+
+  it("rejects names longer than 120 characters", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "x".repeat(121),
+      assumptions: {},
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects descriptions longer than 1000 characters", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "Stretch",
+      description: "y".repeat(1001),
+      assumptions: {},
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /1000 characters/i.test(e))).toBe(true);
+    }
+  });
+
+  it("treats omitted description as null", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "Expected",
+      assumptions: {},
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.description).toBeNull();
+  });
+
+  it("bubbles assumption-validation errors into the scenario error list", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "Bad",
+      assumptions: { target_group_participation_pct: 5 },
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /between 0 and 1/i.test(e))).toBe(true);
+    }
+  });
+
+  it("captures the make_current flag from string form values", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "Conservative",
+      assumptions: {},
+      make_current: "true",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.make_current).toBe(true);
+  });
+
+  it("accepts a fully-specified assumptions payload", () => {
+    const r = validateCreateLaunchPlanningScenarioPayload({
+      name: "Stretch",
+      description: "Aggressive growth scenario",
+      make_current: true,
+      assumptions: {
+        current_church_attendance: "250",
+        expected_growth: "60",
+        expected_growth_date: "2026-08-01",
+        target_group_participation_pct: "0.7",
+        average_group_size: "12",
+        launch_buffer_pct: "0.2",
+        leaders_per_new_group: "2",
+        notes: "Push to grow",
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.name).toBe("Stretch");
+      expect(r.value.description).toBe("Aggressive growth scenario");
+      expect(r.value.make_current).toBe(true);
+      expect(r.value.assumptions.current_church_attendance).toBe(250);
+      expect(r.value.assumptions.target_group_participation_pct).toBeCloseTo(
+        0.7,
+        6,
+      );
+    }
+  });
+});
+
+describe("validateUpdateLaunchPlanningScenarioPayload", () => {
+  it("requires a uuid scenario_id", () => {
+    const r = validateUpdateLaunchPlanningScenarioPayload({
+      scenario_id: "not-a-uuid",
+      name: "Stretch",
+      assumptions: {},
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("lowercases the scenario_id", () => {
+    const r = validateUpdateLaunchPlanningScenarioPayload({
+      scenario_id: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF",
+      name: "Stretch",
+      assumptions: {},
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.scenario_id).toBe(
+        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      );
+    }
+  });
+});
+
+describe("validateScenarioIdPayload", () => {
+  it("requires a uuid", () => {
+    expect(validateScenarioIdPayload({ scenario_id: "abc" }).ok).toBe(false);
+    expect(validateScenarioIdPayload(null).ok).toBe(false);
+  });
+
+  it("returns the lowercased uuid", () => {
+    const r = validateScenarioIdPayload({
+      scenario_id: UUID_A.toUpperCase(),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.scenario_id).toBe(UUID_A);
   });
 });
