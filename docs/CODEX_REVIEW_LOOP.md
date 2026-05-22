@@ -97,9 +97,9 @@ When `CODEX_ACTOR_LOGIN` is unset, the workflow trusts the installed Codex conne
 
 Completed check runs with `success`, `neutral`, or `skipped` conclusions count as passing, matching GitHub required-check semantics. Pending or failed checks still block ready notification.
 
-Only the latest check run per check/app identity is evaluated. Historical failed reruns for the same head SHA do not block readiness after GitHub reports a newer passing run.
+Only the latest check run per check/app identity and the latest commit status per status context are evaluated. Historical failed reruns for the same head SHA do not block readiness after GitHub reports a newer passing run.
 
-Review submissions are treated as history. For review-level change-request state, the loop considers the latest current-head review state per Codex actor so superseded or dismissed older `CHANGES_REQUESTED` reviews do not keep the PR blocked after a later Codex approval.
+Review submissions are treated as history. Pending/unsubmitted review drafts do not count as Codex review activity. For review-level change-request state, the loop considers the latest submitted current-head review state per Codex actor so superseded or dismissed older `CHANGES_REQUESTED` reviews do not keep the PR blocked after a later Codex approval.
 
 ## Markers
 

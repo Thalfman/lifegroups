@@ -190,6 +190,15 @@ function maxDate(values) {
   return new Date(Math.max(...times));
 }
 
+function reviewSubmittedAtMs(review) {
+  const time = Date.parse(review.submitted_at || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
+function reviewIsSubmitted(review) {
+  return review.state !== 'PENDING' && reviewSubmittedAtMs(review) > 0;
+}
+
 function sameRepository(pr) {
   return pr.head?.repo?.full_name === GITHUB_REPOSITORY && pr.base?.repo?.full_name === GITHUB_REPOSITORY;
 }
@@ -213,6 +222,7 @@ function currentHeadCodexReviewComments(reviewComments, headSha) {
 function currentHeadCodexReviews(reviews, headSha, headDate) {
   return reviews.filter((review) => (
     isCodexLogin(review.user?.login)
+    && reviewIsSubmitted(review)
     && reviewAppliesToHead(review, headSha, headDate)
   ));
 }
@@ -224,9 +234,9 @@ function latestReviewByCodexActor(reviews, headSha, headDate) {
     const login = review.user?.login;
     if (!login) continue;
 
-    const reviewTime = Date.parse(review.submitted_at || '');
+    const reviewTime = reviewSubmittedAtMs(review);
     const existing = latestByActor.get(login);
-    const existingTime = Date.parse(existing?.submitted_at || '');
+    const existingTime = reviewSubmittedAtMs(existing || {});
 
     if (!existing || reviewTime >= existingTime) {
       latestByActor.set(login, review);
@@ -398,11 +408,37 @@ function checkRunIsRelevant(checkRun) {
   return true;
 }
 
+function statusUpdatedAtMs(status) {
+  const time = Date.parse(status.updated_at || status.created_at || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
+function statusIsNewer(status, existing) {
+  const statusTime = statusUpdatedAtMs(status);
+  const existingTime = statusUpdatedAtMs(existing);
+  if (statusTime !== existingTime) return statusTime > existingTime;
+  return Number(status.id || 0) > Number(existing.id || 0);
+}
+
+function latestStatusesByContext(statuses) {
+  const latestByContext = new Map();
+
+  for (const status of statuses) {
+    const context = status.context || 'unknown';
+    const existing = latestByContext.get(context);
+    if (!existing || statusIsNewer(status, existing)) {
+      latestByContext.set(context, status);
+    }
+  }
+
+  return [...latestByContext.values()];
+}
+
 async function evaluateChecks(headSha) {
   const checkRunsResponse = await listCheckRuns(headSha);
   const statusResponse = await github('GET', apiPath(`/commits/${headSha}/status`));
   const checkRuns = checkRunsResponse.filter(checkRunIsRelevant);
-  const statuses = statusResponse.statuses || [];
+  const statuses = latestStatusesByContext(statusResponse.statuses || []);
   const failures = [];
 
   for (const checkRun of checkRuns) {
