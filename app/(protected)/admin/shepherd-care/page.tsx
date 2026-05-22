@@ -14,6 +14,7 @@ import { RecentInteractionsCard } from "@/components/admin/shepherd-care/recent-
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchOverShepherdsForAdmin,
   fetchRecentShepherdCareInteractionsForAdmin,
@@ -53,6 +54,7 @@ type LoadedData = {
   entries: ShepherdCareDirectoryEntry[];
   overShepherds: OverShepherdListRow[];
   assignments: ActiveShepherdCoverageAssignmentSummary[];
+  assignmentsAvailable: boolean;
   recentInteractions: ShepherdCareRecentInteractionRow[];
   error: string | null;
 };
@@ -64,6 +66,7 @@ async function loadData(): Promise<LoadedData> {
       entries: [],
       overShepherds: [],
       assignments: [],
+      assignmentsAvailable: false,
       recentInteractions: [],
       error: "Database is not configured in this environment.",
     };
@@ -81,14 +84,21 @@ async function loadData(): Promise<LoadedData> {
       entries: [],
       overShepherds: [],
       assignments: [],
+      assignmentsAvailable: false,
       recentInteractions: [],
       error: directory.error.message,
     };
   }
+  // If the assignments read fails, treat coverage data as unavailable so the
+  // dashboard doesn't silently flip every shepherd to "unassigned" and inject
+  // no_over_shepherd into the triage queue. The error message still surfaces
+  // in the banner below.
+  const assignmentsAvailable = assignmentsRes.error === null;
   return {
     entries: directory.data,
     overShepherds: overShepherdsRes.data ?? [],
     assignments: assignmentsRes.data ?? [],
+    assignmentsAvailable,
     recentInteractions: recentRes.data ?? [],
     error:
       overShepherdsRes.error?.message ??
@@ -96,15 +106,6 @@ async function loadData(): Promise<LoadedData> {
       recentRes.error?.message ??
       null,
   };
-}
-
-function todayIso(): string {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  )
-    .toISOString()
-    .slice(0, 10);
 }
 
 export default async function AdminShepherdCarePage({
@@ -118,8 +119,14 @@ export default async function AdminShepherdCarePage({
   const filter = resolveFilter(sp.filter);
   const coverage = resolveCoverage(sp.coverage);
 
-  const { entries, overShepherds, assignments, recentInteractions, error } =
-    await loadData();
+  const {
+    entries,
+    overShepherds,
+    assignments,
+    assignmentsAvailable,
+    recentInteractions,
+    error,
+  } = await loadData();
 
   const coverageByShepherdId = new Map<
     string,
@@ -129,15 +136,18 @@ export default async function AdminShepherdCarePage({
     coverageByShepherdId.set(a.shepherd_profile_id, a);
   }
 
-  const today = todayIso();
+  const today = currentUtcDateIso();
   const dashboard = buildShepherdCareDashboardModel({
     entries,
     assignments,
     overShepherds,
     recentInteractions,
     todayIso: today,
+    assignmentsAvailable,
   });
-  const totalAttention = countAllAttentionItems(entries, assignments, today);
+  const totalAttention = countAllAttentionItems(entries, assignments, today, {
+    coverageAvailable: assignmentsAvailable,
+  });
 
   const needsAttentionCount = dashboard.summary.needsAttention;
   const filteredByAttention =
@@ -165,6 +175,7 @@ export default async function AdminShepherdCarePage({
             summary={dashboard.summary}
             filter={filter}
             coverage={coverage}
+            coverageAvailable={dashboard.coverageAvailable}
           />
           <CareAttentionQueue
             items={dashboard.attentionQueue}
@@ -178,7 +189,9 @@ export default async function AdminShepherdCarePage({
               gap: 18,
             }}
           >
-            <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />
+            {dashboard.coverageAvailable ? (
+              <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />
+            ) : null}
             <UpcomingTouchpointsCard items={dashboard.upcomingTouchpoints} />
           </div>
           <RecentInteractionsCard items={dashboard.recentInteractions} />

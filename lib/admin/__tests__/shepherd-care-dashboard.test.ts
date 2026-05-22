@@ -132,6 +132,34 @@ describe("buildShepherdCareDashboardModel", () => {
     expect(model.coverageBuckets).toHaveLength(1);
     expect(model.coverageBuckets[0].isUnassigned).toBe(true);
     expect(model.coverageBuckets[0].shepherdCount).toBe(0);
+    expect(model.coverageAvailable).toBe(true);
+  });
+
+  it("suppresses coverage-derived sections when assignmentsAvailable is false", () => {
+    // Simulates a transient failure on the active-coverage read: the page
+    // passes assignments=[] (the safe fallback) AND assignmentsAvailable=false.
+    // The builder must NOT report every shepherd as unassigned.
+    const entries = [
+      entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      entry(UUID_2, "Beth Two", careRow(UUID_2, { last: RECENT })),
+    ];
+    const model = buildShepherdCareDashboardModel({
+      entries,
+      assignments: [],
+      overShepherds: [overShepherd(OS_A, "Coach A")],
+      recentInteractions: [],
+      todayIso: TODAY,
+      assignmentsAvailable: false,
+    });
+    expect(model.coverageAvailable).toBe(false);
+    expect(model.summary.unassignedCoverage).toBe(0);
+    expect(model.coverageBuckets).toEqual([]);
+    // No no_over_shepherd reasons should be injected. The two shepherds are
+    // otherwise healthy/recent so the queue is empty.
+    expect(model.attentionQueue).toEqual([]);
+    expect(
+      countAllAttentionItems(entries, [], TODAY, { coverageAvailable: false }),
+    ).toBe(0);
   });
 
   it("counts unassigned coverage and surfaces no_over_shepherd reasons", () => {

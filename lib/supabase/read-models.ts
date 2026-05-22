@@ -646,6 +646,20 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
  */
 export const SHEPHERD_CARE_STALE_DAYS = 60;
 
+/**
+ * UTC-anchored YYYY-MM-DD string for "today", used by every shepherd-care
+ * read/composition path so date math (stale window, overdue touchpoints,
+ * upcoming window) stays consistent across server timezones.
+ */
+export function currentUtcDateIso(): string {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 // Directory cards never render the admin_summary, so omit it from the
 // projected care row to keep the response payload small and avoid
 // shipping note bodies anywhere the directory is rendered.
@@ -743,17 +757,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
     }
   }
 
-  const today =
-    options.todayIso ??
-    new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    )
-      .toISOString()
-      .slice(0, 10);
+  const today = options.todayIso ?? currentUtcDateIso();
 
   const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
     (p) => {
@@ -829,12 +833,17 @@ export async function fetchShepherdCareInteractionsForAdmin(
  * the Julian dashboard. EXCLUDES `notes` — the dashboard surfaces shepherd
  * name, date, and interaction type only, then links to the per-shepherd
  * detail page for note bodies.
+ *
+ * Both joins are `!inner` so the role/status filters applied at query time
+ * (active `leader` / `co_leader` only) prune rows whose shepherd has been
+ * deactivated or moved off the eligible roles. Without this filter the feed
+ * would link to detail pages that return 404 for those profiles.
  */
 export const SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS =
   "id, care_profile_id, interaction_at, interaction_type, created_at, " +
-  "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey ( " +
+  "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +
     "shepherd_profile_id, " +
-    "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey ( id, full_name ) " +
+    "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, role, status ) " +
   ")";
 
 export type ShepherdCareRecentInteractionRow = {
@@ -904,9 +913,18 @@ export async function fetchRecentShepherdCareInteractionsForAdmin(
   options: { limit?: number } = {},
 ): Promise<ReadResult<ShepherdCareRecentInteractionRow[]>> {
   const limit = options.limit ?? 10;
+  // Filters apply to the embedded inner-join columns, which excludes
+  // interactions whose shepherd has been deactivated or moved off the
+  // eligible roles. Matches the same belt-and-braces filter used by
+  // fetchActiveShepherdCoverageAssignmentsForAdmin.
   const { data, error } = await client
     .from("shepherd_care_interactions")
     .select(SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS)
+    .eq("care_profile.shepherd.status", "active")
+    .in(
+      "care_profile.shepherd.role",
+      ELIGIBLE_SHEPHERD_ROLES as unknown as string[],
+    )
     .order("interaction_at", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

@@ -78,6 +78,12 @@ export type ShepherdCareDashboardModel = {
   coverageBuckets: CareCoverageBucket[];
   upcomingTouchpoints: CareUpcomingTouchpoint[];
   recentInteractions: CareRecentInteraction[];
+  // False when the active-coverage read failed and the caller passed
+  // assignmentsAvailable=false. In that case the builder zeros the
+  // assignment-derived counts and skips the no_over_shepherd queue reason
+  // so the dashboard doesn't silently misreport "everyone unassigned"
+  // during a transient read failure.
+  coverageAvailable: boolean;
 };
 
 export type BuildShepherdCareDashboardModelInput = {
@@ -86,6 +92,10 @@ export type BuildShepherdCareDashboardModelInput = {
   overShepherds: OverShepherdListRow[];
   recentInteractions: ShepherdCareRecentInteractionRow[];
   todayIso: string;
+  // Defaults to true. Set to false when the coverage assignments read
+  // errored so coverage-dependent surfaces (unassigned count, coverage
+  // buckets, no_over_shepherd queue reason) can be safely suppressed.
+  assignmentsAvailable?: boolean;
   limits?: {
     attention?: number;
     upcoming?: number;
@@ -160,6 +170,7 @@ function detectReasons(
   entry: ShepherdCareDirectoryEntry,
   assignedShepherdIds: Set<string>,
   todayIso: string,
+  coverageAvailable: boolean,
 ): CareAttentionReason[] {
   const reasons: CareAttentionReason[] = [];
   const care = entry.care;
@@ -177,7 +188,10 @@ function detectReasons(
   ) {
     reasons.push("stale_last_contact");
   }
-  if (!assignedShepherdIds.has(entry.profile.id)) {
+  // Suppress no_over_shepherd entirely when coverage data is unavailable —
+  // an empty assignments map is not the same as "no coach assigned" and we
+  // shouldn't infer that during a transient read failure.
+  if (coverageAvailable && !assignedShepherdIds.has(entry.profile.id)) {
     reasons.push("no_over_shepherd");
   }
   if (care?.current_status === "watch") {
@@ -190,10 +204,11 @@ function buildAttentionQueue(
   entries: ShepherdCareDirectoryEntry[],
   assignedShepherdIds: Set<string>,
   todayIso: string,
+  coverageAvailable: boolean,
 ): CareAttentionItem[] {
   const items: CareAttentionItem[] = [];
   for (const entry of entries) {
-    const reasons = detectReasons(entry, assignedShepherdIds, todayIso);
+    const reasons = detectReasons(entry, assignedShepherdIds, todayIso, coverageAvailable);
     if (reasons.length === 0) continue;
     reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
     const [primary, ...secondary] = reasons;
@@ -218,6 +233,7 @@ function buildSummary(
   entries: ShepherdCareDirectoryEntry[],
   assignedShepherdIds: Set<string>,
   todayIso: string,
+  coverageAvailable: boolean,
 ): CareDashboardSummary {
   let needsAttention = 0;
   let overdueTouchpoints = 0;
@@ -237,7 +253,7 @@ function buildSummary(
     ) {
       notContactedRecently += 1;
     }
-    if (!assignedShepherdIds.has(entry.profile.id)) {
+    if (coverageAvailable && !assignedShepherdIds.has(entry.profile.id)) {
       unassignedCoverage += 1;
     }
   }
@@ -340,26 +356,35 @@ export function buildShepherdCareDashboardModel(
   input: BuildShepherdCareDashboardModelInput,
 ): ShepherdCareDashboardModel {
   const limits = { ...DEFAULT_LIMITS, ...(input.limits ?? {}) };
+  const coverageAvailable = input.assignmentsAvailable ?? true;
   const assignedShepherdIds = new Set<string>();
   for (const a of input.assignments) {
     assignedShepherdIds.add(a.shepherd_profile_id);
   }
 
-  const summary = buildSummary(input.entries, assignedShepherdIds, input.todayIso);
+  const summary = buildSummary(
+    input.entries,
+    assignedShepherdIds,
+    input.todayIso,
+    coverageAvailable,
+  );
   const fullQueue = buildAttentionQueue(
     input.entries,
     assignedShepherdIds,
     input.todayIso,
+    coverageAvailable,
   );
 
   return {
     summary,
     attentionQueue: fullQueue.slice(0, limits.attention),
-    coverageBuckets: buildCoverageBuckets(
-      input.overShepherds,
-      input.assignments,
-      summary.unassignedCoverage,
-    ),
+    coverageBuckets: coverageAvailable
+      ? buildCoverageBuckets(
+          input.overShepherds,
+          input.assignments,
+          summary.unassignedCoverage,
+        )
+      : [],
     upcomingTouchpoints: buildUpcomingTouchpoints(
       input.entries,
       input.todayIso,
@@ -367,23 +392,28 @@ export function buildShepherdCareDashboardModel(
       limits.upcoming,
     ),
     recentInteractions: buildRecentInteractions(input.recentInteractions, limits.recent),
+    coverageAvailable,
   };
 }
 
 /**
  * Returns the total count of attention items (not just the visible top N) so
- * callers can render a "+N more" footer that links into the directory filter.
+ * callers can render the "+N more in the directory below" footer line.
  */
 export function countAllAttentionItems(
   entries: ShepherdCareDirectoryEntry[],
   assignments: ActiveShepherdCoverageAssignmentSummary[],
   todayIso: string,
+  options: { coverageAvailable?: boolean } = {},
 ): number {
+  const coverageAvailable = options.coverageAvailable ?? true;
   const ids = new Set<string>();
   for (const a of assignments) ids.add(a.shepherd_profile_id);
   let total = 0;
   for (const entry of entries) {
-    if (detectReasons(entry, ids, todayIso).length > 0) total += 1;
+    if (detectReasons(entry, ids, todayIso, coverageAvailable).length > 0) {
+      total += 1;
+    }
   }
   return total;
 }

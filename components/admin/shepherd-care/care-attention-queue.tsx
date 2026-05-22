@@ -86,21 +86,15 @@ export function CareAttentionQueue({
   items: CareAttentionItem[];
   totalCount: number;
 }) {
+  // Queue reasons (e.g. no_over_shepherd, watch_status) don't all map onto
+  // the directory's `needs_attention` filter, so a single CTA can't reliably
+  // surface the rest of the queue. The full queue size is shown as
+  // non-clickable copy and users scroll the directory below for more.
   const remaining = totalCount - items.length;
   return (
     <StatusCard
       eyebrow="Triage queue"
       title="Needs attention this week"
-      action={
-        totalCount > 0 ? (
-          <Link
-            href="/admin/shepherd-care?filter=needs_attention"
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            View all →
-          </Link>
-        ) : null
-      }
     >
       {items.length === 0 ? (
         <EmptyState
@@ -155,14 +149,10 @@ export function CareAttentionQueue({
                 color: P.ink3,
                 marginTop: 10,
                 textAlign: "right",
+                fontStyle: "italic",
               }}
             >
-              <Link
-                href="/admin/shepherd-care?filter=needs_attention"
-                style={{ color: P.terra, textDecoration: "underline" }}
-              >
-                +{remaining} more
-              </Link>
+              +{remaining} more in the directory below
             </div>
           ) : null}
         </div>

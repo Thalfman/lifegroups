@@ -70,10 +70,16 @@ read for cross-shepherd recent interactions.
 - `fetchRecentShepherdCareInteractionsForAdmin(client, { limit })` in
   `lib/supabase/read-models.ts`. Selects from
   `shepherd_care_interactions` ordered `interaction_at desc, created_at
-  desc, limit N (default 10)`, with an embedded join through
+  desc, limit N (default 10)`, with an inner-join through
   `shepherd_care_profiles → profiles` so the dashboard can render
-  shepherd names. Uses
+  shepherd names. Inner-join filters restrict the feed to active
+  `leader` / `co_leader` profiles — the same belt-and-braces filter the
+  coverage read uses — so rows never link to detail pages that 404 for
+  deactivated or role-changed shepherds. Uses
   `SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS` which **omits `notes`**.
+- `currentUtcDateIso()` in the same module — UTC-anchored YYYY-MM-DD
+  string used by every shepherd-care read/composition path so date math
+  stays consistent across server timezones.
 - Two file-private helpers (`differenceInDaysIso`, `computeNeedsAttention`)
   in the same module are now exported so the dashboard builder reuses
   the same staleness logic as the directory.
@@ -153,6 +159,24 @@ Attention queue priorities (lowest number = highest):
 A shepherd that matches several reasons appears once: the
 highest-priority reason wins for the badge and sort, and the remainder
 render as secondary chips.
+
+## Partial-failure behavior
+
+When the active-coverage read fails (transient DB error, network issue,
+etc.) the page detects the error and passes `assignmentsAvailable:
+false` into the builder. The builder then:
+
+- Skips the `no_over_shepherd` reason in queue detection.
+- Sets `summary.unassignedCoverage` to `0` and `coverageBuckets` to
+  `[]`.
+- Exposes a `coverageAvailable: false` flag on the model.
+
+The page renders the existing error banner, hides the
+`CoverageByOverShepherdCard`, and shows the "Unassigned coverage"
+summary card as a non-link with `—` and "Coverage data temporarily
+unavailable". The rest of the dashboard (attention queue without
+`no_over_shepherd` reasons, upcoming touchpoints, recent interactions)
+continues to render correctly off the still-valid reads.
 
 ## Privacy model
 

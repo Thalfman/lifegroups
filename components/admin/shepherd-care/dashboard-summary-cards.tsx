@@ -30,10 +30,12 @@ export function ShepherdCareDashboardSummaryCards({
   summary,
   filter,
   coverage,
+  coverageAvailable,
 }: {
   summary: CareDashboardSummary;
   filter: DirectoryFilter;
   coverage: CoverageFilter | undefined;
+  coverageAvailable: boolean;
 }) {
   const totalMeta =
     summary.totalActiveShepherds === 0
@@ -60,10 +62,17 @@ export function ShepherdCareDashboardSummaryCards({
       ? "Every shepherd has a profile"
       : `${plural(summary.noCareProfile, "Shepherd has", "Shepherds have")} no care profile yet`;
 
-  const unassignedMeta =
-    summary.unassignedCoverage === 0
+  const unassignedMeta = !coverageAvailable
+    ? "Coverage data temporarily unavailable"
+    : summary.unassignedCoverage === 0
       ? "Every active shepherd is covered"
       : `${plural(summary.unassignedCoverage, "Shepherd has", "Shepherds have")} no over-shepherd`;
+  // The dashboard renders "—" instead of a misleading "0" when the coverage
+  // assignments read failed, so admins can tell apart "no unassigned" from
+  // "we don't know".
+  const unassignedValue = coverageAvailable
+    ? String(summary.unassignedCoverage)
+    : "—";
 
   // Tiles that map to an existing directory filter render as Links so a click
   // narrows the directory below to the matching rows. Tiles without a clean
@@ -125,19 +134,29 @@ export function ShepherdCareDashboardSummaryCards({
           accent={P.ink3}
           valueColor={P.ink}
         />
-        <Link
-          href={unassignedHref}
-          aria-label="Filter directory by unassigned coverage"
-          style={linkResetStyle}
-        >
+        {coverageAvailable ? (
+          <Link
+            href={unassignedHref}
+            aria-label="Filter directory by unassigned coverage"
+            style={linkResetStyle}
+          >
+            <MetricCard
+              title="Unassigned coverage"
+              value={unassignedValue}
+              meta={unassignedMeta}
+              accent={P.mustard}
+              valueColor={summary.unassignedCoverage > 0 ? P.mustard : P.ink}
+            />
+          </Link>
+        ) : (
           <MetricCard
             title="Unassigned coverage"
-            value={String(summary.unassignedCoverage)}
+            value={unassignedValue}
             meta={unassignedMeta}
-            accent={P.mustard}
-            valueColor={summary.unassignedCoverage > 0 ? P.mustard : P.ink}
+            accent={P.ink3}
+            valueColor={P.ink3}
           />
-        </Link>
+        )}
       </div>
     </section>
   );
