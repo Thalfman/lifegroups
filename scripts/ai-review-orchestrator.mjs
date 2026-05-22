@@ -73,7 +73,7 @@ async function processPr(pr) {
     || reviews.some((r) => isGemini(r.user?.login) && new Date(r.submitted_at || 0) >= headDate);
 
   const reviewReqMarker = `<!-- ai-review-orchestrator:review-request:${pr.number}:${headSha} -->`;
-  if (AUTOMATION_ENABLED && REQUEST_REVIEWS_ENABLED && !sensitiveChanged && !sensitiveByTerm) {
+  if (AUTOMATION_ENABLED && REQUEST_REVIEWS_ENABLED) {
     const missingCodex = !codexCompleted;
     const missingGemini = !geminiCompleted;
     if ((missingCodex || missingGemini) && !hasMarker(issueComments, reviewReqMarker)) {
@@ -85,7 +85,6 @@ async function processPr(pr) {
     }
   }
 
-  const manualMarker = `<!-- ai-review-orchestrator:state:${pr.number}:${headSha}:manual-review-required -->`;
   const actionableReviewComments = reviewComments.filter((c) => {
     const login = c.user?.login || '';
     const isAi = isCodex(login) || isGemini(login);
@@ -98,16 +97,6 @@ async function processPr(pr) {
 
   for (const c of actionableReviewComments) {
     await addReviewCommentReactionIfMissing(c.id, 'eyes');
-  }
-
-  if (sensitiveChanged || sensitiveByTerm) {
-    for (const c of actionableReviewComments) {
-      await addReviewCommentReactionIfMissing(c.id, 'confused');
-    }
-    if (!hasMarker(issueComments, manualMarker)) {
-      await post(pr.number, `Manual review required for PR #${pr.number} at ${headSha} due to sensitive paths/terms.\n${manualMarker}`);
-    }
-    return;
   }
 
   if (!(codexCompleted && geminiCompleted)) return;

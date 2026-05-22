@@ -20,6 +20,25 @@ const isGemini = (login = '') => {
   return login.toLowerCase().startsWith('gemini-code-assist');
 };
 const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
+const unique = (arr) => [...new Set(arr)];
+
+function collectSensitiveWarnings(files, comments) {
+  const warnings = { security: [], workflow: [], db: [], dependency: [] };
+  for (const f of files.map((x) => x.filename)) {
+    if (f.startsWith('.github/workflows/')) warnings.workflow.push(f);
+    if (f.startsWith('supabase/migrations/') || f.startsWith('supabase/functions/')) warnings.db.push(f);
+    if (f === 'package-lock.json' || f === 'pnpm-lock.yaml') warnings.dependency.push(f);
+    if (f.startsWith('middleware.') || f.startsWith('auth/') || f.startsWith('rls/')) warnings.security.push(f);
+  }
+  const terms = [/\bRLS\b/i, /SECURITY DEFINER/i, /audit_events/i, /admin_private_note/i, /role checks/i, /leader-facing read models/i];
+  for (const c of comments) {
+    for (const t of terms) {
+      if (t.test(c.body || '')) warnings.security.push(`discussion term matched: ${t.source}`);
+    }
+  }
+  for (const k of Object.keys(warnings)) warnings[k] = unique(warnings[k]);
+  return warnings;
+}
 
 async function gh(path, init = {}) { const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } }); if (!res.ok) throw new Error(`${res.status} ${path}: ${await res.text()}`); return res.status === 204 ? null : res.json(); }
 async function listAll(path) { let page = 1; const out = []; while (true) { const batch = await gh(`${path}${path.includes('?') ? '&' : '?'}per_page=100&page=${page}`); if (!Array.isArray(batch) || batch.length === 0) break; out.push(...batch); page += 1; } return out; }
@@ -46,12 +65,11 @@ async function processPr(pr) {
     gh(`/repos/${owner}/${repo}/commits/${headSha}`),
   ]);
   const headDate = new Date(headCommit.commit.committer.date);
+  const sensitiveWarnings = collectSensitiveWarnings(files, [...issueComments, ...reviewComments, ...reviews]);
 
   if (!prNow.mergeable || ['blocked', 'dirty', 'unstable', 'draft', 'unknown'].includes(prNow.mergeable_state)) blockers.push(`PR mergeable_state is unsafe (${prNow.mergeable_state}).`);
   const badChecks = checks.check_runs.filter((c) => c.status !== 'completed' || c.conclusion !== 'success');
   if (badChecks.length) blockers.push('Checks are failing or pending.');
-  if (files.some((f) => isSensitivePath(f.filename))) blockers.push('Sensitive paths changed.');
-  if ([...issueComments, ...reviewComments, ...reviews].some((c) => sensitiveTermRegex.test(c.body || ''))) blockers.push('Sensitive terms detected in AI discussion.');
 
   const codexComplete = issueComments.some((c) => isCodex(c.user?.login) && new Date(c.created_at) >= headDate)
     || reviewComments.some((c) => isCodex(c.user?.login) && (c.commit_id === headSha || new Date(c.created_at) >= headDate))
@@ -64,9 +82,7 @@ async function processPr(pr) {
   if (!codexComplete) blockers.push('No current-head Codex completion signal.');
   if (!geminiComplete) blockers.push('No current-head Gemini completion signal.');
 
-  const hasManual = issueComments.some((c) => (c.body || '').includes(`ai-review-orchestrator:state:${pr.number}:${headSha}:manual-review-required`));
   const hasMax = issueComments.some((c) => (c.body || '').includes(`ai-review-orchestrator:state:${pr.number}:${headSha}:max-cycles-reached`));
-  if (hasManual) blockers.push('Manual-review-required marker exists for current head SHA.');
   if (hasMax) blockers.push('Max-cycles-reached marker exists for current head SHA.');
 
   const triggerComments = issueComments.filter((c) => (c.body || '').includes(`ai-review-orchestrator:claude-trigger:${pr.number}:${headSha}`));
@@ -97,15 +113,30 @@ async function processPr(pr) {
   if (!DRY_RUN) {
     await ensureLabel('ai/ready-to-merge', '0E8A16', 'AI readiness checks passed; merge manually.');
     await ensureLabel('ai/blocked', 'B60205', 'AI readiness checks found blockers.');
+    await ensureLabel('ai/security-sensitive', '8B0000', 'Security-sensitive files or terms detected.');
+    await ensureLabel('ai/workflow-sensitive', '5319E7', 'Workflow-sensitive files detected.');
+    await ensureLabel('ai/db-sensitive', '1D76DB', 'Database-sensitive files detected.');
+    await ensureLabel('ai/dependency-sensitive', 'FBCA04', 'Dependency lockfile changes detected.');
   }
 
   if (ready) {
     if (!existingReady && READY_NOTIFY_ENABLED && !DRY_RUN) {
-      const body = `@${READY_NOTIFY_LOGIN} AI review complete. This PR appears ready to merge manually.\n\nPR: #${pr.number}\nHead SHA: ${headSha}\nCodex: complete\nGemini: complete\nClaude: ${triggerComments.length ? 'completed' : 'not needed'}\nChecks: passing\nActionable AI feedback: none remaining\n\nNext step: manually review and click Merge.\n\n${readyMarker}`;
+      const warningLines = [];
+      if (sensitiveWarnings.security.length) warningLines.push(`- Security-sensitive areas changed: ${sensitiveWarnings.security.join(', ')}`);
+      if (sensitiveWarnings.db.length) warningLines.push(`- Database-sensitive areas changed: ${sensitiveWarnings.db.join(', ')}`);
+      if (sensitiveWarnings.workflow.length) warningLines.push(`- Workflow-sensitive areas changed: ${sensitiveWarnings.workflow.join(', ')}`);
+      if (sensitiveWarnings.dependency.length) warningLines.push(`- Dependency-sensitive areas changed: ${sensitiveWarnings.dependency.join(', ')}`);
+      const warningSection = warningLines.length ? `\nWarnings:\n${warningLines.join('\n')}\n` : '';
+      const body = `@${READY_NOTIFY_LOGIN} AI review complete. This PR appears ready to merge manually.\n${warningSection}\nCodex: complete\nGemini: complete\nClaude: ${triggerComments.length ? 'completed' : 'not needed'}\nChecks: passing\nActionable AI feedback: none remaining\n\nNext step: manually review the warnings, then click Merge if satisfied.\n\n${readyMarker}`;
       await gh(`/repos/${owner}/${repo}/issues/${pr.number}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
     }
     if (!DRY_RUN) {
-      await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels`, { method: 'POST', body: JSON.stringify({ labels: ['ai/ready-to-merge'] }) });
+      const labels = ['ai/ready-to-merge'];
+      if (sensitiveWarnings.security.length) labels.push('ai/security-sensitive');
+      if (sensitiveWarnings.workflow.length) labels.push('ai/workflow-sensitive');
+      if (sensitiveWarnings.db.length) labels.push('ai/db-sensitive');
+      if (sensitiveWarnings.dependency.length) labels.push('ai/dependency-sensitive');
+      await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels`, { method: 'POST', body: JSON.stringify({ labels }) });
       try { await gh(`/repos/${owner}/${repo}/issues/${pr.number}/labels/ai%2Fblocked`, { method: 'DELETE' }); } catch {}
     }
     return;
