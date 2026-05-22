@@ -80,6 +80,18 @@ Unset values keep automation enabled by default.
 - 👀 eyes is treated as seen/in-progress only.
 - Gemini thumbs-up is **not required** because integration behavior varies and comment/review output is the durable signal.
 
+
+## Visual reaction states
+
+Inline PR review comments authored by Codex/Gemini get additive reactions from `github-actions[bot]` as visual progress indicators:
+
+- 👀 `eyes` = detected / queued
+- 🚀 `rocket` = Claude triggered / processing
+- 👍 `+1` = handled / completed
+- 😕 `confused` = manual review required
+
+These reactions are status hints only. Deterministic merge readiness still comes from repository state and comment/check evaluation, not reactions alone. Reactions are added by `github-actions[bot]`, not necessarily by Claude directly.
+
 ## Sensitive-path and sensitive-term blocking
 
 If sensitive paths or terms are detected, automation blocks Claude triggering and readiness and posts manual-review-required state for that head SHA.
