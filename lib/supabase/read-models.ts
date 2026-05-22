@@ -12,6 +12,7 @@ import type {
   GroupMetricSettingsRow,
   GroupsRow,
   GuestsRow,
+  LaunchPlanningScenariosRow,
   MembersRow,
   OverShepherdsRow,
   ProfilesRow,
@@ -1299,4 +1300,74 @@ export async function fetchLaunchPlanningInputsForAdmin(
       metricDefaults: defaultsRes.error?.message ?? null,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// LP.2 — launch planning scenarios
+// ---------------------------------------------------------------------------
+//
+// Explicit column allowlist. `assumptions` is a JSONB column; the trust-
+// boundary guard checks it's a plain object before the row is handed to
+// the pure decoder.
+
+const LAUNCH_PLANNING_SCENARIO_COLUMNS =
+  "id, name, description, assumptions, is_current, archived_at, created_by, updated_by, created_at, updated_at";
+
+function isLaunchPlanningScenarioRow(v: unknown): v is LaunchPlanningScenariosRow {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
+  const r = v as Record<string, unknown>;
+  if (!isUuid(r.id)) return false;
+  if (typeof r.name !== "string") return false;
+  if (typeof r.is_current !== "boolean") return false;
+  if (
+    typeof r.assumptions !== "object" ||
+    r.assumptions === null ||
+    Array.isArray(r.assumptions)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export async function fetchLaunchPlanningScenariosForAdmin(
+  client: ReadClient,
+): Promise<ReadResult<LaunchPlanningScenariosRow[]>> {
+  const { data, error } = await client
+    .from("launch_planning_scenarios")
+    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .order("is_current", { ascending: false })
+    .order("name", { ascending: true });
+  if (error)
+    return { data: null, error: wrapError("fetchLaunchPlanningScenariosForAdmin", error) };
+  const raw: unknown[] = (data ?? []) as unknown[];
+  const rows: LaunchPlanningScenariosRow[] = [];
+  for (const row of raw) {
+    if (isLaunchPlanningScenarioRow(row)) rows.push(row);
+  }
+  return { data: rows, error: null };
+}
+
+export async function fetchLaunchPlanningScenarioByIdForAdmin(
+  client: ReadClient,
+  id: string,
+): Promise<ReadResult<LaunchPlanningScenariosRow | null>> {
+  const { data, error } = await client
+    .from("launch_planning_scenarios")
+    .select(LAUNCH_PLANNING_SCENARIO_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error)
+    return { data: null, error: wrapError("fetchLaunchPlanningScenarioByIdForAdmin", error) };
+  if (data == null) return { data: null, error: null };
+  const raw: unknown = data;
+  if (!isLaunchPlanningScenarioRow(raw)) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLaunchPlanningScenarioByIdForAdmin",
+        new Error("shape_invalid"),
+      ),
+    };
+  }
+  return { data: raw, error: null };
 }

@@ -459,3 +459,64 @@ export async function rpcAdminUpdateLaunchPlanningAssumptions(
   );
   return { data: readUuidRpcData(r.data), error: r.error };
 }
+
+// LP.2 launch planning scenario RPCs.
+
+export type AdminCreateLaunchPlanningScenarioArgs = {
+  p_name: string;
+  p_description: string | null;
+  p_assumptions: Record<string, unknown>;
+  p_make_current: boolean;
+};
+
+export async function rpcAdminCreateLaunchPlanningScenario(
+  client: AppSupabaseClient,
+  args: AdminCreateLaunchPlanningScenarioArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_create_launch_planning_scenario" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export type AdminUpdateLaunchPlanningScenarioArgs = {
+  p_scenario_id: string;
+  p_name: string;
+  p_description: string | null;
+  p_assumptions: Record<string, unknown>;
+  p_make_current: boolean;
+};
+
+export async function rpcAdminUpdateLaunchPlanningScenario(
+  client: AppSupabaseClient,
+  args: AdminUpdateLaunchPlanningScenarioArgs,
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_update_launch_planning_scenario" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export async function rpcAdminArchiveLaunchPlanningScenario(
+  client: AppSupabaseClient,
+  args: { p_scenario_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_archive_launch_planning_scenario" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export async function rpcAdminSetCurrentLaunchPlanningScenario(
+  client: AppSupabaseClient,
+  args: { p_scenario_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_set_current_launch_planning_scenario" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}

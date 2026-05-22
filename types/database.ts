@@ -232,6 +232,19 @@ export interface ShepherdCoverageAssignmentsRow {
   updated_at: Timestamp;
 }
 
+export interface LaunchPlanningScenariosRow {
+  id: UUID;
+  name: string;
+  description: string | null;
+  assumptions: Record<string, unknown>;
+  is_current: boolean;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
   Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
@@ -356,6 +369,22 @@ export interface Database {
           'id' | 'created_at' | 'updated_at' | 'ended_at' | 'active' | 'assigned_at'
         >;
         Update: Partial<ShepherdCoverageAssignmentsRow>;
+        Relationships: [];
+      };
+      launch_planning_scenarios: {
+        Row: LaunchPlanningScenariosRow;
+        Insert: InsertOf<
+          LaunchPlanningScenariosRow,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'archived_at'
+          | 'is_current'
+          | 'created_by'
+          | 'updated_by'
+          | 'description'
+        >;
+        Update: Partial<LaunchPlanningScenariosRow>;
         Relationships: [];
       };
     };

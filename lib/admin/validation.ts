@@ -1752,3 +1752,124 @@ export function validateLaunchPlanningAssumptionsPayload(
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, value };
 }
+
+// ---------------------------------------------------------------------------
+// LP.2 — Launch planning scenario payloads
+// ---------------------------------------------------------------------------
+//
+// Scenarios reuse the LP.1 assumption shape. The create / update payloads
+// add `name`, optional `description`, optional `make_current`, and (for
+// update / archive / set-current) the scenario id. Notes redaction lives
+// at the audit boundary — see `redactNotesForAudit` and the SQL
+// `lp2_redact_assumptions_for_audit` helper.
+
+const SCENARIO_NAME_MAX = 120;
+const SCENARIO_DESCRIPTION_MAX = 1000;
+
+function validateScenarioCommon(
+  input: Record<string, unknown>,
+  errors: string[],
+): {
+  name: string;
+  description: string | null;
+  assumptions: LaunchPlanningAssumptionsPayload;
+  make_current: boolean;
+} {
+  const name = trimString(input.name) ?? "";
+  if (name.length === 0) {
+    errors.push("Scenario name is required.");
+  } else if (name.length > SCENARIO_NAME_MAX) {
+    errors.push(
+      `Scenario name is too long (max ${SCENARIO_NAME_MAX} characters).`,
+    );
+  }
+
+  const descriptionRaw = readOptionalString(input.description);
+  let description: string | null = null;
+  if (descriptionRaw !== undefined) {
+    if (descriptionRaw.length > SCENARIO_DESCRIPTION_MAX) {
+      errors.push(
+        `Description is too long (max ${SCENARIO_DESCRIPTION_MAX} characters).`,
+      );
+    } else {
+      description = descriptionRaw;
+    }
+  }
+
+  // Reuse the LP.1 assumptions validator so the scenario form's bounds
+  // match the baseline form's bounds exactly. Bubble up any per-field
+  // errors into the scenario payload's error list.
+  const assumptionsInput = isRecord(input.assumptions) ? input.assumptions : {};
+  const assumptions = validateLaunchPlanningAssumptionsPayload(assumptionsInput);
+  let value: LaunchPlanningAssumptionsPayload = {};
+  if (!assumptions.ok) {
+    for (const e of assumptions.errors) errors.push(e);
+  } else {
+    value = assumptions.value;
+  }
+
+  const make_current = readBooleanFlag(input.make_current);
+
+  return {
+    name,
+    description,
+    assumptions: value,
+    make_current,
+  };
+}
+
+export type CreateLaunchPlanningScenarioPayload = {
+  name: string;
+  description: string | null;
+  assumptions: LaunchPlanningAssumptionsPayload;
+  make_current: boolean;
+};
+
+export function validateCreateLaunchPlanningScenarioPayload(
+  input: unknown,
+): ValidationResult<CreateLaunchPlanningScenarioPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  const fields = validateScenarioCommon(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, value: fields };
+}
+
+export type UpdateLaunchPlanningScenarioPayload = {
+  scenario_id: string;
+  name: string;
+  description: string | null;
+  assumptions: LaunchPlanningAssumptionsPayload;
+  make_current: boolean;
+};
+
+export function validateUpdateLaunchPlanningScenarioPayload(
+  input: unknown,
+): ValidationResult<UpdateLaunchPlanningScenarioPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.scenario_id)) errors.push("scenario_id must be a uuid");
+  const fields = validateScenarioCommon(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      scenario_id: normalizeUuid(input.scenario_id as string),
+      ...fields,
+    },
+  };
+}
+
+export type ScenarioIdPayload = { scenario_id: string };
+
+export function validateScenarioIdPayload(
+  input: unknown,
+): ValidationResult<ScenarioIdPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.scenario_id))
+    return { ok: false, errors: ["scenario_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { scenario_id: normalizeUuid(input.scenario_id as string) },
+  };
+}

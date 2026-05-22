@@ -75,6 +75,11 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
   invalid_ended_at_before_start:
     "The end date can't be earlier than the assignment's start date.",
+  // LP.2 launch planning scenario tokens.
+  missing_scenario:
+    "We couldn't find that scenario. Refresh the page and try again.",
+  scenario_archived:
+    "That scenario is archived. Restore or duplicate it before editing.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

@@ -5,19 +5,25 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
+  fetchLaunchPlanningScenariosForAdmin,
   type LaunchPlanningInputsBundle,
 } from "@/lib/supabase/read-models";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   buildLaunchPlanningInputs,
+  buildScenarioComparison,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
+  decodeLaunchPlanningScenario,
+  filterActiveScenarios,
+  type LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
 import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
 import { LaunchPlanningAssumptionsForm } from "@/components/admin/launch-planning/assumptions-form";
 import { LaunchPlanningSummaryCards } from "@/components/admin/launch-planning/summary-cards";
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
+import { ScenariosPanel } from "@/components/admin/launch-planning/scenarios-panel";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +35,9 @@ type PageData = {
   inputsBundle: LaunchPlanningInputsBundle;
   inputs: ReturnType<typeof buildLaunchPlanningInputs>;
   outputs: ReturnType<typeof computeLaunchPlan>;
+  activeScenarios: LaunchPlanningScenario[];
+  scenariosError: string | null;
+  comparison: ReturnType<typeof buildScenarioComparison>;
 };
 
 function emptyData(): PageData {
@@ -57,6 +66,9 @@ function emptyData(): PageData {
     inputsBundle,
     inputs,
     outputs: computeLaunchPlan(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS, inputs),
+    activeScenarios: [],
+    scenariosError: "Database is not configured in this environment.",
+    comparison: [],
   };
 }
 
@@ -64,11 +76,12 @@ async function loadData(): Promise<PageData> {
   const client = await createSupabaseServerClient();
   if (!client) return emptyData();
 
-  // Run the two independent fetches in parallel so TTFB tracks the
-  // slower of the two rather than their sum.
-  const [assumptionsRes, inputsBundle] = await Promise.all([
+  // Run the three independent fetches in parallel so TTFB tracks the
+  // slowest rather than their sum.
+  const [assumptionsRes, inputsBundle, scenariosRes] = await Promise.all([
     fetchLaunchPlanningAssumptions(client),
     fetchLaunchPlanningInputsForAdmin(client),
+    fetchLaunchPlanningScenariosForAdmin(client),
   ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
@@ -84,6 +97,12 @@ async function loadData(): Promise<PageData> {
   });
   const outputs = computeLaunchPlan(assumptions, inputs);
 
+  const rawScenarios = scenariosRes.data ?? [];
+  const activeScenarios = filterActiveScenarios(rawScenarios).map((row) =>
+    decodeLaunchPlanningScenario(row, metricDefaults),
+  );
+  const comparison = buildScenarioComparison(activeScenarios, inputs);
+
   return {
     assumptions,
     assumptionsAvailable: assumptionsRes.data != null,
@@ -91,6 +110,9 @@ async function loadData(): Promise<PageData> {
     inputsBundle,
     inputs,
     outputs,
+    activeScenarios,
+    scenariosError: scenariosRes.error?.message ?? null,
+    comparison,
   };
 }
 
@@ -201,6 +223,31 @@ export default async function AdminLaunchPlanningPage() {
               outputs={data.outputs}
             />
           </div>
+
+          {data.scenariosError ? (
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: "#7d3621",
+                background: P.terraSoft,
+                border: `1px solid ${P.terra}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+              }}
+            >
+              Scenarios could not be loaded: {data.scenariosError}
+            </p>
+          ) : null}
+
+          <ScenariosPanel
+            scenarios={data.activeScenarios}
+            baseline={data.assumptions}
+            inputs={data.inputs}
+            baselineOutputs={data.outputs}
+            comparison={data.comparison}
+          />
 
           <nav
             aria-label="Related admin surfaces"

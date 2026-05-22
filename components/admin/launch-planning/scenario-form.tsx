@@ -1,0 +1,557 @@
+"use client";
+
+import { useActionState, useEffect, useState } from "react";
+import { PButton } from "@/components/pastoral/button";
+import {
+  adminArchiveLaunchPlanningScenario,
+  adminCreateLaunchPlanningScenario,
+  adminSetCurrentLaunchPlanningScenario,
+  adminUpdateLaunchPlanningScenario,
+} from "@/app/(protected)/admin/launch-planning/scenario-actions";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
+import {
+  errorTextStyle,
+  fieldInputStyle,
+  fieldLabelStyle,
+  formGridStyle,
+  successTextStyle,
+} from "@/components/admin/forms/field-styles";
+import type { ActionResult } from "@/lib/admin/action-result";
+import type {
+  LaunchPlanningAssumptions,
+  LaunchPlanningScenario,
+} from "@/lib/admin/launch-planning";
+
+type State = ActionResult<{ id: string }> | undefined;
+
+const hintStyle = {
+  fontFamily: fontBody,
+  fontSize: 11,
+  color: P.ink3,
+  margin: "4px 0 0",
+  lineHeight: 1.4,
+} as const;
+
+function pctValue(ratio: number): string {
+  const pct = ratio * 100;
+  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1).replace(/\.0$/, "");
+}
+
+// Shared assumption-field grid. Used by both create and edit forms so the
+// LP.1 baseline form and the LP.2 scenario form expose the same set of
+// editable inputs in the same order.
+//
+// The `idPrefix` parameter scopes input `id` attributes so the create
+// panel and the edit panel can render at the same time without producing
+// duplicate IDs in the DOM (which would break label→input targeting and
+// fail accessibility audits).
+//
+// `required` is set on every numeric field so the scenario is always
+// stored as a complete snapshot. Without the required guard, blank
+// numerics would be dropped from the payload and the decoder would later
+// fall back to global metric defaults — meaning a saved scenario could
+// quietly change behavior when the defaults change.
+function AssumptionFields({
+  defaults,
+  idPrefix,
+}: {
+  defaults: LaunchPlanningAssumptions;
+  idPrefix: string;
+}) {
+  const fieldId = (name: string) => `${idPrefix}__${name}`;
+  return (
+    <>
+      <div className="lg-m-grid-stack" style={formGridStyle}>
+        <div>
+          <label htmlFor={fieldId("current_church_attendance")} style={fieldLabelStyle}>
+            Current church attendance
+          </label>
+          <input
+            id={fieldId("current_church_attendance")}
+            name="current_church_attendance"
+            type="number"
+            required
+            min={0}
+            max={100000}
+            inputMode="numeric"
+            defaultValue={defaults.current_church_attendance}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>Whole number of attendees today.</p>
+        </div>
+
+        <div>
+          <label htmlFor={fieldId("expected_growth")} style={fieldLabelStyle}>
+            Expected growth (people)
+          </label>
+          <input
+            id={fieldId("expected_growth")}
+            name="expected_growth"
+            type="number"
+            required
+            min={-100000}
+            max={100000}
+            inputMode="numeric"
+            defaultValue={defaults.expected_growth}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            People expected to arrive by the date below. Use a negative number
+            if you expect shrinkage.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor={fieldId("expected_growth_date")} style={fieldLabelStyle}>
+            Expected growth date
+          </label>
+          <input
+            id={fieldId("expected_growth_date")}
+            name="expected_growth_date"
+            type="date"
+            defaultValue={defaults.expected_growth_date ?? ""}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>Optional. Used to suggest launch timing.</p>
+        </div>
+
+        <div>
+          <label
+            htmlFor={fieldId("target_group_participation_pct")}
+            style={fieldLabelStyle}
+          >
+            Target group participation %
+          </label>
+          <input
+            id={fieldId("target_group_participation_pct")}
+            name="target_group_participation_pct"
+            type="number"
+            required
+            min={0}
+            max={1}
+            step={0.01}
+            inputMode="decimal"
+            defaultValue={defaults.target_group_participation_pct}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Decimal 0–1 (e.g. 0.6 = 60% of attendees in a group). Currently{" "}
+            {pctValue(defaults.target_group_participation_pct)}%.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor={fieldId("average_group_size")} style={fieldLabelStyle}>
+            Average group size
+          </label>
+          <input
+            id={fieldId("average_group_size")}
+            name="average_group_size"
+            type="number"
+            required
+            min={1}
+            max={500}
+            inputMode="numeric"
+            defaultValue={defaults.average_group_size}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Used to convert the capacity gap into a new-group count.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor={fieldId("launch_buffer_pct")} style={fieldLabelStyle}>
+            Launch buffer %
+          </label>
+          <input
+            id={fieldId("launch_buffer_pct")}
+            name="launch_buffer_pct"
+            type="number"
+            required
+            min={0}
+            max={0.95}
+            step={0.01}
+            inputMode="decimal"
+            defaultValue={defaults.launch_buffer_pct}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Decimal 0–0.95. Currently {pctValue(defaults.launch_buffer_pct)}%
+            spare-capacity headroom.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor={fieldId("leaders_per_new_group")} style={fieldLabelStyle}>
+            Leaders per new group
+          </label>
+          <input
+            id={fieldId("leaders_per_new_group")}
+            name="leaders_per_new_group"
+            type="number"
+            required
+            min={0}
+            max={10}
+            inputMode="numeric"
+            defaultValue={defaults.leaders_per_new_group}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>e.g. 2 = one leader + one co-leader.</p>
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor={fieldId("notes")} style={fieldLabelStyle}>
+          Scenario notes
+        </label>
+        <textarea
+          id={fieldId("notes")}
+          name="notes"
+          rows={3}
+          maxLength={2000}
+          defaultValue={defaults.notes ?? ""}
+          style={{
+            ...fieldInputStyle,
+            minHeight: 80,
+            resize: "vertical",
+            fontFamily: fontBody,
+          }}
+          placeholder="Optional context for Julian's eyes only."
+        />
+        <p style={hintStyle}>
+          Admin-only. Not shown anywhere outside this page and never logged in
+          audit metadata.
+        </p>
+      </div>
+    </>
+  );
+}
+
+export function CreateScenarioForm({
+  defaults,
+  onClose,
+}: {
+  defaults: LaunchPlanningAssumptions;
+  onClose?: () => void;
+}) {
+  const [state, formAction, pending] = useActionState<State, FormData>(
+    adminCreateLaunchPlanningScenario,
+    undefined,
+  );
+
+  return (
+    <form action={formAction} style={{ display: "grid", gap: 16 }}>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: 0,
+          lineHeight: 1.55,
+        }}
+      >
+        Create a named alternative to compare against the baseline. The fields
+        below seed from the baseline; tweak any of them to shape this scenario.
+      </p>
+
+      <div className="lg-m-grid-stack" style={formGridStyle}>
+        <div>
+          <label htmlFor="scenario_name" style={fieldLabelStyle}>
+            Scenario name
+          </label>
+          <input
+            id="scenario_name"
+            name="name"
+            type="text"
+            required
+            maxLength={120}
+            placeholder="Conservative, Expected, Stretch…"
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>Required. Max 120 characters.</p>
+        </div>
+
+        <div>
+          <label htmlFor="scenario_description" style={fieldLabelStyle}>
+            Description (optional)
+          </label>
+          <input
+            id="scenario_description"
+            name="description"
+            type="text"
+            maxLength={1000}
+            placeholder="One-line context for this scenario."
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>Optional. Max 1000 characters.</p>
+        </div>
+      </div>
+
+      <AssumptionFields defaults={defaults} idPrefix="create_scenario" />
+
+      <label
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink,
+        }}
+      >
+        <input type="checkbox" name="make_current" value="true" />
+        Mark as the current scenario (replaces any prior current).
+      </label>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          {pending ? "Saving…" : "Save scenario"}
+        </PButton>
+        {onClose ? (
+          <PButton
+            type="button"
+            tone="ghost"
+            size="md"
+            onClick={onClose}
+            disabled={pending}
+          >
+            Cancel
+          </PButton>
+        ) : null}
+        {state?.ok ? (
+          <span style={successTextStyle}>Scenario saved.</span>
+        ) : null}
+      </div>
+
+      {state && !state.ok ? (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+          {state.errors.map((err, i) => (
+            <li key={i}>
+              <p style={errorTextStyle}>{err}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </form>
+  );
+}
+
+export function EditScenarioForm({
+  scenario,
+}: {
+  scenario: LaunchPlanningScenario;
+}) {
+  const [editState, editAction, editPending] = useActionState<State, FormData>(
+    adminUpdateLaunchPlanningScenario,
+    undefined,
+  );
+  const [archiveState, archiveAction, archivePending] = useActionState<
+    State,
+    FormData
+  >(adminArchiveLaunchPlanningScenario, undefined);
+  const [setCurrentState, setCurrentAction, setCurrentPending] = useActionState<
+    State,
+    FormData
+  >(adminSetCurrentLaunchPlanningScenario, undefined);
+
+  // Local mirror so the "Mark as current" checkbox reflects the row state.
+  // The is_current value can change underneath us when another scenario is
+  // set current (or when this scenario is promoted via the "Make current"
+  // sub-action below). When the prop changes after a server revalidation,
+  // resync the checkbox so a subsequent "Save scenario" submit doesn't
+  // silently clear is_current with a stale unchecked value.
+  const [makeCurrent, setMakeCurrent] = useState<boolean>(scenario.is_current);
+  useEffect(() => {
+    setMakeCurrent(scenario.is_current);
+  }, [scenario.is_current]);
+
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <header
+        style={{
+          display: "grid",
+          gap: 4,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: fontSans,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: "uppercase",
+            color: P.ink3,
+            fontWeight: 600,
+          }}
+        >
+          Editing scenario
+        </span>
+        <h3
+          style={{
+            margin: 0,
+            fontFamily: fontBody,
+            fontSize: 18,
+            color: P.ink,
+            fontWeight: 600,
+          }}
+        >
+          {scenario.name}
+          {scenario.is_current ? (
+            <span
+              style={{
+                marginLeft: 10,
+                fontSize: 10,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: P.sageTextStrong,
+                background: P.sageSoft,
+                border: `1px solid ${P.sage}`,
+                padding: "2px 8px",
+                borderRadius: 999,
+                fontFamily: fontSans,
+                fontWeight: 600,
+              }}
+            >
+              Current
+            </span>
+          ) : null}
+        </h3>
+      </header>
+
+      <form action={editAction} style={{ display: "grid", gap: 16 }}>
+        <input type="hidden" name="scenario_id" value={scenario.id} />
+
+        <div className="lg-m-grid-stack" style={formGridStyle}>
+          <div>
+            <label htmlFor={`edit_name_${scenario.id}`} style={fieldLabelStyle}>
+              Scenario name
+            </label>
+            <input
+              id={`edit_name_${scenario.id}`}
+              name="name"
+              type="text"
+              required
+              maxLength={120}
+              defaultValue={scenario.name}
+              style={fieldInputStyle}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor={`edit_description_${scenario.id}`}
+              style={fieldLabelStyle}
+            >
+              Description (optional)
+            </label>
+            <input
+              id={`edit_description_${scenario.id}`}
+              name="description"
+              type="text"
+              maxLength={1000}
+              defaultValue={scenario.description ?? ""}
+              style={fieldInputStyle}
+            />
+          </div>
+        </div>
+
+        <AssumptionFields
+          defaults={scenario.assumptions}
+          idPrefix={`edit_scenario_${scenario.id}`}
+        />
+
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink,
+          }}
+        >
+          <input
+            type="checkbox"
+            name="make_current"
+            value="true"
+            checked={makeCurrent}
+            onChange={(e) => setMakeCurrent(e.target.checked)}
+          />
+          Mark as the current scenario.
+        </label>
+
+        <div
+          style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+        >
+          <PButton type="submit" tone="terra" size="md" disabled={editPending}>
+            {editPending ? "Saving…" : "Save scenario"}
+          </PButton>
+          {editState?.ok ? (
+            <span style={successTextStyle}>Saved.</span>
+          ) : null}
+        </div>
+
+        {editState && !editState.ok ? (
+          <ul
+            style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}
+          >
+            {editState.errors.map((err, i) => (
+              <li key={i}>
+                <p style={errorTextStyle}>{err}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </form>
+
+      <div
+        style={{
+          borderTop: `1px solid ${P.line}`,
+          paddingTop: 14,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        {!scenario.is_current ? (
+          <form action={setCurrentAction}>
+            <input type="hidden" name="scenario_id" value={scenario.id} />
+            <PButton
+              type="submit"
+              tone="ghost"
+              size="sm"
+              disabled={setCurrentPending}
+            >
+              {setCurrentPending ? "Updating…" : "Make current"}
+            </PButton>
+          </form>
+        ) : null}
+        {setCurrentState?.ok ? (
+          <span style={successTextStyle}>Marked current.</span>
+        ) : null}
+        {setCurrentState && !setCurrentState.ok ? (
+          <p style={errorTextStyle}>{setCurrentState.errors.join(" ")}</p>
+        ) : null}
+
+        <form action={archiveAction}>
+          <input type="hidden" name="scenario_id" value={scenario.id} />
+          <PButton
+            type="submit"
+            tone="ghost"
+            size="sm"
+            disabled={archivePending}
+          >
+            {archivePending ? "Archiving…" : "Archive scenario"}
+          </PButton>
+        </form>
+        {archiveState?.ok ? (
+          <span style={successTextStyle}>Archived.</span>
+        ) : null}
+        {archiveState && !archiveState.ok ? (
+          <p style={errorTextStyle}>{archiveState.errors.join(" ")}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
