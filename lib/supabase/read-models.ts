@@ -1225,3 +1225,78 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
   out.sort((a, b) => a.shepherd.full_name.localeCompare(b.shepherd.full_name));
   return { data: out, error: null };
 }
+
+// ---------------------------------------------------------------------------
+// LP.1 — launch planning assumptions
+// ---------------------------------------------------------------------------
+//
+// Reads the single `launch_planning_assumptions` row from app_settings.
+// Uses an explicit column allowlist (no select("*") on launch-planning
+// paths) and the same `isAppSettingsRow` trust-boundary guard as the
+// metric_defaults reader. A `null` data return means either the row was
+// never seeded (treat as "use built-in defaults") or the shape guard
+// rejected the row.
+const LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS =
+  "id, setting_key, setting_value, created_at, updated_at";
+
+export async function fetchLaunchPlanningAssumptions(
+  client: ReadClient,
+): Promise<ReadResult<AppSettingsRow | null>> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select(LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS)
+    .eq("setting_key", "launch_planning_assumptions")
+    .maybeSingle();
+  if (error)
+    return { data: null, error: wrapError("fetchLaunchPlanningAssumptions", error) };
+  if (data === null || data === undefined) return { data: null, error: null };
+  if (!isAppSettingsRow(data)) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLaunchPlanningAssumptions",
+        new Error("shape_invalid"),
+      ),
+    };
+  }
+  return { data, error: null };
+}
+
+// Bundle the four independent reads the launch-planning page needs.
+// Returns a partial-success shape so the page can render setup warnings
+// when any individual read fails, rather than blanking the whole page.
+export type LaunchPlanningInputsBundle = {
+  groups: GroupsRow[];
+  groupMetricSettings: GroupMetricSettingsRow[];
+  memberships: GroupMembershipsRow[];
+  metricDefaultsRow: AppSettingsRow | null;
+  errors: {
+    groups: string | null;
+    overrides: string | null;
+    memberships: string | null;
+    metricDefaults: string | null;
+  };
+};
+
+export async function fetchLaunchPlanningInputsForAdmin(
+  client: ReadClient,
+): Promise<LaunchPlanningInputsBundle> {
+  const [groupsRes, overridesRes, membershipsRes, defaultsRes] = await Promise.all([
+    fetchAllGroups(client),
+    fetchAllGroupMetricSettings(client),
+    fetchActiveMemberships(client),
+    fetchMetricDefaults(client),
+  ]);
+  return {
+    groups: groupsRes.data ?? [],
+    groupMetricSettings: overridesRes.data ?? [],
+    memberships: membershipsRes.data ?? [],
+    metricDefaultsRow: defaultsRes.data ?? null,
+    errors: {
+      groups: groupsRes.error?.message ?? null,
+      overrides: overridesRes.error?.message ?? null,
+      memberships: membershipsRes.error?.message ?? null,
+      metricDefaults: defaultsRes.error?.message ?? null,
+    },
+  };
+}

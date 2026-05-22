@@ -10,6 +10,7 @@ import {
   validateCreateOverShepherdPayload,
   validateEndShepherdCoverageAssignmentPayload,
   validateInviteUserPayload,
+  validateLaunchPlanningAssumptionsPayload,
   validateLogShepherdCareInteractionPayload,
   validateUpdateOverShepherdPayload,
   validateUpsertShepherdCareProfilePayload,
@@ -639,5 +640,147 @@ describe("validateEndShepherdCoverageAssignmentPayload", () => {
       ended_at: "not-a-date",
     });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("validateLaunchPlanningAssumptionsPayload", () => {
+  it("rejects non-object input", () => {
+    expect(validateLaunchPlanningAssumptionsPayload(null).ok).toBe(false);
+    expect(validateLaunchPlanningAssumptionsPayload("not an object").ok).toBe(false);
+  });
+
+  it("accepts the documented default payload", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      current_church_attendance: 100,
+      expected_growth: 20,
+      expected_growth_date: null,
+      target_group_participation_pct: 0.6,
+      average_group_size: 10,
+      launch_buffer_pct: 0.15,
+      leaders_per_new_group: 2,
+      notes: null,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.current_church_attendance).toBe(100);
+      expect(r.value.expected_growth).toBe(20);
+      expect(r.value.expected_growth_date).toBeNull();
+      expect(r.value.target_group_participation_pct).toBe(0.6);
+      expect(r.value.average_group_size).toBe(10);
+      expect(r.value.launch_buffer_pct).toBe(0.15);
+      expect(r.value.leaders_per_new_group).toBe(2);
+      expect(r.value.notes).toBeNull();
+    }
+  });
+
+  it("rejects unknown top-level keys", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      current_church_attendance: 100,
+      mystery_field: "x",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /Unknown setting key/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects target_group_participation_pct outside 0–1", () => {
+    expect(
+      validateLaunchPlanningAssumptionsPayload({
+        target_group_participation_pct: 1.2,
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateLaunchPlanningAssumptionsPayload({
+        target_group_participation_pct: -0.1,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects launch_buffer_pct >= 1 to keep the (1 - buffer) denominator positive", () => {
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 1 }).ok,
+    ).toBe(false);
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.96 }).ok,
+    ).toBe(false);
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.95 }).ok,
+    ).toBe(true);
+  });
+
+  it("rejects out-of-range integer fields", () => {
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ current_church_attendance: -1 }).ok,
+    ).toBe(false);
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ average_group_size: 0 }).ok,
+    ).toBe(false);
+    expect(
+      validateLaunchPlanningAssumptionsPayload({ leaders_per_new_group: 11 }).ok,
+    ).toBe(false);
+  });
+
+  it("accepts and parses string-encoded form values", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      current_church_attendance: "120",
+      expected_growth: "30",
+      target_group_participation_pct: "0.7",
+      launch_buffer_pct: "0.2",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.current_church_attendance).toBe(120);
+      expect(r.value.expected_growth).toBe(30);
+      expect(r.value.target_group_participation_pct).toBeCloseTo(0.7, 6);
+      expect(r.value.launch_buffer_pct).toBeCloseTo(0.2, 6);
+    }
+  });
+
+  it("accepts ISO calendar dates and rejects impossible ones", () => {
+    const ok = validateLaunchPlanningAssumptionsPayload({
+      expected_growth_date: "2026-08-01",
+    });
+    expect(ok.ok).toBe(true);
+    const bad = validateLaunchPlanningAssumptionsPayload({
+      expected_growth_date: "2026-02-30",
+    });
+    expect(bad.ok).toBe(false);
+    const malformed = validateLaunchPlanningAssumptionsPayload({
+      expected_growth_date: "next August",
+    });
+    expect(malformed.ok).toBe(false);
+  });
+
+  it("treats empty-string date and notes as null clears", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      expected_growth_date: "",
+      notes: "",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.expected_growth_date).toBeNull();
+      expect(r.value.notes).toBeNull();
+    }
+  });
+
+  it("rejects notes longer than 2000 characters", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      notes: "x".repeat(2001),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /2000 characters/i.test(e))).toBe(true);
+    }
+  });
+
+  it("allows submitting a partial payload (PATCH semantics)", () => {
+    const r = validateLaunchPlanningAssumptionsPayload({
+      launch_buffer_pct: 0.1,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(Object.keys(r.value)).toEqual(["launch_buffer_pct"]);
+    }
   });
 });

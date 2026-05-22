@@ -445,3 +445,17 @@ export async function rpcAdminEndShepherdCoverageAssignment(
   );
   return { data: readUuidRpcData(r.data), error: r.error };
 }
+
+// LP.1 launch planning RPC. Same `as never` cast pattern as
+// rpcAdminUpdateMetricDefaults — Supabase's RPC generic chokes on our
+// hand-rolled Database type, so we cast at the boundary.
+export async function rpcAdminUpdateLaunchPlanningAssumptions(
+  client: AppSupabaseClient,
+  args: { p_settings: Record<string, unknown> },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_update_launch_planning_assumptions" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
