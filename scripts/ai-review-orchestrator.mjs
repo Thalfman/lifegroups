@@ -1,3 +1,19 @@
+import {
+  ACTIONABLE_RE,
+  INFORMATIONAL_RE,
+  claudeCompletionMarker,
+  collectSensitiveWarnings,
+  commentTime,
+  formatSensitiveWarnings,
+  hasManualSensitiveApproval,
+  hasSensitiveWarnings,
+  isCodexLogin,
+  isGeminiLogin,
+  manualReviewRequiredMarker,
+  manualSensitiveApprovalPhrase,
+  parseCsvSet,
+} from './ai-review-shared.mjs';
+
 const token = process.env.GITHUB_TOKEN;
 const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
 if (!token || !owner || !repo) throw new Error('Missing GITHUB_TOKEN or GITHUB_REPOSITORY');
@@ -15,27 +31,11 @@ const TARGET_PR = rawTargetPr ? Number(rawTargetPr) : null;
 const CODEX_ACTOR_EXACT = process.env.CODEX_ACTOR_LOGIN || '';
 const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
 const CLAUDE_TRIGGER = process.env.CLAUDE_TRIGGER || '@claude';
-const ALLOWED = new Set((process.env.ALLOWED_PR_AUTHORS || '').split(',').map((s) => s.trim()).filter(Boolean));
+const ALLOWED = parseCsvSet(process.env.ALLOWED_PR_AUTHORS || '');
 const ACTIONS_BOT = 'github-actions[bot]';
 
-const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|vulnerability|regression|broken)\b/i;
-const informationalRegex = /\b(info|nit|style|optional|fyi|question)\b/i;
-const commentTime = (c) => new Date(c.updated_at || c.created_at);
-const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
-const sensitivePaths = ['.github/workflows/', '.env', 'supabase/migrations/', 'supabase/functions/', 'middleware.', 'auth/', 'rls/', 'package-lock.json', 'pnpm-lock.yaml'];
-
-const isCodex = (login = '') => {
-  if (!login) return false;
-  const l = login.toLowerCase();
-  if (l.includes('claude')) return false;
-  return CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : l.includes('codex');
-};
-const isGemini = (login = '') => {
-  if (!login) return false;
-  if (login === GEMINI_ACTOR) return true;
-  return login.toLowerCase().startsWith('gemini-code-assist');
-};
-const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
+const isCodex = (login = '') => isCodexLogin(login, CODEX_ACTOR_EXACT);
+const isGemini = (login = '') => isGeminiLogin(login, GEMINI_ACTOR);
 
 async function gh(path, init = {}) {
   const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } });
@@ -67,8 +67,9 @@ async function processPr(pr) {
     listAll(`/repos/${owner}/${repo}/issues/${pr.number}/reactions`),
   ]);
   const headDate = new Date(headCommit.commit.committer.date);
-  const sensitiveChanged = files.some((f) => isSensitivePath(f.filename));
-  const sensitiveByTerm = [...issueComments, ...reviewComments, ...reviews].some((c) => sensitiveTermRegex.test(c.body || ''));
+  const sensitiveWarnings = collectSensitiveWarnings(files, [...issueComments, ...reviewComments, ...reviews]);
+  const sensitiveNeedsManualReview = hasSensitiveWarnings(sensitiveWarnings)
+    && !hasManualSensitiveApproval(issueComments, pr.number, headSha);
 
   const codexCompleted = issueComments.some((c) => isCodex(c.user?.login) && new Date(c.created_at) >= headDate)
     || reviewComments.some((c) => isCodex(c.user?.login) && (c.commit_id === headSha || new Date(c.created_at) >= headDate))
@@ -98,7 +99,7 @@ async function processPr(pr) {
     const lower = login.toLowerCase();
     if (lower.includes('claude') || lower.includes('vercel') || lower.includes('supabase')) return false;
     if (c.commit_id !== headSha && commentTime(c) < headDate) return false;
-    return !informationalRegex.test(c.body || '');
+    return !INFORMATIONAL_RE.test(c.body || '');
   });
 
   for (const c of actionableReviewComments) {
@@ -112,18 +113,33 @@ async function processPr(pr) {
     return (isCodex(login) || isGemini(login)) && !login.toLowerCase().includes('claude') && commentTime(c) >= headDate;
   });
   const actionable = aiComments.filter((c) => {
-    if (reviewComments.find((rc) => rc.id === c.id)) return !informationalRegex.test(c.body || '');
-    return actionableRegex.test(c.body || '');
+    if (reviewComments.find((rc) => rc.id === c.id)) return !INFORMATIONAL_RE.test(c.body || '');
+    return ACTIONABLE_RE.test(c.body || '');
   }).map((c) => `- ${c.user.login}: ${c.html_url}`);
 
   const noActionMarker = `<!-- ai-review-orchestrator:state:${pr.number}:${headSha}:ready-for-readiness-check -->`;
+  if (sensitiveNeedsManualReview) {
+    const manualMarker = `<!-- ${manualReviewRequiredMarker(pr.number, headSha)} -->`;
+    for (const c of actionableReviewComments) {
+      await addReviewCommentReactionIfMissing(c.id, 'confused');
+    }
+    if (!hasMarker(issueComments, manualMarker)) {
+      const warnings = formatSensitiveWarnings(sensitiveWarnings);
+      await post(
+        pr.number,
+        `AI review autopilot paused for PR #${pr.number} at ${headSha}; sensitive areas require human review before Claude triggering or merge readiness.\n\n${warnings}\n\nAfter human review, a non-bot maintainer can resume AI readiness by commenting exactly:\n\`${manualSensitiveApprovalPhrase(headSha)}\`\n\n${manualMarker}`,
+      );
+    }
+    return;
+  }
+
   if (actionable.length === 0) {
     const handledReviewComments = reviewComments.filter((c) => {
       const login = c.user?.login || '';
       if (!(isCodex(login) || isGemini(login))) return false;
       const lower = login.toLowerCase();
       if (lower.includes('claude') || lower.includes('vercel') || lower.includes('supabase')) return false;
-      return c.commit_id !== headSha || informationalRegex.test(c.body || '') || commentTime(c) < headDate;
+      return c.commit_id !== headSha || INFORMATIONAL_RE.test(c.body || '') || commentTime(c) < headDate;
     });
     for (const c of handledReviewComments) {
       await addReviewCommentReactionIfMissing(c.id, '+1');
@@ -152,7 +168,7 @@ async function processPr(pr) {
     await addReviewCommentReactionIfMissing(c.id, 'rocket');
   }
 
-  const body = `${CLAUDE_TRIGGER}\nPR: #${pr.number}\nHead SHA: ${headSha}\nCodex: complete\nGemini: complete\nActionable feedback links:\n${actionable.join('\n')}\n\nReview the current PR diff and the Codex/Gemini feedback listed below. Address only actionable feedback that is relevant to the current diff and current head SHA. Ignore stale, duplicate, vague, or incorrect suggestions. Do not broaden scope. Do not refactor unrelated code. Do not change auth, RLS, secrets, GitHub workflows, deployment configuration, environment handling, or Supabase migrations unless the reviewer feedback directly identifies a concrete bug and the fix is minimal. Run relevant checks. If no patch is needed, leave a PR comment explaining why.\n${triggerMarker}`;
+  const body = `${CLAUDE_TRIGGER}\nPR: #${pr.number}\nHead SHA: ${headSha}\nCodex: complete\nGemini: complete\nActionable feedback links:\n${actionable.join('\n')}\n\nReview the current PR diff and the Codex/Gemini feedback listed below. Address only actionable feedback that is relevant to the current diff and current head SHA. Ignore stale, duplicate, vague, or incorrect suggestions. Do not broaden scope. Do not refactor unrelated code. Do not change auth, RLS, secrets, GitHub workflows, deployment configuration, environment handling, or Supabase migrations unless the reviewer feedback directly identifies a concrete bug and the fix is minimal. Run relevant checks. If no patch is needed, leave a PR comment explaining why and include this completion marker: <!-- ${claudeCompletionMarker(pr.number, headSha)}:no-op -->.\n${triggerMarker}`;
   await post(pr.number, body);
 }
 

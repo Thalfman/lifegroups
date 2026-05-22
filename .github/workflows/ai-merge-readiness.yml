@@ -22,9 +22,9 @@ on:
     types: [created, edited]
   issue_comment:
     types: [created, edited]
-  check_suite:
+  workflow_run:
+    workflows: [CI]
     types: [completed]
-  status:
 
 permissions:
   contents: read
@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -62,4 +64,5 @@ jobs:
           CODEX_ACTOR_LOGIN: ${{ vars.CODEX_ACTOR_LOGIN }}
           GEMINI_ACTOR_LOGIN: ${{ vars.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]' }}
           ALLOWED_PR_AUTHORS: ${{ vars.ALLOWED_PR_AUTHORS || '' }}
+          AI_REVIEW_REQUIRED_CHECKS: ${{ vars.AI_REVIEW_REQUIRED_CHECKS || 'lint + typecheck + test' }}
         run: node scripts/ai-merge-readiness.mjs
