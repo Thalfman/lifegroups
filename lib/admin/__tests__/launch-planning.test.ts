@@ -279,6 +279,24 @@ describe("computeLaunchPlan — projected demand math", () => {
     expect(out.projected_group_demand).toBeCloseTo(72, 6);
   });
 
+  it("clamps projected attendance and demand at zero when growth would make them negative", () => {
+    const out = computeLaunchPlan(
+      makeAssumptions({
+        current_church_attendance: 100,
+        expected_growth: -500, // attendance + growth = -400
+        target_group_participation_pct: 0.6,
+        launch_buffer_pct: 0.15,
+      }),
+      { effective_total_capacity: 80 },
+    );
+    expect(out.projected_total_attendance).toBe(0);
+    expect(out.projected_group_demand).toBe(0);
+    expect(out.target_capacity_with_buffer).toBe(0);
+    expect(out.capacity_gap).toBe(-80);
+    expect(out.recommended_new_groups).toBe(0);
+    expect(out.risk_level).toBe("ok");
+  });
+
   it("respects launch_buffer_pct = 0 (no buffer)", () => {
     const out = computeLaunchPlan(
       makeAssumptions({

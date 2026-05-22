@@ -128,14 +128,11 @@ export function decodeLaunchPlanningAssumptions(
       "target_group_participation_pct",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct,
     ),
-    average_group_size:
-      source && typeof source["average_group_size"] === "number"
-        ? readJsonInt(
-            source,
-            "average_group_size",
-            fallbackAverageGroupSize,
-          )
-        : fallbackAverageGroupSize,
+    average_group_size: readJsonInt(
+      source,
+      "average_group_size",
+      fallbackAverageGroupSize,
+    ),
     launch_buffer_pct: readJsonNumber(
       source,
       "launch_buffer_pct",
@@ -304,14 +301,22 @@ export function computeLaunchPlan(
   assumptions: LaunchPlanningAssumptions,
   inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">,
 ): LaunchPlanningOutputs {
-  const projectedTotalAttendance =
-    assumptions.current_church_attendance + assumptions.expected_growth;
+  // expected_growth can legitimately be negative (shrinkage), but the
+  // *projected attendance* and *demand* must stay non-negative — a
+  // projected -400 attendees is meaningless and would propagate to a
+  // negative demand / oversized capacity gap in the UI. Clamp at zero
+  // so the forecast stays physically meaningful even at the extremes.
+  const projectedTotalAttendance = clampNonNegative(
+    assumptions.current_church_attendance + assumptions.expected_growth,
+  );
 
   const participationPct = Math.min(
     1,
     Math.max(0, assumptions.target_group_participation_pct),
   );
-  const projectedGroupDemand = projectedTotalAttendance * participationPct;
+  const projectedGroupDemand = clampNonNegative(
+    projectedTotalAttendance * participationPct,
+  );
 
   const bufferPct = Math.min(
     // Never let the (1 - bufferPct) denominator reach zero. The RPC
