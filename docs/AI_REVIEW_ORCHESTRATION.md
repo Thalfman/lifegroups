@@ -9,18 +9,38 @@ This repository uses GitHub Actions + `GITHUB_TOKEN` + GitHub REST API + install
 - It never calls the GitHub merge API.
 - It never enables GitHub auto-merge.
 - It never deletes branches.
+- Ready notification is a single deduped `@Thalfman` (or `READY_NOTIFY_LOGIN`) PR comment plus the `ai/ready-to-merge` label — never an automated merge.
+
+## Trigger model
+
+**Event-driven plus scheduled fallback.** Both workflows react to repository activity in near-real-time; the 10-minute cron is a backup, not the primary trigger.
+
+Event triggers wired into both workflows:
+
+- `pull_request` (opened, reopened, synchronize, ready_for_review; readiness also: converted_to_draft)
+- `pull_request_review` (submitted)
+- `pull_request_review_comment` (created; readiness also: edited)
+- `issue_comment` (created; readiness also: edited)
+- `check_suite` (completed)
+- `status`
+
+`pull_request_target` is intentionally not used — running workflows with write access against untrusted fork code is an attack surface this repo does not need. Fork PR events are skipped at the job level; same-repo branches (e.g. `claude/...`) get full event coverage.
+
+Self-trigger loops from `github-actions[bot]` comments are filtered at the workflow `if:` boundary, and dedupe markers (see below) prevent duplicate posts even if a run slips through. Concurrency groups serialize bursts so an in-flight scan finishes processing every open PR before the next event-driven run starts.
 
 ## Automated flow
 
-1. PR opens.
+Each step now fires as soon as the prior signal arrives instead of waiting for the next cron tick.
+
+1. PR opens → `pull_request.opened` triggers the orchestrator.
 2. Orchestrator requests Codex/Gemini review when missing.
-3. Codex/Gemini review.
+3. Codex/Gemini review → `pull_request_review.submitted` or `issue_comment.created` triggers the orchestrator.
 4. Orchestrator waits until both complete for current head SHA.
 5. If actionable feedback exists, orchestrator tags Claude.
-6. Claude posts response and/or pushes fixes.
+6. Claude posts response and/or pushes fixes (push fires `pull_request.synchronize`).
 7. New commit resets the cycle for the new head SHA.
-8. Readiness workflow applies deterministic gates.
-9. When ready, readiness workflow mentions `@Thalfman` (or `READY_NOTIFY_LOGIN`) with manual-merge-ready notice.
+8. Readiness workflow applies deterministic gates after each relevant event (PR update, review, comment, check completion, commit status).
+9. When ready, readiness workflow mentions `@Thalfman` (or `READY_NOTIFY_LOGIN`) with manual-merge-ready notice and applies `ai/ready-to-merge`.
 10. Human reviews and clicks **Merge** manually.
 
 ## Workflows and scripts

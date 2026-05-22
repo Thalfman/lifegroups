@@ -14,7 +14,11 @@ const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|
 const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
 
 const isCodex = (login = '') => CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : login.toLowerCase().includes('codex');
-const isGemini = (login = '') => login === GEMINI_ACTOR;
+const isGemini = (login = '') => {
+  if (!login) return false;
+  if (login === GEMINI_ACTOR) return true;
+  return login.toLowerCase().startsWith('gemini-code-assist');
+};
 const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
 
 async function gh(path, init = {}) { const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } }); if (!res.ok) throw new Error(`${res.status} ${path}: ${await res.text()}`); return res.status === 204 ? null : res.json(); }
