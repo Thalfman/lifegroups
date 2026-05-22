@@ -124,6 +124,23 @@ async function processPr(pr) {
 }
 
 (async () => {
-  const prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
-  for (const pr of prs) await processPr(pr);
+  console.log(`orchestrator start event=${EVENT_NAME} dry_run=${DRY_RUN} target_pr=${TARGET_PR || 'all-open'}`);
+  let prs;
+  try {
+    prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
+  } catch (e) {
+    console.error(`orchestrator failed to list PRs: ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`orchestrator scanning ${prs.length} PR(s)`);
+  let failures = 0;
+  for (const pr of prs) {
+    try {
+      await processPr(pr);
+    } catch (e) {
+      failures += 1;
+      console.error(`orchestrator failed on PR #${pr?.number} (head ${pr?.head?.sha}): ${e.message}`);
+    }
+  }
+  if (failures > 0) process.exit(1);
 })();
