@@ -48,6 +48,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Debug API access
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          echo "::group::event=$GITHUB_EVENT_NAME actor=$GITHUB_ACTOR run=$GITHUB_RUN_ID"
+          echo "list-pulls:"
+          curl -sS -o /tmp/pulls.json -w "%{http_code}\n" -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=1"
+          echo "post-comment-probe (expect 422 invalid body, not 403):"
+          curl -sS -o /tmp/probe.json -w "%{http_code}\n" -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number || github.event.issue.number || 68 }}/comments" -d '{}'
+          head -c 800 /tmp/probe.json; echo
+          echo "::endgroup::"
       - name: Run orchestrator
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
