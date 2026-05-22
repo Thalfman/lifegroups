@@ -150,15 +150,22 @@ export default async function AdminShepherdCarePage({
   });
 
   const needsAttentionCount = dashboard.summary.needsAttention;
+  // When the coverage assignments read fails, the in-memory map is empty
+  // which would make every shepherd appear "unassigned" if we let the
+  // coverage filter run. Treat the param as absent in that case so the
+  // directory keeps showing the correct rows, and hide the coverage filter
+  // UI below so the admin isn't offered a control that produces wrong
+  // results. The summary banner already explains the failure.
+  const effectiveCoverage = assignmentsAvailable ? coverage : undefined;
   const filteredByAttention =
     filter === "needs_attention"
       ? entries.filter((e) => e.needs_attention)
       : entries;
   const visible = filteredByAttention.filter((e) => {
-    if (coverage === undefined) return true;
+    if (effectiveCoverage === undefined) return true;
     const c = coverageByShepherdId.get(e.profile.id) ?? null;
-    if (coverage === "unassigned") return c === null;
-    return c?.over_shepherd_id === coverage;
+    if (effectiveCoverage === "unassigned") return c === null;
+    return c?.over_shepherd_id === effectiveCoverage;
   });
 
   return (
@@ -222,14 +229,16 @@ export default async function AdminShepherdCarePage({
               current={filter}
               totalCount={entries.length}
               needsAttentionCount={needsAttentionCount}
-              coverage={coverage}
+              coverage={effectiveCoverage}
             />
-            <ShepherdCareCoverageFilter
-              filter={filter}
-              coverage={coverage}
-              overShepherds={overShepherds}
-              unassignedCount={dashboard.summary.unassignedCoverage}
-            />
+            {dashboard.coverageAvailable ? (
+              <ShepherdCareCoverageFilter
+                filter={filter}
+                coverage={coverage}
+                overShepherds={overShepherds}
+                unassignedCount={dashboard.summary.unassignedCoverage}
+              />
+            ) : null}
           </div>
           <ShepherdCareDirectoryTable
             entries={visible}

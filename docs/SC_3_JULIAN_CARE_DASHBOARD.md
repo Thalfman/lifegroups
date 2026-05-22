@@ -172,9 +172,13 @@ false` into the builder. The builder then:
 - Exposes a `coverageAvailable: false` flag on the model.
 
 The page renders the existing error banner, hides the
-`CoverageByOverShepherdCard`, and shows the "Unassigned coverage"
-summary card as a non-link with `—` and "Coverage data temporarily
-unavailable". The rest of the dashboard (attention queue without
+`CoverageByOverShepherdCard`, hides the `ShepherdCareCoverageFilter`
+dropdown, and shows the "Unassigned coverage" summary card as a
+non-link with `—` and "Coverage data temporarily unavailable". The
+page also ignores any `?coverage=...` URL param while coverage data
+is unavailable so the directory below doesn't apply a filter against
+the empty assignments map (which would otherwise show every shepherd
+as unassigned). The rest of the dashboard (attention queue without
 `no_over_shepherd` reasons, upcoming touchpoints, recent interactions)
 continues to render correctly off the still-valid reads.
 
