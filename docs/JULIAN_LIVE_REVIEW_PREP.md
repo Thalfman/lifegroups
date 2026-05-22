@@ -182,7 +182,7 @@ launch planning → follow-ups → close on open questions.
 4. Walk the **care dashboard**: summary tiles (needs attention,
    overdue, not contacted, unassigned), attention queue, upcoming
    touchpoints, recent interactions, "By over-shepherd" card.
-5. Click one shepherd from the attention queue → opens
+5. Click one **test** shepherd from the attention queue → opens
    `/admin/shepherd-care/[profileId]`. Walk last contact, next
    touchpoint, admin summary, current status.
 6. **Log a harmless sample interaction** on the test/shepherd record
