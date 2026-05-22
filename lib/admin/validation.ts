@@ -1585,3 +1585,170 @@ export function validateEndShepherdCoverageAssignmentPayload(
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// LP.1 — launch-planning assumptions
+// ---------------------------------------------------------------------------
+//
+// PATCH-style payload: every field is optional. The RPC merges submitted
+// keys onto the stored row, so omitting a key leaves the existing default
+// in place. Bounds here mirror the RPC body in
+// supabase/migrations/20260518190000_phase_lp1_launch_planning.sql so the
+// reject path can use friendlier messages while the RPC stays the trust
+// boundary.
+
+export type LaunchPlanningAssumptionsPayload = {
+  current_church_attendance?: number;
+  expected_growth?: number;
+  expected_growth_date?: string | null;
+  target_group_participation_pct?: number;
+  average_group_size?: number;
+  launch_buffer_pct?: number;
+  leaders_per_new_group?: number;
+  notes?: string | null;
+};
+
+const LAUNCH_PLANNING_KEYS: ReadonlySet<string> = new Set([
+  "current_church_attendance",
+  "expected_growth",
+  "expected_growth_date",
+  "target_group_participation_pct",
+  "average_group_size",
+  "launch_buffer_pct",
+  "leaders_per_new_group",
+  "notes",
+]);
+
+// Local numeric parser that accepts `number | numeric string` and rejects
+// NaN / Infinity. Mirrors `readOptionalInteger` but allows non-integer
+// values (percentages are fractions like 0.6).
+function readOptionalNumber(value: unknown): number | undefined | "invalid" {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : "invalid";
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return undefined;
+    if (!/^-?\d+(\.\d+)?$/.test(trimmed)) return "invalid";
+    const parsed = Number.parseFloat(trimmed);
+    return Number.isFinite(parsed) ? parsed : "invalid";
+  }
+  return "invalid";
+}
+
+// Strict ISO calendar-date check: regex format + real-date verification.
+// Catches Feb 30, Apr 31, etc. that the regex alone would accept.
+function isRealIsoDate(value: string): boolean {
+  if (!isIsoDate(value)) return false;
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  // Round-trip: serialize back and compare so the calendar arithmetic
+  // matches (e.g. 2026-02-30 -> 2026-03-02 round-trips differently).
+  return d.toISOString().slice(0, 10) === value;
+}
+
+export function validateLaunchPlanningAssumptionsPayload(
+  input: unknown,
+): ValidationResult<LaunchPlanningAssumptionsPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  for (const key of Object.keys(input)) {
+    if (!LAUNCH_PLANNING_KEYS.has(key)) {
+      errors.push(`Unknown setting key: ${key}`);
+    }
+  }
+
+  const value: LaunchPlanningAssumptionsPayload = {};
+
+  if ("current_church_attendance" in input) {
+    const n = readOptionalInteger(input.current_church_attendance);
+    if (n === "invalid")
+      errors.push("Current church attendance must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 100000))
+      errors.push("Current church attendance must be between 0 and 100000.");
+    else if (n !== undefined) value.current_church_attendance = n;
+  }
+
+  if ("expected_growth" in input) {
+    const n = readOptionalInteger(input.expected_growth);
+    if (n === "invalid") errors.push("Expected growth must be a whole number.");
+    else if (n !== undefined && (n < -100000 || n > 100000))
+      errors.push("Expected growth must be between -100000 and 100000.");
+    else if (n !== undefined) value.expected_growth = n;
+  }
+
+  if ("expected_growth_date" in input) {
+    const raw = input.expected_growth_date;
+    if (raw === null) {
+      value.expected_growth_date = null;
+    } else if (raw === "" || raw === undefined) {
+      // Form posts "" for a cleared date input -> treat as null.
+      value.expected_growth_date = null;
+    } else if (typeof raw !== "string") {
+      errors.push("Expected growth date must be a YYYY-MM-DD string or null.");
+    } else if (!isRealIsoDate(raw)) {
+      errors.push("Expected growth date must be a valid YYYY-MM-DD date.");
+    } else {
+      value.expected_growth_date = raw;
+    }
+  }
+
+  if ("target_group_participation_pct" in input) {
+    const n = readOptionalNumber(input.target_group_participation_pct);
+    if (n === "invalid")
+      errors.push("Target group participation % must be a number between 0 and 1.");
+    else if (n !== undefined && (n < 0 || n > 1))
+      errors.push("Target group participation % must be between 0 and 1.");
+    else if (n !== undefined) value.target_group_participation_pct = n;
+  }
+
+  if ("average_group_size" in input) {
+    const n = readOptionalInteger(input.average_group_size);
+    if (n === "invalid") errors.push("Average group size must be a whole number.");
+    else if (n !== undefined && (n < 1 || n > 500))
+      errors.push("Average group size must be between 1 and 500.");
+    else if (n !== undefined) value.average_group_size = n;
+  }
+
+  if ("launch_buffer_pct" in input) {
+    const n = readOptionalNumber(input.launch_buffer_pct);
+    if (n === "invalid")
+      errors.push("Launch buffer % must be a number between 0 and 0.95.");
+    else if (n !== undefined && (n < 0 || n > 0.95))
+      // Cap below 1 so the (1 - buffer) denominator in computeLaunchPlan
+      // can never reach zero.
+      errors.push("Launch buffer % must be between 0 and 0.95.");
+    else if (n !== undefined) value.launch_buffer_pct = n;
+  }
+
+  if ("leaders_per_new_group" in input) {
+    const n = readOptionalInteger(input.leaders_per_new_group);
+    if (n === "invalid") errors.push("Leaders per new group must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 10))
+      errors.push("Leaders per new group must be between 0 and 10.");
+    else if (n !== undefined) value.leaders_per_new_group = n;
+  }
+
+  if ("notes" in input) {
+    const raw = input.notes;
+    if (raw === null || raw === undefined) {
+      value.notes = null;
+    } else if (typeof raw !== "string") {
+      errors.push("Notes must be a string or null.");
+    } else {
+      const trimmed = raw.trim();
+      if (trimmed.length === 0) {
+        value.notes = null;
+      } else if (trimmed.length > 2000) {
+        errors.push("Notes must be 2000 characters or fewer.");
+      } else {
+        value.notes = trimmed;
+      }
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, value };
+}
