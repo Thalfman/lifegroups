@@ -14,7 +14,11 @@ const actionableRegex = /\b(bug|issue|risk|security|failing|failure|fix|concern|
 const sensitiveTermRegex = /admin_private_note|SECURITY DEFINER|audit_events|role checks|leader-facing read models|\bRLS\b/i;
 
 const isCodex = (login = '') => CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : login.toLowerCase().includes('codex');
-const isGemini = (login = '') => login === GEMINI_ACTOR;
+const isGemini = (login = '') => {
+  if (!login) return false;
+  if (login === GEMINI_ACTOR) return true;
+  return login.toLowerCase().startsWith('gemini-code-assist');
+};
 const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
 
 async function gh(path, init = {}) { const res = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(init.headers || {}) } }); if (!res.ok) throw new Error(`${res.status} ${path}: ${await res.text()}`); return res.status === 204 ? null : res.json(); }
@@ -120,6 +124,23 @@ async function processPr(pr) {
 }
 
 (async () => {
-  const prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
-  for (const pr of prs) await processPr(pr);
+  console.log(`readiness start event=${process.env.GITHUB_EVENT_NAME || ''} dry_run=${DRY_RUN} target_pr=${TARGET_PR || 'all-open'}`);
+  let prs;
+  try {
+    prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
+  } catch (e) {
+    console.error(`readiness failed to list PRs: ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`readiness scanning ${prs.length} PR(s)`);
+  let failures = 0;
+  for (const pr of prs) {
+    try {
+      await processPr(pr);
+    } catch (e) {
+      failures += 1;
+      console.error(`readiness failed on PR #${pr?.number} (head ${pr?.head?.sha}): ${e.message}`);
+    }
+  }
+  console.log(`readiness done failures=${failures}`);
 })();

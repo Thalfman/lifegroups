@@ -3,10 +3,10 @@ const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
 if (!token || !owner || !repo) throw new Error('Missing GITHUB_TOKEN or GITHUB_REPOSITORY');
 
 const EVENT_NAME = process.env.GITHUB_EVENT_NAME || '';
-const IS_SCHEDULED = EVENT_NAME === 'schedule';
+const IS_AUTOMATIC_EVENT = EVENT_NAME !== 'workflow_dispatch';
 const AUTOMATION_ENABLED = (process.env.AI_REVIEW_AUTOMATION_ENABLED || 'true') !== 'false';
 const REQUEST_REVIEWS_ENABLED = (process.env.AI_REVIEW_REQUEST_REVIEWS || 'true') !== 'false';
-const DRY_RUN = IS_SCHEDULED ? !AUTOMATION_ENABLED : (process.env.ORCHESTRATOR_DRY_RUN || 'true') !== 'false';
+const DRY_RUN = IS_AUTOMATIC_EVENT ? !AUTOMATION_ENABLED : (process.env.ORCHESTRATOR_DRY_RUN || 'true') !== 'false';
 const TARGET_PR = process.env.ORCHESTRATOR_PR_NUMBER ? Number(process.env.ORCHESTRATOR_PR_NUMBER) : null;
 const CODEX_ACTOR_EXACT = process.env.CODEX_ACTOR_LOGIN || '';
 const GEMINI_ACTOR = process.env.GEMINI_ACTOR_LOGIN || 'gemini-code-assist[bot]';
@@ -24,7 +24,11 @@ const isCodex = (login = '') => {
   if (l.includes('claude')) return false;
   return CODEX_ACTOR_EXACT ? login === CODEX_ACTOR_EXACT : l.includes('codex');
 };
-const isGemini = (login = '') => login === GEMINI_ACTOR;
+const isGemini = (login = '') => {
+  if (!login) return false;
+  if (login === GEMINI_ACTOR) return true;
+  return login.toLowerCase().startsWith('gemini-code-assist');
+};
 const isSensitivePath = (f) => sensitivePaths.some((p) => (p.endsWith('/') ? f.startsWith(p) : f === p || f.startsWith(p)));
 
 async function gh(path, init = {}) {
@@ -120,6 +124,23 @@ async function processPr(pr) {
 }
 
 (async () => {
-  const prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
-  for (const pr of prs) await processPr(pr);
+  console.log(`orchestrator start event=${EVENT_NAME} dry_run=${DRY_RUN} target_pr=${TARGET_PR || 'all-open'}`);
+  let prs;
+  try {
+    prs = TARGET_PR ? [await gh(`/repos/${owner}/${repo}/pulls/${TARGET_PR}`)] : await listAll(`/repos/${owner}/${repo}/pulls?state=open`);
+  } catch (e) {
+    console.error(`orchestrator failed to list PRs: ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`orchestrator scanning ${prs.length} PR(s)`);
+  let failures = 0;
+  for (const pr of prs) {
+    try {
+      await processPr(pr);
+    } catch (e) {
+      failures += 1;
+      console.error(`orchestrator failed on PR #${pr?.number} (head ${pr?.head?.sha}): ${e.message}`);
+    }
+  }
+  console.log(`orchestrator done failures=${failures}`);
 })();
