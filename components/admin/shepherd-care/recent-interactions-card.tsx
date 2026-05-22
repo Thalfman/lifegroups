@@ -33,15 +33,26 @@ const TYPE_BADGE: CSSProperties = {
 
 export function RecentInteractionsCard({
   items,
+  available = true,
 }: {
   items: CareRecentInteraction[];
+  // False when the recent-interactions read failed. The card renders an
+  // explicit "temporarily unavailable" state instead of the zero-data
+  // empty state so admins don't read a transient DB error as "nothing
+  // has been logged."
+  available?: boolean;
 }) {
   return (
     <StatusCard
       eyebrow="Activity"
       title="Recent interactions"
     >
-      {items.length === 0 ? (
+      {!available ? (
+        <EmptyState
+          title="Recent interactions unavailable"
+          description="We couldn't load the latest interactions just now. Refresh in a moment, or check a specific shepherd's detail page for their full timeline."
+        />
+      ) : items.length === 0 ? (
         <EmptyState
           title="No interactions logged yet"
           description="Log a call, text, or visit from any shepherd detail page to start the trail."

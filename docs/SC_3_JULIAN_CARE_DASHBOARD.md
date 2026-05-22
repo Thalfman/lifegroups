@@ -162,9 +162,14 @@ render as secondary chips.
 
 ## Partial-failure behavior
 
-When the active-coverage read fails (transient DB error, network issue,
-etc.) the page detects the error and passes `assignmentsAvailable:
-false` into the builder. The builder then:
+The page treats each read independently so a transient failure in one
+section doesn't poison the rest of the dashboard with misleading
+"zero" counts. Two paths currently track availability flags:
+
+### Coverage assignments
+
+When the active-coverage read fails the page passes
+`assignmentsAvailable: false` into the builder. The builder then:
 
 - Skips the `no_over_shepherd` reason in queue detection.
 - Sets `summary.unassignedCoverage` to `0` and `coverageBuckets` to
@@ -177,10 +182,25 @@ dropdown, and shows the "Unassigned coverage" summary card as a
 non-link with `—` and "Coverage data temporarily unavailable". The
 page also ignores any `?coverage=...` URL param while coverage data
 is unavailable so the directory below doesn't apply a filter against
-the empty assignments map (which would otherwise show every shepherd
-as unassigned). The rest of the dashboard (attention queue without
-`no_over_shepherd` reasons, upcoming touchpoints, recent interactions)
-continues to render correctly off the still-valid reads.
+the empty assignments map.
+
+### Recent interactions
+
+When the cross-shepherd interactions read fails the page passes
+`available={false}` into `RecentInteractionsCard`, which renders an
+explicit "Recent interactions unavailable" state instead of the
+zero-data "No interactions logged yet" empty state — so a transient
+DB error isn't read as operational guidance ("nothing has been
+logged").
+
+### Day-of consistency
+
+The page computes `today` once via `currentUtcDateIso()` at the top of
+the request and threads it through `fetchShepherdCareDirectoryForAdmin`
+and `buildShepherdCareDashboardModel`. This guarantees the directory's
+`needs_attention` predicate, the dashboard summary, the attention
+queue, and the upcoming-touchpoints list all evaluate against the same
+calendar day, even on requests that cross UTC midnight.
 
 ## Privacy model
 

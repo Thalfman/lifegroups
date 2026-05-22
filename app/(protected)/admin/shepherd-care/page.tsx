@@ -56,10 +56,11 @@ type LoadedData = {
   assignments: ActiveShepherdCoverageAssignmentSummary[];
   assignmentsAvailable: boolean;
   recentInteractions: ShepherdCareRecentInteractionRow[];
+  recentInteractionsAvailable: boolean;
   error: string | null;
 };
 
-async function loadData(): Promise<LoadedData> {
+async function loadData(todayIso: string): Promise<LoadedData> {
   const client = await createSupabaseServerClient();
   if (!client) {
     return {
@@ -68,13 +69,17 @@ async function loadData(): Promise<LoadedData> {
       assignments: [],
       assignmentsAvailable: false,
       recentInteractions: [],
+      recentInteractionsAvailable: false,
       error: "Database is not configured in this environment.",
     };
   }
   // All four reads are independent; run them in parallel so the page TTFB is
-  // bounded by the slowest query rather than their sum.
+  // bounded by the slowest query rather than their sum. The directory read
+  // receives the same todayIso the page later uses for the dashboard model
+  // so a request straddling UTC midnight can't produce a directory and a
+  // dashboard built off different calendar days.
   const [directory, overShepherdsRes, assignmentsRes, recentRes] = await Promise.all([
-    fetchShepherdCareDirectoryForAdmin(client),
+    fetchShepherdCareDirectoryForAdmin(client, { todayIso }),
     fetchOverShepherdsForAdmin(client, { includeArchived: true }),
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
     fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
@@ -86,20 +91,23 @@ async function loadData(): Promise<LoadedData> {
       assignments: [],
       assignmentsAvailable: false,
       recentInteractions: [],
+      recentInteractionsAvailable: false,
       error: directory.error.message,
     };
   }
-  // If the assignments read fails, treat coverage data as unavailable so the
-  // dashboard doesn't silently flip every shepherd to "unassigned" and inject
-  // no_over_shepherd into the triage queue. The error message still surfaces
-  // in the banner below.
+  // If the assignments or recent-interactions reads fail, mark each path as
+  // unavailable so the dashboard renders an explicit "data unavailable" state
+  // rather than silently falling back to "0 unassigned" or "no interactions
+  // logged yet" during a transient DB error.
   const assignmentsAvailable = assignmentsRes.error === null;
+  const recentInteractionsAvailable = recentRes.error === null;
   return {
     entries: directory.data,
     overShepherds: overShepherdsRes.data ?? [],
     assignments: assignmentsRes.data ?? [],
     assignmentsAvailable,
     recentInteractions: recentRes.data ?? [],
+    recentInteractionsAvailable,
     error:
       overShepherdsRes.error?.message ??
       assignmentsRes.error?.message ??
@@ -119,14 +127,21 @@ export default async function AdminShepherdCarePage({
   const filter = resolveFilter(sp.filter);
   const coverage = resolveCoverage(sp.coverage);
 
+  // Pin "today" once at the top so every read and composition step uses
+  // the same calendar day. Without this, a request crossing UTC midnight
+  // could compute entry.needs_attention against one day in the directory
+  // read while the dashboard summary / queue used a different day.
+  const today = currentUtcDateIso();
+
   const {
     entries,
     overShepherds,
     assignments,
     assignmentsAvailable,
     recentInteractions,
+    recentInteractionsAvailable,
     error,
-  } = await loadData();
+  } = await loadData(today);
 
   const coverageByShepherdId = new Map<
     string,
@@ -136,7 +151,6 @@ export default async function AdminShepherdCarePage({
     coverageByShepherdId.set(a.shepherd_profile_id, a);
   }
 
-  const today = currentUtcDateIso();
   const dashboard = buildShepherdCareDashboardModel({
     entries,
     assignments,
@@ -201,7 +215,10 @@ export default async function AdminShepherdCarePage({
             ) : null}
             <UpcomingTouchpointsCard items={dashboard.upcomingTouchpoints} />
           </div>
-          <RecentInteractionsCard items={dashboard.recentInteractions} />
+          <RecentInteractionsCard
+            items={dashboard.recentInteractions}
+            available={recentInteractionsAvailable}
+          />
           {error ? (
             <p
               style={{
