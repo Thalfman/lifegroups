@@ -646,6 +646,20 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
  */
 export const SHEPHERD_CARE_STALE_DAYS = 60;
 
+/**
+ * UTC-anchored YYYY-MM-DD string for "today", used by every shepherd-care
+ * read/composition path so date math (stale window, overdue touchpoints,
+ * upcoming window) stays consistent across server timezones.
+ */
+export function currentUtcDateIso(): string {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 // Directory cards never render the admin_summary, so omit it from the
 // projected care row to keep the response payload small and avoid
 // shipping note bodies anywhere the directory is rendered.
@@ -671,7 +685,7 @@ export type ShepherdCareDirectoryEntry = {
   needs_attention: boolean;
 };
 
-function differenceInDaysIso(today: string, then: string): number {
+export function differenceInDaysIso(today: string, then: string): number {
   // Both inputs are YYYY-MM-DD; Date.parse with the ISO string at midnight UTC
   // is stable across server timezones. Truncate the result to whole days.
   const a = Date.parse(`${today}T00:00:00Z`);
@@ -680,7 +694,7 @@ function differenceInDaysIso(today: string, then: string): number {
   return Math.floor((a - b) / 86_400_000);
 }
 
-function computeNeedsAttention(
+export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
 ): boolean {
@@ -743,17 +757,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
     }
   }
 
-  const today =
-    options.todayIso ??
-    new Date(
-      Date.UTC(
-        new Date().getUTCFullYear(),
-        new Date().getUTCMonth(),
-        new Date().getUTCDate(),
-      ),
-    )
-      .toISOString()
-      .slice(0, 10);
+  const today = options.todayIso ?? currentUtcDateIso();
 
   const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
     (p) => {
@@ -820,6 +824,118 @@ export async function fetchShepherdCareInteractionsForAdmin(
   }
   return {
     data: (data ?? []) as ShepherdCareInteractionsRow[],
+    error: null,
+  };
+}
+
+/**
+ * Admin-only column allowlist for cross-shepherd recent interactions used by
+ * the Julian dashboard. EXCLUDES `notes` — the dashboard surfaces shepherd
+ * name, date, and interaction type only, then links to the per-shepherd
+ * detail page for note bodies.
+ *
+ * Both joins are `!inner` so the role/status filters applied at query time
+ * (active `leader` / `co_leader` only) prune rows whose shepherd has been
+ * deactivated or moved off the eligible roles. Without this filter the feed
+ * would link to detail pages that return 404 for those profiles.
+ */
+export const SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS =
+  "id, care_profile_id, interaction_at, interaction_type, created_at, " +
+  "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +
+    "shepherd_profile_id, " +
+    "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, role, status ) " +
+  ")";
+
+export type ShepherdCareRecentInteractionRow = {
+  id: string;
+  care_profile_id: string;
+  interaction_at: string;
+  interaction_type: ShepherdCareInteractionsRow["interaction_type"];
+  created_at: string;
+  shepherd_profile_id: string;
+  shepherd_full_name: string;
+};
+
+function projectRecentInteractionRows(
+  rows: unknown[],
+): ShepherdCareRecentInteractionRow[] {
+  const out: ShepherdCareRecentInteractionRow[] = [];
+  for (const r of rows as Array<{
+    id: string;
+    care_profile_id: string;
+    interaction_at: string;
+    interaction_type: ShepherdCareInteractionsRow["interaction_type"];
+    created_at: string;
+    care_profile:
+      | {
+          shepherd_profile_id: string;
+          shepherd:
+            | { id: string; full_name: string }
+            | { id: string; full_name: string }[]
+            | null;
+        }
+      | {
+          shepherd_profile_id: string;
+          shepherd:
+            | { id: string; full_name: string }
+            | { id: string; full_name: string }[]
+            | null;
+        }[]
+      | null;
+  }>) {
+    const cp = Array.isArray(r.care_profile)
+      ? r.care_profile[0] ?? null
+      : r.care_profile;
+    if (cp === null) continue;
+    const shepherd = Array.isArray(cp.shepherd) ? cp.shepherd[0] ?? null : cp.shepherd;
+    if (shepherd === null) continue;
+    out.push({
+      id: r.id,
+      care_profile_id: r.care_profile_id,
+      interaction_at: r.interaction_at,
+      interaction_type: r.interaction_type,
+      created_at: r.created_at,
+      shepherd_profile_id: cp.shepherd_profile_id,
+      shepherd_full_name: shepherd.full_name,
+    });
+  }
+  return out;
+}
+
+/**
+ * Admin-only cross-shepherd interactions feed used by the Julian dashboard.
+ * Returns the most recent N interactions across every care profile, ordered
+ * by `interaction_at desc` then `created_at desc`. Note bodies intentionally
+ * excluded from the projection — surface them only on the detail page.
+ */
+export async function fetchRecentShepherdCareInteractionsForAdmin(
+  client: ReadClient,
+  options: { limit?: number } = {},
+): Promise<ReadResult<ShepherdCareRecentInteractionRow[]>> {
+  const limit = options.limit ?? 10;
+  // Filters apply to the embedded inner-join columns, which excludes
+  // interactions whose shepherd has been deactivated or moved off the
+  // eligible roles. Matches the same belt-and-braces filter used by
+  // fetchActiveShepherdCoverageAssignmentsForAdmin.
+  const { data, error } = await client
+    .from("shepherd_care_interactions")
+    .select(SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS)
+    .eq("care_profile.shepherd.status", "active")
+    .in(
+      "care_profile.shepherd.role",
+      ELIGIBLE_SHEPHERD_ROLES as unknown as string[],
+    )
+    .order("interaction_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchRecentShepherdCareInteractionsForAdmin", error),
+    };
+  }
+  return {
+    data: projectRecentInteractionRows((data ?? []) as unknown[]),
     error: null,
   };
 }

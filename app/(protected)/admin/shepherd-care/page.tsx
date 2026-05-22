@@ -6,17 +6,28 @@ import {
   type CoverageFilter,
   type DirectoryFilter,
 } from "@/components/admin/shepherd-care/filter-chips";
-import { OverShepherdsSummaryCard } from "@/components/admin/shepherd-care/over-shepherds-summary-card";
+import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
+import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
+import { CoverageByOverShepherdCard } from "@/components/admin/shepherd-care/coverage-by-over-shepherd-card";
+import { UpcomingTouchpointsCard } from "@/components/admin/shepherd-care/upcoming-touchpoints-card";
+import { RecentInteractionsCard } from "@/components/admin/shepherd-care/recent-interactions-card";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchOverShepherdsForAdmin,
+  fetchRecentShepherdCareInteractionsForAdmin,
   fetchShepherdCareDirectoryForAdmin,
   type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
+  type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
+import {
+  buildShepherdCareDashboardModel,
+  countAllAttentionItems,
+} from "@/lib/admin/shepherd-care-dashboard";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody } from "@/lib/pastoral";
 
@@ -43,40 +54,65 @@ type LoadedData = {
   entries: ShepherdCareDirectoryEntry[];
   overShepherds: OverShepherdListRow[];
   assignments: ActiveShepherdCoverageAssignmentSummary[];
+  assignmentsAvailable: boolean;
+  recentInteractions: ShepherdCareRecentInteractionRow[];
+  recentInteractionsAvailable: boolean;
   error: string | null;
 };
 
-async function loadData(): Promise<LoadedData> {
+async function loadData(todayIso: string): Promise<LoadedData> {
   const client = await createSupabaseServerClient();
   if (!client) {
     return {
       entries: [],
       overShepherds: [],
       assignments: [],
+      assignmentsAvailable: false,
+      recentInteractions: [],
+      recentInteractionsAvailable: false,
       error: "Database is not configured in this environment.",
     };
   }
-  // The three reads are independent; run them in parallel to keep TTFB
-  // close to the cost of the slowest query.
-  const [directory, overShepherdsRes, assignmentsRes] = await Promise.all([
-    fetchShepherdCareDirectoryForAdmin(client),
+  // All four reads are independent; run them in parallel so the page TTFB is
+  // bounded by the slowest query rather than their sum. The directory read
+  // receives the same todayIso the page later uses for the dashboard model
+  // so a request straddling UTC midnight can't produce a directory and a
+  // dashboard built off different calendar days.
+  const [directory, overShepherdsRes, assignmentsRes, recentRes] = await Promise.all([
+    fetchShepherdCareDirectoryForAdmin(client, { todayIso }),
     fetchOverShepherdsForAdmin(client, { includeArchived: true }),
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+    fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
   ]);
   if (directory.error) {
     return {
       entries: [],
       overShepherds: [],
       assignments: [],
+      assignmentsAvailable: false,
+      recentInteractions: [],
+      recentInteractionsAvailable: false,
       error: directory.error.message,
     };
   }
+  // If the assignments or recent-interactions reads fail, mark each path as
+  // unavailable so the dashboard renders an explicit "data unavailable" state
+  // rather than silently falling back to "0 unassigned" or "no interactions
+  // logged yet" during a transient DB error.
+  const assignmentsAvailable = assignmentsRes.error === null;
+  const recentInteractionsAvailable = recentRes.error === null;
   return {
     entries: directory.data,
     overShepherds: overShepherdsRes.data ?? [],
     assignments: assignmentsRes.data ?? [],
+    assignmentsAvailable,
+    recentInteractions: recentRes.data ?? [],
+    recentInteractionsAvailable,
     error:
-      overShepherdsRes.error?.message ?? assignmentsRes.error?.message ?? null,
+      overShepherdsRes.error?.message ??
+      assignmentsRes.error?.message ??
+      recentRes.error?.message ??
+      null,
   };
 }
 
@@ -91,7 +127,21 @@ export default async function AdminShepherdCarePage({
   const filter = resolveFilter(sp.filter);
   const coverage = resolveCoverage(sp.coverage);
 
-  const { entries, overShepherds, assignments, error } = await loadData();
+  // Pin "today" once at the top so every read and composition step uses
+  // the same calendar day. Without this, a request crossing UTC midnight
+  // could compute entry.needs_attention against one day in the directory
+  // read while the dashboard summary / queue used a different day.
+  const today = currentUtcDateIso();
+
+  const {
+    entries,
+    overShepherds,
+    assignments,
+    assignmentsAvailable,
+    recentInteractions,
+    recentInteractionsAvailable,
+    error,
+  } = await loadData(today);
 
   const coverageByShepherdId = new Map<
     string,
@@ -100,28 +150,36 @@ export default async function AdminShepherdCarePage({
   for (const a of assignments) {
     coverageByShepherdId.set(a.shepherd_profile_id, a);
   }
-  const shepherdCountByOverShepherdId = new Map<string, number>();
-  for (const a of assignments) {
-    shepherdCountByOverShepherdId.set(
-      a.over_shepherd_id,
-      (shepherdCountByOverShepherdId.get(a.over_shepherd_id) ?? 0) + 1,
-    );
-  }
-  const unassignedCount = entries.reduce(
-    (sum, e) => (coverageByShepherdId.has(e.profile.id) ? sum : sum + 1),
-    0,
-  );
 
-  const needsAttentionCount = entries.filter((e) => e.needs_attention).length;
+  const dashboard = buildShepherdCareDashboardModel({
+    entries,
+    assignments,
+    overShepherds,
+    recentInteractions,
+    todayIso: today,
+    assignmentsAvailable,
+  });
+  const totalAttention = countAllAttentionItems(entries, assignments, today, {
+    coverageAvailable: assignmentsAvailable,
+  });
+
+  const needsAttentionCount = dashboard.summary.needsAttention;
+  // When the coverage assignments read fails, the in-memory map is empty
+  // which would make every shepherd appear "unassigned" if we let the
+  // coverage filter run. Treat the param as absent in that case so the
+  // directory keeps showing the correct rows, and hide the coverage filter
+  // UI below so the admin isn't offered a control that produces wrong
+  // results. The summary banner already explains the failure.
+  const effectiveCoverage = assignmentsAvailable ? coverage : undefined;
   const filteredByAttention =
     filter === "needs_attention"
       ? entries.filter((e) => e.needs_attention)
       : entries;
   const visible = filteredByAttention.filter((e) => {
-    if (coverage === undefined) return true;
+    if (effectiveCoverage === undefined) return true;
     const c = coverageByShepherdId.get(e.profile.id) ?? null;
-    if (coverage === "unassigned") return c === null;
-    return c?.over_shepherd_id === coverage;
+    if (effectiveCoverage === "unassigned") return c === null;
+    return c?.over_shepherd_id === effectiveCoverage;
   });
 
   return (
@@ -134,33 +192,33 @@ export default async function AdminShepherdCarePage({
       />
       <PageBody>
         <div style={{ display: "grid", gap: 18 }}>
-          <OverShepherdsSummaryCard
-            overShepherds={overShepherds}
-            shepherdCountById={shepherdCountByOverShepherdId}
-            unassignedCount={unassignedCount}
+          <ShepherdCareDashboardSummaryCards
+            summary={dashboard.summary}
+            filter={filter}
+            coverage={coverage}
+            coverageAvailable={dashboard.coverageAvailable}
+          />
+          <CareAttentionQueue
+            items={dashboard.attentionQueue}
+            totalCount={totalAttention}
           />
           <div
+            className="lg-m-grid-stack"
             style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: 18,
             }}
           >
-            <ShepherdCareFilterChips
-              current={filter}
-              totalCount={entries.length}
-              needsAttentionCount={needsAttentionCount}
-              coverage={coverage}
-            />
-            <ShepherdCareCoverageFilter
-              filter={filter}
-              coverage={coverage}
-              overShepherds={overShepherds}
-              unassignedCount={unassignedCount}
-            />
+            {dashboard.coverageAvailable ? (
+              <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />
+            ) : null}
+            <UpcomingTouchpointsCard items={dashboard.upcomingTouchpoints} />
           </div>
+          <RecentInteractionsCard
+            items={dashboard.recentInteractions}
+            available={recentInteractionsAvailable}
+          />
           {error ? (
             <p
               style={{
@@ -175,6 +233,30 @@ export default async function AdminShepherdCarePage({
               {error}
             </p>
           ) : null}
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+            }}
+          >
+            <ShepherdCareFilterChips
+              current={filter}
+              totalCount={entries.length}
+              needsAttentionCount={needsAttentionCount}
+              coverage={effectiveCoverage}
+            />
+            {dashboard.coverageAvailable ? (
+              <ShepherdCareCoverageFilter
+                filter={filter}
+                coverage={coverage}
+                overShepherds={overShepherds}
+                unassignedCount={dashboard.summary.unassignedCoverage}
+              />
+            ) : null}
+          </div>
           <ShepherdCareDirectoryTable
             entries={visible}
             coverageByShepherdId={coverageByShepherdId}
