@@ -3,20 +3,74 @@
 ## 1. Purpose
 
 This is the **active product roadmap** for the Life Group Operations
-Dashboard after Julian's pivot feedback (see
-[`JULIAN_FEEDBACK_PIVOT.md`](./JULIAN_FEEDBACK_PIVOT.md)).
+Dashboard. It is the ordered execution plan; the broader inventory of
+possible features (including deferred and rejected items) lives in
+[`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md). Historical phase specs and
+verification logs are preserved under
+[`docs/archive/`](./archive/README.md).
 
-It replaces the previous phase-number roadmap (`Phase 5A`, `Phase 5B`,
-`Phase 5C`, `Phase 6.0`, `Phase 7.0`, etc.) as the front-of-mind execution
-plan. Historical phase specs and verification logs are preserved under
-[`docs/archive/`](./archive/README.md) for implementation history; they
-are not deleted.
+The current direction is **Julian's admin operating system** — shepherd
+care + launch planning, not more leader-facing features. The rationale
+is in §2 below.
 
-This document is the **ordered execution plan**. For the broader inventory
-of possible product features (including deferred and rejected items), see
-[`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md).
+## 2. Pivot rationale (Julian's feedback)
 
-## 2. Current app state
+Julian reviewed an early version of the app in May 2026 and gave this
+feedback (verbatim):
+
+> I would try to focus on something specifically for myself rather than
+> the leaders, but definitely want to be thinking of them too! I probably
+> will want to loop our communications director in too if there's
+> something that becomes more external as well.
+>
+> I really liked the follow up page! There's 63 Life or Co Life Shepherds
+> and 3 over shepherds (like coaches), so I primarily am training the
+> over shepherds to be serving their leaders, but I also work heavily
+> with leaders too. So, I have an excel spreadsheet that is specific to
+> "caring" for people, so like putting a note in of how a leader is
+> doing, when I connected with them, etc. but it's a very informal
+> spreadsheet lol. I would love more help creating a system to track
+> that.
+>
+> Another thing that I'm hoping to create is something that helps me
+> track and anticipate how many people are in a life group, the church,
+> and when we need to launch groups.
+
+**Population context.** ~63 Life / Co-Life Shepherds, 3 over-shepherds
+sitting above them. Julian primarily trains the over-shepherds; he also
+works directly with leaders.
+
+**Product implications.**
+- Build Julian's admin OS first; don't overbuild leader tools.
+- Care notes are more sensitive than ordinary follow-ups. **Admin-only**
+  in the MVP — no leader exposure.
+- Over-shepherd is real, but the MVP tracks **coverage** for Julian, not
+  over-shepherd login.
+- Capacity planning is a first-class admin tool, not a dashboard tile.
+- Communications director may be involved later — only when something
+  becomes external / public / comms-related.
+
+**Updated north star.** Julian's admin operating system for shepherding
+and launch planning, backed by the existing security model (RLS-first,
+narrow `SECURITY DEFINER` RPCs, audit events, no service role in Next
+runtime, no hard deletes in normal workflows).
+
+**Open questions for future Julian sync** (to answer before SC follow-on
+work):
+- What fields does Julian's current spreadsheet actually contain?
+- What does "doing well" vs. "needs attention" mean to him?
+- Care cadence — weekly, monthly, custom per shepherd?
+- Should over-shepherds eventually see assigned shepherds (read-only)?
+  See care notes? Edit?
+- Should leaders ever see their own care status?
+- Should care notes hold private pastoral content, or stay out of the
+  app entirely?
+- For capacity: church attendance, guests, growth, members — what's the
+  demand model?
+- Auto-flag "haven't connected with X in N weeks"? Default threshold?
+- When to loop in the communications director, and on what work?
+
+## 3. Current app state
 
 Verified from repo inspection on the branch this PR is opened against.
 
@@ -97,73 +151,27 @@ They never sign in. No public signup.
 - INV.1 below treats this as **verify-and-polish only** rather than
   greenfield work.
 
-## 3. North-star links
+## 4. North-star links
 
 - **Julian admin OS** — Shepherd care + launch planning, owned by this
-  roadmap. Specs:
+  roadmap. Plans:
   [`SHEPHERD_CARE_TRACKER_PLAN.md`](./SHEPHERD_CARE_TRACKER_PLAN.md),
   [`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md).
 - **Full inventory of features** — [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md).
-- **Reliability / security technical debt** —
-  [`FINALIZED_HOLISTIC_PLAN.md`](./FINALIZED_HOLISTIC_PLAN.md). Orthogonal
-  track that runs in parallel; not part of this product roadmap.
 - **Invite user workflow contract** —
   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+- **Reliability / security debt track** — appendix A below. Orthogonal
+  to the product roadmap; runs in parallel.
 
-## 4. Active roadmap
+## 5. Active roadmap
 
 Execution order:
-**R0 → INV.1 → SC.1 → SC.2 → SC.3 → LP.1 → LP.2 → LDR.1 → EXT.1.**
+**INV.1 → SC.1 → SC.2 → SC.3 → LP.1 → LP.2 → LDR.1 → EXT.1.**
 
----
-
-### R0 — Roadmap Reset
-
-**Purpose.** Align the documentation with Julian's new direction and clear
-the stale phase-number signal from `README.md` and `docs/`.
-
-**Scope.**
-- New planning docs (this file, `JULIAN_FEEDBACK_PIVOT.md`,
-  `FEATURE_BACKLOG.md`, `SHEPHERD_CARE_TRACKER_PLAN.md`,
-  `LAUNCH_PLANNING_PLAN.md`).
-- `README.md` rewrite — shorter, current-state focused, pointed at the new
-  active docs.
-- Move stale phase specs and verification logs to `docs/archive/`.
-- Add `docs/archive/README.md` explaining the archive.
-
-**Out of scope.**
-- App code, components, libs, types, middleware.
-- Supabase migrations, RLS, RPCs, Edge Functions.
-- Auth changes.
-- CSS, layout, config, package, route copy.
-
-**Likely files.**
-- `README.md`
-- `docs/JULIAN_FEEDBACK_PIVOT.md`
-- `docs/PRODUCT_ROADMAP.md`
-- `docs/FEATURE_BACKLOG.md`
-- `docs/SHEPHERD_CARE_TRACKER_PLAN.md`
-- `docs/LAUNCH_PLANNING_PLAN.md`
-- `docs/archive/README.md`
-- `docs/archive/` (all historical phase specs and verification logs;
-  see [`docs/archive/README.md`](./archive/README.md) for the full list)
-
-**Security / privacy.** Docs only. No data-path or policy changes.
-
-**Acceptance criteria.**
-- New docs created and self-consistent.
-- `README.md` is materially shorter and points at `PRODUCT_ROADMAP.md` +
-  `FEATURE_BACKLOG.md`.
-- Stale phase docs moved (not deleted) to `docs/archive/`.
-- `FINALIZED_HOLISTIC_PLAN.md` untouched.
-- `SUPER_ADMIN_INVITE_USER_WORKFLOW.md` untouched.
-
-**Manual verification.**
-- Open each new doc. Check that all internal links resolve.
-- Confirm `README.md`'s "Current roadmap" section links to
-  `PRODUCT_ROADMAP.md` and `FEATURE_BACKLOG.md`.
-- `git diff --name-status main...HEAD` shows only `README.md` and files
-  under `docs/`.
+The Julian spine (SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped; the as-
+built specs are in [`docs/archive/`](./archive/README.md). The plans in
+`SHEPHERD_CARE_TRACKER_PLAN.md` and `LAUNCH_PLANNING_PLAN.md` remain the
+forward-looking reference for SC.1B/follow-ons and LDR.1 / EXT.1.
 
 ---
 
@@ -473,49 +481,66 @@ want later.
 
 ---
 
-## 5. Docs cleanup recommendations
+## Appendix A — Reliability / security debt track
 
-### Keep as active (under `docs/`)
+Runs in parallel to the feature roadmap above. Items here trade off
+against feature work but are sequenced independently.
 
-- `PRODUCT_ROADMAP.md` (this file)
-- `FEATURE_BACKLOG.md`
-- `JULIAN_FEEDBACK_PIVOT.md`
-- `SHEPHERD_CARE_TRACKER_PLAN.md`
-- `LAUNCH_PLANNING_PLAN.md`
-- `FINALIZED_HOLISTIC_PLAN.md`
-- `SUPER_ADMIN_INVITE_USER_WORKFLOW.md`
-- `ARCHITECTURE.md`
-- `DATABASE_SCHEMA.md`
-- `SEED_DATA.md`
-- `DEPLOYMENT.md`
-- `PRODUCT_BRIEF.md`
-- `FREE_TIER_NOTES.md`
-- `TEST_AUTH_USERS.md`
+### P0 — Immediate
 
-### Archive candidates (moved to `docs/archive/` in R0)
+1. **Baseline observability.** Structured logging on critical server
+   paths (auth, session, server actions, edge functions). Include
+   `event`, `route_or_action`, `actor_role`, `request_id`, `latency_ms`,
+   `outcome`, `error_code`.
+2. **Harden `getCurrentSession()`.** Remove throw-driven 500s for
+   transient Supabase read failures. Return controlled auth outcomes
+   (redirect / unauthorized) with explicit error classification (auth
+   missing, profile missing, profile inactive, backend transient).
+3. **Rate-limit forgot-password.** Per-IP and per-email windowed limits.
+   Keep generic user-facing response (no account discovery). Log
+   throttle events with anonymized identifiers. **(Shipped — see
+   `lib/security/rate-limit.ts` and `app/forgot-password/actions.ts`.)**
 
-- Old `PHASE_5A_*.md` specs and verification logs (12 files).
-- Old `PHASE_5B_*.md` specs and verification logs (5 files).
-- Old `PHASE_5C_*.md` specs and verification logs (4 files).
-- Old `PHASE_6_0_*.md` (2 files).
-- Old `PHASE_7_0_*.md` (2 files).
-- Pre-launch design polish docs:
-  `PRELAUNCH_BRAND_AUTH_CLEANUP.md`, `PRELAUNCH_MOBILE_UX_OVERHAUL.md`.
-- Old completion roadmaps:
-  `APP_COMPLETION_ROADMAP.md`, `CLAUDE_APP_COMPLETION_ROADMAP.md`.
-- Stale roadmap doc: `ROADMAP.md` (superseded by `PRODUCT_ROADMAP.md`).
-- Already-shipped design extraction doc: `CLAUDE_DESIGN_EXTRACTION.md`.
-- Already-shipped QA checklist: `LAUNCH_POLISH_QA.md`.
+### P1 — Near-term
 
-### Do not delete
+4. **Mitigate timing side-channel in invite flow.** Normalize timing
+   between "existing user" and "invite user" branches. Keep super-admin
+   gate as defense-in-depth, not the sole control.
+5. **Reduce unsafe trust-boundary casts.** Replace unvalidated `as` casts
+   at ingress with runtime-validated parsing (login profile read, RPC
+   wrapper call boundaries). Introduce narrow DTO validators.
+6. **Minimum test suite.** Three layers — unit (validators / parsers /
+   role predicates), integration (auth / session gating, key action
+   contracts), E2E smoke (admin login, leader login, one protected route
+   each). CI gate before merge. **(Partial — vitest scaffold in CI;
+   coverage expansion still owed.)**
 
-No historical doc is deleted. All are moved into `docs/archive/` so the
-implementation history is preserved. See
-[`docs/archive/README.md`](./archive/README.md) for the full archived
-listing and one-line reasons.
+### P2 — Medium-term
 
-### Filename caution
+7. **Remove or formalize dead modules.** Confirm usage of placeholder
+   `lib/permissions`, `lib/health`, `lib/reports`. Delete unused.
+   **(Shipped — deleted in the May 2026 cleanup.)**
+8. **Refactor oversized components.** Split by LOC and churn — calendar
+   shell, check-in form, groups directory — into domain subcomponents /
+   hooks / view-models.
+9. **Constrain broad `select("*")`.** Phase A: privacy-sensitive and
+   high-traffic paths. Phase B: remaining read-models for payload
+   minimization and schema-change resilience. Shared column constants.
+10. **Validate session caching semantics.** Confirm `cache()` behavior
+    for within-request role / profile consistency. Document role-change
+    refresh boundaries. Regression test for role-change visibility.
 
-R0 moves only docs that are clearly historical, shipped, superseded, or
-no longer active. Broad glob moves were not used. The exact archived list
-is enumerated in `docs/archive/README.md` and in the PR description.
+### Preserve these strengths (do not regress)
+
+- `SECURITY DEFINER` RPC-centered write model.
+- RLS-centered data access.
+- Service-role key kept out of app runtime.
+- Generic auth error responses (reduce enumeration risk).
+
+### Definition of done
+
+- P0 / P1 items merged with tests and logging evidence.
+- Incident triage possible from logs without local repro.
+- No uncaught auth / session transient failures producing user-facing
+  500s.
+- At least one automated test in each layer.

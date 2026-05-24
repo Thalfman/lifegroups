@@ -1,9 +1,50 @@
 # Shepherd Care Tracker — Plan
 
 Implementation plan for SC.1 / SC.2 / SC.3 in
-[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). This document is a **plan**,
-not a built feature — the route and tables described below do not exist
-yet in the repo.
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). SC.1A, SC.2, and SC.3 have
+shipped; this plan remains the forward-looking reference for SC.1B
+(care follow-ups) and any later care work.
+
+## Shipped — as-built summary
+
+The detailed as-built specs are archived under
+[`docs/archive/`](./archive/README.md) as
+`SC_1A_SHEPHERD_CARE_FOUNDATION.md`,
+`SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md`, and
+`SC_3_JULIAN_CARE_DASHBOARD.md`.
+
+**Route.** `/admin/shepherd-care` (directory + dashboard summary above)
+and `/admin/shepherd-care/[profileId]` (detail page; `profileId` is the
+leader's `profiles.id`).
+
+**Tables.** `shepherd_care_profiles`, `shepherd_care_interactions`,
+`over_shepherds`, `shepherd_coverage_assignments`. Admin-only SELECT;
+no table-level write policies. SC.1C `shepherd_care_follow_ups` not yet
+shipped.
+
+**RPCs.**
+- `admin_upsert_shepherd_care_profile`
+- `admin_log_shepherd_care_interaction` (also updates parent
+  `last_contact_at` in the same transaction)
+- `admin_create_over_shepherd`, `admin_update_over_shepherd`
+- `admin_assign_shepherd_to_over_shepherd`,
+  `admin_end_shepherd_coverage_assignment`
+
+Each writes a paired `audit_events` row in the same transaction.
+
+**Read-model column allowlists** added to `lib/supabase/read-models.ts`:
+`SHEPHERD_CARE_PROFILE_COLUMNS`, `SHEPHERD_CARE_INTERACTION_COLUMNS`,
+`OVER_SHEPHERD_COLUMNS`, `COVERAGE_ASSIGNMENT_COLUMNS`. No leader read
+paths.
+
+**Dashboard (SC.3).** Six summary cards + attention queue + coverage by
+over-shepherd + upcoming touchpoints + recent interactions, all rendered
+above the directory at `/admin/shepherd-care`. Pure helpers for recency
+/ status bucketing live alongside the read-model.
+
+---
+
+## Forward-looking plan (SC.1B + later)
 
 ## 1. Purpose
 

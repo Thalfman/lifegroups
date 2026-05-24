@@ -1,8 +1,11 @@
 # Database Schema
 
-The base schema (Phase 2) lives at
-`supabase/migrations/20260517040000_phase2_schema.sql`. The Phase 4 RLS
-foundation lives at `supabase/migrations/20260518000000_phase4_rls.sql`.
+The schema is built up across the migrations in `supabase/migrations/`.
+The base tables and `user_role` / `role_in_group` enums land in
+`20260517040000_phase2_schema.sql`; the RLS foundation lands in
+`20260518000000_phase4_rls.sql`; subsequent migrations layer on admin /
+leader / super-admin RPCs, the shepherd-care surface, over-shepherd
+coverage, and launch-planning storage.
 
 ## Core model
 - **profiles**: app-login user records mapped to Supabase Auth users via
@@ -28,8 +31,20 @@ foundation lives at `supabase/migrations/20260518000000_phase4_rls.sql`.
 - **follow_ups**: operational tasks.
 - **group_health_updates** and **group_status_history**: pulse and
   status-change history.
-- **audit_events**: immutable operational log.
-- **app_settings**: lightweight JSON settings.
+- **audit_events**: immutable operational log. Every RPC mutation
+  writes one row in the same transaction as the data change.
+- **app_settings**: lightweight JSON settings (includes
+  `metric_defaults` and the `launch_planning` baseline assumption row).
+- **shepherd_care_profiles** + **shepherd_care_interactions**:
+  admin-only care tracking surfacing `/admin/shepherd-care`. Append-
+  only interaction history; SELECT restricted to `super_admin` /
+  `ministry_admin`.
+- **over_shepherds** + **shepherd_coverage_assignments**: over-shepherd
+  roster and shepherd ↔ over-shepherd coverage. Admin-only; no
+  over-shepherd login surface.
+- **launch_planning_scenarios**: named scenarios for
+  `/admin/launch-planning` (LP.2). One row marked `is_current` is the
+  canonical default; the LP.1 baseline lives in `app_settings`.
 
 ## Auth identity vs. participant identity
 The schema deliberately separates two kinds of people:
@@ -45,9 +60,10 @@ The schema deliberately separates two kinds of people:
   `group_memberships`. A `members` row never has, or needs, an
   `auth.users` row in the current design.
 
-Phase 5A will introduce narrow admin workflows for creating and updating
-both kinds of records (see `docs/archive/PHASE_5A_ADMIN_MANAGEMENT.md`). Neither
-write path exists today — Phase 4.1 only documents the model.
+Admin workflows for creating and updating both kinds of records ship
+through narrow `admin_*` `SECURITY DEFINER` RPCs; see the read-models
+in `lib/supabase/read-models.ts` and the RPC sources in the migration
+files for the per-table contracts.
 
 ## Key relationships
 - `profiles.auth_user_id -> auth.users.id` (Supabase Auth, set manually
@@ -84,9 +100,11 @@ keeps reporting clear.
 `follow_ups` provides a shared task queue with priority, status, due dates,
 assignees, and optional entity links.
 
-## Row Level Security (Phase 4)
-Phase 4 enables RLS on every operational table and ships **SELECT-only**
-policies.
+## Row Level Security
+RLS is enabled on every operational table, and policies are
+**SELECT-only**. Writes flow through `SECURITY DEFINER` RPCs that
+perform their own role checks and write paired `audit_events` rows in
+the same transaction.
 
 ### Helper functions
 All SQL helpers live in the `public` schema, are `security definer` + `stable`,
@@ -108,28 +126,31 @@ and are only executable by the `authenticated` role.
 
 ### Policy intent
 
-| Table                  | Admin / Staff | Leader / Co-Leader                                              |
-|------------------------|---------------|----------------------------------------------------------------|
-| profiles               | All           | Self only (`auth_user_id = auth.uid()`)                        |
-| groups                 | All           | Groups where `auth_is_leader_of(id)`                            |
-| group_leaders          | All           | Self + peer leaders in same group                              |
-| members                | All           | Members with an active membership in one of the leader's groups |
-| group_memberships      | All           | Memberships where `auth_is_leader_of(group_id)`                |
-| attendance_sessions    | All           | Sessions where `auth_is_leader_of(group_id)`                   |
-| attendance_records     | All           | Via parent session                                              |
-| guests                 | All           | Guests with first attended or assigned group the leader owns   |
-| follow_ups             | All           | Follow-ups for the leader's groups or assigned to the leader   |
-| group_health_updates   | All           | Updates where `auth_is_leader_of(group_id)`                    |
-| group_status_history   | All           | History where `auth_is_leader_of(group_id)`                    |
-| audit_events           | Admin only    | No access                                                       |
-| app_settings           | Authenticated | Authenticated                                                   |
+| Table                      | Admin (super_admin / ministry_admin) | Leader / Co-Leader                                              |
+|----------------------------|--------------------------------------|----------------------------------------------------------------|
+| profiles                   | All                                  | Self only (`auth_user_id = auth.uid()`)                        |
+| groups                     | All                                  | Groups where `auth_is_leader_of(id)`                            |
+| group_leaders              | All                                  | Self + peer leaders in same group                              |
+| members                    | All                                  | Members with an active membership in one of the leader's groups |
+| group_memberships          | All                                  | Memberships where `auth_is_leader_of(group_id)`                |
+| attendance_sessions        | All                                  | Sessions where `auth_is_leader_of(group_id)`                   |
+| attendance_records         | All                                  | Via parent session                                              |
+| guests                     | All                                  | Guests with first attended or assigned group the leader owns   |
+| follow_ups                 | All                                  | Follow-ups for the leader's groups or assigned to the leader   |
+| group_health_updates       | All                                  | Updates where `auth_is_leader_of(group_id)`                    |
+| group_status_history       | All                                  | History where `auth_is_leader_of(group_id)`                    |
+| shepherd_care_*            | All                                  | No access                                                       |
+| over_shepherds, coverage   | All                                  | No access                                                       |
+| launch_planning_scenarios  | All                                  | No access                                                       |
+| audit_events               | Admin only                           | No access                                                       |
+| app_settings               | Authenticated                        | Authenticated                                                   |
 
 ### What's intentionally missing
-- **No INSERT / UPDATE / DELETE policies.** Write workflows arrive in Phase 5
-  alongside the corresponding mutation paths in the app.
-- **No anon read policies.** The publishable key client now returns zero rows
-  for every operational table; preview routes render fallback demo data
-  instead.
+- **No table-level INSERT / UPDATE / DELETE policies.** All writes flow
+  through the `admin_*` / `leader_*` / `super_admin_*` RPCs above.
+- **No anon read policies.** The publishable key client returns zero
+  rows for every operational table; the app falls back to demo data
+  when no session is present.
 
 ## Verifying RLS in the database
 In the Supabase SQL editor, use the **Run as** dropdown to impersonate a user
