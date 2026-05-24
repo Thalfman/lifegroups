@@ -7,26 +7,20 @@ on top of Supabase (Auth + Postgres + RLS).
 
 ## Current roadmap
 
-The active product roadmap was reset after Julian's pivot feedback. The
-next phase of work is **Julian's admin operating system** — a shepherd
-care tracker and a launch-planning tool — not more leader-facing
-features.
+Direction: **Julian's admin operating system** — shepherd care +
+launch planning, not more leader-facing features. The Julian spine
+(SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped; follow-on work is sequenced
+in the roadmap.
 
-Read these in order:
-
-- [`docs/JULIAN_FEEDBACK_PIVOT.md`](./docs/JULIAN_FEEDBACK_PIVOT.md) —
-  why the direction changed.
 - [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered
-  execution plan (R0 → INV.1 → SC.1 → SC.2 → SC.3 → LP.1 → LP.2 → LDR.1
-  → EXT.1).
+  execution plan, pivot rationale, and reliability / security debt
+  appendix.
 - [`docs/FEATURE_BACKLOG.md`](./docs/FEATURE_BACKLOG.md) — broader
-  feature inventory including deferred and rejected items.
+  feature inventory including deferred items.
 - [`docs/SHEPHERD_CARE_TRACKER_PLAN.md`](./docs/SHEPHERD_CARE_TRACKER_PLAN.md)
-  — plan for SC.1 / SC.2 / SC.3.
+  — forward-looking plan and as-built summary for SC.*.
 - [`docs/LAUNCH_PLANNING_PLAN.md`](./docs/LAUNCH_PLANNING_PLAN.md) —
-  plan for LP.1 / LP.2.
-- [`docs/FINALIZED_HOLISTIC_PLAN.md`](./docs/FINALIZED_HOLISTIC_PLAN.md)
-  — orthogonal reliability / security debt track.
+  forward-looking plan and as-built summary for LP.*.
 
 ## Local development
 
@@ -145,8 +139,8 @@ migrations, or RLS.
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
-- Schema docs: [`docs/DATABASE_SCHEMA.md`](./docs/DATABASE_SCHEMA.md) and
-  [`docs/SEED_DATA.md`](./docs/SEED_DATA.md)
+- Schema docs: [`docs/DATABASE_SCHEMA.md`](./docs/DATABASE_SCHEMA.md)
+- Seed + dev auth bootstrap: [`supabase/dev/README.md`](./supabase/dev/README.md)
 - Env vars are **optional** for build; required only for sign-in and
   live data.
 - **No service role key** is used or expected anywhere in Next runtime

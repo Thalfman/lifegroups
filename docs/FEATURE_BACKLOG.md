@@ -75,18 +75,24 @@ Verified from repo inspection. Each item below has an implemented
 - Test auth users tooling (super admin panel + CLI scripts in
   `supabase/dev/`).
 
-## 4. Near-term planned features
+## 4. Julian spine (shipped)
 
-These are the committed items in `PRODUCT_ROADMAP.md`:
+These items in `PRODUCT_ROADMAP.md` have shipped. The deep dives in §5
+remain as feature-level reference (problem framing, scope, audit
+events, open questions); the as-built specs live under
+[`docs/archive/`](./archive/README.md).
 
-- **INV.1** — Super Admin Invite User (verify and polish).
-- **SC.1** — Julian Shepherd Care Tracker MVP.
+- **INV.1** — Super Admin Invite User.
+- **SC.1A** — Julian Shepherd Care Tracker MVP.
 - **SC.2** — Over-Shepherd Coverage Tracking.
 - **SC.3** — Julian Care Dashboard.
 - **LP.1** — Capacity and Launch Planning MVP.
 - **LP.2** — Forecast Scenarios.
 
-## 5. Near-term feature deep dives
+Outstanding from the SC.* line: **SC.1B** — admin-only care follow-ups
+(parallel to `follow_ups`); planned, not yet built.
+
+## 5. Feature deep dives
 
 ### INV.1 — Super Admin Invite User
 
@@ -137,7 +143,8 @@ These are the committed items in `PRODUCT_ROADMAP.md`:
   attention list.
 - **Later enhancements.** Care follow-ups, smart cadence flags, AI
   summaries (only if Julian asks).
-- **Open questions.** See `JULIAN_FEEDBACK_PIVOT.md` § 8 — needs the
+- **Open questions.** See the "Open questions" list in
+  [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2 — needs the
   current spreadsheet column list before final schema.
 - **Acceptance criteria.** Julian can open a care profile, log an
   interaction, see last contact and next touchpoint, and see a needs-
@@ -185,8 +192,8 @@ These are the committed items in `PRODUCT_ROADMAP.md`:
 - **Privacy / security notes.** Same as SC.1.
 - **MVP scope.** Four buckets, sort by recency and status.
 - **Later enhancements.** Saved views, custom thresholds.
-- **Open questions.** Default recency threshold? (See open questions in
-  `JULIAN_FEEDBACK_PIVOT.md`.)
+- **Open questions.** Default recency threshold? (See open questions
+  in [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2.)
 - **Acceptance criteria.** Julian opens the page and immediately knows
   who needs attention this week.
 
@@ -277,26 +284,27 @@ Possibilities Julian may want after the MVP. None are committed.
 
 | Priority | Feature | Primary user | Why now | Dependency | Risk | Status |
 |---|---|---|---|---|---|---|
-| P0 | R0 Roadmap Reset | Julian | Align docs with new direction | None | Low | In flight |
-| P0 | INV.1 Super Admin Invite User | Super admin | Julian needs to sign in as `ministry_admin` | None | Low | Likely shipped, verify |
-| P0 | SC.1 Shepherd Care Tracker MVP | Julian | Replace Excel caring spreadsheet | INV.1 verified | Med (privacy) | Planned |
-| P1 | SC.2 Over-Shepherd Coverage | Julian | Track which over-shepherd covers whom | SC.1 | Low | Planned |
-| P1 | LP.1 Launch Planning MVP | Julian | Anticipate August group launches | None | Low | Planned |
-| P2 | SC.3 Care Dashboard | Julian | Triage view across 63 shepherds | SC.1 | Low | Planned |
-| P2 | LP.2 Forecast Scenarios | Julian | Compare conservative / expected / stretch | LP.1 | Low | Planned |
-| P3 | LDR.1 Optional Leader Tools | Leaders | Only if Julian asks | SC.1+SC.2 shipped | Med (privacy) | Deferred |
+| P0 | INV.1 Super Admin Invite User | Super admin | Julian needs to sign in as `ministry_admin` | None | Low | Shipped |
+| P0 | SC.1A Shepherd Care Tracker | Julian | Replace Excel caring spreadsheet | INV.1 | Med (privacy) | Shipped |
+| P1 | SC.2 Over-Shepherd Coverage | Julian | Track which over-shepherd covers whom | SC.1A | Low | Shipped |
+| P1 | LP.1 Launch Planning MVP | Julian | Anticipate August group launches | None | Low | Shipped |
+| P2 | SC.3 Care Dashboard | Julian | Triage view across 63 shepherds | SC.1A | Low | Shipped |
+| P2 | LP.2 Forecast Scenarios | Julian | Compare conservative / expected / stretch | LP.1 | Low | Shipped |
+| P2 | SC.1B Care Follow-Ups | Julian | Admin-only task list parallel to `follow_ups` | SC.1A | Low | Planned |
+| P3 | LDR.1 Optional Leader Tools | Leaders | Only if Julian asks | SC.1A + SC.2 shipped | Med (privacy) | Deferred |
 | P3 | EXT.1 External / Comms | Comms dir. | Only after comms dir. involved | Separate review | High (privacy) | Deferred |
 
-## 10. MVP cutline
+## 10. Next cutline
 
-The next MVP cut is **not** "more leader tools". The next MVP cut is:
+The Julian spine (INV.1, SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped.
+The next forward-looking work is:
 
-1. Invite Julian properly (verify INV.1).
-2. Shepherd Care Tracker (SC.1).
-3. Capacity and Launch Planning (LP.1).
+1. SC.1B — admin-only care follow-ups (parallel to `follow_ups`).
+2. Whatever Julian raises in his next sync (see open questions in
+   [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2).
 
-Everything else in this document is either deferred until Julian asks for
-it, or already shipped.
+Everything else in this document is either deferred until Julian asks
+for it, or already shipped.
 
 ## 11. Relationship to PRODUCT_ROADMAP.md
 

@@ -1,71 +1,63 @@
 # Deployment Notes
 
-## Current (Phase 5A.0.1 — launch polish, read-only)
-- Deploy to Vercel as a standard Next.js app.
-- Supabase environment variables are **optional** for build. Without them, the
-  public preview pages render demo data and the protected routes redirect to
-  `/login` at request time (no build break).
-- With env vars configured, the protected routes (`/admin`, `/leader`,
-  `/staff`) read through the cookie-authenticated server client and Row Level
-  Security.
-- `/admin/people` is an admin-only preview of the upcoming people / role
-  management workflows. Every action card is intentionally disabled and the
-  server-action stubs throw immediately — no Supabase writes happen here.
-- `/admin-preview` and `/leader-preview` are permanently public demo pages
-  that always render fallback data; they do not call Supabase.
-- All operational tables have RLS enabled. Only SELECT policies exist today.
-  Phase 5A.1 introduces narrow INSERT/UPDATE policies for admin people / role
-  / group-assignment writes. Phase 5B introduces operational writes
-  (attendance, guest capture, follow-up updates).
+## Hosting
+
+- Deploy to **Vercel** as a standard Next.js app.
+- Targets **Vercel Hobby** + **Supabase Free** — see
+  [`FREE_TIER_NOTES.md`](./FREE_TIER_NOTES.md) for the constraints
+  this implies.
+- Supabase environment variables are **optional** for build. Without
+  them, protected routes redirect to `/login` at request time and the
+  build does not fail.
 
 ## Environment variables
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-Set these in the Vercel project settings (Production + Preview). Local dev
-uses `.env.local`; copy from `.env.example` and fill in values to read live
+Set both in Vercel project settings (Production + Preview). Locally,
+copy `.env.example` to `.env.local` and fill in values to read live
 data and exercise sign-in.
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is still honored as a fallback when no
-publishable key is set, but it is not required for build, preview, production,
-or runtime.
+publishable key is set, but is not required.
 
-**Do not** add a service role key. The app never reads one and refuses to
-behave as a backend admin.
+**Forgot-password throttle** (optional but recommended in production):
+
+```
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
+
+When unset, `lib/security/rate-limit.ts` falls back to a permissive
+in-memory limiter that does not protect against distributed abuse.
+
+**Do not** set a service role key in any Next runtime environment. The
+app never reads one. Service role is confined to Supabase Edge
+Functions (`invite-user`, `manage-test-auth-users`) and lives in their
+function secrets.
 
 ## Supabase project setup
-1. Create a free Supabase project.
-2. Apply schema and seed:
-   - `supabase/migrations/20260517040000_phase2_schema.sql`
-   - `supabase/seed/phase2_seed.sql`
-3. Apply Phase 4 RLS:
-   - `supabase/migrations/20260518000000_phase4_rls.sql`
-4. Apply Phase 5A.1 admin people write functions:
-   - `supabase/migrations/20260518050000_phase5a1_admin_people_writes.sql`
-5. Apply Phase 5A.2 admin group write functions + audit visibility:
-   - `supabase/migrations/20260518060000_phase5a2_admin_group_writes.sql`
-6. From Project Settings → API, copy the project URL and **publishable** key
-   into the Vercel env vars above. Do not paste the service role key.
-7. Create one Supabase Auth user per seed profile email
-   (`avery.bennett@example.org`, `jordan.hayes@example.org`,
-   `casey.morgan@example.org`, etc.) with a development-only password.
-8. **Bootstrap your `super_admin`:** see "Super admin bootstrap" in
-   `supabase/dev/README.md` and use
-   `supabase/dev/link_super_admin.sql.example` to link your own Supabase
-   Auth user to a `super_admin` profile.
-9. Link each seed auth user to its profile row by following
-   `supabase/dev/README.md`.
-10. Visit `/login` and sign in.
 
-## What lands next (Phase 5B)
-After live Supabase verification of the existing read + admin write
-workflows:
-
-- **Phase 5B — operational writes.** Attendance submission, guest capture,
-  follow-up updates, and admin review queues. These arrive alongside the
-  broader operational INSERT / UPDATE / DELETE RLS policies.
-
-This phase introduces no service role key. The cookie-authenticated
-server client remains the only path for writes.
+1. Create a Supabase project.
+2. Apply all migrations under `supabase/migrations/` in order. The
+   active schema includes profiles + role enum, groups, members,
+   group memberships, attendance, guests, follow-ups, audit events,
+   app settings, shepherd-care tables, over-shepherds + coverage
+   assignments, launch-planning scenarios, and the RLS + RPC
+   foundations.
+3. Apply `supabase/seed/phase2_seed.sql` for fictional operational
+   data suitable for local dashboard prototyping.
+4. From Project Settings → API, copy the project URL and
+   **publishable** key into the Vercel env vars above. Do **not**
+   paste the service role key.
+5. Deploy the Edge Functions under `supabase/functions/` if you need
+   the invite-user workflow.
+6. Bootstrap your own `super_admin` and link seed auth users by
+   following [`supabase/dev/README.md`](../supabase/dev/README.md).
+7. Visit `/login` and sign in. Real users (Julian as
+   `ministry_admin`, leaders) are then invited from
+   `/admin/super-admin` — see
+   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).

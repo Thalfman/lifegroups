@@ -1,9 +1,43 @@
 # Launch Planning — Plan
 
 Implementation plan for LP.1 / LP.2 in
-[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). This document is a **plan**,
-not a built feature — the route, tables, and helpers below do not exist
-yet in the repo.
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). LP.1 and LP.2 have shipped;
+this plan remains the forward-looking reference for any extensions.
+
+## Shipped — as-built summary
+
+The detailed as-built specs are archived under
+[`docs/archive/`](./archive/README.md) as
+`LP_1_CAPACITY_LAUNCH_PLANNING.md` and `LP_2_FORECAST_SCENARIOS.md`.
+
+**Route.** `/admin/launch-planning`.
+
+**Storage.**
+- LP.1 baseline assumptions: `app_settings.launch_planning` JSON row.
+- LP.2 scenarios: `launch_planning_scenarios` table (named, editable
+  scenarios; one marked `is_current`).
+
+**RPCs.**
+- `admin_update_launch_planning_assumptions(p_settings jsonb)` — LP.1.
+- `admin_create_launch_planning_scenario`,
+  `admin_update_launch_planning_scenario`,
+  `admin_archive_launch_planning_scenario`,
+  `admin_set_current_launch_planning_scenario` — LP.2.
+
+Each writes a paired `audit_events` row in the same transaction; the
+LP.1 audit row captures previous and new assumption JSON, so history is
+reconstructable from the audit log.
+
+**Helpers.** `lib/admin/launch-planning.ts` holds the pure
+`computeLaunchPlan(assumptions, repoState)` plus
+`decodeLaunchPlanningAssumptions()`. Capacity math reuses the existing
+`effectiveCapacity()`, `capacityStatus()`, and
+`isExcludedFromCapacityMetrics()` from `lib/admin/metrics.ts`; capacity
+logic is **not** duplicated.
+
+---
+
+## Forward-looking plan
 
 ## 1. Purpose
 
