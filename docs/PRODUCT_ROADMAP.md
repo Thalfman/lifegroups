@@ -70,6 +70,13 @@ work):
 - Auto-flag "haven't connected with X in N weeks"? Default threshold?
 - When to loop in the communications director, and on what work?
 
+**Update (2026-05-27).** Most of these are now answered by materials Julian
+sent — captured verbatim under [`julian-inputs/`](./julian-inputs/README.md)
+with a question-by-question mapping in
+[`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md). Two remain
+open (no-contact auto-flag threshold; comms-director trigger), plus a newly
+surfaced group-health grading rubric Julian is still designing.
+
 ## 3. Current app state
 
 Verified from repo inspection on the branch this PR is opened against.
