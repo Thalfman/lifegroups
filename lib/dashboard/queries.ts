@@ -51,7 +51,6 @@ import {
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
 import {
-  BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   buildLaunchPlanningInputs,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
@@ -637,7 +636,13 @@ function buildShepherdCareSummary(
     attentionItemsTotal,
     coverageAvailable: model.coverageAvailable,
     available: true,
-    error: null,
+    // If the coverage assignments read failed, surface the error so the
+    // dashboard card can warn that the unassigned-coverage count and the
+    // no_over_shepherd reason are suppressed — matches the explicit
+    // error banner shown on /admin/shepherd-care.
+    error: assignmentsAvailable
+      ? null
+      : (assignmentsRes.error?.message ?? "Coverage data unavailable."),
   };
 }
 
@@ -646,7 +651,20 @@ function buildLaunchPlanningSnapshot(
   derivedRows: DerivedGroupRow[],
   defaults: MetricDefaults,
 ): LaunchPlanningDashboardSnapshot {
+  // Failed assumption reads (transient DB/RLS) must surface as an
+  // explicit "unavailable" state — otherwise the dashboard quietly
+  // recommends a launch plan against built-in defaults while
+  // /admin/launch-planning shows an error banner. The two surfaces must
+  // not contradict each other.
+  if (assumptionsRes.error) {
+    return emptyLaunchPlanningSnapshot(assumptionsRes.error.message);
+  }
   const assumptionsAvailable = assumptionsRes.data != null;
+  // decodeLaunchPlanningAssumptions(null, defaults) already folds the
+  // configured metric defaults (e.g. default_group_capacity ->
+  // average_group_size) into the fallback, matching what
+  // /admin/launch-planning uses. Always use the decoded value so the
+  // dashboard and the deep page agree in unseeded environments.
   const assumptions = decodeLaunchPlanningAssumptions(
     assumptionsRes.data ?? null,
     defaults,
@@ -664,10 +682,7 @@ function buildLaunchPlanningSnapshot(
     ),
     metricDefaults: defaults,
   });
-  const outputs = computeLaunchPlan(
-    assumptionsAvailable ? assumptions : BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
-    inputs,
-  );
+  const outputs = computeLaunchPlan(assumptions, inputs);
   return {
     effectiveTotalCapacity: inputs.effective_total_capacity,
     currentParticipants: inputs.current_participants,
@@ -681,7 +696,27 @@ function buildLaunchPlanningSnapshot(
     excludedActiveGroupCount: inputs.excluded_active_group_count,
     assumptionsAvailable,
     available: true,
-    error: assumptionsRes.error?.message ?? null,
+    error: null,
+  };
+}
+
+function emptyLaunchPlanningSnapshot(
+  errorMessage: string,
+): LaunchPlanningDashboardSnapshot {
+  return {
+    effectiveTotalCapacity: 0,
+    currentParticipants: 0,
+    projectedGroupDemand: 0,
+    capacityGap: 0,
+    recommendedNewGroups: 0,
+    estimatedNewLeadersNeeded: 0,
+    riskLevel: "ok",
+    suggestedLaunchByDate: null,
+    unknownCapacityGroupCount: 0,
+    excludedActiveGroupCount: 0,
+    assumptionsAvailable: false,
+    available: false,
+    error: errorMessage,
   };
 }
 
@@ -706,6 +741,18 @@ export async function getAdminDashboardData(
     // request-bound timing.
     const todayIso = currentUtcDateIso();
 
+    // Resolve metric defaults first so the shepherd-care directory fetch
+    // can bake `entry.needs_attention` against the configured
+    // stale-contact window — without this, /admin would compute the
+    // headline "Needs attention" count against the built-in 60-day
+    // default while /admin/shepherd-care uses the configured window,
+    // and the two surfaces would disagree. Mirrors the loader pattern in
+    // app/(protected)/admin/shepherd-care/page.tsx.
+    const metricDefaultsResult = await fetchMetricDefaults(client);
+    const defaultsForRead = decodeMetricDefaults(
+      metricDefaultsResult.data ?? null,
+    );
+
     const [
       groupsResult,
       activeGroupCountResult,
@@ -716,7 +763,6 @@ export async function getAdminDashboardData(
       sessionsResult,
       leadersResult,
       profilesResult,
-      metricDefaultsResult,
       metricSettingsResult,
       calendarEventsResult,
       shepherdDirectoryResult,
@@ -733,7 +779,6 @@ export async function getAdminDashboardData(
       fetchAttendanceSessions(client, { meetingWeek: selectedWeek }),
       fetchAllGroupLeaders(client, { activeOnly: true }),
       fetchProfilesForAdmin(client),
-      fetchMetricDefaults(client),
       fetchAllGroupMetricSettings(client),
       fetchGroupCalendarEvents(client, {
         fromDate: selectedWeek,
@@ -743,7 +788,10 @@ export async function getAdminDashboardData(
       // Julian admin-OS spine reads. Failures here degrade gracefully —
       // the dashboard surfaces "unavailable" cards rather than failing
       // the whole page.
-      fetchShepherdCareDirectoryForAdmin(client, { todayIso }),
+      fetchShepherdCareDirectoryForAdmin(client, {
+        todayIso,
+        staleDays: defaultsForRead.shepherd_care_stale_days,
+      }),
       fetchOverShepherdsForAdmin(client, { includeArchived: true }),
       fetchActiveShepherdCoverageAssignmentsForAdmin(client),
       fetchLaunchPlanningAssumptions(client),
@@ -806,7 +854,7 @@ export async function getAdminDashboardData(
       followUpsByGroup.set(fu.related_group_id, list);
     }
 
-    const defaults = decodeMetricDefaults(metricDefaultsResult.data);
+    const defaults = defaultsForRead;
 
     const derivedRows: DerivedGroupRow[] = groups.map((g) => {
       const override = metricSettingsByGroup.get(g.id) ?? null;

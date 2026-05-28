@@ -42,6 +42,23 @@ export function ShepherdCareTriageCard({
         title="Care triage"
         href="/admin/shepherd-care"
       />
+      {summary.error ? (
+        <p
+          style={{
+            margin: "0 0 12px",
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "var(--c-claySoft)",
+            color: "var(--c-clay)",
+            fontFamily: "var(--font-body)",
+            fontSize: 12.5,
+            border: "1px solid var(--c-clay)",
+          }}
+        >
+          Coverage data could not be loaded: {summary.error} Unassigned-coverage
+          counts are suppressed until this clears.
+        </p>
+      ) : null}
       <div
         style={{
           display: "grid",

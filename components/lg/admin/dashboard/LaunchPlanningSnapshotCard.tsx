@@ -116,11 +116,16 @@ export function LaunchPlanningSnapshotCard({
         }}
       >
         <span>
-          {snapshot.suggestedLaunchByDate
-            ? `Suggested launch-by: ${snapshot.suggestedLaunchByDate}`
-            : snapshot.recommendedNewGroups > 0
-              ? `${snapshot.estimatedNewLeadersNeeded} new leader${snapshot.estimatedNewLeadersNeeded === 1 ? "" : "s"} needed`
-              : "Capacity holds for the configured window."}
+          {/* recommendedNewGroups === 0 wins first so the dashboard
+              cannot tell admins to launch by a date when capacity is
+              already covered — matches /admin/launch-planning's
+              recommendation copy, which only attaches a launch-by date
+              to the "launch N new groups" path. */}
+          {snapshot.recommendedNewGroups === 0
+            ? "Capacity holds for the configured window."
+            : snapshot.suggestedLaunchByDate
+              ? `Suggested launch-by: ${snapshot.suggestedLaunchByDate}`
+              : `${snapshot.estimatedNewLeadersNeeded} new leader${snapshot.estimatedNewLeadersNeeded === 1 ? "" : "s"} needed`}
         </span>
         <Link
           href="/admin/launch-planning"
