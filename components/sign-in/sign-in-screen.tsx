@@ -140,27 +140,6 @@ export function SignInScreen({
           </p>
         </aside>
 
-        <p
-          style={{
-            fontFamily: "var(--font-sans)",
-            fontSize: 12,
-            color: "var(--c-ink3)",
-            textAlign: "center",
-            margin: 0,
-          }}
-        >
-          New leader?{" "}
-          <a
-            href="mailto:ministry@foxvalleychurch.org"
-            style={{
-              color: "var(--c-sageDeep)",
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            Email the ministry team.
-          </a>
-        </p>
       </div>
     </main>
   );
