@@ -12,10 +12,12 @@ import {
   validateEndShepherdCoverageAssignmentPayload,
   validateInviteUserPayload,
   validateLaunchPlanningAssumptionsPayload,
+  validateCreateMultiplicationCandidatePayload,
   validateLogShepherdCareInteractionPayload,
   validateMetricDefaultsPayload,
   validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
+  validateUpdateMultiplicationCandidatePayload,
   validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
   validateUpsertShepherdCareProfilePayload,
@@ -1003,5 +1005,57 @@ describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
     });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.note).toBeNull();
+  });
+});
+
+describe("multiplication candidate payloads (Julian P4)", () => {
+  it("accepts a valid create payload and defaults status to watching", () => {
+    const r = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      target_year: "2027",
+      shepherd_willing: "on",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.target_year).toBe(2027);
+      expect(r.value.status).toBe("watching");
+      expect(r.value.shepherd_willing).toBe(true);
+      expect(r.value.needs_similar_stage).toBe(false);
+    }
+  });
+
+  it("rejects a bad group id and out-of-range year", () => {
+    expect(
+      validateCreateMultiplicationCandidatePayload({ group_id: "nope" }).ok,
+    ).toBe(false);
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        group_id: UUID_A,
+        target_year: "1999",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects an invalid status", () => {
+    expect(
+      validateUpdateMultiplicationCandidatePayload({
+        candidate_id: UUID_A,
+        status: "maybe",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("accepts a valid update payload", () => {
+    const r = validateUpdateMultiplicationCandidatePayload({
+      candidate_id: UUID_A,
+      status: "planned",
+      target_year: "2026",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.status).toBe("planned");
+      expect(r.value.candidate_id).toBe(UUID_A);
+    }
   });
 });

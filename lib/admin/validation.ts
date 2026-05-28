@@ -7,6 +7,7 @@ import type {
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
+  MultiplicationCandidateStatus,
   RoleInGroup,
   ShepherdCareInteractionType,
   ShepherdCareStatus,
@@ -2002,5 +2003,117 @@ export function validateRecordChurchAttendancePayload(
       attendance_count: attendanceCount,
       note: note ?? null,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Julian P4 — multiplication candidate payloads.
+// ---------------------------------------------------------------------------
+
+const MULTIPLICATION_CANDIDATE_STATUSES: ReadonlySet<MultiplicationCandidateStatus> =
+  new Set(["watching", "planned", "launched", "deferred"]);
+
+function isMultiplicationStatus(value: unknown): value is MultiplicationCandidateStatus {
+  return (
+    typeof value === "string" &&
+    MULTIPLICATION_CANDIDATE_STATUSES.has(value as MultiplicationCandidateStatus)
+  );
+}
+
+type MultiplicationCandidateFields = {
+  target_year: number | null;
+  status: MultiplicationCandidateStatus;
+  shepherd_willing: boolean;
+  needs_similar_stage: boolean;
+  notes: string | null;
+};
+
+function validateMultiplicationCandidateFields(
+  input: Record<string, unknown>,
+  errors: string[],
+): MultiplicationCandidateFields {
+  let targetYear: number | null = null;
+  const yearRaw = readOptionalString(input.target_year);
+  if (yearRaw !== undefined) {
+    const n = readOptionalInteger(yearRaw);
+    if (n === "invalid" || n === undefined) {
+      errors.push("Target year must be a whole number.");
+    } else if (n < 2024 || n > 2100) {
+      errors.push("Target year must be between 2024 and 2100.");
+    } else {
+      targetYear = n;
+    }
+  }
+
+  let status: MultiplicationCandidateStatus = "watching";
+  if (input.status !== undefined && input.status !== null && input.status !== "") {
+    if (!isMultiplicationStatus(input.status)) {
+      errors.push("Status must be watching, planned, launched, or deferred.");
+    } else {
+      status = input.status;
+    }
+  }
+
+  const notes = readOptionalString(input.notes);
+  if (notes !== undefined && notes.length > 2000) {
+    errors.push("Notes are too long (max 2000 characters).");
+  }
+
+  return {
+    target_year: targetYear,
+    status,
+    shepherd_willing: readBooleanFlag(input.shepherd_willing),
+    needs_similar_stage: readBooleanFlag(input.needs_similar_stage),
+    notes: notes ?? null,
+  };
+}
+
+export type CreateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
+  group_id: string;
+};
+
+export function validateCreateMultiplicationCandidatePayload(
+  input: unknown,
+): ValidationResult<CreateMultiplicationCandidatePayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  const fields = validateMultiplicationCandidateFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string), ...fields },
+  };
+}
+
+export type UpdateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
+  candidate_id: string;
+};
+
+export function validateUpdateMultiplicationCandidatePayload(
+  input: unknown,
+): ValidationResult<UpdateMultiplicationCandidatePayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.candidate_id)) errors.push("candidate_id must be a uuid");
+  const fields = validateMultiplicationCandidateFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { candidate_id: normalizeUuid(input.candidate_id as string), ...fields },
+  };
+}
+
+export type CandidateIdPayload = { candidate_id: string };
+
+export function validateCandidateIdPayload(
+  input: unknown,
+): ValidationResult<CandidateIdPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.candidate_id))
+    return { ok: false, errors: ["candidate_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { candidate_id: normalizeUuid(input.candidate_id as string) },
   };
 }

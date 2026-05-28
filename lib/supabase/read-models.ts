@@ -15,6 +15,7 @@ import type {
   GuestsRow,
   LaunchPlanningScenariosRow,
   MembersRow,
+  MultiplicationCandidatesRow,
   OverShepherdsRow,
   ProfilesRow,
   ShepherdCareInteractionsRow,
@@ -413,6 +414,110 @@ export async function fetchChurchAttendanceSnapshots(
     return { data: null, error: wrapError("fetchChurchAttendanceSnapshots", error) };
   }
   return { data: (data ?? []) as ChurchAttendanceSnapshotsRow[], error: null };
+}
+
+const MULTIPLICATION_CANDIDATE_COLUMNS =
+  "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
+  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+
+export type MultiplicationCandidateGroup = Pick<
+  GroupsRow,
+  "id" | "name" | "audience_category" | "life_stage" | "launched_on" | "lifecycle_status"
+>;
+
+export type MultiplicationCandidateEntry = {
+  candidate: MultiplicationCandidatesRow;
+  group: MultiplicationCandidateGroup | null;
+  activeMemberCount: number;
+  // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
+  coShepherdSince: string | null;
+};
+
+// Julian P4: active (non-archived) multiplication candidates enriched with the
+// group facts the readiness helper needs (member count, launch date,
+// co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
+// reads by the candidates' group ids to avoid N+1.
+export async function fetchMultiplicationCandidatesForAdmin(
+  client: ReadClient,
+): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
+  const candidatesRes = await client
+    .from("multiplication_candidates")
+    .select(MULTIPLICATION_CANDIDATE_COLUMNS)
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (candidatesRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/candidates", candidatesRes.error),
+    };
+  }
+  const candidates = (candidatesRes.data ?? []) as MultiplicationCandidatesRow[];
+  if (candidates.length === 0) return { data: [], error: null };
+
+  const groupIds = [...new Set(candidates.map((c) => c.group_id))];
+
+  const [groupsRes, membershipsRes, leadersRes] = await Promise.all([
+    client
+      .from("groups")
+      .select("id, name, audience_category, life_stage, launched_on, lifecycle_status")
+      .in("id", groupIds),
+    client
+      .from("group_memberships")
+      .select("group_id, status")
+      .in("group_id", groupIds)
+      .eq("status", "active"),
+    client
+      .from("group_leaders")
+      .select("group_id, assigned_at, role, active")
+      .in("group_id", groupIds)
+      .eq("role", "co_leader")
+      .eq("active", true),
+  ]);
+  if (groupsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/groups", groupsRes.error),
+    };
+  }
+  if (membershipsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/memberships", membershipsRes.error),
+    };
+  }
+  if (leadersRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/leaders", leadersRes.error),
+    };
+  }
+
+  const groupById = new Map<string, MultiplicationCandidateGroup>();
+  for (const g of (groupsRes.data ?? []) as MultiplicationCandidateGroup[]) {
+    groupById.set(g.id, g);
+  }
+
+  const memberCountByGroup = new Map<string, number>();
+  for (const m of (membershipsRes.data ?? []) as { group_id: string }[]) {
+    memberCountByGroup.set(m.group_id, (memberCountByGroup.get(m.group_id) ?? 0) + 1);
+  }
+
+  const coShepherdSinceByGroup = new Map<string, string>();
+  for (const l of (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]) {
+    const current = coShepherdSinceByGroup.get(l.group_id);
+    if (current === undefined || l.assigned_at < current) {
+      coShepherdSinceByGroup.set(l.group_id, l.assigned_at);
+    }
+  }
+
+  const entries: MultiplicationCandidateEntry[] = candidates.map((candidate) => ({
+    candidate,
+    group: groupById.get(candidate.group_id) ?? null,
+    activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
+    coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+  }));
+
+  return { data: entries, error: null };
 }
 
 // Returns every row in group_metric_settings. RLS on the table restricts

@@ -25,6 +25,7 @@ import type {
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
+  MultiplicationCandidateStatus,
   RoleInGroup,
   ShepherdCareInteractionType,
   ShepherdCareStatus,
@@ -204,6 +205,54 @@ export async function rpcAdminRecordChurchAttendanceSnapshot(
 ): Promise<RpcResult> {
   const r = await client.rpc(
     "admin_record_church_attendance_snapshot" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+// Julian P4: multiplication candidate writes.
+export async function rpcAdminCreateMultiplicationCandidate(
+  client: AppSupabaseClient,
+  args: {
+    p_group_id: string;
+    p_target_year: number | null;
+    p_status: MultiplicationCandidateStatus;
+    p_shepherd_willing: boolean;
+    p_needs_similar_stage: boolean;
+    p_notes: string | null;
+  },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_create_multiplication_candidate" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export async function rpcAdminUpdateMultiplicationCandidate(
+  client: AppSupabaseClient,
+  args: {
+    p_candidate_id: string;
+    p_target_year: number | null;
+    p_status: MultiplicationCandidateStatus;
+    p_shepherd_willing: boolean;
+    p_needs_similar_stage: boolean;
+    p_notes: string | null;
+  },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_update_multiplication_candidate" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+export async function rpcAdminArchiveMultiplicationCandidate(
+  client: AppSupabaseClient,
+  args: { p_candidate_id: string },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_archive_multiplication_candidate" as never,
     args as never,
   );
   return { data: readUuidRpcData(r.data), error: r.error };

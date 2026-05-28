@@ -21,6 +21,11 @@ export type GroupLifeStage =
   | 'retirement'
   | 'multi_generational'
   | 'spanish_speaking';
+export type MultiplicationCandidateStatus =
+  | 'watching'
+  | 'planned'
+  | 'launched'
+  | 'deferred';
 export type GroupCalendarEventType =
   | 'study'
   | 'community_night'

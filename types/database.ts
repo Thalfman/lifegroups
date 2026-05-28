@@ -184,6 +184,21 @@ export interface ChurchAttendanceSnapshotsRow {
   updated_at: Timestamp;
 }
 
+export interface MultiplicationCandidatesRow {
+  id: UUID;
+  group_id: UUID;
+  target_year: number | null;
+  status: E.MultiplicationCandidateStatus;
+  shepherd_willing: boolean;
+  needs_similar_stage: boolean;
+  notes: string | null;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface GroupCalendarEventsRow {
   id: UUID;
   group_id: UUID;
@@ -350,6 +365,21 @@ export interface Database {
           'id' | 'created_at' | 'updated_at' | 'created_by_profile_id' | 'note'
         >;
         Update: Partial<ChurchAttendanceSnapshotsRow>;
+        Relationships: [];
+      };
+      multiplication_candidates: {
+        Row: MultiplicationCandidatesRow;
+        Insert: InsertOf<
+          MultiplicationCandidatesRow,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'archived_at'
+          | 'created_by'
+          | 'updated_by'
+          | 'notes'
+        >;
+        Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];
       };
       group_calendar_events: {
