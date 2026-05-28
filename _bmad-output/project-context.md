@@ -29,9 +29,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
 ### Write path (get this wrong and writes silently fail)
 - All app writes go through `SECURITY DEFINER` Postgres RPCs named `admin_*` / `leader_*` / `super_admin_*`. There are **no table-level write RLS policies** — a direct `.insert()`/`.update()` from Next fails. A new write = new RPC + migration.
 - **Every write RPC MUST insert an `audit_events` row in the same transaction as the mutation, and audit failure MUST roll back the write.** Never wrap the audit insert in an error-swallowing `EXCEPTION` block. (Verified: all 50 audit inserts follow this.)
-- **The audit actor MUST be `public.auth_profile_id()`** (the human resolved from `auth.uid()` where `status='active'`), null-checked with `raise insufficient_privilege`. Never attribute to the definer role — that is what keeps the trail non-repudiable.
+- **In authenticated app RPCs the audit actor MUST be `public.auth_profile_id()`** (the human resolved from `auth.uid()` where `status='active'`), null-checked with `raise insufficient_privilege`. Never attribute to the definer role — that is what keeps the trail non-repudiable.
+- **Exception — service-role Edge Function RPCs.** RPCs invoked from an Edge Function with the service-role client (e.g. `super_admin_complete_invite` from `supabase/functions/invite-user`) cannot use `auth_profile_id()` (it would resolve from the service-role JWT, not the caller). They take the actor as an explicit `p_actor_profile_id` arg, re-verified inside the function. Preserve that pattern; do not swap it for `auth_profile_id()`.
 - Call RPCs only through the typed wrappers in `lib/*/rpc.ts`. They cast args `as never` because `types/database.ts` is hand-rolled and doesn't satisfy supabase-js `.rpc()` generics. Keep the `{ data, error }` shape; run `readUuidRpcData()` on results.
-- **No hard deletes.** Soft-deactivate via the per-table sentinel: `status` / `archived_at` / `ended_at` / `active`.
+- **No hard deletes.** Soft-deactivate via the per-table sentinel — there is no single convention, so check the actual column: `status`, `archived_at`, `ended_at`, `active`, and group lifecycle (`groups.lifecycle_status = 'closed'` + `closed_at`, set by `admin_close_group` / `admin_reopen_group`).
 
 ### `types/database.ts` & `as never` (highest-value rule)
 - **Never regenerate `types/database.ts`** (`supabase gen types` is banned) — it is hand-authored; the generator clobbers the narrowed shapes and guards we depend on.
@@ -39,7 +40,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **`as never` is permitted ONLY in `lib/*/rpc.ts` RPC arg casts.** Anywhere else it is a banned type suppressor that defers failure to runtime (grep/lint gate).
 
 ### Server-action pipeline (`app/**/actions.ts`, `"use server"`)
-- Mandatory order — never reorder or skip: `requireXSession()` → `validateXPayload()` → `rpcX()` → on error `mapRpcError(error.message)` → `revalidatePath(PATH)` on success. Return discriminated `ActionResult<T>` via `actionOk`/`actionFail`. **Never throw to the client.**
+- **Scope: protected app-data mutations only.** Public auth actions (`app/login`, `app/forgot-password`, `app/reset-password`) are exempt — they run before a session exists and call Supabase Auth APIs directly, not RPCs. Never force `requireXSession()` onto them.
+- For protected writes, mandatory order — never reorder or skip: `requireXSession()` → `validateXPayload()` → `rpcX()` → on error `mapRpcError(error.message)` → `revalidatePath(PATH)` on success. Return discriminated `ActionResult<T>` via `actionOk`/`actionFail`. **Never throw to the client.**
   - Auth first: no logic runs for an unauthenticated caller (no work/data leak before knowing who's asking).
   - `mapRpcError` mandatory: raw Postgres errors leak schema and produce unstable strings the UI can't switch on.
 - Instrument with `startActionLog("domain.area.verb")`; call `ctx.finish(outcome, fields)` on **every** return branch (`ok|fail|denied|throttled`).
@@ -52,7 +54,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Pages guard with `requireRole`/`requireAdmin`/`requireSuperAdmin`/`requireLeader` (these `redirect()`). Actions guard with `requireAdminSession`/`requireSuperAdminSession`/`requireLeaderActor` (typed result, no redirect).
 - **No DB row enters typed app code without a guard.** `as` on a raw query result is forbidden — validate with `isProfilesRow`/`isUuid`/`isUserRole` first (the cast after the guard is intentional). These predicates are the only runtime defense against hand-rolled-type drift.
 - Defense in depth: re-check leader group membership against `assignedGroupIds` before the RPC, even though RLS enforces it too.
-- `staff_viewer` is legacy/no-access — **explicitly deny it in every new write check** (`auth_is_admin()` already excludes it). `super_admin` is set only via the documented bootstrap — no RPC/migration may elevate to it otherwise.
+- `staff_viewer` is legacy: **app-denied** (UI routes it to `/unauthorized`) and **write-denied** (`auth_is_admin()` excludes it — deny it in every new write check). But it is **NOT** denied at the RLS layer — `auth_is_admin_or_staff()` still grants it SELECT on profiles, groups, members, guests, follow-ups, etc. (Phase 4). When adding a sensitive read, do not rely on a nonexistent RLS deny: gate it in the app/read-model, or add a migration to drop the grant. `super_admin` is set only via the documented bootstrap — no RPC/migration may elevate to it otherwise.
 - Deactivation auto-revokes capability: `auth_profile_id()` filters `status='active'`, so deactivated users lose actor + leader-scoped access automatically. Preserve this — don't bypass the helper.
 
 ### Read path & privacy (two-layer enforcement)
@@ -106,7 +108,7 @@ Policy/product calls, not coding rules. Override as needed.
 | 2 | Right-to-erasure vs "no hard deletes" | Erasure routes to a manual super_admin process; soft-deactivate is intentional, erasure exceptional + audited |
 | 3 | Deactivated subject visibility | Hidden from default lists; visible to admins via explicit filter |
 | 4 | co_leader vs leader capability delta | co_leader == leader minus destructive/structural actions (no member removal, no group config) |
-| 5 | Rate-limit fail-open scope | Fail-open for non-sensitive writes; fail-closed for auth / role-change / erasure paths |
+| 5 | Rate-limit fail-open scope | Forgot-password / auth-recovery stays **fail-open** (matches `lib/security/rate-limit.ts` — availability over throttle; do not change). Consider fail-closed only for high-value role-change / erasure RPCs |
 
 ---
 
