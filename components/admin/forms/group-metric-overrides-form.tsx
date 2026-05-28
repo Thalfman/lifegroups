@@ -253,6 +253,29 @@ export function GroupMetricOverridesForm({
           </div>
 
           <div>
+            <label
+              htmlFor="allow_over_capacity"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink,
+              }}
+            >
+              <input
+                id="allow_over_capacity"
+                name="allow_over_capacity"
+                type="checkbox"
+                defaultChecked={currentSettings?.allow_over_capacity ?? false}
+                style={{ width: 16, height: 16 }}
+              />
+              Keep open past capacity (full, but accepting members by choice)
+            </label>
+          </div>
+
+          <div>
             <label htmlFor="admin_metric_notes" style={fieldLabelStyle}>
               Admin metric notes
             </label>

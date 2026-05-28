@@ -331,6 +331,7 @@ function GroupCard({
     warningPct: effectiveCapacityWarningPct(override, defaults),
     fullPct: effectiveCapacityFullPct(defaults),
     excluded,
+    allowOverCapacity: Boolean(override?.allow_over_capacity),
   });
 
   const lifecycleTone = LIFECYCLE_TONE[group.lifecycle_status];

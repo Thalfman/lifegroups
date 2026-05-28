@@ -641,6 +641,7 @@ export type GroupMetricSettingsPayload = {
   exclude_from_capacity_metrics: boolean;
   admin_metric_notes: string | null;
   check_in_due_offset_hours_override: number | null;
+  allow_over_capacity: boolean;
 };
 
 export function validateGroupMetricSettingsPayload(
@@ -735,6 +736,13 @@ export function validateGroupMetricSettingsPayload(
     else if (raw !== undefined) excludeFromCapacity = raw;
   }
 
+  let allowOverCapacity = false;
+  {
+    const raw = readOptionalBoolean(input.allow_over_capacity);
+    if (raw === "invalid") errors.push("Keep open past capacity must be true or false.");
+    else if (raw !== undefined) allowOverCapacity = raw;
+  }
+
   let notes: string | null = null;
   {
     const raw = readOptionalString(input.admin_metric_notes);
@@ -756,6 +764,7 @@ export function validateGroupMetricSettingsPayload(
       exclude_from_capacity_metrics: excludeFromCapacity,
       admin_metric_notes: notes,
       check_in_due_offset_hours_override: checkInOffsetOverride,
+      allow_over_capacity: allowOverCapacity,
     },
   };
 }

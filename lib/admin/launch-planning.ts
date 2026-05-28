@@ -192,6 +192,7 @@ type OverrideForInputs = Pick<
   | "manual_health_status_override"
   | "admin_metric_notes"
   | "check_in_due_offset_hours_override"
+  | "allow_over_capacity"
 >;
 
 type MembershipForInputs = Pick<

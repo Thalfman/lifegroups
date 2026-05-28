@@ -157,6 +157,7 @@ export async function rpcAdminUpsertGroupMetricSettings(
     p_exclude_from_capacity_metrics: boolean;
     p_admin_metric_notes: string | null;
     p_check_in_due_offset_hours_override: number | null;
+    p_allow_over_capacity: boolean;
   },
 ): Promise<RpcResult> {
   const r = await client.rpc(

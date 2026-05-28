@@ -71,6 +71,7 @@ function override(
     exclude_from_capacity_metrics: fields.exclude_from_capacity_metrics ?? false,
     admin_metric_notes: null,
     check_in_due_offset_hours_override: null,
+    allow_over_capacity: fields.allow_over_capacity ?? false,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
   };

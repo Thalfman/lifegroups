@@ -398,7 +398,10 @@ function toHealthGroupRow(row: DerivedGroupRow): HealthGroupRow {
 }
 
 function buildCapacitySummary(rows: DerivedGroupRow[]): CapacitySummary {
-  const buckets: Record<CapacityStatus, CapacityGroupRow[]> = {
+  const buckets: Record<
+    "full" | "warning" | "ok" | "unknown" | "excluded",
+    CapacityGroupRow[]
+  > = {
     full: [],
     warning: [],
     ok: [],
@@ -408,7 +411,12 @@ function buildCapacitySummary(rows: DerivedGroupRow[]): CapacitySummary {
   for (const r of rows) {
     if (r.group.lifecycle_status === "closed") continue;
     if (r.group.lifecycle_status !== "active") continue;
-    buckets[r.capacityStatusValue].push(toCapacityGroupRow(r));
+    // Julian P2: a group kept open past capacity is intentional, not a
+    // problem, so it folds into the "ok" bucket for summary counts while
+    // the per-row status still reads "open_by_choice" for its badge.
+    const bucketKey: "full" | "warning" | "ok" | "unknown" | "excluded" =
+      r.capacityStatusValue === "open_by_choice" ? "ok" : r.capacityStatusValue;
+    buckets[bucketKey].push(toCapacityGroupRow(r));
   }
   const byUtilDesc = (a: CapacityGroupRow, b: CapacityGroupRow) => {
     const au = a.utilizationPct ?? -1;
@@ -682,6 +690,7 @@ export async function getAdminDashboardData(
         warningPct,
         fullPct,
         excluded: isExcluded,
+        allowOverCapacity: Boolean(override?.allow_over_capacity),
       });
       const effectiveHealth = effectiveHealthStatus(g, override);
       const healthUpdate = healthByGroup.get(g.id) ?? null;
