@@ -200,6 +200,54 @@ export function GroupEditForm({
             placeholder="12"
           />
         </div>
+        <div>
+          <label htmlFor={`edit-audience_category-${group.id}`} style={fieldLabelStyle}>
+            Audience
+          </label>
+          <select
+            id={`edit-audience_category-${group.id}`}
+            name="audience_category"
+            defaultValue={group.audience_category ?? ""}
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="men">Men</option>
+            <option value="women">Women</option>
+            <option value="mixed">Mixed / couples</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`edit-life_stage-${group.id}`} style={fieldLabelStyle}>
+            Life stage
+          </label>
+          <select
+            id={`edit-life_stage-${group.id}`}
+            name="life_stage"
+            defaultValue={group.life_stage ?? ""}
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="young_professionals">Young professionals</option>
+            <option value="young_families">Young families</option>
+            <option value="families_with_kids">Families with kids/teens</option>
+            <option value="families_with_adult_kids">Families with adult kids</option>
+            <option value="retirement">Retirement</option>
+            <option value="multi_generational">Multi-generational</option>
+            <option value="spanish_speaking">Spanish speaking</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`edit-launched_on-${group.id}`} style={fieldLabelStyle}>
+            Launched on
+          </label>
+          <input
+            id={`edit-launched_on-${group.id}`}
+            name="launched_on"
+            type="date"
+            defaultValue={group.launched_on ?? ""}
+            style={fieldInputStyle}
+          />
+        </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label htmlFor={`edit-description-${group.id}`} style={fieldLabelStyle}>
             Description

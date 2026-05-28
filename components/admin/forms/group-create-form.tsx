@@ -183,6 +183,53 @@ export function GroupCreateForm() {
             placeholder="12"
           />
         </div>
+        <div>
+          <label htmlFor="group-audience_category" style={fieldLabelStyle}>
+            Audience (optional)
+          </label>
+          <select
+            id="group-audience_category"
+            name="audience_category"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="men">Men</option>
+            <option value="women">Women</option>
+            <option value="mixed">Mixed / couples</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="group-life_stage" style={fieldLabelStyle}>
+            Life stage (optional)
+          </label>
+          <select
+            id="group-life_stage"
+            name="life_stage"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="young_professionals">Young professionals</option>
+            <option value="young_families">Young families</option>
+            <option value="families_with_kids">Families with kids/teens</option>
+            <option value="families_with_adult_kids">Families with adult kids</option>
+            <option value="retirement">Retirement</option>
+            <option value="multi_generational">Multi-generational</option>
+            <option value="spanish_speaking">Spanish speaking</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="group-launched_on" style={fieldLabelStyle}>
+            Launched on (optional)
+          </label>
+          <input
+            id="group-launched_on"
+            name="launched_on"
+            type="date"
+            style={fieldInputStyle}
+          />
+        </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label htmlFor="group-description" style={fieldLabelStyle}>
             Description (optional)

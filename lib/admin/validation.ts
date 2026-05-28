@@ -2,6 +2,8 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
+  GroupAudienceCategory,
+  GroupLifeStage,
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
@@ -321,6 +323,33 @@ const MEETING_WEEK_PARITIES: ReadonlySet<MeetingWeekParity> = new Set([
   "even",
 ]);
 
+const GROUP_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> = new Set([
+  "men",
+  "women",
+  "mixed",
+]);
+
+const GROUP_LIFE_STAGES: ReadonlySet<GroupLifeStage> = new Set([
+  "young_professionals",
+  "young_families",
+  "families_with_kids",
+  "families_with_adult_kids",
+  "retirement",
+  "multi_generational",
+  "spanish_speaking",
+]);
+
+function isGroupAudienceCategory(value: unknown): value is GroupAudienceCategory {
+  return (
+    typeof value === "string" &&
+    GROUP_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
+  );
+}
+
+function isGroupLifeStage(value: unknown): value is GroupLifeStage {
+  return typeof value === "string" && GROUP_LIFE_STAGES.has(value as GroupLifeStage);
+}
+
 function isMeetingFrequency(value: unknown): value is MeetingFrequency {
   return typeof value === "string" && MEETING_FREQUENCIES.has(value as MeetingFrequency);
 }
@@ -339,6 +368,9 @@ export type GroupWritablePayload = {
   location_area?: string;
   address_optional?: string;
   capacity?: number;
+  audience_category?: GroupAudienceCategory | null;
+  life_stage?: GroupLifeStage | null;
+  launched_on?: string | null;
 };
 
 function validateGroupWritablePayload(
@@ -401,6 +433,32 @@ function validateGroupWritablePayload(
     else if (capacity > 1000) errors.push("Capacity is unusually large (max 1000).");
   }
 
+  // Julian P4 segmentation. All optional; an empty select submits "" which
+  // readOptionalString collapses to undefined → "leave unset / clear on
+  // update". A non-empty but invalid value errors so a stale value can't leak.
+  const audienceRaw = readOptionalString(input.audience_category);
+  let audienceCategory: GroupAudienceCategory | undefined;
+  if (audienceRaw !== undefined) {
+    if (!isGroupAudienceCategory(audienceRaw))
+      errors.push("Audience category must be men, women, or mixed.");
+    else audienceCategory = audienceRaw;
+  }
+
+  const lifeStageRaw = readOptionalString(input.life_stage);
+  let lifeStage: GroupLifeStage | undefined;
+  if (lifeStageRaw !== undefined) {
+    if (!isGroupLifeStage(lifeStageRaw))
+      errors.push("Life stage is not a valid value.");
+    else lifeStage = lifeStageRaw;
+  }
+
+  const launchedOnRaw = readOptionalString(input.launched_on);
+  let launchedOn: string | undefined;
+  if (launchedOnRaw !== undefined) {
+    if (!isIsoDate(launchedOnRaw)) errors.push("Launch date must be YYYY-MM-DD.");
+    else launchedOn = launchedOnRaw;
+  }
+
   if (errors.length > 0) return { ok: false, errors };
 
   const value: GroupWritablePayload = {
@@ -414,6 +472,9 @@ function validateGroupWritablePayload(
   if (locationArea !== undefined) value.location_area = locationArea;
   if (addressOptional !== undefined) value.address_optional = addressOptional;
   if (capacity !== undefined) value.capacity = capacity;
+  if (audienceCategory !== undefined) value.audience_category = audienceCategory;
+  if (lifeStage !== undefined) value.life_stage = lifeStage;
+  if (launchedOn !== undefined) value.launched_on = launchedOn;
   return { ok: true, value };
 }
 

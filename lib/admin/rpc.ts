@@ -18,8 +18,10 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
+  GroupAudienceCategory,
   GroupCalendarEventStatus,
   GroupCalendarEventType,
+  GroupLifeStage,
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
@@ -92,6 +94,9 @@ export type GroupRpcArgs = {
   p_capacity: number | null;
   p_meeting_frequency: MeetingFrequency;
   p_meeting_week_parity: MeetingWeekParity | null;
+  p_audience_category: GroupAudienceCategory | null;
+  p_life_stage: GroupLifeStage | null;
+  p_launched_on: string | null;
 };
 
 export async function rpcAdminCreateGroup(

@@ -29,6 +29,9 @@ export interface GroupsRow {
   capacity: number | null;
   lifecycle_status: E.GroupLifecycleStatus;
   health_status: E.GroupHealthStatus;
+  audience_category: E.GroupAudienceCategory | null;
+  life_stage: E.GroupLifeStage | null;
+  launched_on: DateString | null;
   pause_reason: string | null;
   pause_start_date: DateString | null;
   expected_return_date: DateString | null;
