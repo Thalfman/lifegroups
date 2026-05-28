@@ -32,6 +32,7 @@ vi.mock("@/lib/observability/logger", () => ({
 import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
+  type AuthGate,
 } from "@/lib/admin/run-action";
 
 const ACTOR_ID = "11111111-1111-1111-1111-111111111111";
@@ -201,5 +202,63 @@ describe("runAdminWriteAction", () => {
 
     expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
     expect(rpc).toHaveBeenCalledWith(expect.anything(), { name: "from-form" });
+  });
+
+  it("logs the error_count on validation failure", async () => {
+    const spec = baseSpec({
+      validate: () => ({ ok: false, errors: ["a", "b", "c"] }),
+    });
+
+    await runAdminWriteAction(spec, undefined, { name: "" });
+
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "validation_failed",
+      error_count: 3,
+    });
+  });
+
+  it("uses a custom auth gate instead of requireAdminSession", async () => {
+    const customAuth = vi.fn(async () => authOk("super_admin"));
+    const spec = baseSpec({ auth: customAuth as unknown as AuthGate });
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result.ok).toBe(true);
+    expect(customAuth).toHaveBeenCalledTimes(1);
+    expect(mockRequireAdminSession).not.toHaveBeenCalled();
+    expect(lastLog().ctx).toMatchObject({ outcome: "ok", actor_role: "super_admin" });
+  });
+
+  it("honors a guard outcome override so a non-auth bail logs fail", async () => {
+    const spec = baseSpec({
+      guard: () => ({ error: "nothing to change", code: "empty_diff", outcome: "fail" }),
+    });
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result).toEqual({ ok: false, errors: ["nothing to change"] });
+    expect(lastLog().ctx).toMatchObject({ outcome: "fail", error_code: "empty_diff" });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it("uses a custom reader and threads raw into revalidate and okFields", async () => {
+    const read = vi.fn(() => ({ name: "x", group_id: "g-9" }));
+    const revalidate = vi.fn((_value: Payload, raw: Record<string, unknown>) => [
+      `/admin/groups/${String(raw.group_id)}`,
+    ]);
+    const spec = baseSpec({
+      read,
+      keys: undefined,
+      revalidate,
+      okFields: (_value, _id, raw) => ({ target_group_id: raw.group_id }),
+    });
+
+    const result = await runAdminWriteAction(spec, undefined, { anything: true });
+
+    expect(result.ok).toBe(true);
+    expect(read).toHaveBeenCalledWith({ anything: true });
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups/g-9");
+    expect(lastLog().ctx).toMatchObject({ outcome: "ok", target_group_id: "g-9" });
   });
 });

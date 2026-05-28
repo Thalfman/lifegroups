@@ -1,7 +1,7 @@
 # ADR 0001: Admin write-action runner
 
-**Status:** Accepted (partial rollout — `admin/people` migrated; remaining admin
-action files pending)
+**Status:** Accepted (all admin action files migrated; leader runner + RPC
+gateway pending)
 **Date:** 2026-05-28
 
 ## Context
@@ -60,18 +60,48 @@ state. There are no early exits left in the caller to obscure, so the
 legibility concern does not apply. The imperative `startActionLog`/`finish`
 primitive is unchanged; only its callers are.
 
+## Spec extensions for the remaining files
+
+Migrating the other eight files surfaced four shapes the `people` file did not
+exercise. Each became a backward-compatible spec field (the `people` specs are
+unchanged):
+
+- `auth?: AuthGate` — defaults to `requireAdminSession`; `super-admin` passes
+  `requireSuperAdminSession`. Both gates return the same `{ ok, session }`
+  shape, so this is a seam, not a forked runner.
+- `read?: (input) => Record<string, unknown>` — for actions whose FormData
+  mapping is not a flat key-lift: `settings` and `launch-planning` (checkbox
+  presence, empty-string-to-null, empty-diff skipping) and the calendar files
+  (lift all entries). Defaults to lifting `keys`.
+- `raw` threaded into `revalidate`/`okFields`/`fields` — the calendar id-keyed
+  actions revalidate and log a `group_id` that lives outside the validated
+  payload (it carries through `raw` only).
+- `guard` outcome override + chaining — a guard may return `outcome: "fail"`
+  for non-authorization bails (`empty_diff` in `settings`/`launch-planning`)
+  rather than the default `denied`, and `super-admin` chains three distinct
+  guards behind one slot, returning the first denial with its own `error_code`.
+
+The runner's `input` param is typed `unknown` rather than `ActionInput<V>`: it
+re-parses input through `read`/`keys` before `V` exists, so `ActionInput<V>`
+only fought generic inference at callsites whose public param is wider than the
+spec's `V`. `V` flows from the spec.
+
 ## Consequences
 
 - The action layer gets its first regression net: `lib/admin/__tests__/run-action.test.ts`
   exercises all branches against mocked `requireAdminSession` /
   `createSupabaseServerClient` / `revalidatePath` / logger.
-- One deliberate, non-user-facing behavior change: log fields are now
-  **consistent** across post-validation stages. Previously some actions omitted
-  target fields on the `supabase_not_configured` stage (it had no async
-  pre-compute to force them) and `change_leader_role` omitted `new_role` on the
-  `rpc_no_data` stage. These omissions were incidental, not intentional; the
-  runner emits the same `fields` on every post-validation stage. RPC calls,
-  return values, and revalidation are byte-for-byte identical.
+- Two deliberate, non-user-facing log-field changes, both in the spirit of
+  **consistency** across stages; RPC calls, return values, and revalidation are
+  byte-for-byte identical:
+  1. The runner emits the same `fields` on every post-validation stage
+     (`supabase_not_configured`, `rpc_error`, `rpc_no_data`, `ok`). Previously
+     some actions omitted target fields on `supabase_not_configured`, and
+     `change_leader_role` / `super_admin.update_profile_role` omitted
+     `new_role` on `rpc_no_data`. These omissions were incidental.
+  2. The `validation_failed` line now carries `error_count` for every action
+     (previously only `super_admin.update_profile_role` did). A uniform
+     diagnostic field, harmless to the others.
 
 ## Invariants preserved (see AGENTS.md)
 
@@ -83,9 +113,10 @@ the RPC as defense in depth.
 
 ## Follow-ups
 
-- Migrate the remaining admin action files
-  (`groups`, `guests`, `follow-ups`, `shepherd-care`, `settings`,
-  `launch-planning`, `super-admin`, both `calendar` files).
+- ~~Migrate the remaining admin action files~~ — done. All nine admin action
+  files (`people`, `groups`, `calendar`, `guests`, `follow-ups`,
+  `shepherd-care`, `settings`, `launch-planning`, `super-admin`) delegate to
+  `runAdminWriteAction`.
 - A sibling `runLeaderWriteAction` for `lib/leader`: the auth strategy
   (`requireLeaderActor` returns `{ profileId, assignedGroupIds }`, not a
   session), the error-message table, and the group-membership guard differ, so
