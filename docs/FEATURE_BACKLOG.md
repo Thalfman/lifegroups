@@ -89,8 +89,15 @@ events, open questions); the as-built specs live under
 - **LP.1** — Capacity and Launch Planning MVP.
 - **LP.2** — Forecast Scenarios.
 
-Outstanding from the SC.* line: **SC.1B** — admin-only care follow-ups
-(parallel to `follow_ups`); planned, not yet built.
+Outstanding from the SC.* line:
+
+- **SC.1B** — admin-only care follow-ups (the `shepherd_care_follow_ups` task
+  list, parallel to `follow_ups`); planned, not yet built. **Endorsed by
+  Julian's Q6 ("Maybe both!")** — see
+  [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md).
+- **SC.4** — private / encrypted care notes readable by Julian alone (from Q8);
+  new, not built, needs a design decision (visibility flag vs. encryption)
+  first.
 
 ## 5. Feature deep dives
 
@@ -141,11 +148,13 @@ Outstanding from the SC.* line: **SC.1B** — admin-only care follow-ups
   allowlists in read models; no leader-facing surface.
 - **MVP scope.** Profile + interaction log + next touchpoint + needs-
   attention list.
-- **Later enhancements.** Care follow-ups, smart cadence flags, AI
+- **Later enhancements.** Care follow-ups (**SC.1B — now endorsed by Q6**),
+  private / encrypted notes (**SC.4 — from Q8**), smart cadence flags, AI
   summaries (only if Julian asks).
-- **Open questions.** See the "Open questions" list in
-  [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2 — needs the
-  current spreadsheet column list before final schema.
+- **Open questions.** Resolved: the spreadsheet columns are known
+  ([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) and Q6 settled the
+  data model (A1). Still open: the private-notes interpretation (Q8) and cadence
+  tiering (Q5) — see [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2.
 - **Acceptance criteria.** Julian can open a care profile, log an
   interaction, see last contact and next touchpoint, and see a needs-
   attention view.
@@ -290,7 +299,8 @@ Possibilities Julian may want after the MVP. None are committed.
 | P1 | LP.1 Launch Planning MVP | Julian | Anticipate August group launches | None | Low | Shipped |
 | P2 | SC.3 Care Dashboard | Julian | Triage view across 63 shepherds | SC.1A | Low | Shipped |
 | P2 | LP.2 Forecast Scenarios | Julian | Compare conservative / expected / stretch | LP.1 | Low | Shipped |
-| P2 | SC.1B Care Follow-Ups | Julian | Admin-only task list parallel to `follow_ups` | SC.1A | Low | Planned |
+| P2 | SC.1B Care Follow-Ups | Julian | Julian asked for a task list too (Q6 "both") | SC.1A | Low | Planned — endorsed |
+| P2 | SC.4 Private Care Notes | Julian | Notes readable by Julian alone (Q8) | SC.1A | Med (privacy) | New — needs design decision |
 | P3 | LDR.1 Optional Leader Tools | Leaders | Only if Julian asks | SC.1A + SC.2 shipped | Med (privacy) | Deferred |
 | P3 | EXT.1 External / Comms | Comms dir. | Only after comms dir. involved | Separate review | High (privacy) | Deferred |
 
@@ -299,8 +309,11 @@ Possibilities Julian may want after the MVP. None are committed.
 The Julian spine (INV.1, SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped.
 The next forward-looking work is:
 
-1. SC.1B — admin-only care follow-ups (parallel to `follow_ups`).
-2. Whatever Julian raises in his next sync (see open questions in
+1. SC.1B — admin-only care follow-ups (the `shepherd_care_follow_ups` task
+   list). Endorsed by Julian's Q6 ("both").
+2. SC.4 — private / encrypted care notes (Q8). Needs a design decision
+   (visibility flag vs. encryption) before build.
+3. Whatever Julian raises in his next sync (see open questions in
    [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2).
 
 Everything else in this document is either deferred until Julian asks
@@ -312,5 +325,8 @@ for it, or already shipped.
   plan** — what we build next, in order, with acceptance criteria.
 - This document (`FEATURE_BACKLOG.md`) is the **broader inventory** of
   possible product features, including ones we will not ship soon.
+- [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) is the at-a-glance **status
+  map** across all of these — it tracks what stage each item is in and what's
+  next.
 - If the roadmap and the backlog disagree on order or scope, the roadmap
   wins.

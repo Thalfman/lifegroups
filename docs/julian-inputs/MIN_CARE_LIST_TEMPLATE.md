@@ -33,7 +33,17 @@ These columns confirm the field set behind `shepherd_care_profiles` /
 
 The roadmap left "what fields does Julian's current spreadsheet actually
 contain?" as an open question to confirm before SC follow-on work; this answers
-it. The spreadsheet is **note- and date-oriented**, not heavy on discrete
-tasks/reminders — which, per `SHEPHERD_CARE_TRACKER_PLAN.md §6`, points to the
-**A2** model (profiles + interactions) being sufficient, with care follow-ups
-optional.
+it. The spreadsheet itself is **note- and date-oriented**, not heavy on discrete
+tasks/reminders.
+
+**Data-model decision: A1, not A2.** An earlier reading of this template alone
+concluded A2 (profiles + interactions) was sufficient, with care follow-ups
+optional. That reading predated the question text. Julian's answer to **Q6**
+("history log, a follow-up/task list, or both?") was **"Maybe both!"** — an
+explicit ask for the task-list side as well as the history. The spreadsheet
+captures his *current* informal habit; "both" describes what he wants the new
+system to be. Per `SHEPHERD_CARE_TRACKER_PLAN.md §6` that points to the **A1**
+model (profiles + interactions + `shepherd_care_follow_ups`), i.e. **SC.1B is
+wanted, not optional**. The `Next step` column above maps to a
+`shepherd_care_follow_ups` row, and `Update of communication` maps to the
+append-only interaction log — both, as Julian asked.
