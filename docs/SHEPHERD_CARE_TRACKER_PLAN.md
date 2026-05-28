@@ -1,9 +1,10 @@
 # Shepherd Care Tracker — Plan
 
-Implementation plan for SC.1 / SC.2 / SC.3 in
+Implementation plan for SC.1 / SC.2 / SC.3 / SC.4 in
 [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). SC.1A, SC.2, and SC.3 have
-shipped; this plan remains the forward-looking reference for SC.1B
-(care follow-ups) and any later care work.
+shipped; this plan remains the forward-looking reference for **SC.1B**
+(care follow-ups — now endorsed by Julian's Q6 "both") and **SC.4** (private /
+encrypted notes — new, from Q8), plus any later care work.
 
 ## Shipped — as-built summary
 
@@ -19,8 +20,9 @@ leader's `profiles.id`).
 
 **Tables.** `shepherd_care_profiles`, `shepherd_care_interactions`,
 `over_shepherds`, `shepherd_coverage_assignments`. Admin-only SELECT;
-no table-level write policies. SC.1C `shepherd_care_follow_ups` not yet
-shipped.
+no table-level write policies. `shepherd_care_follow_ups` (the **SC.1B**
+feature) is not yet shipped; a **private-to-Julian notes tier (SC.4)** is not
+yet built.
 
 **RPCs.**
 - `admin_upsert_shepherd_care_profile`
@@ -123,20 +125,20 @@ shepherd care because:
 
 ## 6. Recommended MVP data model
 
-**Option A, preferred.** Subject to review after Julian shares his
-current spreadsheet columns. The implementation phase should confirm the
-schema against that spreadsheet **before** the migration is written.
+**Decided: A1.** Both inputs are now in hand. The spreadsheet
+([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) is note/date-oriented,
+but Julian's answer to **Q6** ("history log, a follow-up/task list, or both?")
+was **"Maybe both!"** — an explicit ask for the task/follow-up list as well as
+the history. That settles the earlier A1-vs-A2 question in favor of **A1**:
 
-Two acceptable variants of Option A:
+- **A1 (target):** `shepherd_care_profiles` + `shepherd_care_interactions` +
+  `shepherd_care_follow_ups`.
+- **A2 (shipped subset):** SC.1A shipped profiles + interactions only;
+  `shepherd_care_follow_ups` was intentionally deferred. **SC.1B completes A1**
+  by adding the follow-ups table — now endorsed by Julian, not optional.
 
-- **A1 (preferred):** ship `shepherd_care_profiles`,
-  `shepherd_care_interactions`, and `shepherd_care_follow_ups` together.
-- **A2:** ship `shepherd_care_profiles` + `shepherd_care_interactions`
-  only. Defer `shepherd_care_follow_ups` until the interaction log proves
-  the workflow.
-
-If Julian's spreadsheet column list reveals heavy use of tasks /
-reminders, prefer A1. If it's mostly notes and dates, A2 is fine.
+(Earlier guidance here read "if it's mostly notes and dates, A2 is fine." That
+predated the Q6 answer; "both" supersedes it.)
 
 ## 7. Suggested table concepts
 
@@ -247,6 +249,29 @@ Care-specific task list. **Never** exposed to leaders. Separate from
   excluded from any future EXT.1 work unless explicitly added with a
   separate privacy review.
 
+### Planned: a private-to-Julian tier (SC.4, from Q8)
+
+Julian asked for notes "that should only be readable by you" — readable by
+**Julian alone**, excluding even `super_admin`. The shipped model does **not**
+provide this: SELECT is granted to `super_admin` and `ministry_admin` alike, and
+the foundation migration deferred "encrypted private notes ... if Julian asks
+for" them
+(`supabase/migrations/20260518160000_phase5d0_shepherd_care_foundation.sql`).
+The trigger is now met. Two interpretations to settle with Julian before any
+build:
+
+- **Pragmatic (recommended).** A `visibility = private_to_creator` flag on the
+  note / interaction row, enforced in RLS so only the creating `ministry_admin`
+  (Julian) can SELECT it. Simple, queryable, audit-friendly; a DB owner with raw
+  SQL access could still read it — acceptable if "only you" means "only you
+  inside the app."
+- **Strict.** Encryption-at-rest where the plaintext is unreadable without a key
+  Julian controls. Honors "only you" even against raw DB access, but adds
+  key-management cost and breaks server-side search / sort on those notes.
+
+No `leader` / `co_leader` / over-shepherd path may ever reach private-tier
+notes.
+
 ## 13. Suggested UI
 
 At `/admin/shepherd-care`:
@@ -299,6 +324,13 @@ The SC.3 dashboard surfaces the buckets above in summary cards.
 Each item below is a self-contained prompt outline for a subsequent
 implementation PR.
 
+> **Label note.** The `SC.1A`–`SC.1D` headings below are the *as-built*
+> decomposition of the shipped SC.1 foundation (migration → RPCs → read models
+> → UI). They are **all shipped.** Two forward-looking items remain and are
+> spelled out at the end of this section: the **care-follow-ups feature**
+> (roadmap/backlog **SC.1B**, the `shepherd_care_follow_ups` table — now
+> endorsed by Q6) and **SC.4** (private / encrypted notes — new, from Q8).
+
 ### SC.1A — Migration plan
 - Confirm schema with Julian's spreadsheet columns.
 - Write the migration for `shepherd_care_profiles` and
@@ -343,3 +375,26 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
   with audit.
 - Directory filter / grouping in `/admin/shepherd-care`.
 - No over-shepherd login views.
+
+---
+
+### SC.1B (feature) — Care follow-ups — NOT BUILT
+- Add the `shepherd_care_follow_ups` table deferred by SC.1A (see § 7).
+- Admin-only RLS SELECT; writes via `admin_create_care_follow_up` /
+  `admin_update_care_follow_up_status` with paired audit rows.
+- Read-model column allowlist; no leader path.
+- Surface the task list in the care profile drawer (§ 13) and feed overdue
+  items into the SC.3 dashboard buckets.
+- **Endorsed by Julian's Q6 ("both"); A1 is the target model (§ 6).**
+
+### SC.4 — Private / encrypted care notes — NEW (from Q8)
+- **Decide the interpretation first** (see § 12): a `private_to_creator`
+  visibility flag enforced in RLS (recommended) vs. encryption-at-rest with a
+  Julian-held key.
+- For the flag approach: add a `visibility` column to care interactions
+  (and/or a `private_summary`), restrict SELECT in RLS to the creating
+  `ministry_admin`, and exclude private rows from every other read model and
+  from any SC.2 / SC.3 aggregate another admin can see.
+- Audit creation and visibility changes; never expose to leaders /
+  over-shepherds.
+- Requires a privacy review before build.

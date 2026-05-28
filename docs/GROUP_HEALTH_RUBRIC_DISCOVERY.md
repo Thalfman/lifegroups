@@ -18,6 +18,24 @@ Two signals are explicit — **consistent attendance** and **spiritual growth** 
 with an open "etc." Julian owns the rubric; this app's job is to compute and
 surface it once the dimensions are fixed.
 
+## Related but distinct: leader care-status vocabulary (Q2)
+
+Two axes are easy to conflate:
+
+- **Group health grade** — the *group's* health Julian is still designing
+  (Q12). This document.
+- **Leader care status** — how the *leader / shepherd* is doing, tracked in the
+  shipped Shepherd Care module (`shepherd_care_status`: `healthy` / `watch` /
+  `needs_attention`).
+
+In **Q2**, Tom floated a candidate care-status vocabulary — *doing well / needs
+encouragement / needs follow-up / concern / inactive*. Julian did not adopt it
+verbatim ("I think having a category for every leader would be good"), so the
+shipped three-value enum stands for now. **Open refinement:** align
+`shepherd_care_status` with whatever vocabulary Julian settles on. This is a
+*care-status* question parked here only because it shares the "how are they
+doing" framing; it is **not** part of the computed group grade.
+
 ## What the app already has (reusable inputs)
 
 | Signal | Source today | Notes |

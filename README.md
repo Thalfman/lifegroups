@@ -12,6 +12,9 @@ launch planning, not more leader-facing features. The Julian spine
 (SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped; follow-on work is sequenced
 in the roadmap.
 
+- [`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — **start here:**
+  the at-a-glance status map of every workstream, what stage it's in, and
+  what's next.
 - [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered
   execution plan, pivot rationale, and reliability / security debt
   appendix.

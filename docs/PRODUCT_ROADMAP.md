@@ -7,7 +7,9 @@ Dashboard. It is the ordered execution plan; the broader inventory of
 possible features (including deferred and rejected items) lives in
 [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md). Historical phase specs and
 verification logs are preserved under
-[`docs/archive/`](./archive/README.md).
+[`docs/archive/`](./archive/README.md). For an at-a-glance status map of every
+workstream — what stage each is in and what's blocked on Julian — see
+[`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md).
 
 The current direction is **Julian's admin operating system** — shepherd
 care + launch planning, not more leader-facing features. The rationale
@@ -60,33 +62,47 @@ follow-on work). The **2026-05-27** materials Julian sent — captured
 verbatim under [`julian-inputs/`](./julian-inputs/README.md) with a
 question-by-question mapping in
 [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) — answer
-most of them. Status per question:
+most of them. The verbatim **questions** (not just Julian's answers) are now
+captured too, which resolved the care data-model question (Q6 → A1) and surfaced
+a new private-notes requirement (Q8). Status per question:
 
 - **Answered** — What fields does Julian's spreadsheet contain? Name,
   Issue, Date of first communication, Next step, Update of communication,
-  Misc. note. Note/date-oriented, not task-heavy
+  Misc. note
   ([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)).
+- **Answered** — History log, task list, or both? (Q6) **Both** ("Maybe
+  both!"). Julian wants the history **and** a follow-up/task list → the **A1**
+  data model; **SC.1B (care follow-ups) is wanted, not optional.**
 - **Partial** — "Doing well" vs. "needs attention"? No fixed rubric yet;
   Julian is "still working on an evaluation system" — signals are
-  consistent attendance and spiritual growth.
-- **Partial** — Care cadence? Ad hoc per leader ("broad breast strokes or
-  specific concerns"), conversation-driven follow-up dates. No standing
-  cadence.
+  consistent attendance and spiritual growth. Q2 floated a candidate
+  vocabulary (doing well / needs encouragement / needs follow-up / concern /
+  inactive) not adopted verbatim; shipped enum is `healthy/watch/needs_attention`.
+- **Partial** — Care cadence? (Q5) **Tiered by oversight**, not a single
+  interval: Julian is "more in the weeds" on the mixed/couples groups he
+  directly over-shepherds, and delegates cadence to the over-shepherds for
+  men's/women's groups. Open question: should `shepherd_care_stale_days` differ
+  by tier?
 - **Partial** — Should over-shepherds see assigned shepherds / notes /
-  edit? Men's & women's groups have an over-shepherd; mixed/couples groups
+  edit? (Q7) Men's & women's groups have an over-shepherd; mixed/couples groups
   report to Julian directly. No request for over-shepherd **login** — the
-  MVP coverage-only stance (SC.2) holds.
+  MVP coverage-only stance (SC.2) holds. Eventual write access would be
+  **broad notes only**.
 - **Partial (future scope)** — Should leaders see / update their own care
-  status? Yes eventually, with **broad notes** for simplicity and
-  confidentiality.
-- **Answered** — Private pastoral content or out of the app? Keep notes
-  **broad** and confidential. Confirms the admin-only design already
-  shipped.
+  status? (Q7) Yes eventually, with **broad notes** for simplicity and
+  confidentiality (LDR.1).
+- **Split** — Private pastoral content or out of the app? Two tiers. **Q7**:
+  broad, shareable notes — the admin-only design already shipped covers this.
+  **Q8**: a **private-to-Julian / encrypted** tier readable by him alone
+  ("Yes, that would be helpful.") — **requested but not built**; not satisfied
+  by the current admin-only RLS. Tracked as **SC.4** (see §6 and
+  `SHEPHERD_CARE_TRACKER_PLAN.md §12`).
 - **Answered** — Capacity demand model? Primary signal = people in groups
   (leader-updated); church attendance is the denominator (% in a group;
   ~60% now). Matches LP.1's manual-input model.
-- **Open** — Auto-flag "haven't connected in N weeks"? Julian wants
-  follow-up timing captured but named no threshold.
+- **Partial** — Auto-flag "haven't connected in N weeks"? The knob exists
+  (`shepherd_care_stale_days`, default 60); Julian named no value, and per Q5
+  the right value may differ by oversight tier.
 - **Open** — When to loop in the communications director? Not addressed.
 
 See §6 for the **new product signals** these materials surfaced that the
@@ -472,13 +488,13 @@ want later.
 - Leader follow-up status workflow improvements.
 - Possible leader / over-shepherd care-adjacent workflows, only if Julian
   explicitly asks later.
-- **Leader self-update of care status (Julian P6, answers 6–8).** Julian wants
+- **Leader self-update of care status (Julian P6, Q7).** Julian wants
   leaders to "update the system too, but broad notes given simplicity and
   confidentiality." Deferred design, not a build: a leader-facing input limited
   to *broad* notes / a coarse self-reported status, never exposing the
-  admin-only shepherd-care notes. Requires a privacy review before any work,
-  since it widens who can write to care-adjacent data. Awaiting Julian's
-  explicit go-ahead.
+  admin-only shepherd-care notes — and never the **private-to-Julian** tier
+  (Q8 / SC.4). Requires a privacy review before any work, since it widens who
+  can write to care-adjacent data. Awaiting Julian's explicit go-ahead.
 
 **Out of scope.**
 - Shepherd care notes in the MVP.
@@ -551,6 +567,12 @@ each landed:
   Held pending Julian's rubric.
 - **P6 — Leader self-update + comms-director**: deferred design notes added to
   LDR.1 / EXT.1 below.
+- **P7 — Private / encrypted care notes (NEW, Q8)**: **not built.** Julian
+  asked for a notes tier readable only by him; the Shepherd Care foundation
+  migration deferred this "if Julian asks for" it — the trigger is now met.
+  Tracked as **SC.4**; needs a design decision (a `private_to_creator`
+  visibility flag enforced in RLS vs. true encryption-at-rest with key
+  management). See `SHEPHERD_CARE_TRACKER_PLAN.md §12`.
 
 The original signal descriptions follow.
 
@@ -583,11 +605,17 @@ The original signal descriptions follow.
 - **Church-number capture is unsolved.** Julian has no reliable method to
   capture church attendance yet; LP.1 leaving it manual is correct for
   now, but this is a known data-quality gap.
+- **Private / encrypted care notes (Q8, new).** Julian wants notes "that should
+  only be readable by you" — a tier *above* the shipped admin-only model, with
+  even `super_admin` excluded. Net-new requirement (SC.4); the Shepherd Care
+  foundation migration already anticipated and deferred it. Needs a design
+  decision before any build.
 
-**Still open for Julian:** the no-contact auto-flag threshold (or none);
-the comms-director trigger; the 2026-vs-2027 multiplication split (the
-source does not pin it down); and the group-health grading rubric Julian
-is still designing.
+**Still open for Julian:** the private-notes interpretation (Q8 — visibility
+flag vs. true encryption); cadence tiering (Q5 — one global stale threshold vs.
+per-oversight-tier); the no-contact auto-flag **value**; the comms-director
+trigger; the 2026-vs-2027 multiplication split (the source does not pin it
+down); and the group-health grading rubric Julian is still designing.
 
 ## Appendix A — Reliability / security debt track
 
