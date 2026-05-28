@@ -4,6 +4,7 @@ import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   AuditEventsRow,
+  ChurchAttendanceSnapshotsRow,
   FollowUpsRow,
   GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
@@ -389,6 +390,29 @@ export async function fetchMetricDefaults(
     };
   }
   return { data, error: null };
+}
+
+const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
+  "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
+  "created_at, updated_at";
+
+// Julian P2: most-recent-first church attendance snapshots. The first row is
+// the latest known church-wide attendance, the denominator for the
+// "% of the church in a life group" headline. Admin-only via RLS.
+export async function fetchChurchAttendanceSnapshots(
+  client: ReadClient,
+  options: { limit?: number } = {},
+): Promise<ReadResult<ChurchAttendanceSnapshotsRow[]>> {
+  const limit = options.limit ?? 12;
+  const { data, error } = await client
+    .from("church_attendance_snapshots")
+    .select(CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS)
+    .order("snapshot_date", { ascending: false })
+    .limit(limit);
+  if (error) {
+    return { data: null, error: wrapError("fetchChurchAttendanceSnapshots", error) };
+  }
+  return { data: (data ?? []) as ChurchAttendanceSnapshotsRow[], error: null };
 }
 
 // Returns every row in group_metric_settings. RLS on the table restricts

@@ -188,6 +188,22 @@ export async function rpcAdminChangeLeaderRole(
   return { data: readUuidRpcData(r.data), error: r.error };
 }
 
+// Julian P2: record/upsert a church attendance snapshot by date.
+export async function rpcAdminRecordChurchAttendanceSnapshot(
+  client: AppSupabaseClient,
+  args: {
+    p_snapshot_date: string;
+    p_attendance_count: number;
+    p_note: string | null;
+  },
+): Promise<RpcResult> {
+  const r = await client.rpc(
+    "admin_record_church_attendance_snapshot" as never,
+    args as never,
+  );
+  return { data: readUuidRpcData(r.data), error: r.error };
+}
+
 // Phase 5C.0 guest + follow-up admin RPCs.
 
 export type AdminCreateGuestArgs = {

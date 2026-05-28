@@ -3,6 +3,7 @@ import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  fetchChurchAttendanceSnapshots,
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
   fetchLaunchPlanningScenariosForAdmin,
@@ -16,6 +17,7 @@ import {
   decodeLaunchPlanningAssumptions,
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
+  participationPct,
   type LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
 import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
@@ -24,6 +26,7 @@ import { LaunchPlanningSummaryCards } from "@/components/admin/launch-planning/s
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
 import { ScenariosPanel } from "@/components/admin/launch-planning/scenarios-panel";
+import { ChurchAttendanceCard } from "@/components/admin/launch-planning/church-attendance-card";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +41,8 @@ type PageData = {
   activeScenarios: LaunchPlanningScenario[];
   scenariosError: string | null;
   comparison: ReturnType<typeof buildScenarioComparison>;
+  churchAttendanceLatest: { snapshotDate: string; attendanceCount: number } | null;
+  participationPct: number | null;
 };
 
 function emptyData(): PageData {
@@ -69,6 +74,8 @@ function emptyData(): PageData {
     activeScenarios: [],
     scenariosError: "Database is not configured in this environment.",
     comparison: [],
+    churchAttendanceLatest: null,
+    participationPct: null,
   };
 }
 
@@ -78,10 +85,11 @@ async function loadData(): Promise<PageData> {
 
   // Run the three independent fetches in parallel so TTFB tracks the
   // slowest rather than their sum.
-  const [assumptionsRes, inputsBundle, scenariosRes] = await Promise.all([
+  const [assumptionsRes, inputsBundle, scenariosRes, churchRes] = await Promise.all([
     fetchLaunchPlanningAssumptions(client),
     fetchLaunchPlanningInputsForAdmin(client),
     fetchLaunchPlanningScenariosForAdmin(client),
+    fetchChurchAttendanceSnapshots(client, { limit: 1 }),
   ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
@@ -103,6 +111,14 @@ async function loadData(): Promise<PageData> {
   );
   const comparison = buildScenarioComparison(activeScenarios, inputs);
 
+  const latestSnapshot = churchRes.data?.[0] ?? null;
+  const churchAttendanceLatest = latestSnapshot
+    ? {
+        snapshotDate: latestSnapshot.snapshot_date,
+        attendanceCount: latestSnapshot.attendance_count,
+      }
+    : null;
+
   return {
     assumptions,
     assumptionsAvailable: assumptionsRes.data != null,
@@ -113,6 +129,11 @@ async function loadData(): Promise<PageData> {
     activeScenarios,
     scenariosError: scenariosRes.error?.message ?? null,
     comparison,
+    churchAttendanceLatest,
+    participationPct: participationPct(
+      inputs.current_participants,
+      churchAttendanceLatest?.attendanceCount ?? null,
+    ),
   };
 }
 
@@ -166,6 +187,13 @@ export default async function AdminLaunchPlanningPage() {
           ) : null}
 
           <LaunchPlanningSummaryCards inputs={data.inputs} outputs={data.outputs} />
+
+          <ChurchAttendanceCard
+            latest={data.churchAttendanceLatest}
+            currentParticipants={data.inputs.current_participants}
+            participationPct={data.participationPct}
+            todayIso={new Date().toISOString().slice(0, 10)}
+          />
 
           <LaunchPlanningSetupWarnings
             inputs={data.inputs}

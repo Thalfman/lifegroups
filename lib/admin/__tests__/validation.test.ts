@@ -14,6 +14,7 @@ import {
   validateLaunchPlanningAssumptionsPayload,
   validateLogShepherdCareInteractionPayload,
   validateMetricDefaultsPayload,
+  validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
   validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
@@ -949,5 +950,58 @@ describe("validateMetricDefaultsPayload — shepherd_care_stale_days (Julian P1)
   it("accepts the 7 and 365 boundaries", () => {
     expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 7 }).ok).toBe(true);
     expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 365 }).ok).toBe(true);
+  });
+});
+
+describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
+  it("accepts a valid date + count", () => {
+    const r = validateRecordChurchAttendancePayload({
+      snapshot_date: "2026-05-24",
+      attendance_count: "100",
+      note: "Sunday estimate",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.attendance_count).toBe(100);
+      expect(r.value.snapshot_date).toBe("2026-05-24");
+      expect(r.value.note).toBe("Sunday estimate");
+    }
+  });
+
+  it("requires a well-formed date", () => {
+    expect(
+      validateRecordChurchAttendancePayload({
+        snapshot_date: "May 24",
+        attendance_count: 100,
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateRecordChurchAttendancePayload({ attendance_count: 100 }).ok,
+    ).toBe(false);
+  });
+
+  it("rejects a non-integer or out-of-range count", () => {
+    expect(
+      validateRecordChurchAttendancePayload({
+        snapshot_date: "2026-05-24",
+        attendance_count: "lots",
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateRecordChurchAttendancePayload({
+        snapshot_date: "2026-05-24",
+        attendance_count: 1000001,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("treats a blank note as null", () => {
+    const r = validateRecordChurchAttendancePayload({
+      snapshot_date: "2026-05-24",
+      attendance_count: 0,
+      note: "   ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.note).toBeNull();
   });
 });

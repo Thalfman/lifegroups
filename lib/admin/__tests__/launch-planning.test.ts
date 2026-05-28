@@ -8,6 +8,7 @@ import {
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
   findCurrentScenario,
+  participationPct,
   redactNotesForAudit,
   type LaunchPlanningAssumptions,
   type LaunchPlanningScenario,
@@ -724,5 +725,23 @@ describe("buildScenarioComparison", () => {
     expect(
       buildScenarioComparison([], { effective_total_capacity: 100 }),
     ).toEqual([]);
+  });
+});
+
+describe("participationPct (Julian P2 answer 9)", () => {
+  it("computes percent of the church in a group", () => {
+    expect(participationPct(80, 100)).toBe(80);
+    expect(participationPct(60, 100)).toBe(60);
+  });
+
+  it("rounds to the nearest whole percent", () => {
+    expect(participationPct(1, 3)).toBe(33);
+    expect(participationPct(2, 3)).toBe(67);
+  });
+
+  it("returns null when there is no usable denominator", () => {
+    expect(participationPct(80, null)).toBeNull();
+    expect(participationPct(80, 0)).toBeNull();
+    expect(participationPct(80, -5)).toBeNull();
   });
 });

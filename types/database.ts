@@ -171,6 +171,16 @@ export interface GroupMetricSettingsRow {
   updated_at: Timestamp;
 }
 
+export interface ChurchAttendanceSnapshotsRow {
+  id: UUID;
+  snapshot_date: DateString;
+  attendance_count: number;
+  note: string | null;
+  created_by_profile_id: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface GroupCalendarEventsRow {
   id: UUID;
   group_id: UUID;
@@ -328,6 +338,15 @@ export interface Database {
         Row: GroupMetricSettingsRow;
         Insert: InsertOf<GroupMetricSettingsRow, 'created_at' | 'updated_at'>;
         Update: Partial<GroupMetricSettingsRow>;
+        Relationships: [];
+      };
+      church_attendance_snapshots: {
+        Row: ChurchAttendanceSnapshotsRow;
+        Insert: InsertOf<
+          ChurchAttendanceSnapshotsRow,
+          'id' | 'created_at' | 'updated_at' | 'created_by_profile_id' | 'note'
+        >;
+        Update: Partial<ChurchAttendanceSnapshotsRow>;
         Relationships: [];
       };
       group_calendar_events: {

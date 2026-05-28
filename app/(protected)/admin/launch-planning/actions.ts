@@ -4,14 +4,20 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
 import { startActionLog } from "@/lib/observability/instrument";
-import { validateLaunchPlanningAssumptionsPayload } from "@/lib/admin/validation";
+import {
+  validateLaunchPlanningAssumptionsPayload,
+  validateRecordChurchAttendancePayload,
+} from "@/lib/admin/validation";
 import {
   type ActionResult,
   actionFail,
   actionOk,
   mapRpcError,
 } from "@/lib/admin/action-result";
-import { rpcAdminUpdateLaunchPlanningAssumptions } from "@/lib/admin/rpc";
+import {
+  rpcAdminRecordChurchAttendanceSnapshot,
+  rpcAdminUpdateLaunchPlanningAssumptions,
+} from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
@@ -123,5 +129,61 @@ export async function adminUpdateLaunchPlanningAssumptions(
     changed_field_count: Object.keys(v.value).length,
     has_notes_field: Object.prototype.hasOwnProperty.call(v.value, "notes"),
   });
+  return actionOk({ id: data });
+}
+
+// Julian P2: record an actual church-attendance count for a date. Upserts by
+// date so re-entering a date corrects the prior figure.
+export async function adminRecordChurchAttendanceSnapshot(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.launch_planning.record_church_attendance");
+
+  const auth = await requireAdminSession();
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
+
+  const raw =
+    input instanceof FormData
+      ? {
+          snapshot_date: input.get("snapshot_date"),
+          attendance_count: input.get("attendance_count"),
+          note: input.get("note"),
+        }
+      : input;
+  const v = validateRecordChurchAttendancePayload(raw);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
+
+  const { data, error } = await rpcAdminRecordChurchAttendanceSnapshot(client, {
+    p_snapshot_date: v.value.snapshot_date,
+    p_attendance_count: v.value.attendance_count,
+    p_note: v.value.note,
+  });
+
+  if (error) {
+    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The attendance snapshot was not saved. Please try again."]);
+  }
+
+  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
+  revalidatePath(REVALIDATE_PATH_ADMIN);
+  ctx.finish("ok", { actor_role });
   return actionOk({ id: data });
 }

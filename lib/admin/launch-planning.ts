@@ -509,3 +509,14 @@ export function buildScenarioComparison(
     outputs: computeLaunchPlan(scenario.assumptions, inputs),
   }));
 }
+
+// Julian P2 (answer 9): "% of the church in a life group" — current people in
+// groups over the latest known church attendance. Returns null when no
+// denominator is available so the UI can show "—" instead of a bogus 0%.
+export function participationPct(
+  currentParticipants: number,
+  churchAttendance: number | null,
+): number | null {
+  if (churchAttendance == null || churchAttendance <= 0) return null;
+  return Math.round((currentParticipants / churchAttendance) * 100);
+}

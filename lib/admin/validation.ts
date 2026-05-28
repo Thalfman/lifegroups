@@ -1893,3 +1893,53 @@ export function validateScenarioIdPayload(
     value: { scenario_id: normalizeUuid(input.scenario_id as string) },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Julian P2 — church attendance snapshot payload.
+// ---------------------------------------------------------------------------
+
+export type RecordChurchAttendancePayload = {
+  snapshot_date: string;
+  attendance_count: number;
+  note: string | null;
+};
+
+export function validateRecordChurchAttendancePayload(
+  input: unknown,
+): ValidationResult<RecordChurchAttendancePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  const snapshotDate = trimString(input.snapshot_date) ?? "";
+  if (snapshotDate.length === 0) {
+    errors.push("Snapshot date is required.");
+  } else if (!isIsoDate(snapshotDate)) {
+    errors.push("Snapshot date must be YYYY-MM-DD.");
+  }
+
+  const count = readOptionalInteger(input.attendance_count);
+  let attendanceCount = 0;
+  if (count === "invalid" || count === undefined) {
+    errors.push("Attendance count must be a whole number.");
+  } else if (count < 0 || count > 1000000) {
+    errors.push("Attendance count must be between 0 and 1,000,000.");
+  } else {
+    attendanceCount = count;
+  }
+
+  const note = readOptionalString(input.note);
+  if (note !== undefined && note.length > 1000) {
+    errors.push("Note is too long (max 1000 characters).");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      snapshot_date: snapshotDate,
+      attendance_count: attendanceCount,
+      note: note ?? null,
+    },
+  };
+}
