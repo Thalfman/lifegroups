@@ -8,6 +8,7 @@ import {
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
   findCurrentScenario,
+  nextSeasonAnchorIso,
   participationPct,
   redactNotesForAudit,
   type LaunchPlanningAssumptions,
@@ -743,5 +744,31 @@ describe("participationPct (Julian P2 answer 9)", () => {
     expect(participationPct(80, null)).toBeNull();
     expect(participationPct(80, 0)).toBeNull();
     expect(participationPct(80, -5)).toBeNull();
+  });
+});
+
+describe("nextSeasonAnchorIso (Julian P3 answer 11)", () => {
+  it("returns this year's August when today is before August", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-05-28T00:00:00Z"))).toBe(
+      "2026-08-01",
+    );
+  });
+
+  it("rolls August to next year once it has passed", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-09-15T00:00:00Z"))).toBe(
+      "2027-08-01",
+    );
+  });
+
+  it("returns the upcoming January", () => {
+    expect(nextSeasonAnchorIso(1, new Date("2026-05-28T00:00:00Z"))).toBe(
+      "2027-01-01",
+    );
+  });
+
+  it("treats the anchor day itself as still upcoming", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-08-01T00:00:00Z"))).toBe(
+      "2026-08-01",
+    );
   });
 });

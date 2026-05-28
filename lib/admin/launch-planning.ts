@@ -520,3 +520,24 @@ export function participationPct(
   if (churchAttendance == null || churchAttendance <= 0) return null;
   return Math.round((currentParticipants / churchAttendance) * 100);
 }
+
+// Julian P3 (answer 11): his planting seasons are August (primary) and
+// January. Returns the next occurrence of the 1st of the given month as
+// YYYY-MM-DD relative to `today` (UTC), so the launch-planning growth-date
+// field can be quick-filled to the upcoming planting season.
+export type PlantingSeasonMonth = 1 | 8;
+
+export function nextSeasonAnchorIso(
+  month: PlantingSeasonMonth,
+  today: Date = new Date(),
+): string {
+  const todayUtc = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+  const thisYear = today.getUTCFullYear();
+  const candidate = Date.UTC(thisYear, month - 1, 1);
+  const year = candidate >= todayUtc ? thisYear : thisYear + 1;
+  return new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
+}
