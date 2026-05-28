@@ -117,11 +117,28 @@ the RPC as defense in depth.
   files (`people`, `groups`, `calendar`, `guests`, `follow-ups`,
   `shepherd-care`, `settings`, `launch-planning`, `super-admin`) delegate to
   `runAdminWriteAction`.
-- A sibling `runLeaderWriteAction` for `lib/leader`: the auth strategy
-  (`requireLeaderActor` returns `{ profileId, assignedGroupIds }`, not a
-  session), the error-message table, and the group-membership guard differ, so
-  it is a parallel runner sharing the same shape, not the same function.
-- Candidate 2 (RPC gateway) then falls out as the runner's single RPC caller.
-  Note the latent bug it surfaces: `lib/leader/rpc.ts` casts `r.data as string`
-  and skips `readUuidRpcData`, so leader RPC results are not uuid-validated the
-  way admin's are. Fix when migrating the leader runner.
+- ~~A sibling `runLeaderWriteAction` for `lib/leader`~~ — done
+  (`lib/leader/run-action.ts`). Parallel, not shared: auth is
+  `requireLeaderActor` (`{ profileId, assignedGroupIds }`, logged as
+  `actor_profile_id`), the error table is the pastoral leader one, and it has
+  **two** guard tiers — a pre-validation `guardRaw` (calendar update/archive/
+  restore check ownership from a hidden `group_id` before the event_id is even
+  validated) and a post-validation `guard` (check-in and calendar create trust
+  the validated `group_id`). The two tiers exist because the timing changes
+  which fields appear on the `validation_failed` line. As with the admin
+  runner, this added one consistency change: post-validation `fields` now
+  appear on the `supabase_not_configured` stage too (e.g. `target_event_id` on
+  the calendar id-keyed actions). The six group-scoped leader writes delegate;
+  `leaderSubmitCheckinAndReturn` stays hand-written (it redirects after
+  delegating) and `leader/follow-up-actions.ts` stays hand-written (its local
+  auth gate splits `backend_error` into a `fail`+`stage` line rather than a
+  `denied` one, a deliberately richer failure taxonomy the shared gate drops).
+- ~~Latent bug: `lib/leader/rpc.ts` skipped `readUuidRpcData`~~ — fixed. All
+  six leader RPC wrappers now uuid-validate their result. `readUuidRpcData`
+  moved to `@/lib/shared/uuid` (its natural home beside `UUID_RE`);
+  `lib/admin/rpc-helpers.ts` re-exports it so the admin wrappers' import path is
+  unchanged.
+- Candidate 2 (RPC gateway): collapse the ~47 pass-through wrappers in
+  `lib/admin/rpc.ts` + `lib/leader/rpc.ts` into one generic
+  `callUuidRpc<Args>(client, name, args)` — the runners are now the single RPC
+  callers, so this falls out cleanly.

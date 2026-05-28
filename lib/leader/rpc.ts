@@ -8,6 +8,7 @@ import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
 } from "@/types/enums";
+import { readUuidRpcData } from "@/lib/shared/uuid";
 
 type RpcResult = { data: string | null; error: { message: string } | null };
 
@@ -36,7 +37,7 @@ export async function rpcLeaderSubmitGroupCheckin(
   args: LeaderSubmitGroupCheckinArgs,
 ): Promise<RpcResult> {
   const r = await client.rpc("leader_submit_group_checkin" as never, args as never);
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5C.0 leader follow-up status update.
@@ -55,7 +56,7 @@ export async function rpcLeaderUpdateFollowUpStatus(
     "leader_update_follow_up_status" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 // Phase 5A.6 group calendar leader RPCs.
@@ -79,7 +80,7 @@ export async function rpcLeaderCreateGroupCalendarEvent(
     "leader_create_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export type LeaderUpdateGroupCalendarEventArgs = {
@@ -101,7 +102,7 @@ export async function rpcLeaderUpdateGroupCalendarEvent(
     "leader_update_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcLeaderArchiveGroupCalendarEvent(
@@ -112,7 +113,7 @@ export async function rpcLeaderArchiveGroupCalendarEvent(
     "leader_archive_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }
 
 export async function rpcLeaderRestoreGroupCalendarEvent(
@@ -123,5 +124,5 @@ export async function rpcLeaderRestoreGroupCalendarEvent(
     "leader_restore_group_calendar_event" as never,
     args as never,
   );
-  return { data: (r.data as string | null) ?? null, error: r.error };
+  return { data: readUuidRpcData(r.data), error: r.error };
 }

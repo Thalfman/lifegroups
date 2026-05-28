@@ -1,20 +1,18 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireLeaderActor } from "@/lib/auth/session";
-import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCalendarEventCreatePayload,
   validateCalendarEventIdPayload,
   validateCalendarEventUpdatePayload,
+  type CalendarEventArchivePayload,
+  type CalendarEventCreatePayload,
+  type CalendarEventUpdatePayload,
 } from "@/lib/calendar/payload";
+import { type ActionResult } from "@/lib/leader/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/leader/action-result";
+  runLeaderWriteAction,
+  type LeaderWriteActionSpec,
+} from "@/lib/leader/run-action";
 import {
   rpcLeaderArchiveGroupCalendarEvent,
   rpcLeaderCreateGroupCalendarEvent,
@@ -23,6 +21,9 @@ import {
 } from "@/lib/leader/rpc";
 
 type ActionInput<T> = T | FormData;
+
+const CALENDAR_NOT_ASSIGNED =
+  "Only the assigned leader or co-leader can manage that group's calendar.";
 
 function payloadFromInput(input: unknown): Record<string, unknown> {
   if (input instanceof FormData) {
@@ -38,355 +39,166 @@ function payloadFromInput(input: unknown): Record<string, unknown> {
   return {};
 }
 
-function revalidateLeaderCalendar(groupId: string): void {
-  revalidatePath(`/leader/${groupId}/calendar`);
-  // The check-in page reads calendar events to compute the due-date
-  // label / OFF-week suppression. Without revalidating this path,
-  // marking a week OFF here can leave a stale "due Tuesday 7pm" on
-  // the check-in screen until the next full reload.
-  revalidatePath(`/leader/${groupId}/checkin`);
-  revalidatePath("/leader");
+function leaderCalendarPaths(groupId: string): string[] {
+  return [
+    `/leader/${groupId}/calendar`,
+    // The check-in page reads calendar events to compute the due-date label
+    // / OFF-week suppression. Without revalidating this path, marking a week
+    // OFF here can leave a stale "due Tuesday 7pm" on the check-in screen
+    // until the next full reload.
+    `/leader/${groupId}/checkin`,
+    "/leader",
+  ];
 }
 
-// Leader event-by-id actions require the form to submit the parent
-// group_id alongside event_id. Without it, an action that omits the
-// hidden field would fall through to the RPC and could leak whether an
-// event_id exists in another group via the difference between
-// missing_event and insufficient_privilege errors. We reject any
-// submission missing a group_id the leader actually leads -- the RPC
-// also normalizes those cases, but this client-side guard keeps the
-// error surface tight.
+function rawGroupId(raw: Record<string, unknown>): string {
+  return typeof raw.group_id === "string" ? raw.group_id.trim() : "";
+}
+
+// Leader event-by-id actions require the form to submit the parent group_id
+// alongside event_id. Without it, an action that omits the hidden field
+// could leak whether an event_id exists in another group via the difference
+// between missing_event and insufficient_privilege errors. We reject any
+// submission missing a group_id the leader actually leads -- the RPC also
+// normalizes those cases, but this client-side guard keeps the error
+// surface tight.
 function requireOwnedGroupId(
   raw: Record<string, unknown>,
   assignedGroupIds: string[],
 ): { ok: true; groupId: string } | { ok: false; error: string } {
-  const value = typeof raw.group_id === "string" ? raw.group_id.trim() : "";
+  const value = rawGroupId(raw);
   if (!value) {
-    return {
-      ok: false,
-      error: "group_id is required for leader calendar mutations.",
-    };
+    return { ok: false, error: "group_id is required for leader calendar mutations." };
   }
   if (!assignedGroupIds.includes(value)) {
-    return {
-      ok: false,
-      error: "Only the assigned leader or co-leader can manage that group's calendar.",
-    };
+    return { ok: false, error: CALENDAR_NOT_ASSIGNED };
   }
   return { ok: true, groupId: value };
 }
 
+// ----- leaderCreateCalendarEvent ------------------------------------------
+
+const CREATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventCreatePayload, { id: string }> = {
+  name: "leader.calendar.create_event",
+  read: payloadFromInput,
+  validate: validateCalendarEventCreatePayload,
+  // Defense-in-depth: the RPC also enforces auth_is_leader_of(group_id), but
+  // rejecting locally avoids surfacing a generic insufficient_privilege
+  // error to a leader who tampered with the form's hidden group_id field.
+  guard: (actor, value) =>
+    actor.assignedGroupIds.includes(value.group_id)
+      ? null
+      : {
+          error: CALENDAR_NOT_ASSIGNED,
+          code: "not_assigned",
+          fields: { target_group_id: value.group_id },
+        },
+  fields: (_actor, value) => ({ target_group_id: value.group_id }),
+  okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
+  rpc: (client, value) =>
+    rpcLeaderCreateGroupCalendarEvent(client, {
+      p_group_id: value.group_id,
+      p_event_date: value.event_date,
+      // Phase 5A.6 correction: meeting time is always inherited from the
+      // group schedule. The calendar editor never sets a per-event time.
+      p_start_time: null,
+      p_end_time: null,
+      p_event_type: value.event_type,
+      p_status: value.status,
+      p_title: value.title,
+      p_description: value.description,
+    }),
+  revalidate: (value) => leaderCalendarPaths(value.group_id),
+  noDataError: "The calendar event was not created. Please try again.",
+};
+
 export async function leaderCreateCalendarEvent(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("leader.calendar.create_event");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const raw = payloadFromInput(input);
-  const v = validateCalendarEventCreatePayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail(v.errors);
-  }
-
-  // Defense-in-depth: the RPC also enforces auth_is_leader_of(group_id),
-  // but rejecting locally avoids surfacing a generic insufficient_privilege
-  // error to a leader who tampered with the form's hidden group_id field.
-  if (!auth.assignedGroupIds.includes(v.value.group_id)) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([
-      "Only the assigned leader or co-leader can manage that group's calendar.",
-    ]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderCreateGroupCalendarEvent(client, {
-    p_group_id: v.value.group_id,
-    p_event_date: v.value.event_date,
-    // Phase 5A.6 correction: meeting time is always inherited from the
-    // group schedule. The calendar editor never sets a per-event time.
-    p_start_time: null,
-    p_end_time: null,
-    p_event_type: v.value.event_type,
-    p_status: v.value.status,
-    p_title: v.value.title,
-    p_description: v.value.description,
-  });
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["The calendar event was not created. Please try again."]);
-  }
-
-  revalidateLeaderCalendar(v.value.group_id);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: v.value.group_id,
-    event_type: v.value.event_type,
-    new_event_id: data,
-  });
-  return actionOk({ id: data });
+  return runLeaderWriteAction(CREATE_EVENT_SPEC, prev, input);
 }
+
+// ----- leaderUpdateCalendarEvent ------------------------------------------
+
+// The event-by-id actions guard ownership from the hidden group_id before
+// validation, so the validated event_id never leaks across groups.
+function ownershipGuard(
+  actor: { assignedGroupIds: string[] },
+  raw: Record<string, unknown>,
+) {
+  const ownership = requireOwnedGroupId(raw, actor.assignedGroupIds);
+  return ownership.ok
+    ? ({ ok: true, fields: { target_group_id: ownership.groupId } } as const)
+    : ({ ok: false, error: ownership.error, code: "not_assigned" } as const);
+}
+
+const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventUpdatePayload, { id: string }> = {
+  name: "leader.calendar.update_event",
+  read: payloadFromInput,
+  guardRaw: ownershipGuard,
+  validate: validateCalendarEventUpdatePayload,
+  fields: (_actor, value) => ({ target_event_id: value.event_id }),
+  rpc: (client, value) =>
+    rpcLeaderUpdateGroupCalendarEvent(client, {
+      p_event_id: value.event_id,
+      p_event_date: value.event_date,
+      p_start_time: null,
+      p_end_time: null,
+      p_event_type: value.event_type,
+      p_status: value.status,
+      p_title: value.title,
+      p_description: value.description,
+    }),
+  revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
+  noDataError: "The calendar event was not updated. Please try again.",
+};
 
 export async function leaderUpdateCalendarEvent(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("leader.calendar.update_event");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const raw = payloadFromInput(input);
-  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail([ownership.error]);
-  }
-
-  const v = validateCalendarEventUpdatePayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderUpdateGroupCalendarEvent(client, {
-    p_event_id: v.value.event_id,
-    p_event_date: v.value.event_date,
-    p_start_time: null,
-    p_end_time: null,
-    p_event_type: v.value.event_type,
-    p_status: v.value.status,
-    p_title: v.value.title,
-    p_description: v.value.description,
-  });
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail(["The calendar event was not updated. Please try again."]);
-  }
-
-  revalidateLeaderCalendar(ownership.groupId);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: ownership.groupId,
-    target_event_id: v.value.event_id,
-  });
-  return actionOk({ id: data });
+  return runLeaderWriteAction(UPDATE_EVENT_SPEC, prev, input);
 }
+
+// ----- leaderArchiveCalendarEvent -----------------------------------------
+
+const ARCHIVE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventArchivePayload, { id: string }> = {
+  name: "leader.calendar.archive_event",
+  read: payloadFromInput,
+  guardRaw: ownershipGuard,
+  validate: validateCalendarEventIdPayload,
+  fields: (_actor, value) => ({ target_event_id: value.event_id }),
+  rpc: (client, value) =>
+    rpcLeaderArchiveGroupCalendarEvent(client, { p_event_id: value.event_id }),
+  revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
+  noDataError: "The calendar event was not archived. Please try again.",
+};
 
 export async function leaderArchiveCalendarEvent(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("leader.calendar.archive_event");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const raw = payloadFromInput(input);
-  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail([ownership.error]);
-  }
-
-  const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderArchiveGroupCalendarEvent(client, {
-    p_event_id: v.value.event_id,
-  });
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail(["The calendar event was not archived. Please try again."]);
-  }
-
-  revalidateLeaderCalendar(ownership.groupId);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: ownership.groupId,
-    target_event_id: v.value.event_id,
-  });
-  return actionOk({ id: data });
+  return runLeaderWriteAction(ARCHIVE_EVENT_SPEC, prev, input);
 }
 
+// ----- leaderRestoreCalendarEvent -----------------------------------------
+
+const RESTORE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventArchivePayload, { id: string }> = {
+  name: "leader.calendar.restore_event",
+  read: payloadFromInput,
+  guardRaw: ownershipGuard,
+  validate: validateCalendarEventIdPayload,
+  fields: (_actor, value) => ({ target_event_id: value.event_id }),
+  rpc: (client, value) =>
+    rpcLeaderRestoreGroupCalendarEvent(client, { p_event_id: value.event_id }),
+  revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
+  noDataError: "The calendar event was not restored. Please try again.",
+};
+
 export async function leaderRestoreCalendarEvent(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: ActionInput<Record<string, unknown>>,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("leader.calendar.restore_event");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const raw = payloadFromInput(input);
-  const ownership = requireOwnedGroupId(raw, auth.assignedGroupIds);
-  if (!ownership.ok) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail([ownership.error]);
-  }
-
-  const v = validateCalendarEventIdPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderRestoreGroupCalendarEvent(client, {
-    p_event_id: v.value.event_id,
-  });
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: ownership.groupId,
-      target_event_id: v.value.event_id,
-    });
-    return actionFail(["The calendar event was not restored. Please try again."]);
-  }
-
-  revalidateLeaderCalendar(ownership.groupId);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: ownership.groupId,
-    target_event_id: v.value.event_id,
-  });
-  return actionOk({ id: data });
+  return runLeaderWriteAction(RESTORE_EVENT_SPEC, prev, input);
 }
