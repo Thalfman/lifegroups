@@ -32,7 +32,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **In authenticated app RPCs the audit actor MUST be `public.auth_profile_id()`** (the human resolved from `auth.uid()` where `status='active'`), null-checked with `raise insufficient_privilege`. Never attribute to the definer role — that is what keeps the trail non-repudiable.
 - **Exception — service-role Edge Function RPCs.** RPCs invoked from an Edge Function with the service-role client (e.g. `super_admin_complete_invite` from `supabase/functions/invite-user`) cannot use `auth_profile_id()` (it would resolve from the service-role JWT, not the caller). They take the actor as an explicit `p_actor_profile_id` arg, re-verified inside the function. Preserve that pattern; do not swap it for `auth_profile_id()`.
 - Call RPCs only through the typed wrappers in `lib/*/rpc.ts`. They cast args `as never` because `types/database.ts` is hand-rolled and doesn't satisfy supabase-js `.rpc()` generics. Keep the `{ data, error }` shape; run `readUuidRpcData()` on results.
-- **No hard deletes.** Soft-deactivate via the per-table sentinel — there is no single convention, so check the actual column: `status`, `archived_at`, `ended_at`, `active`, and group lifecycle (`groups.lifecycle_status = 'closed'` + `closed_at`, set by `admin_close_group` / `admin_reopen_group`).
+- **No hard deletes in normal workflows.** Soft-deactivate via the per-table sentinel — there is no single convention, so check the actual column: `status`, `archived_at`, `ended_at`, `active`, and group lifecycle (`groups.lifecycle_status = 'closed'` + `closed_at`, set by `admin_close_group` / `admin_reopen_group`). **Exception:** `leader_submit_group_checkin` issues controlled, scoped `delete`s on `attendance_records` / `group_health_updates` to replace a resubmitted or marked-not-held check-in — that cleanup is intentional; preserve it.
 
 ### `types/database.ts` & `as never` (highest-value rule)
 - **Never regenerate `types/database.ts`** (`supabase gen types` is banned) — it is hand-authored; the generator clobbers the narrowed shapes and guards we depend on.
@@ -60,7 +60,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 ### Read path & privacy (two-layer enforcement)
 - Privacy is enforced at two layers — preserve both: **RLS** controls table access (leaders can't read shepherd-care tables at all; `audit_events` is super_admin-only); **TypeScript column allowlists** in `lib/supabase/read-models.ts` subset columns within readable tables (e.g. `LEADER_FOLLOW_UP_COLUMNS` omits `admin_private_note`).
 - **Never `select("*")` on sensitive tables.** New read endpoints inherit an existing allowlist; never redefine one inline. **Widening an allowlist is a privacy decision** needing RLS-level scrutiny.
-- **Every read of a soft-deletable table MUST exclude deactivated rows** (check the per-table sentinel).
+- **Reads exclude deactivated rows by default** (check the per-table sentinel). Admin surfaces may explicitly opt in to inactive rows via a status filter — e.g. `fetchProfilesForAdmin` / `fetchAllMembers` with `{ statuses: ["active", "inactive"] }` for Manage People and the super-admin console. Default-hide; include only on an explicit admin filter.
 - Reads return `ReadResult<T>`/`DashboardResult<T>` with `source: "live" | "fallback"`. The client is `null` when env vars are unset — fall back (`lib/dashboard/fallback-data.ts`), never assume a client.
 
 ### Security & runtime boundaries
@@ -104,7 +104,7 @@ Policy/product calls, not coding rules. Override as needed.
 
 | # | Decision | Default applied |
 |---|----------|-----------------|
-| 1 | Audit reads of sensitive data? (audit is currently write-only) | Log reads of shepherd-care notes + `admin_private_note` with `auth.uid()`; broader read-logging deferred |
+| 1 | Audit reads of sensitive data? (audit is currently write-only) | Log reads of shepherd-care notes + `admin_private_note` with the actor's `auth_profile_id()` (note: `audit_events.actor_profile_id` is an FK to `profiles.id`, not `auth.uid()`); broader read-logging deferred |
 | 2 | Right-to-erasure vs "no hard deletes" | Erasure routes to a manual super_admin process; soft-deactivate is intentional, erasure exceptional + audited |
 | 3 | Deactivated subject visibility | Hidden from default lists; visible to admins via explicit filter |
 | 4 | co_leader vs leader capability delta | co_leader == leader minus destructive/structural actions (no member removal, no group config) |
