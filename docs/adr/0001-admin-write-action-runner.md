@@ -138,7 +138,12 @@ the RPC as defense in depth.
   moved to `@/lib/shared/uuid` (its natural home beside `UUID_RE`);
   `lib/admin/rpc-helpers.ts` re-exports it so the admin wrappers' import path is
   unchanged.
-- Candidate 2 (RPC gateway): collapse the ~47 pass-through wrappers in
-  `lib/admin/rpc.ts` + `lib/leader/rpc.ts` into one generic
-  `callUuidRpc<Args>(client, name, args)` — the runners are now the single RPC
-  callers, so this falls out cleanly.
+- ~~Candidate 2 (RPC gateway)~~ — done. `callUuidRpc(client, name, args)` in
+  `lib/shared/rpc.ts` owns the supabase-js `as never` cast and the
+  `readUuidRpcData` read that all ~53 admin/leader wrappers repeated verbatim.
+  Each wrapper is now a one-line typed alias that pins its function name and
+  argument shape, so the public surface and per-RPC arg types are unchanged and
+  no action file moved. `lib/admin/rpc-helpers.ts` (a one-line re-export after
+  the leader work) is gone; `readUuidRpcData` is tested beside it in
+  `lib/shared/__tests__/uuid.test.ts`, and the gateway has its own coverage in
+  `lib/shared/__tests__/rpc.test.ts`.

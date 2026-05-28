@@ -1,16 +1,16 @@
-// Typed wrapper around the Phase 5B.0 leader_submit_group_checkin
-// Postgres RPC. Same pattern as `lib/admin/rpc.ts` -- supabase-js'
-// `.rpc()` generic resolution doesn't agree with our hand-rolled
-// Database type, so the wrapper hides the `as never` cast.
+// Typed wrappers around the leader Postgres RPCs. Each pins the function
+// name and argument shape and delegates to `callUuidRpc`, which owns the
+// supabase-js `as never` cast and the uuid trust-boundary read. See
+// `lib/shared/rpc.ts`.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
 } from "@/types/enums";
-import { readUuidRpcData } from "@/lib/shared/uuid";
+import { callUuidRpc, type UuidRpcResult } from "@/lib/shared/rpc";
 
-type RpcResult = { data: string | null; error: { message: string } | null };
+type RpcResult = UuidRpcResult;
 
 export type LeaderCheckinStatus = "submitted" | "did_not_meet" | "planned_pause";
 export type LeaderHealthPulse = "healthy" | "watch" | "needs_follow_up";
@@ -32,12 +32,11 @@ export type LeaderSubmitGroupCheckinArgs = {
   p_attendance: LeaderAttendanceEntry[];
 };
 
-export async function rpcLeaderSubmitGroupCheckin(
+export function rpcLeaderSubmitGroupCheckin(
   client: AppSupabaseClient,
   args: LeaderSubmitGroupCheckinArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("leader_submit_group_checkin" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_submit_group_checkin", args);
 }
 
 // Phase 5C.0 leader follow-up status update.
@@ -48,15 +47,11 @@ export type LeaderUpdateFollowUpStatusArgs = {
   p_status: LeaderUpdateFollowUpStatus;
 };
 
-export async function rpcLeaderUpdateFollowUpStatus(
+export function rpcLeaderUpdateFollowUpStatus(
   client: AppSupabaseClient,
   args: LeaderUpdateFollowUpStatusArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "leader_update_follow_up_status" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_update_follow_up_status", args);
 }
 
 // Phase 5A.6 group calendar leader RPCs.
@@ -72,15 +67,11 @@ export type LeaderCreateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export async function rpcLeaderCreateGroupCalendarEvent(
+export function rpcLeaderCreateGroupCalendarEvent(
   client: AppSupabaseClient,
   args: LeaderCreateGroupCalendarEventArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "leader_create_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_create_group_calendar_event", args);
 }
 
 export type LeaderUpdateGroupCalendarEventArgs = {
@@ -94,35 +85,23 @@ export type LeaderUpdateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export async function rpcLeaderUpdateGroupCalendarEvent(
+export function rpcLeaderUpdateGroupCalendarEvent(
   client: AppSupabaseClient,
   args: LeaderUpdateGroupCalendarEventArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "leader_update_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_update_group_calendar_event", args);
 }
 
-export async function rpcLeaderArchiveGroupCalendarEvent(
+export function rpcLeaderArchiveGroupCalendarEvent(
   client: AppSupabaseClient,
   args: { p_event_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "leader_archive_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_archive_group_calendar_event", args);
 }
 
-export async function rpcLeaderRestoreGroupCalendarEvent(
+export function rpcLeaderRestoreGroupCalendarEvent(
   client: AppSupabaseClient,
   args: { p_event_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "leader_restore_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "leader_restore_group_calendar_event", args);
 }
