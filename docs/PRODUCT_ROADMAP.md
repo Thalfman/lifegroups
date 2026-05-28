@@ -55,27 +55,42 @@ and launch planning, backed by the existing security model (RLS-first,
 narrow `SECURITY DEFINER` RPCs, audit events, no service role in Next
 runtime, no hard deletes in normal workflows).
 
-**Open questions for future Julian sync** (to answer before SC follow-on
-work):
-- What fields does Julian's current spreadsheet actually contain?
-- What does "doing well" vs. "needs attention" mean to him?
-- Care cadence — weekly, monthly, custom per shepherd?
-- Should over-shepherds eventually see assigned shepherds (read-only)?
-  See care notes? Edit?
-- Should leaders ever see their own care status?
-- Should care notes hold private pastoral content, or stay out of the
-  app entirely?
-- For capacity: church attendance, guests, growth, members — what's the
-  demand model?
-- Auto-flag "haven't connected with X in N weeks"? Default threshold?
-- When to loop in the communications director, and on what work?
+**Open questions for future Julian sync** (originally posed before SC
+follow-on work). The **2026-05-27** materials Julian sent — captured
+verbatim under [`julian-inputs/`](./julian-inputs/README.md) with a
+question-by-question mapping in
+[`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) — answer
+most of them. Status per question:
 
-**Update (2026-05-27).** Most of these are now answered by materials Julian
-sent — captured verbatim under [`julian-inputs/`](./julian-inputs/README.md)
-with a question-by-question mapping in
-[`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md). Two remain
-open (no-contact auto-flag threshold; comms-director trigger), plus a newly
-surfaced group-health grading rubric Julian is still designing.
+- **Answered** — What fields does Julian's spreadsheet contain? Name,
+  Issue, Date of first communication, Next step, Update of communication,
+  Misc. note. Note/date-oriented, not task-heavy
+  ([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)).
+- **Partial** — "Doing well" vs. "needs attention"? No fixed rubric yet;
+  Julian is "still working on an evaluation system" — signals are
+  consistent attendance and spiritual growth.
+- **Partial** — Care cadence? Ad hoc per leader ("broad breast strokes or
+  specific concerns"), conversation-driven follow-up dates. No standing
+  cadence.
+- **Partial** — Should over-shepherds see assigned shepherds / notes /
+  edit? Men's & women's groups have an over-shepherd; mixed/couples groups
+  report to Julian directly. No request for over-shepherd **login** — the
+  MVP coverage-only stance (SC.2) holds.
+- **Partial (future scope)** — Should leaders see / update their own care
+  status? Yes eventually, with **broad notes** for simplicity and
+  confidentiality.
+- **Answered** — Private pastoral content or out of the app? Keep notes
+  **broad** and confidential. Confirms the admin-only design already
+  shipped.
+- **Answered** — Capacity demand model? Primary signal = people in groups
+  (leader-updated); church attendance is the denominator (% in a group;
+  ~60% now). Matches LP.1's manual-input model.
+- **Open** — Auto-flag "haven't connected in N weeks"? Julian wants
+  follow-up timing captured but named no threshold.
+- **Open** — When to loop in the communications director? Not addressed.
+
+See §6 for the **new product signals** these materials surfaced that the
+current roadmap does not yet model.
 
 ## 3. Current app state
 
@@ -487,6 +502,47 @@ want later.
 **Acceptance.** Not active now.
 
 ---
+
+## 6. New signals from Julian's 2026-05-27 inputs
+
+Surfaced by [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md)
+§3. These are **proposals pending Julian sync**, not committed phases —
+they are not yet inserted into the §5 execution order.
+
+- **Group-health grading rubric (new feature area).** Julian explicitly
+  wants to "grade" group health (consistent attendance, spiritual growth
+  happening, others TBD) and is still designing the rubric himself. Next
+  step is a short **discovery**, not a build, to capture the grading
+  dimensions before any feature work. Distinct from shepherd care and
+  launch planning.
+- **Multiplication candidate pipeline (LP gap).** The
+  [2026 multiplication plan](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md)
+  is a named pipeline (group → stage-of-life segment → readiness → target
+  year) that LP.* does not model — LP aggregates capacity math but does
+  not track *which named groups* multiply and when. **Scope call for
+  Julian:** extend launch planning to track named candidates with target
+  years, or keep the Google Doc as system of record and feed only
+  aggregate counts into LP. Multiplication criteria Julian named: 3+ years
+  as a group, 1+ year of co-shepherd serving, 12+ members, a need for a
+  similar-stage group, and shepherd willingness.
+- **Two-options-per-person goal.** "Offer all people at least two life
+  group options of their choosing" is a coverage/variety target, not just
+  a seat count — relevant to how launch planning recommends *which kinds*
+  of groups to launch (by stage of life), not only how many.
+- **Group-full = 12 with opt-to-stay-open.** Capacity default is 12, with
+  an explicit "leaders may keep it open" exception. **Verify** that the
+  app's `default_group_capacity` is 12 and that the kept-open-past-12 case
+  is representable in capacity metrics.
+- **New worship center → demand spike.** A concrete future demand driver
+  to model as expected growth in LP scenarios.
+- **Church-number capture is unsolved.** Julian has no reliable method to
+  capture church attendance yet; LP.1 leaving it manual is correct for
+  now, but this is a known data-quality gap.
+
+**Still open for Julian:** the no-contact auto-flag threshold (or none);
+the comms-director trigger; the 2026-vs-2027 multiplication split (the
+source does not pin it down); and the group-health grading rubric Julian
+is still designing.
 
 ## Appendix A — Reliability / security debt track
 
