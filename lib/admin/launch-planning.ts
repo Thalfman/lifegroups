@@ -192,6 +192,7 @@ type OverrideForInputs = Pick<
   | "manual_health_status_override"
   | "admin_metric_notes"
   | "check_in_due_offset_hours_override"
+  | "allow_over_capacity"
 >;
 
 type MembershipForInputs = Pick<
@@ -507,4 +508,36 @@ export function buildScenarioComparison(
     scenario,
     outputs: computeLaunchPlan(scenario.assumptions, inputs),
   }));
+}
+
+// Julian P2 (answer 9): "% of the church in a life group" — current people in
+// groups over the latest known church attendance. Returns null when no
+// denominator is available so the UI can show "—" instead of a bogus 0%.
+export function participationPct(
+  currentParticipants: number,
+  churchAttendance: number | null,
+): number | null {
+  if (churchAttendance == null || churchAttendance <= 0) return null;
+  return Math.round((currentParticipants / churchAttendance) * 100);
+}
+
+// Julian P3 (answer 11): his planting seasons are August (primary) and
+// January. Returns the next occurrence of the 1st of the given month as
+// YYYY-MM-DD relative to `today` (UTC), so the launch-planning growth-date
+// field can be quick-filled to the upcoming planting season.
+export type PlantingSeasonMonth = 1 | 8;
+
+export function nextSeasonAnchorIso(
+  month: PlantingSeasonMonth,
+  today: Date = new Date(),
+): string {
+  const todayUtc = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+  const thisYear = today.getUTCFullYear();
+  const candidate = Date.UTC(thisYear, month - 1, 1);
+  const year = candidate >= todayUtc ? thisYear : thisYear + 1;
+  return new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
 }

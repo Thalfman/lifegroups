@@ -3,11 +3,18 @@ import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  fetchAllGroups,
+  fetchChurchAttendanceSnapshots,
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
   fetchLaunchPlanningScenariosForAdmin,
+  fetchMultiplicationCandidatesForAdmin,
   type LaunchPlanningInputsBundle,
 } from "@/lib/supabase/read-models";
+import {
+  evaluateReadiness,
+  segmentLabel,
+} from "@/lib/admin/multiplication";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   buildLaunchPlanningInputs,
@@ -16,6 +23,7 @@ import {
   decodeLaunchPlanningAssumptions,
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
+  participationPct,
   type LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
 import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
@@ -24,6 +32,11 @@ import { LaunchPlanningSummaryCards } from "@/components/admin/launch-planning/s
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
 import { ScenariosPanel } from "@/components/admin/launch-planning/scenarios-panel";
+import { ChurchAttendanceCard } from "@/components/admin/launch-planning/church-attendance-card";
+import {
+  MultiplicationPipelinePanel,
+  type SegmentGroup,
+} from "@/components/admin/launch-planning/multiplication-pipeline-panel";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +51,11 @@ type PageData = {
   activeScenarios: LaunchPlanningScenario[];
   scenariosError: string | null;
   comparison: ReturnType<typeof buildScenarioComparison>;
+  churchAttendanceLatest: { snapshotDate: string; attendanceCount: number } | null;
+  participationPct: number | null;
+  multiplicationSegments: SegmentGroup[];
+  multiplicationAvailableGroups: { id: string; name: string }[];
+  multiplicationError: string | null;
 };
 
 function emptyData(): PageData {
@@ -69,6 +87,11 @@ function emptyData(): PageData {
     activeScenarios: [],
     scenariosError: "Database is not configured in this environment.",
     comparison: [],
+    churchAttendanceLatest: null,
+    participationPct: null,
+    multiplicationSegments: [],
+    multiplicationAvailableGroups: [],
+    multiplicationError: "Database is not configured in this environment.",
   };
 }
 
@@ -78,11 +101,15 @@ async function loadData(): Promise<PageData> {
 
   // Run the three independent fetches in parallel so TTFB tracks the
   // slowest rather than their sum.
-  const [assumptionsRes, inputsBundle, scenariosRes] = await Promise.all([
-    fetchLaunchPlanningAssumptions(client),
-    fetchLaunchPlanningInputsForAdmin(client),
-    fetchLaunchPlanningScenariosForAdmin(client),
-  ]);
+  const [assumptionsRes, inputsBundle, scenariosRes, churchRes, candidatesRes, allGroupsRes] =
+    await Promise.all([
+      fetchLaunchPlanningAssumptions(client),
+      fetchLaunchPlanningInputsForAdmin(client),
+      fetchLaunchPlanningScenariosForAdmin(client),
+      fetchChurchAttendanceSnapshots(client, { limit: 1 }),
+      fetchMultiplicationCandidatesForAdmin(client),
+      fetchAllGroups(client),
+    ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
   const assumptions = decodeLaunchPlanningAssumptions(
@@ -103,6 +130,59 @@ async function loadData(): Promise<PageData> {
   );
   const comparison = buildScenarioComparison(activeScenarios, inputs);
 
+  const latestSnapshot = churchRes.data?.[0] ?? null;
+  const churchAttendanceLatest = latestSnapshot
+    ? {
+        snapshotDate: latestSnapshot.snapshot_date,
+        attendanceCount: latestSnapshot.attendance_count,
+      }
+    : null;
+
+  // Julian P4: build the segmented candidate view with readiness computed
+  // against today, grouped by audience × life stage.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const candidateEntries = candidatesRes.data ?? [];
+  const candidateGroupIds = new Set(candidateEntries.map((e) => e.candidate.group_id));
+  const segmentMap = new Map<string, SegmentGroup>();
+  for (const entry of candidateEntries) {
+    const segment = segmentLabel(
+      entry.group?.audience_category ?? null,
+      entry.group?.life_stage ?? null,
+    );
+    const view = {
+      candidateId: entry.candidate.id,
+      groupName: entry.group?.name ?? "Unknown group",
+      segment,
+      targetYear: entry.candidate.target_year,
+      status: entry.candidate.status,
+      shepherdWilling: entry.candidate.shepherd_willing,
+      needsSimilarStage: entry.candidate.needs_similar_stage,
+      notes: entry.candidate.notes,
+      activeMemberCount: entry.activeMemberCount,
+      readiness: evaluateReadiness(
+        {
+          activeMemberCount: entry.activeMemberCount,
+          launchedOn: entry.group?.launched_on ?? null,
+          coShepherdSince: entry.coShepherdSince,
+          shepherdWilling: entry.candidate.shepherd_willing,
+          needsSimilarStage: entry.candidate.needs_similar_stage,
+        },
+        todayIso,
+      ),
+    };
+    const bucket = segmentMap.get(segment);
+    if (bucket) bucket.candidates.push(view);
+    else segmentMap.set(segment, { segment, candidates: [view] });
+  }
+  const multiplicationSegments = [...segmentMap.values()].sort((a, b) =>
+    a.segment.localeCompare(b.segment),
+  );
+  // Active groups not already in the active pipeline are eligible to add.
+  const multiplicationAvailableGroups = (allGroupsRes.data ?? [])
+    .filter((g) => g.lifecycle_status === "active" && !candidateGroupIds.has(g.id))
+    .map((g) => ({ id: g.id, name: g.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     assumptions,
     assumptionsAvailable: assumptionsRes.data != null,
@@ -113,6 +193,14 @@ async function loadData(): Promise<PageData> {
     activeScenarios,
     scenariosError: scenariosRes.error?.message ?? null,
     comparison,
+    churchAttendanceLatest,
+    participationPct: participationPct(
+      inputs.current_participants,
+      churchAttendanceLatest?.attendanceCount ?? null,
+    ),
+    multiplicationSegments,
+    multiplicationAvailableGroups,
+    multiplicationError: candidatesRes.error?.message ?? allGroupsRes.error?.message ?? null,
   };
 }
 
@@ -166,6 +254,13 @@ export default async function AdminLaunchPlanningPage() {
           ) : null}
 
           <LaunchPlanningSummaryCards inputs={data.inputs} outputs={data.outputs} />
+
+          <ChurchAttendanceCard
+            latest={data.churchAttendanceLatest}
+            currentParticipants={data.inputs.current_participants}
+            participationPct={data.participationPct}
+            todayIso={new Date().toISOString().slice(0, 10)}
+          />
 
           <LaunchPlanningSetupWarnings
             inputs={data.inputs}
@@ -248,6 +343,29 @@ export default async function AdminLaunchPlanningPage() {
             baselineOutputs={data.outputs}
             comparison={data.comparison}
           />
+
+          {data.multiplicationError ? (
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: "#7d3621",
+                background: P.terraSoft,
+                border: `1px solid ${P.terra}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+              }}
+            >
+              The multiplication pipeline could not be loaded:{" "}
+              {data.multiplicationError}
+            </p>
+          ) : (
+            <MultiplicationPipelinePanel
+              segments={data.multiplicationSegments}
+              availableGroups={data.multiplicationAvailableGroups}
+            />
+          )}
 
           <nav
             aria-label="Related admin surfaces"

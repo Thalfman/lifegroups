@@ -464,6 +464,13 @@ want later.
 - Leader follow-up status workflow improvements.
 - Possible leader / over-shepherd care-adjacent workflows, only if Julian
   explicitly asks later.
+- **Leader self-update of care status (Julian P6, answers 6–8).** Julian wants
+  leaders to "update the system too, but broad notes given simplicity and
+  confidentiality." Deferred design, not a build: a leader-facing input limited
+  to *broad* notes / a coarse self-reported status, never exposing the
+  admin-only shepherd-care notes. Requires a privacy review before any work,
+  since it widens who can write to care-adjacent data. Awaiting Julian's
+  explicit go-ahead.
 
 **Out of scope.**
 - Shepherd care notes in the MVP.
@@ -489,6 +496,13 @@ want later.
 - SMS / email automation.
 - Exports.
 
+**Comms-director trigger (Julian P6, early review).** Julian: "I probably will
+want to loop our communications director in too if there's something that
+becomes more external." Deferred design, not a build: define *when* something
+crosses from internal to external (the trigger) and a comms-director read-only
+surface scoped to only that external slice. Needs its own threat model and a
+scope conversation with Julian + the comms director before any work.
+
 **Out of scope.**
 - Anything external before Julian and the communications director
   explicitly define the scope together.
@@ -506,8 +520,31 @@ want later.
 ## 6. New signals from Julian's 2026-05-27 inputs
 
 Surfaced by [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md)
-§3. These are **proposals pending Julian sync**, not committed phases —
-they are not yet inserted into the §5 execution order.
+§3.
+
+**Implementation status (PR #87, branch `claude/julian-feedback-plan-4vDle`).**
+Most of these signals are now built; the list below is annotated with where
+each landed:
+- **P1 — Shepherd-care stale-contact threshold** is now an admin-configurable
+  `shepherd_care_stale_days` metric default (was hardcoded 60).
+- **P2 — Capacity** defaults to 12 with a per-group `allow_over_capacity`
+  ("open by choice") flag; **church attendance** is captured as a dated time
+  series (`church_attendance_snapshots`) surfacing "% of the church in a group"
+  on launch planning.
+- **P3 — Seasonality**: launch planning's growth-date field has
+  "Next August / Next January" quick-fills; the worship-center demand spike is
+  modeled via the existing `expected_growth` + an LP.2 scenario.
+- **P4 — Multiplication pipeline**: groups gained `audience_category` /
+  `life_stage` / `launched_on`; a `multiplication_candidates` pipeline with a
+  readiness rubric (12+ members, 3+ years, co-shepherd 1+ year, willing, need)
+  is on the launch-planning page, grouped by audience × life stage.
+- **P5 — Group-health grading**: discovery only — see
+  [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md).
+  Held pending Julian's rubric.
+- **P6 — Leader self-update + comms-director**: deferred design notes added to
+  LDR.1 / EXT.1 below.
+
+The original signal descriptions follow.
 
 - **Group-health grading rubric (new feature area).** Julian explicitly
   wants to "grade" group health (consistent attendance, spiritual growth

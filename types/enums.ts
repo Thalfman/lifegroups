@@ -12,6 +12,20 @@ export type FollowUpStatus = 'open' | 'in_progress' | 'done' | 'snoozed';
 export type FollowUpPriority = 'low' | 'normal' | 'high';
 export type MeetingFrequency = 'weekly' | 'biweekly' | 'monthly';
 export type MeetingWeekParity = 'odd' | 'even';
+export type GroupAudienceCategory = 'men' | 'women' | 'mixed';
+export type GroupLifeStage =
+  | 'young_professionals'
+  | 'young_families'
+  | 'families_with_kids'
+  | 'families_with_adult_kids'
+  | 'retirement'
+  | 'multi_generational'
+  | 'spanish_speaking';
+export type MultiplicationCandidateStatus =
+  | 'watching'
+  | 'planned'
+  | 'launched'
+  | 'deferred';
 export type GroupCalendarEventType =
   | 'study'
   | 'community_night'

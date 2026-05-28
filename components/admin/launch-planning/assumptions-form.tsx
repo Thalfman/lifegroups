@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
+import { nextSeasonAnchorIso } from "@/lib/admin/launch-planning";
 import { P, fontBody } from "@/lib/pastoral";
 import {
   errorTextStyle,
@@ -34,6 +35,7 @@ export function LaunchPlanningAssumptionsForm({
     adminUpdateLaunchPlanningAssumptions,
     undefined,
   );
+  const growthDateRef = useRef<HTMLInputElement>(null);
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 16 }}>
@@ -94,13 +96,41 @@ export function LaunchPlanningAssumptionsForm({
             Expected growth date
           </label>
           <input
+            ref={growthDateRef}
             id="expected_growth_date"
             name="expected_growth_date"
             type="date"
             defaultValue={assumptions.expected_growth_date ?? ""}
             style={fieldInputStyle}
           />
-          <p style={hintStyle}>Optional. Used to suggest launch timing.</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (growthDateRef.current) {
+                  growthDateRef.current.value = nextSeasonAnchorIso(8);
+                }
+              }}
+              style={seasonButtonStyle}
+            >
+              Next August
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (growthDateRef.current) {
+                  growthDateRef.current.value = nextSeasonAnchorIso(1);
+                }
+              }}
+              style={seasonButtonStyle}
+            >
+              Next January
+            </button>
+          </div>
+          <p style={hintStyle}>
+            Optional. Used to suggest launch timing. Julian&rsquo;s planting
+            seasons are August (primary) and January.
+          </p>
         </div>
 
         <div>
@@ -235,4 +265,15 @@ const hintStyle = {
   color: P.ink3,
   margin: "4px 0 0",
   lineHeight: 1.4,
+} as const;
+
+const seasonButtonStyle = {
+  fontFamily: fontBody,
+  fontSize: 11,
+  color: P.ink2,
+  background: P.bg,
+  border: `1px solid ${P.line}`,
+  borderRadius: 999,
+  padding: "3px 10px",
+  cursor: "pointer",
 } as const;

@@ -29,6 +29,9 @@ export interface GroupsRow {
   capacity: number | null;
   lifecycle_status: E.GroupLifecycleStatus;
   health_status: E.GroupHealthStatus;
+  audience_category: E.GroupAudienceCategory | null;
+  life_stage: E.GroupLifeStage | null;
+  launched_on: DateString | null;
   pause_reason: string | null;
   pause_start_date: DateString | null;
   expected_return_date: DateString | null;
@@ -166,6 +169,32 @@ export interface GroupMetricSettingsRow {
   exclude_from_capacity_metrics: boolean;
   admin_metric_notes: string | null;
   check_in_due_offset_hours_override: number | null;
+  allow_over_capacity: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ChurchAttendanceSnapshotsRow {
+  id: UUID;
+  snapshot_date: DateString;
+  attendance_count: number;
+  note: string | null;
+  created_by_profile_id: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface MultiplicationCandidatesRow {
+  id: UUID;
+  group_id: UUID;
+  target_year: number | null;
+  status: E.MultiplicationCandidateStatus;
+  shepherd_willing: boolean;
+  needs_similar_stage: boolean;
+  notes: string | null;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -327,6 +356,30 @@ export interface Database {
         Row: GroupMetricSettingsRow;
         Insert: InsertOf<GroupMetricSettingsRow, 'created_at' | 'updated_at'>;
         Update: Partial<GroupMetricSettingsRow>;
+        Relationships: [];
+      };
+      church_attendance_snapshots: {
+        Row: ChurchAttendanceSnapshotsRow;
+        Insert: InsertOf<
+          ChurchAttendanceSnapshotsRow,
+          'id' | 'created_at' | 'updated_at' | 'created_by_profile_id' | 'note'
+        >;
+        Update: Partial<ChurchAttendanceSnapshotsRow>;
+        Relationships: [];
+      };
+      multiplication_candidates: {
+        Row: MultiplicationCandidatesRow;
+        Insert: InsertOf<
+          MultiplicationCandidatesRow,
+          | 'id'
+          | 'created_at'
+          | 'updated_at'
+          | 'archived_at'
+          | 'created_by'
+          | 'updated_by'
+          | 'notes'
+        >;
+        Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];
       };
       group_calendar_events: {

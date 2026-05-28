@@ -33,6 +33,7 @@ const METRIC_DEFAULT_FIELDS = [
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
   "check_in_due_offset_hours",
+  "shepherd_care_stale_days",
 ] as const;
 
 const GROUP_METRIC_FIELDS = [
@@ -44,6 +45,7 @@ const GROUP_METRIC_FIELDS = [
   "exclude_from_capacity_metrics",
   "admin_metric_notes",
   "check_in_due_offset_hours_override",
+  "allow_over_capacity",
 ] as const;
 
 // Only include a key in the payload when the form actually submitted a
@@ -84,7 +86,7 @@ function readGroupMetricForm(input: unknown): Record<string, unknown> {
   }
   const out: Record<string, unknown> = {};
   for (const key of GROUP_METRIC_FIELDS) {
-    if (key === "exclude_from_capacity_metrics") {
+    if (key === "exclude_from_capacity_metrics" || key === "allow_over_capacity") {
       // Browsers omit unchecked checkboxes from the FormData entirely.
       // Treat absence as `false` so a checkbox cleared by the operator
       // round-trips correctly.
@@ -193,6 +195,7 @@ export async function adminUpsertGroupMetricSettings(
     p_admin_metric_notes: v.value.admin_metric_notes,
     p_check_in_due_offset_hours_override:
       v.value.check_in_due_offset_hours_override,
+    p_allow_over_capacity: v.value.allow_over_capacity,
   });
 
   if (error) {

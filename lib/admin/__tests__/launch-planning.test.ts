@@ -8,6 +8,8 @@ import {
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
   findCurrentScenario,
+  nextSeasonAnchorIso,
+  participationPct,
   redactNotesForAudit,
   type LaunchPlanningAssumptions,
   type LaunchPlanningScenario,
@@ -47,6 +49,9 @@ function group(overrides: Partial<GroupsRow>): GroupsRow {
     capacity: overrides.capacity ?? null,
     lifecycle_status: overrides.lifecycle_status ?? "active",
     health_status: "healthy",
+    audience_category: overrides.audience_category ?? null,
+    life_stage: overrides.life_stage ?? null,
+    launched_on: overrides.launched_on ?? null,
     pause_reason: null,
     pause_start_date: null,
     expected_return_date: null,
@@ -71,6 +76,7 @@ function override(
     exclude_from_capacity_metrics: fields.exclude_from_capacity_metrics ?? false,
     admin_metric_notes: null,
     check_in_due_offset_hours_override: null,
+    allow_over_capacity: fields.allow_over_capacity ?? false,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
   };
@@ -723,5 +729,49 @@ describe("buildScenarioComparison", () => {
     expect(
       buildScenarioComparison([], { effective_total_capacity: 100 }),
     ).toEqual([]);
+  });
+});
+
+describe("participationPct (Julian P2 answer 9)", () => {
+  it("computes percent of the church in a group", () => {
+    expect(participationPct(80, 100)).toBe(80);
+    expect(participationPct(60, 100)).toBe(60);
+  });
+
+  it("rounds to the nearest whole percent", () => {
+    expect(participationPct(1, 3)).toBe(33);
+    expect(participationPct(2, 3)).toBe(67);
+  });
+
+  it("returns null when there is no usable denominator", () => {
+    expect(participationPct(80, null)).toBeNull();
+    expect(participationPct(80, 0)).toBeNull();
+    expect(participationPct(80, -5)).toBeNull();
+  });
+});
+
+describe("nextSeasonAnchorIso (Julian P3 answer 11)", () => {
+  it("returns this year's August when today is before August", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-05-28T00:00:00Z"))).toBe(
+      "2026-08-01",
+    );
+  });
+
+  it("rolls August to next year once it has passed", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-09-15T00:00:00Z"))).toBe(
+      "2027-08-01",
+    );
+  });
+
+  it("returns the upcoming January", () => {
+    expect(nextSeasonAnchorIso(1, new Date("2026-05-28T00:00:00Z"))).toBe(
+      "2027-01-01",
+    );
+  });
+
+  it("treats the anchor day itself as still upcoming", () => {
+    expect(nextSeasonAnchorIso(8, new Date("2026-08-01T00:00:00Z"))).toBe(
+      "2026-08-01",
+    );
   });
 });

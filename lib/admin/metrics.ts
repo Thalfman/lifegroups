@@ -36,19 +36,24 @@ export type MetricDefaults = {
   // Phase 5A.5: hours after a group's scheduled meeting time before its
   // check-in is considered overdue. 24 = "due 24 hours after meeting".
   check_in_due_offset_hours: number;
+  // Julian P1: days since last shepherd contact before the care dashboard
+  // flags the shepherd as stale ("haven't connected in N weeks"). 60 = the
+  // original hardcoded window, now operator-configurable.
+  shepherd_care_stale_days: number;
 };
 
 // Documented baseline values. Mirrors the Phase 5A.5 reset RPC so
 // "reset defaults" in the UI and the seeded values stay in sync.
 // If you change one, change the other.
 export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
-  default_group_capacity: null,
+  default_group_capacity: 12,
   capacity_warning_threshold_pct: 80,
   capacity_full_threshold_pct: 100,
   check_in_due_day_of_week: 1,
   missed_checkin_warning_weeks: 2,
   default_healthy_attendance_pct: 60,
   check_in_due_offset_hours: 24,
+  shepherd_care_stale_days: 60,
 };
 
 function readJsonInt(
@@ -113,6 +118,11 @@ export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults
       "check_in_due_offset_hours",
       BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours,
     ),
+    shepherd_care_stale_days: readJsonInt(
+      source,
+      "shepherd_care_stale_days",
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days,
+    ),
   };
 }
 
@@ -130,6 +140,7 @@ type OverrideRef = Pick<
   | "exclude_from_capacity_metrics"
   | "admin_metric_notes"
   | "check_in_due_offset_hours_override"
+  | "allow_over_capacity"
 > | null;
 
 export function effectiveCapacity(
@@ -201,7 +212,16 @@ export function effectiveCheckInDueOffsetHours(
 // Capacity status
 // ---------------------------------------------------------------------------
 
-export type CapacityStatus = "unknown" | "excluded" | "ok" | "warning" | "full";
+// Julian P2: `open_by_choice` is a group at/over capacity that an admin has
+// intentionally kept open (allow_over_capacity). It is still counted, but is
+// reported separately from `full` so it is not flagged as needing action.
+export type CapacityStatus =
+  | "unknown"
+  | "excluded"
+  | "ok"
+  | "warning"
+  | "full"
+  | "open_by_choice";
 
 export function capacityStatus(args: {
   activeMemberCount: number;
@@ -209,12 +229,15 @@ export function capacityStatus(args: {
   warningPct: number;
   fullPct: number;
   excluded: boolean;
+  allowOverCapacity?: boolean;
 }): CapacityStatus {
   if (args.excluded) return "excluded";
   if (args.effectiveCapacity == null) return "unknown";
   if (args.effectiveCapacity <= 0) return "unknown";
   const pct = (args.activeMemberCount / args.effectiveCapacity) * 100;
-  if (pct >= args.fullPct) return "full";
+  if (pct >= args.fullPct) {
+    return args.allowOverCapacity ? "open_by_choice" : "full";
+  }
   if (pct >= args.warningPct) return "warning";
   return "ok";
 }
@@ -235,6 +258,11 @@ export function isExcludedFromCapacityMetrics(override: OverrideRef): boolean {
   return Boolean(override?.exclude_from_capacity_metrics);
 }
 
+// Julian P2: whether a group is intentionally kept open past its capacity.
+export function allowsOverCapacity(override: OverrideRef): boolean {
+  return Boolean(override?.allow_over_capacity);
+}
+
 // A group_metric_settings row counts as having "active" overrides only
 // when at least one field carries a non-default value. A row that exists
 // but has every field cleared is treated identically to "no row" for UI
@@ -248,6 +276,7 @@ export function hasActiveOverrides(
   if (settings.healthy_attendance_pct_override != null) return true;
   if (settings.manual_health_status_override != null) return true;
   if (settings.exclude_from_capacity_metrics) return true;
+  if (settings.allow_over_capacity) return true;
   if (settings.check_in_due_offset_hours_override != null) return true;
   if (
     typeof settings.admin_metric_notes === "string" &&

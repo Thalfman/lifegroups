@@ -16,6 +16,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
+  fetchMetricDefaults,
   fetchOverShepherdsForAdmin,
   fetchRecentShepherdCareInteractionsForAdmin,
   fetchShepherdCareDirectoryForAdmin,
@@ -24,6 +25,7 @@ import {
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
+import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
@@ -57,6 +59,7 @@ type LoadedData = {
   assignmentsAvailable: boolean;
   recentInteractions: ShepherdCareRecentInteractionRow[];
   recentInteractionsAvailable: boolean;
+  staleDays: number;
   error: string | null;
 };
 
@@ -70,16 +73,25 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       assignmentsAvailable: false,
       recentInteractions: [],
       recentInteractionsAvailable: false,
+      staleDays: decodeMetricDefaults(null).shepherd_care_stale_days,
       error: "Database is not configured in this environment.",
     };
   }
-  // All four reads are independent; run them in parallel so the page TTFB is
-  // bounded by the slowest query rather than their sum. The directory read
-  // receives the same todayIso the page later uses for the dashboard model
-  // so a request straddling UTC midnight can't produce a directory and a
-  // dashboard built off different calendar days.
+  // Resolve the configured stale-contact window first so the directory read
+  // flags needs_attention against the same threshold the dashboard later
+  // uses. A missing/failed settings read falls back to the documented
+  // baseline via decodeMetricDefaults(null).
+  const metricDefaultsRes = await fetchMetricDefaults(client);
+  const staleDays = decodeMetricDefaults(
+    metricDefaultsRes.data ?? null,
+  ).shepherd_care_stale_days;
+  // The remaining reads are independent; run them in parallel so the page
+  // TTFB is bounded by the slowest query rather than their sum. The
+  // directory read receives the same todayIso the page later uses for the
+  // dashboard model so a request straddling UTC midnight can't produce a
+  // directory and a dashboard built off different calendar days.
   const [directory, overShepherdsRes, assignmentsRes, recentRes] = await Promise.all([
-    fetchShepherdCareDirectoryForAdmin(client, { todayIso }),
+    fetchShepherdCareDirectoryForAdmin(client, { todayIso, staleDays }),
     fetchOverShepherdsForAdmin(client, { includeArchived: true }),
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
     fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
@@ -92,6 +104,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       assignmentsAvailable: false,
       recentInteractions: [],
       recentInteractionsAvailable: false,
+      staleDays,
       error: directory.error.message,
     };
   }
@@ -108,6 +121,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
     assignmentsAvailable,
     recentInteractions: recentRes.data ?? [],
     recentInteractionsAvailable,
+    staleDays,
     error:
       overShepherdsRes.error?.message ??
       assignmentsRes.error?.message ??
@@ -140,6 +154,7 @@ export default async function AdminShepherdCarePage({
     assignmentsAvailable,
     recentInteractions,
     recentInteractionsAvailable,
+    staleDays,
     error,
   } = await loadData(today);
 
@@ -158,9 +173,11 @@ export default async function AdminShepherdCarePage({
     recentInteractions,
     todayIso: today,
     assignmentsAvailable,
+    staleDays,
   });
   const totalAttention = countAllAttentionItems(entries, assignments, today, {
     coverageAvailable: assignmentsAvailable,
+    staleDays,
   });
 
   const needsAttentionCount = dashboard.summary.needsAttention;

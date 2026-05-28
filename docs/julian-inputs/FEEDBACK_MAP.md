@@ -59,8 +59,13 @@ signals these materials surface.
 
 ## 4. Recommended next actions
 
-These are **proposals**, not commitments — to be sequenced into
-`PRODUCT_ROADMAP.md` after review.
+**Status (PR #87, branch `claude/julian-feedback-plan-4vDle`).** Items 2, 3,
+and 5 below are now addressed in code; item 1 (roadmap update) and item 4 (the
+two open questions) are partially done — the no-contact threshold is now
+configurable, the capacity default is 12, and the kept-open case is
+representable. See `PRODUCT_ROADMAP.md §6` for the per-phase map.
+
+These were **proposals**, since sequenced into `PRODUCT_ROADMAP.md`.
 
 1. **Close the roadmap's answered questions.** Update `PRODUCT_ROADMAP.md §2` to
    mark the six answered/partial items resolved, citing this folder.
@@ -78,8 +83,15 @@ These are **proposals**, not commitments — to be sequenced into
 
 ## 5. Still open for Julian
 
-- Default "haven't connected in N weeks" auto-flag threshold (or none).
-- When/whether to involve the communications director.
+- ~~Default "haven't connected in N weeks" auto-flag threshold~~ — **resolved**:
+  now an admin-configurable `shepherd_care_stale_days` setting (default 60). The
+  *value Julian wants* is still his call, but the knob exists.
+- When/whether to involve the communications director — **still open**; deferred
+  design captured in `PRODUCT_ROADMAP.md` EXT.1.
 - The 2026-vs-2027 multiplication split, which the source does not pin down
-  ([fidelity note](./LG_MULTIPLICATION_PLAN_2026.md#timeline-buckets)).
-- The group-health grading rubric Julian is still designing.
+  ([fidelity note](./LG_MULTIPLICATION_PLAN_2026.md#timeline-buckets)) — **still
+  open**; the pipeline now stores a per-candidate `target_year` so Julian can set
+  it group by group.
+- The group-health grading rubric Julian is still designing — **still open**;
+  discovery captured in
+  [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../GROUP_HEALTH_RUBRIC_DISCOVERY.md).

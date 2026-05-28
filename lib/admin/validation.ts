@@ -2,9 +2,12 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpType,
+  GroupAudienceCategory,
+  GroupLifeStage,
   GuestPipelineStage,
   MeetingFrequency,
   MeetingWeekParity,
+  MultiplicationCandidateStatus,
   RoleInGroup,
   ShepherdCareInteractionType,
   ShepherdCareStatus,
@@ -321,6 +324,33 @@ const MEETING_WEEK_PARITIES: ReadonlySet<MeetingWeekParity> = new Set([
   "even",
 ]);
 
+const GROUP_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> = new Set([
+  "men",
+  "women",
+  "mixed",
+]);
+
+const GROUP_LIFE_STAGES: ReadonlySet<GroupLifeStage> = new Set([
+  "young_professionals",
+  "young_families",
+  "families_with_kids",
+  "families_with_adult_kids",
+  "retirement",
+  "multi_generational",
+  "spanish_speaking",
+]);
+
+function isGroupAudienceCategory(value: unknown): value is GroupAudienceCategory {
+  return (
+    typeof value === "string" &&
+    GROUP_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
+  );
+}
+
+function isGroupLifeStage(value: unknown): value is GroupLifeStage {
+  return typeof value === "string" && GROUP_LIFE_STAGES.has(value as GroupLifeStage);
+}
+
 function isMeetingFrequency(value: unknown): value is MeetingFrequency {
   return typeof value === "string" && MEETING_FREQUENCIES.has(value as MeetingFrequency);
 }
@@ -339,6 +369,9 @@ export type GroupWritablePayload = {
   location_area?: string;
   address_optional?: string;
   capacity?: number;
+  audience_category?: GroupAudienceCategory | null;
+  life_stage?: GroupLifeStage | null;
+  launched_on?: string | null;
 };
 
 function validateGroupWritablePayload(
@@ -401,6 +434,32 @@ function validateGroupWritablePayload(
     else if (capacity > 1000) errors.push("Capacity is unusually large (max 1000).");
   }
 
+  // Julian P4 segmentation. All optional; an empty select submits "" which
+  // readOptionalString collapses to undefined → "leave unset / clear on
+  // update". A non-empty but invalid value errors so a stale value can't leak.
+  const audienceRaw = readOptionalString(input.audience_category);
+  let audienceCategory: GroupAudienceCategory | undefined;
+  if (audienceRaw !== undefined) {
+    if (!isGroupAudienceCategory(audienceRaw))
+      errors.push("Audience category must be men, women, or mixed.");
+    else audienceCategory = audienceRaw;
+  }
+
+  const lifeStageRaw = readOptionalString(input.life_stage);
+  let lifeStage: GroupLifeStage | undefined;
+  if (lifeStageRaw !== undefined) {
+    if (!isGroupLifeStage(lifeStageRaw))
+      errors.push("Life stage is not a valid value.");
+    else lifeStage = lifeStageRaw;
+  }
+
+  const launchedOnRaw = readOptionalString(input.launched_on);
+  let launchedOn: string | undefined;
+  if (launchedOnRaw !== undefined) {
+    if (!isIsoDate(launchedOnRaw)) errors.push("Launch date must be YYYY-MM-DD.");
+    else launchedOn = launchedOnRaw;
+  }
+
   if (errors.length > 0) return { ok: false, errors };
 
   const value: GroupWritablePayload = {
@@ -414,6 +473,9 @@ function validateGroupWritablePayload(
   if (locationArea !== undefined) value.location_area = locationArea;
   if (addressOptional !== undefined) value.address_optional = addressOptional;
   if (capacity !== undefined) value.capacity = capacity;
+  if (audienceCategory !== undefined) value.audience_category = audienceCategory;
+  if (lifeStage !== undefined) value.life_stage = lifeStage;
+  if (launchedOn !== undefined) value.launched_on = launchedOn;
   return { ok: true, value };
 }
 
@@ -511,6 +573,7 @@ export type MetricDefaultsPayload = {
   missed_checkin_warning_weeks?: number;
   default_healthy_attendance_pct?: number;
   check_in_due_offset_hours?: number;
+  shepherd_care_stale_days?: number;
 };
 
 const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
@@ -521,6 +584,7 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
   "check_in_due_offset_hours",
+  "shepherd_care_stale_days",
 ]);
 
 export function validateMetricDefaultsPayload(
@@ -602,6 +666,15 @@ export function validateMetricDefaultsPayload(
     else if (n !== undefined) value.check_in_due_offset_hours = n;
   }
 
+  if ("shepherd_care_stale_days" in input) {
+    const n = readOptionalInteger(input.shepherd_care_stale_days);
+    if (n === "invalid")
+      errors.push("Stale-contact days must be a whole number.");
+    else if (n !== undefined && (n < 7 || n > 365))
+      errors.push("Stale-contact days must be between 7 and 365.");
+    else if (n !== undefined) value.shepherd_care_stale_days = n;
+  }
+
   // Cross-field: full % must be >= warning % when both present (or fall
   // back to the documented defaults so a one-sided submit can still be
   // validated sanely).
@@ -630,6 +703,7 @@ export type GroupMetricSettingsPayload = {
   exclude_from_capacity_metrics: boolean;
   admin_metric_notes: string | null;
   check_in_due_offset_hours_override: number | null;
+  allow_over_capacity: boolean;
 };
 
 export function validateGroupMetricSettingsPayload(
@@ -724,6 +798,13 @@ export function validateGroupMetricSettingsPayload(
     else if (raw !== undefined) excludeFromCapacity = raw;
   }
 
+  let allowOverCapacity = false;
+  {
+    const raw = readOptionalBoolean(input.allow_over_capacity);
+    if (raw === "invalid") errors.push("Keep open past capacity must be true or false.");
+    else if (raw !== undefined) allowOverCapacity = raw;
+  }
+
   let notes: string | null = null;
   {
     const raw = readOptionalString(input.admin_metric_notes);
@@ -745,6 +826,7 @@ export function validateGroupMetricSettingsPayload(
       exclude_from_capacity_metrics: excludeFromCapacity,
       admin_metric_notes: notes,
       check_in_due_offset_hours_override: checkInOffsetOverride,
+      allow_over_capacity: allowOverCapacity,
     },
   };
 }
@@ -1871,5 +1953,167 @@ export function validateScenarioIdPayload(
   return {
     ok: true,
     value: { scenario_id: normalizeUuid(input.scenario_id as string) },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Julian P2 — church attendance snapshot payload.
+// ---------------------------------------------------------------------------
+
+export type RecordChurchAttendancePayload = {
+  snapshot_date: string;
+  attendance_count: number;
+  note: string | null;
+};
+
+export function validateRecordChurchAttendancePayload(
+  input: unknown,
+): ValidationResult<RecordChurchAttendancePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  const snapshotDate = trimString(input.snapshot_date) ?? "";
+  if (snapshotDate.length === 0) {
+    errors.push("Snapshot date is required.");
+  } else if (!isIsoDate(snapshotDate)) {
+    errors.push("Snapshot date must be YYYY-MM-DD.");
+  }
+
+  const count = readOptionalInteger(input.attendance_count);
+  let attendanceCount = 0;
+  if (count === "invalid" || count === undefined) {
+    errors.push("Attendance count must be a whole number.");
+  } else if (count < 0 || count > 1000000) {
+    errors.push("Attendance count must be between 0 and 1,000,000.");
+  } else {
+    attendanceCount = count;
+  }
+
+  const note = readOptionalString(input.note);
+  if (note !== undefined && note.length > 1000) {
+    errors.push("Note is too long (max 1000 characters).");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      snapshot_date: snapshotDate,
+      attendance_count: attendanceCount,
+      note: note ?? null,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Julian P4 — multiplication candidate payloads.
+// ---------------------------------------------------------------------------
+
+const MULTIPLICATION_CANDIDATE_STATUSES: ReadonlySet<MultiplicationCandidateStatus> =
+  new Set(["watching", "planned", "launched", "deferred"]);
+
+function isMultiplicationStatus(value: unknown): value is MultiplicationCandidateStatus {
+  return (
+    typeof value === "string" &&
+    MULTIPLICATION_CANDIDATE_STATUSES.has(value as MultiplicationCandidateStatus)
+  );
+}
+
+type MultiplicationCandidateFields = {
+  target_year: number | null;
+  status: MultiplicationCandidateStatus;
+  shepherd_willing: boolean;
+  needs_similar_stage: boolean;
+  notes: string | null;
+};
+
+function validateMultiplicationCandidateFields(
+  input: Record<string, unknown>,
+  errors: string[],
+): MultiplicationCandidateFields {
+  let targetYear: number | null = null;
+  const yearRaw = readOptionalString(input.target_year);
+  if (yearRaw !== undefined) {
+    const n = readOptionalInteger(yearRaw);
+    if (n === "invalid" || n === undefined) {
+      errors.push("Target year must be a whole number.");
+    } else if (n < 2024 || n > 2100) {
+      errors.push("Target year must be between 2024 and 2100.");
+    } else {
+      targetYear = n;
+    }
+  }
+
+  let status: MultiplicationCandidateStatus = "watching";
+  if (input.status !== undefined && input.status !== null && input.status !== "") {
+    if (!isMultiplicationStatus(input.status)) {
+      errors.push("Status must be watching, planned, launched, or deferred.");
+    } else {
+      status = input.status;
+    }
+  }
+
+  const notes = readOptionalString(input.notes);
+  if (notes !== undefined && notes.length > 2000) {
+    errors.push("Notes are too long (max 2000 characters).");
+  }
+
+  return {
+    target_year: targetYear,
+    status,
+    shepherd_willing: readBooleanFlag(input.shepherd_willing),
+    needs_similar_stage: readBooleanFlag(input.needs_similar_stage),
+    notes: notes ?? null,
+  };
+}
+
+export type CreateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
+  group_id: string;
+};
+
+export function validateCreateMultiplicationCandidatePayload(
+  input: unknown,
+): ValidationResult<CreateMultiplicationCandidatePayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  const fields = validateMultiplicationCandidateFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string), ...fields },
+  };
+}
+
+export type UpdateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
+  candidate_id: string;
+};
+
+export function validateUpdateMultiplicationCandidatePayload(
+  input: unknown,
+): ValidationResult<UpdateMultiplicationCandidatePayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.candidate_id)) errors.push("candidate_id must be a uuid");
+  const fields = validateMultiplicationCandidateFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { candidate_id: normalizeUuid(input.candidate_id as string), ...fields },
+  };
+}
+
+export type CandidateIdPayload = { candidate_id: string };
+
+export function validateCandidateIdPayload(
+  input: unknown,
+): ValidationResult<CandidateIdPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.candidate_id))
+    return { ok: false, errors: ["candidate_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { candidate_id: normalizeUuid(input.candidate_id as string) },
   };
 }

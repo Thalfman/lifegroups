@@ -4,14 +4,26 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminSession } from "@/lib/auth/session";
 import { startActionLog } from "@/lib/observability/instrument";
-import { validateLaunchPlanningAssumptionsPayload } from "@/lib/admin/validation";
+import {
+  validateCandidateIdPayload,
+  validateCreateMultiplicationCandidatePayload,
+  validateLaunchPlanningAssumptionsPayload,
+  validateRecordChurchAttendancePayload,
+  validateUpdateMultiplicationCandidatePayload,
+} from "@/lib/admin/validation";
 import {
   type ActionResult,
   actionFail,
   actionOk,
   mapRpcError,
 } from "@/lib/admin/action-result";
-import { rpcAdminUpdateLaunchPlanningAssumptions } from "@/lib/admin/rpc";
+import {
+  rpcAdminArchiveMultiplicationCandidate,
+  rpcAdminCreateMultiplicationCandidate,
+  rpcAdminRecordChurchAttendanceSnapshot,
+  rpcAdminUpdateLaunchPlanningAssumptions,
+  rpcAdminUpdateMultiplicationCandidate,
+} from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
@@ -123,5 +135,215 @@ export async function adminUpdateLaunchPlanningAssumptions(
     changed_field_count: Object.keys(v.value).length,
     has_notes_field: Object.prototype.hasOwnProperty.call(v.value, "notes"),
   });
+  return actionOk({ id: data });
+}
+
+// Julian P2: record an actual church-attendance count for a date. Upserts by
+// date so re-entering a date corrects the prior figure.
+export async function adminRecordChurchAttendanceSnapshot(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.launch_planning.record_church_attendance");
+
+  const auth = await requireAdminSession();
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
+
+  const raw =
+    input instanceof FormData
+      ? {
+          snapshot_date: input.get("snapshot_date"),
+          attendance_count: input.get("attendance_count"),
+          note: input.get("note"),
+        }
+      : input;
+  const v = validateRecordChurchAttendancePayload(raw);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
+
+  const { data, error } = await rpcAdminRecordChurchAttendanceSnapshot(client, {
+    p_snapshot_date: v.value.snapshot_date,
+    p_attendance_count: v.value.attendance_count,
+    p_note: v.value.note,
+  });
+
+  if (error) {
+    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The attendance snapshot was not saved. Please try again."]);
+  }
+
+  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
+  revalidatePath(REVALIDATE_PATH_ADMIN);
+  ctx.finish("ok", { actor_role });
+  return actionOk({ id: data });
+}
+
+// ----- Julian P4: multiplication candidate actions ------------------------
+
+function readCandidateForm(input: unknown): Record<string, unknown> {
+  if (!(input instanceof FormData)) {
+    return typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>)
+      : {};
+  }
+  return {
+    group_id: input.get("group_id") ?? undefined,
+    candidate_id: input.get("candidate_id") ?? undefined,
+    target_year: input.get("target_year") ?? undefined,
+    status: input.get("status") ?? undefined,
+    // Checkboxes: presence = true, absence = false.
+    shepherd_willing: input.has("shepherd_willing"),
+    needs_similar_stage: input.has("needs_similar_stage"),
+    notes: input.get("notes") ?? undefined,
+  };
+}
+
+export async function adminCreateMultiplicationCandidate(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.launch_planning.create_multiplication_candidate");
+  const auth = await requireAdminSession();
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
+
+  const v = validateCreateMultiplicationCandidatePayload(readCandidateForm(input));
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
+
+  const { data, error } = await rpcAdminCreateMultiplicationCandidate(client, {
+    p_group_id: v.value.group_id,
+    p_target_year: v.value.target_year,
+    p_status: v.value.status,
+    p_shepherd_willing: v.value.shepherd_willing,
+    p_needs_similar_stage: v.value.needs_similar_stage,
+    p_notes: v.value.notes,
+  });
+  if (error) {
+    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The candidate was not saved. Please try again."]);
+  }
+  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
+  ctx.finish("ok", { actor_role });
+  return actionOk({ id: data });
+}
+
+export async function adminUpdateMultiplicationCandidate(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.launch_planning.update_multiplication_candidate");
+  const auth = await requireAdminSession();
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
+
+  const v = validateUpdateMultiplicationCandidatePayload(readCandidateForm(input));
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
+
+  const { data, error } = await rpcAdminUpdateMultiplicationCandidate(client, {
+    p_candidate_id: v.value.candidate_id,
+    p_target_year: v.value.target_year,
+    p_status: v.value.status,
+    p_shepherd_willing: v.value.shepherd_willing,
+    p_needs_similar_stage: v.value.needs_similar_stage,
+    p_notes: v.value.notes,
+  });
+  if (error) {
+    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The candidate was not saved. Please try again."]);
+  }
+  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
+  ctx.finish("ok", { actor_role });
+  return actionOk({ id: data });
+}
+
+export async function adminArchiveMultiplicationCandidate(
+  _prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  const ctx = startActionLog("admin.launch_planning.archive_multiplication_candidate");
+  const auth = await requireAdminSession();
+  if (!auth.ok) {
+    ctx.finish("denied", { error_code: "auth_denied" });
+    return actionFail([auth.error]);
+  }
+  const actor_role = auth.session.profile.role;
+
+  const raw =
+    input instanceof FormData
+      ? { candidate_id: input.get("candidate_id") ?? undefined }
+      : input;
+  const v = validateCandidateIdPayload(raw);
+  if (!v.ok) {
+    ctx.finish("fail", { error_code: "validation_failed", actor_role });
+    return actionFail(v.errors);
+  }
+
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
+    return actionFail(["Database is not configured."]);
+  }
+
+  const { data, error } = await rpcAdminArchiveMultiplicationCandidate(client, {
+    p_candidate_id: v.value.candidate_id,
+  });
+  if (error) {
+    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
+    return actionFail([mapRpcError(error.message)]);
+  }
+  if (!data) {
+    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
+    return actionFail(["The candidate was not archived. Please try again."]);
+  }
+  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
+  ctx.finish("ok", { actor_role });
   return actionOk({ id: data });
 }

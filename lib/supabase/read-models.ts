@@ -4,6 +4,7 @@ import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   AuditEventsRow,
+  ChurchAttendanceSnapshotsRow,
   FollowUpsRow,
   GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
@@ -14,6 +15,7 @@ import type {
   GuestsRow,
   LaunchPlanningScenariosRow,
   MembersRow,
+  MultiplicationCandidatesRow,
   OverShepherdsRow,
   ProfilesRow,
   ShepherdCareInteractionsRow,
@@ -391,6 +393,133 @@ export async function fetchMetricDefaults(
   return { data, error: null };
 }
 
+const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
+  "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
+  "created_at, updated_at";
+
+// Julian P2: most-recent-first church attendance snapshots. The first row is
+// the latest known church-wide attendance, the denominator for the
+// "% of the church in a life group" headline. Admin-only via RLS.
+export async function fetchChurchAttendanceSnapshots(
+  client: ReadClient,
+  options: { limit?: number } = {},
+): Promise<ReadResult<ChurchAttendanceSnapshotsRow[]>> {
+  const limit = options.limit ?? 12;
+  const { data, error } = await client
+    .from("church_attendance_snapshots")
+    .select(CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS)
+    .order("snapshot_date", { ascending: false })
+    .limit(limit);
+  if (error) {
+    return { data: null, error: wrapError("fetchChurchAttendanceSnapshots", error) };
+  }
+  return { data: (data ?? []) as ChurchAttendanceSnapshotsRow[], error: null };
+}
+
+const MULTIPLICATION_CANDIDATE_COLUMNS =
+  "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
+  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+
+export type MultiplicationCandidateGroup = Pick<
+  GroupsRow,
+  "id" | "name" | "audience_category" | "life_stage" | "launched_on" | "lifecycle_status"
+>;
+
+export type MultiplicationCandidateEntry = {
+  candidate: MultiplicationCandidatesRow;
+  group: MultiplicationCandidateGroup | null;
+  activeMemberCount: number;
+  // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
+  coShepherdSince: string | null;
+};
+
+// Julian P4: active (non-archived) multiplication candidates enriched with the
+// group facts the readiness helper needs (member count, launch date,
+// co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
+// reads by the candidates' group ids to avoid N+1.
+export async function fetchMultiplicationCandidatesForAdmin(
+  client: ReadClient,
+): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
+  const candidatesRes = await client
+    .from("multiplication_candidates")
+    .select(MULTIPLICATION_CANDIDATE_COLUMNS)
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (candidatesRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/candidates", candidatesRes.error),
+    };
+  }
+  const candidates = (candidatesRes.data ?? []) as MultiplicationCandidatesRow[];
+  if (candidates.length === 0) return { data: [], error: null };
+
+  const groupIds = [...new Set(candidates.map((c) => c.group_id))];
+
+  const [groupsRes, membershipsRes, leadersRes] = await Promise.all([
+    client
+      .from("groups")
+      .select("id, name, audience_category, life_stage, launched_on, lifecycle_status")
+      .in("id", groupIds),
+    client
+      .from("group_memberships")
+      .select("group_id, status")
+      .in("group_id", groupIds)
+      .eq("status", "active"),
+    client
+      .from("group_leaders")
+      .select("group_id, assigned_at, role, active")
+      .in("group_id", groupIds)
+      .eq("role", "co_leader")
+      .eq("active", true),
+  ]);
+  if (groupsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/groups", groupsRes.error),
+    };
+  }
+  if (membershipsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/memberships", membershipsRes.error),
+    };
+  }
+  if (leadersRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchMultiplicationCandidatesForAdmin/leaders", leadersRes.error),
+    };
+  }
+
+  const groupById = new Map<string, MultiplicationCandidateGroup>();
+  for (const g of (groupsRes.data ?? []) as MultiplicationCandidateGroup[]) {
+    groupById.set(g.id, g);
+  }
+
+  const memberCountByGroup = new Map<string, number>();
+  for (const m of (membershipsRes.data ?? []) as { group_id: string }[]) {
+    memberCountByGroup.set(m.group_id, (memberCountByGroup.get(m.group_id) ?? 0) + 1);
+  }
+
+  const coShepherdSinceByGroup = new Map<string, string>();
+  for (const l of (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]) {
+    const current = coShepherdSinceByGroup.get(l.group_id);
+    if (current === undefined || l.assigned_at < current) {
+      coShepherdSinceByGroup.set(l.group_id, l.assigned_at);
+    }
+  }
+
+  const entries: MultiplicationCandidateEntry[] = candidates.map((candidate) => ({
+    candidate,
+    group: groupById.get(candidate.group_id) ?? null,
+    activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
+    coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+  }));
+
+  return { data: entries, error: null };
+}
+
 // Returns every row in group_metric_settings. RLS on the table restricts
 // reads to super_admin / ministry_admin, so calling this from any
 // non-admin context will surface as an empty result. Admin pages call
@@ -641,9 +770,11 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
   "created_by_profile_id, created_at";
 
 /**
- * Days-since-last-contact threshold used by the SC.1A "needs attention"
- * filter. Hard-coded for the first slice; revisit once Julian has
- * tried the workflow and may want a configurable threshold.
+ * Default days-since-last-contact threshold for the "needs attention"
+ * filter. Julian P1 made this operator-configurable via
+ * app_settings.metric_defaults.shepherd_care_stale_days; this constant is
+ * the fallback when no value is configured and the documented baseline.
+ * Mirrors BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days.
  */
 export const SHEPHERD_CARE_STALE_DAYS = 60;
 
@@ -698,13 +829,14 @@ export function differenceInDaysIso(today: string, then: string): number {
 export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
+  staleDays: number = SHEPHERD_CARE_STALE_DAYS,
 ): boolean {
   if (care === null) return true;
   if (care.last_contact_at === null) return true;
   if (care.next_touchpoint_due !== null && care.next_touchpoint_due < todayIso) {
     return true;
   }
-  if (differenceInDaysIso(todayIso, care.last_contact_at) > SHEPHERD_CARE_STALE_DAYS) {
+  if (differenceInDaysIso(todayIso, care.last_contact_at) > staleDays) {
     return true;
   }
   return false;
@@ -718,7 +850,7 @@ export function computeNeedsAttention(
  */
 export async function fetchShepherdCareDirectoryForAdmin(
   client: ReadClient,
-  options: { todayIso?: string } = {},
+  options: { todayIso?: string; staleDays?: number } = {},
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
     .from("profiles")
@@ -759,6 +891,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
   }
 
   const today = options.todayIso ?? currentUtcDateIso();
+  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
 
   const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
     (p) => {
@@ -770,7 +903,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
       return {
         profile,
         care,
-        needs_attention: computeNeedsAttention(care, today),
+        needs_attention: computeNeedsAttention(care, today, staleDays),
       };
     },
   );

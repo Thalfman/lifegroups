@@ -15,6 +15,8 @@ export function capacityStatusColor(status: CapacityStatus): string {
       return P.mustard;
     case "ok":
       return P.sage;
+    case "open_by_choice":
+      return P.sage;
     case "excluded":
       return P.ink3;
     case "unknown":
@@ -31,6 +33,8 @@ export function capacityStatusLabel(status: CapacityStatus): string {
       return "Near capacity";
     case "ok":
       return "OK";
+    case "open_by_choice":
+      return "Open (by choice)";
     case "unknown":
       return "Unknown";
     case "excluded":
