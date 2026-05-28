@@ -3,9 +3,11 @@ import type {
   AttentionItem,
   CapacityGroupRow,
   HealthGroupRow,
+  LaunchPlanningDashboardSnapshot,
   LeaderDashboardData,
   PipelineStageCount,
   SetupGapRow,
+  ShepherdCareDashboardSummary,
   UpcomingCalendarEvent,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
@@ -306,25 +308,6 @@ const fallbackAttention: AttentionItem[] = [
     isOverdue: false,
   },
   {
-    groupId: "fb-miss-1",
-    groupName: "Westside Families",
-    reason: "missing_check_in",
-    secondaryReasons: [],
-    detail: "No check-in submitted for the selected week",
-    priority: 20,
-    lifecycleStatus: "active",
-    leaderNames: ["Maria Lopez"],
-    meetingDay: "Sunday",
-    meetingTime: "17:00",
-    effectiveCapacity: 12,
-    activeMemberCount: 9,
-    sessionStatus: "no_session",
-    excludedFromCapacity: false,
-    dueLabel: "Monday, May 18 at 5:00 PM",
-    dueRelative: "due 18h ago",
-    isOverdue: true,
-  },
-  {
     groupId: "fb-cap-warn-1",
     groupName: "Downtown Professionals",
     reason: "capacity_warning",
@@ -342,6 +325,28 @@ const fallbackAttention: AttentionItem[] = [
     dueLabel: null,
     dueRelative: null,
     isOverdue: false,
+  },
+  // Julian admin OS pivot: missing_check_in is now priority 60 — below
+  // health_watch — so a weekly-cadence signal can't outrank shepherd-care /
+  // capacity reasons on the dashboard attention queue.
+  {
+    groupId: "fb-miss-1",
+    groupName: "Westside Families",
+    reason: "missing_check_in",
+    secondaryReasons: [],
+    detail: "No check-in submitted for the selected week",
+    priority: 60,
+    lifecycleStatus: "active",
+    leaderNames: ["Maria Lopez"],
+    meetingDay: "Sunday",
+    meetingTime: "17:00",
+    effectiveCapacity: 12,
+    activeMemberCount: 9,
+    sessionStatus: "no_session",
+    excludedFromCapacity: false,
+    dueLabel: "Monday, May 18 at 5:00 PM",
+    dueRelative: "due 18h ago",
+    isOverdue: true,
   },
   {
     groupId: "fb-cap-unknown-1",
@@ -383,6 +388,35 @@ const fallbackAttention: AttentionItem[] = [
   },
 ];
 
+const fallbackShepherdCare: ShepherdCareDashboardSummary = {
+  totalActiveShepherds: 24,
+  needsAttention: 3,
+  overdueTouchpoints: 2,
+  notContactedRecently: 4,
+  noCareProfile: 5,
+  unassignedCoverage: 6,
+  attentionItemsTotal: 7,
+  coverageAvailable: true,
+  available: true,
+  error: null,
+};
+
+const fallbackLaunchPlanning: LaunchPlanningDashboardSnapshot = {
+  effectiveTotalCapacity: 168,
+  currentParticipants: 142,
+  projectedGroupDemand: 180,
+  capacityGap: 18,
+  recommendedNewGroups: 2,
+  estimatedNewLeadersNeeded: 4,
+  riskLevel: "watch",
+  suggestedLaunchByDate: "2026-07-15",
+  unknownCapacityGroupCount: 1,
+  excludedActiveGroupCount: 1,
+  assumptionsAvailable: true,
+  available: true,
+  error: null,
+};
+
 export const ADMIN_FALLBACK: AdminDashboardData = {
   meetingWeek: FALLBACK_WEEK,
   weekLabel: FALLBACK_WEEK_LABEL,
@@ -395,6 +429,8 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
     capacityWatch: 3,
     unknownCapacity: 1,
   },
+  shepherdCare: fallbackShepherdCare,
+  launchPlanning: fallbackLaunchPlanning,
   attentionItems: fallbackAttention,
   capacitySummary: {
     full: fallbackCapacityFull,

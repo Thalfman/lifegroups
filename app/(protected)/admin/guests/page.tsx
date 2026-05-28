@@ -1,3 +1,9 @@
+// Hidden from nav (EXT.1 in docs/PRODUCT_ROADMAP.md) per the Julian
+// admin OS pivot — anything external lives behind a future scope
+// conversation with Julian + the comms director. The route still
+// resolves so existing bookmarks work, and the pipeline data is left
+// intact. No new work here without an EXT.1 spec. See
+// docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import {
   GuestsManagementShell,

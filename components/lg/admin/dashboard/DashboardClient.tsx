@@ -10,7 +10,13 @@ import { FollowUpsMini } from "./FollowUpsMini";
 import { WeeklyHealthBuckets } from "./WeeklyHealthBuckets";
 import { SetupGaps } from "./SetupGaps";
 import { WeekSelector } from "./WeekSelector";
+import { ShepherdCareTriageCard } from "./ShepherdCareTriageCard";
+import { LaunchPlanningSnapshotCard } from "./LaunchPlanningSnapshotCard";
 
+// Julian admin OS landing — shepherd care + launch planning lead, with
+// weekly check-in surfaces (Attention queue, Capacity, Follow-ups,
+// Weekly health) supporting below. See
+// docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the pivot rationale.
 export function DashboardClient({
   data,
   weekOptions,
@@ -22,6 +28,18 @@ export function DashboardClient({
     <PageBody>
       <div style={{ display: "grid", gap: 18 }}>
         <SummaryTiles summary={data.summary} />
+
+        <div
+          className="lg-shell-grid-2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.55fr 1fr",
+            gap: 18,
+          }}
+        >
+          <ShepherdCareTriageCard summary={data.shepherdCare} />
+          <LaunchPlanningSnapshotCard snapshot={data.launchPlanning} />
+        </div>
 
         <div
           className="lg-shell-grid-2"
@@ -62,7 +80,7 @@ export function DashboardClient({
                     marginTop: 4,
                   }}
                 >
-                  Prioritized — care signals first, capacity next.
+                  Prioritized — care + capacity signals first, weekly cadence after.
                 </div>
               </div>
               <WeekSelector
@@ -126,7 +144,7 @@ export function DashboardClient({
                 color: "var(--c-ink3)",
               }}
             >
-              Click a bucket to open that slice in Check-ins.
+              Check-in submission status for the selected week.
             </div>
           </div>
           <WeeklyHealthBuckets

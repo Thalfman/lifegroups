@@ -45,18 +45,22 @@ export function defaultLandingPathForRole(role: UserRole): string {
   return "/unauthorized";
 }
 
+// Julian admin OS ordering: shepherd care + launch planning lead, then
+// follow-ups (the leader-visible task queue), then operational
+// management (people, groups, calendar, check-ins). Guests is intentionally
+// omitted from nav per PRODUCT_ROADMAP.md EXT.1 — the route still resolves
+// for existing bookmarks.
 export function navItemsForRole(role: UserRole): { href: string; label: string }[] {
   const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
+    items.push({ href: "/admin/shepherd-care", label: "Shepherd care" });
+    items.push({ href: "/admin/launch-planning", label: "Launch planning" });
+    items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
     items.push({ href: "/admin/people", label: "People" });
     items.push({ href: "/admin/groups", label: "Groups" });
     items.push({ href: "/admin/calendar", label: "Calendar" });
     items.push({ href: "/admin/check-ins", label: "Check-ins" });
-    items.push({ href: "/admin/guests", label: "Guests" });
-    items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
-    items.push({ href: "/admin/shepherd-care", label: "Shepherd care" });
-    items.push({ href: "/admin/launch-planning", label: "Launch planning" });
     items.push({ href: "/admin/settings", label: "Settings" });
     if (role === "super_admin") {
       items.push({ href: "/admin/super-admin", label: "Super admin" });
@@ -82,11 +86,27 @@ export interface AdminNavGroup {
 }
 
 export function adminNavGroups(role: UserRole): AdminNavGroup[] {
+  // Julian admin OS pivot (2026-05): the "shepherd" group now leads with
+  // the admin-OS spine (shepherd care, launch planning, follow-ups) and
+  // is labeled "Admin OS". The "manage" group holds operational surfaces
+  // and ends with Check-ins (formerly second in the list, now demoted).
+  // Guests is intentionally dropped from nav per PRODUCT_ROADMAP.md
+  // EXT.1; the route still resolves so existing bookmarks work. See
+  // docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the pivot rationale.
   const groups: AdminNavGroup[] = [
     {
       group: "top",
       label: "",
-      items: [{ href: "/admin", label: "This week", icon: "sun" }],
+      items: [{ href: "/admin", label: "Admin", icon: "sun" }],
+    },
+    {
+      group: "shepherd",
+      label: "Admin OS",
+      items: [
+        { href: "/admin/shepherd-care", label: "Shepherd care", icon: "heart" },
+        { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
+        { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
+      ],
     },
     {
       group: "manage",
@@ -94,18 +114,8 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       items: [
         { href: "/admin/people", label: "People", icon: "people" },
         { href: "/admin/groups", label: "Groups", icon: "groups" },
-        { href: "/admin/check-ins", label: "Check-ins", icon: "check" },
-      ],
-    },
-    {
-      group: "shepherd",
-      label: "Shepherd",
-      items: [
-        { href: "/admin/guests", label: "Guests", icon: "sprout" },
-        { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
-        { href: "/admin/shepherd-care", label: "Shepherd care", icon: "heart" },
-        { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
         { href: "/admin/calendar", label: "Calendar", icon: "cal" },
+        { href: "/admin/check-ins", label: "Check-ins", icon: "check" },
       ],
     },
     {

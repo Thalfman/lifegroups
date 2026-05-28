@@ -9,6 +9,7 @@ import type {
   GuestPipelineStage,
 } from "@/types/enums";
 import type { CapacityStatus } from "@/lib/admin/metrics";
+import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
 
 export type DashboardSource = "live" | "fallback";
 
@@ -162,6 +163,41 @@ export interface AdminSummary {
   unknownCapacity: number;
 }
 
+// Julian admin OS spine — surfaced on the /admin landing so shepherd
+// care + launch planning lead the dashboard instead of weekly check-in
+// status. Both summaries are computed from the same helpers the deep
+// pages use (lib/admin/shepherd-care-dashboard, lib/admin/launch-planning)
+// so the dashboard never drifts from /admin/shepherd-care or
+// /admin/launch-planning.
+export interface ShepherdCareDashboardSummary {
+  totalActiveShepherds: number;
+  needsAttention: number;
+  overdueTouchpoints: number;
+  notContactedRecently: number;
+  noCareProfile: number;
+  unassignedCoverage: number;
+  attentionItemsTotal: number;
+  coverageAvailable: boolean;
+  available: boolean;
+  error: string | null;
+}
+
+export interface LaunchPlanningDashboardSnapshot {
+  effectiveTotalCapacity: number;
+  currentParticipants: number;
+  projectedGroupDemand: number;
+  capacityGap: number;
+  recommendedNewGroups: number;
+  estimatedNewLeadersNeeded: number;
+  riskLevel: LaunchPlanningRiskLevel;
+  suggestedLaunchByDate: string | null;
+  unknownCapacityGroupCount: number;
+  excludedActiveGroupCount: number;
+  assumptionsAvailable: boolean;
+  available: boolean;
+  error: string | null;
+}
+
 export interface AdminDashboardData {
   meetingWeek: string;
   weekLabel: string;
@@ -174,6 +210,8 @@ export interface AdminDashboardData {
   guestPipelineCount: number;
   guestPipelineBreakdown: PipelineStageCount[];
   followUps: FollowUpItem[];
+  shepherdCare: ShepherdCareDashboardSummary;
+  launchPlanning: LaunchPlanningDashboardSnapshot;
 }
 
 // Leader dashboard model is untouched by Phase 6.0.

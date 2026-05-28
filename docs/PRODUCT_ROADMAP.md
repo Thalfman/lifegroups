@@ -96,6 +96,14 @@ current roadmap does not yet model.
 
 Verified from repo inspection on the branch this PR is opened against.
 
+> **2026-05 surface audit.** The `/admin` dashboard was reoriented to
+> lead with shepherd care + launch planning instead of weekly check-ins;
+> the sidebar's "Shepherd" group became "Admin OS" and now leads with
+> Shepherd care and Launch planning, Guests was removed from nav, and
+> the `missing_check_in` attention priority moved from 20 → 65. See
+> [`PRODUCT_SURFACE_AUDIT_2026-05.md`](./PRODUCT_SURFACE_AUDIT_2026-05.md)
+> for the before/after, the rationale, and how to reverse it.
+
 **Stack**
 - Next.js (App Router, route groups) + TypeScript + Tailwind.
 - Supabase (Auth + Postgres + RLS + Edge Functions).

@@ -1,3 +1,9 @@
+// Demoted on the Julian admin OS landing (2026-05). This page remains
+// functional — it is the operational review surface for weekly leader
+// check-ins — but it is no longer the headline. The /admin dashboard
+// now leads with shepherd care and launch planning; missing_check_in
+// dropped from priority 20 to 65 in the attention queue. See
+// docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { CheckInReviewShell } from "@/components/admin/check-in-review-shell";
 import { requireAdmin } from "@/lib/auth/session";

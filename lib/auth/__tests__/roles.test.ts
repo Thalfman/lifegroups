@@ -85,10 +85,34 @@ describe("adminNavGroups", () => {
     expect(system!.items.map((i) => i.href)).not.toContain("/admin/super-admin");
   });
 
+  // Julian admin OS pivot (2026-05): the "shepherd" group leads
+  // operational manage now, and is labeled "Admin OS" in the UI. See
+  // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
   it("returns the same four group keys regardless of role", () => {
-    const expected = ["top", "manage", "shepherd", "system"];
+    const expected = ["top", "shepherd", "manage", "system"];
     for (const role of ALL_ROLES) {
       expect(adminNavGroups(role).map((g) => g.group)).toEqual(expected);
+    }
+  });
+
+  it("leads the shepherd group with shepherd care + launch planning", () => {
+    const groups = adminNavGroups("ministry_admin");
+    const shepherd = groups.find((g) => g.group === "shepherd");
+    expect(shepherd).toBeDefined();
+    expect(shepherd!.label).toBe("Admin OS");
+    expect(shepherd!.items.map((i) => i.href)).toEqual([
+      "/admin/shepherd-care",
+      "/admin/launch-planning",
+      "/admin/follow-ups",
+    ]);
+  });
+
+  it("drops /admin/guests from nav for both admin roles", () => {
+    for (const role of ["super_admin", "ministry_admin"] as const) {
+      const allHrefs = adminNavGroups(role).flatMap((g) =>
+        g.items.map((i) => i.href),
+      );
+      expect(allHrefs).not.toContain("/admin/guests");
     }
   });
 });
