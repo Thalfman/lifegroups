@@ -1,3 +1,8 @@
+// LDR.1 (deferred per docs/PRODUCT_ROADMAP.md). The leader surface is in
+// maintenance: it still must work for assigned leaders to submit
+// check-ins and view their calendar, but it is not the headline product.
+// No new leader-facing features without Julian's explicit go-ahead. See
+// docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PastoralAppShell } from "@/components/pastoral/shell";
 import { EmptyState } from "@/components/dashboard/cards";
 import { UserPill } from "@/components/auth/user-pill";
@@ -51,7 +56,7 @@ export default async function LeaderPage({
   const lede =
     groupCount === 0
       ? "No active assignments yet. A ministry admin will route a group your way."
-      : "Help your group stay connected. Submit this week's check-in and follow up well.";
+      : "Your assigned groups, follow-ups, and weekly check-ins.";
 
   return (
     <PastoralAppShell

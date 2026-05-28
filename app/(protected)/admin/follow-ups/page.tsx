@@ -71,8 +71,7 @@ export default async function AdminFollowUpsPage() {
       <PageHeader
         eyebrow="Follow-ups"
         title="Follow-ups"
-        italic="& care"
-        lede="Open follow-ups tied to a group, member, guest, or leader. Mark in progress when you start. Mark done when it lands. Leaders see only the items assigned to them."
+        lede="Open follow-ups tied to a group, member, guest, or leader. Leader-visible task queue — admin-only shepherd-care notes live in Shepherd care, not here. Mark in progress when you start. Mark done when it lands."
       />
       <PageBody>
         <AdminFollowUpsShell data={data} />

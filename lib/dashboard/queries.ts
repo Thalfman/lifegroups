@@ -1,7 +1,9 @@
 import {
   GUEST_PIPELINE_STAGES,
+  currentUtcDateIso,
   fetchActiveGroupCount,
   fetchActiveMemberships,
+  fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchAllGroupLeaders,
   fetchAllGroupMetricSettings,
   fetchAllGroups,
@@ -11,11 +13,14 @@ import {
   fetchGroupsByIds,
   fetchGuests,
   fetchLatestHealthUpdates,
+  fetchLaunchPlanningAssumptions,
   fetchMembersByIds,
   fetchMetricDefaults,
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
+  fetchOverShepherdsForAdmin,
   fetchProfilesForAdmin,
+  fetchShepherdCareDirectoryForAdmin,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
@@ -31,6 +36,7 @@ import type {
   HealthBucket,
   HealthGroupRow,
   HealthSummary,
+  LaunchPlanningDashboardSnapshot,
   LeaderCurrentWeek,
   LeaderDashboardData,
   LeaderGroupDashboard,
@@ -38,7 +44,17 @@ import type {
   SetupGap,
   SetupGapRow,
   SetupGaps,
+  ShepherdCareDashboardSummary,
 } from "./types";
+import {
+  buildShepherdCareDashboardModel,
+  countAllAttentionItems,
+} from "@/lib/admin/shepherd-care-dashboard";
+import {
+  buildLaunchPlanningInputs,
+  computeLaunchPlan,
+  decodeLaunchPlanningAssumptions,
+} from "@/lib/admin/launch-planning";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 import { pipelineStageLabel } from "./labels";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
@@ -204,13 +220,18 @@ type DerivedGroupRow = {
   isScheduledThisWeek: boolean;
 };
 
+// Julian admin OS pivot (2026-05): missing_check_in dropped from priority
+// 20 to 65 so a weekly-cadence signal never outranks shepherd-care or
+// capacity reasons on the landing dashboard. The Check-ins page still
+// surfaces it as its primary signal; the dashboard just stops leading
+// with it.
 const ATTENTION_PRIORITY: Record<AttentionReason, number> = {
   follow_up_open: 10,
-  missing_check_in: 20,
   capacity_full: 30,
   capacity_warning: 40,
   health_needs_follow_up: 50,
   health_watch: 60,
+  missing_check_in: 65,
   capacity_unknown: 70,
   no_leader: 80,
   no_members: 90,
@@ -564,6 +585,141 @@ function buildAttentionItems(rows: DerivedGroupRow[]): AttentionItem[] {
   return items;
 }
 
+function buildShepherdCareSummary(
+  shepherdDirectoryRes: Awaited<
+    ReturnType<typeof fetchShepherdCareDirectoryForAdmin>
+  >,
+  overShepherdsRes: Awaited<ReturnType<typeof fetchOverShepherdsForAdmin>>,
+  assignmentsRes: Awaited<
+    ReturnType<typeof fetchActiveShepherdCoverageAssignmentsForAdmin>
+  >,
+  staleDays: number,
+  todayIso: string,
+): ShepherdCareDashboardSummary {
+  if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
+    return {
+      totalActiveShepherds: 0,
+      needsAttention: 0,
+      overdueTouchpoints: 0,
+      notContactedRecently: 0,
+      noCareProfile: 0,
+      unassignedCoverage: 0,
+      attentionItemsTotal: 0,
+      coverageAvailable: false,
+      available: false,
+      error: shepherdDirectoryRes.error?.message ?? "unavailable",
+    };
+  }
+  const assignmentsAvailable = assignmentsRes.error === null;
+  const model = buildShepherdCareDashboardModel({
+    entries: shepherdDirectoryRes.data,
+    assignments: assignmentsRes.data ?? [],
+    overShepherds: overShepherdsRes.data ?? [],
+    recentInteractions: [],
+    todayIso,
+    assignmentsAvailable,
+    staleDays,
+  });
+  const attentionItemsTotal = countAllAttentionItems(
+    shepherdDirectoryRes.data,
+    assignmentsRes.data ?? [],
+    todayIso,
+    { coverageAvailable: assignmentsAvailable, staleDays },
+  );
+  return {
+    totalActiveShepherds: model.summary.totalActiveShepherds,
+    needsAttention: model.summary.needsAttention,
+    overdueTouchpoints: model.summary.overdueTouchpoints,
+    notContactedRecently: model.summary.notContactedRecently,
+    noCareProfile: model.summary.noCareProfile,
+    unassignedCoverage: model.summary.unassignedCoverage,
+    attentionItemsTotal,
+    coverageAvailable: model.coverageAvailable,
+    available: true,
+    // If the coverage assignments read failed, surface the error so the
+    // dashboard card can warn that the unassigned-coverage count and the
+    // no_over_shepherd reason are suppressed — matches the explicit
+    // error banner shown on /admin/shepherd-care.
+    error: assignmentsAvailable
+      ? null
+      : (assignmentsRes.error?.message ?? "Coverage data unavailable."),
+  };
+}
+
+function buildLaunchPlanningSnapshot(
+  assumptionsRes: Awaited<ReturnType<typeof fetchLaunchPlanningAssumptions>>,
+  derivedRows: DerivedGroupRow[],
+  defaults: MetricDefaults,
+): LaunchPlanningDashboardSnapshot {
+  // Failed assumption reads (transient DB/RLS) must surface as an
+  // explicit "unavailable" state — otherwise the dashboard quietly
+  // recommends a launch plan against built-in defaults while
+  // /admin/launch-planning shows an error banner. The two surfaces must
+  // not contradict each other.
+  if (assumptionsRes.error) {
+    return emptyLaunchPlanningSnapshot(assumptionsRes.error.message);
+  }
+  const assumptionsAvailable = assumptionsRes.data != null;
+  // decodeLaunchPlanningAssumptions(null, defaults) already folds the
+  // configured metric defaults (e.g. default_group_capacity ->
+  // average_group_size) into the fallback, matching what
+  // /admin/launch-planning uses. Always use the decoded value so the
+  // dashboard and the deep page agree in unseeded environments.
+  const assumptions = decodeLaunchPlanningAssumptions(
+    assumptionsRes.data ?? null,
+    defaults,
+  );
+  const inputs = buildLaunchPlanningInputs({
+    groups: derivedRows.map((r) => r.group),
+    overrides: derivedRows
+      .map((r) => r.override)
+      .filter((o): o is NonNullable<typeof o> => o !== null),
+    memberships: derivedRows.flatMap((r) =>
+      Array.from({ length: r.activeMemberCount }, () => ({
+        group_id: r.group.id,
+        status: "active" as const,
+      })),
+    ),
+    metricDefaults: defaults,
+  });
+  const outputs = computeLaunchPlan(assumptions, inputs);
+  return {
+    effectiveTotalCapacity: inputs.effective_total_capacity,
+    currentParticipants: inputs.current_participants,
+    projectedGroupDemand: outputs.projected_group_demand,
+    capacityGap: outputs.capacity_gap,
+    recommendedNewGroups: outputs.recommended_new_groups,
+    estimatedNewLeadersNeeded: outputs.estimated_new_leaders_needed,
+    riskLevel: outputs.risk_level,
+    suggestedLaunchByDate: outputs.suggested_launch_by_date,
+    unknownCapacityGroupCount: inputs.unknown_capacity_group_count,
+    excludedActiveGroupCount: inputs.excluded_active_group_count,
+    assumptionsAvailable,
+    available: true,
+    error: null,
+  };
+}
+
+function emptyLaunchPlanningSnapshot(
+  errorMessage: string,
+): LaunchPlanningDashboardSnapshot {
+  return {
+    effectiveTotalCapacity: 0,
+    currentParticipants: 0,
+    projectedGroupDemand: 0,
+    capacityGap: 0,
+    recommendedNewGroups: 0,
+    estimatedNewLeadersNeeded: 0,
+    riskLevel: "ok",
+    suggestedLaunchByDate: null,
+    unknownCapacityGroupCount: 0,
+    excludedActiveGroupCount: 0,
+    assumptionsAvailable: false,
+    available: false,
+    error: errorMessage,
+  };
+}
+
 export async function getAdminDashboardData(
   client: AppSupabaseClient | null,
   options: { selectedWeek?: string; now?: Date } = {},
@@ -580,6 +736,22 @@ export async function getAdminDashboardData(
     // per-group round trip. We fetch a one-week window (Mon..Sun) -- the
     // override resolver narrows further.
     const weekEnd = addDaysIsoForWeek(selectedWeek, 6);
+    // Pin "today" once so the shepherd-care summary uses the same
+    // calendar day for needs_attention math and the dashboard for any
+    // request-bound timing.
+    const todayIso = currentUtcDateIso();
+
+    // Resolve metric defaults first so the shepherd-care directory fetch
+    // can bake `entry.needs_attention` against the configured
+    // stale-contact window — without this, /admin would compute the
+    // headline "Needs attention" count against the built-in 60-day
+    // default while /admin/shepherd-care uses the configured window,
+    // and the two surfaces would disagree. Mirrors the loader pattern in
+    // app/(protected)/admin/shepherd-care/page.tsx.
+    const metricDefaultsResult = await fetchMetricDefaults(client);
+    const defaultsForRead = decodeMetricDefaults(
+      metricDefaultsResult.data ?? null,
+    );
 
     const [
       groupsResult,
@@ -591,9 +763,12 @@ export async function getAdminDashboardData(
       sessionsResult,
       leadersResult,
       profilesResult,
-      metricDefaultsResult,
       metricSettingsResult,
       calendarEventsResult,
+      shepherdDirectoryResult,
+      overShepherdsResult,
+      shepherdAssignmentsResult,
+      launchAssumptionsResult,
     ] = await Promise.all([
       fetchAllGroups(client),
       fetchActiveGroupCount(client),
@@ -604,13 +779,22 @@ export async function getAdminDashboardData(
       fetchAttendanceSessions(client, { meetingWeek: selectedWeek }),
       fetchAllGroupLeaders(client, { activeOnly: true }),
       fetchProfilesForAdmin(client),
-      fetchMetricDefaults(client),
       fetchAllGroupMetricSettings(client),
       fetchGroupCalendarEvents(client, {
         fromDate: selectedWeek,
         toDate: weekEnd,
         includeArchived: false,
       }),
+      // Julian admin-OS spine reads. Failures here degrade gracefully —
+      // the dashboard surfaces "unavailable" cards rather than failing
+      // the whole page.
+      fetchShepherdCareDirectoryForAdmin(client, {
+        todayIso,
+        staleDays: defaultsForRead.shepherd_care_stale_days,
+      }),
+      fetchOverShepherdsForAdmin(client, { includeArchived: true }),
+      fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+      fetchLaunchPlanningAssumptions(client),
     ]);
 
     const firstError =
@@ -670,7 +854,7 @@ export async function getAdminDashboardData(
       followUpsByGroup.set(fu.related_group_id, list);
     }
 
-    const defaults = decodeMetricDefaults(metricDefaultsResult.data);
+    const defaults = defaultsForRead;
 
     const derivedRows: DerivedGroupRow[] = groups.map((g) => {
       const override = metricSettingsByGroup.get(g.id) ?? null;
@@ -817,6 +1001,23 @@ export async function getAdminDashboardData(
       unknownCapacity: capacitySummary.counts.unknown,
     };
 
+    // Julian admin OS spine summaries. These are the headline cards on
+    // /admin under the new direction; if either read failed above, the
+    // helper returns an explicit "unavailable" state so the dashboard
+    // card can render a message rather than silently zeroing.
+    const shepherdCare = buildShepherdCareSummary(
+      shepherdDirectoryResult,
+      overShepherdsResult,
+      shepherdAssignmentsResult,
+      defaults.shepherd_care_stale_days,
+      todayIso,
+    );
+    const launchPlanning = buildLaunchPlanningSnapshot(
+      launchAssumptionsResult,
+      derivedRows,
+      defaults,
+    );
+
     return live({
       meetingWeek: selectedWeek,
       weekLabel: formatWeekLabel(selectedWeek),
@@ -829,6 +1030,8 @@ export async function getAdminDashboardData(
       guestPipelineCount,
       guestPipelineBreakdown: pipelineBreakdown,
       followUps: followUpItems,
+      shepherdCare,
+      launchPlanning,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

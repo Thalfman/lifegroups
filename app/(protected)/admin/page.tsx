@@ -27,9 +27,10 @@ export default async function AdminPage({
   return (
     <>
       <PageHeader
-        eyebrow="This week"
-        title="This week"
-        lede="Supporting Life Groups as they tell and show the story of Jesus. See what needs attention this week."
+        eyebrow="Admin OS"
+        title="Shepherd care"
+        italic="and launch planning"
+        lede="Who needs your attention, and whether the church needs more groups soon. Weekly check-in status is below."
       />
       <DashboardClient data={data} weekOptions={weekOptions} />
     </>
