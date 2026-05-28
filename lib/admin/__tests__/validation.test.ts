@@ -13,6 +13,7 @@ import {
   validateInviteUserPayload,
   validateLaunchPlanningAssumptionsPayload,
   validateLogShepherdCareInteractionPayload,
+  validateMetricDefaultsPayload,
   validateScenarioIdPayload,
   validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
@@ -926,5 +927,27 @@ describe("validateScenarioIdPayload", () => {
     });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.scenario_id).toBe(UUID_A);
+  });
+});
+
+describe("validateMetricDefaultsPayload — shepherd_care_stale_days (Julian P1)", () => {
+  it("accepts an in-range value", () => {
+    const r = validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.shepherd_care_stale_days).toBe(30);
+  });
+
+  it("rejects values below 7 and above 365", () => {
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 6 }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 366 }).ok).toBe(false);
+  });
+
+  it("rejects non-integers", () => {
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: "soon" }).ok).toBe(false);
+  });
+
+  it("accepts the 7 and 365 boundaries", () => {
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 7 }).ok).toBe(true);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 365 }).ok).toBe(true);
   });
 });

@@ -96,6 +96,9 @@ export type BuildShepherdCareDashboardModelInput = {
   // errored so coverage-dependent surfaces (unassigned count, coverage
   // buckets, no_over_shepherd queue reason) can be safely suppressed.
   assignmentsAvailable?: boolean;
+  // Julian P1: configured stale-contact window. Defaults to the documented
+  // 60-day baseline when omitted so existing callers/tests keep working.
+  staleDays?: number;
   limits?: {
     attention?: number;
     upcoming?: number;
@@ -132,6 +135,7 @@ function detailForReason(
   reason: CareAttentionReason,
   entry: ShepherdCareDirectoryEntry,
   todayIso: string,
+  staleDays: number,
 ): string {
   const care = entry.care;
   switch (reason) {
@@ -157,7 +161,7 @@ function detailForReason(
           ? "Last contact 1 day ago"
           : `Last contact ${days} days ago`;
       }
-      return `No contact in over ${SHEPHERD_CARE_STALE_DAYS} days`;
+      return `No contact in over ${staleDays} days`;
     }
     case "no_over_shepherd":
       return "No over-shepherd assigned";
@@ -171,6 +175,7 @@ function detectReasons(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
+  staleDays: number,
 ): CareAttentionReason[] {
   const reasons: CareAttentionReason[] = [];
   const care = entry.care;
@@ -184,7 +189,7 @@ function detectReasons(
   if (care === null || care.last_contact_at === null) {
     reasons.push("no_contact_yet");
   } else if (
-    differenceInDaysIso(todayIso, care.last_contact_at) > SHEPHERD_CARE_STALE_DAYS
+    differenceInDaysIso(todayIso, care.last_contact_at) > staleDays
   ) {
     reasons.push("stale_last_contact");
   }
@@ -205,10 +210,17 @@ function buildAttentionQueue(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
+  staleDays: number,
 ): CareAttentionItem[] {
   const items: CareAttentionItem[] = [];
   for (const entry of entries) {
-    const reasons = detectReasons(entry, assignedShepherdIds, todayIso, coverageAvailable);
+    const reasons = detectReasons(
+      entry,
+      assignedShepherdIds,
+      todayIso,
+      coverageAvailable,
+      staleDays,
+    );
     if (reasons.length === 0) continue;
     reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
     const [primary, ...secondary] = reasons;
@@ -217,7 +229,7 @@ function buildAttentionQueue(
       shepherdName: entry.profile.full_name,
       reason: primary,
       secondaryReasons: secondary,
-      detail: detailForReason(primary, entry, todayIso),
+      detail: detailForReason(primary, entry, todayIso, staleDays),
       priority: REASON_PRIORITY[primary],
       href: shepherdHref(entry.profile.id),
     });
@@ -234,6 +246,7 @@ function buildSummary(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
+  staleDays: number,
 ): CareDashboardSummary {
   let needsAttention = 0;
   let overdueTouchpoints = 0;
@@ -249,7 +262,7 @@ function buildSummary(
     }
     if (
       entry.care?.last_contact_at &&
-      differenceInDaysIso(todayIso, entry.care.last_contact_at) > SHEPHERD_CARE_STALE_DAYS
+      differenceInDaysIso(todayIso, entry.care.last_contact_at) > staleDays
     ) {
       notContactedRecently += 1;
     }
@@ -357,6 +370,7 @@ export function buildShepherdCareDashboardModel(
 ): ShepherdCareDashboardModel {
   const limits = { ...DEFAULT_LIMITS, ...(input.limits ?? {}) };
   const coverageAvailable = input.assignmentsAvailable ?? true;
+  const staleDays = input.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
   const assignedShepherdIds = new Set<string>();
   for (const a of input.assignments) {
     assignedShepherdIds.add(a.shepherd_profile_id);
@@ -367,12 +381,14 @@ export function buildShepherdCareDashboardModel(
     assignedShepherdIds,
     input.todayIso,
     coverageAvailable,
+    staleDays,
   );
   const fullQueue = buildAttentionQueue(
     input.entries,
     assignedShepherdIds,
     input.todayIso,
     coverageAvailable,
+    staleDays,
   );
 
   return {
@@ -404,14 +420,15 @@ export function countAllAttentionItems(
   entries: ShepherdCareDirectoryEntry[],
   assignments: ActiveShepherdCoverageAssignmentSummary[],
   todayIso: string,
-  options: { coverageAvailable?: boolean } = {},
+  options: { coverageAvailable?: boolean; staleDays?: number } = {},
 ): number {
   const coverageAvailable = options.coverageAvailable ?? true;
+  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
   const ids = new Set<string>();
   for (const a of assignments) ids.add(a.shepherd_profile_id);
   let total = 0;
   for (const entry of entries) {
-    if (detectReasons(entry, ids, todayIso, coverageAvailable).length > 0) {
+    if (detectReasons(entry, ids, todayIso, coverageAvailable, staleDays).length > 0) {
       total += 1;
     }
   }

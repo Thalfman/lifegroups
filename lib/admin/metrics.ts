@@ -36,6 +36,10 @@ export type MetricDefaults = {
   // Phase 5A.5: hours after a group's scheduled meeting time before its
   // check-in is considered overdue. 24 = "due 24 hours after meeting".
   check_in_due_offset_hours: number;
+  // Julian P1: days since last shepherd contact before the care dashboard
+  // flags the shepherd as stale ("haven't connected in N weeks"). 60 = the
+  // original hardcoded window, now operator-configurable.
+  shepherd_care_stale_days: number;
 };
 
 // Documented baseline values. Mirrors the Phase 5A.5 reset RPC so
@@ -49,6 +53,7 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   missed_checkin_warning_weeks: 2,
   default_healthy_attendance_pct: 60,
   check_in_due_offset_hours: 24,
+  shepherd_care_stale_days: 60,
 };
 
 function readJsonInt(
@@ -112,6 +117,11 @@ export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults
       source,
       "check_in_due_offset_hours",
       BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours,
+    ),
+    shepherd_care_stale_days: readJsonInt(
+      source,
+      "shepherd_care_stale_days",
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days,
     ),
   };
 }

@@ -438,4 +438,52 @@ describe("buildShepherdCareDashboardModel", () => {
     expect(model.attentionQueue).toHaveLength(6);
     expect(countAllAttentionItems(entries, [], TODAY)).toBe(12);
   });
+
+  // Julian P1: the stale-contact window is configurable. A shepherd last
+  // contacted 40 days ago is fresh at the default 60-day window but stale
+  // at a tightened 30-day window.
+  describe("configurable staleDays threshold", () => {
+    const FORTY_DAYS_AGO = "2026-04-12"; // 40 days before TODAY (2026-05-22)
+
+    const entries = [
+      entry(UUID_1, "Anna One", careRow(UUID_1, { last: FORTY_DAYS_AGO })),
+    ];
+
+    it("does not flag stale contact at the default 60-day window", () => {
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        todayIso: TODAY,
+      });
+      expect(model.summary.notContactedRecently).toBe(0);
+      expect(model.attentionQueue).toEqual([]);
+      expect(
+        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY),
+      ).toBe(0);
+    });
+
+    it("flags stale contact once the window tightens to 30 days", () => {
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        todayIso: TODAY,
+        staleDays: 30,
+      });
+      expect(model.summary.notContactedRecently).toBe(1);
+      expect(model.attentionQueue).toHaveLength(1);
+      expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
+        "stale_last_contact",
+      );
+      expect(model.attentionQueue[0].detail).toBe("Last contact 40 days ago");
+      expect(
+        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY, {
+          staleDays: 30,
+        }),
+      ).toBe(1);
+    });
+  });
 });

@@ -641,9 +641,11 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
   "created_by_profile_id, created_at";
 
 /**
- * Days-since-last-contact threshold used by the SC.1A "needs attention"
- * filter. Hard-coded for the first slice; revisit once Julian has
- * tried the workflow and may want a configurable threshold.
+ * Default days-since-last-contact threshold for the "needs attention"
+ * filter. Julian P1 made this operator-configurable via
+ * app_settings.metric_defaults.shepherd_care_stale_days; this constant is
+ * the fallback when no value is configured and the documented baseline.
+ * Mirrors BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days.
  */
 export const SHEPHERD_CARE_STALE_DAYS = 60;
 
@@ -698,13 +700,14 @@ export function differenceInDaysIso(today: string, then: string): number {
 export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
+  staleDays: number = SHEPHERD_CARE_STALE_DAYS,
 ): boolean {
   if (care === null) return true;
   if (care.last_contact_at === null) return true;
   if (care.next_touchpoint_due !== null && care.next_touchpoint_due < todayIso) {
     return true;
   }
-  if (differenceInDaysIso(todayIso, care.last_contact_at) > SHEPHERD_CARE_STALE_DAYS) {
+  if (differenceInDaysIso(todayIso, care.last_contact_at) > staleDays) {
     return true;
   }
   return false;
@@ -718,7 +721,7 @@ export function computeNeedsAttention(
  */
 export async function fetchShepherdCareDirectoryForAdmin(
   client: ReadClient,
-  options: { todayIso?: string } = {},
+  options: { todayIso?: string; staleDays?: number } = {},
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
     .from("profiles")
@@ -759,6 +762,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
   }
 
   const today = options.todayIso ?? currentUtcDateIso();
+  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
 
   const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
     (p) => {
@@ -770,7 +774,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
       return {
         profile,
         care,
-        needs_attention: computeNeedsAttention(care, today),
+        needs_attention: computeNeedsAttention(care, today, staleDays),
       };
     },
   );

@@ -177,6 +177,26 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
           />
           <p style={hintStyle}>0–100. Below this is flagged as low.</p>
         </div>
+
+        <div>
+          <label htmlFor="shepherd_care_stale_days" style={fieldLabelStyle}>
+            Shepherd care stale-contact (days)
+          </label>
+          <input
+            id="shepherd_care_stale_days"
+            name="shepherd_care_stale_days"
+            type="number"
+            min={7}
+            max={365}
+            inputMode="numeric"
+            defaultValue={defaults.shepherd_care_stale_days}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Days since last contact before a shepherd is flagged on the care
+            dashboard. 7–365.
+          </p>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
