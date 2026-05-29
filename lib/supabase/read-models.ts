@@ -753,12 +753,18 @@ export async function fetchRecentAuditEvents(
  * RLS already restricts SELECT to super_admin / ministry_admin (NOT
  * staff_viewer); this allowlist is the defensive belt-and-braces.
  *
+ * admin_summary is NOT a column here any more — phase_os5 moved it to the
+ * fenced, admin-only shepherd_care_admin_notes table so RLS (not just the app
+ * allowlist) keeps it off the over_shepherd coverage path. The admin
+ * single-profile read re-attaches it from that table; see
+ * `fetchShepherdCareProfileByShepherdId`.
+ *
  * If you add a column, also extend `ShepherdCareProfilesRow` in
  * types/database.ts.
  */
 export const SHEPHERD_CARE_PROFILE_COLUMNS =
   "id, shepherd_profile_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, admin_summary, archived_at, created_at, updated_at";
+  "next_touchpoint_due, archived_at, created_at, updated_at";
 
 /**
  * Admin-only column allowlist for shepherd_care_interactions. Same
@@ -807,7 +813,10 @@ export type ShepherdCareDirectorySummary = Pick<
   | "updated_at"
 >;
 
-const SHEPHERD_CARE_DIRECTORY_COLUMNS =
+// Exported so the coverage-scoped Over-Shepherd reader projects the exact same
+// (admin_summary-free) care columns from one source of truth, rather than
+// maintaining a byte-identical copy.
+export const SHEPHERD_CARE_DIRECTORY_COLUMNS =
   "id, shepherd_profile_id, current_status, last_contact_at, " +
   "next_touchpoint_due, archived_at, created_at, updated_at";
 
@@ -816,6 +825,35 @@ export type ShepherdCareDirectoryEntry = {
   care: ShepherdCareDirectorySummary | null;
   needs_attention: boolean;
 };
+
+/**
+ * Join a set of directory profiles with their care rows in TS (so a profile
+ * with no care row still appears as "needs first contact") and stamp each
+ * entry's needs_attention. Shared by the admin directory and the coverage-
+ * scoped Over-Shepherd directory so the assembly + needs_attention wiring
+ * lives in one place. Both callers pre-scope which profiles/care rows they
+ * read; this only assembles.
+ */
+export function buildCareDirectoryEntries(
+  profiles: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">[],
+  careRows: ShepherdCareDirectorySummary[],
+  options: { todayIso?: string; staleDays?: number } = {},
+): ShepherdCareDirectoryEntry[] {
+  const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
+  for (const row of careRows) careByShepherdId.set(row.shepherd_profile_id, row);
+
+  const today = options.todayIso ?? currentUtcDateIso();
+  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
+
+  return profiles.map((profile) => {
+    const care = careByShepherdId.get(profile.id) ?? null;
+    return {
+      profile,
+      care,
+      needs_attention: computeNeedsAttention(care, today, staleDays),
+    };
+  });
+}
 
 export function differenceInDaysIso(today: string, then: string): number {
   // Both inputs are YYYY-MM-DD; Date.parse with the ISO string at midnight UTC
@@ -873,7 +911,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
   // doesn't ship every care row in the database to the directory page.
   // Skipping the fetch entirely when there are no shepherd ids keeps
   // the PostgREST `.in("col", [])` edge case off the wire.
-  const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
+  let careRows: ShepherdCareDirectorySummary[] = [];
   if (shepherdIds.length > 0) {
     const careQuery = await client
       .from("shepherd_care_profiles")
@@ -885,30 +923,18 @@ export async function fetchShepherdCareDirectoryForAdmin(
         error: wrapError("fetchShepherdCareDirectoryForAdmin/care", careQuery.error),
       };
     }
-    for (const row of (careQuery.data ?? []) as ShepherdCareDirectorySummary[]) {
-      careByShepherdId.set(row.shepherd_profile_id, row);
-    }
+    careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
   }
 
-  const today = options.todayIso ?? currentUtcDateIso();
-  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
+  const profiles = (profilesQuery.data ?? []) as Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  >[];
 
-  const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
-    (p) => {
-      const profile = p as Pick<
-        ProfilesRow,
-        "id" | "full_name" | "email" | "role" | "status"
-      >;
-      const care = careByShepherdId.get(profile.id) ?? null;
-      return {
-        profile,
-        care,
-        needs_attention: computeNeedsAttention(care, today, staleDays),
-      };
-    },
-  );
-
-  return { data: entries, error: null };
+  return {
+    data: buildCareDirectoryEntries(profiles, careRows, options),
+    error: null,
+  };
 }
 
 /**
@@ -932,7 +958,26 @@ export async function fetchShepherdCareProfileByShepherdId(
     };
   }
   if (data === null || data === undefined) return { data: null, error: null };
-  return { data: data as ShepherdCareProfilesRow, error: null };
+
+  // admin_summary now lives in the fenced, admin-only shepherd_care_admin_notes
+  // table (phase_os5). Re-attach it here for the admin detail surface; this
+  // read only runs behind requireAdmin(), and the notes table's admin-only RLS
+  // keeps it off any non-admin path even if this read is reused.
+  const base = data as Omit<ShepherdCareProfilesRow, "admin_summary">;
+  const note = await client
+    .from("shepherd_care_admin_notes")
+    .select("admin_summary")
+    .eq("care_profile_id", base.id)
+    .maybeSingle();
+  if (note.error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareProfileByShepherdId/admin_notes", note.error),
+    };
+  }
+  const admin_summary =
+    (note.data as { admin_summary?: string | null } | null)?.admin_summary ?? null;
+  return { data: { ...base, admin_summary }, error: null };
 }
 
 /**

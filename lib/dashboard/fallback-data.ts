@@ -326,28 +326,13 @@ const fallbackAttention: AttentionItem[] = [
     dueRelative: null,
     isOverdue: false,
   },
-  // Julian admin OS pivot: missing_check_in is now priority 60 — below
-  // health_watch — so a weekly-cadence signal can't outrank shepherd-care /
-  // capacity reasons on the dashboard attention queue.
-  {
-    groupId: "fb-miss-1",
-    groupName: "Westside Families",
-    reason: "missing_check_in",
-    secondaryReasons: [],
-    detail: "No check-in submitted for the selected week",
-    priority: 60,
-    lifecycleStatus: "active",
-    leaderNames: ["Maria Lopez"],
-    meetingDay: "Sunday",
-    meetingTime: "17:00",
-    effectiveCapacity: 12,
-    activeMemberCount: 9,
-    sessionStatus: "no_session",
-    excludedFromCapacity: false,
-    dueLabel: "Monday, May 18 at 5:00 PM",
-    dueRelative: "due 18h ago",
-    isOverdue: true,
-  },
+  // The Shepherd→admin reporting loop was removed per
+  // docs/adr/0002-oversight-ladder-and-leader-gating.md: collectReasonsFor no
+  // longer surfaces missing_check_in for live data (with the leader surface
+  // gated, no check-ins are submitted), so the fallback must not seed a
+  // "Missing check-in" attention card either — otherwise a degraded dashboard
+  // (unconfigured client / query error) re-surfaces the exact signal the ADR
+  // retired. The missing_check_in enum value, label and priority stay dormant.
   {
     groupId: "fb-cap-unknown-1",
     groupName: "Bridge Builders",

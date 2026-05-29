@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfilesRow } from "@/types/database";
 import { log } from "@/lib/observability/logger";
-import { isLeaderRole, isUserRole, type UserRole } from "./roles";
+import { isUserRole, type UserRole } from "./roles";
 import { isUuid } from "@/lib/shared/uuid";
 
 export type AuthUser = { id: string; email: string | null };
@@ -198,7 +198,19 @@ export async function requireRole(
 
 export const requireAdmin = () => requireRole(["super_admin", "ministry_admin"] as const);
 export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
-export const requireLeader = () => requireRole(["leader", "co_leader"] as const);
+// Over-Shepherd route-group guard per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md. Admits only
+// over_shepherd; every other role (including admins and leaders) is
+// redirected to /unauthorized, and over_shepherd cannot reach /admin/* or
+// /leader/* because those guards never list it.
+export const requireOverShepherd = () => requireRole(["over_shepherd"] as const);
+// Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md.
+// Every /leader/* page calls this shared guard, so allowing no role here
+// gates the whole dormant surface in one place: leader / co_leader (and any
+// other role that reaches a leader route) are redirected to /unauthorized,
+// the same no-access treatment staff_viewer already gets. The export is kept
+// so the dormant leader pages still typecheck.
+export const requireLeader = () => requireRole([] as const);
 
 // Server-action variant: instead of redirecting, returns a typed result the
 // action can surface in the UI. Page routes still use requireAdmin() for
@@ -249,15 +261,14 @@ export async function requireLeaderActor(): Promise<
     case "authenticated": {
       if (session.profile.status !== "active")
         return { ok: false, error: "Your account isn't active." };
-      if (!isLeaderRole(session.profile.role))
-        return {
-          ok: false,
-          error: "Only an assigned leader or co-leader can do that.",
-        };
+      // Shepherd (leader) surface gated per
+      // docs/adr/0002-oversight-ladder-and-leader-gating.md. No caller --
+      // including leader / co_leader -- may execute a leader server action;
+      // denial happens here, before any RPC is reached. The dormant
+      // runLeaderWriteAction runner still imports this guard so it typechecks.
       return {
-        ok: true,
-        profileId: session.profile.id,
-        assignedGroupIds: session.assignedGroupIds,
+        ok: false,
+        error: "The leader surface isn't available.",
       };
     }
   }

@@ -7,6 +7,7 @@ export type { UserRole };
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super Admin",
   ministry_admin: "Ministry Admin",
+  over_shepherd: "Over-Shepherd",
   staff_viewer: "Legacy (no access)",
   leader: "Leader",
   co_leader: "Co-Leader",
@@ -14,6 +15,11 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 const ADMIN_ROLES: ReadonlySet<UserRole> = new Set(["super_admin", "ministry_admin"]);
 const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
+// Over-Shepherd is its own role category per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md — deliberately NOT a
+// member of ADMIN_ROLES or LEADER_ROLES. It earns access only through
+// predicates that name it explicitly (this set + later coverage-scoped RLS).
+const OVER_SHEPHERD_ROLES: ReadonlySet<UserRole> = new Set(["over_shepherd"]);
 
 // Single source of truth for the full UserRole set. Used at trust
 // boundaries (session profile read) to validate that an incoming role
@@ -21,6 +27,7 @@ const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
 export const USER_ROLES: ReadonlySet<UserRole> = new Set([
   "super_admin",
   "ministry_admin",
+  "over_shepherd",
   "staff_viewer",
   "leader",
   "co_leader",
@@ -38,18 +45,26 @@ export function isLeaderRole(role: UserRole): boolean {
   return LEADER_ROLES.has(role);
 }
 
+export function isOverShepherdRole(role: UserRole): boolean {
+  return OVER_SHEPHERD_ROLES.has(role);
+}
+
 export function defaultLandingPathForRole(role: UserRole): string {
   if (isAdminRole(role)) return "/admin";
-  if (role === "staff_viewer") return "/unauthorized";
-  if (isLeaderRole(role)) return "/leader";
+  // Over-Shepherd lands on its own focused care surface, distinct from /admin.
+  if (isOverShepherdRole(role)) return "/over-shepherd";
+  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // leader / co_leader are treated as no-access, exactly like staff_viewer.
+  // They fall through to /unauthorized rather than landing on /leader.
   return "/unauthorized";
 }
 
 // Julian admin OS ordering: shepherd care + launch planning lead, then
 // follow-ups (the leader-visible task queue), then operational
-// management (people, groups, calendar, check-ins). Guests is intentionally
-// omitted from nav per PRODUCT_ROADMAP.md EXT.1 — the route still resolves
-// for existing bookmarks.
+// management (people, groups, calendar). Guests is intentionally
+// omitted from nav per PRODUCT_ROADMAP.md EXT.1, and Check-ins is omitted
+// per docs/adr/0002-oversight-ladder-and-leader-gating.md — both routes
+// still resolve for existing bookmarks / direct URLs under the admin guard.
 export function navItemsForRole(role: UserRole): { href: string; label: string }[] {
   const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
   if (isAdminRole(role)) {
@@ -60,14 +75,23 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin/people", label: "People" });
     items.push({ href: "/admin/groups", label: "Groups" });
     items.push({ href: "/admin/calendar", label: "Calendar" });
-    items.push({ href: "/admin/check-ins", label: "Check-ins" });
+    // Check-ins dropped from nav per
+    // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
+    // reporting loop). The /admin/check-ins route stays dormant and reachable
+    // by direct URL under the admin guard.
     items.push({ href: "/admin/settings", label: "Settings" });
     if (role === "super_admin") {
       items.push({ href: "/admin/super-admin", label: "Super admin" });
     }
-  } else if (isLeaderRole(role)) {
-    items.push({ href: "/leader", label: "My Groups" });
+  } else if (isOverShepherdRole(role)) {
+    // Focused Over-Shepherd nav: a single "My Shepherds" entry. The directory
+    // it links to arrives in the read-surface slice; this slice lands the
+    // entry pointing at the placeholder landing.
+    items.push({ href: "/over-shepherd", label: "My Shepherds" });
   }
+  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // no leader nav entry is emitted for any role. leader / co_leader see only
+  // the minimal no-access shell (Home), the same as staff_viewer.
   return items;
 }
 
@@ -89,9 +113,10 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
   // Julian admin OS pivot (2026-05): the "shepherd" group now leads with
   // the admin-OS spine (shepherd care, launch planning, follow-ups) and
   // is labeled "Admin OS". The "manage" group holds operational surfaces
-  // and ends with Check-ins (formerly second in the list, now demoted).
-  // Guests is intentionally dropped from nav per PRODUCT_ROADMAP.md
-  // EXT.1; the route still resolves so existing bookmarks work. See
+  // (people, groups, calendar). Check-ins was dropped from this group per
+  // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
+  // reporting loop); Guests is intentionally dropped per PRODUCT_ROADMAP.md
+  // EXT.1. Both routes still resolve so direct URLs / bookmarks work. See
   // docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the pivot rationale.
   const groups: AdminNavGroup[] = [
     {
@@ -111,11 +136,14 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
     {
       group: "manage",
       label: "Manage",
+      // Check-ins dropped from nav per
+      // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
+      // reporting loop). The /admin/check-ins route stays dormant and reachable
+      // by direct URL under the admin guard.
       items: [
         { href: "/admin/people", label: "People", icon: "people" },
         { href: "/admin/groups", label: "Groups", icon: "groups" },
         { href: "/admin/calendar", label: "Calendar", icon: "cal" },
-        { href: "/admin/check-ins", label: "Check-ins", icon: "check" },
       ],
     },
     {

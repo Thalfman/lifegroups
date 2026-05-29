@@ -5,11 +5,13 @@ function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
+// Shepherd→admin reporting loop removed per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md: the "Submitted
+// check-ins" and "Missing check-ins" tiles were the dashboard's
+// attendance-rhythm read of the now-gated leader check-in. They are dropped
+// here (the underlying counts stay dormant on AdminSummary). The remaining
+// four operational tiles render in a 4-up grid.
 export function SummaryTiles({ summary }: { summary: AdminSummary }) {
-  const submittedHint =
-    summary.activeGroupCount === 0 ? "—" : `of ${summary.activeGroupCount}`;
-  const missingHint =
-    summary.missingCheckIns === 0 ? "All in for the week" : "past due";
   const followUpHint =
     summary.needsFollowUp === 0 ? "Quiet week" : "from leader pulse";
   const capacityHint =
@@ -24,11 +26,11 @@ export function SummaryTiles({ summary }: { summary: AdminSummary }) {
 
   return (
     <div
-      className="lg-shell-grid-6"
+      className="lg-shell-grid-4"
       style={{
         display: "grid",
         gap: 12,
-        gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
       }}
     >
       <SummaryCard
@@ -36,18 +38,6 @@ export function SummaryTiles({ summary }: { summary: AdminSummary }) {
         value={summary.activeGroupCount}
         tone="sage"
         trend={groupsTrend}
-      />
-      <SummaryCard
-        label="Submitted check-ins"
-        value={summary.submittedCheckIns}
-        tone="sage"
-        hint={submittedHint}
-      />
-      <SummaryCard
-        label="Missing check-ins"
-        value={summary.missingCheckIns}
-        tone={summary.missingCheckIns > 0 ? "rose" : "sage"}
-        hint={missingHint}
       />
       <SummaryCard
         label="Needs follow-up"

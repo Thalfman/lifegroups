@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'ministry_admin' | 'staff_viewer' | 'leader' | 'co_leader';
+export type UserRole = 'super_admin' | 'ministry_admin' | 'over_shepherd' | 'staff_viewer' | 'leader' | 'co_leader';
 export type ProfileStatus = 'active' | 'inactive' | 'invited';
 export type GroupLifecycleStatus = 'active' | 'planned_pause' | 'seasonal_break' | 'launching_soon' | 'needs_leader' | 'at_risk' | 'closed';
 export type GroupHealthStatus = 'healthy' | 'watch' | 'needs_follow_up' | 'healthy_paused' | 'restart_soon' | 'overdue_restart' | 'capacity_full' | 'needs_leader_support';

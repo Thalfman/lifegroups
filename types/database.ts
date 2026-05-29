@@ -222,8 +222,21 @@ export interface ShepherdCareProfilesRow {
   current_status: E.ShepherdCareStatus;
   last_contact_at: DateString | null;
   next_touchpoint_due: DateString | null;
+  // NOTE: admin_summary is no longer a column on shepherd_care_profiles —
+  // phase_os5 moved it to the admin-only shepherd_care_admin_notes table so RLS
+  // (not just the app allowlist) fences it from the over_shepherd path. The
+  // admin single-profile read (fetchShepherdCareProfileByShepherdId) re-attaches
+  // it onto this row from that table. It stays on the type as the logical
+  // admin-only field; no over_shepherd read ever selects or populates it.
   admin_summary: string | null;
   archived_at: Timestamp | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ShepherdCareAdminNotesRow {
+  care_profile_id: UUID;
+  admin_summary: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

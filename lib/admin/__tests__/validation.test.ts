@@ -97,6 +97,36 @@ describe("validateInviteUserPayload", () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  // Over-Shepherd is invitable so the coach login tier can be provisioned from
+  // the app (docs/adr/0002-oversight-ladder-and-leader-gating.md, Codex #3).
+  it("accepts an over_shepherd invite (no group assignment)", () => {
+    const r = validateInviteUserPayload({
+      full_name: "Coach Casey",
+      email: "casey@example.com",
+      role: "over_shepherd",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.role).toBe("over_shepherd");
+      expect(r.value.group_id).toBeUndefined();
+    }
+  });
+
+  it("rejects over_shepherd paired with a group_id (coaches lead no group)", () => {
+    const r = validateInviteUserPayload({
+      full_name: "Coach Casey",
+      email: "casey@example.com",
+      role: "over_shepherd",
+      group_id: UUID_A,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(
+        r.errors.some((e) => /over-shepherds are not assigned to a group/i.test(e)),
+      ).toBe(true);
+    }
+  });
 });
 
 describe("validateChangeUserRolePayload", () => {
@@ -126,6 +156,18 @@ describe("validateChangeUserRolePayload", () => {
       expect(r.value.profile_id).toBe(UUID_A);
       expect(r.value.new_role).toBe("ministry_admin");
     }
+  });
+
+  // Converting an existing profile into the coach login tier (Codex #3); the
+  // over_shepherd value is a valid user_role and is not one of the guarded
+  // targets (super_admin / staff_viewer).
+  it("accepts over_shepherd as a role-change target", () => {
+    const r = validateChangeUserRolePayload({
+      profile_id: UUID_A,
+      new_role: "over_shepherd",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.new_role).toBe("over_shepherd");
   });
 });
 
