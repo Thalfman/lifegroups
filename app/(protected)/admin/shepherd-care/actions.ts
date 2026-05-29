@@ -5,19 +5,23 @@ import {
   validateCreateOverShepherdPayload,
   validateCreateShepherdCareFollowUpPayload,
   validateEndShepherdCoverageAssignmentPayload,
+  validateEnrollPrivateNoteKeysPayload,
   validateLogShepherdCareInteractionPayload,
   validateUpdateOverShepherdPayload,
   validateUpdateShepherdCareFollowUpPayload,
   validateUpdateShepherdCareFollowUpStatusPayload,
+  validateUpsertShepherdCarePrivateNotePayload,
   validateUpsertShepherdCareProfilePayload,
   type AssignShepherdCoveragePayload,
   type CreateOverShepherdPayload,
   type CreateShepherdCareFollowUpPayload,
   type EndShepherdCoverageAssignmentPayload,
+  type EnrollPrivateNoteKeysPayload,
   type LogShepherdCareInteractionPayload,
   type UpdateOverShepherdPayload,
   type UpdateShepherdCareFollowUpPayload,
   type UpdateShepherdCareFollowUpStatusPayload,
+  type UpsertShepherdCarePrivateNotePayload,
   type UpsertShepherdCareProfilePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -31,10 +35,12 @@ import {
   rpcAdminCreateOverShepherd,
   rpcAdminCreateShepherdCareFollowUp,
   rpcAdminEndShepherdCoverageAssignment,
+  rpcAdminEnrollPrivateNoteKeys,
   rpcAdminLogShepherdCareInteraction,
   rpcAdminUpdateOverShepherd,
   rpcAdminUpdateShepherdCareFollowUp,
   rpcAdminUpdateShepherdCareFollowUpStatus,
+  rpcAdminUpsertShepherdCarePrivateNote,
   rpcAdminUpsertShepherdCareProfile,
 } from "@/lib/admin/rpc";
 
@@ -109,6 +115,20 @@ const ASSIGN_COVERAGE_KEYS = [
 // success. It is intentionally optional and NOT passed to the RPC -- the
 // RPC reads the canonical shepherd_profile_id from the assignment row.
 const END_COVERAGE_KEYS = ["assignment_id", "ended_at", "shepherd_profile_id"] as const;
+
+// Phase SC.4 private-note keys. shepherd_profile_id is form-only (for
+// revalidation); the RPC keys on care_profile_id and derives the creator from
+// the actor. The body travels as base64 ciphertext -- never plaintext.
+const UPSERT_PRIVATE_NOTE_KEYS = [
+  "care_profile_id",
+  "set_body",
+  "ciphertext",
+  "iv",
+  "dek_version",
+  "shepherd_profile_id",
+] as const;
+
+const ENROLL_PRIVATE_NOTE_KEYS = ["dek_version", "slots", "shepherd_profile_id"] as const;
 
 function shepherdCarePaths(shepherdProfileId?: string): string[] {
   return [
@@ -429,4 +449,68 @@ export async function adminEndShepherdCoverage(
   input: ActionInput<EndShepherdCoverageAssignmentPayload>,
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(END_COVERAGE_SPEC, prev, input);
+}
+
+// ----- Phase SC.4 — private care note actions -----------------------------
+
+// ----- adminEnrollPrivateNoteKeys -----------------------------------------
+
+const ENROLL_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
+  EnrollPrivateNoteKeysPayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.private_note.enroll",
+  keys: ENROLL_PRIVATE_NOTE_KEYS,
+  validate: validateEnrollPrivateNoteKeysPayload,
+  okFields: (value) => ({ slot_count: value.slots.length }),
+  rpc: (client, value) =>
+    rpcAdminEnrollPrivateNoteKeys(client, {
+      p_dek_version: value.dek_version,
+      p_slots: value.slots,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "Private notes couldn't be set up. Please try again.",
+};
+
+type EnrollPrivateNoteInput = EnrollPrivateNoteKeysPayload & { shepherd_profile_id?: string };
+
+export async function adminEnrollPrivateNoteKeys(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<EnrollPrivateNoteInput>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ENROLL_PRIVATE_NOTE_SPEC, prev, input);
+}
+
+// ----- adminUpsertShepherdCarePrivateNote ---------------------------------
+
+const UPSERT_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
+  UpsertShepherdCarePrivateNotePayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.upsert_private_note",
+  keys: UPSERT_PRIVATE_NOTE_KEYS,
+  validate: validateUpsertShepherdCarePrivateNotePayload,
+  fields: (_actor, value) => ({ target_care_profile_id: value.care_profile_id }),
+  okFields: (value) => ({ body_set: value.set_body }),
+  rpc: (client, value) =>
+    rpcAdminUpsertShepherdCarePrivateNote(client, {
+      p_care_profile_id: value.care_profile_id,
+      p_ciphertext: value.ciphertext,
+      p_iv: value.iv,
+      p_dek_version: value.dek_version,
+      p_set_body: value.set_body,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The private note wasn't saved. Please try again.",
+};
+
+type UpsertPrivateNoteInput = UpsertShepherdCarePrivateNotePayload & {
+  shepherd_profile_id?: string;
+};
+
+export async function adminUpsertShepherdCarePrivateNote(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<UpsertPrivateNoteInput>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(UPSERT_PRIVATE_NOTE_SPEC, prev, input);
 }

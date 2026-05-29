@@ -267,6 +267,36 @@ export interface ShepherdCareFollowUpsRow {
   completed_at: Timestamp | null;
 }
 
+// Phase SC.4 — zero-knowledge private care notes. The body is AES-256-GCM
+// ciphertext encrypted client-side; the server never holds plaintext or the
+// key. Creator-scoped RLS (excludes super_admin). bytea columns come back from
+// PostgREST as hex strings and are normalised to base64 by the read model, so
+// they are typed `string` here. Writes only via the SECURITY DEFINER RPCs.
+export interface ShepherdCarePrivateNotesRow {
+  id: UUID;
+  care_profile_id: UUID;
+  created_by_profile_id: UUID;
+  ciphertext: string; // bytea
+  iv: string; // bytea
+  dek_version: number;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface ShepherdCareNoteKeySlotsRow {
+  id: UUID;
+  created_by_profile_id: UUID;
+  dek_version: number;
+  slot_type: "passkey" | "recovery";
+  credential_id: string | null; // bytea
+  label: string | null;
+  prf_salt: string | null; // bytea
+  hkdf_salt: string; // bytea
+  wrapped_dek: string; // bytea
+  wrap_iv: string; // bytea
+  created_at: Timestamp;
+}
+
 export interface OverShepherdsRow {
   id: UUID;
   full_name: string;
@@ -442,6 +472,24 @@ export interface Database {
           'id' | 'created_at' | 'updated_at' | 'completed_at' | 'status'
         >;
         Update: Partial<ShepherdCareFollowUpsRow>;
+        Relationships: [];
+      };
+      shepherd_care_private_notes: {
+        Row: ShepherdCarePrivateNotesRow;
+        Insert: InsertOf<
+          ShepherdCarePrivateNotesRow,
+          'id' | 'created_at' | 'updated_at' | 'dek_version'
+        >;
+        Update: Partial<ShepherdCarePrivateNotesRow>;
+        Relationships: [];
+      };
+      shepherd_care_note_key_slots: {
+        Row: ShepherdCareNoteKeySlotsRow;
+        Insert: InsertOf<
+          ShepherdCareNoteKeySlotsRow,
+          'id' | 'created_at' | 'dek_version'
+        >;
+        Update: Partial<ShepherdCareNoteKeySlotsRow>;
         Relationships: [];
       };
       over_shepherds: {
@@ -736,6 +784,23 @@ export interface Database {
           p_title: string;
           p_due_date: DateString | null;
           p_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_enroll_private_note_keys: {
+        Args: {
+          p_dek_version: number;
+          p_slots: Array<Record<string, unknown>>;
+        };
+        Returns: UUID;
+      };
+      admin_upsert_shepherd_care_private_note: {
+        Args: {
+          p_care_profile_id: UUID;
+          p_ciphertext: string | null;
+          p_iv: string | null;
+          p_dek_version: number;
+          p_set_body: boolean;
         };
         Returns: UUID;
       };

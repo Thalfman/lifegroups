@@ -6,6 +6,7 @@ import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-fo
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
+import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-care-profile-form";
 import { requireAdmin } from "@/lib/auth/session";
@@ -16,11 +17,15 @@ import {
   fetchAdminShepherdProfileById,
   fetchGenericFollowUpCountForAssignee,
   fetchOverShepherdsForAdmin,
+  fetchPrivateNoteKeySlotsForCreator,
   fetchShepherdCareFollowUpsForProfile,
   fetchShepherdCareInteractionsForAdmin,
+  fetchShepherdCarePrivateNoteCiphertextForCreator,
   fetchShepherdCareProfileByShepherdId,
   type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
+  type PrivateNoteCiphertext,
+  type PrivateNoteKeySlot,
 } from "@/lib/supabase/read-models";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
@@ -57,7 +62,10 @@ const cardStyle = {
   padding: 20,
 };
 
-async function loadDetail(profileId: string): Promise<
+async function loadDetail(
+  profileId: string,
+  creatorProfileId: string,
+): Promise<
   | {
       kind: "ok";
       profileFullName: string;
@@ -68,6 +76,8 @@ async function loadDetail(profileId: string): Promise<
       genericFollowUpCount: number;
       activeOverShepherds: OverShepherdListRow[];
       coverage: ActiveShepherdCoverageAssignmentSummary | null;
+      privateNote: PrivateNoteCiphertext | null;
+      privateNoteKeySlots: PrivateNoteKeySlot[];
       error: string | null;
     }
   | { kind: "not_found" }
@@ -88,6 +98,8 @@ async function loadDetail(profileId: string): Promise<
       genericFollowUpCount: 0,
       activeOverShepherds: [],
       coverage: null,
+      privateNote: null,
+      privateNoteKeySlots: [],
       error: profile.error.message,
     };
   }
@@ -100,12 +112,15 @@ async function loadDetail(profileId: string): Promise<
   }
   if (profile.data.status !== "active") return { kind: "not_found" };
 
-  const [careResult, overShepherdsRes, coverageRes, genericCountRes] =
+  // Private-note key slots are per-creator (not per care profile), so they load
+  // alongside the care profile. RLS scopes them to the calling admin.
+  const [careResult, overShepherdsRes, coverageRes, genericCountRes, keySlotsRes] =
     await Promise.all([
       fetchShepherdCareProfileByShepherdId(client, profileId),
       fetchOverShepherdsForAdmin(client, { includeArchived: false }),
       fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
       fetchGenericFollowUpCountForAssignee(client, profileId),
+      fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId),
     ]);
   if (careResult.error) {
     return {
@@ -118,6 +133,8 @@ async function loadDetail(profileId: string): Promise<
       genericFollowUpCount: genericCountRes.data ?? 0,
       activeOverShepherds: overShepherdsRes.data ?? [],
       coverage: null,
+      privateNote: null,
+      privateNoteKeySlots: keySlotsRes.data ?? [],
       error: careResult.error.message,
     };
   }
@@ -126,16 +143,24 @@ async function loadDetail(profileId: string): Promise<
   // row, so only fetch them once we know it exists.
   let interactions: ShepherdCareInteractionsRow[] = [];
   let followUps: ShepherdCareFollowUpsRow[] = [];
+  let privateNote: PrivateNoteCiphertext | null = null;
   let childError: string | null = null;
   if (careResult.data) {
-    const [inter, fus] = await Promise.all([
+    const [inter, fus, note] = await Promise.all([
       fetchShepherdCareInteractionsForAdmin(client, careResult.data.id),
       fetchShepherdCareFollowUpsForProfile(client, careResult.data.id),
+      fetchShepherdCarePrivateNoteCiphertextForCreator(
+        client,
+        careResult.data.id,
+        creatorProfileId,
+      ),
     ]);
     if (inter.error) childError = inter.error.message;
     else interactions = inter.data;
     if (fus.error) childError = childError ?? fus.error.message;
     else followUps = fus.data;
+    if (note.error) childError = childError ?? note.error.message;
+    else privateNote = note.data;
   }
 
   return {
@@ -148,11 +173,14 @@ async function loadDetail(profileId: string): Promise<
     genericFollowUpCount: genericCountRes.data ?? 0,
     activeOverShepherds: overShepherdsRes.data ?? [],
     coverage: coverageRes.data ?? null,
+    privateNote,
+    privateNoteKeySlots: keySlotsRes.data ?? [],
     error:
       childError ??
       overShepherdsRes.error?.message ??
       coverageRes.error?.message ??
       genericCountRes.error?.message ??
+      keySlotsRes.error?.message ??
       null,
   };
 }
@@ -162,12 +190,16 @@ export default async function AdminShepherdCareDetailPage({
 }: {
   params: Promise<{ profileId: string }>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  // requireAdmin redirects every non-authenticated case, so this is always the
+  // authenticated branch; narrow for the creator id used to scope private notes.
+  const creatorProfileId = session.kind === "authenticated" ? session.profile.id : null;
+  if (!creatorProfileId) notFound();
 
   const { profileId } = await params;
   if (!isUuid(profileId)) notFound();
 
-  const detail = await loadDetail(profileId);
+  const detail = await loadDetail(profileId, creatorProfileId);
   if (detail.kind === "not_found") notFound();
   if (detail.kind === "db_unavailable") {
     return (
@@ -281,6 +313,16 @@ export default async function AdminShepherdCareDetailPage({
               </div>
             ) : null}
           </section>
+
+          {detail.care ? (
+            <PrivateNotesSection
+              careProfileId={detail.care.id}
+              creatorProfileId={creatorProfileId}
+              shepherdProfileId={profileId}
+              initialNote={detail.privateNote}
+              initialSlots={detail.privateNoteKeySlots}
+            />
+          ) : null}
 
           <section style={cardStyle} aria-label="Over-shepherd coverage">
             <h2
