@@ -62,7 +62,7 @@ two conclusions and added one signal:
    health (consistent attendance, spiritual growth happening) and admits he is
    still designing it (Q12). A **new feature area** — discovery only — distinct
    from shepherd care and launch planning. See
-   [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../GROUP_HEALTH_RUBRIC_DISCOVERY.md).
+   [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
 2. **Multiplication candidate pipeline.** The
    [multiplication plan](./LG_MULTIPLICATION_PLAN_2026.md) is a named pipeline
    (group → stage-of-life segment → readiness → target year) that LP.\* did not
@@ -121,7 +121,7 @@ Outstanding after this reconciliation:
   still his call.
 - The **group-health grading rubric** Julian is still designing — discovery
   captured in
-  [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../GROUP_HEALTH_RUBRIC_DISCOVERY.md).
+  [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
 - The **2026-vs-2027 multiplication split**, which the source does not pin down
   ([fidelity note](./LG_MULTIPLICATION_PLAN_2026.md#timeline-buckets)) — the
   pipeline now stores a per-candidate `target_year` so Julian can set it group

@@ -21,7 +21,7 @@ or care data was filled in. The columns, in order:
 
 These columns confirm the field set behind `shepherd_care_profiles` /
 `shepherd_care_interactions` (see
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../SHEPHERD_CARE_TRACKER_PLAN.md)):
+[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md)):
 
 - `Name` → the `profiles` row the care profile attaches to.
 - `Issue` + `Misc. note` → `admin_summary` (profile) and interaction `notes`.

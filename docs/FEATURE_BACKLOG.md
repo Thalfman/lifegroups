@@ -59,7 +59,7 @@ Verified from repo inspection. Each item below has an implemented
   management, system status, test account management.
 - **Super Admin Invite User** — server action, form, and Edge Function
   are all present. Workflow contract documented in
-  [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+  [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
   Marked as "verify-and-polish" in INV.1 of the roadmap rather than as
   fully launched, until a real end-to-end verification is recorded.
 

@@ -18,9 +18,9 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
     reliability/security debt appendix.
   - [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md) — full inventory incl. deferred
     / rejected.
-  - [`SHEPHERD_CARE_TRACKER_PLAN.md`](./SHEPHERD_CARE_TRACKER_PLAN.md),
-    [`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md),
-    [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) —
+  - [`SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md),
+    [`LAUNCH_PLANNING_PLAN.md`](./plans/LAUNCH_PLANNING_PLAN.md),
+    [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) —
     per-area plans / discovery.
   - [`julian-inputs/`](./julian-inputs/README.md) — **source of record** for
     Julian's own words (the Q&A, the spreadsheet, the multiplication plan).
@@ -43,7 +43,7 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| INV.1 | Super Admin Invite User | ✅ Shipped (verify-and-polish) | [workflow](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md) | Run one end-to-end invite on the live project; tick the checklist. |
+| INV.1 | Super Admin Invite User | ✅ Shipped (verify-and-polish) | [workflow](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md) | Run one end-to-end invite on the live project; tick the checklist. |
 | — | Auth / RLS / roles / audit posture | ✅ Shipped | [README](../README.md), [roadmap §3](./PRODUCT_ROADMAP.md) | Maintain; see debt track (§G). |
 
 ## B. Shepherd Care — Julian's admin OS
@@ -51,19 +51,19 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
 | SC.1A | Care foundation — `shepherd_care_profiles` + `shepherd_care_interactions` | ✅ Shipped | [as-built](./archive/SC_1A_SHEPHERD_CARE_FOUNDATION.md) | — |
-| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
+| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
 | SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./archive/SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
 | SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./archive/SC_3_JULIAN_CARE_DASHBOARD.md) | — |
-| SC.4 | Private / encrypted care notes — readable by Julian alone | 🟡 Planned **(Q8)** | [spec](./SC_4_PRIVATE_CARE_NOTES_SPEC.md) | **Tier 2 (zero-knowledge) chosen** (Q1 resolved). Crypto design + threat model in #111 (human sign-off), then build #112–#114. |
+| SC.4 | Private / encrypted care notes — readable by Julian alone | 🟡 Planned **(Q8)** | [spec](./specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md) | **Tier 2 (zero-knowledge) chosen** (Q1 resolved). Crypto design + threat model in #111 (human sign-off), then build #112–#114. |
 | — | Stale-contact threshold `shepherd_care_stale_days` (default 60) | ✅ Shipped (configurable) | [roadmap §6 P1](./PRODUCT_ROADMAP.md) | Value is Julian's call (see ❓ below). |
 | — | Cadence tiering by oversight | ❓ Open (Julian, **Q5**) | [FEEDBACK_MAP](./julian-inputs/FEEDBACK_MAP.md) | Decide: one global threshold vs. per-tier (direct vs. delegated). |
-| — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
+| — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
 
 ## C. Launch Planning
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| LP.1 | Capacity & launch-planning MVP | ✅ Shipped | [plan](./LAUNCH_PLANNING_PLAN.md), [as-built](./archive/LP_1_CAPACITY_LAUNCH_PLANNING.md) | — |
+| LP.1 | Capacity & launch-planning MVP | ✅ Shipped | [plan](./plans/LAUNCH_PLANNING_PLAN.md), [as-built](./archive/LP_1_CAPACITY_LAUNCH_PLANNING.md) | — |
 | LP.2 | Forecast scenarios (conservative / expected / stretch) | ✅ Shipped | [as-built](./archive/LP_2_FORECAST_SCENARIOS.md) | — |
 | P2 | Capacity = 12 + `allow_over_capacity`; church-attendance snapshots (% in a group) | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md) | — |
 | P3 | Seasonality quick-fills (Aug/Jan) + worship-center demand scenario | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md) | — |
@@ -76,7 +76,7 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| P5 | Group-health grading rubric (attendance + spiritual growth + TBD) | 🔬 Discovery | [discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Settle dimensions & output shape with Julian (his rubric is unfinished). |
+| P5 | Group-health grading rubric (attendance + spiritual growth + TBD) | 🔬 Discovery | [discovery](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Settle dimensions & output shape with Julian (his rubric is unfinished). |
 
 ## E. Leader tools
 
@@ -127,7 +127,7 @@ product consequences of the newly-captured questions.
 
 | # | Question | Source | Blocks |
 |---|---|---|---|
-| 1 | ~~Private notes: "only you inside the app" (RLS) or "only you, period" (encryption)?~~ **Resolved 2026-05-29: Tier 2 zero-knowledge encryption** (see [spec §2](./SC_4_PRIVATE_CARE_NOTES_SPEC.md); crypto sign-off in #111). | Q8 | SC.4 |
+| 1 | ~~Private notes: "only you inside the app" (RLS) or "only you, period" (encryption)?~~ **Resolved 2026-05-29: Tier 2 zero-knowledge encryption** (see [spec §2](./specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md); crypto sign-off in #111). | Q8 | SC.4 |
 | 2 | Cadence: one global stale-contact threshold, or per-oversight-tier? And what value? | Q5 | SC cadence flags |
 | 3 | Group-health rubric: which dimensions, what weights, what output shape (letter / score / bucket)? How is "spiritual growth" captured? | Q12 | P5 (group health) |
 | 4 | Multiplication pipeline: extend the in-app view, or keep the Google Doc as system of record? And the 2026-vs-2027 split per group. | multiplication plan | P4 scope |

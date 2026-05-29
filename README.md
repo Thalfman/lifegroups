@@ -36,7 +36,7 @@ target those stages are measured against.
 |---|---|---|---|
 | 1 | **Leaders' health is visible** | Julian can record care status, log interactions, track the next step he owes each leader, and triage who needs attention — privately. | **Nearly there.** Care profiles, interaction log, over-shepherd coverage, and the triage dashboard have shipped. Remaining: **SC.1B** (the follow-up/task list — the "what I owe them next" half) and a decision on **SC.4** (private-to-Julian notes). |
 | 2 | **Launch timing is clear** | Julian can see capacity, forecast group demand by season, and track which groups are ready to multiply and in what year. | **Largely there.** Capacity (=12 + opt-to-stay-open), forecast scenarios, seasonality quick-fills, and the multiplication pipeline have shipped. Remaining: Julian's call on pipeline scope and reliable church-attendance capture. |
-| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The biggest gap.** This is in **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. |
+| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The biggest gap.** This is in **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. |
 | — | **…reliably** | The reliability/security debt is cleared: baseline observability, a minimum test suite, and the open hardening items in [roadmap Appendix A](./docs/PRODUCT_ROADMAP.md). | **Partial.** Auth/RLS/audit posture and several hardening items have shipped; observability, `getCurrentSession()` hardening, and test coverage are still owed (blueprint §G). |
 
 **In one line:** the app is done when jobs 1 and 2 are fully shipped, job 3's
@@ -47,14 +47,18 @@ The open decisions that gate this are listed under
 
 ## Where to look next
 
+- [`docs/README.md`](./docs/README.md) — **the documentation index:** every doc
+  categorized, with the PRD and ADRs called out explicitly.
+- [`docs/STATUS_CHECKLIST.md`](./docs/STATUS_CHECKLIST.md) — **what's shipped, what's
+  left, and what's waiting on Julian** — a plain checklist of where we stand.
 - [`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — **start here:** the
   at-a-glance map of every workstream, its stage, and what's next.
 - [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered execution
   plan, pivot rationale, and the reliability/security debt appendix.
 - [`docs/FEATURE_BACKLOG.md`](./docs/FEATURE_BACKLOG.md) — full feature
   inventory including deferred items.
-- [`docs/SHEPHERD_CARE_TRACKER_PLAN.md`](./docs/SHEPHERD_CARE_TRACKER_PLAN.md)
-  and [`docs/LAUNCH_PLANNING_PLAN.md`](./docs/LAUNCH_PLANNING_PLAN.md) — per-area
+- [`docs/plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./docs/plans/SHEPHERD_CARE_TRACKER_PLAN.md)
+  and [`docs/plans/LAUNCH_PLANNING_PLAN.md`](./docs/plans/LAUNCH_PLANNING_PLAN.md) — per-area
   plans and as-built summaries.
 - [`docs/julian-inputs/`](./docs/julian-inputs/README.md) — **source of record**
   for Julian's own words (the Q&A, the care spreadsheet, the multiplication plan).
@@ -183,7 +187,7 @@ Two clarifications:
 
 Real users (e.g. Julian as `ministry_admin`, over-shepherds, additional leaders)
 are invited from `/admin/super-admin` once a `super_admin` is signed in. See
-[`docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+[`docs/specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
 
 ## Supabase notes
 
@@ -191,7 +195,7 @@ are invited from `/admin/super-admin` once a `super_admin` is signed in. See
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
-- Schema docs: [`docs/DATABASE_SCHEMA.md`](./docs/DATABASE_SCHEMA.md)
+- Schema docs: [`docs/architecture/DATABASE_SCHEMA.md`](./docs/architecture/DATABASE_SCHEMA.md)
 - Env vars are **optional** for build; required only for sign-in and live data.
 
 ## Personas

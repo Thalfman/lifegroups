@@ -1,5 +1,9 @@
 # Product Roadmap
 
+> 📌 **This is THE PRD for Life Group Operations.** It is the single product
+> requirements document — the ordered, authoritative plan of what to build and
+> why. (Kept under the filename `PRODUCT_ROADMAP.md` intentionally.)
+
 ## 1. Purpose
 
 This is the **active product roadmap** for the Life Group Operations
@@ -117,7 +121,7 @@ Verified from repo inspection on the branch this PR is opened against.
 > the sidebar's "Shepherd" group became "Admin OS" and now leads with
 > Shepherd care and Launch planning, Guests was removed from nav, and
 > the `missing_check_in` attention priority moved from 20 → 65. See
-> [`PRODUCT_SURFACE_AUDIT_2026-05.md`](./PRODUCT_SURFACE_AUDIT_2026-05.md)
+> [`PRODUCT_SURFACE_AUDIT_2026-05.md`](./archive/PRODUCT_SURFACE_AUDIT_2026-05.md)
 > for the before/after, the rationale, and how to reverse it.
 
 **Stack**
@@ -193,7 +197,7 @@ They never sign in. No public signup.
   `app/(protected)/admin/super-admin/invite-user-actions.ts`, form
   `components/admin/forms/invite-user-form.tsx`, and Edge Function
   `supabase/functions/invite-user/`. The detailed workflow contract is
-  documented in [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+  documented in [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
 - INV.1 below treats this as **verify-and-polish only** rather than
   greenfield work.
 
@@ -201,11 +205,11 @@ They never sign in. No public signup.
 
 - **Julian admin OS** — Shepherd care + launch planning, owned by this
   roadmap. Plans:
-  [`SHEPHERD_CARE_TRACKER_PLAN.md`](./SHEPHERD_CARE_TRACKER_PLAN.md),
-  [`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md).
+  [`SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md),
+  [`LAUNCH_PLANNING_PLAN.md`](./plans/LAUNCH_PLANNING_PLAN.md).
 - **Full inventory of features** — [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md).
 - **Invite user workflow contract** —
-  [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+  [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
 - **Reliability / security debt track** — appendix A below. Orthogonal
   to the product roadmap; runs in parallel.
 
@@ -233,7 +237,7 @@ as `ministry_admin` so he can sign in to his own admin OS.
 build the gap in a separate implementation PR.
 
 **Scope.**
-- Verify against [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+- Verify against [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
 - Invite `ministry_admin` (Julian) and `leader` (a real shepherd) end to
   end in a real Supabase project.
 - Polish only — copy, validation, error tokens, audit event rendering.
@@ -250,7 +254,7 @@ build the gap in a separate implementation PR.
 - `app/(protected)/admin/super-admin/invite-user-actions.ts`
 - `components/admin/forms/invite-user-form.tsx`
 - `supabase/functions/invite-user/index.ts`
-- `docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md` (source of truth contract)
+- `docs/specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md` (source of truth contract)
 
 **Security / privacy.**
 - Service role only inside the Edge Function.
@@ -563,7 +567,7 @@ each landed:
   readiness rubric (12+ members, 3+ years, co-shepherd 1+ year, willing, need)
   is on the launch-planning page, grouped by audience × life stage.
 - **P5 — Group-health grading**: discovery only — see
-  [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md).
+  [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
   Held pending Julian's rubric.
 - **P6 — Leader self-update + comms-director**: deferred design notes added to
   LDR.1 / EXT.1 below.

@@ -3,7 +3,7 @@
 The stable surface #113 and #114 bind to. Produced by the #112 tracer bullet
 (`claude/sc4-112-tracer-private-notes`). Authoritative design stays
 [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./SC_4_PRIVATE_CARE_NOTES_SPEC.md) /
-[`adr/0003`](./adr/0003-private-care-note-encryption.md); this records what was
+[`adr/0003`](../adr/0003-private-care-note-encryption.md); this records what was
 actually built and the deviations to reconcile against.
 
 ## 1. Crypto module public API (the verifiable surface)

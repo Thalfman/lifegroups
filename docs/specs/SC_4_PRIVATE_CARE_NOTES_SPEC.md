@@ -13,11 +13,11 @@ The Tier-1 fenced table + creator-scoped RLS from earlier drafts remain, as the
 **ciphertext store and defense-in-depth**, not as the privacy mechanism.
 
 **Source of record:** Julian's Q8
-([`julian-inputs/`](./julian-inputs/README.md)) and the intent recorded in
-[`CONTEXT.md`](../CONTEXT.md) ("Private Care Note"). Tracked in
-[`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) as **SC.4** and as blocker **Q1**.
+([`julian-inputs/`](../julian-inputs/README.md)) and the intent recorded in
+[`CONTEXT.md`](../../CONTEXT.md) ("Private Care Note"). Tracked in
+[`MASTER_BLUEPRINT.md`](../MASTER_BLUEPRINT.md) as **SC.4** and as blocker **Q1**.
 The foundational crypto decisions are recorded in
-[`docs/adr/0003-private-care-note-encryption.md`](./adr/0003-private-care-note-encryption.md).
+[`docs/adr/0003-private-care-note-encryption.md`](../adr/0003-private-care-note-encryption.md).
 
 ---
 

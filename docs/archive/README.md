@@ -27,7 +27,7 @@ here keeps the active `docs/` directory scannable.
 
 These are the as-built specs for the SC.* / LP.* phases. The
 forward-looking plans (`SHEPHERD_CARE_TRACKER_PLAN.md`,
-`LAUNCH_PLANNING_PLAN.md`) remain in `docs/`.
+`LAUNCH_PLANNING_PLAN.md`) remain in `docs/plans/`.
 
 - `SC_1A_SHEPHERD_CARE_FOUNDATION.md` — shepherd care directory + detail
   page, `shepherd_care_profiles` / `shepherd_care_interactions` tables,

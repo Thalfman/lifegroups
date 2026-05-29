@@ -4,7 +4,7 @@
 
 The product pivoted in May 2026 to **Julian's admin operating system**:
 shepherd care + launch planning, admin-only (see
-[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2). The PRD, schema, RPCs,
+[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) §2). The PRD, schema, RPCs,
 and read models all moved with the pivot — SC.1A / SC.2 / SC.3 / LP.1 /
 LP.2 shipped. The **UI surface had not moved with them**. Julian's
 landing page still led with the weekly check-in workflow ("This week"),
@@ -188,7 +188,7 @@ strand data or break other surfaces.
   (comms-director surface, guest forms) remain deferred. Neither is
   scoped yet.
 - **Group-health rubric** (P5) is in discovery
-  ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md)),
+  ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)),
   not in this audit.
 - The Check-ins page itself still works as the operational review
   surface. If Julian later confirms the weekly check-in workflow is
