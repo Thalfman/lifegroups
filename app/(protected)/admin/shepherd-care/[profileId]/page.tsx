@@ -65,6 +65,10 @@ const cardStyle = {
 async function loadDetail(
   profileId: string,
   creatorProfileId: string,
+  // SC.4: only a ministry_admin may read private notes. requireAdmin() also
+  // admits super_admin, so gate the reader CALLS here — never invoke the
+  // private-note readers on a super_admin request (no read path, not just no UI).
+  canReadPrivateNotes: boolean,
 ): Promise<
   | {
       kind: "ok";
@@ -120,7 +124,9 @@ async function loadDetail(
       fetchOverShepherdsForAdmin(client, { includeArchived: false }),
       fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
       fetchGenericFollowUpCountForAssignee(client, profileId),
-      fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId),
+      canReadPrivateNotes
+        ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
+        : Promise.resolve({ data: [] as PrivateNoteKeySlot[], error: null as Error | null }),
     ]);
   if (careResult.error) {
     return {
@@ -149,11 +155,13 @@ async function loadDetail(
     const [inter, fus, note] = await Promise.all([
       fetchShepherdCareInteractionsForAdmin(client, careResult.data.id),
       fetchShepherdCareFollowUpsForProfile(client, careResult.data.id),
-      fetchShepherdCarePrivateNoteCiphertextForCreator(
-        client,
-        careResult.data.id,
-        creatorProfileId,
-      ),
+      canReadPrivateNotes
+        ? fetchShepherdCarePrivateNoteCiphertextForCreator(
+            client,
+            careResult.data.id,
+            creatorProfileId,
+          )
+        : Promise.resolve({ data: null as PrivateNoteCiphertext | null, error: null as Error | null }),
     ]);
     if (inter.error) childError = inter.error.message;
     else interactions = inter.data;
@@ -202,7 +210,7 @@ export default async function AdminShepherdCareDetailPage({
   const { profileId } = await params;
   if (!isUuid(profileId)) notFound();
 
-  const detail = await loadDetail(profileId, creatorProfileId);
+  const detail = await loadDetail(profileId, creatorProfileId, actorRole === "ministry_admin");
   if (detail.kind === "not_found") notFound();
   if (detail.kind === "db_unavailable") {
     return (

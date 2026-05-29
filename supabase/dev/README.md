@@ -80,6 +80,38 @@ Expected:
 - Leader Casey → 2.
 - Ministry admin → 5.
 
+### SC.4 private care notes — boundary (the empirical cross-role + raw-DB check)
+
+CI proves the SC.4 boundary statically (`lib/admin/__tests__/sc4-boundary-proof.test.ts`
+asserts the creator-scoped RLS predicate, content-free audit, and ciphertext-only
+note shape; `lib/supabase/__tests__/sc4-no-leak-exclusion.test.ts` proves no
+non-admin / SC.2 / SC.3 read path references the tables; the crypto round-trip
+tests prove ciphertext never contains the plaintext). The live RLS enforcement
+across the full role matrix is verified here, the same "Run as" way as above.
+
+After a `ministry_admin` has created a private note in the app, use the
+**Run as** dropdown to impersonate each role and run:
+
+```sql
+select count(*) from shepherd_care_private_notes;
+select count(*) from shepherd_care_note_key_slots;
+```
+
+Expected (the boundary): only the **creating** `ministry_admin` sees their own
+rows. Everyone else sees **0** — a second `ministry_admin`, `super_admin`,
+`over_shepherd`, `leader`, `co_leader`, and `staff_viewer` alike. The key-slot
+table is fenced identically to the note table.
+
+Confirm the at-rest guarantee with a raw read (service role / SQL editor, which
+bypasses RLS): the `ciphertext`/`iv` and the key-slot `wrapped_dek` come back as
+`\x…` bytea with **no plaintext** anywhere in the row, and there is no
+server-side key to decrypt them.
+
+```sql
+select id, care_profile_id, ciphertext, iv, dek_version from shepherd_care_private_notes;
+-- ciphertext is opaque bytea; scan the row for your known note text and confirm it is absent.
+```
+
 ## Super admin bootstrap (Phase 4.1)
 
 `super_admin` is the top-level owner/operator role. It is **not** seeded —
