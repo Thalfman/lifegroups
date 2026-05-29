@@ -139,14 +139,17 @@ private to *them*, not silently shared — and it keeps the RLS predicate
 ```sql
 alter table public.shepherd_care_private_notes enable row level security;
 
--- SELECT: only the creating admin. Excludes other ministry_admins AND
--- super_admin. auth_is_admin() kept as defense-in-depth so a future non-admin
--- never matches even if a row's creator id were somehow theirs.
+-- SELECT: only the creating Ministry Admin. Gated on the ministry_admin role
+-- specifically (NOT auth_is_admin(), which also admits super_admin) AND the
+-- creator match, so a note is readable only by the ministry_admin who wrote it.
+-- This excludes other admins AND super_admin, per CONTEXT.md ("not to the Super
+-- Admin either") and docs/adr/0002 (private care notes are a Ministry-Admin
+-- exception; super_admin's exclusive surface is platform administration).
 create policy shepherd_care_private_notes_creator_select
   on public.shepherd_care_private_notes
   for select to authenticated
   using (
-    public.auth_is_admin()
+    public.auth_role() = 'ministry_admin'
     and created_by_profile_id = public.auth_profile_id()
   );
 
@@ -157,9 +160,22 @@ grant select on public.shepherd_care_private_notes to authenticated;
 
 Reused helpers (`supabase/migrations/20260518000000_phase4_rls.sql:17-53`):
 
-- `public.auth_is_admin()` → `super_admin` or `ministry_admin` (the strict gate;
-  **never** `auth_is_admin_or_staff()`).
+- `public.auth_role()` → the caller's active role. SC.4 gates on
+  `auth_role() = 'ministry_admin'` — deliberately **narrower** than
+  `auth_is_admin()` (which also admits `super_admin`) and `auth_is_admin_or_staff()`.
 - `public.auth_profile_id()` → the caller's active profile id, from `auth.uid()`.
+
+**EXECUTE lockdown (match the existing care RPC migrations).** Before exposing
+the `SECURITY DEFINER` write RPC in §5, revoke default execute and grant it only
+to `authenticated`, so the privileged function is never callable by `public` /
+`anon`:
+
+```sql
+revoke all on function public.admin_upsert_shepherd_care_private_note
+  from public, anon, authenticated;
+grant execute on function public.admin_upsert_shepherd_care_private_note
+  to authenticated;
+```
 
 **Why the read path actually enforces this:** the read model uses the
 RLS-bound cookie client (`createSupabaseServerClient`), so this policy fires on
@@ -180,8 +196,10 @@ admin_upsert_shepherd_care_private_note(
 (`20260518160000_phase5d0_…`) and the OS.5 recreated RPC:
 
 1. **Auth gate:** `v_actor := public.auth_profile_id();` then require
-   `public.auth_is_admin()` and `v_actor is not null`, else
-   `raise exception 'insufficient_privilege'`.
+   `public.auth_role() = 'ministry_admin'` and `v_actor is not null`, else
+   `raise exception 'insufficient_privilege'`. **`super_admin` is intentionally
+   not admitted** — it must not create pastoral notes Julian cannot read (hidden
+   operational data outside the role boundary; see §4 and docs/adr/0002).
 2. **Creator is the actor:** `created_by_profile_id := v_actor` — never a
    client-supplied id. This is what makes the note un-spoofable.
 3. **Target validation:** the care profile's shepherd must be an active
@@ -191,9 +209,13 @@ admin_upsert_shepherd_care_private_note(
    the tri-state `p_set_body` flag so callers can update other fields later
    without clobbering the body.
 5. **Audit** a paired `audit_events` row in the same transaction, action
-   `admin.shepherd_care.upsert_private_note`, **presence only**
-   (`has_body := p_body is not null`) — **never the body text**, matching every
-   existing care RPC.
+   `admin.shepherd_care.upsert_private_note`, **presence only** — **never the
+   body text**, matching every existing care RPC. Derive the flag from the
+   **persisted** row after the upsert, not the raw argument: capture the stored
+   body presence (`after.has_body := <stored body> is not null`) plus
+   `body_set := p_set_body`. Auditing `p_body is not null` would be wrong when
+   `p_set_body = false` (body untouched) or when validation normalizes blank
+   text — the recorded presence must match what is actually stored.
 
 ## 6. Read model
 
@@ -223,10 +245,17 @@ export async function fetchShepherdCarePrivateNoteForCreator(
   delegating to `callUuidRpc(client, "admin_upsert_shepherd_care_private_note",
   args)` — same one-liner shape as the other care wrappers.
 - `app/(protected)/admin/shepherd-care/actions.ts`: a `runAdminWriteAction`
-  spec named `admin.shepherd_care.upsert_private_note` with a pure validator,
-  `okFields: { body_set }`, and `revalidate: shepherdCarePaths(profileId)`.
-  Auth, logging, audit, and revalidation come for free from the runner
-  (`lib/admin/run-action.ts:119-195`).
+  spec named `admin.shepherd_care.upsert_private_note` with a pure validator and
+  `okFields: { body_set }`. Auth, logging, audit, and revalidation come for free
+  from the runner (`lib/admin/run-action.ts:119-195`).
+- **Revalidation needs the shepherd id, not the care-profile id.** The detail
+  route is `/admin/shepherd-care/[shepherdProfileId]`, and `shepherdCarePaths`
+  builds its paths from the *shepherd* `profiles.id`. The RPC only takes
+  `care_profile_id`, so the action must carry `shepherd_profile_id` separately in
+  its payload (exactly as the SC.1B follow-up actions already do) and call
+  `revalidate: (v) => shepherdCarePaths(v.shepherd_profile_id)`. Passing the
+  care-profile id here would revalidate the wrong (or no) path, leaving the
+  just-saved note stale on the detail page until a full refresh.
 
 ## 8. UI
 
