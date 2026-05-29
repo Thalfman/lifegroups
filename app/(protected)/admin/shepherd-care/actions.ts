@@ -1,23 +1,29 @@
 "use server";
 
 import {
+  validateAddPrivateNoteKeySlotPayload,
   validateAssignShepherdCoveragePayload,
   validateCreateOverShepherdPayload,
   validateCreateShepherdCareFollowUpPayload,
   validateEndShepherdCoverageAssignmentPayload,
   validateEnrollPrivateNoteKeysPayload,
   validateLogShepherdCareInteractionPayload,
+  validateRemovePrivateNoteKeySlotPayload,
+  validateRotatePrivateNoteRecoveryPayload,
   validateUpdateOverShepherdPayload,
   validateUpdateShepherdCareFollowUpPayload,
   validateUpdateShepherdCareFollowUpStatusPayload,
   validateUpsertShepherdCarePrivateNotePayload,
   validateUpsertShepherdCareProfilePayload,
+  type AddPrivateNoteKeySlotPayload,
   type AssignShepherdCoveragePayload,
   type CreateOverShepherdPayload,
   type CreateShepherdCareFollowUpPayload,
   type EndShepherdCoverageAssignmentPayload,
   type EnrollPrivateNoteKeysPayload,
   type LogShepherdCareInteractionPayload,
+  type RemovePrivateNoteKeySlotPayload,
+  type RotatePrivateNoteRecoveryPayload,
   type UpdateOverShepherdPayload,
   type UpdateShepherdCareFollowUpPayload,
   type UpdateShepherdCareFollowUpStatusPayload,
@@ -35,8 +41,11 @@ import {
   rpcAdminCreateOverShepherd,
   rpcAdminCreateShepherdCareFollowUp,
   rpcAdminEndShepherdCoverageAssignment,
+  rpcAdminAddPrivateNoteKeySlot,
   rpcAdminEnrollPrivateNoteKeys,
   rpcAdminLogShepherdCareInteraction,
+  rpcAdminRemovePrivateNoteKeySlot,
+  rpcAdminRotatePrivateNoteRecovery,
   rpcAdminUpdateOverShepherd,
   rpcAdminUpdateShepherdCareFollowUp,
   rpcAdminUpdateShepherdCareFollowUpStatus,
@@ -513,4 +522,84 @@ export async function adminUpsertShepherdCarePrivateNote(
   input: ActionInput<UpsertPrivateNoteInput>,
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPSERT_PRIVATE_NOTE_SPEC, prev, input);
+}
+
+// ----- Phase SC.4 (#113) — key-slot lifecycle actions ---------------------
+
+// ----- adminAddPrivateNoteKeySlot (second passkey) ------------------------
+
+const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<AddPrivateNoteKeySlotPayload, { id: string }> = {
+  name: "admin.shepherd_care.private_note.add_slot",
+  keys: ["credential_id", "label", "prf_salt", "hkdf_salt", "wrapped_dek", "wrap_iv", "shepherd_profile_id"],
+  validate: validateAddPrivateNoteKeySlotPayload,
+  okFields: (value) => ({ has_label: value.label !== null }),
+  rpc: (client, value) =>
+    rpcAdminAddPrivateNoteKeySlot(client, {
+      p_slot_type: "passkey",
+      p_credential_id: value.credential_id,
+      p_label: value.label,
+      p_prf_salt: value.prf_salt,
+      p_hkdf_salt: value.hkdf_salt,
+      p_wrapped_dek: value.wrapped_dek,
+      p_wrap_iv: value.wrap_iv,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The passkey couldn't be added. Please try again.",
+};
+
+type AddKeySlotInput = AddPrivateNoteKeySlotPayload & { shepherd_profile_id?: string };
+
+export async function adminAddPrivateNoteKeySlot(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<AddKeySlotInput>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ADD_KEY_SLOT_SPEC, prev, input);
+}
+
+// ----- adminRotatePrivateNoteRecovery -------------------------------------
+
+const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<RotatePrivateNoteRecoveryPayload, { id: string }> = {
+  name: "admin.shepherd_care.private_note.rotate_recovery",
+  keys: ["hkdf_salt", "wrapped_dek", "wrap_iv", "label", "shepherd_profile_id"],
+  validate: validateRotatePrivateNoteRecoveryPayload,
+  rpc: (client, value) =>
+    rpcAdminRotatePrivateNoteRecovery(client, {
+      p_hkdf_salt: value.hkdf_salt,
+      p_wrapped_dek: value.wrapped_dek,
+      p_wrap_iv: value.wrap_iv,
+      p_label: value.label,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The recovery code couldn't be rotated. Please try again.",
+};
+
+type RotateRecoveryInput = RotatePrivateNoteRecoveryPayload & { shepherd_profile_id?: string };
+
+export async function adminRotatePrivateNoteRecovery(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<RotateRecoveryInput>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ROTATE_RECOVERY_SPEC, prev, input);
+}
+
+// ----- adminRemovePrivateNoteKeySlot --------------------------------------
+
+const REMOVE_KEY_SLOT_SPEC: AdminWriteActionSpec<RemovePrivateNoteKeySlotPayload, { id: string }> = {
+  name: "admin.shepherd_care.private_note.remove_slot",
+  keys: ["slot_id", "shepherd_profile_id"],
+  validate: validateRemovePrivateNoteKeySlotPayload,
+  fields: (_actor, value) => ({ target_slot_id: value.slot_id }),
+  rpc: (client, value) =>
+    rpcAdminRemovePrivateNoteKeySlot(client, { p_slot_id: value.slot_id }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The unlock method couldn't be removed. Please try again.",
+};
+
+type RemoveKeySlotInput = RemovePrivateNoteKeySlotPayload & { shepherd_profile_id?: string };
+
+export async function adminRemovePrivateNoteKeySlot(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<RemoveKeySlotInput>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(REMOVE_KEY_SLOT_SPEC, prev, input);
 }

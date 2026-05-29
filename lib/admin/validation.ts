@@ -2466,3 +2466,104 @@ export function validateEnrollPrivateNoteKeysPayload(
 
   return { ok: true, value: { dek_version: dekVersion, slots } };
 }
+
+// ----- Phase SC.4 (#113) — key-slot lifecycle --------------------------------
+
+export type AddPrivateNoteKeySlotPayload = {
+  credential_id: string;
+  label: string | null;
+  prf_salt: string;
+  hkdf_salt: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+};
+
+// Adds a passkey slot (recovery is rotated, not added). Reuses the fixed-length
+// rules from the enroll validator.
+export function validateAddPrivateNoteKeySlotPayload(
+  input: unknown,
+): ValidationResult<AddPrivateNoteKeySlotPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (
+    !isBase64Blob(input.credential_id) ||
+    base64ToBytes(input.credential_id).length > MAX_CREDENTIAL_ID_BYTES
+  ) {
+    errors.push("Passkey credential id is missing or malformed.");
+  }
+  if (!isBase64Blob(input.prf_salt) || !isBase64OfLength(input.prf_salt, PRF_SALT_BYTES)) {
+    errors.push("Passkey PRF salt is missing or the wrong size.");
+  }
+  if (!isBase64Blob(input.hkdf_salt) || !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)) {
+    errors.push("HKDF salt is missing or the wrong size.");
+  }
+  if (!isBase64Blob(input.wrapped_dek) || !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)) {
+    errors.push("Wrapped key is missing or the wrong size.");
+  }
+  if (!isBase64Blob(input.wrap_iv) || !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)) {
+    errors.push("Wrap nonce is missing or the wrong size.");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      credential_id: input.credential_id as string,
+      label: readOptionalString(input.label) ?? null,
+      prf_salt: input.prf_salt as string,
+      hkdf_salt: input.hkdf_salt as string,
+      wrapped_dek: input.wrapped_dek as string,
+      wrap_iv: input.wrap_iv as string,
+    },
+  };
+}
+
+export type RotatePrivateNoteRecoveryPayload = {
+  hkdf_salt: string;
+  wrapped_dek: string;
+  wrap_iv: string;
+  label: string | null;
+};
+
+export function validateRotatePrivateNoteRecoveryPayload(
+  input: unknown,
+): ValidationResult<RotatePrivateNoteRecoveryPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isBase64Blob(input.hkdf_salt) || !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)) {
+    errors.push("HKDF salt is missing or the wrong size.");
+  }
+  if (!isBase64Blob(input.wrapped_dek) || !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)) {
+    errors.push("Wrapped key is missing or the wrong size.");
+  }
+  if (!isBase64Blob(input.wrap_iv) || !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)) {
+    errors.push("Wrap nonce is missing or the wrong size.");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      hkdf_salt: input.hkdf_salt as string,
+      wrapped_dek: input.wrapped_dek as string,
+      wrap_iv: input.wrap_iv as string,
+      label: readOptionalString(input.label) ?? null,
+    },
+  };
+}
+
+export type RemovePrivateNoteKeySlotPayload = {
+  slot_id: string;
+};
+
+export function validateRemovePrivateNoteKeySlotPayload(
+  input: unknown,
+): ValidationResult<RemovePrivateNoteKeySlotPayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.slot_id)) return { ok: false, errors: ["slot_id must be a uuid"] };
+  return { ok: true, value: { slot_id: normalizeUuid(input.slot_id as string) } };
+}

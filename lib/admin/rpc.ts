@@ -452,6 +452,46 @@ export function rpcAdminUpsertShepherdCarePrivateNote(
   return callUuidRpc(client, "admin_upsert_shepherd_care_private_note", args);
 }
 
+// Phase SC.4 (#113) key-slot lifecycle RPCs. bytea columns travel as base64.
+
+export type AdminAddPrivateNoteKeySlotArgs = {
+  p_slot_type: string;
+  p_credential_id: string | null;
+  p_label: string | null;
+  p_prf_salt: string | null;
+  p_hkdf_salt: string;
+  p_wrapped_dek: string;
+  p_wrap_iv: string;
+};
+
+export function rpcAdminAddPrivateNoteKeySlot(
+  client: AppSupabaseClient,
+  args: AdminAddPrivateNoteKeySlotArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_add_private_note_key_slot", args);
+}
+
+export type AdminRotatePrivateNoteRecoveryArgs = {
+  p_hkdf_salt: string;
+  p_wrapped_dek: string;
+  p_wrap_iv: string;
+  p_label: string | null;
+};
+
+export function rpcAdminRotatePrivateNoteRecovery(
+  client: AppSupabaseClient,
+  args: AdminRotatePrivateNoteRecoveryArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_rotate_private_note_recovery", args);
+}
+
+export function rpcAdminRemovePrivateNoteKeySlot(
+  client: AppSupabaseClient,
+  args: { p_slot_id: string },
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_remove_private_note_key_slot", args);
+}
+
 // Phase 5D.1 over-shepherd coverage tracking admin RPCs.
 
 export type AdminCreateOverShepherdArgs = {
