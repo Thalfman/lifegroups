@@ -228,6 +228,8 @@ as $$
 declare
   v_actor uuid;
   v_existing record;
+  v_shepherd_role public.user_role;
+  v_shepherd_status public.profile_status;
   v_new_completed_at timestamptz;
   v_persisted record;
 begin
@@ -252,6 +254,22 @@ begin
    for update;
   if v_existing.id is null then
     raise exception 'missing_follow_up';
+  end if;
+
+  -- Re-gate the care target (same posture as the create RPC + SC.1A writes):
+  -- reject transitions on a follow-up whose shepherd has since been
+  -- deactivated or moved off leader/co_leader, so a stale/direct-call path
+  -- can't keep mutating care tasks for a target the UI already 404s.
+  select p.role, p.status
+    into v_shepherd_role, v_shepherd_status
+    from public.shepherd_care_profiles scp
+    join public.profiles p on p.id = scp.shepherd_profile_id
+   where scp.id = v_existing.care_profile_id;
+  if v_shepherd_role not in ('leader'::public.user_role, 'co_leader'::public.user_role) then
+    raise exception 'missing_profile';
+  end if;
+  if v_shepherd_status <> 'active'::public.profile_status then
+    raise exception 'missing_profile';
   end if;
 
   -- "may move to any other" — reject same-state no-ops so the workflow and
@@ -321,6 +339,8 @@ as $$
 declare
   v_actor uuid;
   v_existing record;
+  v_shepherd_role public.user_role;
+  v_shepherd_status public.profile_status;
   v_title text;
   v_notes text;
   v_persisted record;
@@ -359,6 +379,20 @@ begin
    for update;
   if v_existing.id is null then
     raise exception 'missing_follow_up';
+  end if;
+
+  -- Same active leader/co_leader re-gate as the create + status RPCs, so an
+  -- edit can't mutate a care task for a target the UI already 404s.
+  select p.role, p.status
+    into v_shepherd_role, v_shepherd_status
+    from public.shepherd_care_profiles scp
+    join public.profiles p on p.id = scp.shepherd_profile_id
+   where scp.id = v_existing.care_profile_id;
+  if v_shepherd_role not in ('leader'::public.user_role, 'co_leader'::public.user_role) then
+    raise exception 'missing_profile';
+  end if;
+  if v_shepherd_status <> 'active'::public.profile_status then
+    raise exception 'missing_profile';
   end if;
 
   update public.shepherd_care_follow_ups
