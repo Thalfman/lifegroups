@@ -4,6 +4,7 @@ import {
   defaultLandingPathForRole,
   isAdminRole,
   isLeaderRole,
+  isOverShepherdRole,
   navItemsForRole,
 } from "@/lib/auth/roles";
 import type { UserRole } from "@/types/enums";
@@ -11,6 +12,7 @@ import type { UserRole } from "@/types/enums";
 const ALL_ROLES: UserRole[] = [
   "super_admin",
   "ministry_admin",
+  "over_shepherd",
   "staff_viewer",
   "leader",
   "co_leader",
@@ -34,6 +36,19 @@ describe("isLeaderRole", () => {
   });
 });
 
+describe("isOverShepherdRole", () => {
+  it("returns true for over_shepherd only", () => {
+    for (const role of ALL_ROLES) {
+      expect(isOverShepherdRole(role)).toBe(role === "over_shepherd");
+    }
+  });
+
+  it("keeps over_shepherd out of the admin and leader categories", () => {
+    expect(isAdminRole("over_shepherd")).toBe(false);
+    expect(isLeaderRole("over_shepherd")).toBe(false);
+  });
+});
+
 describe("defaultLandingPathForRole", () => {
   it("routes admins to /admin", () => {
     expect(defaultLandingPathForRole("super_admin")).toBe("/admin");
@@ -45,6 +60,10 @@ describe("defaultLandingPathForRole", () => {
   it("routes leaders to /unauthorized (leader surface gated)", () => {
     expect(defaultLandingPathForRole("leader")).toBe("/unauthorized");
     expect(defaultLandingPathForRole("co_leader")).toBe("/unauthorized");
+  });
+
+  it("routes over_shepherd to /over-shepherd", () => {
+    expect(defaultLandingPathForRole("over_shepherd")).toBe("/over-shepherd");
   });
 
   it("routes staff_viewer to /unauthorized", () => {
@@ -83,6 +102,13 @@ describe("navItemsForRole", () => {
         "/admin/check-ins",
       );
     }
+  });
+
+  it("gives over_shepherd the home + my-shepherds items only", () => {
+    const hrefs = navItemsForRole("over_shepherd").map((i) => i.href);
+    expect(hrefs).toEqual(["/", "/over-shepherd"]);
+    // Over-Shepherd gets none of the admin nav surface.
+    expect(hrefs).not.toContain("/admin");
   });
 
   it("gives staff_viewer only the home item", () => {

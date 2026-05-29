@@ -26,7 +26,13 @@ type ProfileFixture = {
   full_name: string;
   email: string;
   phone: string | null;
-  role: "super_admin" | "ministry_admin" | "leader" | "co_leader" | "staff_viewer";
+  role:
+    | "super_admin"
+    | "ministry_admin"
+    | "over_shepherd"
+    | "leader"
+    | "co_leader"
+    | "staff_viewer";
   status: "active" | "inactive" | "invited";
   created_at: string;
   updated_at: string;
@@ -59,6 +65,14 @@ const PROFILE_LEADER: ProfileFixture = {
   auth_user_id: AUTH_LEADER_ID,
   email: "leader@example.com",
   role: "leader",
+};
+
+const PROFILE_OVER_SHEPHERD: ProfileFixture = {
+  ...PROFILE_ADMIN,
+  id: "77777777-7777-7777-7777-777777777777",
+  auth_user_id: "88888888-8888-8888-8888-888888888888",
+  email: "coach@example.com",
+  role: "over_shepherd",
 };
 
 type ClientState = {
@@ -338,6 +352,48 @@ describe("requireLeader (page-route guard) -- gated", () => {
     );
     const { requireLeader } = await loadSession();
     await expect(requireLeader()).rejects.toMatchObject({
+      __redirect: "/unauthorized",
+    });
+  });
+});
+
+describe("requireOverShepherd (page-route guard)", () => {
+  it("admits an active over_shepherd", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-coach", email: "coach@example.com" },
+        profile: PROFILE_OVER_SHEPHERD,
+      }),
+    );
+    const { requireOverShepherd } = await loadSession();
+    const result = await requireOverShepherd();
+    expect(result.kind).toBe("authenticated");
+    expect(result.profile.role).toBe("over_shepherd");
+  });
+
+  it("redirects an admin caller to /unauthorized", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-admin", email: "admin@example.com" },
+        profile: PROFILE_ADMIN,
+      }),
+    );
+    const { requireOverShepherd } = await loadSession();
+    await expect(requireOverShepherd()).rejects.toMatchObject({
+      __redirect: "/unauthorized",
+    });
+  });
+
+  it("redirects a leader caller to /unauthorized", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [],
+      }),
+    );
+    const { requireOverShepherd } = await loadSession();
+    await expect(requireOverShepherd()).rejects.toMatchObject({
       __redirect: "/unauthorized",
     });
   });

@@ -198,6 +198,12 @@ export async function requireRole(
 
 export const requireAdmin = () => requireRole(["super_admin", "ministry_admin"] as const);
 export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
+// Over-Shepherd route-group guard per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md. Admits only
+// over_shepherd; every other role (including admins and leaders) is
+// redirected to /unauthorized, and over_shepherd cannot reach /admin/* or
+// /leader/* because those guards never list it.
+export const requireOverShepherd = () => requireRole(["over_shepherd"] as const);
 // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md.
 // Every /leader/* page calls this shared guard, so allowing no role here
 // gates the whole dormant surface in one place: leader / co_leader (and any

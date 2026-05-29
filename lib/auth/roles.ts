@@ -7,6 +7,7 @@ export type { UserRole };
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super Admin",
   ministry_admin: "Ministry Admin",
+  over_shepherd: "Over-Shepherd",
   staff_viewer: "Legacy (no access)",
   leader: "Leader",
   co_leader: "Co-Leader",
@@ -14,6 +15,11 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 const ADMIN_ROLES: ReadonlySet<UserRole> = new Set(["super_admin", "ministry_admin"]);
 const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
+// Over-Shepherd is its own role category per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md — deliberately NOT a
+// member of ADMIN_ROLES or LEADER_ROLES. It earns access only through
+// predicates that name it explicitly (this set + later coverage-scoped RLS).
+const OVER_SHEPHERD_ROLES: ReadonlySet<UserRole> = new Set(["over_shepherd"]);
 
 // Single source of truth for the full UserRole set. Used at trust
 // boundaries (session profile read) to validate that an incoming role
@@ -21,6 +27,7 @@ const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
 export const USER_ROLES: ReadonlySet<UserRole> = new Set([
   "super_admin",
   "ministry_admin",
+  "over_shepherd",
   "staff_viewer",
   "leader",
   "co_leader",
@@ -38,8 +45,14 @@ export function isLeaderRole(role: UserRole): boolean {
   return LEADER_ROLES.has(role);
 }
 
+export function isOverShepherdRole(role: UserRole): boolean {
+  return OVER_SHEPHERD_ROLES.has(role);
+}
+
 export function defaultLandingPathForRole(role: UserRole): string {
   if (isAdminRole(role)) return "/admin";
+  // Over-Shepherd lands on its own focused care surface, distinct from /admin.
+  if (isOverShepherdRole(role)) return "/over-shepherd";
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
   // leader / co_leader are treated as no-access, exactly like staff_viewer.
   // They fall through to /unauthorized rather than landing on /leader.
@@ -70,6 +83,11 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     if (role === "super_admin") {
       items.push({ href: "/admin/super-admin", label: "Super admin" });
     }
+  } else if (isOverShepherdRole(role)) {
+    // Focused Over-Shepherd nav: a single "My Shepherds" entry. The directory
+    // it links to arrives in the read-surface slice; this slice lands the
+    // entry pointing at the placeholder landing.
+    items.push({ href: "/over-shepherd", label: "My Shepherds" });
   }
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
   // no leader nav entry is emitted for any role. leader / co_leader see only
