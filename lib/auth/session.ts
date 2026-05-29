@@ -274,6 +274,37 @@ export async function requireLeaderActor(): Promise<
   }
 }
 
+// Server-action variant for Over-Shepherd write workflows
+// (docs/adr/0002-oversight-ladder-and-leader-gating.md). Returns the actor's
+// profile id so the runner can run a defense-in-depth coverage check (via the
+// OS.2 coverage bridge) before hitting the narrow write RPC. The RPC re-checks
+// coverage itself, so this guard only confirms an active over_shepherd caller.
+export async function requireOverShepherdActor(): Promise<
+  | { ok: true; profileId: string }
+  | { ok: false; error: string }
+> {
+  const session = await getCurrentSession();
+  switch (session.kind) {
+    case "anonymous":
+      return { ok: false, error: "You need to sign in to do that." };
+    case "profile_missing":
+      return { ok: false, error: "Your account isn't set up yet." };
+    case "backend_error":
+      logGuardBackendError("requireOverShepherdActor", session.stage);
+      return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
+    case "authenticated": {
+      if (session.profile.status !== "active")
+        return { ok: false, error: "Your account isn't active." };
+      if (session.profile.role !== "over_shepherd")
+        return {
+          ok: false,
+          error: "Only an Over-Shepherd can do that.",
+        };
+      return { ok: true, profileId: session.profile.id };
+    }
+  }
+}
+
 // Server-action variant for the Phase 5A.3 super-admin-only console.
 // Mirrors requireAdminSession() above but tightens the role check to
 // super_admin alone, so role-management writes never accept a

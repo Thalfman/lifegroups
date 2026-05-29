@@ -4,6 +4,9 @@ import { PastoralAppShell } from "@/components/pastoral/shell";
 import { EmptyState } from "@/components/dashboard/cards";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
+import { OverShepherdLogInteractionForm } from "@/components/over-shepherd/log-interaction-form";
+import { Card } from "@/components/lg/Card";
+import { SectionLabel } from "@/components/lg/SectionLabel";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -117,6 +120,11 @@ export default async function OverShepherdShepherdPage({
             {care?.last_contact_at ? formatIsoDateOr(care.last_contact_at, "—") : "Never"}
           </span>
         </section>
+
+        <Card>
+          <SectionLabel hint="broad care touch">Log interaction</SectionLabel>
+          <OverShepherdLogInteractionForm shepherdProfileId={profileId} />
+        </Card>
 
         {interactions.length === 0 ? (
           <EmptyState
