@@ -259,25 +259,15 @@ Care-specific task list. **Never** exposed to leaders. Separate from
 ### Planned: a private-to-Julian tier (SC.4, from Q8)
 
 Julian asked for notes "that should only be readable by you" — readable by
-**Julian alone**, excluding even `super_admin`. The shipped model does **not**
-provide this: SELECT is granted to `super_admin` and `ministry_admin` alike, and
-the foundation migration deferred "encrypted private notes ... if Julian asks
-for" them
-(`supabase/migrations/20260518160000_phase5d0_shepherd_care_foundation.sql`).
-The trigger is now met. Two interpretations to settle with Julian before any
-build:
+**Julian alone**, excluding even `super_admin`. The full buildable design now
+lives in its own spec: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./SC_4_PRIVATE_CARE_NOTES_SPEC.md).
 
-- **Pragmatic (recommended).** A `visibility = private_to_creator` flag on the
-  note / interaction row, enforced in RLS so only the creating `ministry_admin`
-  (Julian) can SELECT it. Simple, queryable, audit-friendly; a DB owner with raw
-  SQL access could still read it — acceptable if "only you" means "only you
-  inside the app."
-- **Strict.** Encryption-at-rest where the plaintext is unreadable without a key
-  Julian controls. Honors "only you" even against raw DB access, but adds
-  key-management cost and breaks server-side search / sort on those notes.
-
-No `leader` / `co_leader` / over-shepherd path may ever reach private-tier
-notes.
+In brief: a separate **fenced table** (following the OS.5 `admin_summary`
+precedent) whose RLS is **creator-scoped** so only the creating admin can SELECT
+— excluding other admins and `super_admin` through the app. The one open
+decision (blueprint Q1) is Tier 1 (creator-scoped RLS, **recommended**) vs.
+Tier 2 (encryption against raw-DB access). No `leader` / `co_leader` /
+over-shepherd path may ever reach private-tier notes.
 
 ## 13. Suggested UI
 
@@ -394,14 +384,15 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
   items into the SC.3 dashboard buckets.
 - **Endorsed by Julian's Q6 ("both"); A1 is the target model (§ 6).**
 
-### SC.4 — Private / encrypted care notes — NEW (from Q8)
-- **Decide the interpretation first** (see § 12): a `private_to_creator`
-  visibility flag enforced in RLS (recommended) vs. encryption-at-rest with a
-  Julian-held key.
-- For the flag approach: add a `visibility` column to care interactions
-  (and/or a `private_summary`), restrict SELECT in RLS to the creating
-  `ministry_admin`, and exclude private rows from every other read model and
-  from any SC.2 / SC.3 aggregate another admin can see.
-- Audit creation and visibility changes; never expose to leaders /
-  over-shepherds.
-- Requires a privacy review before build.
+### SC.4 — Private / encrypted care notes — NEW (from Q8) — SPECCED
+- Full design: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./SC_4_PRIVATE_CARE_NOTES_SPEC.md).
+- **Decide the interpretation first** (spec §2 / blueprint Q1): Tier 1 —
+  creator-scoped RLS on a separate fenced table (recommended) vs. Tier 2 —
+  encryption-at-rest with a Julian-held key.
+- Tier 1 build: new `shepherd_care_private_notes` fenced table, RLS gated on
+  `auth_is_admin() AND created_by_profile_id = auth_profile_id()`,
+  `admin_upsert_shepherd_care_private_note` SECURITY DEFINER RPC with
+  presence-only audit, a creator-scoped read model, and a "Private notes (only
+  you)" section on the care detail page.
+- Never expose to leaders / over-shepherds; requires a privacy review before
+  build.

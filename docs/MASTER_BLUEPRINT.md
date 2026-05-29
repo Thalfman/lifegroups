@@ -54,7 +54,7 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 | SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
 | SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./archive/SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
 | SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./archive/SC_3_JULIAN_CARE_DASHBOARD.md) | — |
-| SC.4 | Private / encrypted care notes — readable by Julian alone | 🆕 New **(Q8)** | [plan §12](./SHEPHERD_CARE_TRACKER_PLAN.md) | **Decide interpretation** (visibility flag vs. encryption), then spec. |
+| SC.4 | Private / encrypted care notes — readable by Julian alone | 🟡 Planned **(Q8)** | [spec](./SC_4_PRIVATE_CARE_NOTES_SPEC.md) | **Tier 2 (zero-knowledge) chosen** (Q1 resolved). Crypto design + threat model in #111 (human sign-off), then build #112–#114. |
 | — | Stale-contact threshold `shepherd_care_stale_days` (default 60) | ✅ Shipped (configurable) | [roadmap §6 P1](./PRODUCT_ROADMAP.md) | Value is Julian's call (see ❓ below). |
 | — | Cadence tiering by oversight | ❓ Open (Julian, **Q5**) | [FEEDBACK_MAP](./julian-inputs/FEEDBACK_MAP.md) | Decide: one global threshold vs. per-tier (direct vs. delegated). |
 | — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
@@ -127,7 +127,7 @@ product consequences of the newly-captured questions.
 
 | # | Question | Source | Blocks |
 |---|---|---|---|
-| 1 | Private notes: "only you inside the app" (RLS visibility flag) or "only you, period" (encryption)? | Q8 | SC.4 |
+| 1 | ~~Private notes: "only you inside the app" (RLS) or "only you, period" (encryption)?~~ **Resolved 2026-05-29: Tier 2 zero-knowledge encryption** (see [spec §2](./SC_4_PRIVATE_CARE_NOTES_SPEC.md); crypto sign-off in #111). | Q8 | SC.4 |
 | 2 | Cadence: one global stale-contact threshold, or per-oversight-tier? And what value? | Q5 | SC cadence flags |
 | 3 | Group-health rubric: which dimensions, what weights, what output shape (letter / score / bucket)? How is "spiritual growth" captured? | Q12 | P5 (group health) |
 | 4 | Multiplication pipeline: extend the in-app view, or keep the Google Doc as system of record? And the 2026-vs-2027 split per group. | multiplication plan | P4 scope |
