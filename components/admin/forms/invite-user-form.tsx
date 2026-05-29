@@ -17,7 +17,7 @@ import {
 } from "./field-styles";
 import type { ActionResult } from "@/lib/admin/action-result";
 
-type InviteUserRole = "ministry_admin" | "leader" | "co_leader";
+type InviteUserRole = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
 
 type GroupOption = { id: string; name: string };
 
@@ -25,6 +25,7 @@ type State = ActionResult<InviteUserSuccess> | undefined;
 
 const ASSIGNABLE_ROLES: { value: InviteUserRole; label: string }[] = [
   { value: "ministry_admin", label: ROLE_LABELS.ministry_admin },
+  { value: "over_shepherd", label: ROLE_LABELS.over_shepherd },
   { value: "leader", label: ROLE_LABELS.leader },
   { value: "co_leader", label: ROLE_LABELS.co_leader },
 ];

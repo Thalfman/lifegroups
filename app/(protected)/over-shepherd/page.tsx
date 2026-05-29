@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { PastoralAppShell } from "@/components/pastoral/shell";
 import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
@@ -50,8 +51,15 @@ export default async function OverShepherdPage() {
     );
   }
 
+  // Bridge contract (fetchOverShepherdCoverageForCaller): a null payload with
+  // no error means no-access — the caller's profile resolved to zero or an
+  // ambiguous (>1) active roster row. That is NOT an over_shepherd with an
+  // empty assignment list (which resolves to { coveredShepherdIds: [] }), so
+  // deny the surface rather than masking a broken/ambiguous email bridge as a
+  // benign "no Shepherds assigned" page (Codex #5).
   const coverage = coverageResult.data;
-  const coveredIds = coverage?.coveredShepherdIds ?? [];
+  if (coverage === null) redirect("/unauthorized");
+  const coveredIds = coverage.coveredShepherdIds;
 
   const directoryResult = await fetchOverShepherdCareDirectory(
     client!,

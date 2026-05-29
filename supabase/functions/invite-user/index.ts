@@ -56,7 +56,7 @@ function emailDomain(email: string): string | null {
   return email.slice(at + 1).toLowerCase();
 }
 
-type Role = "ministry_admin" | "leader" | "co_leader";
+type Role = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
 type AuthUserState = "invited" | "existing_reused";
 type GroupAssignmentState = "none" | "created" | "reactivated" | "already_active";
 
@@ -246,8 +246,13 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
   else if (!EMAIL_RE.test(emailRaw)) errors.push("email is not a valid address");
 
   const role = typeof r.role === "string" ? r.role : "";
-  if (role !== "ministry_admin" && role !== "leader" && role !== "co_leader") {
-    errors.push("role must be ministry_admin, leader, or co_leader");
+  if (
+    role !== "ministry_admin" &&
+    role !== "over_shepherd" &&
+    role !== "leader" &&
+    role !== "co_leader"
+  ) {
+    errors.push("role must be ministry_admin, over_shepherd, leader, or co_leader");
   }
 
   let phone: string | null = null;
@@ -272,8 +277,8 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
     }
   }
 
-  if (role === "ministry_admin" && groupId !== null) {
-    errors.push("ministry_admin profiles cannot be assigned to a group");
+  if ((role === "ministry_admin" || role === "over_shepherd") && groupId !== null) {
+    errors.push(`${role} profiles cannot be assigned to a group`);
   }
 
   if (errors.length > 0) return { ok: false, errors };

@@ -753,12 +753,18 @@ export async function fetchRecentAuditEvents(
  * RLS already restricts SELECT to super_admin / ministry_admin (NOT
  * staff_viewer); this allowlist is the defensive belt-and-braces.
  *
+ * admin_summary is NOT a column here any more — phase_os5 moved it to the
+ * fenced, admin-only shepherd_care_admin_notes table so RLS (not just the app
+ * allowlist) keeps it off the over_shepherd coverage path. The admin
+ * single-profile read re-attaches it from that table; see
+ * `fetchShepherdCareProfileByShepherdId`.
+ *
  * If you add a column, also extend `ShepherdCareProfilesRow` in
  * types/database.ts.
  */
 export const SHEPHERD_CARE_PROFILE_COLUMNS =
   "id, shepherd_profile_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, admin_summary, archived_at, created_at, updated_at";
+  "next_touchpoint_due, archived_at, created_at, updated_at";
 
 /**
  * Admin-only column allowlist for shepherd_care_interactions. Same
@@ -932,7 +938,26 @@ export async function fetchShepherdCareProfileByShepherdId(
     };
   }
   if (data === null || data === undefined) return { data: null, error: null };
-  return { data: data as ShepherdCareProfilesRow, error: null };
+
+  // admin_summary now lives in the fenced, admin-only shepherd_care_admin_notes
+  // table (phase_os5). Re-attach it here for the admin detail surface; this
+  // read only runs behind requireAdmin(), and the notes table's admin-only RLS
+  // keeps it off any non-admin path even if this read is reused.
+  const base = data as Omit<ShepherdCareProfilesRow, "admin_summary">;
+  const note = await client
+    .from("shepherd_care_admin_notes")
+    .select("admin_summary")
+    .eq("care_profile_id", base.id)
+    .maybeSingle();
+  if (note.error) {
+    return {
+      data: null,
+      error: wrapError("fetchShepherdCareProfileByShepherdId/admin_notes", note.error),
+    };
+  }
+  const admin_summary =
+    (note.data as { admin_summary?: string | null } | null)?.admin_summary ?? null;
+  return { data: { ...base, admin_summary }, error: null };
 }
 
 /**

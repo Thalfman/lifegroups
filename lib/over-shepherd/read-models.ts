@@ -6,11 +6,12 @@
 //      ids (resolved by the Phase OS.2 coverage bridge). Row-level scoping is
 //      ultimately enforced in RLS; passing the id set to `.in(...)` keeps the
 //      response tight and gives the surface a defense-in-depth scope.
-//   2. The admin-only shepherd_care_profiles.admin_summary is NEVER selected.
-//      We use a column allowlist that omits it (mirroring the leader
-//      follow-up column-allowlist precedent) plus a typed Omit<> row, so
-//      admin_summary can't leak onto this path even though the row policy
-//      grants the profile row. No `select("*")` is used against care tables.
+//   2. The admin-only care summary is NEVER read here. As of phase_os5 it
+//      lives in its own admin-only table (shepherd_care_admin_notes) fenced by
+//      RLS, so it is unreachable on this path at the database level — not just
+//      because the row policy grants the profile row. This column allowlist
+//      (which omits it) plus the typed Omit<> row remain as a defense-in-depth
+//      belt. No `select("*")` is used against care tables.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {

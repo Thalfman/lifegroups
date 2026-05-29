@@ -16,11 +16,13 @@
 -- gains nothing.
 --
 -- SC.4 design-around (decided): no private-note tier is built. The
--- creator-only guarantee is met by (a) not building private notes and (b) the
--- app read path using a column allowlist that omits the admin-only
--- shepherd_care_profiles.admin_summary. The row policy below grants the
--- profile row; the admin_summary column is fenced off in the read layer
--- (column allowlist + typed Omit<>), not by a column privilege here.
+-- creator-only guarantee is met by (a) not building private notes and (b)
+-- keeping the admin-only summary off this surface. The row policy below grants
+-- the whole shepherd_care_profiles row — RLS is row-level only and cannot
+-- withhold a single column — so the admin-only summary is NOT fenced here.
+-- phase_os5 (20260529004000) moves admin_summary into its own admin-only table
+-- (shepherd_care_admin_notes) so this coverage policy never reaches it; the app
+-- column allowlist + typed Omit<> remain as a defense-in-depth belt.
 
 -- profiles: an Over-Shepherd may read the profile rows of the Shepherds they
 -- actively cover (names/emails for the directory). Self-read + admin/staff

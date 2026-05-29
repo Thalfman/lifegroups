@@ -32,6 +32,7 @@ type State = ActionResult<{ id: string }> | undefined;
 // omitted by validator and never appears in the select.
 const ASSIGNABLE_ROLES = [
   { value: "ministry_admin", label: ROLE_LABELS.ministry_admin },
+  { value: "over_shepherd", label: ROLE_LABELS.over_shepherd },
   { value: "leader", label: ROLE_LABELS.leader },
   { value: "co_leader", label: ROLE_LABELS.co_leader },
 ] as const;

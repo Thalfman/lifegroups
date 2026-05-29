@@ -1210,16 +1210,17 @@ export { normalizeUuid };
 
 // Roles the invite form is allowed to assign. super_admin is forbidden
 // (bootstrap procedure only). staff_viewer is forbidden (legacy).
-const INVITE_USER_ROLES: ReadonlySet<"ministry_admin" | "leader" | "co_leader"> = new Set([
-  "ministry_admin",
-  "leader",
-  "co_leader",
-]);
+// over_shepherd is invitable so the coach login tier can be provisioned from
+// the app (docs/adr/0002-oversight-ladder-and-leader-gating.md, Codex #3); it
+// takes no group assignment, like ministry_admin.
+const INVITE_USER_ROLES: ReadonlySet<
+  "ministry_admin" | "over_shepherd" | "leader" | "co_leader"
+> = new Set(["ministry_admin", "over_shepherd", "leader", "co_leader"]);
 
 export type InviteUserPayload = {
   full_name: string;
   email: string; // canonicalized lowercase
-  role: "ministry_admin" | "leader" | "co_leader";
+  role: "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
   phone?: string;
   group_id?: string;
 };
@@ -1241,12 +1242,21 @@ export function validateInviteUserPayload(
   if (email.length === 0) errors.push("Email is required.");
   else if (!isEmail(email)) errors.push("Email must be a valid address.");
   if (!INVITE_USER_ROLES.has(role as InviteUserPayload["role"])) {
-    errors.push("Role must be Ministry Admin, Leader, or Co-Leader.");
+    errors.push("Role must be Ministry Admin, Over-Shepherd, Leader, or Co-Leader.");
   }
   if (phone !== undefined && !isPhone(phone)) errors.push("Phone format is invalid.");
   if (groupIdRaw !== undefined && !isUuid(groupIdRaw)) errors.push("Group selection is invalid.");
-  if (role === "ministry_admin" && groupIdRaw !== undefined) {
-    errors.push("Ministry admins are not assigned to a group.");
+  // Neither ministry_admin nor over_shepherd is a group leader, so neither
+  // takes a group assignment.
+  if (
+    (role === "ministry_admin" || role === "over_shepherd") &&
+    groupIdRaw !== undefined
+  ) {
+    errors.push(
+      role === "over_shepherd"
+        ? "Over-Shepherds are not assigned to a group."
+        : "Ministry admins are not assigned to a group.",
+    );
   }
 
   if (errors.length > 0) return { ok: false, errors };
