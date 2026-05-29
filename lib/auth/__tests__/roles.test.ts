@@ -75,6 +75,16 @@ describe("navItemsForRole", () => {
     }
   });
 
+  // Dead Shepherd→admin reporting loop removed per
+  // docs/adr/0002-oversight-ladder-and-leader-gating.md.
+  it("drops /admin/check-ins from the flat nav for admin roles", () => {
+    for (const role of ["super_admin", "ministry_admin"] as const) {
+      expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
+        "/admin/check-ins",
+      );
+    }
+  });
+
   it("gives staff_viewer only the home item", () => {
     expect(navItemsForRole("staff_viewer").map((i) => i.href)).toEqual(["/"]);
   });
@@ -124,5 +134,25 @@ describe("adminNavGroups", () => {
       );
       expect(allHrefs).not.toContain("/admin/guests");
     }
+  });
+
+  // Dead Shepherd→admin reporting loop removed per
+  // docs/adr/0002-oversight-ladder-and-leader-gating.md.
+  it("drops /admin/check-ins from the grouped nav for both admin roles", () => {
+    for (const role of ["super_admin", "ministry_admin"] as const) {
+      const allHrefs = adminNavGroups(role).flatMap((g) =>
+        g.items.map((i) => i.href),
+      );
+      expect(allHrefs).not.toContain("/admin/check-ins");
+    }
+    // the manage group keeps people / groups / calendar only
+    const manage = adminNavGroups("ministry_admin").find(
+      (g) => g.group === "manage",
+    );
+    expect(manage!.items.map((i) => i.href)).toEqual([
+      "/admin/people",
+      "/admin/groups",
+      "/admin/calendar",
+    ]);
   });
 });

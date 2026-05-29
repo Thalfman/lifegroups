@@ -7,7 +7,8 @@ import { SummaryTiles } from "./SummaryTiles";
 import { AttentionQueue } from "./AttentionQueue";
 import { CapacityBuckets } from "./CapacityBuckets";
 import { FollowUpsMini } from "./FollowUpsMini";
-import { WeeklyHealthBuckets } from "./WeeklyHealthBuckets";
+// WeeklyHealthBuckets retained in the repo but no longer rendered — see the
+// ADR note where the "Weekly health" card was removed below.
 import { SetupGaps } from "./SetupGaps";
 import { WeekSelector } from "./WeekSelector";
 import { ShepherdCareTriageCard } from "./ShepherdCareTriageCard";
@@ -115,44 +116,15 @@ export function DashboardClient({
           </div>
         </div>
 
-        <Card>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              marginBottom: 14,
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: "var(--font-display)",
-                fontSize: 20,
-                fontWeight: 500,
-                color: "var(--c-ink)",
-              }}
-            >
-              Weekly health
-            </h2>
-            <div
-              style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 12.5,
-                color: "var(--c-ink3)",
-              }}
-            >
-              Check-in submission status for the selected week.
-            </div>
-          </div>
-          <WeeklyHealthBuckets
-            summary={data.healthSummary}
-            meetingWeek={data.meetingWeek}
-          />
-        </Card>
-
+        {/*
+          Shepherd→admin reporting loop removed per
+          docs/adr/0002-oversight-ladder-and-leader-gating.md: the "Weekly
+          health" card rendered check-in submission status (the leader health
+          pulse). With the leader surface gated, no check-ins are submitted,
+          so this card would read empty forever. It is dropped from the
+          dashboard; WeeklyHealthBuckets + buildHealthSummary stay dormant and
+          the /admin/check-ins page still resolves by direct URL.
+        */}
         <Card>
           <SectionLabel hint="don't ship a group with these unfilled">
             Setup gaps

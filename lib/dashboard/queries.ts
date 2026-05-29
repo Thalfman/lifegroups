@@ -191,7 +191,9 @@ function resolveCapacitySource(
 
 // One per non-closed group. Every section of the dashboard partitions this
 // list -- there is no per-section recomputation of capacity or health.
-type DerivedGroupRow = {
+// Exported (alongside collectReasonsFor) only so the attention-set
+// regression test can build a typed fixture row.
+export type DerivedGroupRow = {
   group: GroupsRow;
   override: GroupMetricSettingsRow | null;
   activeMemberCount: number;
@@ -360,17 +362,18 @@ function buildAttentionDetail(
   }
 }
 
-function collectReasonsFor(row: DerivedGroupRow): AttentionReason[] {
+// Exported for the attention-set regression test that pins the removal of
+// the dead missing_check_in signal (see lib/dashboard/__tests__).
+export function collectReasonsFor(row: DerivedGroupRow): AttentionReason[] {
   const reasons: AttentionReason[] = [];
   if (row.followUpsForGroup.length > 0) reasons.push("follow_up_open");
-  // Off-parity bi-weekly groups (and groups missing day/time) aren't
-  // scheduled to meet this week, so the absence of a session isn't a
-  // missing check-in (Codex P2: "honor cadence when marking check-ins
-  // due"). The "missing meeting day/time" gap is still surfaced via
-  // its own reason below.
-  if (isMissingForWeek(row.sessionStatus) && row.isScheduledThisWeek) {
-    reasons.push("missing_check_in");
-  }
+  // Shepherd→admin reporting loop removed per
+  // docs/adr/0002-oversight-ladder-and-leader-gating.md: with the leader
+  // surface gated, nobody submits check-ins, so attendance_sessions stop
+  // receiving rows and "missing_check_in" would flag every scheduled group
+  // forever. The reason is no longer surfaced on the dashboard. The
+  // missing_check_in enum value, label, priority and detail copy are kept
+  // dormant (the /admin/check-ins page still resolves by direct URL).
   if (!row.isExcluded) {
     if (row.capacityStatusValue === "full") reasons.push("capacity_full");
     else if (row.capacityStatusValue === "warning")
