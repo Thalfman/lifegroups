@@ -72,17 +72,27 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     expect(fromOffenders, `unexpected .from() reads: ${fromOffenders.join(", ")}`).toEqual([]);
   });
 
-  it("read-models.ts reads the tables only through the creator-scoped functions", () => {
+  it("EVERY private-note read in read-models.ts is scoped by created_by_profile_id", () => {
     const readModels = readFileSync(`${REPO_ROOT}lib/supabase/read-models.ts`, "utf8");
     // Every read filters on the creator (belt-and-braces with RLS).
     expect(readModels).toContain("fetchShepherdCarePrivateNoteCiphertextForCreator");
     expect(readModels).toContain("fetchPrivateNoteKeySlotsForCreator");
     for (const t of TABLES) {
-      // Each .from(table) read is immediately scoped by created_by_profile_id.
-      const idx = readModels.indexOf(`.from("${t}")`);
-      expect(idx, `read-models must read ${t}`).toBeGreaterThan(-1);
-      const window = readModels.slice(idx, idx + 400);
-      expect(window).toContain("created_by_profile_id");
+      const marker = `.from("${t}")`;
+      let from = 0;
+      let occurrences = 0;
+      for (;;) {
+        const idx = readModels.indexOf(marker, from);
+        if (idx === -1) break;
+        occurrences += 1;
+        // The read chain following EACH .from(table) must scope by the creator.
+        const window = readModels.slice(idx, idx + 400);
+        expect(window, `read #${occurrences} of ${t} must scope by creator`).toContain(
+          "created_by_profile_id",
+        );
+        from = idx + marker.length;
+      }
+      expect(occurrences, `read-models must read ${t} at least once`).toBeGreaterThan(0);
     }
   });
 });
