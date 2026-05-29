@@ -147,6 +147,21 @@ describe("SC.4 migration — audit is content-free", () => {
   });
 });
 
+describe("SC.4 migration — hardening (Codex review)", () => {
+  it("the enroll RPC validates decoded wrapped-key byte lengths", () => {
+    const start = lower().indexOf("function public.admin_enroll_private_note_keys");
+    const body = lower().slice(start, lower().indexOf("$$;", start));
+    expect(body).toContain("octet_length");
+  });
+
+  it("the upsert RPC refuses to persist a body before enrollment", () => {
+    const start = lower().indexOf("function public.admin_upsert_shepherd_care_private_note");
+    const body = lower().slice(start, lower().indexOf("$$;", start));
+    expect(body).toContain("not_enrolled");
+    expect(body).toContain("shepherd_care_note_key_slots");
+  });
+});
+
 describe("SC.4 migration — EXECUTE lockdown", () => {
   it("revokes execute from public/anon/authenticated then grants to authenticated for each RPC", () => {
     for (const fn of [

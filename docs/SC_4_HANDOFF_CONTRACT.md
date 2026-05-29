@@ -122,6 +122,24 @@ re-encryption. KEKs are non-extractable.
 4. **AAD excludes the note id.** Matches spec §3/§6; supersedes the #112 brief's
    "Key interfaces" parenthetical that listed "note id + creator + dek_version".
 
+## 6a. Post-review hardening (Codex P1/P2, shipped in #112)
+
+- **Baseline idle wipe.** The client wipes the in-memory DEK after 15 minutes
+  of inactivity (spec §7/§11), returning to the locked view. #113 extends the
+  fuller lockout UX (explicit re-unlock prompts, wipe-on-close).
+- **Wrapped-key byte-length validation.** Both the enroll RPC and the TS
+  validator reject slot material of the wrong size (hkdf_salt 16, wrap_iv 12,
+  wrapped_dek 48, prf_salt 32) so a malformed slot can't be persisted and then
+  lock the creator out behind the once-per-creator guard.
+- **Enrollment precondition (`not_enrolled`).** The upsert RPC refuses to store
+  ciphertext for a creator/version with no key slot, so a direct caller can't
+  create an unrecoverable note.
+- **Super-admin has no component path.** The "Private notes (only you)" section
+  renders only when the actor's role is `ministry_admin`.
+- **Decryption failure stays locked.** If an existing note can't be decrypted
+  after a successful unlock, the editor stays locked rather than risk an
+  overwrite.
+
 ## 7. Reuse points for #113 / #114
 
 - Read models: `fetchShepherdCarePrivateNoteCiphertextForCreator(client, careProfileId, creatorProfileId)`, `fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)` in `lib/supabase/read-models.ts` (types `PrivateNoteCiphertext`, `PrivateNoteKeySlot`).

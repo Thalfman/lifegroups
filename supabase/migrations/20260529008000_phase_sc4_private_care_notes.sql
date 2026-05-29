@@ -43,7 +43,7 @@
 -- Fixed error tokens raised by these functions (mapped to friendly messages by
 -- lib/admin/action-result.ts):
 --   insufficient_privilege, invalid_input, missing_care_profile, missing_profile,
---   missing_recovery_slot, already_enrolled.
+--   missing_recovery_slot, already_enrolled, not_enrolled.
 
 -- ---------------------------------------------------------------------------
 -- Tables
@@ -190,6 +190,21 @@ begin
       raise exception 'invalid_input';
     end if;
 
+    -- Reject wrapped-key material of the wrong size. A malformed slot would be
+    -- undecryptable yet the once-per-creator guard below would block re-setup,
+    -- permanently locking the creator out. Fixed lengths from the crypto module:
+    -- HKDF salt 16, GCM nonce 12, wrapped DEK 48 (32-byte DEK + 16-byte tag),
+    -- PRF salt 32 (passkey slots only).
+    if octet_length(decode(v_slot->>'hkdf_salt', 'base64')) <> 16
+       or octet_length(decode(v_slot->>'wrap_iv', 'base64')) <> 12
+       or octet_length(decode(v_slot->>'wrapped_dek', 'base64')) <> 48 then
+      raise exception 'invalid_input';
+    end if;
+    if v_slot->>'prf_salt' is not null
+       and octet_length(decode(v_slot->>'prf_salt', 'base64')) <> 32 then
+      raise exception 'invalid_input';
+    end if;
+
     insert into public.shepherd_care_note_key_slots (
       created_by_profile_id, dek_version, slot_type, credential_id, label,
       prf_salt, hkdf_salt, wrapped_dek, wrap_iv
@@ -307,6 +322,18 @@ begin
     -- 16 bytes = minimum (the GCM tag); 1 MiB ceiling is generous for a note.
     if octet_length(v_ciphertext) < 16 or octet_length(v_ciphertext) > 1048576 then
       raise exception 'invalid_input';
+    end if;
+
+    -- Refuse to store ciphertext the creator has no wrapped DEK for: a note
+    -- written before enrollment would be permanently unrecoverable. The UI
+    -- always enrolls first; this guards direct RPC/server-action callers.
+    perform 1
+      from public.shepherd_care_note_key_slots
+     where created_by_profile_id = v_actor
+       and dek_version = coalesce(p_dek_version, 1)
+     limit 1;
+    if not found then
+      raise exception 'not_enrolled';
     end if;
 
     insert into public.shepherd_care_private_notes (

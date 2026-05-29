@@ -87,6 +87,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "Enrollment needs a recovery code as a backup unlock method. Generate one and try again.",
   already_enrolled:
     "Private notes are already set up for your account. Refresh the page to manage your unlock methods.",
+  not_enrolled:
+    "Set up private notes (and save your recovery code) before writing one. Refresh the page and try again.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

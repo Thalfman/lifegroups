@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   adminEnrollPrivateNoteKeys,
@@ -32,11 +32,20 @@ import {
   wrapDek,
 } from "@/lib/crypto/private-notes";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type { PrivateNoteKeySlotInput } from "@/lib/admin/validation";
 import type { PrivateNoteCiphertext, PrivateNoteKeySlot } from "@/lib/supabase/read-models";
 
 // dek_version 1 is the only generation today; the column exists so a future key
 // rotation (#113+) can introduce generation 2 without a destructive migration.
 const DEK_VERSION = 1;
+
+// In-memory DEK is wiped after this much inactivity (spec §7 / §11: a walk-up
+// attacker on an unlocked machine must not keep read/write access). The fuller
+// lockout UX is #113; this is the baseline idle wipe.
+const IDLE_WIPE_MS = 15 * 60 * 1000;
+
+// What the editor decrypts on unlock: the latest persisted ciphertext.
+type SavedNote = { ciphertext: string; iv: string; dek_version: number };
 
 type Props = {
   careProfileId: string;
@@ -81,6 +90,13 @@ export function PrivateNotesSection({
   const [slots, setSlots] = useState<PrivateNoteKeySlot[]>(initialSlots);
   const [dek, setDek] = useState<CryptoKey | null>(null);
   const [noteText, setNoteText] = useState("");
+  // The latest persisted ciphertext, so a same-tab lock -> unlock decrypts the
+  // newest note (not the stale initial prop) and never overwrites it blindly.
+  const [savedNote, setSavedNote] = useState<SavedNote | null>(
+    initialNote
+      ? { ciphertext: initialNote.ciphertext, iv: initialNote.iv, dek_version: initialNote.dek_version }
+      : null,
+  );
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
   const [recoveryAck, setRecoveryAck] = useState(false);
   const [recoveryInput, setRecoveryInput] = useState("");
@@ -89,7 +105,7 @@ export function PrivateNotesSection({
   const [status, setStatus] = useState<string | null>(null);
   // Holds the wrapped slots generated client-side until the recovery code is
   // confirmed saved, then persists them.
-  const pendingSlots = useRef<Array<Record<string, unknown>> | null>(null);
+  const pendingSlots = useRef<PrivateNoteKeySlotInput[] | null>(null);
 
   const passkeySlot = useMemo(() => slots.find((s) => s.slot_type === "passkey") ?? null, [slots]);
   const recoverySlot = useMemo(
@@ -100,6 +116,31 @@ export function PrivateNotesSection({
   const enrolled = slots.length > 0;
   const unlocked = dek !== null;
 
+  // Wipe the in-memory DEK after IDLE_WIPE_MS of inactivity (spec §7/§11). With
+  // the DEK gone the component falls back to the locked/unlock view, forcing a
+  // re-unlock. Activity on the page resets the timer.
+  useEffect(() => {
+    if (!dek) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const wipe = () => {
+      setDek(null);
+      setNoteText("");
+      setStatus(null);
+      setError("Locked after inactivity. Unlock again to view your note.");
+    };
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(wipe, IDLE_WIPE_MS);
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "focus"];
+    reset();
+    events.forEach((e) => window.addEventListener(e, reset));
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [dek]);
+
   // ---- enrollment --------------------------------------------------------
 
   async function handleEnroll() {
@@ -109,7 +150,7 @@ export function PrivateNotesSection({
     try {
       const newDek = await generateDek();
       const wrapAad = buildWrapAad(creatorProfileId, DEK_VERSION);
-      const slotInputs: Array<Record<string, unknown>> = [];
+      const slotInputs: PrivateNoteKeySlotInput[] = [];
 
       // Mandatory recovery slot (the offline backstop / universal fallback).
       const code = generateRecoveryCode();
@@ -169,27 +210,38 @@ export function PrivateNotesSection({
   }
 
   async function handleConfirmEnrollment() {
-    if (!pendingSlots.current) return;
+    const slotInputs = pendingSlots.current;
+    if (!slotInputs) return;
     setBusy(true);
     setError(null);
     try {
       const result = await adminEnrollPrivateNoteKeys(undefined, {
         dek_version: DEK_VERSION,
-        slots: pendingSlots.current as never,
+        slots: slotInputs,
         shepherd_profile_id: shepherdProfileId,
       });
       if (!result.ok) {
         setError(result.errors.join(" "));
         return;
       }
-      // Reflect enrollment locally so the editor opens without a reload. The
-      // exact slot rows are re-fetched on the next server render.
-      setSlots([
-        { slot_type: "recovery" } as PrivateNoteKeySlot,
-        ...(pendingSlots.current.length > 1
-          ? [{ slot_type: "passkey" } as PrivateNoteKeySlot]
-          : []),
-      ]);
+      // Reflect enrollment locally with the REAL wrapped-key material so a
+      // same-tab lock -> unlock works before the next server render. The
+      // canonical rows (with ids) are re-fetched on navigation/revalidate.
+      setSlots(
+        slotInputs.map((s, i) => ({
+          id: `pending-${i}`,
+          created_by_profile_id: creatorProfileId,
+          dek_version: DEK_VERSION,
+          slot_type: s.slot_type,
+          credential_id: s.credential_id,
+          label: s.label,
+          prf_salt: s.prf_salt,
+          hkdf_salt: s.hkdf_salt,
+          wrapped_dek: s.wrapped_dek,
+          wrap_iv: s.wrap_iv,
+          created_at: "",
+        })),
+      );
       pendingSlots.current = null;
       setRecoveryCode(null);
       setRecoveryAck(false);
@@ -203,21 +255,29 @@ export function PrivateNotesSection({
 
   // ---- unlock ------------------------------------------------------------
 
-  async function afterUnlock(unlockedDek: CryptoKey) {
-    setDek(unlockedDek);
-    if (initialNote) {
+  // Returns true if the editor opened. When an existing note can't be decrypted
+  // (tamper / corruption / version mismatch) we deliberately STAY LOCKED so a
+  // later Save can't overwrite the undecryptable ciphertext.
+  async function afterUnlock(unlockedDek: CryptoKey): Promise<boolean> {
+    if (savedNote) {
       try {
         const text = await decryptNote(
           unlockedDek,
-          base64ToBytes(initialNote.ciphertext),
-          base64ToBytes(initialNote.iv),
-          buildNoteAad(careProfileId, creatorProfileId, initialNote.dek_version),
+          base64ToBytes(savedNote.ciphertext),
+          base64ToBytes(savedNote.iv),
+          buildNoteAad(careProfileId, creatorProfileId, savedNote.dek_version),
         );
         setNoteText(text);
       } catch {
-        setError("Unlocked, but this note couldn't be decrypted with that key.");
+        setError(
+          "Unlocked, but your saved note couldn't be decrypted with that key. " +
+            "Refresh the page or use another unlock method — saving now would overwrite it.",
+        );
+        return false; // stay locked
       }
     }
+    setDek(unlockedDek);
+    return true;
   }
 
   async function handleUnlockWithRecovery() {
@@ -282,11 +342,13 @@ export function PrivateNotesSection({
         noteText,
         buildNoteAad(careProfileId, creatorProfileId, DEK_VERSION),
       );
+      const ciphertextB64 = bytesToBase64(ciphertext);
+      const ivB64 = bytesToBase64(iv);
       const result = await adminUpsertShepherdCarePrivateNote(undefined, {
         care_profile_id: careProfileId,
         set_body: true,
-        ciphertext: bytesToBase64(ciphertext),
-        iv: bytesToBase64(iv),
+        ciphertext: ciphertextB64,
+        iv: ivB64,
         dek_version: DEK_VERSION,
         shepherd_profile_id: shepherdProfileId,
       });
@@ -294,6 +356,9 @@ export function PrivateNotesSection({
         setError(result.errors.join(" "));
         return;
       }
+      // Keep the latest ciphertext so a same-tab lock -> unlock decrypts this
+      // save, not the stale initial prop.
+      setSavedNote({ ciphertext: ciphertextB64, iv: ivB64, dek_version: DEK_VERSION });
       setStatus("Saved. Encrypted on your device before it left the browser.");
     } catch (err) {
       setError(errorMessage(err));

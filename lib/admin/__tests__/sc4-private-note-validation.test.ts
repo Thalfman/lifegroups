@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import { mapRpcError } from "@/lib/admin/action-result";
+import { bytesToBase64 } from "@/lib/crypto/encoding";
 import {
   validateEnrollPrivateNoteKeysPayload,
   validateUpsertShepherdCarePrivateNotePayload,
 } from "@/lib/admin/validation";
+
+// Correctly-sized base64 for the SC.4 wrapped-key material (the lengths the
+// crypto module always produces): hkdf_salt 16, wrap_iv 12, wrapped_dek 48
+// (32-byte DEK + 16-byte GCM tag), prf_salt 32.
+const b64 = (n: number) => bytesToBase64(new Uint8Array(n));
+const HKDF_SALT_B64 = b64(16);
+const WRAP_IV_B64 = b64(12);
+const WRAPPED_DEK_B64 = b64(48);
+const PRF_SALT_B64 = b64(32);
+const CRED_ID_B64 = b64(20);
 
 const CARE = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA";
 // 12-byte IV and a >=16-byte ciphertext, base64 encoded.
@@ -111,18 +122,18 @@ describe("validateEnrollPrivateNoteKeysPayload", () => {
     credential_id: null,
     label: "Recovery code",
     prf_salt: null,
-    hkdf_salt: "AAAA",
-    wrapped_dek: "BBBB",
-    wrap_iv: "CCCC",
+    hkdf_salt: HKDF_SALT_B64,
+    wrapped_dek: WRAPPED_DEK_B64,
+    wrap_iv: WRAP_IV_B64,
   };
   const passkeySlot = {
     slot_type: "passkey",
-    credential_id: "DDDD",
+    credential_id: CRED_ID_B64,
     label: "Windows Hello",
-    prf_salt: "EEEE",
-    hkdf_salt: "FFFF",
-    wrapped_dek: "GGGG",
-    wrap_iv: "HHHH",
+    prf_salt: PRF_SALT_B64,
+    hkdf_salt: HKDF_SALT_B64,
+    wrapped_dek: WRAPPED_DEK_B64,
+    wrap_iv: WRAP_IV_B64,
   };
 
   it("accepts a recovery + passkey slot set", () => {
@@ -154,6 +165,18 @@ describe("validateEnrollPrivateNoteKeysPayload", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("rejects wrapped-key material of the wrong byte length", () => {
+    for (const bad of [
+      { ...recoverySlot, hkdf_salt: b64(8) },
+      { ...recoverySlot, wrap_iv: b64(16) },
+      { ...recoverySlot, wrapped_dek: b64(32) },
+      { ...passkeySlot, prf_salt: b64(16) },
+    ]) {
+      const result = validateEnrollPrivateNoteKeysPayload({ dek_version: 1, slots: [bad] });
+      expect(result.ok, `slot ${JSON.stringify(bad).slice(0, 40)} should be rejected`).toBe(false);
+    }
+  });
+
   it("rejects an unknown slot_type", () => {
     const result = validateEnrollPrivateNoteKeysPayload({
       dek_version: 1,
@@ -177,5 +200,9 @@ describe("SC.4 RPC error tokens map to friendly messages", () => {
 
   it("maps already_enrolled", () => {
     expect(mapRpcError("already_enrolled")).not.toBe(generic);
+  });
+
+  it("maps not_enrolled", () => {
+    expect(mapRpcError("not_enrolled")).not.toBe(generic);
   });
 });

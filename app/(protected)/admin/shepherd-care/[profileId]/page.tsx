@@ -195,6 +195,9 @@ export default async function AdminShepherdCareDetailPage({
   // authenticated branch; narrow for the creator id used to scope private notes.
   const creatorProfileId = session.kind === "authenticated" ? session.profile.id : null;
   if (!creatorProfileId) notFound();
+  // SC.4 private notes are ministry_admin-only. requireAdmin also admits
+  // super_admin, so gate the section explicitly: no super-admin component path.
+  const actorRole = session.kind === "authenticated" ? session.profile.role : null;
 
   const { profileId } = await params;
   if (!isUuid(profileId)) notFound();
@@ -314,7 +317,7 @@ export default async function AdminShepherdCareDetailPage({
             ) : null}
           </section>
 
-          {detail.care ? (
+          {detail.care && actorRole === "ministry_admin" ? (
             <PrivateNotesSection
               careProfileId={detail.care.id}
               creatorProfileId={creatorProfileId}

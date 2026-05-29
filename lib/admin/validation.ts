@@ -16,6 +16,7 @@ import type {
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import { isUserRole } from "@/lib/auth/roles";
+import { base64ToBytes } from "@/lib/crypto/encoding";
 
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
@@ -2368,6 +2369,20 @@ function isOptionalBase64(value: unknown): value is string | null {
   return value === null || value === undefined || isBase64Blob(value);
 }
 
+// Fixed byte lengths the crypto module always produces (lib/crypto/private-notes.ts):
+// HKDF salt 16, GCM nonce 12, wrapped DEK 48 (32-byte DEK + 16-byte tag), PRF
+// salt 32. Reject anything else so a malformed slot can't be persisted and then
+// permanently lock the creator out behind the once-per-creator enroll guard.
+const HKDF_SALT_BYTES = 16;
+const WRAP_IV_BYTES = 12;
+const WRAPPED_DEK_BYTES = 48;
+const PRF_SALT_BYTES = 32;
+const MAX_CREDENTIAL_ID_BYTES = 1024;
+
+function isBase64OfLength(value: string, bytes: number): boolean {
+  return base64ToBytes(value).length === bytes;
+}
+
 function validateKeySlot(raw: unknown, index: number, errors: string[]): PrivateNoteKeySlotInput | null {
   if (!isRecord(raw)) {
     errors.push(`Key slot ${index} is malformed.`);
@@ -2382,8 +2397,27 @@ function validateKeySlot(raw: unknown, index: number, errors: string[]): Private
     errors.push(`Key slot ${index} is missing wrapped-key material.`);
     return null;
   }
+  if (
+    !isBase64OfLength(raw.hkdf_salt, HKDF_SALT_BYTES) ||
+    !isBase64OfLength(raw.wrap_iv, WRAP_IV_BYTES) ||
+    !isBase64OfLength(raw.wrapped_dek, WRAPPED_DEK_BYTES)
+  ) {
+    errors.push(`Key slot ${index} has wrapped-key material of the wrong size.`);
+    return null;
+  }
   if (!isOptionalBase64(raw.credential_id) || !isOptionalBase64(raw.prf_salt)) {
     errors.push(`Key slot ${index} has malformed passkey material.`);
+    return null;
+  }
+  if (typeof raw.prf_salt === "string" && !isBase64OfLength(raw.prf_salt, PRF_SALT_BYTES)) {
+    errors.push(`Key slot ${index} has a PRF salt of the wrong size.`);
+    return null;
+  }
+  if (
+    typeof raw.credential_id === "string" &&
+    base64ToBytes(raw.credential_id).length > MAX_CREDENTIAL_ID_BYTES
+  ) {
+    errors.push(`Key slot ${index} has an oversized credential id.`);
     return null;
   }
   return {

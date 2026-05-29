@@ -13,10 +13,13 @@ vi.mock("@/lib/observability/logger", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+import { bytesToBase64 } from "@/lib/crypto/encoding";
 import {
   adminEnrollPrivateNoteKeys,
   adminUpsertShepherdCarePrivateNote,
 } from "@/app/(protected)/admin/shepherd-care/actions";
+
+const b64 = (n: number) => bytesToBase64(new Uint8Array(n));
 
 const ACTOR = "11111111-1111-1111-1111-111111111111";
 const NOTE_ID = "22222222-2222-2222-2222-222222222222";
@@ -65,9 +68,9 @@ describe("adminEnrollPrivateNoteKeys", () => {
       credential_id: null,
       label: "Recovery code",
       prf_salt: null,
-      hkdf_salt: "AAAA",
-      wrapped_dek: "BBBB",
-      wrap_iv: "CCCC",
+      hkdf_salt: b64(16),
+      wrapped_dek: b64(48),
+      wrap_iv: b64(12),
     };
 
     const result = await adminEnrollPrivateNoteKeys(undefined, {
