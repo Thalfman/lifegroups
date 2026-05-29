@@ -1,29 +1,142 @@
-# Life Group Operations Dashboard
+# Life Group Operations
 
-A web app for tracking Life Groups: leader weekly check-ins, attendance,
-group health, guest pipeline, follow-ups, ministry-wide calendar, and
-admin operations. Built with Next.js (App Router) + TypeScript + Tailwind
-on top of Supabase (Auth + Postgres + RLS).
+**Julian's admin operating system for shepherding Life Group leaders and
+planning group launches.** A web app for the ministry's oversight tiers —
+not (currently) for group leaders themselves. Built with Next.js (App
+Router) + TypeScript + Tailwind on top of Supabase (Auth + Postgres + RLS).
 
-## Current roadmap
+## What this app is for
 
-Direction: **Julian's admin operating system** — shepherd care +
-launch planning, not more leader-facing features. The Julian spine
-(SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped; follow-on work is sequenced
-in the roadmap.
+Julian (the Ministry Admin) oversees 60+ Life Group leaders. When asked what
+would make this tool genuinely useful week to week, he named **three jobs**
+(see [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
+Q12). These three jobs are the app's north star — every shipped and planned
+feature serves one of them:
 
-- [`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — **start here:**
-  the at-a-glance status map of every workstream, what stage it's in, and
-  what's next.
-- [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered
-  execution plan, pivot rationale, and reliability / security debt
-  appendix.
-- [`docs/FEATURE_BACKLOG.md`](./docs/FEATURE_BACKLOG.md) — broader
-  feature inventory including deferred items.
+1. **Know how my leaders are doing** — care status, last contact, what's owed
+   next, and a history per shepherd. → *Shepherd Care (SC.\*)*
+2. **Know what groups need to be launched, and when** — capacity, seasonality,
+   and a multiplication pipeline. → *Launch Planning (LP.\*)*
+3. **Know the health of a Life Group** — a grading rubric for attendance and
+   spiritual growth. → *Group Health (P5)*
+
+Anything outside these three jobs (leader-facing tools, external/comms
+surfaces) is deliberately **deferred** and is **not** required for the app to
+be considered done.
+
+## What "done" looks like
+
+"Done" is **outcome-based, not a feature checklist**: the app is done when it
+does Julian's three jobs *reliably*. Each job below has a done bar and its
+current state. The authoritative, always-current stage map is
+[`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — this section is the
+target those stages are measured against.
+
+| # | Job | Done when… | Today |
+|---|---|---|---|
+| 1 | **Leaders' health is visible** | Julian can record care status, log interactions, track the next step he owes each leader, and triage who needs attention — privately. | **Nearly there.** Care profiles, interaction log, over-shepherd coverage, and the triage dashboard have shipped. Remaining: **SC.1B** (the follow-up/task list — the "what I owe them next" half) and a decision on **SC.4** (private-to-Julian notes). |
+| 2 | **Launch timing is clear** | Julian can see capacity, forecast group demand by season, and track which groups are ready to multiply and in what year. | **Largely there.** Capacity (=12 + opt-to-stay-open), forecast scenarios, seasonality quick-fills, and the multiplication pipeline have shipped. Remaining: Julian's call on pipeline scope and reliable church-attendance capture. |
+| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The biggest gap.** This is in **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. |
+| — | **…reliably** | The reliability/security debt is cleared: baseline observability, a minimum test suite, and the open hardening items in [roadmap Appendix A](./docs/PRODUCT_ROADMAP.md). | **Partial.** Auth/RLS/audit posture and several hardening items have shipped; observability, `getCurrentSession()` hardening, and test coverage are still owed (blueprint §G). |
+
+**In one line:** the app is done when jobs 1 and 2 are fully shipped, job 3's
+rubric is settled with Julian and built, and the Appendix-A debt is cleared.
+The open decisions that gate this are listed under
+"Decisions needed from Julian" in the
+[blueprint](./docs/MASTER_BLUEPRINT.md#decisions-needed-from-julian-blockers).
+
+## Where to look next
+
+- [`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — **start here:** the
+  at-a-glance map of every workstream, its stage, and what's next.
+- [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered execution
+  plan, pivot rationale, and the reliability/security debt appendix.
+- [`docs/FEATURE_BACKLOG.md`](./docs/FEATURE_BACKLOG.md) — full feature
+  inventory including deferred items.
 - [`docs/SHEPHERD_CARE_TRACKER_PLAN.md`](./docs/SHEPHERD_CARE_TRACKER_PLAN.md)
-  — forward-looking plan and as-built summary for SC.*.
-- [`docs/LAUNCH_PLANNING_PLAN.md`](./docs/LAUNCH_PLANNING_PLAN.md) —
-  forward-looking plan and as-built summary for LP.*.
+  and [`docs/LAUNCH_PLANNING_PLAN.md`](./docs/LAUNCH_PLANNING_PLAN.md) — per-area
+  plans and as-built summaries.
+- [`docs/julian-inputs/`](./docs/julian-inputs/README.md) — **source of record**
+  for Julian's own words (the Q&A, the care spreadsheet, the multiplication plan).
+- [`docs/adr/`](./docs/adr/) — architecture decision records.
+- [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Shepherd, Over-Shepherd,
+  Ministry Admin, …). Use this vocabulary.
+
+## The oversight ladder (role model)
+
+The app is an oversight operating system for the ministry's upper tiers. Roles
+form a strict **downward-visibility ladder** — each tier sees what the tier
+below sees, and more (the one deliberate exception is private care notes; see
+[ADR 0002](./docs/adr/0002-oversight-ladder-and-leader-gating.md)):
+
+> **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
+
+App-login roles live on `profiles.role` (the `user_role` enum):
+
+- **`super_admin`** (Tom) — platform owner. Everything a Ministry Admin sees
+  **plus** platform/account administration (`/admin/super-admin`). Bootstrapped
+  manually (see Sign-in setup).
+- **`ministry_admin`** (Julian) — all ministry/operational data. Lands on
+  `/admin`. This is the primary persona.
+- **`over_shepherd`** — a coach scoped to **only the Shepherds they cover** (via
+  `shepherd_coverage_assignments`). Lands on `/over-shepherd` ("My Shepherds"):
+  a focused, read-scoped care surface, not `/admin`. Cannot see launch planning,
+  the full directory, or platform admin.
+- **`leader` / `co_leader`** (Shepherd) — **gated off.** No login surface for
+  now; routed to `/unauthorized`. The `app/(protected)/leader/**` code remains
+  in the repo, dormant (deferred, not deleted).
+- **`staff_viewer`** — **deprecated.** Retained in the SQL enum for backwards
+  compatibility; routed to `/unauthorized`.
+
+Two clarifications:
+
+- **`member` is not an app-login role.** Members are non-auth participant
+  records in the `members` table, linked to groups via `group_memberships`.
+  They never sign in.
+- **`group_memberships.role`** is a separate enum (`role_in_group`:
+  `member | leader | co_leader`) describing a person's role *within a group*,
+  not their app-login role.
+
+## Routes
+
+- **Public:** `/`, `/login`, `/forgot-password`, `/reset-password`,
+  `/unauthorized`. The landing page is a minimal sign-in entry point.
+- **Protected (sign-in required), each with its own role gate via Supabase
+  Auth / RLS:**
+  - **Ministry/Super Admin** — `/admin`, `/admin/shepherd-care` (+
+    `/[profileId]`, `/over-shepherds`), `/admin/launch-planning`,
+    `/admin/follow-ups`, `/admin/people`, `/admin/groups` (+ `/[groupId]/calendar`),
+    `/admin/guests`, `/admin/calendar`, `/admin/settings`. `/admin/super-admin`
+    is **super_admin only**; the rest accept `ministry_admin` and `super_admin`.
+  - **Over-Shepherd** — `/over-shepherd` (+ `/[profileId]`), scoped to covered
+    Shepherds.
+  - **Dormant** — `/admin/check-ins/**` (reachable by direct URL, removed from
+    nav) and the entire `/leader/**` surface (gated; leaders land on
+    `/unauthorized`).
+
+## How data loads
+
+- Protected routes use a cookie-authenticated server client built with
+  `@supabase/ssr`. Every query runs through Row Level Security and is
+  automatically scoped to the signed-in user.
+- Public preview routes always render typed fallback demo data; they do not
+  call Supabase.
+- When Supabase env vars are missing, protected routes redirect to `/login` and
+  the preview routes still render demo data.
+
+## Security posture
+
+- **No service role key** in Next runtime code. All app-driven writes flow
+  through narrow `public.admin_*`, `public.leader_*`, and `public.super_admin_*`
+  `SECURITY DEFINER` RPCs, each writing a paired `audit_events` row in the same
+  transaction. The service role is confined to Supabase Edge Functions
+  (`invite-user`, `manage-test-auth-users`).
+- **No hard deletes** outside RPC bodies in normal workflows; operational tables
+  use soft-deactivation.
+- **Reads use explicit column allowlists** — no `select("*")` on sensitive
+  tables (constraining the remaining broad selects is tracked debt).
+- Authorization is **role-based** — no Julian/Tom UUIDs or emails are hardcoded
+  in code, migrations, or RLS.
 
 ## Local development
 
@@ -37,104 +150,38 @@ in the roadmap.
    # then fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
    # (legacy NEXT_PUBLIC_SUPABASE_ANON_KEY is still accepted as a fallback)
    ```
-   Without env vars, the app renders typed fallback demo data on every
-   public preview page and redirects protected routes to `/login`.
-3. Run dev server:
+   Without env vars, the app renders typed fallback demo data on every public
+   preview page and redirects protected routes to `/login`.
+3. Run the dev server:
    ```bash
    npm run dev
    ```
 
-## Scripts
+### Scripts
 
 - `npm run dev`
 - `npm run lint`
 - `npm run typecheck`
 - `npm run build`
 
-## Public vs. protected routes
-
-- **Public**: `/`, `/login`, `/forgot-password`, `/reset-password`,
-  `/unauthorized`. The landing page is a minimal sign-in entry point.
-- **Protected (sign-in required)**:
-  - Admin: `/admin`, `/admin/people`, `/admin/groups`,
-    `/admin/groups/[groupId]/calendar`, `/admin/check-ins`,
-    `/admin/check-ins/[groupId]`, `/admin/guests`, `/admin/follow-ups`,
-    `/admin/calendar`, `/admin/settings`, `/admin/super-admin`.
-  - Leader: `/leader`, `/leader/[groupId]/calendar`,
-    `/leader/[groupId]/checkin`.
-
-  Each enforces its own role gate and reads through Supabase Auth /
-  RLS. `/admin/super-admin` is super_admin only; the other admin routes
-  accept ministry_admin and super_admin. The legacy `/staff` surface
-  was removed — see Role model below.
-
-## Role model
-
-App-login roles live on `profiles.role` (the `user_role` enum). The five
-values, in order from most to least privileged:
-
-- `super_admin` — top-level owner / operator. Treated as a superset of
-  `ministry_admin` for read access. Bootstrapped manually (see Sign-in
-  setup below). Sees the `/admin/super-admin` console for audit-log
-  access and the one in-app workflow that can change a profile's role;
-  the workflow can only assign `ministry_admin`, `leader`, or
-  `co_leader`, never `super_admin` itself, and never `staff_viewer`.
-- `ministry_admin` — ministry operations admin. Sees `/admin`. This is
-  Julian's role.
-- `staff_viewer` — **deprecated.** The role value is retained in the
-  `user_role` SQL enum for backwards compatibility, but the Staff View
-  product surface (`/staff`) has been removed. Any account still set to
-  `staff_viewer` is routed to `/unauthorized` until reassigned.
-- `leader` — app-login role scoped to assigned groups only via active
-  `group_leaders` rows. Sees `/leader`.
-- `co_leader` — same scoping as `leader`.
-
-Two clarifications worth calling out:
-
-- **`member` is not an app-login role.** Members are non-auth
-  participant records in the `members` table and are linked to groups
-  through `group_memberships`. They never sign in. `profiles.role` does
-  not contain `member`.
-- **`group_memberships.role` is a separate enum** (`role_in_group`:
-  `member | leader | co_leader`) describing a person's role within a
-  specific group, not their app-login role.
-
 ## Sign-in setup
 
 1. Apply `supabase/migrations/20260517040000_phase2_schema.sql`,
    `supabase/seed/phase2_seed.sql`, and
-   `supabase/migrations/20260518000000_phase4_rls.sql`.
+   `supabase/migrations/20260518000000_phase4_rls.sql` (then later migrations in
+   timestamp order).
 2. Create one Supabase Auth user per seed profile email
    (`avery.bennett@example.org`, `jordan.hayes@example.org`,
    `casey.morgan@example.org`, etc.) with a development-only password.
-3. Link each auth user to its profile row by following
+3. Link each auth user to its profile row by following `supabase/dev/README.md`.
+4. **Super admin bootstrap:** create your own Supabase Auth user and link it to a
+   `super_admin` profile by following the "Super admin bootstrap" section of
    `supabase/dev/README.md`.
-4. **Super admin bootstrap:** create your own Supabase Auth user and
-   link it to a `super_admin` profile by following the "Super admin
-   bootstrap" section of `supabase/dev/README.md`.
 5. Visit `/login` and sign in with the email + password you set.
 
-Real users (e.g. Julian as `ministry_admin`, additional leaders) are
-invited from `/admin/super-admin` once a `super_admin` is signed in. See
+Real users (e.g. Julian as `ministry_admin`, over-shepherds, additional leaders)
+are invited from `/admin/super-admin` once a `super_admin` is signed in. See
 [`docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
-
-## How data loads
-
-- Protected routes use a cookie-authenticated server client built with
-  `@supabase/ssr`. Every query runs through Row Level Security and is
-  automatically scoped to the signed-in user.
-- Public preview routes always render fallback demo data; they do not
-  call Supabase.
-- When Supabase env vars are missing, protected routes redirect to
-  `/login` and the preview routes still render demo data.
-
-## Personas
-
-Julian is the primary ministry admin and operator persona used
-throughout admin-facing copy. Tom holds the owner / `super_admin`
-account for bootstrap, oversight, and emergency access. Authorization is
-role-based — no Julian or Tom UUIDs or emails are hardcoded in code,
-migrations, or RLS.
 
 ## Supabase notes
 
@@ -143,22 +190,18 @@ migrations, or RLS.
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
 - Schema docs: [`docs/DATABASE_SCHEMA.md`](./docs/DATABASE_SCHEMA.md)
-- Seed + dev auth bootstrap: [`supabase/dev/README.md`](./supabase/dev/README.md)
-- Env vars are **optional** for build; required only for sign-in and
-  live data.
-- **No service role key** is used or expected anywhere in Next runtime
-  code. All app-driven writes flow through narrow `public.admin_*`,
-  `public.leader_*`, and `public.super_admin_*` `SECURITY DEFINER` RPC
-  functions, each of which writes a paired `audit_events` row in the
-  same transaction. The service role is confined to Supabase Edge
-  Functions (`invite-user`, `manage-test-auth-users`).
-- **No hard deletes** outside RPC bodies in normal product workflows;
-  operational tables use soft-deactivation.
+- Env vars are **optional** for build; required only for sign-in and live data.
+
+## Personas
+
+Julian is the primary `ministry_admin` and operator persona used throughout
+admin-facing copy. Tom holds the owner / `super_admin` account for bootstrap,
+oversight, and emergency access.
 
 ## Implementation history
 
-Historical phase specs and verification logs (Phase 5A, 5B, 5C, 6.0,
-7.0, pre-launch polish, old completion roadmaps) have been moved to
-[`docs/archive/`](./docs/archive/README.md) so this top-level README
-stays focused on current state. See the archive README for the full
-listing.
+Historical phase specs and verification logs have been moved to
+[`docs/archive/`](./docs/archive/README.md) so this README stays focused on
+current state. See the archive README for the full listing.
+</content>
+</invoke>
