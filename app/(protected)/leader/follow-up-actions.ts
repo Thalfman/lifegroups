@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentSession } from "@/lib/auth/session";
-import { isLeaderRole } from "@/lib/auth/roles";
 import { startActionLog } from "@/lib/observability/instrument";
 import { validateLeaderUpdateFollowUpStatusPayload } from "@/lib/admin/validation";
 import {
@@ -45,13 +44,15 @@ async function requireLeaderActor(): Promise<RequireLeaderResult> {
     case "authenticated": {
       if (session.profile.status !== "active")
         return { ok: false, kind: "inactive", error: "Your account isn't active." };
-      if (!isLeaderRole(session.profile.role))
-        return {
-          ok: false,
-          kind: "not_leader",
-          error: "Only an assigned leader or co-leader can update this follow-up.",
-        };
-      return { ok: true, profileId: session.profile.id };
+      // Shepherd (leader) surface gated per
+      // docs/adr/0002-oversight-ladder-and-leader-gating.md. No caller --
+      // including leader / co_leader -- may run this leader action; deny
+      // before any RPC. Kept dormant so the route still typechecks.
+      return {
+        ok: false,
+        kind: "not_leader",
+        error: "The leader surface isn't available.",
+      };
     }
   }
 }

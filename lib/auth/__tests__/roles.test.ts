@@ -40,9 +40,11 @@ describe("defaultLandingPathForRole", () => {
     expect(defaultLandingPathForRole("ministry_admin")).toBe("/admin");
   });
 
-  it("routes leaders to /leader", () => {
-    expect(defaultLandingPathForRole("leader")).toBe("/leader");
-    expect(defaultLandingPathForRole("co_leader")).toBe("/leader");
+  // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // leader / co_leader are now treated as no-access, the same as staff_viewer.
+  it("routes leaders to /unauthorized (leader surface gated)", () => {
+    expect(defaultLandingPathForRole("leader")).toBe("/unauthorized");
+    expect(defaultLandingPathForRole("co_leader")).toBe("/unauthorized");
   });
 
   it("routes staff_viewer to /unauthorized", () => {
@@ -58,11 +60,19 @@ describe("navItemsForRole", () => {
     expect(ministryHrefs).not.toContain("/admin/super-admin");
   });
 
-  it("gives leaders only the home + my-groups items", () => {
+  // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // no leader nav entry is emitted any more; leaders see only the Home shell.
+  it("gives leaders only the home item (leader nav entry dropped)", () => {
     const leaderHrefs = navItemsForRole("leader").map((i) => i.href);
-    expect(leaderHrefs).toEqual(["/", "/leader"]);
+    expect(leaderHrefs).toEqual(["/"]);
     const coLeaderHrefs = navItemsForRole("co_leader").map((i) => i.href);
-    expect(coLeaderHrefs).toEqual(["/", "/leader"]);
+    expect(coLeaderHrefs).toEqual(["/"]);
+  });
+
+  it("emits no /leader nav entry for any role", () => {
+    for (const role of ALL_ROLES) {
+      expect(navItemsForRole(role).map((i) => i.href)).not.toContain("/leader");
+    }
   });
 
   it("gives staff_viewer only the home item", () => {

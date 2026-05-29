@@ -40,8 +40,9 @@ export function isLeaderRole(role: UserRole): boolean {
 
 export function defaultLandingPathForRole(role: UserRole): string {
   if (isAdminRole(role)) return "/admin";
-  if (role === "staff_viewer") return "/unauthorized";
-  if (isLeaderRole(role)) return "/leader";
+  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // leader / co_leader are treated as no-access, exactly like staff_viewer.
+  // They fall through to /unauthorized rather than landing on /leader.
   return "/unauthorized";
 }
 
@@ -65,9 +66,10 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     if (role === "super_admin") {
       items.push({ href: "/admin/super-admin", label: "Super admin" });
     }
-  } else if (isLeaderRole(role)) {
-    items.push({ href: "/leader", label: "My Groups" });
   }
+  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
+  // no leader nav entry is emitted for any role. leader / co_leader see only
+  // the minimal no-access shell (Home), the same as staff_viewer.
   return items;
 }
 

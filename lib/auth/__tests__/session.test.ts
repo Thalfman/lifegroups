@@ -310,8 +310,41 @@ describe("requireAdminSession (server-action guard)", () => {
   });
 });
 
-describe("requireLeaderActor (server-action guard)", () => {
-  it("returns ok:true with assigned group ids for a leader", async () => {
+// Shepherd (leader) surface gated per
+// docs/adr/0002-oversight-ladder-and-leader-gating.md: the shared guards now
+// deny every caller before any RPC, so the dormant leader surface is
+// unreachable. These tests pin that no-access behavior.
+describe("requireLeader (page-route guard) -- gated", () => {
+  it("redirects a leader caller to /unauthorized", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [{ group_id: GROUP_1_ID }],
+      }),
+    );
+    const { requireLeader } = await loadSession();
+    await expect(requireLeader()).rejects.toMatchObject({
+      __redirect: "/unauthorized",
+    });
+  });
+
+  it("redirects an admin caller to /unauthorized too (no role admitted)", async () => {
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-admin", email: "admin@example.com" },
+        profile: PROFILE_ADMIN,
+      }),
+    );
+    const { requireLeader } = await loadSession();
+    await expect(requireLeader()).rejects.toMatchObject({
+      __redirect: "/unauthorized",
+    });
+  });
+});
+
+describe("requireLeaderActor (server-action guard) -- gated", () => {
+  it("denies a leader caller before any RPC", async () => {
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
@@ -321,19 +354,14 @@ describe("requireLeaderActor (server-action guard)", () => {
     );
     const { requireLeaderActor } = await loadSession();
     const r = await requireLeaderActor();
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.profileId).toBe(PROFILE_LEADER_ID);
-      expect(r.assignedGroupIds).toEqual([GROUP_1_ID]);
-    }
+    expect(r.ok).toBe(false);
   });
 
-  it("returns ok:false on backend_error from leader_assignments lookup", async () => {
+  it("returns ok:false on backend_error from the profile lookup", async () => {
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
-        profile: PROFILE_LEADER,
-        leaderError: { code: "PGRST", message: "transient" },
+        profileError: { code: "PGRST", message: "transient" },
       }),
     );
     const { requireLeaderActor } = await loadSession();
@@ -344,7 +372,7 @@ describe("requireLeaderActor (server-action guard)", () => {
     }
   });
 
-  it("rejects an admin caller", async () => {
+  it("denies an admin caller", async () => {
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
