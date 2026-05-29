@@ -278,10 +278,13 @@ export function isPrfPasskeySupported(): boolean {
 export type RegisterPasskeyOptions = {
   rpId: string;
   rpName: string;
-  userId: Uint8Array;
   userName: string;
   userDisplayName: string;
   prfSalt?: Uint8Array;
+  // Existing credential ids to exclude, so re-registering on the SAME
+  // authenticator does not overwrite an existing resident credential. Pass the
+  // creator's current passkey credential ids when adding another.
+  excludeCredentialIds?: Uint8Array[];
 };
 
 /**
@@ -289,22 +292,31 @@ export type RegisterPasskeyOptions = {
  * and the per-credential PRF salt. The PRF output is obtained separately via
  * evaluatePrf (`evalByCredential`), because create-time `eval` does not reliably
  * return PRF output once more than one passkey can exist (spec §6).
+ *
+ * Each registration uses a fresh random user handle so every passkey is a
+ * DISTINCT discoverable credential — reusing one handle would make a second
+ * registration on the same authenticator overwrite the first.
  */
 export async function registerPrfPasskey(
   opts: RegisterPasskeyOptions,
 ): Promise<{ credentialId: Uint8Array; prfSalt: Uint8Array }> {
   const prfSalt = opts.prfSalt ?? globalThis.crypto.getRandomValues(new Uint8Array(RECOVERY_CODE_BYTES));
   const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
+  const userId = globalThis.crypto.getRandomValues(new Uint8Array(16));
   const prfExtension: PrfExtensionInput = { prf: { eval: { first: ab(prfSalt) } } };
   const publicKey: PublicKeyCredentialCreationOptions = {
     challenge: ab(challenge),
     rp: { id: opts.rpId, name: opts.rpName },
-    user: { id: ab(opts.userId), name: opts.userName, displayName: opts.userDisplayName },
+    user: { id: ab(userId), name: opts.userName, displayName: opts.userDisplayName },
     pubKeyCredParams: [
       { type: "public-key", alg: -7 }, // ES256
       { type: "public-key", alg: -257 }, // RS256
     ],
     authenticatorSelection: { residentKey: "required", userVerification: "required" },
+    excludeCredentials: (opts.excludeCredentialIds ?? []).map((id) => ({
+      type: "public-key",
+      id: ab(id),
+    })),
     extensions: prfExtension as unknown as AuthenticationExtensionsClientInputs,
   };
   const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
@@ -315,28 +327,49 @@ export async function registerPrfPasskey(
 /**
  * Evaluate the passkey PRF for a known credential id, returning the 32-byte PRF
  * output that feeds deriveKekFromPrf. Keyed by credential id via
- * `evalByCredential` (spec §6).
+ * `evalByCredential` (spec §6). Single-credential form, used right after
+ * registration when the device is known to hold the credential.
  */
 export async function evaluatePrf(
   credentialId: Uint8Array,
   prfSalt: Uint8Array,
   rpId: string,
 ): Promise<ArrayBuffer> {
+  const { prfOutput } = await evaluatePrfForCredentials([{ credentialId, prfSalt }], rpId);
+  return prfOutput;
+}
+
+/**
+ * Evaluate the passkey PRF across SEVERAL candidate credentials in one
+ * assertion. `allowCredentials` lists every credential and `evalByCredential`
+ * carries each one's PRF salt, so the authenticator asserts whichever credential
+ * it actually holds (e.g. this device's own passkey). Returns the asserted
+ * credential id and its PRF output, so the caller can pick the matching key slot
+ * for the unwrap. This is what makes multi-device / multi-passkey unlock work
+ * (spec §6: more than one passkey can exist).
+ */
+export async function evaluatePrfForCredentials(
+  credentials: Array<{ credentialId: Uint8Array; prfSalt: Uint8Array }>,
+  rpId: string,
+): Promise<{ credentialId: Uint8Array; prfOutput: ArrayBuffer }> {
+  if (credentials.length === 0) throw new Error("evaluatePrfForCredentials: no credentials");
   const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
-  const prfExtension: PrfExtensionInput = {
-    prf: { evalByCredential: { [bytesToBase64Url(credentialId)]: { first: ab(prfSalt) } } },
-  };
+  const evalByCredential: Record<string, { first: BufferSource }> = {};
+  for (const c of credentials) {
+    evalByCredential[bytesToBase64Url(c.credentialId)] = { first: ab(c.prfSalt) };
+  }
+  const prfExtension: PrfExtensionInput = { prf: { evalByCredential } };
   const publicKey: PublicKeyCredentialRequestOptions = {
     challenge: ab(challenge),
     rpId,
-    allowCredentials: [{ type: "public-key", id: ab(credentialId) }],
+    allowCredentials: credentials.map((c) => ({ type: "public-key", id: ab(c.credentialId) })),
     userVerification: "required",
     extensions: prfExtension as unknown as AuthenticationExtensionsClientInputs,
   };
   const assertion = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
-  if (!assertion) throw new Error("evaluatePrf: no assertion returned");
+  if (!assertion) throw new Error("evaluatePrfForCredentials: no assertion returned");
   const ext = assertion.getClientExtensionResults() as unknown as PrfExtensionOutput;
   const result = ext.prf?.results?.first;
-  if (!result) throw new Error("evaluatePrf: authenticator returned no PRF output");
-  return result;
+  if (!result) throw new Error("evaluatePrfForCredentials: authenticator returned no PRF output");
+  return { credentialId: new Uint8Array(assertion.rawId), prfOutput: result };
 }

@@ -26,6 +26,7 @@ import {
   deriveKekFromRecoveryCode,
   encryptNote,
   evaluatePrf,
+  evaluatePrfForCredentials,
   generateDek,
   generateRecoveryCode,
   isPrfPasskeySupported,
@@ -117,7 +118,10 @@ export function PrivateNotesSection({
     null,
   );
 
-  const passkeySlot = useMemo(() => slots.find((s) => s.slot_type === "passkey") ?? null, [slots]);
+  const passkeySlots = useMemo(
+    () => slots.filter((s) => s.slot_type === "passkey" && s.credential_id && s.prf_salt),
+    [slots],
+  );
   const recoverySlot = useMemo(
     () => slots.find((s) => s.slot_type === "recovery") ?? null,
     [slots],
@@ -188,7 +192,6 @@ export function PrivateNotesSection({
           const { credentialId, prfSalt } = await registerPrfPasskey({
             rpId: window.location.hostname,
             rpName: "LifeGroups private notes",
-            userId: new TextEncoder().encode(creatorProfileId),
             userName: "Private care notes",
             userDisplayName: "Private care notes",
           });
@@ -318,21 +321,32 @@ export function PrivateNotesSection({
   }
 
   async function handleUnlockWithPasskey() {
-    if (!passkeySlot || !passkeySlot.credential_id || !passkeySlot.prf_salt) return;
+    // Offer EVERY enrolled passkey to the authenticator in one assertion; it
+    // responds with whichever credential this device actually holds. We then
+    // unwrap with that specific slot's material — so a fresh device unlocks with
+    // its own passkey, not only the first-enrolled one.
+    const candidates = passkeySlots.flatMap((s) =>
+      s.credential_id && s.prf_salt
+        ? [{ slot: s, credentialId: base64ToBytes(s.credential_id), prfSalt: base64ToBytes(s.prf_salt) }]
+        : [],
+    );
+    if (candidates.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      const prfOutput = await evaluatePrf(
-        base64ToBytes(passkeySlot.credential_id),
-        base64ToBytes(passkeySlot.prf_salt),
+      const { credentialId, prfOutput } = await evaluatePrfForCredentials(
+        candidates.map((c) => ({ credentialId: c.credentialId, prfSalt: c.prfSalt })),
         window.location.hostname,
       );
-      const kek = await deriveKekFromPrf(prfOutput, base64ToBytes(passkeySlot.hkdf_salt));
+      const assertedB64 = bytesToBase64(credentialId);
+      const match = candidates.find((c) => c.slot.credential_id === assertedB64);
+      if (!match) throw new Error("No matching passkey slot for the asserted credential.");
+      const kek = await deriveKekFromPrf(prfOutput, base64ToBytes(match.slot.hkdf_salt));
       const unlockedDek = await unwrapDek(
-        base64ToBytes(passkeySlot.wrapped_dek),
-        base64ToBytes(passkeySlot.wrap_iv),
+        base64ToBytes(match.slot.wrapped_dek),
+        base64ToBytes(match.slot.wrap_iv),
         kek,
-        buildWrapAad(creatorProfileId, passkeySlot.dek_version),
+        buildWrapAad(creatorProfileId, match.slot.dek_version),
       );
       await afterUnlock(unlockedDek);
     } catch {
@@ -400,9 +414,13 @@ export function PrivateNotesSection({
       const { credentialId, prfSalt } = await registerPrfPasskey({
         rpId: window.location.hostname,
         rpName: "LifeGroups private notes",
-        userId: new TextEncoder().encode(creatorProfileId),
         userName: "Private care notes",
         userDisplayName: "Private care notes",
+        // Don't overwrite an existing resident credential on the same authenticator.
+        excludeCredentialIds: passkeySlots
+          .map((s) => s.credential_id)
+          .filter((c): c is string => c !== null)
+          .map((c) => base64ToBytes(c)),
       });
       const prfOutput = await evaluatePrf(credentialId, prfSalt, window.location.hostname);
       const salt = newHkdfSalt();
@@ -619,7 +637,7 @@ export function PrivateNotesSection({
         </div>
       ) : !unlocked ? (
         <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-          {passkeySlot ? (
+          {passkeySlots.length > 0 ? (
             <div>
               <PButton tone="solid" onClick={handleUnlockWithPasskey} disabled={busy}>
                 Unlock with passkey
