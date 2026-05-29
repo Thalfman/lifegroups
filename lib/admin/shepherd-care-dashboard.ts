@@ -98,6 +98,10 @@ export type ShepherdCareDashboardModel = {
   // so the dashboard doesn't silently misreport "everyone unassigned"
   // during a transient read failure.
   coverageAvailable: boolean;
+  // Same posture for the SC.1B outstanding-follow-up read: false means the
+  // follow-up counts are unknown (not zero) and the overdue_care_follow_up
+  // queue reason is suppressed, so the dashboard doesn't report a false 0.
+  followUpsAvailable: boolean;
 };
 
 export type BuildShepherdCareDashboardModelInput = {
@@ -109,6 +113,10 @@ export type BuildShepherdCareDashboardModelInput = {
   // to surface overdue/open tasks per shepherd. Defaults to none so existing
   // callers/tests keep working.
   careFollowUps?: CareFollowUpDashboardRow[];
+  // Defaults to true. Set to false when the outstanding-follow-up read
+  // errored so the follow-up-derived counts and the overdue_care_follow_up
+  // queue reason are suppressed rather than reporting a misleading 0.
+  careFollowUpsAvailable?: boolean;
   todayIso: string;
   // Defaults to true. Set to false when the coverage assignments read
   // errored so coverage-dependent surfaces (unassigned count, coverage
@@ -449,11 +457,14 @@ export function buildShepherdCareDashboardModel(
     assignedShepherdIds.add(a.shepherd_profile_id);
   }
 
-  const followUps = buildFollowUpStats(
-    input.entries,
-    input.careFollowUps ?? [],
-    input.todayIso,
-  );
+  const followUpsAvailable = input.careFollowUpsAvailable ?? true;
+  // When the follow-up read is unavailable, suppress all follow-up-derived
+  // output (empty stats + zero totals) so the dashboard reports "unknown"
+  // via followUpsAvailable rather than a misleading 0 — mirroring the
+  // coverageAvailable handling above.
+  const followUps = followUpsAvailable
+    ? buildFollowUpStats(input.entries, input.careFollowUps ?? [], input.todayIso)
+    : { byShepherdId: new Map<string, CareFollowUpShepherdStats>(), totalOverdue: 0, totalOutstanding: 0 };
 
   const summary = buildSummary(
     input.entries,
@@ -490,6 +501,7 @@ export function buildShepherdCareDashboardModel(
     ),
     recentInteractions: buildRecentInteractions(input.recentInteractions, limits.recent),
     coverageAvailable,
+    followUpsAvailable,
   };
 }
 

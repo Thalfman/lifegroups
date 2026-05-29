@@ -136,6 +136,7 @@ describe("buildShepherdCareDashboardModel", () => {
     expect(model.coverageBuckets[0].isUnassigned).toBe(true);
     expect(model.coverageBuckets[0].shepherdCount).toBe(0);
     expect(model.coverageAvailable).toBe(true);
+    expect(model.followUpsAvailable).toBe(true);
   });
 
   it("suppresses coverage-derived sections when assignmentsAvailable is false", () => {
@@ -588,6 +589,28 @@ describe("buildShepherdCareDashboardModel", () => {
         careFollowUps: [followUp(UUID_2, "open", OVERDUE)],
         todayIso: TODAY,
       });
+      expect(model.summary.overdueFollowUps).toBe(0);
+      expect(model.summary.outstandingFollowUps).toBe(0);
+      expect(model.attentionQueue).toEqual([]);
+    });
+
+    it("suppresses follow-up counts and reasons when careFollowUpsAvailable is false", () => {
+      // Simulates a transient failure on the outstanding-follow-up read: the
+      // page passes careFollowUps=[] (safe fallback) AND
+      // careFollowUpsAvailable=false. The builder must NOT report a false 0
+      // or omit the data silently — it flags followUpsAvailable=false instead.
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        // Even if rows somehow leak through, availability=false wins.
+        careFollowUps: [followUp(UUID_1, "open", OVERDUE)],
+        careFollowUpsAvailable: false,
+        todayIso: TODAY,
+      });
+      expect(model.followUpsAvailable).toBe(false);
       expect(model.summary.overdueFollowUps).toBe(0);
       expect(model.summary.outstandingFollowUps).toBe(0);
       expect(model.attentionQueue).toEqual([]);

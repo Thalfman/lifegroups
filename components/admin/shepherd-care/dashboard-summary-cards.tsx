@@ -31,11 +31,13 @@ export function ShepherdCareDashboardSummaryCards({
   filter,
   coverage,
   coverageAvailable,
+  followUpsAvailable,
 }: {
   summary: CareDashboardSummary;
   filter: DirectoryFilter;
   coverage: CoverageFilter | undefined;
   coverageAvailable: boolean;
+  followUpsAvailable: boolean;
 }) {
   const totalMeta =
     summary.totalActiveShepherds === 0
@@ -62,10 +64,17 @@ export function ShepherdCareDashboardSummaryCards({
       ? "Every shepherd has a profile"
       : `${plural(summary.noCareProfile, "Shepherd has", "Shepherds have")} no care profile yet`;
 
-  const followUpMeta =
-    summary.outstandingFollowUps === 0
+  const followUpMeta = !followUpsAvailable
+    ? "Follow-up data temporarily unavailable"
+    : summary.outstandingFollowUps === 0
       ? "No outstanding follow-ups"
       : `${summary.outstandingFollowUps} outstanding ${plural(summary.outstandingFollowUps, "follow-up", "follow-ups")}`;
+  // Render "—" instead of a misleading "0" when the follow-up read failed, so
+  // admins can tell "none overdue" apart from "we don't know" — mirroring the
+  // unassigned-coverage tile.
+  const overdueFollowUpValue = followUpsAvailable
+    ? String(summary.overdueFollowUps)
+    : "—";
 
   const unassignedMeta = !coverageAvailable
     ? "Coverage data temporarily unavailable"
@@ -141,10 +150,12 @@ export function ShepherdCareDashboardSummaryCards({
         />
         <MetricCard
           title="Overdue follow-ups"
-          value={String(summary.overdueFollowUps)}
+          value={overdueFollowUpValue}
           meta={followUpMeta}
-          accent={P.terra}
-          valueColor={summary.overdueFollowUps > 0 ? P.terra : P.ink}
+          accent={followUpsAvailable ? P.terra : P.ink3}
+          valueColor={
+            followUpsAvailable && summary.overdueFollowUps > 0 ? P.terra : P.ink
+          }
         />
         {coverageAvailable ? (
           <Link

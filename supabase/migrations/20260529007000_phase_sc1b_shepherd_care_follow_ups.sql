@@ -124,6 +124,8 @@ declare
   v_title text;
   v_notes text;
   v_shepherd_profile_id uuid;
+  v_shepherd_role public.user_role;
+  v_shepherd_status public.profile_status;
   v_new_id uuid;
 begin
   if not public.auth_is_admin() then
@@ -151,15 +153,26 @@ begin
     raise exception 'invalid_input';
   end if;
 
-  -- The care profile must already exist. Capture the shepherd_profile_id
-  -- for the audit trail (not the title/notes content).
-  select shepherd_profile_id
-    into v_shepherd_profile_id
-    from public.shepherd_care_profiles
-   where id = p_care_profile_id
+  -- The care profile must already exist AND belong to an active leader /
+  -- co_leader. Re-reading profiles here mirrors the SC.1A upsert/log RPCs:
+  -- it stops a stale or direct-call path from adding an invisible care task
+  -- to a shepherd who has since been deactivated or moved off a shepherd
+  -- role (whose detail page now 404s). Capture the shepherd_profile_id for
+  -- the audit trail (never the title/notes content).
+  select scp.shepherd_profile_id, p.role, p.status
+    into v_shepherd_profile_id, v_shepherd_role, v_shepherd_status
+    from public.shepherd_care_profiles scp
+    join public.profiles p on p.id = scp.shepherd_profile_id
+   where scp.id = p_care_profile_id
    limit 1;
   if v_shepherd_profile_id is null then
     raise exception 'missing_care_profile';
+  end if;
+  if v_shepherd_role not in ('leader'::public.user_role, 'co_leader'::public.user_role) then
+    raise exception 'missing_profile';
+  end if;
+  if v_shepherd_status <> 'active'::public.profile_status then
+    raise exception 'missing_profile';
   end if;
 
   insert into public.shepherd_care_follow_ups (

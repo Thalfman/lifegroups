@@ -62,6 +62,7 @@ type LoadedData = {
   recentInteractions: ShepherdCareRecentInteractionRow[];
   recentInteractionsAvailable: boolean;
   careFollowUps: CareFollowUpDashboardRow[];
+  careFollowUpsAvailable: boolean;
   staleDays: number;
   error: string | null;
 };
@@ -77,6 +78,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       recentInteractions: [],
       recentInteractionsAvailable: false,
       careFollowUps: [],
+      careFollowUpsAvailable: false,
       staleDays: decodeMetricDefaults(null).shepherd_care_stale_days,
       error: "Database is not configured in this environment.",
     };
@@ -111,6 +113,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       recentInteractions: [],
       recentInteractionsAvailable: false,
       careFollowUps: [],
+      careFollowUpsAvailable: false,
       staleDays,
       error: directory.error.message,
     };
@@ -121,6 +124,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
   // logged yet" during a transient DB error.
   const assignmentsAvailable = assignmentsRes.error === null;
   const recentInteractionsAvailable = recentRes.error === null;
+  const careFollowUpsAvailable = followUpsRes.error === null;
   return {
     entries: directory.data,
     overShepherds: overShepherdsRes.data ?? [],
@@ -129,6 +133,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
     recentInteractions: recentRes.data ?? [],
     recentInteractionsAvailable,
     careFollowUps: followUpsRes.data ?? [],
+    careFollowUpsAvailable,
     staleDays,
     error:
       overShepherdsRes.error?.message ??
@@ -164,6 +169,7 @@ export default async function AdminShepherdCarePage({
     recentInteractions,
     recentInteractionsAvailable,
     careFollowUps,
+    careFollowUpsAvailable,
     staleDays,
     error,
   } = await loadData(today);
@@ -182,6 +188,7 @@ export default async function AdminShepherdCarePage({
     overShepherds,
     recentInteractions,
     careFollowUps,
+    careFollowUpsAvailable,
     todayIso: today,
     assignmentsAvailable,
     staleDays,
@@ -226,6 +233,7 @@ export default async function AdminShepherdCarePage({
             filter={filter}
             coverage={coverage}
             coverageAvailable={dashboard.coverageAvailable}
+            followUpsAvailable={dashboard.followUpsAvailable}
           />
           <CareAttentionQueue
             items={dashboard.attentionQueue}
