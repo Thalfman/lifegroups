@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  adminAddPrivateNoteKeySlot,
   adminEnrollPrivateNoteKeys,
+  adminRemovePrivateNoteKeySlot,
+  adminRotatePrivateNoteRecovery,
   adminUpsertShepherdCarePrivateNote,
 } from "@/app/(protected)/admin/shepherd-care/actions";
 import { PButton } from "@/components/pastoral/button";
@@ -106,6 +109,13 @@ export function PrivateNotesSection({
   // Holds the wrapped slots generated client-side until the recovery code is
   // confirmed saved, then persists them.
   const pendingSlots = useRef<PrivateNoteKeySlotInput[] | null>(null);
+  // Recovery-code rotation: the new code is shown once and must be acknowledged
+  // before the re-wrapped material is persisted.
+  const [rotationCode, setRotationCode] = useState<string | null>(null);
+  const [rotationAck, setRotationAck] = useState(false);
+  const pendingRotation = useRef<{ hkdf_salt: string; wrapped_dek: string; wrap_iv: string } | null>(
+    null,
+  );
 
   const passkeySlot = useMemo(() => slots.find((s) => s.slot_type === "passkey") ?? null, [slots]);
   const recoverySlot = useMemo(
@@ -135,9 +145,12 @@ export function PrivateNotesSection({
     const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "focus"];
     reset();
     events.forEach((e) => window.addEventListener(e, reset));
+    // Wipe on tab/page close (spec §7). pagehide also fires on SPA navigation away.
+    window.addEventListener("pagehide", wipe);
     return () => {
       clearTimeout(timer);
       events.forEach((e) => window.removeEventListener(e, reset));
+      window.removeEventListener("pagehide", wipe);
     };
   }, [dek]);
 
@@ -373,6 +386,156 @@ export function PrivateNotesSection({
     setStatus(null);
   }
 
+  // ---- manage unlock methods (#113) --------------------------------------
+
+  // Register a second passkey on this device and wrap the in-memory DEK into a
+  // new slot. No note is re-encrypted. Also the fresh-device path: after a
+  // recovery-code unlock, this enrolls a passkey on the new device.
+  async function handleAddPasskey() {
+    if (!dek || !isPrfPasskeySupported()) return;
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const { credentialId, prfSalt } = await registerPrfPasskey({
+        rpId: window.location.hostname,
+        rpName: "LifeGroups private notes",
+        userId: new TextEncoder().encode(creatorProfileId),
+        userName: "Private care notes",
+        userDisplayName: "Private care notes",
+      });
+      const prfOutput = await evaluatePrf(credentialId, prfSalt, window.location.hostname);
+      const salt = newHkdfSalt();
+      const kek = await deriveKekFromPrf(prfOutput, salt);
+      const wrap = await wrapDek(dek, kek, buildWrapAad(creatorProfileId, DEK_VERSION));
+      const result = await adminAddPrivateNoteKeySlot(undefined, {
+        credential_id: bytesToBase64(credentialId),
+        label: "Passkey",
+        prf_salt: bytesToBase64(prfSalt),
+        hkdf_salt: bytesToBase64(salt),
+        wrapped_dek: bytesToBase64(wrap.wrapped),
+        wrap_iv: bytesToBase64(wrap.iv),
+        shepherd_profile_id: shepherdProfileId,
+      });
+      if (!result.ok) {
+        setError(result.errors.join(" "));
+        return;
+      }
+      setSlots((prev) => [
+        ...prev,
+        {
+          id: result.value.id,
+          created_by_profile_id: creatorProfileId,
+          dek_version: DEK_VERSION,
+          slot_type: "passkey",
+          credential_id: bytesToBase64(credentialId),
+          label: "Passkey",
+          prf_salt: bytesToBase64(prfSalt),
+          hkdf_salt: bytesToBase64(salt),
+          wrapped_dek: bytesToBase64(wrap.wrapped),
+          wrap_iv: bytesToBase64(wrap.iv),
+          created_at: "",
+        },
+      ]);
+      setStatus("Passkey added. This note now unlocks with it too.");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Rotate the recovery code: generate a new one, re-wrap the in-memory DEK, show
+  // it once, and only persist (revoking the old code) after the user confirms.
+  async function handleStartRotateRecovery() {
+    if (!dek) return;
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const code = generateRecoveryCode();
+      const salt = newHkdfSalt();
+      const kek = await deriveKekFromRecoveryCode(code, salt);
+      const wrap = await wrapDek(dek, kek, buildWrapAad(creatorProfileId, DEK_VERSION));
+      pendingRotation.current = {
+        hkdf_salt: bytesToBase64(salt),
+        wrapped_dek: bytesToBase64(wrap.wrapped),
+        wrap_iv: bytesToBase64(wrap.iv),
+      };
+      setRotationAck(false);
+      setRotationCode(code);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirmRotateRecovery() {
+    const material = pendingRotation.current;
+    if (!material) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await adminRotatePrivateNoteRecovery(undefined, {
+        ...material,
+        label: "Recovery code",
+        shepherd_profile_id: shepherdProfileId,
+      });
+      if (!result.ok) {
+        setError(result.errors.join(" "));
+        return;
+      }
+      setSlots((prev) =>
+        prev
+          .filter((s) => s.slot_type !== "recovery")
+          .concat({
+            id: result.value.id,
+            created_by_profile_id: creatorProfileId,
+            dek_version: DEK_VERSION,
+            slot_type: "recovery",
+            credential_id: null,
+            label: "Recovery code",
+            prf_salt: null,
+            hkdf_salt: material.hkdf_salt,
+            wrapped_dek: material.wrapped_dek,
+            wrap_iv: material.wrap_iv,
+            created_at: "",
+          }),
+      );
+      pendingRotation.current = null;
+      setRotationCode(null);
+      setRotationAck(false);
+      setStatus("Recovery code rotated. The old code no longer works.");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemoveSlot(slotId: string) {
+    setBusy(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const result = await adminRemovePrivateNoteKeySlot(undefined, {
+        slot_id: slotId,
+        shepherd_profile_id: shepherdProfileId,
+      });
+      if (!result.ok) {
+        setError(result.errors.join(" "));
+        return;
+      }
+      setSlots((prev) => prev.filter((s) => s.id !== slotId));
+      setStatus("Unlock method removed.");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // ---- render ------------------------------------------------------------
 
   return (
@@ -391,8 +554,35 @@ export function PrivateNotesSection({
         <p style={{ ...successTextStyle, marginBottom: 12 }}>{status}</p>
       ) : null}
 
-      {/* Enrollment: show the recovery code once, require capture. */}
-      {recoveryCode ? (
+      {/* Recovery-code rotation: show the NEW code once, require capture, then
+          persist (revoking the old code). */}
+      {rotationCode ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <p style={{ ...formNoteStyle, margin: 0, color: P.ink }}>
+            Save this <strong>new</strong> recovery code now. It replaces your old one — the old
+            code stops working the moment you confirm. Shown once.
+          </p>
+          <div style={codeStyle}>{rotationCode}</div>
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontFamily: fontBody }}>
+            <input
+              type="checkbox"
+              checked={rotationAck}
+              onChange={(e) => setRotationAck(e.target.checked)}
+              style={{ marginTop: 3 }}
+            />
+            <span style={{ fontSize: 13, color: P.ink2 }}>
+              I&apos;ve saved my new recovery code — I understand losing all unlock methods means
+              these notes can never be recovered.
+            </span>
+          </label>
+          <div>
+            <PButton tone="solid" onClick={handleConfirmRotateRecovery} disabled={!rotationAck || busy}>
+              {busy ? "Rotating…" : "Confirm new recovery code"}
+            </PButton>
+          </div>
+        </div>
+      ) : /* Enrollment: show the recovery code once, require capture. */
+      recoveryCode ? (
         <div style={{ display: "grid", gap: 12 }}>
           <p style={{ ...formNoteStyle, margin: 0, color: P.ink }}>
             Save this recovery code now. It is shown once and is the only way back in if you lose
@@ -476,6 +666,66 @@ export function PrivateNotesSection({
             <PButton tone="ghost" onClick={handleLock} disabled={busy}>
               Lock
             </PButton>
+          </div>
+
+          {/* Manage unlock methods (#113). */}
+          <div
+            style={{
+              borderTop: `1px solid ${P.line}`,
+              paddingTop: 14,
+              marginTop: 4,
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <h3 style={{ ...sectionTitleStyle, fontSize: 12, margin: 0 }}>Unlock methods</h3>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
+              {slots.map((slot) => (
+                <li
+                  key={slot.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    fontFamily: fontBody,
+                    fontSize: 13,
+                    color: P.ink,
+                  }}
+                >
+                  <span>
+                    {slot.slot_type === "recovery" ? "Recovery code" : slot.label || "Passkey"}
+                    <span style={{ color: P.ink3 }}>
+                      {slot.slot_type === "recovery" ? " (backstop)" : ""}
+                    </span>
+                  </span>
+                  {slot.slot_type === "passkey" ? (
+                    <PButton
+                      tone="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSlot(slot.id)}
+                      disabled={busy}
+                    >
+                      Remove
+                    </PButton>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {isPrfPasskeySupported() ? (
+                <PButton tone="ghost" size="sm" onClick={handleAddPasskey} disabled={busy}>
+                  Add a passkey
+                </PButton>
+              ) : null}
+              <PButton tone="ghost" size="sm" onClick={handleStartRotateRecovery} disabled={busy}>
+                Rotate recovery code
+              </PButton>
+            </div>
+            <p style={{ ...formNoteStyle, margin: 0, fontSize: 12 }}>
+              Lose every unlock method and these notes can never be recovered — there is no
+              server-side reset.
+            </p>
           </div>
         </div>
       )}

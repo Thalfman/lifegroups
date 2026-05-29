@@ -15,7 +15,10 @@ vi.mock("@/lib/observability/logger", () => ({
 
 import { bytesToBase64 } from "@/lib/crypto/encoding";
 import {
+  adminAddPrivateNoteKeySlot,
   adminEnrollPrivateNoteKeys,
+  adminRemovePrivateNoteKeySlot,
+  adminRotatePrivateNoteRecovery,
   adminUpsertShepherdCarePrivateNote,
 } from "@/app/(protected)/admin/shepherd-care/actions";
 
@@ -85,5 +88,62 @@ describe("adminEnrollPrivateNoteKeys", () => {
       p_slots: [slot],
     });
     expect(mockRevalidatePath).toHaveBeenCalledWith(`/admin/shepherd-care/${SHEPHERD}`);
+  });
+});
+
+describe("adminAddPrivateNoteKeySlot", () => {
+  it("maps a passkey slot to the RPC (slot_type forced passkey) and revalidates", async () => {
+    const result = await adminAddPrivateNoteKeySlot(undefined, {
+      credential_id: b64(20),
+      label: "Phone",
+      prf_salt: b64(32),
+      hkdf_salt: b64(16),
+      wrapped_dek: b64(48),
+      wrap_iv: b64(12),
+      shepherd_profile_id: SHEPHERD,
+    });
+    expect(result.ok).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("admin_add_private_note_key_slot", {
+      p_slot_type: "passkey",
+      p_credential_id: b64(20),
+      p_label: "Phone",
+      p_prf_salt: b64(32),
+      p_hkdf_salt: b64(16),
+      p_wrapped_dek: b64(48),
+      p_wrap_iv: b64(12),
+    });
+    expect(mockRevalidatePath).toHaveBeenCalledWith(`/admin/shepherd-care/${SHEPHERD}`);
+  });
+});
+
+describe("adminRotatePrivateNoteRecovery", () => {
+  it("maps recovery material to the RPC and revalidates", async () => {
+    const result = await adminRotatePrivateNoteRecovery(undefined, {
+      hkdf_salt: b64(16),
+      wrapped_dek: b64(48),
+      wrap_iv: b64(12),
+      label: "Recovery code",
+      shepherd_profile_id: SHEPHERD,
+    });
+    expect(result.ok).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("admin_rotate_private_note_recovery", {
+      p_hkdf_salt: b64(16),
+      p_wrapped_dek: b64(48),
+      p_wrap_iv: b64(12),
+      p_label: "Recovery code",
+    });
+  });
+});
+
+describe("adminRemovePrivateNoteKeySlot", () => {
+  it("maps the slot id to the RPC and revalidates", async () => {
+    const result = await adminRemovePrivateNoteKeySlot(undefined, {
+      slot_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      shepherd_profile_id: SHEPHERD,
+    });
+    expect(result.ok).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("admin_remove_private_note_key_slot", {
+      p_slot_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    });
   });
 });

@@ -89,6 +89,11 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "Private notes are already set up for your account. Refresh the page to manage your unlock methods.",
   not_enrolled:
     "Set up private notes (and save your recovery code) before writing one. Refresh the page and try again.",
+  // Phase SC.4 (#113) key-lifecycle tokens.
+  missing_slot:
+    "We couldn't find that unlock method. Refresh the page and try again.",
+  cannot_remove_last_slot:
+    "You can't remove your last unlock method. Add another passkey first, or rotate your recovery code.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

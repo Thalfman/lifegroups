@@ -804,6 +804,31 @@ export interface Database {
         };
         Returns: UUID;
       };
+      admin_add_private_note_key_slot: {
+        Args: {
+          p_slot_type: string;
+          p_credential_id: string | null;
+          p_label: string | null;
+          p_prf_salt: string | null;
+          p_hkdf_salt: string;
+          p_wrapped_dek: string;
+          p_wrap_iv: string;
+        };
+        Returns: UUID;
+      };
+      admin_rotate_private_note_recovery: {
+        Args: {
+          p_hkdf_salt: string;
+          p_wrapped_dek: string;
+          p_wrap_iv: string;
+          p_label: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_remove_private_note_key_slot: {
+        Args: { p_slot_id: UUID };
+        Returns: UUID;
+      };
       admin_update_shepherd_care_follow_up_status: {
         Args: {
           p_follow_up_id: UUID;
