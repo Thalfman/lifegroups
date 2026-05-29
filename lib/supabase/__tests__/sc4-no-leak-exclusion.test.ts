@@ -86,3 +86,54 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     }
   });
 });
+
+describe("SC.4 no-leak — service-role edge functions never touch the tables", () => {
+  // Edge functions hold the service-role key, which BYPASSES RLS, and they live
+  // outside the SCAN_DIRS above (and outside Vitest). So the RLS predicate proof
+  // is void for them — assert absolutely that they never name the tables.
+  const edgeFiles = walk(`${REPO_ROOT}supabase/functions`, []);
+
+  it("scans the edge functions (sanity)", () => {
+    expect(edgeFiles.length).toBeGreaterThan(0);
+  });
+
+  it("no edge function references either private-note table", () => {
+    const offenders = edgeFiles
+      .filter((f) => {
+        const c = readFileSync(f, "utf8");
+        return TABLES.some((t) => c.includes(t));
+      })
+      .map(rel);
+    expect(
+      offenders,
+      `service-role edge functions must never reference SC.4 tables: ${offenders.join(", ")}`,
+    ).toEqual([]);
+  });
+});
+
+describe("SC.4 no-leak — the creator-scoped readers are consumed only on the admin detail path", () => {
+  // A future SC.2/SC.3 aggregate could import the reader by SYMBOL (not by the
+  // raw table name) and slip past the name scan. Pin who may call them.
+  const READER_SYMBOLS = [
+    "fetchShepherdCarePrivateNoteCiphertextForCreator",
+    "fetchPrivateNoteKeySlotsForCreator",
+  ];
+  const SYMBOL_ALLOWLIST = new Set([
+    "lib/supabase/read-models.ts", // where they are defined
+    "app/(protected)/admin/shepherd-care/[profileId]/page.tsx", // the only consumer
+  ]);
+
+  it("no source outside the admin detail page uses the private-note readers", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles) {
+      const relPath = rel(file);
+      if (SYMBOL_ALLOWLIST.has(relPath)) continue;
+      const content = readFileSync(file, "utf8");
+      if (READER_SYMBOLS.some((s) => content.includes(s))) offenders.push(relPath);
+    }
+    expect(
+      offenders,
+      `private-note readers used outside the admin detail path: ${offenders.join(", ")}`,
+    ).toEqual([]);
+  });
+});

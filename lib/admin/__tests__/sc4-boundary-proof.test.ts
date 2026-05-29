@@ -38,6 +38,27 @@ let noteSql = "";
 let lifecycleSql = "";
 const bothLower = () => `${noteSql}\n${lifecycleSql}`.toLowerCase();
 
+// Extract the balanced-paren body of the first `<keyword> (...)` after `from`,
+// collapsing whitespace. Used to read a policy's USING clause or a function's
+// parameter list exactly, rather than just substring-matching it.
+function balancedAfter(haystack: string, marker: string, from = 0): string {
+  const at = haystack.indexOf(marker, from);
+  if (at === -1) return "";
+  let depth = 0;
+  let begin = -1;
+  for (let i = at; i < haystack.length; i += 1) {
+    const ch = haystack[i];
+    if (ch === "(") {
+      if (depth === 0) begin = i + 1;
+      depth += 1;
+    } else if (ch === ")") {
+      depth -= 1;
+      if (depth === 0) return haystack.slice(begin, i).replace(/\s+/g, " ").trim();
+    }
+  }
+  return "";
+}
+
 // Slice every audit_events insert (across both migrations) up to the following
 // `return`, so we can scan exactly what reaches audit metadata.
 function auditInsertBlocks(): string[] {
@@ -59,27 +80,38 @@ beforeAll(() => {
   lifecycleSql = readFileSync(LIFECYCLE_MIGRATION, "utf8");
 });
 
+  // The USING clause must be EXACTLY this — nothing OR'd on, no extra helper,
+  // no extra role. Presence-only checks would pass a `OR public.is_admin()`
+  // leak; an exact match cannot.
+  const EXPECTED_USING =
+    "public.auth_role() = 'ministry_admin'::public.user_role and created_by_profile_id = public.auth_profile_id()";
+
 describe("SC.4 boundary — only the creating ministry_admin can read (RLS predicate)", () => {
-  it("each table's SELECT policy admits exactly ministry_admin AND the creator", () => {
+  it("each table's SELECT policy is EXACTLY the creator predicate (sole gate)", () => {
     const policyChunks = noteSql.toLowerCase().split("create policy").slice(1);
     for (const table of TABLES) {
       const chunk = policyChunks.find((c) => c.includes(`on public.${table}`));
       expect(chunk, `${table} must have a SELECT policy`).toBeDefined();
       expect(chunk).toContain("for select to authenticated");
-      expect(chunk).toContain("auth_role() = 'ministry_admin'");
-      expect(chunk).toContain("created_by_profile_id = public.auth_profile_id()");
+      // Exact USING body — any extra OR / helper / role would change this string.
+      expect(balancedAfter(chunk as string, "using (")).toBe(EXPECTED_USING);
     }
   });
 
-  it("excludes super_admin and every other role from the read path", () => {
-    // auth_is_admin() would admit super_admin; it must never gate these tables.
+  it("admits no role via any helper, OR-branch, or named role literal", () => {
+    // auth_is_admin() / auth_is_admin_or_staff() would admit super_admin; never use them.
     expect(noteSql.toLowerCase()).not.toContain("auth_is_admin");
-    // No policy USING clause may name a non-creator role as a grant of access.
     const policyChunks = noteSql.toLowerCase().split("create policy").slice(1);
     for (const chunk of policyChunks) {
-      const usingClause = chunk.slice(0, chunk.indexOf(";"));
+      const using = balancedAfter(chunk, "using (");
+      expect(using, "USING must have no OR branch").not.toMatch(/\bor\b/);
+      // The only function calls allowed in USING are auth_role() and auth_profile_id().
+      const calls = using.match(/public\.[a-z_]+\(/g) ?? [];
+      for (const call of calls) {
+        expect(["public.auth_role(", "public.auth_profile_id("]).toContain(call);
+      }
       for (const role of NON_CREATOR_ROLES) {
-        expect(usingClause, `policy must not admit ${role}`).not.toContain(`'${role}'`);
+        expect(using, `policy must not admit ${role}`).not.toContain(`'${role}'`);
       }
     }
   });
@@ -122,10 +154,16 @@ describe("SC.4 boundary — every writer is a ministry_admin-only SECURITY DEFIN
       expect(body).toContain("security definer");
       expect(body).toContain("set search_path = public, pg_temp");
       expect(body).toContain("auth_role() = 'ministry_admin'");
+      // Per-function: the actor is derived from the session INSIDE this body...
+      expect(body, `${fn} must derive the actor from the session`).toContain(
+        "public.auth_profile_id()",
+      );
+      // ...and this function's parameter list carries no client-supplied creator.
+      const params = balancedAfter(all, `function public.${fn}(`, start);
+      expect(params, `${fn} must not accept a creator parameter`).not.toMatch(
+        /p_(created_by|creator|actor|author|owner)/,
+      );
     }
-    // created_by is always derived from the actor, never a client argument.
-    expect(all).toContain("public.auth_profile_id()");
-    expect(all).not.toContain("p_created_by");
   });
 });
 
