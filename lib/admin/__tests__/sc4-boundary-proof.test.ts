@@ -182,6 +182,11 @@ describe("SC.4 boundary — every writer is a ministry_admin-only SECURITY DEFIN
         "created_by_profile_id",
       );
       expect(body, `${fn} must use the derived actor in its writes`).toMatch(/\bv_actor\b/);
+      // Each mutation RPC writes its paired audit row in the SAME body (so no
+      // writer can lose its audit while a global count stays satisfied).
+      expect(body, `${fn} must write a paired audit_events row`).toContain(
+        "insert into public.audit_events",
+      );
     }
   });
 });

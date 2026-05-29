@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -38,12 +38,22 @@ function walk(dir: string, acc: string[]): string[] {
   return acc;
 }
 
-const sourceFiles = SCAN_DIRS.flatMap((d) => walk(`${REPO_ROOT}${d}`, []));
+// Repo-root runtime entrypoints (outside the scanned dirs) that run on every
+// request — middleware especially — must be covered too.
+const ROOT_RUNTIME_FILES = ["middleware.ts"]
+  .map((f) => `${REPO_ROOT}${f}`)
+  .filter((p) => existsSync(p));
+
+const sourceFiles = [
+  ...SCAN_DIRS.flatMap((d) => walk(`${REPO_ROOT}${d}`, [])),
+  ...ROOT_RUNTIME_FILES,
+];
 const rel = (abs: string) => abs.slice(REPO_ROOT.length).replace(/\\/g, "/");
 
 describe("SC.4 no-leak — private-note tables are referenced only by the creator readers", () => {
-  it("scans a non-trivial number of source files (sanity)", () => {
+  it("scans a non-trivial number of source files, including root middleware (sanity)", () => {
     expect(sourceFiles.length).toBeGreaterThan(50);
+    expect(sourceFiles.some((f) => f.endsWith("middleware.ts"))).toBe(true);
   });
 
   it("no runtime source outside the allowlist names either private-note table", () => {
@@ -145,5 +155,24 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
       offenders,
       `private-note readers used outside the admin detail path: ${offenders.join(", ")}`,
     ).toEqual([]);
+  });
+
+  it("the admin detail page invokes the readers only behind a ministry_admin gate", () => {
+    // requireAdmin() admits super_admin, so the readers must not be CALLED on a
+    // super_admin request — not merely hidden from the UI. The page passes a
+    // ministry_admin gate into loadDetail and each reader call sits in that branch.
+    const page = readFileSync(
+      `${REPO_ROOT}app/(protected)/admin/shepherd-care/[profileId]/page.tsx`,
+      "utf8",
+    );
+    expect(page).toMatch(/loadDetail\([^)]*actorRole === "ministry_admin"/);
+    for (const sym of READER_SYMBOLS) {
+      const idx = page.indexOf(`${sym}(`);
+      expect(idx, `page must call ${sym}`).toBeGreaterThan(-1);
+      const before = page.slice(Math.max(0, idx - 160), idx);
+      expect(before, `${sym} call must be gated by canReadPrivateNotes`).toContain(
+        "canReadPrivateNotes",
+      );
+    }
   });
 });
