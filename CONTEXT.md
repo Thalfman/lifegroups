@@ -1,0 +1,50 @@
+# Life Group Operations
+
+Julian's admin operating system for shepherding Life Group leaders and
+planning group launches. The app is currently for the ministry's
+oversight tiers only — not for group leaders themselves.
+
+## Language
+
+### People & roles
+
+**Shepherd**:
+A person who leads a Life Group. Julian's word for what the codebase calls
+a `leader` (and `co_leader` → Co-Life Shepherd). Shepherds are the people
+the ministry cares for; they do not currently log in to the app.
+_Avoid_: Leader, group leader (these are the code-level identifiers only).
+
+**Over-Shepherd**:
+A coach responsible for a set of Shepherds. Sits above Shepherds and below
+the Ministry Admin in the oversight ladder. Tracked today as coverage data;
+becoming a login tier.
+_Avoid_: Coach, over shepherd, overseer.
+
+**Ministry Admin**:
+The ministry leader who runs the operating system day to day (Julian). Sees
+everything an Over-Shepherd sees, plus more.
+_Avoid_: Admin (ambiguous), pastor.
+
+**Super Admin**:
+The platform owner (Tom). Top of the oversight ladder; sees everything a
+Ministry Admin sees, plus platform/account administration.
+_Avoid_: Owner, root, developer.
+
+### The oversight ladder
+
+The roles form a strict visibility ladder — each tier sees what the tier
+below sees, and more:
+
+**Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
+
+The Shepherd tier is currently gated off (no leader-facing surface). The
+one deliberate exception to "higher tiers see everything below" is private
+care notes — see CONTEXT note on Private Care Note below.
+
+### Care concepts
+
+**Private Care Note**:
+A pastoral note a Ministry Admin records for their eyes only. Deliberately
+escapes the oversight ladder: not visible to other tiers — and, by intent,
+not to the Super Admin either.
+_Avoid_: Encrypted note, secret note.
