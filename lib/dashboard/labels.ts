@@ -5,6 +5,7 @@ import type {
   FollowUpType,
   FollowUpPriority,
   AttendanceSessionStatus,
+  ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
   ShepherdCareStatus,
 } from "@/types/enums";
@@ -110,4 +111,16 @@ export function shepherdCareInteractionTypeLabel(
   type: ShepherdCareInteractionType,
 ): string {
   return shepherdCareInteractionTypeLabels[type] ?? type;
+}
+
+const shepherdCareFollowUpStatusLabels: Record<ShepherdCareFollowUpStatus, string> = {
+  open: "Open",
+  in_progress: "In progress",
+  done: "Done",
+};
+
+export function shepherdCareFollowUpStatusLabel(
+  status: ShepherdCareFollowUpStatus,
+): string {
+  return shepherdCareFollowUpStatusLabels[status] ?? status;
 }

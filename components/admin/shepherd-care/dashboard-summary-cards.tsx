@@ -62,6 +62,11 @@ export function ShepherdCareDashboardSummaryCards({
       ? "Every shepherd has a profile"
       : `${plural(summary.noCareProfile, "Shepherd has", "Shepherds have")} no care profile yet`;
 
+  const followUpMeta =
+    summary.outstandingFollowUps === 0
+      ? "No outstanding follow-ups"
+      : `${summary.outstandingFollowUps} outstanding ${plural(summary.outstandingFollowUps, "follow-up", "follow-ups")}`;
+
   const unassignedMeta = !coverageAvailable
     ? "Coverage data temporarily unavailable"
     : summary.unassignedCoverage === 0
@@ -133,6 +138,13 @@ export function ShepherdCareDashboardSummaryCards({
           meta={noProfileMeta}
           accent={P.ink3}
           valueColor={P.ink}
+        />
+        <MetricCard
+          title="Overdue follow-ups"
+          value={String(summary.overdueFollowUps)}
+          meta={followUpMeta}
+          accent={P.terra}
+          valueColor={summary.overdueFollowUps > 0 ? P.terra : P.ink}
         />
         {coverageAvailable ? (
           <Link

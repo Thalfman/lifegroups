@@ -49,6 +49,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "We couldn't find that guest. Refresh the page and try again.",
   missing_follow_up:
     "We couldn't find that follow-up. Refresh the page and try again.",
+  missing_care_profile:
+    "We couldn't find that care profile. Log an interaction or set the care profile first, then try again.",
   group_closed:
     "That group is closed. Reopen it before assigning new guests or placements.",
   invalid_status:

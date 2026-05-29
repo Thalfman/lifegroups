@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
+import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-follow-up-create-form";
+import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
@@ -9,9 +11,12 @@ import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-c
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
+  fetchGenericFollowUpCountForAssignee,
   fetchOverShepherdsForAdmin,
+  fetchShepherdCareFollowUpsForProfile,
   fetchShepherdCareInteractionsForAdmin,
   fetchShepherdCareProfileByShepherdId,
   type ActiveShepherdCoverageAssignmentSummary,
@@ -21,6 +26,7 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
+  ShepherdCareFollowUpsRow,
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
 } from "@/types/database";
@@ -58,6 +64,8 @@ async function loadDetail(profileId: string): Promise<
       profileRole: string;
       care: ShepherdCareProfilesRow | null;
       interactions: ShepherdCareInteractionsRow[];
+      followUps: ShepherdCareFollowUpsRow[];
+      genericFollowUpCount: number;
       activeOverShepherds: OverShepherdListRow[];
       coverage: ActiveShepherdCoverageAssignmentSummary | null;
       error: string | null;
@@ -76,6 +84,8 @@ async function loadDetail(profileId: string): Promise<
       profileRole: "—",
       care: null,
       interactions: [],
+      followUps: [],
+      genericFollowUpCount: 0,
       activeOverShepherds: [],
       coverage: null,
       error: profile.error.message,
@@ -90,11 +100,13 @@ async function loadDetail(profileId: string): Promise<
   }
   if (profile.data.status !== "active") return { kind: "not_found" };
 
-  const [careResult, overShepherdsRes, coverageRes] = await Promise.all([
-    fetchShepherdCareProfileByShepherdId(client, profileId),
-    fetchOverShepherdsForAdmin(client, { includeArchived: false }),
-    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
-  ]);
+  const [careResult, overShepherdsRes, coverageRes, genericCountRes] =
+    await Promise.all([
+      fetchShepherdCareProfileByShepherdId(client, profileId),
+      fetchOverShepherdsForAdmin(client, { includeArchived: false }),
+      fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
+      fetchGenericFollowUpCountForAssignee(client, profileId),
+    ]);
   if (careResult.error) {
     return {
       kind: "ok",
@@ -102,21 +114,28 @@ async function loadDetail(profileId: string): Promise<
       profileRole: profile.data.role,
       care: null,
       interactions: [],
+      followUps: [],
+      genericFollowUpCount: genericCountRes.data ?? 0,
       activeOverShepherds: overShepherdsRes.data ?? [],
       coverage: null,
       error: careResult.error.message,
     };
   }
 
+  // Interaction history and care follow-ups both hang off the care profile
+  // row, so only fetch them once we know it exists.
   let interactions: ShepherdCareInteractionsRow[] = [];
-  let interactionError: string | null = null;
+  let followUps: ShepherdCareFollowUpsRow[] = [];
+  let childError: string | null = null;
   if (careResult.data) {
-    const inter = await fetchShepherdCareInteractionsForAdmin(
-      client,
-      careResult.data.id,
-    );
-    if (inter.error) interactionError = inter.error.message;
+    const [inter, fus] = await Promise.all([
+      fetchShepherdCareInteractionsForAdmin(client, careResult.data.id),
+      fetchShepherdCareFollowUpsForProfile(client, careResult.data.id),
+    ]);
+    if (inter.error) childError = inter.error.message;
     else interactions = inter.data;
+    if (fus.error) childError = childError ?? fus.error.message;
+    else followUps = fus.data;
   }
 
   return {
@@ -125,12 +144,15 @@ async function loadDetail(profileId: string): Promise<
     profileRole: profile.data.role,
     care: careResult.data,
     interactions,
+    followUps,
+    genericFollowUpCount: genericCountRes.data ?? 0,
     activeOverShepherds: overShepherdsRes.data ?? [],
     coverage: coverageRes.data ?? null,
     error:
-      interactionError ??
+      childError ??
       overShepherdsRes.error?.message ??
       coverageRes.error?.message ??
+      genericCountRes.error?.message ??
       null,
   };
 }
@@ -169,6 +191,7 @@ export default async function AdminShepherdCareDetailPage({
   }
 
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
+  const today = currentUtcDateIso();
 
   return (
     <>
@@ -322,6 +345,60 @@ export default async function AdminShepherdCareDetailPage({
               shepherdProfileId={profileId}
               current={detail.care}
             />
+          </section>
+
+          <section style={cardStyle} aria-label="Care follow-ups">
+            <h2
+              style={{
+                fontFamily: fontSans,
+                fontSize: 14,
+                letterSpacing: 0.6,
+                margin: "0 0 6px",
+                color: P.ink,
+              }}
+            >
+              Care follow-ups
+            </h2>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                margin: "0 0 12px",
+              }}
+            >
+              The concrete next steps you owe this shepherd. Overdue items show
+              first.
+              {detail.genericFollowUpCount > 0
+                ? ` They're also assigned to ${detail.genericFollowUpCount} open general follow-up${detail.genericFollowUpCount === 1 ? "" : "s"}.`
+                : ""}
+            </p>
+            {detail.care ? (
+              <div style={{ display: "grid", gap: 16 }}>
+                <CareFollowUpCreateForm
+                  careProfileId={detail.care.id}
+                  shepherdProfileId={profileId}
+                />
+                <CareFollowUpList
+                  followUps={detail.followUps}
+                  shepherdProfileId={profileId}
+                  todayIso={today}
+                />
+              </div>
+            ) : (
+              <p
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink3,
+                  margin: 0,
+                  fontStyle: "italic",
+                }}
+              >
+                Log an interaction or set the care profile first to start adding
+                follow-ups.
+              </p>
+            )}
           </section>
 
           <section style={cardStyle} aria-label="Interaction history">

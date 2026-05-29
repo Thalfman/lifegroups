@@ -40,3 +40,4 @@ export type GroupCalendarEventType =
 export type GroupCalendarEventStatus = 'scheduled' | 'off' | 'cancelled';
 export type ShepherdCareStatus = 'healthy' | 'watch' | 'needs_attention';
 export type ShepherdCareInteractionType = 'call' | 'text' | 'in_person' | 'meeting' | 'other';
+export type ShepherdCareFollowUpStatus = 'open' | 'in_progress' | 'done';

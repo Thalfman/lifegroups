@@ -3,13 +3,16 @@ import {
   computeNeedsAttention,
   differenceInDaysIso,
   type ActiveShepherdCoverageAssignmentSummary,
+  type CareFollowUpDashboardRow,
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
+import { isFollowUpOverdue } from "@/lib/admin/shepherd-care-follow-ups";
 
 export type CareAttentionReason =
   | "overdue_touchpoint"
+  | "overdue_care_follow_up"
   | "needs_attention_status"
   | "no_contact_yet"
   | "stale_last_contact"
@@ -17,14 +20,21 @@ export type CareAttentionReason =
   | "watch_status";
 
 // Priority order: lower number = higher priority. Matches the SC.3 spec.
+// overdue_care_follow_up ("what I owe this person, now past due") sits just
+// below an overdue touchpoint and above the softer status/staleness signals.
 const REASON_PRIORITY: Record<CareAttentionReason, number> = {
   overdue_touchpoint: 1,
-  needs_attention_status: 2,
-  no_contact_yet: 3,
-  stale_last_contact: 4,
-  no_over_shepherd: 5,
-  watch_status: 6,
+  overdue_care_follow_up: 2,
+  needs_attention_status: 3,
+  no_contact_yet: 4,
+  stale_last_contact: 5,
+  no_over_shepherd: 6,
+  watch_status: 7,
 };
+
+// Per-shepherd care follow-up rollup the dashboard derives from the
+// outstanding-follow-up feed. outstanding = open + in_progress + overdue.
+export type CareFollowUpShepherdStats = { overdue: number; outstanding: number };
 
 export type CareAttentionItem = {
   shepherdProfileId: string;
@@ -70,6 +80,10 @@ export type CareDashboardSummary = {
   notContactedRecently: number;
   noCareProfile: number;
   unassignedCoverage: number;
+  // SC.1B: total care follow-up rows that are past due and not done.
+  overdueFollowUps: number;
+  // SC.1B: total outstanding (open + in_progress + overdue) care follow-ups.
+  outstandingFollowUps: number;
 };
 
 export type ShepherdCareDashboardModel = {
@@ -91,6 +105,10 @@ export type BuildShepherdCareDashboardModelInput = {
   assignments: ActiveShepherdCoverageAssignmentSummary[];
   overShepherds: OverShepherdListRow[];
   recentInteractions: ShepherdCareRecentInteractionRow[];
+  // SC.1B: outstanding (not-done) care follow-ups across all profiles, used
+  // to surface overdue/open tasks per shepherd. Defaults to none so existing
+  // callers/tests keep working.
+  careFollowUps?: CareFollowUpDashboardRow[];
   todayIso: string;
   // Defaults to true. Set to false when the coverage assignments read
   // errored so coverage-dependent surfaces (unassigned count, coverage
@@ -131,11 +149,51 @@ function relativeDayLabel(daysFromToday: number): string {
   return daysFromToday === 1 ? "Due tomorrow" : `Due in ${daysFromToday} days`;
 }
 
+// Join the outstanding-follow-up feed (keyed by care_profile_id) to the
+// directory entries (keyed by shepherd_profile_id, with entry.care.id being
+// the care_profile_id) and roll up per-shepherd overdue/outstanding counts.
+// Follow-ups whose care profile isn't in the visible directory (e.g. a
+// deactivated shepherd) are skipped so the dashboard stays consistent with
+// the rows it renders.
+function buildFollowUpStats(
+  entries: ShepherdCareDirectoryEntry[],
+  careFollowUps: CareFollowUpDashboardRow[],
+  todayIso: string,
+): {
+  byShepherdId: Map<string, CareFollowUpShepherdStats>;
+  totalOverdue: number;
+  totalOutstanding: number;
+} {
+  const shepherdIdByCareProfileId = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.care) shepherdIdByCareProfileId.set(entry.care.id, entry.profile.id);
+  }
+
+  const byShepherdId = new Map<string, CareFollowUpShepherdStats>();
+  let totalOverdue = 0;
+  let totalOutstanding = 0;
+  for (const fu of careFollowUps) {
+    if (fu.status === "done") continue; // feed is not-done, but be defensive
+    const shepherdId = shepherdIdByCareProfileId.get(fu.care_profile_id);
+    if (shepherdId === undefined) continue;
+    const stats = byShepherdId.get(shepherdId) ?? { overdue: 0, outstanding: 0 };
+    stats.outstanding += 1;
+    totalOutstanding += 1;
+    if (isFollowUpOverdue(fu, todayIso)) {
+      stats.overdue += 1;
+      totalOverdue += 1;
+    }
+    byShepherdId.set(shepherdId, stats);
+  }
+  return { byShepherdId, totalOverdue, totalOutstanding };
+}
+
 function detailForReason(
   reason: CareAttentionReason,
   entry: ShepherdCareDirectoryEntry,
   todayIso: string,
   staleDays: number,
+  followUpStats: Map<string, CareFollowUpShepherdStats>,
 ): string {
   const care = entry.care;
   switch (reason) {
@@ -149,6 +207,12 @@ function detailForReason(
             : `Touchpoint overdue ${days} days`;
       }
       return "Touchpoint overdue";
+    }
+    case "overdue_care_follow_up": {
+      const overdue = followUpStats.get(entry.profile.id)?.overdue ?? 0;
+      return overdue === 1
+        ? "1 follow-up overdue"
+        : `${overdue} follow-ups overdue`;
     }
     case "needs_attention_status":
       return "Marked as needs attention";
@@ -176,12 +240,16 @@ function detectReasons(
   todayIso: string,
   coverageAvailable: boolean,
   staleDays: number,
+  followUpStats: Map<string, CareFollowUpShepherdStats>,
 ): CareAttentionReason[] {
   const reasons: CareAttentionReason[] = [];
   const care = entry.care;
 
   if (care?.next_touchpoint_due && care.next_touchpoint_due < todayIso) {
     reasons.push("overdue_touchpoint");
+  }
+  if ((followUpStats.get(entry.profile.id)?.overdue ?? 0) > 0) {
+    reasons.push("overdue_care_follow_up");
   }
   if (care?.current_status === "needs_attention") {
     reasons.push("needs_attention_status");
@@ -211,6 +279,7 @@ function buildAttentionQueue(
   todayIso: string,
   coverageAvailable: boolean,
   staleDays: number,
+  followUpStats: Map<string, CareFollowUpShepherdStats>,
 ): CareAttentionItem[] {
   const items: CareAttentionItem[] = [];
   for (const entry of entries) {
@@ -220,6 +289,7 @@ function buildAttentionQueue(
       todayIso,
       coverageAvailable,
       staleDays,
+      followUpStats,
     );
     if (reasons.length === 0) continue;
     reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
@@ -229,7 +299,7 @@ function buildAttentionQueue(
       shepherdName: entry.profile.full_name,
       reason: primary,
       secondaryReasons: secondary,
-      detail: detailForReason(primary, entry, todayIso, staleDays),
+      detail: detailForReason(primary, entry, todayIso, staleDays, followUpStats),
       priority: REASON_PRIORITY[primary],
       href: shepherdHref(entry.profile.id),
     });
@@ -247,6 +317,7 @@ function buildSummary(
   todayIso: string,
   coverageAvailable: boolean,
   staleDays: number,
+  followUpTotals: { overdue: number; outstanding: number },
 ): CareDashboardSummary {
   let needsAttention = 0;
   let overdueTouchpoints = 0;
@@ -278,6 +349,8 @@ function buildSummary(
     notContactedRecently,
     noCareProfile,
     unassignedCoverage,
+    overdueFollowUps: followUpTotals.overdue,
+    outstandingFollowUps: followUpTotals.outstanding,
   };
 }
 
@@ -376,12 +449,19 @@ export function buildShepherdCareDashboardModel(
     assignedShepherdIds.add(a.shepherd_profile_id);
   }
 
+  const followUps = buildFollowUpStats(
+    input.entries,
+    input.careFollowUps ?? [],
+    input.todayIso,
+  );
+
   const summary = buildSummary(
     input.entries,
     assignedShepherdIds,
     input.todayIso,
     coverageAvailable,
     staleDays,
+    { overdue: followUps.totalOverdue, outstanding: followUps.totalOutstanding },
   );
   const fullQueue = buildAttentionQueue(
     input.entries,
@@ -389,6 +469,7 @@ export function buildShepherdCareDashboardModel(
     input.todayIso,
     coverageAvailable,
     staleDays,
+    followUps.byShepherdId,
   );
 
   return {
@@ -420,15 +501,27 @@ export function countAllAttentionItems(
   entries: ShepherdCareDirectoryEntry[],
   assignments: ActiveShepherdCoverageAssignmentSummary[],
   todayIso: string,
-  options: { coverageAvailable?: boolean; staleDays?: number } = {},
+  options: {
+    coverageAvailable?: boolean;
+    staleDays?: number;
+    careFollowUps?: CareFollowUpDashboardRow[];
+  } = {},
 ): number {
   const coverageAvailable = options.coverageAvailable ?? true;
   const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
   const ids = new Set<string>();
   for (const a of assignments) ids.add(a.shepherd_profile_id);
+  const followUpStats = buildFollowUpStats(
+    entries,
+    options.careFollowUps ?? [],
+    todayIso,
+  ).byShepherdId;
   let total = 0;
   for (const entry of entries) {
-    if (detectReasons(entry, ids, todayIso, coverageAvailable, staleDays).length > 0) {
+    if (
+      detectReasons(entry, ids, todayIso, coverageAvailable, staleDays, followUpStats)
+        .length > 0
+    ) {
       total += 1;
     }
   }

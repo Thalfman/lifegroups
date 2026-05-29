@@ -17,10 +17,12 @@ import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
   fetchMetricDefaults,
+  fetchOutstandingCareFollowUpsForAdmin,
   fetchOverShepherdsForAdmin,
   fetchRecentShepherdCareInteractionsForAdmin,
   fetchShepherdCareDirectoryForAdmin,
   type ActiveShepherdCoverageAssignmentSummary,
+  type CareFollowUpDashboardRow,
   type OverShepherdListRow,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
@@ -59,6 +61,7 @@ type LoadedData = {
   assignmentsAvailable: boolean;
   recentInteractions: ShepherdCareRecentInteractionRow[];
   recentInteractionsAvailable: boolean;
+  careFollowUps: CareFollowUpDashboardRow[];
   staleDays: number;
   error: string | null;
 };
@@ -73,6 +76,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       assignmentsAvailable: false,
       recentInteractions: [],
       recentInteractionsAvailable: false,
+      careFollowUps: [],
       staleDays: decodeMetricDefaults(null).shepherd_care_stale_days,
       error: "Database is not configured in this environment.",
     };
@@ -90,12 +94,14 @@ async function loadData(todayIso: string): Promise<LoadedData> {
   // directory read receives the same todayIso the page later uses for the
   // dashboard model so a request straddling UTC midnight can't produce a
   // directory and a dashboard built off different calendar days.
-  const [directory, overShepherdsRes, assignmentsRes, recentRes] = await Promise.all([
-    fetchShepherdCareDirectoryForAdmin(client, { todayIso, staleDays }),
-    fetchOverShepherdsForAdmin(client, { includeArchived: true }),
-    fetchActiveShepherdCoverageAssignmentsForAdmin(client),
-    fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
-  ]);
+  const [directory, overShepherdsRes, assignmentsRes, recentRes, followUpsRes] =
+    await Promise.all([
+      fetchShepherdCareDirectoryForAdmin(client, { todayIso, staleDays }),
+      fetchOverShepherdsForAdmin(client, { includeArchived: true }),
+      fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+      fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
+      fetchOutstandingCareFollowUpsForAdmin(client),
+    ]);
   if (directory.error) {
     return {
       entries: [],
@@ -104,6 +110,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       assignmentsAvailable: false,
       recentInteractions: [],
       recentInteractionsAvailable: false,
+      careFollowUps: [],
       staleDays,
       error: directory.error.message,
     };
@@ -121,11 +128,13 @@ async function loadData(todayIso: string): Promise<LoadedData> {
     assignmentsAvailable,
     recentInteractions: recentRes.data ?? [],
     recentInteractionsAvailable,
+    careFollowUps: followUpsRes.data ?? [],
     staleDays,
     error:
       overShepherdsRes.error?.message ??
       assignmentsRes.error?.message ??
       recentRes.error?.message ??
+      followUpsRes.error?.message ??
       null,
   };
 }
@@ -154,6 +163,7 @@ export default async function AdminShepherdCarePage({
     assignmentsAvailable,
     recentInteractions,
     recentInteractionsAvailable,
+    careFollowUps,
     staleDays,
     error,
   } = await loadData(today);
@@ -171,6 +181,7 @@ export default async function AdminShepherdCarePage({
     assignments,
     overShepherds,
     recentInteractions,
+    careFollowUps,
     todayIso: today,
     assignmentsAvailable,
     staleDays,
@@ -178,6 +189,7 @@ export default async function AdminShepherdCarePage({
   const totalAttention = countAllAttentionItems(entries, assignments, today, {
     coverageAvailable: assignmentsAvailable,
     staleDays,
+    careFollowUps,
   });
 
   const needsAttentionCount = dashboard.summary.needsAttention;

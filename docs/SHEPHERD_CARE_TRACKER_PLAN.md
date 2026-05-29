@@ -1,10 +1,17 @@
 # Shepherd Care Tracker — Plan
 
 Implementation plan for SC.1 / SC.2 / SC.3 / SC.4 in
-[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). SC.1A, SC.2, and SC.3 have
-shipped; this plan remains the forward-looking reference for **SC.1B**
-(care follow-ups — now endorsed by Julian's Q6 "both") and **SC.4** (private /
-encrypted notes — new, from Q8), plus any later care work.
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). SC.1A, SC.1B, SC.2, and SC.3
+have shipped; this plan remains the forward-looking reference for **SC.4**
+(private / encrypted notes — new, from Q8), plus any later care work.
+
+**SC.1B shipped (issue #107):** the care follow-up task list (the "both" half
+of Julian's Q6) is built — `shepherd_care_follow_ups` table + enum, the
+`admin_create_shepherd_care_follow_up` / `admin_update_shepherd_care_follow_up_status`
+/ `admin_update_shepherd_care_follow_up` RPCs, admin-only RLS, the pure helper
+module `lib/admin/shepherd-care-follow-ups.ts`, SC.3 dashboard integration
+(overdue follow-ups feed the attention queue + summary), and the care-profile
+detail UI. Over-shepherd write of care follow-ups (#104) remains out of scope.
 
 ## Shipped — as-built summary
 
