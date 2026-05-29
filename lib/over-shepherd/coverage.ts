@@ -16,6 +16,17 @@ export type OverShepherdCoverage = {
   coveredShepherdIds: string[];
 };
 
+// Defense-in-depth membership check for the per-Shepherd page: even though
+// RLS scopes the underlying rows, the route should refuse to render a
+// Shepherd the caller doesn't cover rather than leaning on an empty result.
+export function isCoveredShepherd(
+  coverage: OverShepherdCoverage | null,
+  shepherdProfileId: string,
+): boolean {
+  if (coverage === null) return false;
+  return coverage.coveredShepherdIds.includes(shepherdProfileId);
+}
+
 // `data: null` here means a clean no-access resolution (zero or ambiguous
 // roster match), NOT an error. `error` is reserved for transient backend
 // failures so callers can distinguish "you have no coverage scope" from
