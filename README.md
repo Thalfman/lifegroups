@@ -133,8 +133,10 @@ Two clarifications:
   (`invite-user`, `manage-test-auth-users`).
 - **No hard deletes** outside RPC bodies in normal workflows; operational tables
   use soft-deactivation.
-- **Reads use explicit column allowlists** — no `select("*")` on sensitive
-  tables (constraining the remaining broad selects is tracked debt).
+- **The most sensitive tables use explicit column allowlists** — the
+  shepherd-care reads select named columns, never `select("*")`. Constraining
+  the remaining broad `select("*")` reads (e.g. `profiles` / `members`) is still
+  **tracked debt**, not done (blueprint §G, P2.9).
 - Authorization is **role-based** — no Julian/Tom UUIDs or emails are hardcoded
   in code, migrations, or RLS.
 
@@ -203,5 +205,3 @@ oversight, and emergency access.
 Historical phase specs and verification logs have been moved to
 [`docs/archive/`](./docs/archive/README.md) so this README stays focused on
 current state. See the archive README for the full listing.
-</content>
-</invoke>
