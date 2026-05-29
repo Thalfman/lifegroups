@@ -54,7 +54,7 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 | SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
 | SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./archive/SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
 | SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./archive/SC_3_JULIAN_CARE_DASHBOARD.md) | — |
-| SC.4 | Private / encrypted care notes — readable by Julian alone | 🆕 New **(Q8)** | [plan §12](./SHEPHERD_CARE_TRACKER_PLAN.md) | **Decide interpretation** (visibility flag vs. encryption), then spec. |
+| SC.4 | Private / encrypted care notes — readable by Julian alone | 🆕 New **(Q8)** | [spec](./SC_4_PRIVATE_CARE_NOTES_SPEC.md) | **Specced.** Decide interpretation (Tier 1 creator-scoped RLS, recommended, vs. Tier 2 encryption — Q1), then build. |
 | — | Stale-contact threshold `shepherd_care_stale_days` (default 60) | ✅ Shipped (configurable) | [roadmap §6 P1](./PRODUCT_ROADMAP.md) | Value is Julian's call (see ❓ below). |
 | — | Cadence tiering by oversight | ❓ Open (Julian, **Q5**) | [FEEDBACK_MAP](./julian-inputs/FEEDBACK_MAP.md) | Decide: one global threshold vs. per-tier (direct vs. delegated). |
 | — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
