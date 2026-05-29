@@ -114,6 +114,9 @@ export function PrivateNotesSection({
   // before the re-wrapped material is persisted.
   const [rotationCode, setRotationCode] = useState<string | null>(null);
   const [rotationAck, setRotationAck] = useState(false);
+  // Two-step passkey removal: removing your last hardware unlock method leaves
+  // only the recovery code, so require an explicit confirmation first.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const pendingRotation = useRef<{ hkdf_salt: string; wrapped_dek: string; wrap_iv: string } | null>(
     null,
   );
@@ -140,6 +143,15 @@ export function PrivateNotesSection({
       setDek(null);
       setNoteText("");
       setStatus(null);
+      // Also clear any in-flight one-time secret: a displayed enrollment or
+      // rotation recovery code must not survive the lock for a walk-up attacker
+      // to read and confirm without re-unlocking.
+      setRecoveryCode(null);
+      setRecoveryAck(false);
+      setRotationCode(null);
+      setRotationAck(false);
+      pendingSlots.current = null;
+      pendingRotation.current = null;
       setError("Locked after inactivity. Unlock again to view your note.");
     };
     const reset = () => {
@@ -718,18 +730,50 @@ export function PrivateNotesSection({
                     </span>
                   </span>
                   {slot.slot_type === "passkey" ? (
-                    <PButton
-                      tone="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveSlot(slot.id)}
-                      disabled={busy}
-                    >
-                      Remove
-                    </PButton>
+                    slot.id.startsWith("pending-") ? (
+                      <span style={{ fontSize: 12, color: P.ink3 }}>Reload to manage</span>
+                    ) : confirmRemoveId === slot.id ? (
+                      <span style={{ display: "flex", gap: 6 }}>
+                        <PButton
+                          tone="terra"
+                          size="sm"
+                          onClick={() => {
+                            setConfirmRemoveId(null);
+                            handleRemoveSlot(slot.id);
+                          }}
+                          disabled={busy}
+                        >
+                          Confirm remove
+                        </PButton>
+                        <PButton
+                          tone="ghost"
+                          size="sm"
+                          onClick={() => setConfirmRemoveId(null)}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </PButton>
+                      </span>
+                    ) : (
+                      <PButton
+                        tone="ghost"
+                        size="sm"
+                        onClick={() => setConfirmRemoveId(slot.id)}
+                        disabled={busy}
+                      >
+                        Remove
+                      </PButton>
+                    )
                   ) : null}
                 </li>
               ))}
             </ul>
+            {confirmRemoveId ? (
+              <p style={{ ...formNoteStyle, margin: 0, fontSize: 12, color: "#923220" }}>
+                Removing a passkey leaves fewer ways in. Make sure you still have your recovery code
+                or another passkey before confirming — there is no server-side reset.
+              </p>
+            ) : null}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {isPrfPasskeySupported() ? (
                 <PButton tone="ghost" size="sm" onClick={handleAddPasskey} disabled={busy}>
