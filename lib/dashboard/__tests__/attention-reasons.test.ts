@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { collectReasonsFor, type DerivedGroupRow } from "@/lib/dashboard/queries";
+import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import type { GroupsRow } from "@/types/database";
 
 // Regression coverage for the dead Shepherd→admin reporting loop removal
@@ -105,5 +106,18 @@ describe("collectReasonsFor — dead reporting loop removed", () => {
     expect(reasons).toContain("capacity_full");
     expect(reasons).toContain("follow_up_open");
     expect(reasons).not.toContain("missing_check_in");
+  });
+});
+
+describe("ADMIN_FALLBACK — no retired check-in signal", () => {
+  // The dashboard degrades to ADMIN_FALLBACK on an unconfigured client or any
+  // query error, and AttentionQueue renders whatever attentionItems it's given
+  // (no filter). So the fallback must not seed a missing_check_in card, or a
+  // degraded dashboard would re-surface the exact signal collectReasonsFor was
+  // changed to drop.
+  it("seeds no missing_check_in attention item", () => {
+    expect(
+      ADMIN_FALLBACK.attentionItems.some((i) => i.reason === "missing_check_in"),
+    ).toBe(false);
   });
 });

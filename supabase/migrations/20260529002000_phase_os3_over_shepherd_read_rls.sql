@@ -27,9 +27,21 @@
 -- profiles: an Over-Shepherd may read the profile rows of the Shepherds they
 -- actively cover (names/emails for the directory). Self-read + admin/staff
 -- read policies are untouched and continue to apply.
+--
+-- The `role in (leader, co_leader)` guard is defense-in-depth: a coverage
+-- assignment's shepherd_profile_id is only an FK to profiles(id) with no role
+-- constraint, so a mis-created assignment pointing at a ministry_admin /
+-- over_shepherd / super_admin profile would otherwise expose an above-ladder
+-- user's name + email to a coach. Scoping the policy to leader/co_leader rows
+-- keeps that contained even if such an assignment is created. (Care
+-- profile / interaction rows only ever exist for leader/co_leader targets via
+-- the upsert RPC's own role gate, so they need no equivalent here.)
 create policy profiles_over_shepherd_read on public.profiles
   for select to authenticated
-  using (public.auth_over_shepherd_covers(id));
+  using (
+    public.auth_over_shepherd_covers(id)
+    and role in ('leader'::public.user_role, 'co_leader'::public.user_role)
+  );
 
 -- shepherd_care_profiles: scoped to actively-covered Shepherds.
 create policy shepherd_care_profiles_over_shepherd_select

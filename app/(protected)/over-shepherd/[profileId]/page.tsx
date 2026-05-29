@@ -51,20 +51,21 @@ export default async function OverShepherdShepherdPage({
     role: session.profile.role,
   };
 
-  // Covered Shepherd's name (RLS scopes this read to covered profiles).
-  const profileQuery = await client!
-    .from("profiles")
-    .select("id, full_name, email")
-    .eq("id", profileId)
-    .maybeSingle();
+  // The name read and the care-profile read are both keyed only on profileId
+  // and independent, so issue them in parallel. Only the interaction history
+  // below genuinely depends on the resolved care row. (RLS scopes both reads to
+  // covered profiles.)
+  const [profileQuery, careResult] = await Promise.all([
+    client!
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("id", profileId)
+      .maybeSingle(),
+    fetchOverShepherdCareProfileByShepherdId(client!, profileId),
+  ]);
   const shepherdName =
     (profileQuery.data as { full_name?: string } | null)?.full_name ??
     "This Shepherd";
-
-  const careResult = await fetchOverShepherdCareProfileByShepherdId(
-    client!,
-    profileId,
-  );
 
   let interactions: ShepherdCareInteractionsRow[] = [];
   if (careResult.data) {

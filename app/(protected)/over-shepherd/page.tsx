@@ -35,21 +35,21 @@ export default async function OverShepherdPage() {
     contentMaxWidth: 980,
   } as const;
 
-  // Backend failure resolving coverage — surface a controlled empty state
-  // rather than leaking a 500.
-  if (coverageResult.error) {
-    return (
-      <PastoralAppShell
-        {...shellProps}
-        lede="We couldn't load your Shepherds just now."
-      >
-        <EmptyState
-          title="Temporarily unavailable"
-          description="Your care list couldn't be loaded. Please refresh in a moment."
-        />
-      </PastoralAppShell>
-    );
-  }
+  // Either backend read failing — surface one controlled empty state rather
+  // than leaking a 500.
+  const unavailable = (
+    <PastoralAppShell
+      {...shellProps}
+      lede="We couldn't load your Shepherds just now."
+    >
+      <EmptyState
+        title="Temporarily unavailable"
+        description="Your care list couldn't be loaded. Please refresh in a moment."
+      />
+    </PastoralAppShell>
+  );
+
+  if (coverageResult.error) return unavailable;
 
   // Bridge contract (fetchOverShepherdCoverageForCaller): a null payload with
   // no error means no-access — the caller's profile resolved to zero or an
@@ -66,19 +66,7 @@ export default async function OverShepherdPage() {
     coveredIds,
   );
 
-  if (directoryResult.error) {
-    return (
-      <PastoralAppShell
-        {...shellProps}
-        lede="We couldn't load your Shepherds just now."
-      >
-        <EmptyState
-          title="Temporarily unavailable"
-          description="Your care list couldn't be loaded. Please refresh in a moment."
-        />
-      </PastoralAppShell>
-    );
-  }
+  if (directoryResult.error) return unavailable;
 
   const entries = directoryResult.data;
   const lede =

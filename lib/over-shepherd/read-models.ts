@@ -23,9 +23,9 @@ import {
   type ReadResult,
   type ShepherdCareDirectoryEntry,
   type ShepherdCareDirectorySummary,
-  SHEPHERD_CARE_INTERACTION_COLUMNS,
-  computeNeedsAttention,
-  currentUtcDateIso,
+  SHEPHERD_CARE_DIRECTORY_COLUMNS,
+  buildCareDirectoryEntries,
+  fetchShepherdCareInteractionsForAdmin,
 } from "@/lib/supabase/read-models";
 
 type ReadClient = AppSupabaseClient;
@@ -35,12 +35,12 @@ function wrapError(prefix: string, err: unknown): Error {
   return new Error(`${prefix}: ${String(err)}`);
 }
 
-// Column allowlist for shepherd_care_profiles on the Over-Shepherd path.
-// admin_summary is intentionally absent — the load-bearing exclusion that
-// keeps the admin-only field off this surface.
-export const OVER_SHEPHERD_CARE_PROFILE_COLUMNS =
-  "id, shepherd_profile_id, current_status, last_contact_at, " +
-  "next_touchpoint_due, archived_at, created_at, updated_at";
+// Column allowlist for shepherd_care_profiles on the Over-Shepherd path. This
+// is identical to the admin directory projection (admin_summary lives in its
+// own fenced table as of phase_os5), so reuse that single source of truth
+// rather than maintaining a byte-identical copy. Re-exported under this name
+// for the read surface + the admin_summary-exclusion test.
+export const OVER_SHEPHERD_CARE_PROFILE_COLUMNS = SHEPHERD_CARE_DIRECTORY_COLUMNS;
 
 // Typed row for the Over-Shepherd care profile read: the full row minus the
 // admin-only field, so a future `admin_summary` reader on this path is a
@@ -62,51 +62,46 @@ export async function fetchOverShepherdCareDirectory(
     return { data: [], error: null };
   }
 
-  const profilesQuery = await client
-    .from("profiles")
-    .select("id, full_name, email, role, status")
-    .in("id", coveredShepherdIds)
-    .order("full_name", { ascending: true });
+  // The profiles read and the care read are both scoped by coveredShepherdIds
+  // and independent of each other, so issue them in parallel rather than
+  // serially. The profiles read also filters status='active' so a deactivated
+  // Shepherd left on a stale active coverage row never surfaces here (matching
+  // the admin directory, which filters the same way).
+  const [profilesQuery, careQuery] = await Promise.all([
+    client
+      .from("profiles")
+      .select("id, full_name, email, role, status")
+      .in("id", coveredShepherdIds)
+      .eq("status", "active")
+      .order("full_name", { ascending: true }),
+    client
+      .from("shepherd_care_profiles")
+      .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS)
+      .in("shepherd_profile_id", coveredShepherdIds),
+  ]);
   if (profilesQuery.error) {
     return {
       data: null,
       error: wrapError("fetchOverShepherdCareDirectory/profiles", profilesQuery.error),
     };
   }
-
-  const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
-  const careQuery = await client
-    .from("shepherd_care_profiles")
-    .select(OVER_SHEPHERD_CARE_PROFILE_COLUMNS)
-    .in("shepherd_profile_id", coveredShepherdIds);
   if (careQuery.error) {
     return {
       data: null,
       error: wrapError("fetchOverShepherdCareDirectory/care", careQuery.error),
     };
   }
-  for (const row of (careQuery.data ?? []) as ShepherdCareDirectorySummary[]) {
-    careByShepherdId.set(row.shepherd_profile_id, row);
-  }
 
-  const today = options.todayIso ?? currentUtcDateIso();
+  const profiles = (profilesQuery.data ?? []) as Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  >[];
+  const careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
 
-  const entries: ShepherdCareDirectoryEntry[] = (profilesQuery.data ?? []).map(
-    (p) => {
-      const profile = p as Pick<
-        ProfilesRow,
-        "id" | "full_name" | "email" | "role" | "status"
-      >;
-      const care = careByShepherdId.get(profile.id) ?? null;
-      return {
-        profile,
-        care,
-        needs_attention: computeNeedsAttention(care, today, options.staleDays),
-      };
-    },
-  );
-
-  return { data: entries, error: null };
+  return {
+    data: buildCareDirectoryEntries(profiles, careRows, options),
+    error: null,
+  };
 }
 
 /**
@@ -139,24 +134,13 @@ export async function fetchOverShepherdCareProfileByShepherdId(
  * Over-Shepherd is permitted to read; there is no admin-only field on this
  * table.
  */
-export async function fetchOverShepherdCareInteractions(
+export function fetchOverShepherdCareInteractions(
   client: ReadClient,
   careProfileId: string,
 ): Promise<ReadResult<ShepherdCareInteractionsRow[]>> {
-  const { data, error } = await client
-    .from("shepherd_care_interactions")
-    .select(SHEPHERD_CARE_INTERACTION_COLUMNS)
-    .eq("care_profile_id", careProfileId)
-    .order("interaction_at", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) {
-    return {
-      data: null,
-      error: wrapError("fetchOverShepherdCareInteractions", error),
-    };
-  }
-  return {
-    data: (data ?? []) as ShepherdCareInteractionsRow[],
-    error: null,
-  };
+  // The interaction history carries no admin-only field, and an Over-Shepherd
+  // is permitted to read broad care notes, so this is exactly the admin read
+  // (same columns + ordering). Delegate rather than duplicate the query; row
+  // scoping is enforced by the OS.3 coverage-scoped RLS on this path.
+  return fetchShepherdCareInteractionsForAdmin(client, careProfileId);
 }
