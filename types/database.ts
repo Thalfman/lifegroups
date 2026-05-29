@@ -251,6 +251,22 @@ export interface ShepherdCareInteractionsRow {
   created_at: Timestamp;
 }
 
+// Phase SC.1B — admin-only care follow-up tasks. Separate from FollowUpsRow
+// (the generic public.follow_ups table); the two never cross-read. Reachable
+// only through admin-gated reads/RPCs — never leaders or over-shepherds.
+export interface ShepherdCareFollowUpsRow {
+  id: UUID;
+  care_profile_id: UUID;
+  title: string;
+  due_date: DateString | null;
+  status: E.ShepherdCareFollowUpStatus;
+  notes: string | null;
+  created_by_profile_id: UUID;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  completed_at: Timestamp | null;
+}
+
 export interface OverShepherdsRow {
   id: UUID;
   full_name: string;
@@ -417,6 +433,15 @@ export interface Database {
         Row: ShepherdCareInteractionsRow;
         Insert: InsertOf<ShepherdCareInteractionsRow, 'id' | 'created_at'>;
         Update: Partial<ShepherdCareInteractionsRow>;
+        Relationships: [];
+      };
+      shepherd_care_follow_ups: {
+        Row: ShepherdCareFollowUpsRow;
+        Insert: InsertOf<
+          ShepherdCareFollowUpsRow,
+          'id' | 'created_at' | 'updated_at' | 'completed_at' | 'status'
+        >;
+        Update: Partial<ShepherdCareFollowUpsRow>;
         Relationships: [];
       };
       over_shepherds: {
@@ -702,6 +727,33 @@ export interface Database {
           p_next_touchpoint_due: DateString | null;
           p_set_current_status: boolean;
           p_current_status: E.ShepherdCareStatus;
+        };
+        Returns: UUID;
+      };
+      admin_create_shepherd_care_follow_up: {
+        Args: {
+          p_care_profile_id: UUID;
+          p_title: string;
+          p_due_date: DateString | null;
+          p_notes: string | null;
+        };
+        Returns: UUID;
+      };
+      admin_update_shepherd_care_follow_up_status: {
+        Args: {
+          p_follow_up_id: UUID;
+          p_new_status: E.ShepherdCareFollowUpStatus;
+        };
+        Returns: UUID;
+      };
+      admin_update_shepherd_care_follow_up: {
+        Args: {
+          p_follow_up_id: UUID;
+          p_title: string;
+          p_set_due_date: boolean;
+          p_due_date: DateString | null;
+          p_set_notes: boolean;
+          p_notes: string | null;
         };
         Returns: UUID;
       };

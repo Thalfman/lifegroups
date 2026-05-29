@@ -6,6 +6,7 @@ import {
 } from "@/lib/admin/shepherd-care-dashboard";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
+  CareFollowUpDashboardRow,
   OverShepherdListRow,
   ShepherdCareDirectoryEntry,
   ShepherdCareRecentInteractionRow,
@@ -124,6 +125,8 @@ describe("buildShepherdCareDashboardModel", () => {
       notContactedRecently: 0,
       noCareProfile: 0,
       unassignedCoverage: 0,
+      overdueFollowUps: 0,
+      outstandingFollowUps: 0,
     });
     expect(model.attentionQueue).toEqual([]);
     expect(model.upcomingTouchpoints).toEqual([]);
@@ -133,6 +136,7 @@ describe("buildShepherdCareDashboardModel", () => {
     expect(model.coverageBuckets[0].isUnassigned).toBe(true);
     expect(model.coverageBuckets[0].shepherdCount).toBe(0);
     expect(model.coverageAvailable).toBe(true);
+    expect(model.followUpsAvailable).toBe(true);
   });
 
   it("suppresses coverage-derived sections when assignmentsAvailable is false", () => {
@@ -484,6 +488,146 @@ describe("buildShepherdCareDashboardModel", () => {
           staleDays: 30,
         }),
       ).toBe(1);
+    });
+  });
+
+  // SC.1B: outstanding care follow-ups feed the dashboard. The careRow helper
+  // ids care profiles as `care-<shepherdId>`, so a follow-up's care_profile_id
+  // joins back to a shepherd through that id.
+  describe("care follow-up integration", () => {
+    function followUp(
+      shepherdId: string,
+      status: CareFollowUpDashboardRow["status"],
+      due: string | null,
+    ): CareFollowUpDashboardRow {
+      return { care_profile_id: `care-${shepherdId}`, status, due_date: due };
+    }
+
+    it("surfaces an overdue_care_follow_up reason and counts overdue/outstanding", () => {
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        careFollowUps: [
+          followUp(UUID_1, "open", OVERDUE),
+          followUp(UUID_1, "in_progress", SOON),
+        ],
+        todayIso: TODAY,
+      });
+      expect(model.summary.overdueFollowUps).toBe(1);
+      expect(model.summary.outstandingFollowUps).toBe(2);
+      expect(model.attentionQueue).toHaveLength(1);
+      expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
+        "overdue_care_follow_up",
+      );
+      expect(model.attentionQueue[0].detail).toBe("1 follow-up overdue");
+    });
+
+    it("pluralizes the overdue detail string", () => {
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        careFollowUps: [
+          followUp(UUID_1, "open", OVERDUE),
+          followUp(UUID_1, "in_progress", STALE_OLD),
+        ],
+        todayIso: TODAY,
+      });
+      expect(model.summary.overdueFollowUps).toBe(2);
+      expect(model.attentionQueue[0].detail).toBe("2 follow-ups overdue");
+    });
+
+    it("counts a non-overdue open follow-up as outstanding without an attention reason", () => {
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        careFollowUps: [followUp(UUID_1, "open", SOON)],
+        todayIso: TODAY,
+      });
+      expect(model.summary.overdueFollowUps).toBe(0);
+      expect(model.summary.outstandingFollowUps).toBe(1);
+      // Otherwise healthy + assigned + recent, so no queue entry.
+      expect(model.attentionQueue).toEqual([]);
+    });
+
+    it("ranks an overdue follow-up below an overdue touchpoint as a secondary reason", () => {
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { next: OVERDUE, last: RECENT })),
+      ];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        careFollowUps: [followUp(UUID_1, "open", OVERDUE)],
+        todayIso: TODAY,
+      });
+      expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
+        "overdue_touchpoint",
+      );
+      expect(model.attentionQueue[0].secondaryReasons).toContain<CareAttentionReason>(
+        "overdue_care_follow_up",
+      );
+    });
+
+    it("ignores follow-ups whose care profile isn't in the visible directory", () => {
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        // Orphaned follow-up for a shepherd not in the directory.
+        careFollowUps: [followUp(UUID_2, "open", OVERDUE)],
+        todayIso: TODAY,
+      });
+      expect(model.summary.overdueFollowUps).toBe(0);
+      expect(model.summary.outstandingFollowUps).toBe(0);
+      expect(model.attentionQueue).toEqual([]);
+    });
+
+    it("suppresses follow-up counts and reasons when careFollowUpsAvailable is false", () => {
+      // Simulates a transient failure on the outstanding-follow-up read: the
+      // page passes careFollowUps=[] (safe fallback) AND
+      // careFollowUpsAvailable=false. The builder must NOT report a false 0
+      // or omit the data silently — it flags followUpsAvailable=false instead.
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [assignment(UUID_1, OS_A)],
+        overShepherds: [overShepherd(OS_A, "Coach A")],
+        recentInteractions: [],
+        // Even if rows somehow leak through, availability=false wins.
+        careFollowUps: [followUp(UUID_1, "open", OVERDUE)],
+        careFollowUpsAvailable: false,
+        todayIso: TODAY,
+      });
+      expect(model.followUpsAvailable).toBe(false);
+      expect(model.summary.overdueFollowUps).toBe(0);
+      expect(model.summary.outstandingFollowUps).toBe(0);
+      expect(model.attentionQueue).toEqual([]);
+    });
+
+    it("reflects overdue follow-ups in countAllAttentionItems", () => {
+      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const careFollowUps = [followUp(UUID_1, "open", OVERDUE)];
+      expect(
+        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY, {
+          careFollowUps,
+        }),
+      ).toBe(1);
+      // Without the follow-up the same shepherd is not flagged.
+      expect(
+        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY),
+      ).toBe(0);
     });
   });
 });

@@ -9,6 +9,7 @@ import {
   validateChangeUserRolePayload,
   validateCreateLaunchPlanningScenarioPayload,
   validateCreateOverShepherdPayload,
+  validateCreateShepherdCareFollowUpPayload,
   validateEndShepherdCoverageAssignmentPayload,
   validateInviteUserPayload,
   validateLaunchPlanningAssumptionsPayload,
@@ -20,6 +21,8 @@ import {
   validateUpdateMultiplicationCandidatePayload,
   validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
+  validateUpdateShepherdCareFollowUpPayload,
+  validateUpdateShepherdCareFollowUpStatusPayload,
   validateUpsertShepherdCareProfilePayload,
 } from "@/lib/admin/validation";
 
@@ -1098,6 +1101,106 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     if (r.ok) {
       expect(r.value.status).toBe("planned");
       expect(r.value.candidate_id).toBe(UUID_A);
+    }
+  });
+});
+
+describe("validateCreateShepherdCareFollowUpPayload", () => {
+  it("accepts a title-only follow-up and defaults due/notes to null", () => {
+    const r = validateCreateShepherdCareFollowUpPayload({
+      care_profile_id: UUID_A,
+      title: "  Check in next week  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.title).toBe("Check in next week");
+      expect(r.value.due_date).toBeNull();
+      expect(r.value.notes).toBeNull();
+      expect(r.value.care_profile_id).toBe(UUID_A);
+    }
+  });
+
+  it("requires a care_profile_id uuid and a non-empty title", () => {
+    const r = validateCreateShepherdCareFollowUpPayload({
+      care_profile_id: "not-a-uuid",
+      title: "   ",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContain("care_profile_id must be a uuid");
+      expect(r.errors).toContain("Title is required.");
+    }
+  });
+
+  it("rejects a malformed due date and an over-long title", () => {
+    const r = validateCreateShepherdCareFollowUpPayload({
+      care_profile_id: UUID_A,
+      title: "x".repeat(201),
+      due_date: "05/01/2026",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContain("Title is too long (max 200 characters).");
+      expect(r.errors).toContain("Due date must be YYYY-MM-DD.");
+    }
+  });
+});
+
+describe("validateUpdateShepherdCareFollowUpStatusPayload", () => {
+  it("accepts the three legal statuses", () => {
+    for (const status of ["open", "in_progress", "done"] as const) {
+      const r = validateUpdateShepherdCareFollowUpStatusPayload({
+        follow_up_id: UUID_A,
+        status,
+      });
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.status).toBe(status);
+    }
+  });
+
+  it("rejects an unknown status value and a bad id", () => {
+    const r = validateUpdateShepherdCareFollowUpStatusPayload({
+      follow_up_id: "nope",
+      status: "snoozed",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContain("follow_up_id must be a uuid");
+      expect(r.errors).toContain("Status must be open, in_progress, or done.");
+    }
+  });
+});
+
+describe("validateUpdateShepherdCareFollowUpPayload", () => {
+  it("only carries due/notes through when their _set_ flag is true", () => {
+    const r = validateUpdateShepherdCareFollowUpPayload({
+      follow_up_id: UUID_A,
+      title: "Updated title",
+      set_due_date: "true",
+      due_date: "2026-06-01",
+      // set_notes omitted -> notes not applied
+      notes: "ignored",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.set_due_date).toBe(true);
+      expect(r.value.due_date).toBe("2026-06-01");
+      expect(r.value.set_notes).toBe(false);
+      expect(r.value.notes).toBeNull();
+    }
+  });
+
+  it("requires a title and validates a set due date", () => {
+    const r = validateUpdateShepherdCareFollowUpPayload({
+      follow_up_id: UUID_A,
+      title: "",
+      set_due_date: "true",
+      due_date: "bad",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors).toContain("Title is required.");
+      expect(r.errors).toContain("Due date must be YYYY-MM-DD.");
     }
   });
 });

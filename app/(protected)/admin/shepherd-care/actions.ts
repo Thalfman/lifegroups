@@ -3,15 +3,21 @@
 import {
   validateAssignShepherdCoveragePayload,
   validateCreateOverShepherdPayload,
+  validateCreateShepherdCareFollowUpPayload,
   validateEndShepherdCoverageAssignmentPayload,
   validateLogShepherdCareInteractionPayload,
   validateUpdateOverShepherdPayload,
+  validateUpdateShepherdCareFollowUpPayload,
+  validateUpdateShepherdCareFollowUpStatusPayload,
   validateUpsertShepherdCareProfilePayload,
   type AssignShepherdCoveragePayload,
   type CreateOverShepherdPayload,
+  type CreateShepherdCareFollowUpPayload,
   type EndShepherdCoverageAssignmentPayload,
   type LogShepherdCareInteractionPayload,
   type UpdateOverShepherdPayload,
+  type UpdateShepherdCareFollowUpPayload,
+  type UpdateShepherdCareFollowUpStatusPayload,
   type UpsertShepherdCareProfilePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -23,9 +29,12 @@ import {
 import {
   rpcAdminAssignShepherdToOverShepherd,
   rpcAdminCreateOverShepherd,
+  rpcAdminCreateShepherdCareFollowUp,
   rpcAdminEndShepherdCoverageAssignment,
   rpcAdminLogShepherdCareInteraction,
   rpcAdminUpdateOverShepherd,
+  rpcAdminUpdateShepherdCareFollowUp,
+  rpcAdminUpdateShepherdCareFollowUpStatus,
   rpcAdminUpsertShepherdCareProfile,
 } from "@/lib/admin/rpc";
 
@@ -48,6 +57,34 @@ const LOG_INTERACTION_KEYS = [
   "next_touchpoint_due",
   "set_current_status",
   "current_status",
+] as const;
+
+// Care follow-up forms attach shepherd_profile_id alongside the care/
+// follow-up id purely so the action can revalidate the right detail page on
+// success. It is intentionally NOT passed to the RPC (which keys on
+// care_profile_id / follow_up_id).
+const CREATE_CARE_FOLLOW_UP_KEYS = [
+  "care_profile_id",
+  "title",
+  "due_date",
+  "notes",
+  "shepherd_profile_id",
+] as const;
+
+const UPDATE_CARE_FOLLOW_UP_STATUS_KEYS = [
+  "follow_up_id",
+  "status",
+  "shepherd_profile_id",
+] as const;
+
+const UPDATE_CARE_FOLLOW_UP_KEYS = [
+  "follow_up_id",
+  "title",
+  "set_due_date",
+  "due_date",
+  "set_notes",
+  "notes",
+  "shepherd_profile_id",
 ] as const;
 
 const CREATE_OVER_SHEPHERD_KEYS = ["full_name", "email", "phone", "notes"] as const;
@@ -158,6 +195,109 @@ export async function adminLogShepherdCareInteraction(
   input: ActionInput<LogShepherdCareInteractionPayload>,
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(LOG_INTERACTION_SPEC, prev, input);
+}
+
+// ----- Phase SC.1B — care follow-up (task list) actions -------------------
+
+// Pulls the optional shepherd_profile_id off the raw form so the care-detail
+// page revalidates after a follow-up write. The RPC never sees it.
+function revalidateShepherdFromRaw(raw: Record<string, unknown>): string[] {
+  const shepherdProfileId =
+    typeof raw.shepherd_profile_id === "string" ? raw.shepherd_profile_id : undefined;
+  return shepherdCarePaths(shepherdProfileId);
+}
+
+// ----- adminCreateShepherdCareFollowUp ------------------------------------
+
+const CREATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
+  CreateShepherdCareFollowUpPayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.create_follow_up",
+  keys: CREATE_CARE_FOLLOW_UP_KEYS,
+  validate: validateCreateShepherdCareFollowUpPayload,
+  fields: (_actor, value) => ({ target_care_profile_id: value.care_profile_id }),
+  okFields: (value) => ({
+    has_due_date: value.due_date !== null,
+    has_notes: value.notes !== null,
+  }),
+  rpc: (client, value) =>
+    rpcAdminCreateShepherdCareFollowUp(client, {
+      p_care_profile_id: value.care_profile_id,
+      p_title: value.title,
+      p_due_date: value.due_date,
+      p_notes: value.notes,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The follow-up wasn't saved. Please try again.",
+};
+
+export async function adminCreateShepherdCareFollowUp(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<CreateShepherdCareFollowUpPayload>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(CREATE_CARE_FOLLOW_UP_SPEC, prev, input);
+}
+
+// ----- adminUpdateShepherdCareFollowUpStatus ------------------------------
+
+const UPDATE_CARE_FOLLOW_UP_STATUS_SPEC: AdminWriteActionSpec<
+  UpdateShepherdCareFollowUpStatusPayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.update_follow_up_status",
+  keys: UPDATE_CARE_FOLLOW_UP_STATUS_KEYS,
+  validate: validateUpdateShepherdCareFollowUpStatusPayload,
+  fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
+  okFields: (value) => ({ status: value.status }),
+  rpc: (client, value) =>
+    rpcAdminUpdateShepherdCareFollowUpStatus(client, {
+      p_follow_up_id: value.follow_up_id,
+      p_new_status: value.status,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The follow-up wasn't updated. Please try again.",
+};
+
+export async function adminUpdateShepherdCareFollowUpStatus(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<UpdateShepherdCareFollowUpStatusPayload>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(UPDATE_CARE_FOLLOW_UP_STATUS_SPEC, prev, input);
+}
+
+// ----- adminUpdateShepherdCareFollowUp ------------------------------------
+
+const UPDATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
+  UpdateShepherdCareFollowUpPayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.update_follow_up",
+  keys: UPDATE_CARE_FOLLOW_UP_KEYS,
+  validate: validateUpdateShepherdCareFollowUpPayload,
+  fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
+  okFields: (value) => ({
+    due_date_set: value.set_due_date,
+    notes_set: value.set_notes,
+  }),
+  rpc: (client, value) =>
+    rpcAdminUpdateShepherdCareFollowUp(client, {
+      p_follow_up_id: value.follow_up_id,
+      p_title: value.title,
+      p_set_due_date: value.set_due_date,
+      p_due_date: value.due_date,
+      p_set_notes: value.set_notes,
+      p_notes: value.notes,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The follow-up wasn't updated. Please try again.",
+};
+
+export async function adminUpdateShepherdCareFollowUp(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<UpdateShepherdCareFollowUpPayload>,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(UPDATE_CARE_FOLLOW_UP_SPEC, prev, input);
 }
 
 // ----- Phase 5D.1 — over-shepherd coverage actions ------------------------

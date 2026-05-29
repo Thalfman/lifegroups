@@ -51,7 +51,7 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
 | SC.1A | Care foundation — `shepherd_care_profiles` + `shepherd_care_interactions` | ✅ Shipped | [as-built](./archive/SC_1A_SHEPHERD_CARE_FOUNDATION.md) | — |
-| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | 🟡 Planned — **endorsed (Q6 "both")** | [plan §16](./SHEPHERD_CARE_TRACKER_PLAN.md) | Build; completes the A1 model. Low risk. |
+| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
 | SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./archive/SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
 | SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./archive/SC_3_JULIAN_CARE_DASHBOARD.md) | — |
 | SC.4 | Private / encrypted care notes — readable by Julian alone | 🆕 New **(Q8)** | [plan §12](./SHEPHERD_CARE_TRACKER_PLAN.md) | **Decide interpretation** (visibility flag vs. encryption), then spec. |

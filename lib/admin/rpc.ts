@@ -18,6 +18,7 @@ import type {
   MeetingWeekParity,
   MultiplicationCandidateStatus,
   RoleInGroup,
+  ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
   ShepherdCareStatus,
   UserRole,
@@ -374,6 +375,50 @@ export function rpcAdminLogShepherdCareInteraction(
   args: AdminLogShepherdCareInteractionArgs,
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_log_shepherd_care_interaction", args);
+}
+
+// Phase SC.1B shepherd care follow-up (task list) admin RPCs.
+
+export type AdminCreateShepherdCareFollowUpArgs = {
+  p_care_profile_id: string;
+  p_title: string;
+  p_due_date: string | null;
+  p_notes: string | null;
+};
+
+export function rpcAdminCreateShepherdCareFollowUp(
+  client: AppSupabaseClient,
+  args: AdminCreateShepherdCareFollowUpArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_shepherd_care_follow_up", args);
+}
+
+export type AdminUpdateShepherdCareFollowUpStatusArgs = {
+  p_follow_up_id: string;
+  p_new_status: ShepherdCareFollowUpStatus;
+};
+
+export function rpcAdminUpdateShepherdCareFollowUpStatus(
+  client: AppSupabaseClient,
+  args: AdminUpdateShepherdCareFollowUpStatusArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_update_shepherd_care_follow_up_status", args);
+}
+
+export type AdminUpdateShepherdCareFollowUpArgs = {
+  p_follow_up_id: string;
+  p_title: string;
+  p_set_due_date: boolean;
+  p_due_date: string | null;
+  p_set_notes: boolean;
+  p_notes: string | null;
+};
+
+export function rpcAdminUpdateShepherdCareFollowUp(
+  client: AppSupabaseClient,
+  args: AdminUpdateShepherdCareFollowUpArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_update_shepherd_care_follow_up", args);
 }
 
 // Phase 5D.1 over-shepherd coverage tracking admin RPCs.

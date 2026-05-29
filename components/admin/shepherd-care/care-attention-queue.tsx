@@ -9,6 +9,7 @@ import type {
 
 const REASON_LABEL: Record<CareAttentionReason, string> = {
   overdue_touchpoint: "Overdue",
+  overdue_care_follow_up: "Follow-up due",
   needs_attention_status: "Needs attention",
   no_contact_yet: "No contact",
   stale_last_contact: "Stale contact",
@@ -18,6 +19,7 @@ const REASON_LABEL: Record<CareAttentionReason, string> = {
 
 const REASON_TONE: Record<CareAttentionReason, { bg: string; fg: string; border: string }> = {
   overdue_touchpoint: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
+  overdue_care_follow_up: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   needs_attention_status: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   no_contact_yet: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
   stale_last_contact: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
