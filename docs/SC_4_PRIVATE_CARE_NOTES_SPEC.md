@@ -1,8 +1,12 @@
 # SC.4 — Private Care Notes — Spec
 
-**Status:** 🆕 Specced, not built. Blocked on one Julian decision (see
-[§2](#2-the-decision-for-julian-q1)). This doc is the buildable design; once
-Julian endorses Tier 1, the build is a single implementation PR.
+**Status:** 🆕 Specced, not built. **Decision made (2026-05-29): Tier 2 —
+zero-knowledge encryption** (see [§2](#2-the-decision-for-julian-q1)). The
+detailed crypto design + threat model is tracked in **issue #111**
+(`ready-for-human`); build slices are #112–#114, blocked until #111 lands.
+Sections 3–9 below describe the Tier-1 RLS fenced-table, which remains the
+**storage substrate and defense-in-depth** — but the note body is stored as
+**ciphertext**, encrypted/decrypted client-side per #111, not as plaintext.
 
 **Source of record:** Julian's Q8
 ([`julian-inputs/`](./julian-inputs/README.md)) and the intent recorded in
@@ -35,8 +39,19 @@ The trigger (Q8) is now met.
 
 ## 2. The decision for Julian (Q1)
 
-"Only you" has two defensible interpretations. **This is the one open
-decision**; everything else in this spec is settled.
+> **Resolved 2026-05-29 — Tier 2 (zero-knowledge encryption).** Julian wants the
+> notes unreadable by *everyone* but him, including the platform owner with raw
+> database access. A second factor that the server can send (TOTP / SMS / email
+> code) was ruled out: it is an access gate, not secrecy — anyone with DB/server
+> access bypasses it. The chosen mechanism is **client-side encryption with a key
+> the server never holds** (a generated high-entropy unlock code → Argon2id →
+> AES-256-GCM; passkey/WebAuthn-PRF unlock is a possible follow-on). Accepted
+> consequences: **lost key = permanently unrecoverable notes**, and the server
+> cannot audit content or search/sort these notes. The exact crypto parameters,
+> recovery model, and threat model are settled in **issue #111** before any build.
+
+The original framing is kept below for context. "Only you" had two defensible
+interpretations; Tier 2 was chosen.
 
 ### Tier 1 — "only you, inside the app" — creator-scoped RLS *(recommended, build now)*
 
@@ -67,10 +82,10 @@ Store ciphertext that is unreadable without a key Julian controls.
 - **Recommendation:** do not build now. Revisit only if Julian explicitly says
   the notes must be unreadable even to the platform owner.
 
-**Recommended path:** ship **Tier 1**. It satisfies the stated product intent
-("escapes the oversight ladder, including super_admin") for every realistic
-in-app threat, with the raw-DB caveat documented. Keep Tier 2 on file as a
-future hardening slice.
+**Chosen path:** **Tier 2** (see the resolution box above). Tier 1 alone left the
+notes readable by a raw-DB holder, which Julian explicitly rejected. Tier 1's
+fenced table + creator-scoped RLS are still built — as the ciphertext store and
+defense-in-depth — but the body is encrypted client-side.
 
 ### Precedent that makes Tier 1 the natural shape
 
@@ -250,13 +265,12 @@ Tier-1 raw-DB caveat in the spec/PR, not necessarily in product copy.)
 - Place tests beside the existing care tests
   (`lib/admin/__tests__/`, `lib/auth/__tests__/`).
 
-## 11. Open question (kept in sync with blueprint Q1)
+## 11. Resolved (blueprint Q1)
 
-Tier 1 (creator-scoped RLS, recommended) vs Tier 2 (encryption). If Julian only
-ever needs privacy from other app users, Tier 1 is sufficient and buildable as
-specced. If he needs privacy even from the platform owner, escalate to Tier 2
-and re-scope — it is materially larger and changes the write/audit/recovery
-model.
+**Tier 2 (zero-knowledge encryption) chosen** — see §2. The remaining detail
+work (exact KDF/cipher params, key mechanism incl. optional passkey/PRF, recovery
+model, threat model) is tracked in **issue #111** and must be signed off before
+the build slices (#112–#114) start.
 
 ## 12. Reference code (reused by the build)
 
