@@ -82,6 +82,13 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "We couldn't find that scenario. Refresh the page and try again.",
   scenario_archived:
     "That scenario is archived. Restore or duplicate it before editing.",
+  // Phase SC.4 private care note tokens.
+  missing_recovery_slot:
+    "Enrollment needs a recovery code as a backup unlock method. Generate one and try again.",
+  already_enrolled:
+    "Private notes are already set up for your account. Refresh the page to manage your unlock methods.",
+  not_enrolled:
+    "Set up private notes (and save your recovery code) before writing one. Refresh the page and try again.",
 };
 
 export function mapRpcError(raw: string | undefined | null): string {

@@ -421,6 +421,37 @@ export function rpcAdminUpdateShepherdCareFollowUp(
   return callUuidRpc(client, "admin_update_shepherd_care_follow_up", args);
 }
 
+// Phase SC.4 private care notes admin RPCs. The bytea columns travel as base64
+// strings (the RPC decodes them); the server only ever holds ciphertext.
+
+export type AdminEnrollPrivateNoteKeysArgs = {
+  p_dek_version: number;
+  p_slots: Array<Record<string, unknown>>;
+};
+
+// Returns the mandatory recovery slot's id (see the migration header deviation).
+export function rpcAdminEnrollPrivateNoteKeys(
+  client: AppSupabaseClient,
+  args: AdminEnrollPrivateNoteKeysArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_enroll_private_note_keys", args);
+}
+
+export type AdminUpsertShepherdCarePrivateNoteArgs = {
+  p_care_profile_id: string;
+  p_ciphertext: string | null;
+  p_iv: string | null;
+  p_dek_version: number;
+  p_set_body: boolean;
+};
+
+export function rpcAdminUpsertShepherdCarePrivateNote(
+  client: AppSupabaseClient,
+  args: AdminUpsertShepherdCarePrivateNoteArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_upsert_shepherd_care_private_note", args);
+}
+
 // Phase 5D.1 over-shepherd coverage tracking admin RPCs.
 
 export type AdminCreateOverShepherdArgs = {
