@@ -141,6 +141,12 @@ create table public.shepherd_care_note_key_slots (
 
 create index shepherd_care_note_key_slots_creator_idx
   on public.shepherd_care_note_key_slots (created_by_profile_id);
+
+-- At most ONE recovery slot per creator per DEK generation, so rotating the
+-- recovery code replaces (never accumulates) it. Passkey slots are unconstrained.
+create unique index shepherd_care_note_key_slots_one_recovery_uniq
+  on public.shepherd_care_note_key_slots (created_by_profile_id, dek_version)
+  where slot_type = 'recovery';
 ```
 
 **Why two tables.** Note ciphertext and key material have different lifecycles:
@@ -150,10 +156,12 @@ the per-note row minimal and lets "add an unlock method" be a single-row insert
 that never touches note rows (no re-encryption).
 
 **Why no plaintext, no salt, no KDF params on the note row.** The body never
-exists server-side. The IV is per-encryption. The AAD (note id +
-`created_by_profile_id` + `dek_version`) is reconstructed at decrypt time from
-columns already present, never stored separately. All KDF salts live on the key
-slot, with the secret they stretch.
+exists server-side. The IV is per-encryption. The AAD
+(`care_profile_id` + `created_by_profile_id` + `dek_version`) is reconstructed at
+decrypt time from columns already present, and is fully known to the client
+*before* the first insert — it deliberately excludes the DB-generated note `id`,
+which does not exist yet when a brand-new note is encrypted. All KDF salts live
+on the key slot, with the secret they stretch.
 
 **Why `(care_profile_id, created_by_profile_id)` is unique.** The boundary is
 per-creator. Julian is the only `ministry_admin` today, but modeling it
@@ -226,13 +234,26 @@ from a client argument; **(c)** writes a paired `audit_events` row in the same
 transaction with **presence/lifecycle metadata only**.
 
 ```
--- Initial enrollment: create the first key slots (≥1 passkey and/or 1 recovery).
+-- Initial enrollment: create the first key slots. A recovery slot is MANDATORY
+-- (the offline backstop / universal fallback when PRF is unavailable); passkey
+-- slots are optional but expected wherever PRF is available. The RPC rejects a
+-- slot set that contains no recovery slot.
 admin_enroll_private_note_keys(p_dek_version smallint, p_slots jsonb) returns void
 
--- Add a passkey slot or rotate the recovery slot (re-wrap the SAME DEK; no note re-encryption).
+-- Add a passkey slot (re-wrap the SAME DEK; no note re-encryption). Recovery
+-- slots are NOT added here — use admin_rotate_private_note_recovery; the partial
+-- unique index in §3 also blocks a second recovery slot.
 admin_add_private_note_key_slot(
   p_slot_type text, p_credential_id bytea, p_label text,
   p_prf_salt bytea, p_hkdf_salt bytea, p_wrapped_dek bytea, p_wrap_iv bytea
+) returns uuid
+
+-- Rotate the recovery code: in ONE transaction, delete the existing recovery
+-- slot and insert the replacement. The old recovery code MUST stop unlocking the
+-- instant the new one is issued — a rotated-out code that stays valid would
+-- defeat the very mitigation (lost/stolen device) rotation exists for.
+admin_rotate_private_note_recovery(
+  p_hkdf_salt bytea, p_wrapped_dek bytea, p_wrap_iv bytea, p_label text
 ) returns uuid
 
 -- Remove a passkey slot (cannot remove the last remaining slot).
@@ -286,12 +307,19 @@ Surface (exact bytes fixed in the build PR; parameters fixed here):
 - `wrapDek(dek, kek, aad): {wrapped, iv}` / `unwrapDek(wrapped, iv, kek, aad)` —
   AES-256-GCM.
 - `encryptNote(dek, plaintext, aad): {ciphertext, iv}` /
-  `decryptNote(dek, ciphertext, iv, aad)` — AES-256-GCM; `aad` = note id +
-  creator id + `dek_version`.
+  `decryptNote(dek, ciphertext, iv, aad)` — AES-256-GCM; `aad` =
+  `care_profile_id` + `created_by_profile_id` + `dek_version` (all known to the
+  client before the first insert; deliberately NOT the DB-generated note `id`,
+  which is unavailable when a brand-new note is encrypted).
 - `generateRecoveryCode(): string` — 256-bit → Crockford Base32, grouped.
-- WebAuthn helpers: register a passkey requesting the `prf` extension; evaluate
-  PRF (`navigator.credentials.get` with `extensions.prf.eval.first =
-  prf_salt`) to obtain the 32-byte output that feeds `deriveKekFromPrf`.
+- WebAuthn helpers: register a passkey via `navigator.credentials.create` with
+  the `prf` extension; evaluate PRF at unlock via `navigator.credentials.get`
+  with `allowCredentials` set to the stored credential and
+  `extensions.prf.evalByCredential` keyed by that credential id
+  (`{ "<base64url credentialId>": { first: prf_salt } }`). Use `evalByCredential`,
+  not the creation-time `eval` shape — `eval` does not reliably return PRF output
+  during authentication once more than one passkey can exist. The 32-byte result
+  feeds `deriveKekFromPrf`.
 
 **Cipher parameters (fixed):** AES-256-GCM, fresh 12-byte random IV per
 encryption, 128-bit tag, AAD bound to row context. **KEK derivation (fixed):**
@@ -341,9 +369,12 @@ fetchPrivateNoteKeySlotsForCreator(creatorProfileId)
 - UI on `app/(protected)/admin/shepherd-care/[profileId]/page.tsx`: a **"Private
   notes (only you)"** section after the admin-summary card. It fetches only the
   current admin's own ciphertext + key slots, prompts for unlock when the DEK is
-  not in memory, and encrypts on save / decrypts on view client-side. Copy:
-  *"Visible only to you — encrypted on your device. Not readable by other admins,
-  the platform owner, or anyone with database access."* Enrollment surfaces the
+  not in memory, and encrypts on save / decrypts on view client-side. Copy must
+  match the at-rest boundary in §2.1/§11 — it states *where* the note cannot be
+  read, not an absolute claim, e.g.: *"Encrypted on your device before it's saved.
+  No one else — not other admins, and not the platform owner — can read it from
+  the database or backups."* Do **not** word it as unreadable at runtime: an
+  actively modified client is out of scope per §2.1. Enrollment surfaces the
   recovery code once (QR + grouped text) and requires an explicit
   **"I've saved my recovery code — I understand a lost code means these notes
   can never be recovered"** acknowledgement before proceeding.

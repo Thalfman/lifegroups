@@ -87,8 +87,10 @@ and threat model.
   via `super_admin`-excluding `SECURITY DEFINER` RPCs.
 - **Build re-sequencing:** encryption requires a DEK, which requires enrollment.
   The #112 tracer bullet must therefore include a minimal enrollment (generate
-  DEK, one passkey or recovery slot, write/read one note); #113 fleshes out the
-  full lifecycle (second passkey, recovery/re-enroll, rotation, lockout UX).
+  DEK, a mandatory recovery slot plus a passkey where PRF is available, write/read
+  one note); #113 fleshes out the full lifecycle (second passkey, recovery/
+  re-enroll, recovery-code rotation that atomically revokes the old code, lockout
+  UX).
 - The guarantee's honest boundary (at-rest, not active-runtime; out of scope for
   a compromised device) must stay documented in the spec threat model and
   reflected in product copy — no absolute "only you, ever" claims.
