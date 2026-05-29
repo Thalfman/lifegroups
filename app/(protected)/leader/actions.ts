@@ -1,23 +1,22 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireLeaderActor } from "@/lib/auth/session";
-import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateLeaderCheckinPayload,
   isoWeekStart,
+  type LeaderCheckinPayload,
 } from "@/lib/leader/validation";
+import { type ActionResult } from "@/lib/leader/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/leader/action-result";
+  runLeaderWriteAction,
+  type LeaderWriteActionSpec,
+} from "@/lib/leader/run-action";
 import { rpcLeaderSubmitGroupCheckin } from "@/lib/leader/rpc";
 
 const REVALIDATE_LEADER = "/leader";
+
+const CHECKIN_NOT_ASSIGNED =
+  "Only an assigned leader or co-leader can submit this check-in.";
 
 function parseAttendanceFormField(raw: FormDataEntryValue | null): unknown {
   if (raw === null) return [];
@@ -55,205 +54,123 @@ export type LeaderCheckinActionResult = ActionResult<{ session_id: string }>;
 // leaderSubmitGroupCheckin
 // ---------------------------------------------------------------------------
 // Used by the leader check-in form (Phase 5B.0). Validates the payload,
-// asserts the caller is a leader-role profile, and calls the SECURITY
-// DEFINER RPC `leader_submit_group_checkin`. The RPC re-checks all of
-// these conditions at the database boundary; this action layer just
-// surfaces friendly text and avoids round-tripping when we can already
-// see the call would be rejected.
+// asserts the caller is a leader-role profile assigned to the group, and
+// calls the SECURITY DEFINER RPC `leader_submit_group_checkin`. The RPC
+// re-checks all of these at the database boundary; this action layer just
+// surfaces friendly text and avoids round-tripping when we can already see
+// the call would be rejected.
+const SUBMIT_CHECKIN_SPEC: LeaderWriteActionSpec<
+  LeaderCheckinPayload,
+  { session_id: string }
+> = {
+  name: "leader.checkin.submit",
+  read: payloadFromInput,
+  validate: validateLeaderCheckinPayload,
+  // Defense-in-depth: refuse to hit the RPC if the leader isn't assigned to
+  // the group. The RPC also rejects with not_leader_of_group; bailing here
+  // saves a round trip.
+  guard: (actor, value) =>
+    actor.assignedGroupIds.includes(value.group_id)
+      ? null
+      : {
+          error: CHECKIN_NOT_ASSIGNED,
+          code: "not_assigned",
+          fields: { target_group_id: value.group_id },
+        },
+  fields: (_actor, value) => ({ target_group_id: value.group_id }),
+  okFields: (value, id) => ({ checkin_status: value.status, new_session_id: id }),
+  rpc: (client, value) =>
+    rpcLeaderSubmitGroupCheckin(client, {
+      p_group_id: value.group_id,
+      p_meeting_week: value.meeting_week,
+      p_meeting_date: value.meeting_date,
+      p_status: value.status,
+      p_leader_note: value.leader_note,
+      p_pulse: value.pulse,
+      p_follow_up_needed: value.follow_up_needed,
+      p_attendance: value.attendance,
+    }),
+  revalidate: (value) => [REVALIDATE_LEADER, `/leader/${value.group_id}/checkin`],
+  result: (id) => ({ session_id: id }),
+  noDataError: "The check-in didn't save. Please try again.",
+};
+
 export async function leaderSubmitGroupCheckin(
-  _prev: LeaderCheckinActionResult | undefined,
+  prev: LeaderCheckinActionResult | undefined,
   input: FormData | Record<string, unknown>,
 ): Promise<LeaderCheckinActionResult> {
-  const ctx = startActionLog("leader.checkin.submit");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const raw = payloadFromInput(input);
-  const v = validateLeaderCheckinPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail(v.errors);
-  }
-
-  // Defense-in-depth: refuse to even hit the RPC if the leader isn't
-  // assigned to the group they're submitting for. The RPC will also
-  // reject with not_leader_of_group, but bailing here saves a round trip.
-  if (!auth.assignedGroupIds.includes(v.value.group_id)) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([
-      "Only an assigned leader or co-leader can submit this check-in.",
-    ]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderSubmitGroupCheckin(client, {
-    p_group_id: v.value.group_id,
-    p_meeting_week: v.value.meeting_week,
-    p_meeting_date: v.value.meeting_date,
-    p_status: v.value.status,
-    p_leader_note: v.value.leader_note,
-    p_pulse: v.value.pulse,
-    p_follow_up_needed: v.value.follow_up_needed,
-    p_attendance: v.value.attendance,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["The check-in didn't save. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_LEADER);
-  revalidatePath(`/leader/${v.value.group_id}/checkin`);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: v.value.group_id,
-    checkin_status: v.value.status,
-    new_session_id: data,
-  });
-  return actionOk({ session_id: data });
+  return runLeaderWriteAction(SUBMIT_CHECKIN_SPEC, prev, input);
 }
 
 // ---------------------------------------------------------------------------
 // leaderQuickMarkDidNotMeet
 // ---------------------------------------------------------------------------
-// Convenience action invoked from the dashboard card so a leader can
-// record "we didn't meet this week" in one tap, with no attendance
-// list. The server picks the current Monday-of-week as `meeting_week`
-// so the leader never has to think about dates.
+// Convenience action invoked from the dashboard card so a leader can record
+// "we didn't meet this week" in one tap, with no attendance list. The
+// server picks the current Monday-of-week as `meeting_week` so the leader
+// never has to think about dates.
+const QUICK_DID_NOT_MEET_SPEC: LeaderWriteActionSpec<
+  LeaderCheckinPayload,
+  { session_id: string }
+> = {
+  name: "leader.checkin.quick_did_not_meet",
+  read: (input) => {
+    const groupId =
+      input instanceof FormData
+        ? (input.get("group_id") ?? undefined)
+        : (input as { group_id?: string } | null)?.group_id;
+    return {
+      group_id: groupId,
+      meeting_week: isoWeekStart(new Date()),
+      meeting_date: null,
+      status: "did_not_meet",
+      leader_note: null,
+      pulse: null,
+      follow_up_needed: false,
+      attendance: [],
+    };
+  },
+  validate: validateLeaderCheckinPayload,
+  guard: (actor, value) =>
+    actor.assignedGroupIds.includes(value.group_id)
+      ? null
+      : {
+          error: CHECKIN_NOT_ASSIGNED,
+          code: "not_assigned",
+          fields: { target_group_id: value.group_id },
+        },
+  fields: (_actor, value) => ({ target_group_id: value.group_id }),
+  okFields: (_value, id) => ({ new_session_id: id }),
+  rpc: (client, value) =>
+    rpcLeaderSubmitGroupCheckin(client, {
+      p_group_id: value.group_id,
+      p_meeting_week: value.meeting_week,
+      p_meeting_date: value.meeting_date,
+      p_status: value.status,
+      p_leader_note: value.leader_note,
+      p_pulse: value.pulse,
+      p_follow_up_needed: value.follow_up_needed,
+      p_attendance: value.attendance,
+    }),
+  revalidate: () => [REVALIDATE_LEADER],
+  result: (id) => ({ session_id: id }),
+  noDataError: "The check-in didn't save. Please try again.",
+};
+
 export async function leaderQuickMarkDidNotMeet(
-  _prev: LeaderCheckinActionResult | undefined,
+  prev: LeaderCheckinActionResult | undefined,
   input: FormData | { group_id?: string },
 ): Promise<LeaderCheckinActionResult> {
-  const ctx = startActionLog("leader.checkin.quick_did_not_meet");
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-
-  const groupId =
-    input instanceof FormData
-      ? (input.get("group_id") ?? undefined)
-      : input.group_id;
-  const meetingWeek = isoWeekStart(new Date());
-
-  const v = validateLeaderCheckinPayload({
-    group_id: groupId,
-    meeting_week: meetingWeek,
-    meeting_date: null,
-    status: "did_not_meet",
-    leader_note: null,
-    pulse: null,
-    follow_up_needed: false,
-    attendance: [],
-  });
-  if (!v.ok) {
-    ctx.finish("fail", {
-      error_code: "validation_failed",
-      actor_profile_id: auth.profileId,
-    });
-    return actionFail(v.errors);
-  }
-
-  if (!auth.assignedGroupIds.includes(v.value.group_id)) {
-    ctx.finish("denied", {
-      error_code: "not_assigned",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([
-      "Only an assigned leader or co-leader can submit this check-in.",
-    ]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcLeaderSubmitGroupCheckin(client, {
-    p_group_id: v.value.group_id,
-    p_meeting_week: v.value.meeting_week,
-    p_meeting_date: v.value.meeting_date,
-    p_status: "did_not_meet",
-    p_leader_note: v.value.leader_note,
-    p_pulse: v.value.pulse,
-    p_follow_up_needed: v.value.follow_up_needed,
-    p_attendance: v.value.attendance,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_profile_id: auth.profileId,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["The check-in didn't save. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_LEADER);
-  ctx.finish("ok", {
-    actor_profile_id: auth.profileId,
-    target_group_id: v.value.group_id,
-    new_session_id: data,
-  });
-  return actionOk({ session_id: data });
+  return runLeaderWriteAction(QUICK_DID_NOT_MEET_SPEC, prev, input);
 }
 
 // ---------------------------------------------------------------------------
 // leaderSubmitCheckinAndReturn
 // ---------------------------------------------------------------------------
 // Thin wrapper used by the standalone check-in page. On success it
-// redirects back to /leader so the dashboard reflects the new state;
-// on failure the form re-renders with the error list.
+// redirects back to /leader so the dashboard reflects the new state; on
+// failure the form re-renders with the error list. Stays hand-written
+// because it redirects after delegating.
 export async function leaderSubmitCheckinAndReturn(
   _prev: LeaderCheckinActionResult | undefined,
   formData: FormData,

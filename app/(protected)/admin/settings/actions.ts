@@ -1,29 +1,30 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireAdminSession } from "@/lib/auth/session";
-import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
+  type GroupMetricSettingsPayload,
+  type MetricDefaultsPayload,
 } from "@/lib/admin/validation";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
+  runAdminWriteAction,
+  type ActionInput,
+  type AdminWriteActionSpec,
+} from "@/lib/admin/run-action";
 import {
   rpcAdminResetMetricDefaults,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
 } from "@/lib/admin/rpc";
 
-const REVALIDATE_PATH_SETTINGS = "/admin/settings";
-const REVALIDATE_PATH_GROUPS = "/admin/groups";
-const REVALIDATE_PATH_ADMIN = "/admin";
-const REVALIDATE_PATH_LEADER = "/leader";
+// Settings writes fan out to every surface that reads thresholds.
+const SETTINGS_REVALIDATE_PATHS = [
+  "/admin/settings",
+  "/admin/groups",
+  "/admin",
+  "/leader",
+] as const;
 
 const METRIC_DEFAULT_FIELDS = [
   "default_group_capacity",
@@ -54,7 +55,9 @@ const GROUP_METRIC_FIELDS = [
 // (which posts "") must be omitted entirely so the stored value is kept.
 function readMetricDefaultsForm(input: unknown): Record<string, unknown> {
   if (!(input instanceof FormData)) {
-    return typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
+    return typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>)
+      : {};
   }
   const out: Record<string, unknown> = {};
   for (const key of METRIC_DEFAULT_FIELDS) {
@@ -64,9 +67,7 @@ function readMetricDefaultsForm(input: unknown): Record<string, unknown> {
         const str = String(value);
         // Treat empty form input on default_group_capacity as explicit
         // "clear to Unknown"; otherwise an empty string means "field not
-        // submitted -> ignore". The form-side guarantees `default_group_capacity`
-        // is always present via a hidden marker if needed; here we keep
-        // the simpler rule: empty string for default_group_capacity = null.
+        // submitted -> ignore".
         if (key === "default_group_capacity") {
           out[key] = str.trim() === "" ? null : str;
         } else if (str.trim() === "") {
@@ -82,7 +83,9 @@ function readMetricDefaultsForm(input: unknown): Record<string, unknown> {
 
 function readGroupMetricForm(input: unknown): Record<string, unknown> {
   if (!(input instanceof FormData)) {
-    return typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
+    return typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>)
+      : {};
   }
   const out: Record<string, unknown> = {};
   for (const key of GROUP_METRIC_FIELDS) {
@@ -99,172 +102,90 @@ function readGroupMetricForm(input: unknown): Record<string, unknown> {
   return out;
 }
 
+// ----- adminUpdateMetricDefaults ------------------------------------------
+
+const UPDATE_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
+  MetricDefaultsPayload,
+  { id: string }
+> = {
+  name: "admin.settings.update_metric_defaults",
+  read: readMetricDefaultsForm,
+  validate: validateMetricDefaultsPayload,
+  guard: (_actor, value) =>
+    Object.keys(value).length === 0
+      ? {
+          error: "Nothing to change. Adjust a field before saving.",
+          code: "empty_diff",
+          outcome: "fail",
+        }
+      : null,
+  okFields: (value) => ({ changed_field_count: Object.keys(value).length }),
+  rpc: (client, value) =>
+    rpcAdminUpdateMetricDefaults(client, { p_settings: value as Record<string, unknown> }),
+  revalidate: () => SETTINGS_REVALIDATE_PATHS,
+  noDataError: "The settings were not saved. Please try again.",
+};
+
 export async function adminUpdateMetricDefaults(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.settings.update_metric_defaults");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw = readMetricDefaultsForm(input);
-  const v = validateMetricDefaultsPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  if (Object.keys(v.value).length === 0) {
-    ctx.finish("fail", { error_code: "empty_diff", actor_role });
-    return actionFail(["Nothing to change. Adjust a field before saving."]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminUpdateMetricDefaults(client, {
-    p_settings: v.value as Record<string, unknown>,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The settings were not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_SETTINGS);
-  revalidatePath(REVALIDATE_PATH_GROUPS);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  revalidatePath(REVALIDATE_PATH_LEADER);
-  ctx.finish("ok", {
-    actor_role,
-    changed_field_count: Object.keys(v.value).length,
-  });
-  return actionOk({ id: data });
+  return runAdminWriteAction(UPDATE_METRIC_DEFAULTS_SPEC, prev, input);
 }
 
+// ----- adminUpsertGroupMetricSettings -------------------------------------
+
+const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
+  GroupMetricSettingsPayload,
+  { id: string }
+> = {
+  name: "admin.settings.upsert_group_metric_settings",
+  read: readGroupMetricForm,
+  validate: validateGroupMetricSettingsPayload,
+  fields: (_actor, value) => ({ target_group_id: value.group_id }),
+  rpc: (client, value) =>
+    rpcAdminUpsertGroupMetricSettings(client, {
+      p_group_id: value.group_id,
+      p_capacity_override: value.capacity_override,
+      p_capacity_warning_threshold_pct_override:
+        value.capacity_warning_threshold_pct_override,
+      p_healthy_attendance_pct_override: value.healthy_attendance_pct_override,
+      p_manual_health_status_override: value.manual_health_status_override,
+      p_exclude_from_capacity_metrics: value.exclude_from_capacity_metrics,
+      p_admin_metric_notes: value.admin_metric_notes,
+      p_check_in_due_offset_hours_override: value.check_in_due_offset_hours_override,
+      p_allow_over_capacity: value.allow_over_capacity,
+    }),
+  revalidate: () => SETTINGS_REVALIDATE_PATHS,
+  noDataError: "The override was not saved. Please try again.",
+};
+
 export async function adminUpsertGroupMetricSettings(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.settings.upsert_group_metric_settings");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw = readGroupMetricForm(input);
-  const v = validateGroupMetricSettingsPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminUpsertGroupMetricSettings(client, {
-    p_group_id: v.value.group_id,
-    p_capacity_override: v.value.capacity_override,
-    p_capacity_warning_threshold_pct_override:
-      v.value.capacity_warning_threshold_pct_override,
-    p_healthy_attendance_pct_override: v.value.healthy_attendance_pct_override,
-    p_manual_health_status_override: v.value.manual_health_status_override,
-    p_exclude_from_capacity_metrics: v.value.exclude_from_capacity_metrics,
-    p_admin_metric_notes: v.value.admin_metric_notes,
-    p_check_in_due_offset_hours_override:
-      v.value.check_in_due_offset_hours_override,
-    p_allow_over_capacity: v.value.allow_over_capacity,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", {
-      error_code: "rpc_no_data",
-      actor_role,
-      target_group_id: v.value.group_id,
-    });
-    return actionFail(["The override was not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_SETTINGS);
-  revalidatePath(REVALIDATE_PATH_GROUPS);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  revalidatePath(REVALIDATE_PATH_LEADER);
-  ctx.finish("ok", { actor_role, target_group_id: v.value.group_id });
-  return actionOk({ id: data });
+  return runAdminWriteAction(UPSERT_GROUP_METRIC_SPEC, prev, input);
 }
 
 // Phase 5A.5: reset metric defaults to the documented baseline. Does NOT
 // touch per-group overrides; the UI surfaces this distinction so admins
-// can clear overrides separately if they want a truly clean slate.
+// can clear overrides separately if they want a truly clean slate. Takes no
+// input, so it validates to an empty payload and ignores the raw record.
+const RESET_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
+  Record<string, never>,
+  { id: string }
+> = {
+  name: "admin.settings.reset_metric_defaults",
+  read: () => ({}),
+  validate: () => ({ ok: true, value: {} }),
+  rpc: (client) => rpcAdminResetMetricDefaults(client),
+  revalidate: () => SETTINGS_REVALIDATE_PATHS,
+  noDataError: "The defaults were not reset. Please try again.",
+};
+
 export async function adminResetMetricDefaults(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   _input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.settings.reset_metric_defaults");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminResetMetricDefaults(client);
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The defaults were not reset. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_SETTINGS);
-  revalidatePath(REVALIDATE_PATH_GROUPS);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  revalidatePath(REVALIDATE_PATH_LEADER);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+  return runAdminWriteAction(RESET_METRIC_DEFAULTS_SPEC, prev, undefined);
 }

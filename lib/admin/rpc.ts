@@ -1,17 +1,8 @@
-// Typed wrappers around the Phase 5A.1 admin Postgres RPCs. The
-// @supabase/supabase-js `.rpc()` generic resolution chokes when the
-// Database type doesn't structurally match its internal GenericSchema
-// (which our hand-rolled Database type doesn't, in subtle ways that
-// don't affect `.from()` calls). Rather than rewrite the entire
-// database typing surface, we wrap each RPC in a tiny typed helper
-// and pass the args via a single `as never` cast at the boundary.
-//
-// Each helper:
-//   * accepts the exact param types we need.
-//   * returns a tuple of `{ data, error }` shape (data is the RPC's
-//     uuid return value or null on failure; error is whatever
-//     PostgrestError surfaced).
-//   * does no validation of its own — the action layer validates first.
+// Typed wrappers around the admin Postgres RPCs. Each wrapper pins the
+// exact function name and argument shape and delegates to `callUuidRpc`,
+// which owns the supabase-js `as never` cast and the uuid trust-boundary
+// read. The wrappers do no validation of their own -- the action layer
+// validates first. See `lib/shared/rpc.ts`.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
@@ -31,56 +22,50 @@ import type {
   ShepherdCareStatus,
   UserRole,
 } from "@/types/enums";
-import { readUuidRpcData } from "./rpc-helpers";
+import { callUuidRpc, type UuidRpcResult } from "@/lib/shared/rpc";
 
-type RpcResult = { data: string | null; error: { message: string } | null };
+type RpcResult = UuidRpcResult;
 
-export async function rpcAdminCreateLeaderProfile(
+export function rpcAdminCreateLeaderProfile(
   client: AppSupabaseClient,
   args: { p_full_name: string; p_email: string; p_phone: string | null },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_leader_profile" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_leader_profile", args);
 }
 
-export async function rpcAdminCreateMember(
+export function rpcAdminCreateMember(
   client: AppSupabaseClient,
   args: { p_full_name: string; p_email: string | null; p_phone: string | null },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_member" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_member", args);
 }
 
-export async function rpcAdminAssignLeaderToGroup(
+export function rpcAdminAssignLeaderToGroup(
   client: AppSupabaseClient,
   args: { p_group_id: string; p_profile_id: string; p_role: RoleInGroup },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_assign_leader_to_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_assign_leader_to_group", args);
 }
 
-export async function rpcAdminAssignMemberToGroup(
+export function rpcAdminAssignMemberToGroup(
   client: AppSupabaseClient,
   args: { p_group_id: string; p_member_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_assign_member_to_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_assign_member_to_group", args);
 }
 
-export async function rpcAdminDeactivateProfile(
+export function rpcAdminDeactivateProfile(
   client: AppSupabaseClient,
   args: { p_profile_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_deactivate_profile" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_deactivate_profile", args);
 }
 
-export async function rpcAdminDeactivateMember(
+export function rpcAdminDeactivateMember(
   client: AppSupabaseClient,
   args: { p_member_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_deactivate_member" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_deactivate_member", args);
 }
 
 // Phase 5A.2 group management RPCs.
@@ -100,59 +85,53 @@ export type GroupRpcArgs = {
   p_launched_on: string | null;
 };
 
-export async function rpcAdminCreateGroup(
+export function rpcAdminCreateGroup(
   client: AppSupabaseClient,
   args: GroupRpcArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_group", args);
 }
 
-export async function rpcAdminUpdateGroup(
+export function rpcAdminUpdateGroup(
   client: AppSupabaseClient,
   args: GroupRpcArgs & { p_group_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_update_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_group", args);
 }
 
-export async function rpcAdminCloseGroup(
+export function rpcAdminCloseGroup(
   client: AppSupabaseClient,
   args: { p_group_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_close_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_close_group", args);
 }
 
-export async function rpcAdminReopenGroup(
+export function rpcAdminReopenGroup(
   client: AppSupabaseClient,
   args: { p_group_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_reopen_group" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_reopen_group", args);
 }
 
 // Phase 5A.3 super admin role management RPC.
 
-export async function rpcSuperAdminUpdateProfileRole(
+export function rpcSuperAdminUpdateProfileRole(
   client: AppSupabaseClient,
   args: { p_profile_id: string; p_new_role: UserRole },
 ): Promise<RpcResult> {
-  const r = await client.rpc("super_admin_update_profile_role" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "super_admin_update_profile_role", args);
 }
 
 // Phase 5A.4 admin settings + leader-role-swap RPCs.
 
-export async function rpcAdminUpdateMetricDefaults(
+export function rpcAdminUpdateMetricDefaults(
   client: AppSupabaseClient,
   args: { p_settings: Record<string, unknown> },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_update_metric_defaults" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_metric_defaults", args);
 }
 
-export async function rpcAdminUpsertGroupMetricSettings(
+export function rpcAdminUpsertGroupMetricSettings(
   client: AppSupabaseClient,
   args: {
     p_group_id: string;
@@ -166,36 +145,27 @@ export async function rpcAdminUpsertGroupMetricSettings(
     p_allow_over_capacity: boolean;
   },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_upsert_group_metric_settings" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_upsert_group_metric_settings", args);
 }
 
 // Phase 5A.5 reset-to-defaults helper. Takes no arguments; the RPC
 // snapshots the current values, restores the baseline, and writes the
 // audit row in one transaction.
-export async function rpcAdminResetMetricDefaults(
+export function rpcAdminResetMetricDefaults(
   client: AppSupabaseClient,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_reset_metric_defaults" as never,
-    {} as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_reset_metric_defaults", {});
 }
 
-export async function rpcAdminChangeLeaderRole(
+export function rpcAdminChangeLeaderRole(
   client: AppSupabaseClient,
   args: { p_profile_id: string; p_new_role: "leader" | "co_leader" },
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_change_leader_role" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_change_leader_role", args);
 }
 
 // Julian P2: record/upsert a church attendance snapshot by date.
-export async function rpcAdminRecordChurchAttendanceSnapshot(
+export function rpcAdminRecordChurchAttendanceSnapshot(
   client: AppSupabaseClient,
   args: {
     p_snapshot_date: string;
@@ -203,15 +173,11 @@ export async function rpcAdminRecordChurchAttendanceSnapshot(
     p_note: string | null;
   },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_record_church_attendance_snapshot" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_record_church_attendance_snapshot", args);
 }
 
 // Julian P4: multiplication candidate writes.
-export async function rpcAdminCreateMultiplicationCandidate(
+export function rpcAdminCreateMultiplicationCandidate(
   client: AppSupabaseClient,
   args: {
     p_group_id: string;
@@ -222,14 +188,10 @@ export async function rpcAdminCreateMultiplicationCandidate(
     p_notes: string | null;
   },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_create_multiplication_candidate" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_multiplication_candidate", args);
 }
 
-export async function rpcAdminUpdateMultiplicationCandidate(
+export function rpcAdminUpdateMultiplicationCandidate(
   client: AppSupabaseClient,
   args: {
     p_candidate_id: string;
@@ -240,22 +202,14 @@ export async function rpcAdminUpdateMultiplicationCandidate(
     p_notes: string | null;
   },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_update_multiplication_candidate" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_multiplication_candidate", args);
 }
 
-export async function rpcAdminArchiveMultiplicationCandidate(
+export function rpcAdminArchiveMultiplicationCandidate(
   client: AppSupabaseClient,
   args: { p_candidate_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_archive_multiplication_candidate" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_archive_multiplication_candidate", args);
 }
 
 // Phase 5C.0 guest + follow-up admin RPCs.
@@ -272,12 +226,11 @@ export type AdminCreateGuestArgs = {
   p_notes: string | null;
 };
 
-export async function rpcAdminCreateGuest(
+export function rpcAdminCreateGuest(
   client: AppSupabaseClient,
   args: AdminCreateGuestArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_guest" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_guest", args);
 }
 
 export type AdminUpdateGuestPipelineArgs = {
@@ -291,12 +244,11 @@ export type AdminUpdateGuestPipelineArgs = {
   p_notes: string | null;
 };
 
-export async function rpcAdminUpdateGuestPipeline(
+export function rpcAdminUpdateGuestPipeline(
   client: AppSupabaseClient,
   args: AdminUpdateGuestPipelineArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_update_guest_pipeline" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_guest_pipeline", args);
 }
 
 export type AdminCreateFollowUpArgs = {
@@ -312,12 +264,11 @@ export type AdminCreateFollowUpArgs = {
   p_admin_private_note: string | null;
 };
 
-export async function rpcAdminCreateFollowUp(
+export function rpcAdminCreateFollowUp(
   client: AppSupabaseClient,
   args: AdminCreateFollowUpArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_follow_up" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_follow_up", args);
 }
 
 export type AdminUpdateFollowUpStatusArgs = {
@@ -329,12 +280,11 @@ export type AdminUpdateFollowUpStatusArgs = {
   p_admin_private_note: string | null;
 };
 
-export async function rpcAdminUpdateFollowUpStatus(
+export function rpcAdminUpdateFollowUpStatus(
   client: AppSupabaseClient,
   args: AdminUpdateFollowUpStatusArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_update_follow_up_status" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_follow_up_status", args);
 }
 
 // Phase 5A.6 group calendar admin RPCs.
@@ -350,15 +300,11 @@ export type AdminCreateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export async function rpcAdminCreateGroupCalendarEvent(
+export function rpcAdminCreateGroupCalendarEvent(
   client: AppSupabaseClient,
   args: AdminCreateGroupCalendarEventArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_create_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_group_calendar_event", args);
 }
 
 export type AdminUpdateGroupCalendarEventArgs = {
@@ -372,37 +318,25 @@ export type AdminUpdateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export async function rpcAdminUpdateGroupCalendarEvent(
+export function rpcAdminUpdateGroupCalendarEvent(
   client: AppSupabaseClient,
   args: AdminUpdateGroupCalendarEventArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_update_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_group_calendar_event", args);
 }
 
-export async function rpcAdminArchiveGroupCalendarEvent(
+export function rpcAdminArchiveGroupCalendarEvent(
   client: AppSupabaseClient,
   args: { p_event_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_archive_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_archive_group_calendar_event", args);
 }
 
-export async function rpcAdminRestoreGroupCalendarEvent(
+export function rpcAdminRestoreGroupCalendarEvent(
   client: AppSupabaseClient,
   args: { p_event_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_restore_group_calendar_event" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_restore_group_calendar_event", args);
 }
 
 // Phase 5D.0 shepherd care tracker admin RPCs.
@@ -417,15 +351,11 @@ export type AdminUpsertShepherdCareProfileArgs = {
   p_set_admin_summary: boolean;
 };
 
-export async function rpcAdminUpsertShepherdCareProfile(
+export function rpcAdminUpsertShepherdCareProfile(
   client: AppSupabaseClient,
   args: AdminUpsertShepherdCareProfileArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_upsert_shepherd_care_profile" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_upsert_shepherd_care_profile", args);
 }
 
 export type AdminLogShepherdCareInteractionArgs = {
@@ -439,15 +369,11 @@ export type AdminLogShepherdCareInteractionArgs = {
   p_current_status: ShepherdCareStatus;
 };
 
-export async function rpcAdminLogShepherdCareInteraction(
+export function rpcAdminLogShepherdCareInteraction(
   client: AppSupabaseClient,
   args: AdminLogShepherdCareInteractionArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_log_shepherd_care_interaction" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_log_shepherd_care_interaction", args);
 }
 
 // Phase 5D.1 over-shepherd coverage tracking admin RPCs.
@@ -459,12 +385,11 @@ export type AdminCreateOverShepherdArgs = {
   p_notes: string | null;
 };
 
-export async function rpcAdminCreateOverShepherd(
+export function rpcAdminCreateOverShepherd(
   client: AppSupabaseClient,
   args: AdminCreateOverShepherdArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_create_over_shepherd" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_over_shepherd", args);
 }
 
 export type AdminUpdateOverShepherdArgs = {
@@ -476,12 +401,11 @@ export type AdminUpdateOverShepherdArgs = {
   p_active: boolean;
 };
 
-export async function rpcAdminUpdateOverShepherd(
+export function rpcAdminUpdateOverShepherd(
   client: AppSupabaseClient,
   args: AdminUpdateOverShepherdArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc("admin_update_over_shepherd" as never, args as never);
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_over_shepherd", args);
 }
 
 export type AdminAssignShepherdToOverShepherdArgs = {
@@ -490,15 +414,11 @@ export type AdminAssignShepherdToOverShepherdArgs = {
   p_assigned_at: string | null;
 };
 
-export async function rpcAdminAssignShepherdToOverShepherd(
+export function rpcAdminAssignShepherdToOverShepherd(
   client: AppSupabaseClient,
   args: AdminAssignShepherdToOverShepherdArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_assign_shepherd_to_over_shepherd" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_assign_shepherd_to_over_shepherd", args);
 }
 
 export type AdminEndShepherdCoverageAssignmentArgs = {
@@ -506,29 +426,19 @@ export type AdminEndShepherdCoverageAssignmentArgs = {
   p_ended_at: string | null;
 };
 
-export async function rpcAdminEndShepherdCoverageAssignment(
+export function rpcAdminEndShepherdCoverageAssignment(
   client: AppSupabaseClient,
   args: AdminEndShepherdCoverageAssignmentArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_end_shepherd_coverage_assignment" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_end_shepherd_coverage_assignment", args);
 }
 
-// LP.1 launch planning RPC. Same `as never` cast pattern as
-// rpcAdminUpdateMetricDefaults — Supabase's RPC generic chokes on our
-// hand-rolled Database type, so we cast at the boundary.
-export async function rpcAdminUpdateLaunchPlanningAssumptions(
+// LP.1 launch planning RPC.
+export function rpcAdminUpdateLaunchPlanningAssumptions(
   client: AppSupabaseClient,
   args: { p_settings: Record<string, unknown> },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_update_launch_planning_assumptions" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_launch_planning_assumptions", args);
 }
 
 // LP.2 launch planning scenario RPCs.
@@ -540,15 +450,11 @@ export type AdminCreateLaunchPlanningScenarioArgs = {
   p_make_current: boolean;
 };
 
-export async function rpcAdminCreateLaunchPlanningScenario(
+export function rpcAdminCreateLaunchPlanningScenario(
   client: AppSupabaseClient,
   args: AdminCreateLaunchPlanningScenarioArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_create_launch_planning_scenario" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_create_launch_planning_scenario", args);
 }
 
 export type AdminUpdateLaunchPlanningScenarioArgs = {
@@ -559,35 +465,23 @@ export type AdminUpdateLaunchPlanningScenarioArgs = {
   p_make_current: boolean;
 };
 
-export async function rpcAdminUpdateLaunchPlanningScenario(
+export function rpcAdminUpdateLaunchPlanningScenario(
   client: AppSupabaseClient,
   args: AdminUpdateLaunchPlanningScenarioArgs,
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_update_launch_planning_scenario" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_update_launch_planning_scenario", args);
 }
 
-export async function rpcAdminArchiveLaunchPlanningScenario(
+export function rpcAdminArchiveLaunchPlanningScenario(
   client: AppSupabaseClient,
   args: { p_scenario_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_archive_launch_planning_scenario" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_archive_launch_planning_scenario", args);
 }
 
-export async function rpcAdminSetCurrentLaunchPlanningScenario(
+export function rpcAdminSetCurrentLaunchPlanningScenario(
   client: AppSupabaseClient,
   args: { p_scenario_id: string },
 ): Promise<RpcResult> {
-  const r = await client.rpc(
-    "admin_set_current_launch_planning_scenario" as never,
-    args as never,
-  );
-  return { data: readUuidRpcData(r.data), error: r.error };
+  return callUuidRpc(client, "admin_set_current_launch_planning_scenario", args);
 }

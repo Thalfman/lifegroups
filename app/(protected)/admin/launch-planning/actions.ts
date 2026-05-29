@@ -1,22 +1,22 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireAdminSession } from "@/lib/auth/session";
-import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCandidateIdPayload,
   validateCreateMultiplicationCandidatePayload,
   validateLaunchPlanningAssumptionsPayload,
   validateRecordChurchAttendancePayload,
   validateUpdateMultiplicationCandidatePayload,
+  type CandidateIdPayload,
+  type CreateMultiplicationCandidatePayload,
+  type LaunchPlanningAssumptionsPayload,
+  type RecordChurchAttendancePayload,
+  type UpdateMultiplicationCandidatePayload,
 } from "@/lib/admin/validation";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
+  runAdminWriteAction,
+  type AdminWriteActionSpec,
+} from "@/lib/admin/run-action";
 import {
   rpcAdminArchiveMultiplicationCandidate,
   rpcAdminCreateMultiplicationCandidate,
@@ -44,12 +44,11 @@ const LAUNCH_PLANNING_FIELDS = [
 ] as const;
 
 // Translate a FormData (or plain object) into the validator's expected
-// shape. Numeric fields are passed as strings — the validator's number
-// readers accept either form. Empty strings collapse the field out of
-// the patch so the stored value is preserved. The `expected_growth_date`
-// and `notes` fields explicitly support null clearing: an empty string
-// in those slots is treated as `null` so the operator can reset the
-// stored value back to "no growth date" / "no notes".
+// shape. Numeric fields are passed as strings -- the validator's number
+// readers accept either form. Empty strings collapse the field out of the
+// patch so the stored value is preserved, except `expected_growth_date`
+// and `notes`, where an empty string is treated as `null` so the operator
+// can reset the stored value back to "no growth date" / "no notes".
 function readLaunchPlanningForm(input: unknown): Record<string, unknown> {
   if (!(input instanceof FormData)) {
     return typeof input === "object" && input !== null
@@ -63,12 +62,8 @@ function readLaunchPlanningForm(input: unknown): Record<string, unknown> {
     if (value === null) continue;
     const str = String(value);
     if (key === "expected_growth_date" || key === "notes") {
-      // Form posts "" when the operator clears the field. Treat as null
-      // to explicitly persist "no value" rather than skipping the merge.
       out[key] = str.trim() === "" ? null : str;
     } else if (str.trim() === "") {
-      // Skip empty numeric inputs: an untouched field should not
-      // overwrite the stored value.
       continue;
     } else {
       out[key] = str;
@@ -76,125 +71,6 @@ function readLaunchPlanningForm(input: unknown): Record<string, unknown> {
   }
   return out;
 }
-
-export async function adminUpdateLaunchPlanningAssumptions(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
-): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.update_assumptions");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw = readLaunchPlanningForm(input);
-  const v = validateLaunchPlanningAssumptionsPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  if (Object.keys(v.value).length === 0) {
-    ctx.finish("fail", { error_code: "empty_diff", actor_role });
-    return actionFail(["Nothing to change. Adjust a field before saving."]);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminUpdateLaunchPlanningAssumptions(client, {
-    p_settings: v.value as Record<string, unknown>,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The assumptions were not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  // Diagnostic counts only — do NOT log notes-or-anything-derived-from
-  // notes here, the audit row already records `has_notes` and the notes
-  // body must never leak into observability.
-  ctx.finish("ok", {
-    actor_role,
-    changed_field_count: Object.keys(v.value).length,
-    has_notes_field: Object.prototype.hasOwnProperty.call(v.value, "notes"),
-  });
-  return actionOk({ id: data });
-}
-
-// Julian P2: record an actual church-attendance count for a date. Upserts by
-// date so re-entering a date corrects the prior figure.
-export async function adminRecordChurchAttendanceSnapshot(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
-): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.record_church_attendance");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw =
-    input instanceof FormData
-      ? {
-          snapshot_date: input.get("snapshot_date"),
-          attendance_count: input.get("attendance_count"),
-          note: input.get("note"),
-        }
-      : input;
-  const v = validateRecordChurchAttendancePayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminRecordChurchAttendanceSnapshot(client, {
-    p_snapshot_date: v.value.snapshot_date,
-    p_attendance_count: v.value.attendance_count,
-    p_note: v.value.note,
-  });
-
-  if (error) {
-    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The attendance snapshot was not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
-}
-
-// ----- Julian P4: multiplication candidate actions ------------------------
 
 function readCandidateForm(input: unknown): Record<string, unknown> {
   if (!(input instanceof FormData)) {
@@ -214,136 +90,151 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
   };
 }
 
-export async function adminCreateMultiplicationCandidate(
-  _prev: ActionResult<{ id: string }> | undefined,
+// ----- adminUpdateLaunchPlanningAssumptions --------------------------------
+
+const UPDATE_ASSUMPTIONS_SPEC: AdminWriteActionSpec<
+  LaunchPlanningAssumptionsPayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.update_assumptions",
+  read: readLaunchPlanningForm,
+  validate: validateLaunchPlanningAssumptionsPayload,
+  guard: (_actor, value) =>
+    Object.keys(value).length === 0
+      ? {
+          error: "Nothing to change. Adjust a field before saving.",
+          code: "empty_diff",
+          outcome: "fail",
+        }
+      : null,
+  // Diagnostic counts only -- never log notes or anything derived from the
+  // notes body; the audit row already records `has_notes`.
+  okFields: (value) => ({
+    changed_field_count: Object.keys(value).length,
+    has_notes_field: Object.prototype.hasOwnProperty.call(value, "notes"),
+  }),
+  rpc: (client, value) =>
+    rpcAdminUpdateLaunchPlanningAssumptions(client, {
+      p_settings: value as Record<string, unknown>,
+    }),
+  revalidate: () => [REVALIDATE_PATH_LAUNCH_PLANNING, REVALIDATE_PATH_ADMIN],
+  noDataError: "The assumptions were not saved. Please try again.",
+};
+
+export async function adminUpdateLaunchPlanningAssumptions(
+  prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.create_multiplication_candidate");
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const v = validateCreateMultiplicationCandidatePayload(readCandidateForm(input));
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminCreateMultiplicationCandidate(client, {
-    p_group_id: v.value.group_id,
-    p_target_year: v.value.target_year,
-    p_status: v.value.status,
-    p_shepherd_willing: v.value.shepherd_willing,
-    p_needs_similar_stage: v.value.needs_similar_stage,
-    p_notes: v.value.notes,
-  });
-  if (error) {
-    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The candidate was not saved. Please try again."]);
-  }
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+  return runAdminWriteAction(UPDATE_ASSUMPTIONS_SPEC, prev, input);
 }
+
+// ----- adminRecordChurchAttendanceSnapshot ---------------------------------
+// Julian P2: record an actual church-attendance count for a date. Upserts by
+// date so re-entering a date corrects the prior figure.
+
+const RECORD_ATTENDANCE_SPEC: AdminWriteActionSpec<
+  RecordChurchAttendancePayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.record_church_attendance",
+  read: (input) =>
+    input instanceof FormData
+      ? {
+          snapshot_date: input.get("snapshot_date"),
+          attendance_count: input.get("attendance_count"),
+          note: input.get("note"),
+        }
+      : (input as Record<string, unknown>),
+  validate: validateRecordChurchAttendancePayload,
+  rpc: (client, value) =>
+    rpcAdminRecordChurchAttendanceSnapshot(client, {
+      p_snapshot_date: value.snapshot_date,
+      p_attendance_count: value.attendance_count,
+      p_note: value.note,
+    }),
+  revalidate: () => [REVALIDATE_PATH_LAUNCH_PLANNING, REVALIDATE_PATH_ADMIN],
+  noDataError: "The attendance snapshot was not saved. Please try again.",
+};
+
+export async function adminRecordChurchAttendanceSnapshot(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(RECORD_ATTENDANCE_SPEC, prev, input);
+}
+
+// ----- Julian P4: multiplication candidate actions ------------------------
+
+const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
+  CreateMultiplicationCandidatePayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.create_multiplication_candidate",
+  read: readCandidateForm,
+  validate: validateCreateMultiplicationCandidatePayload,
+  rpc: (client, value) =>
+    rpcAdminCreateMultiplicationCandidate(client, {
+      p_group_id: value.group_id,
+      p_target_year: value.target_year,
+      p_status: value.status,
+      p_shepherd_willing: value.shepherd_willing,
+      p_needs_similar_stage: value.needs_similar_stage,
+      p_notes: value.notes,
+    }),
+  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  noDataError: "The candidate was not saved. Please try again.",
+};
+
+export async function adminCreateMultiplicationCandidate(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(CREATE_CANDIDATE_SPEC, prev, input);
+}
+
+const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
+  UpdateMultiplicationCandidatePayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.update_multiplication_candidate",
+  read: readCandidateForm,
+  validate: validateUpdateMultiplicationCandidatePayload,
+  rpc: (client, value) =>
+    rpcAdminUpdateMultiplicationCandidate(client, {
+      p_candidate_id: value.candidate_id,
+      p_target_year: value.target_year,
+      p_status: value.status,
+      p_shepherd_willing: value.shepherd_willing,
+      p_needs_similar_stage: value.needs_similar_stage,
+      p_notes: value.notes,
+    }),
+  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  noDataError: "The candidate was not saved. Please try again.",
+};
 
 export async function adminUpdateMultiplicationCandidate(
-  _prev: ActionResult<{ id: string }> | undefined,
+  prev: ActionResult<{ id: string }> | undefined,
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.update_multiplication_candidate");
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const v = validateUpdateMultiplicationCandidatePayload(readCandidateForm(input));
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminUpdateMultiplicationCandidate(client, {
-    p_candidate_id: v.value.candidate_id,
-    p_target_year: v.value.target_year,
-    p_status: v.value.status,
-    p_shepherd_willing: v.value.shepherd_willing,
-    p_needs_similar_stage: v.value.needs_similar_stage,
-    p_notes: v.value.notes,
-  });
-  if (error) {
-    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The candidate was not saved. Please try again."]);
-  }
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+  return runAdminWriteAction(UPDATE_CANDIDATE_SPEC, prev, input);
 }
 
-export async function adminArchiveMultiplicationCandidate(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
-): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.archive_multiplication_candidate");
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw =
+const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: string }> = {
+  name: "admin.launch_planning.archive_multiplication_candidate",
+  read: (input) =>
     input instanceof FormData
       ? { candidate_id: input.get("candidate_id") ?? undefined }
-      : input;
-  const v = validateCandidateIdPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
+      : (input as Record<string, unknown>),
+  validate: validateCandidateIdPayload,
+  rpc: (client, value) =>
+    rpcAdminArchiveMultiplicationCandidate(client, { p_candidate_id: value.candidate_id }),
+  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  noDataError: "The candidate was not archived. Please try again.",
+};
 
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminArchiveMultiplicationCandidate(client, {
-    p_candidate_id: v.value.candidate_id,
-  });
-  if (error) {
-    ctx.finish("fail", { error_code: "rpc_error", rpc_token: error.message, actor_role });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The candidate was not archived. Please try again."]);
-  }
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+export async function adminArchiveMultiplicationCandidate(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ARCHIVE_CANDIDATE_SPEC, prev, input);
 }

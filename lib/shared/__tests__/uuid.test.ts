@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readUuidRpcData } from "@/lib/admin/rpc-helpers";
+import { isUuid, readUuidRpcData } from "@/lib/shared/uuid";
 
 describe("readUuidRpcData", () => {
   it("returns null for non-string inputs", () => {
@@ -28,5 +28,14 @@ describe("readUuidRpcData", () => {
 
     const mixed = "AbCdEf12-3456-7890-aBcD-eF1234567890";
     expect(readUuidRpcData(mixed)).toBe(mixed.toLowerCase());
+  });
+});
+
+describe("isUuid", () => {
+  it("narrows valid uuid strings and rejects everything else", () => {
+    expect(isUuid("11111111-1111-1111-1111-111111111111")).toBe(true);
+    expect(isUuid("not-a-uuid")).toBe(false);
+    expect(isUuid(42)).toBe(false);
+    expect(isUuid(null)).toBe(false);
   });
 });

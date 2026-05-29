@@ -1,7 +1,7 @@
 # ADR 0001: Admin write-action runner
 
-**Status:** Accepted (partial rollout — `admin/people` migrated; remaining admin
-action files pending)
+**Status:** Accepted (all admin action files migrated; leader runner + RPC
+gateway pending)
 **Date:** 2026-05-28
 
 ## Context
@@ -60,18 +60,48 @@ state. There are no early exits left in the caller to obscure, so the
 legibility concern does not apply. The imperative `startActionLog`/`finish`
 primitive is unchanged; only its callers are.
 
+## Spec extensions for the remaining files
+
+Migrating the other eight files surfaced four shapes the `people` file did not
+exercise. Each became a backward-compatible spec field (the `people` specs are
+unchanged):
+
+- `auth?: AuthGate` — defaults to `requireAdminSession`; `super-admin` passes
+  `requireSuperAdminSession`. Both gates return the same `{ ok, session }`
+  shape, so this is a seam, not a forked runner.
+- `read?: (input) => Record<string, unknown>` — for actions whose FormData
+  mapping is not a flat key-lift: `settings` and `launch-planning` (checkbox
+  presence, empty-string-to-null, empty-diff skipping) and the calendar files
+  (lift all entries). Defaults to lifting `keys`.
+- `raw` threaded into `revalidate`/`okFields`/`fields` — the calendar id-keyed
+  actions revalidate and log a `group_id` that lives outside the validated
+  payload (it carries through `raw` only).
+- `guard` outcome override + chaining — a guard may return `outcome: "fail"`
+  for non-authorization bails (`empty_diff` in `settings`/`launch-planning`)
+  rather than the default `denied`, and `super-admin` chains three distinct
+  guards behind one slot, returning the first denial with its own `error_code`.
+
+The runner's `input` param is typed `unknown` rather than `ActionInput<V>`: it
+re-parses input through `read`/`keys` before `V` exists, so `ActionInput<V>`
+only fought generic inference at callsites whose public param is wider than the
+spec's `V`. `V` flows from the spec.
+
 ## Consequences
 
 - The action layer gets its first regression net: `lib/admin/__tests__/run-action.test.ts`
   exercises all branches against mocked `requireAdminSession` /
   `createSupabaseServerClient` / `revalidatePath` / logger.
-- One deliberate, non-user-facing behavior change: log fields are now
-  **consistent** across post-validation stages. Previously some actions omitted
-  target fields on the `supabase_not_configured` stage (it had no async
-  pre-compute to force them) and `change_leader_role` omitted `new_role` on the
-  `rpc_no_data` stage. These omissions were incidental, not intentional; the
-  runner emits the same `fields` on every post-validation stage. RPC calls,
-  return values, and revalidation are byte-for-byte identical.
+- Two deliberate, non-user-facing log-field changes, both in the spirit of
+  **consistency** across stages; RPC calls, return values, and revalidation are
+  byte-for-byte identical:
+  1. The runner emits the same `fields` on every post-validation stage
+     (`supabase_not_configured`, `rpc_error`, `rpc_no_data`, `ok`). Previously
+     some actions omitted target fields on `supabase_not_configured`, and
+     `change_leader_role` / `super_admin.update_profile_role` omitted
+     `new_role` on `rpc_no_data`. These omissions were incidental.
+  2. The `validation_failed` line now carries `error_count` for every action
+     (previously only `super_admin.update_profile_role` did). A uniform
+     diagnostic field, harmless to the others.
 
 ## Invariants preserved (see AGENTS.md)
 
@@ -83,14 +113,37 @@ the RPC as defense in depth.
 
 ## Follow-ups
 
-- Migrate the remaining admin action files
-  (`groups`, `guests`, `follow-ups`, `shepherd-care`, `settings`,
-  `launch-planning`, `super-admin`, both `calendar` files).
-- A sibling `runLeaderWriteAction` for `lib/leader`: the auth strategy
-  (`requireLeaderActor` returns `{ profileId, assignedGroupIds }`, not a
-  session), the error-message table, and the group-membership guard differ, so
-  it is a parallel runner sharing the same shape, not the same function.
-- Candidate 2 (RPC gateway) then falls out as the runner's single RPC caller.
-  Note the latent bug it surfaces: `lib/leader/rpc.ts` casts `r.data as string`
-  and skips `readUuidRpcData`, so leader RPC results are not uuid-validated the
-  way admin's are. Fix when migrating the leader runner.
+- ~~Migrate the remaining admin action files~~ — done. All nine admin action
+  files (`people`, `groups`, `calendar`, `guests`, `follow-ups`,
+  `shepherd-care`, `settings`, `launch-planning`, `super-admin`) delegate to
+  `runAdminWriteAction`.
+- ~~A sibling `runLeaderWriteAction` for `lib/leader`~~ — done
+  (`lib/leader/run-action.ts`). Parallel, not shared: auth is
+  `requireLeaderActor` (`{ profileId, assignedGroupIds }`, logged as
+  `actor_profile_id`), the error table is the pastoral leader one, and it has
+  **two** guard tiers — a pre-validation `guardRaw` (calendar update/archive/
+  restore check ownership from a hidden `group_id` before the event_id is even
+  validated) and a post-validation `guard` (check-in and calendar create trust
+  the validated `group_id`). The two tiers exist because the timing changes
+  which fields appear on the `validation_failed` line. As with the admin
+  runner, this added one consistency change: post-validation `fields` now
+  appear on the `supabase_not_configured` stage too (e.g. `target_event_id` on
+  the calendar id-keyed actions). The six group-scoped leader writes delegate;
+  `leaderSubmitCheckinAndReturn` stays hand-written (it redirects after
+  delegating) and `leader/follow-up-actions.ts` stays hand-written (its local
+  auth gate splits `backend_error` into a `fail`+`stage` line rather than a
+  `denied` one, a deliberately richer failure taxonomy the shared gate drops).
+- ~~Latent bug: `lib/leader/rpc.ts` skipped `readUuidRpcData`~~ — fixed. All
+  six leader RPC wrappers now uuid-validate their result. `readUuidRpcData`
+  moved to `@/lib/shared/uuid` (its natural home beside `UUID_RE`);
+  `lib/admin/rpc-helpers.ts` re-exports it so the admin wrappers' import path is
+  unchanged.
+- ~~Candidate 2 (RPC gateway)~~ — done. `callUuidRpc(client, name, args)` in
+  `lib/shared/rpc.ts` owns the supabase-js `as never` cast and the
+  `readUuidRpcData` read that all ~53 admin/leader wrappers repeated verbatim.
+  Each wrapper is now a one-line typed alias that pins its function name and
+  argument shape, so the public surface and per-RPC arg types are unchanged and
+  no action file moved. `lib/admin/rpc-helpers.ts` (a one-line re-export after
+  the leader work) is gone; `readUuidRpcData` is tested beside it in
+  `lib/shared/__tests__/uuid.test.ts`, and the gateway has its own coverage in
+  `lib/shared/__tests__/rpc.test.ts`.
