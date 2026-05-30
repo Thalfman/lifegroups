@@ -84,3 +84,29 @@ describe("segmentLabel", () => {
     expect(segmentLabel(null, null)).toBe("Unsegmented");
   });
 });
+
+// Julian #143: the successor/leader-designate is a manually-entered
+// designation that must stay separate from the derived co-shepherd tenure
+// signal — it must never feed or alter readiness. Readiness depends only on
+// its documented inputs, so any extra fields a caller passes (e.g. a
+// successor) cannot change the result.
+describe("evaluateReadiness ignores fields outside its contract (#143)", () => {
+  it("computes identical readiness regardless of an extra successor field", () => {
+    const base = {
+      activeMemberCount: 12,
+      launchedOn: "2023-05-28",
+      coShepherdSince: "2025-05-28",
+      shepherdWilling: true,
+      needsSimilarStage: true,
+    };
+    const withSuccessor = {
+      ...base,
+      // Not part of ReadinessInput; must be inert.
+      successorDesignate: "Tony L.",
+    } as typeof base;
+
+    expect(evaluateReadiness(withSuccessor, TODAY)).toEqual(
+      evaluateReadiness(base, TODAY),
+    );
+  });
+});

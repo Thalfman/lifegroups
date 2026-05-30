@@ -87,6 +87,8 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
     shepherd_willing: input.has("shepherd_willing"),
     needs_similar_stage: input.has("needs_similar_stage"),
     notes: input.get("notes") ?? undefined,
+    successor_designate: input.get("successor_designate") ?? undefined,
+    meeting_time: input.get("meeting_time") ?? undefined,
   };
 }
 
@@ -180,6 +182,8 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_shepherd_willing: value.shepherd_willing,
       p_needs_similar_stage: value.needs_similar_stage,
       p_notes: value.notes,
+      p_successor_designate: value.successor_designate,
+      p_meeting_time: value.meeting_time,
     }),
   revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
   noDataError: "The candidate was not saved. Please try again.",
@@ -207,6 +211,8 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_shepherd_willing: value.shepherd_willing,
       p_needs_similar_stage: value.needs_similar_stage,
       p_notes: value.notes,
+      p_successor_designate: value.successor_designate,
+      p_meeting_time: value.meeting_time,
     }),
   revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
   noDataError: "The candidate was not saved. Please try again.",

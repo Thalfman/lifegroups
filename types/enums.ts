@@ -26,6 +26,10 @@ export type MultiplicationCandidateStatus =
   | 'planned'
   | 'launched'
   | 'deferred';
+// Julian #143: the Doc's "during the day" / "evening" meeting-time options,
+// captured on the multiplication candidate so the planner can honour the
+// "two options per person" goal.
+export type MultiplicationMeetingTime = 'during_the_day' | 'evening';
 export type GroupCalendarEventType =
   | 'study'
   | 'community_night'

@@ -17,6 +17,7 @@ import type {
   MeetingFrequency,
   MeetingWeekParity,
   MultiplicationCandidateStatus,
+  MultiplicationMeetingTime,
   RoleInGroup,
   ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
@@ -187,6 +188,8 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_shepherd_willing: boolean;
     p_needs_similar_stage: boolean;
     p_notes: string | null;
+    p_successor_designate: string | null;
+    p_meeting_time: MultiplicationMeetingTime | null;
   },
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -201,6 +204,8 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_shepherd_willing: boolean;
     p_needs_similar_stage: boolean;
     p_notes: string | null;
+    p_successor_designate: string | null;
+    p_meeting_time: MultiplicationMeetingTime | null;
   },
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);

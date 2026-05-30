@@ -215,6 +215,8 @@ export interface MultiplicationCandidatesRow {
   shepherd_willing: boolean;
   needs_similar_stage: boolean;
   notes: string | null;
+  successor_designate: string | null;
+  meeting_time: E.MultiplicationMeetingTime | null;
   archived_at: Timestamp | null;
   created_by: UUID | null;
   updated_by: UUID | null;
@@ -460,6 +462,8 @@ export interface Database {
           | 'created_by'
           | 'updated_by'
           | 'notes'
+          | 'successor_designate'
+          | 'meeting_time'
         >;
         Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];
