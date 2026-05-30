@@ -2,6 +2,17 @@
 -- pipeline doesn't yet model — the successor/leader-designate and the
 -- meeting-time option.
 --
+-- NOTE: re-versioned 20260530030000 -> 20260530060000. This file originally
+-- shared version 20260530030000 with julian_q2_shepherd_care_status_five.
+-- Two migrations cannot share a version: q2 claimed the 20260530030000 slot in
+-- schema_migrations, so this migration was silently skipped on deploy (its
+-- columns/type/RPCs never reached the database). Renumbering to a unique,
+-- later version lets it apply as a fresh pending migration while leaving q2's
+-- already-recorded 20260530030000 entry untouched (re-running q2 would re-fire
+-- its `rename value 'healthy'`, which now errors because the rename is done).
+-- All steps below are guarded (if-not-exists / drop-if-exists), so applying
+-- them now is safe.
+--
 -- Both are additive and nullable: existing multiplication_candidates rows stay
 -- valid, no reshape of the table.
 --
