@@ -1,13 +1,18 @@
 # Group-health grading rubric
 
-**Status: rubric being locked (grill session 2026-05-30).** This document
-started as discovery because Julian asked for a way to "grade" group health but
-was, in his own words, "still working on an evaluation system" ([systems
+**Status: rubric locked (grill session 2026-05-30).** This document started as
+discovery because Julian asked for a way to "grade" group health but was, in his
+own words, "still working on an evaluation system" ([systems
 conversation](../julian-inputs/SYSTEMS_CONVERSATION.md) answer 12;
 [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) §3.1). The
 **Locked rubric decisions** section below is the settled rubric the build slices
 (#127/#128/#129) are cut against; the design-space material that follows it is
 retained for context.
+
+> One item still needs Julian's sign-off before #128/#129 ship: the **exact
+> wording** of the spiritual-growth rating and the relayed group question (his
+> pastoral call). The rubric *shape* is locked; only his two question texts are
+> outstanding.
 
 ## Locked rubric decisions
 
@@ -19,9 +24,16 @@ contract for the build slices.
 The grade is computed from **three** dimensions:
 
 1. **Attendance consistency** — computable from existing data.
-2. **Spiritual growth** — net-new capture (see below).
-3. **Leader support-need** — derived from the existing `pulse` /
-   `follow_up_needed` signals.
+2. **Spiritual growth** — net-new admin-entered capture (see below).
+3. **Group question (relayed)** — a calibrated 1–5 the *leader* answers but
+   *Julian enters* (see below). Replaces the earlier idea of deriving this leg
+   from the coarse `pulse` enum.
+
+The three legs are a deliberate triangulation: attendance is **objective**
+(the data), spiritual growth is the **admin's** judgment, and the group question
+is the **leader's** voice (relayed). Two of the three are admin-entered 1–5s, so
+their question wordings must target **distinct, observable facets** — spiritual
+growth vs. e.g. engagement/connection — or they collapse into one rating.
 
 **Multiplication readiness is deliberately excluded.** The launch pipeline
 already owns "ready to multiply"; folding it into the health grade would
@@ -74,10 +86,60 @@ by **Ministry Admin only**. The 1–5 feeds the computed grade; the note carries
 pastoral color. Because there is no rolling data source for spiritual growth, it
 is an inherently periodic human judgment, not a continuously-computed signal.
 
-Admin-only entry honors **Q7**'s "broad notes only" ceiling for over-shepherds:
-a structured rating is not a broad note, so over-shepherds get **no**
-spiritual-growth surface. (Over-shepherd-entered ratings remain a possible
-future slice, explicitly outside the Q7 envelope.)
+*Why admin-entered, not leader self-reported:* "is spiritual growth happening"
+is the pastoral judgment Julian said *he* makes ("how **we** would grade them"),
+and self-assessment is biased. (Note: leaders *do* have a live check-in surface
+— see CONTEXT.md — so "leaders can't log in" is **not** the reason; the reason
+is whose judgment this is.) Admin-only entry also honors **Q7**'s "broad notes
+only" ceiling for over-shepherds: a structured rating is not a broad note, so
+over-shepherds get **no** spiritual-growth surface.
+
+### Group-question dimension (relayed)
+
+A single **calibrated 1–5 question** about a *distinct, observable* facet of
+group life (engagement / relational connection / participation — **not** a
+second spiritual-growth question). The **leader answers it and feeds it to
+Julian, who enters it** on the admin side, periodic/monthly like spiritual
+growth.
+
+*Why relayed rather than leader-entered:* a direct leader question would touch
+the **frozen leader surface** (no new leader-facing features without Julian's
+go-ahead, LDR.1) and make the slice HITL. Routing it through Julian keeps the
+whole grade admin-entered and AFK-ready. Wiring a direct leader question is a
+possible later slice if Julian green-lights it.
+
+*Provenance:* the value is **leader-reported, admin-entered** — flag it on the
+record so it is not mistaken for Julian's own assessment. It is the leader's
+voice in the triangulation, just relayed.
+
+### Weights
+
+Default **attendance 40% · spiritual growth 40% · group question 20%** — the two
+dimensions Julian named carry the grade equally; the newest/softest signal gets
+a lighter share until trusted. Weights are tunable (see *Tunable rubric
+configuration*), so this is only the shipping default.
+
+### Cadence
+
+**Monthly periodic review.** One `group_health_assessments` row per group per
+month. The **current** month recomputes on-read as attendance rolls and the
+admin updates the two 1–5s; **closed** months are frozen snapshots, giving a
+month-over-month history/trend. No cron — computation happens on dashboard-read
+and admin-write, consistent with ADR 0004 / D7's manual-input model.
+
+### Override
+
+Ministry Admin (and Super Admin) can force a group's grade. The override is
+stored **separately** from the computed grade — the UI shows both ("computed B,
+set to A by Julian") so an override never silently destroys the math (#129's
+"computed vs. overridden must be distinguishable"). It flows through
+`runAdminWriteAction` with paired `audit_events`.
+
+Each override carries a **scope** chosen when it is set: **"this month only"**
+(auto-clears at the monthly rollover; the **default**) or **"until I clear it"**
+(a standing override that persists across periods and is labeled as such).
+Defaulting to month-only keeps a stale forever-"A" from quietly hiding a
+declining group.
 
 ---
 

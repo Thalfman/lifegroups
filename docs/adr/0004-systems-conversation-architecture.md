@@ -72,14 +72,31 @@ authorized and audited uniformly.
 **Known gap.** Reliable *capture* of church attendance is operational, not architectural
 (Q9). **Open:** app vs. Google Doc as system of record (Q11).
 
-## D8 — Group health is deliberately unbuilt  · _answers Q12_
-**Decision.** Do **not** design a group-health schema until Julian's rubric exists. Q12
-says he's *still designing* the evaluation system, and "spiritual growth" has no data
-source today. Keep it in discovery
-([`../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md))
-rather than guess.
-**Open.** Dimensions, weights, output shape, and growth capture — the one gate left on
-Julian's stated vision.
+## D8 — Group health is a tunable, admin-entered rubric  · _answers Q12_
+**Decision (rubric locked 2026-05-30).** The group-health grade is computed from
+**three fixed dimensions** — attendance consistency (rolling 8-week average % vs. the
+configurable healthy threshold), an admin-entered spiritual-growth 1–5, and a leader-
+answered group question relayed and entered by the admin — output as a **letter A–D**
+backed by an internal numeric, on a **monthly** review period. Multiplication readiness
+is excluded to avoid double-counting D7's launch pipeline. The full rubric is
+[`../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md);
+build slices are #127/#128/#129.
+
+**Why it's recorded here.** Two non-obvious calls a future reader will question:
+1. **The rubric is *configuration data, not hardcoded constants*.** Weights, A/B/C/D
+   cut-lines, and per-dimension thresholds are admin-tunable through the audited write
+   path, so the grade math reads from settings, not literals. Julian is "still tuning his
+   evaluation system" — this lets him dial it in over months without an engineer. The
+   *set* of three dimensions stays code-level (each needs its own data source), so the
+   tunability is deliberately bounded.
+2. **The whole grade is admin-entered + computed, by design.** Two of three dimensions are
+   1–5 judgments keyed by the Ministry Admin (spiritual growth; the relayed leader
+   question). This keeps the build off the **frozen leader surface** (LDR.1) and inside
+   the established admin-scoped, `SECURITY DEFINER` + paired-audit pattern.
+
+**Held earlier; superseded.** D8 originally deferred all schema until the rubric existed;
+that gate is now cleared. **Outstanding:** only Julian's exact *question wordings* for the
+two 1–5 inputs.
 
 ---
 
@@ -89,4 +106,5 @@ Julian's stated vision.
 - Two guarantees are load-bearing under review: the **downward-visibility ladder** (ADR 0002)
   and its single **private-note inversion** (ADR 0003 / D5).
 - The open items are all **Julian decisions**, not engineering unknowns: Q2 wording, Q5
-  cadence, Q11 ownership, and Q12 rubric.
+  cadence, and Q11 ownership. Q12's rubric is now **locked** (D8); only Julian's two
+  question wordings remain before #128/#129 ship.

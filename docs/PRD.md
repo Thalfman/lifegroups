@@ -111,10 +111,12 @@ designing*).
 **Status:**
 - Job 1 (leaders) — ✅ delivered by Q1–Q8.
 - Job 2 (launches) — ✅ delivered by Q9–Q11.
-- Job 3 (group health) — 🔬 **Discovery, blocked on Julian's rubric.** No schema yet;
-  dimensions/weights/output and how to capture "spiritual growth" are undecided. See
-  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
-  ❓ **Decision owed — this is the one gate left on Julian's stated vision.**
+- Job 3 (group health) — 🟡 **Rubric locked; build pending.** Three dimensions
+  (attendance consistency · admin-entered spiritual-growth 1–5 · a relayed leader
+  1–5), letter A–D output, monthly cadence, tunable weights/cut-lines/thresholds; see
+  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)
+  and ADR 0004 / D8. Build slices #127/#128/#129 can now be cut. ❓ **Only owed:**
+  Julian's exact wording for the two 1–5 questions.
 
 ---
 
@@ -125,7 +127,9 @@ designing. The remaining items are **decisions for Julian** (Q2 wording, Q5 cade
 Q11 pipeline ownership), none of which block launch.
 
 ## Decisions owed by Julian
-1. **Group-health rubric (Q12)** — dimensions, weights, output shape, "spiritual growth" capture. *Gates Job 3.*
+1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).
+   Only his exact wording for the two 1–5 questions (spiritual growth, relayed group
+   question) is still outstanding before #128/#129 ship.
 2. **Care cadence (Q5)** — one staleness window or per-oversight-tier, and the values.
 3. **Care-status wording (Q2)** — keep three statuses or adopt his five.
 4. **Multiplication ownership (Q11)** — app as system of record vs. Google Doc, and the 2026/2027 split.
