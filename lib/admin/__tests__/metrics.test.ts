@@ -6,16 +6,18 @@ import {
   effectiveCapacity,
 } from "@/lib/admin/metrics";
 
-describe("decodeMetricDefaults (Julian P1/P2 baselines)", () => {
-  it("defaults group capacity to 12 and stale-contact window to 60 when unset", () => {
+describe("decodeMetricDefaults (Julian P1/P2/Q5 baselines)", () => {
+  it("defaults group capacity to 12 and the per-tier stale windows to 30 / 60 when unset", () => {
     const d = decodeMetricDefaults(null);
     expect(d.default_group_capacity).toBe(12);
-    expect(d.shepherd_care_stale_days).toBe(60);
+    expect(d.shepherd_care_stale_days_direct).toBe(30);
+    expect(d.shepherd_care_stale_days_delegated).toBe(60);
   });
 
   it("keeps the documented baseline in sync", () => {
     expect(BUILT_IN_METRIC_DEFAULTS.default_group_capacity).toBe(12);
-    expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days).toBe(60);
+    expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct).toBe(30);
+    expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated).toBe(60);
   });
 });
 

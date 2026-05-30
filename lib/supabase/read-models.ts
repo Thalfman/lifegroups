@@ -32,6 +32,12 @@ import type {
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import { pgHexToBase64 } from "@/lib/crypto/encoding";
+import {
+  BUILT_IN_CARE_CADENCE_WINDOWS,
+  coverageTierForShepherd,
+  staleWindowDaysForTier,
+  type CareCadenceWindows,
+} from "@/lib/admin/shepherd-care-cadence";
 
 type ReadClient = AppSupabaseClient;
 
@@ -855,13 +861,15 @@ function nullableByteaToBase64(value: string | null): string | null {
 }
 
 /**
- * Default days-since-last-contact threshold for the "needs attention"
- * filter. Julian P1 made this operator-configurable via
- * app_settings.metric_defaults.shepherd_care_stale_days; this constant is
- * the fallback when no value is configured and the documented baseline.
- * Mirrors BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days.
+ * Conservative days-since-last-contact fallback for the "needs attention"
+ * filter when no per-tier window is supplied. Julian Q5 replaced the former
+ * single window with two tier-keyed windows (see lib/admin/shepherd-care-cadence
+ * and app_settings.metric_defaults.shepherd_care_stale_days_{direct,delegated}).
+ * This equals the longer (delegated) default so a caller without coverage
+ * context never over-flags.
  */
-export const SHEPHERD_CARE_STALE_DAYS = 60;
+export const SHEPHERD_CARE_STALE_DAYS =
+  BUILT_IN_CARE_CADENCE_WINDOWS.delegatedStaleDays;
 
 /**
  * UTC-anchored YYYY-MM-DD string for "today", used by every shepherd-care
@@ -912,20 +920,40 @@ export type ShepherdCareDirectoryEntry = {
  * scoped Over-Shepherd directory so the assembly + needs_attention wiring
  * lives in one place. Both callers pre-scope which profiles/care rows they
  * read; this only assembles.
+ *
+ * Julian Q5: needs_attention now uses the per-tier staleness window. A
+ * shepherd in `delegatedShepherdIds` (an active over-shepherd assignment) is
+ * delegated (longer window); otherwise directly-overseen (shorter window).
+ * Omitting `delegatedShepherdIds` treats every shepherd as delegated — the
+ * conservative longer window — which is exactly right for the Over-Shepherd
+ * surface (every covered shepherd is delegated by definition) and avoids
+ * over-flagging when coverage context is unavailable.
  */
 export function buildCareDirectoryEntries(
   profiles: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">[],
   careRows: ShepherdCareDirectorySummary[],
-  options: { todayIso?: string; staleDays?: number } = {},
+  options: {
+    todayIso?: string;
+    windows?: CareCadenceWindows;
+    delegatedShepherdIds?: ReadonlySet<string>;
+  } = {},
 ): ShepherdCareDirectoryEntry[] {
   const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
   for (const row of careRows) careByShepherdId.set(row.shepherd_profile_id, row);
 
   const today = options.todayIso ?? currentUtcDateIso();
-  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
+  const windows = options.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
+  const delegatedShepherdIds = options.delegatedShepherdIds;
 
   return profiles.map((profile) => {
     const care = careByShepherdId.get(profile.id) ?? null;
+    const hasActiveOverShepherd = delegatedShepherdIds
+      ? delegatedShepherdIds.has(profile.id)
+      : true;
+    const staleDays = staleWindowDaysForTier(
+      coverageTierForShepherd(hasActiveOverShepherd),
+      windows,
+    );
     return {
       profile,
       care,
@@ -980,7 +1008,18 @@ export function computeNeedsAttention(
  */
 export async function fetchShepherdCareDirectoryForAdmin(
   client: ReadClient,
-  options: { todayIso?: string; staleDays?: number } = {},
+  options: {
+    todayIso?: string;
+    windows?: CareCadenceWindows;
+    // Julian Q5: the shepherds with an active over-shepherd assignment (the
+    // delegated tier, longer window); anyone else is directly-overseen
+    // (shorter window). The caller passes the SAME active-coverage set the
+    // dashboard uses, so the directory's needs_attention can never disagree
+    // with the queue. Omitted => every shepherd is treated as delegated (the
+    // conservative longer window), which is also exactly right for callers
+    // where every shepherd is delegated by definition.
+    delegatedShepherdIds?: ReadonlySet<string>;
+  } = {},
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
     .from("profiles")
@@ -1024,7 +1063,11 @@ export async function fetchShepherdCareDirectoryForAdmin(
   >[];
 
   return {
-    data: buildCareDirectoryEntries(profiles, careRows, options),
+    data: buildCareDirectoryEntries(profiles, careRows, {
+      todayIso: options.todayIso,
+      windows: options.windows,
+      delegatedShepherdIds: options.delegatedShepherdIds,
+    }),
     error: null,
   };
 }

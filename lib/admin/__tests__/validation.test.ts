@@ -1049,25 +1049,38 @@ describe("validateScenarioIdPayload", () => {
   });
 });
 
-describe("validateMetricDefaultsPayload — shepherd_care_stale_days (Julian P1)", () => {
-  it("accepts an in-range value", () => {
-    const r = validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 });
+describe("validateMetricDefaultsPayload — per-tier stale windows (Julian Q5)", () => {
+  it("accepts in-range values for both tier windows", () => {
+    const r = validateMetricDefaultsPayload({
+      shepherd_care_stale_days_direct: 30,
+      shepherd_care_stale_days_delegated: 60,
+    });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.shepherd_care_stale_days).toBe(30);
+    if (r.ok) {
+      expect(r.value.shepherd_care_stale_days_direct).toBe(30);
+      expect(r.value.shepherd_care_stale_days_delegated).toBe(60);
+    }
   });
 
-  it("rejects values below 7 and above 365", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 6 }).ok).toBe(false);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 366 }).ok).toBe(false);
+  it("rejects values below 7 and above 365 on either tier", () => {
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 6 }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 366 }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 6 }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 366 }).ok).toBe(false);
   });
 
   it("rejects non-integers", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: "soon" }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: "soon" }).ok).toBe(false);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: "soon" }).ok).toBe(false);
   });
 
   it("accepts the 7 and 365 boundaries", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 7 }).ok).toBe(true);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 365 }).ok).toBe(true);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 7 }).ok).toBe(true);
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 365 }).ok).toBe(true);
+  });
+
+  it("rejects the superseded single key as unknown", () => {
+    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 }).ok).toBe(false);
   });
 });
 
