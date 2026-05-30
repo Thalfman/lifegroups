@@ -42,6 +42,29 @@ export interface GroupsRow {
   closed_at: Timestamp | null;
 }
 
+// Group-Health Grade (#127): one assessment per group per month. Rated
+// dimensions + override columns are reserved for #128/#129 (nullable now).
+export interface GroupHealthAssessmentsRow {
+  id: UUID;
+  group_id: UUID;
+  period_month: DateString;
+  attendance_pct: number | null;
+  attendance_weeks_counted: number;
+  spiritual_growth_score: number | null;
+  spiritual_growth_note: string | null;
+  group_question_score: number | null;
+  group_question_leader_reported: boolean;
+  computed_numeric: number | null;
+  computed_letter: E.GroupHealthLetter | null;
+  override_letter: E.GroupHealthLetter | null;
+  override_scope: E.GroupHealthOverrideScope | null;
+  override_reason: string | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface GroupLeadersRow {
   id: UUID;
   group_id: UUID;

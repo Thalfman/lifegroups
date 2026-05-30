@@ -601,3 +601,22 @@ export function rpcAdminSetCurrentLaunchPlanningScenario(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_current_launch_planning_scenario", args);
 }
+
+// #127 group-health tracer: persist a group's monthly attendance dimension +
+// computed A-D grade. The rolling-window math is done in TS first
+// (lib/admin/group-health.ts); this just writes the already-computed values.
+export type AdminUpsertGroupHealthAssessmentArgs = {
+  p_group_id: string;
+  p_period_month: string;
+  p_attendance_pct: number | null;
+  p_attendance_weeks_counted: number;
+  p_computed_numeric: number | null;
+  p_computed_letter: string | null;
+};
+
+export function rpcAdminUpsertGroupHealthAssessment(
+  client: AppSupabaseClient,
+  args: AdminUpsertGroupHealthAssessmentArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_upsert_group_health_assessment", args);
+}
