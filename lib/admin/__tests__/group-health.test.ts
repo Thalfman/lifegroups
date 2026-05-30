@@ -7,7 +7,12 @@ import {
   type AttendanceWeekTally,
 } from "@/lib/admin/group-health";
 
-function week(meeting_week: string, present: number, absent: number, excused = 0): AttendanceWeekTally {
+function week(
+  meeting_week: string,
+  present: number,
+  absent: number,
+  excused = 0,
+): AttendanceWeekTally {
   return { meeting_week, present, absent, excused };
 }
 
@@ -23,7 +28,7 @@ describe("attendanceConsistency — rolling 8-week average %", () => {
   });
 
   it("only counts the most recent N weeks (window cap)", () => {
-    // 9 weeks, oldest at 100%, the most recent 8 all at 50%. With an 8-week
+    // 9 weeks: oldest at 100%, the most recent 8 all at 50%. With an 8-week
     // window the 100% week falls out, so the average is 50, not ~55.
     const weeks: AttendanceWeekTally[] = [];
     weeks.push(week("2026-01-01", 10, 0)); // oldest, 100% — outside window
@@ -54,7 +59,6 @@ describe("attendanceConsistency — rolling 8-week average %", () => {
   });
 
   it("flags whether the rolling average meets the healthy threshold (default 60)", () => {
-    // 55% average is below the default 60% healthy line.
     const below = attendanceConsistency([week("2026-05-04", 11, 9)]); // 55%
     expect(below.rolling_pct).toBe(55);
     expect(below.meets_threshold).toBe(false);
@@ -93,7 +97,7 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
   it("renormalizes weights over the dimensions actually present", () => {
     // Only attendance (40) + spiritual growth (40) present; the missing
     // group-question weight is dropped, so each effectively weighs 50%.
-    // 80*.5 + 90*.5 = 85 → A is 90; 85 → B.
+    // 80*.5 + 90*.5 = 85 → below the A cut-line (90), at/above B (75) → B.
     const grade = computeGrade({ attendance: 80, spiritual_growth: 90 });
     expect(grade.numeric).toBeCloseTo(85);
     expect(grade.letter).toBe("B");
