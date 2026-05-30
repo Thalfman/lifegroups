@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import type { GroupHealthLetter } from "@/types/enums";
 import type { AttendanceWeekTally, GroupHealthRubricConfig } from "@/lib/admin/group-health";
 import {
   attendanceConsistency,
@@ -125,7 +126,7 @@ export type GroupHealthOverviewRow = {
   spiritual_growth_note: string | null;
   group_question_score: number | null;
   group_question_leader_reported: boolean;
-  computed_letter: string | null;
+  computed_letter: GroupHealthLetter | null;
   // True when the live attendance read failed and we fell back to the last
   // persisted assessment (so the surface can flag it rather than mislead).
   stale: boolean;
@@ -141,7 +142,7 @@ type PersistedAssessment = {
   spiritual_growth_note: string | null;
   group_question_score: number | null;
   group_question_leader_reported: boolean;
-  computed_letter: string | null;
+  computed_letter: GroupHealthLetter | null;
 };
 
 const ASSESSMENT_COLUMNS =
@@ -219,18 +220,24 @@ export async function listGroupHealthOverview(
     persisted.set(row.group_id, row);
   }
 
-  const rows: GroupHealthOverviewRow[] = [];
-  for (const group of groups) {
-    const weeksRes = await fetchGroupAttendanceWeeks(
-      client,
-      group.id,
-      rubric.attendance_window_weeks,
-    );
+  // Each group's attendance read is independent (2 round-trips: sessions then
+  // records), so fan them out concurrently rather than serializing one group at
+  // a time — the overview otherwise blocks on 2*N sequential queries.
+  const weeksByGroup = await Promise.all(
+    groups.map((group) =>
+      fetchGroupAttendanceWeeks(client, group.id, rubric.attendance_window_weeks),
+    ),
+  );
 
+  const rows: GroupHealthOverviewRow[] = [];
+  for (const [i, group] of groups.entries()) {
+    const weeksRes = weeksByGroup[i];
     const prior = persisted.get(group.id);
 
     if (weeksRes.error) {
       // Don't fail the whole page for one group's read; show last-known-good.
+      // Only flag stale when there is actually a prior row to fall back to — a
+      // group with no persisted assessment has nothing "last saved" to show.
       rows.push({
         group_id: group.id,
         group_name: group.name,
@@ -241,7 +248,7 @@ export async function listGroupHealthOverview(
         group_question_score: prior?.group_question_score ?? null,
         group_question_leader_reported: prior?.group_question_leader_reported ?? false,
         computed_letter: prior?.computed_letter ?? null,
-        stale: true,
+        stale: prior !== undefined,
         unassessed: prior === undefined,
       });
       continue;
