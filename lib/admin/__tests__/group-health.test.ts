@@ -4,6 +4,7 @@ import {
   attendanceConsistency,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
   computeGrade,
+  ratingToScore,
   rubricFromMetricDefaults,
   type AttendanceWeekTally,
 } from "@/lib/admin/group-health";
@@ -71,6 +72,24 @@ describe("attendanceConsistency — rolling 8-week average %", () => {
   });
 });
 
+describe("ratingToScore — admin 1–5 rating onto the 0–100 dimension scale", () => {
+  it("maps the midpoint rating to the middle of the scale", () => {
+    // A 3 of 5 is a middling read, worth half the dimension.
+    expect(ratingToScore(3)).toBe(50);
+  });
+
+  it("floors the worst rating at 0 and tops the best at 100", () => {
+    // A 1 contributes nothing to the grade; a 5 is full marks.
+    expect(ratingToScore(1)).toBe(0);
+    expect(ratingToScore(5)).toBe(100);
+  });
+
+  it("steps evenly between the extremes", () => {
+    expect(ratingToScore(2)).toBe(25);
+    expect(ratingToScore(4)).toBe(75);
+  });
+});
+
 describe("computeGrade — weighted dimensions → numeric → A–D letter", () => {
   it("grades on attendance alone when it is the only dimension (the tracer case)", () => {
     // One live dimension: the numeric is just that score; 92 ≥ cut-line a (90) → A.
@@ -108,6 +127,20 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
 
   it("returns null when no dimension has a score", () => {
     expect(computeGrade({})).toEqual({ numeric: null, letter: null });
+  });
+
+  it("folds the admin 1–5 ratings in through ratingToScore (#128)", () => {
+    // A group acing attendance (95) but rated a 2 for spiritual growth and a 1
+    // for the group question is not an A. 95*.4 + ratingToScore(2)*.4 +
+    // ratingToScore(1)*.2 = 38 + 10 + 0 = 48 → D, not the A attendance alone
+    // would earn.
+    const grade = computeGrade({
+      attendance: 95,
+      spiritual_growth: ratingToScore(2),
+      group_question: ratingToScore(1),
+    });
+    expect(grade.numeric).toBeCloseTo(48);
+    expect(grade.letter).toBe("D");
   });
 
   it("honors tuned cut-lines from the config", () => {

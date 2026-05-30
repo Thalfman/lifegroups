@@ -114,6 +114,19 @@ export function attendanceConsistency(
 }
 
 // ---------------------------------------------------------------------------
+// Rated dimensions (#128): admin-entered 1–5 → 0–100 dimension score.
+// ---------------------------------------------------------------------------
+
+// The two net-new dimensions — spiritual growth and the relayed group question
+// — are captured as a 1–5 rating, but the grade math works in 0–100 like the
+// attendance dimension. Map linearly with the floor at the bottom of the scale:
+// a 1 contributes nothing, a 3 is a middling 50, a 5 is full marks, so the five
+// steps spread across the whole range and a rating moves the letter grade.
+export function ratingToScore(rating: number): number {
+  return ((rating - 1) / 4) * 100;
+}
+
+// ---------------------------------------------------------------------------
 // Grade computation (weighted dimensions → internal numeric → A–D letter).
 // ---------------------------------------------------------------------------
 
