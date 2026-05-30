@@ -1,5 +1,9 @@
 # Status Checklist — where we stand
 
+> ⚠️ **Archived / superseded.** This checklist is historical. The current
+> source of truth for status is [`../PRD.md`](../PRD.md) (mapped 1:1 to Julian's
+> Q1–Q12). Do not rely on this file for what is shipped or what's next.
+
 _Last reconciled: 2026-05-29. A plain checklist, nothing more. For the full
 stage map see [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md); for the debt detail
 see [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) Appendix A._
@@ -13,7 +17,7 @@ Each shipped line cites the migration or PR so it can be verified in git.
 ## ✅ Shipped since Julian's 2026-05-27 feedback
 
 **Reality check:** in the two days after that conversation (2026-05-28 → 05-29),
-**36 commits touched application code and 16 new database migrations landed.** The
+**36 commits touched application code and 15 new database migrations landed.** The
 "no progress" feeling comes from the work being buried in docs, not from it being
 absent.
 
