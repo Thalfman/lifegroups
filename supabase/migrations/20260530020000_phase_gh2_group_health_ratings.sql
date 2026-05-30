@@ -87,10 +87,16 @@ begin
     raise exception 'missing_group';
   end if;
 
-  -- Snapshot the prior row (if any) for the audit before/after pair.
+  -- Snapshot the prior row (if any) for the audit before/after pair. This RPC
+  -- also overwrites the attendance snapshot from the live recompute, so the
+  -- attendance fields ride in the audit too. The spiritual-growth note body is
+  -- never written to audit metadata (it is a broader super-admin log); only a
+  -- presence flag, per the has_notes convention (sc1b / launch-planning).
   select jsonb_build_object(
+           'attendance_pct', attendance_pct,
+           'attendance_weeks_counted', attendance_weeks_counted,
            'spiritual_growth_score', spiritual_growth_score,
-           'spiritual_growth_note', spiritual_growth_note,
+           'has_spiritual_growth_note', spiritual_growth_note is not null,
            'group_question_score', group_question_score,
            'group_question_leader_reported', group_question_leader_reported,
            'computed_numeric', computed_numeric,
@@ -140,8 +146,10 @@ begin
     jsonb_build_object(
       'before', v_before,
       'after', jsonb_build_object(
+        'attendance_pct', p_attendance_pct,
+        'attendance_weeks_counted', v_weeks,
         'spiritual_growth_score', p_spiritual_growth_score,
-        'spiritual_growth_note', p_spiritual_growth_note,
+        'has_spiritual_growth_note', p_spiritual_growth_note is not null,
         'group_question_score', p_group_question_score,
         'group_question_leader_reported', (p_group_question_score is not null),
         'computed_numeric', p_computed_numeric,

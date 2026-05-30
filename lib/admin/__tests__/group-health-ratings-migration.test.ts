@@ -68,6 +68,22 @@ describe("group-health ratings migration — audited SECURITY DEFINER write path
     expect(fn).toContain("'after'");
   });
 
+  it("includes the overwritten attendance snapshot in the audit trail", () => {
+    // The RPC also refreshes attendance from the live recompute, so the audit
+    // must carry attendance evidence or the change has no before/after record.
+    const audit = lower().slice(lower().indexOf("insert into public.audit_events"));
+    expect(audit).toContain("'attendance_pct'");
+    expect(audit).toContain("'attendance_weeks_counted'");
+  });
+
+  it("redacts the spiritual-growth note body from audit metadata", () => {
+    // Note body stays confined to group_health_assessments; audit logs only a
+    // presence flag (has_notes convention), never the pastoral text.
+    const audit = lower().slice(lower().indexOf("insert into public.audit_events"));
+    expect(audit).toContain("'has_spiritual_growth_note'");
+    expect(audit).not.toContain("'spiritual_growth_note',");
+  });
+
   it("locks function EXECUTE down to authenticated only", () => {
     expect(lower()).toContain(
       "revoke all on function public.admin_set_group_health_ratings",
