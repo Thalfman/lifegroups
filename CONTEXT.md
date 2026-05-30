@@ -48,3 +48,24 @@ A pastoral note a Ministry Admin records for their eyes only. Deliberately
 escapes the oversight ladder: not visible to other tiers — and, by intent,
 not to the Super Admin either.
 _Avoid_: Encrypted note, secret note.
+
+### Health concepts
+
+Three different "health" ideas live in the system and are easy to conflate.
+They answer different questions about different subjects.
+
+**Group-Health Grade**:
+A computed grade of how a Life *Group itself* is doing (Q12) — Julian's
+"grade them" concept. Distinct from how the group's Shepherd is doing.
+_Avoid_: Health score, group status, group health (when you mean the grade).
+
+**Leader Care Status**:
+How a *Shepherd* is doing from the Ministry Admin's pastoral view — an
+"is there an issue, and what's the next step" signal on the person, not the
+group.
+_Avoid_: Leader health, care category, group health.
+
+**Health Pulse**:
+A *Shepherd's own* self-reported weekly sentiment about their group. A
+subjective leader-entered input — not the computed Group-Health Grade.
+_Avoid_: Group health, health status (when you mean the grade).
