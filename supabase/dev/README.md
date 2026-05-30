@@ -197,6 +197,22 @@ deployed app or a local `npm run dev` instance.
       above. Self-target, `super_admin`, and `staff_viewer` choices are
       rejected.
 
+## Multiplication planner seed (Julian #144)
+
+To open the multiplication planner pre-populated from Julian's Google Doc
+(`docs/julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`), run
+`supabase/seed/multiplication_seed.sql` after the schema, segmentation
+(`20260528150000`), and pipeline (`20260528160000` / `20260530030000`)
+migrations. It seeds the ~30 named groups + `multiplication_candidates`,
+carrying the Doc's `(?)` markers and reconciliation caveats into candidate
+notes. It is **idempotent** — re-running never duplicates an active candidate —
+so it is safe to apply more than once.
+
+The file is **generated**; edit `lib/admin/multiplication-seed.ts` (the
+transcription source of truth) and regenerate with
+`npx tsx scripts/generate-multiplication-seed.ts`. A drift-guard test keeps the
+two in sync.
+
 ## What's intentionally excluded
 
 - No service role usage anywhere in the app code.
