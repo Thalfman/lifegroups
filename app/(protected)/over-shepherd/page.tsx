@@ -7,6 +7,11 @@ import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
 import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
+import { fetchMetricDefaults } from "@/lib/supabase/read-models";
+import {
+  careCadenceWindowsFromDefaults,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -61,9 +66,19 @@ export default async function OverShepherdPage() {
   if (coverage === null) redirect("/unauthorized");
   const coveredIds = coverage.coveredShepherdIds;
 
+  // Honor the admin-configured delegated staleness window so this directory's
+  // needs_attention agrees with the admin surfaces (#123). Every covered
+  // Shepherd is delegated by definition, so only the delegated window matters;
+  // a missing/failed settings read falls back to the documented baseline.
+  const metricDefaultsRes = client ? await fetchMetricDefaults(client) : null;
+  const windows = careCadenceWindowsFromDefaults(
+    decodeMetricDefaults(metricDefaultsRes?.data ?? null),
+  );
+
   const directoryResult = await fetchOverShepherdCareDirectory(
     client!,
     coveredIds,
+    { windows },
   );
 
   if (directoryResult.error) return unavailable;

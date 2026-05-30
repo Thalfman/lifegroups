@@ -770,7 +770,6 @@ export async function getAdminDashboardData(
       profilesResult,
       metricSettingsResult,
       calendarEventsResult,
-      shepherdDirectoryResult,
       overShepherdsResult,
       shepherdAssignmentsResult,
       launchAssumptionsResult,
@@ -793,14 +792,27 @@ export async function getAdminDashboardData(
       // Julian admin-OS spine reads. Failures here degrade gracefully —
       // the dashboard surfaces "unavailable" cards rather than failing
       // the whole page.
-      fetchShepherdCareDirectoryForAdmin(client, {
-        todayIso,
-        windows: careCadenceWindowsFromDefaults(defaultsForRead),
-      }),
       fetchOverShepherdsForAdmin(client, { includeArchived: true }),
       fetchActiveShepherdCoverageAssignmentsForAdmin(client),
       fetchLaunchPlanningAssumptions(client),
     ]);
+
+    // Build the shepherd-care directory from the SAME active-coverage set the
+    // dashboard model uses, so its per-tier needs_attention stamp can't
+    // disagree with the attention queue (Codex review on #138). Sequenced
+    // after the batch because it depends on the assignments read; on a
+    // coverage read failure the set is left undefined and the directory falls
+    // back to the conservative longer (delegated) window.
+    const shepherdDelegatedIds = shepherdAssignmentsResult.error
+      ? undefined
+      : new Set(
+          (shepherdAssignmentsResult.data ?? []).map((a) => a.shepherd_profile_id),
+        );
+    const shepherdDirectoryResult = await fetchShepherdCareDirectoryForAdmin(client, {
+      todayIso,
+      windows: careCadenceWindowsFromDefaults(defaultsForRead),
+      delegatedShepherdIds: shepherdDelegatedIds,
+    });
 
     const firstError =
       groupsResult.error ||

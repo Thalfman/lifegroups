@@ -95,19 +95,31 @@ async function loadData(todayIso: string): Promise<LoadedData> {
   const windows = careCadenceWindowsFromDefaults(
     decodeMetricDefaults(metricDefaultsRes.data ?? null),
   );
-  // The remaining reads are independent; run them in parallel so the page
-  // TTFB is bounded by the slowest query rather than their sum. The
+  // Fetch the coverage assignments + the other independent reads in parallel,
+  // then build the directory from the SAME active-coverage set the dashboard
+  // uses, so the directory's needs_attention can never disagree with the
+  // attention queue (Codex review on #138). When the assignments read fails,
+  // the set is left undefined and the directory falls back to the conservative
+  // longer (delegated) window — consistent with the dashboard, which suppresses
+  // coverage-derived signals via assignmentsAvailable=false below. The
   // directory read receives the same todayIso the page later uses for the
   // dashboard model so a request straddling UTC midnight can't produce a
   // directory and a dashboard built off different calendar days.
-  const [directory, overShepherdsRes, assignmentsRes, recentRes, followUpsRes] =
+  const [overShepherdsRes, assignmentsRes, recentRes, followUpsRes] =
     await Promise.all([
-      fetchShepherdCareDirectoryForAdmin(client, { todayIso, windows }),
       fetchOverShepherdsForAdmin(client, { includeArchived: true }),
       fetchActiveShepherdCoverageAssignmentsForAdmin(client),
       fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
       fetchOutstandingCareFollowUpsForAdmin(client),
     ]);
+  const delegatedShepherdIds = assignmentsRes.error
+    ? undefined
+    : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
+  const directory = await fetchShepherdCareDirectoryForAdmin(client, {
+    todayIso,
+    windows,
+    delegatedShepherdIds,
+  });
   if (directory.error) {
     return {
       entries: [],

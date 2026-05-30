@@ -995,7 +995,18 @@ export function computeNeedsAttention(
  */
 export async function fetchShepherdCareDirectoryForAdmin(
   client: ReadClient,
-  options: { todayIso?: string; windows?: CareCadenceWindows } = {},
+  options: {
+    todayIso?: string;
+    windows?: CareCadenceWindows;
+    // Julian Q5: the shepherds with an active over-shepherd assignment (the
+    // delegated tier, longer window); anyone else is directly-overseen
+    // (shorter window). The caller passes the SAME active-coverage set the
+    // dashboard uses, so the directory's needs_attention can never disagree
+    // with the queue. Omitted => every shepherd is treated as delegated (the
+    // conservative longer window), which is also exactly right for callers
+    // where every shepherd is delegated by definition.
+    delegatedShepherdIds?: ReadonlySet<string>;
+  } = {},
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
     .from("profiles")
@@ -1019,24 +1030,11 @@ export async function fetchShepherdCareDirectoryForAdmin(
   // Skipping the fetch entirely when there are no shepherd ids keeps
   // the PostgREST `.in("col", [])` edge case off the wire.
   let careRows: ShepherdCareDirectorySummary[] = [];
-  // Julian Q5: which of these shepherds carry an active over-shepherd
-  // assignment (the delegated tier, longer staleness window). Anyone not in
-  // this set is directly-overseen (shorter window). Left undefined when the
-  // coverage read fails, which makes buildCareDirectoryEntries fall back to
-  // the conservative longer window rather than over-flagging.
-  let delegatedShepherdIds: ReadonlySet<string> | undefined;
   if (shepherdIds.length > 0) {
-    const [careQuery, coverageQuery] = await Promise.all([
-      client
-        .from("shepherd_care_profiles")
-        .select(SHEPHERD_CARE_DIRECTORY_COLUMNS)
-        .in("shepherd_profile_id", shepherdIds),
-      client
-        .from("shepherd_coverage_assignments")
-        .select("shepherd_profile_id")
-        .eq("active", true)
-        .in("shepherd_profile_id", shepherdIds),
-    ]);
+    const careQuery = await client
+      .from("shepherd_care_profiles")
+      .select(SHEPHERD_CARE_DIRECTORY_COLUMNS)
+      .in("shepherd_profile_id", shepherdIds);
     if (careQuery.error) {
       return {
         data: null,
@@ -1044,13 +1042,6 @@ export async function fetchShepherdCareDirectoryForAdmin(
       };
     }
     careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
-    if (!coverageQuery.error) {
-      delegatedShepherdIds = new Set(
-        (coverageQuery.data ?? []).map(
-          (r) => (r as { shepherd_profile_id: string }).shepherd_profile_id,
-        ),
-      );
-    }
   }
 
   const profiles = (profilesQuery.data ?? []) as Pick<
@@ -1062,7 +1053,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
     data: buildCareDirectoryEntries(profiles, careRows, {
       todayIso: options.todayIso,
       windows: options.windows,
-      delegatedShepherdIds,
+      delegatedShepherdIds: options.delegatedShepherdIds,
     }),
     error: null,
   };
