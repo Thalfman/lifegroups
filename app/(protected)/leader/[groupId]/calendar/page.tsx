@@ -17,15 +17,14 @@ import {
   fetchGroupsByIds,
 } from "@/lib/supabase/read-models";
 import {
-  churchMonthIso,
   generateMonthOccurrences,
   mergeOverrides,
   monthBounds,
   monthLabel,
   shiftMonthIso,
-  todayChurchIso,
   toSavedOverrides,
 } from "@/lib/calendar/occurrences";
+import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
 import type { GroupsRow } from "@/types/database";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
@@ -93,7 +92,7 @@ export default async function LeaderCalendarPage({
 
   const events = eventsResult.data ?? [];
   const groupClosed = group.lifecycle_status === "closed";
-  const todayIso = todayChurchIso();
+  const todayIso = churchTodayIso();
   const generated = generateMonthOccurrences(
     {
       meetingDay: group.meeting_day,

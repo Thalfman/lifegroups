@@ -60,7 +60,7 @@ import { pipelineStageLabel } from "./labels";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
 // dashboard agree on what "this week" means.
-import { isoWeekStart, localTodayIso } from "@/lib/leader/validation";
+import { isoWeekStart, churchTodayIso } from "@/lib/shared/church-time";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import {
   capacityStatus as computeCapacityStatus,
@@ -1178,7 +1178,7 @@ async function buildLeaderGroupDashboard(
   // The floor is today's church-local calendar date so a Wednesday view
   // doesn't show Monday's already-past meeting; the ceiling is the same
   // 8-week horizon used by the calendar fetch so the merge is complete.
-  const todayIso = localTodayIso();
+  const todayIso = churchTodayIso();
   const horizonEndIso = addDaysIsoForWeek(todayIso, 8 * 7);
   const generated = generateOccurrencesInRange(
     {

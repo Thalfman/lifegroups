@@ -31,6 +31,15 @@ const fallbackPipelineBreakdown: PipelineStageCount[] = GUEST_PIPELINE_STAGES.ma
   }),
 );
 
+// Derive the headline count from the same breakdown using the live
+// builder's rule (lib/dashboard/queries.ts: every stage except the
+// terminal `placed` / `not_now`). Deriving rather than hardcoding keeps
+// the fallback's count from silently drifting out of step with its own
+// breakdown or with the live read's semantics.
+const fallbackGuestPipelineCount = fallbackPipelineBreakdown
+  .filter((row) => row.stage !== "placed" && row.stage !== "not_now")
+  .reduce((sum, row) => sum + row.count, 0);
+
 const FALLBACK_WEEK = "2026-05-18";
 const FALLBACK_WEEK_LABEL = "Week of May 18, 2026";
 
@@ -461,7 +470,7 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
       noMembers: setupNoMembers.length,
     },
   },
-  guestPipelineCount: 23,
+  guestPipelineCount: fallbackGuestPipelineCount,
   guestPipelineBreakdown: fallbackPipelineBreakdown,
   followUps: [
     {

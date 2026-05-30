@@ -10,7 +10,7 @@ import type { ActionResult } from "@/lib/leader/action-result";
 // Match the church-local timezone the server uses for "today" so the
 // meeting_date prefill is the leader's wall-clock day even if their
 // browser or the rendering server is in a different timezone.
-import { CHURCH_TIMEZONE } from "@/lib/leader/validation";
+import { CHURCH_TIMEZONE } from "@/lib/shared/church-time";
 
 type AttendanceStatus = "present" | "absent" | "excused";
 type SessionStatus = "submitted" | "did_not_meet" | "planned_pause";

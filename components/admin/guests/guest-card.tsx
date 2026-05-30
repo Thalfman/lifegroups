@@ -4,7 +4,10 @@ import { useActionState, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge } from "@/components/pastoral/atoms";
 import { adminUpdateGuestPipeline } from "@/app/(protected)/admin/guests/actions";
-import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import {
+  GUEST_PIPELINE_STAGES,
+  type GuestDirectoryEntry,
+} from "@/lib/supabase/read-models";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
 import {
@@ -15,7 +18,7 @@ import {
   successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import type { ActionResult } from "@/lib/admin/action-result";
-import type { GroupsRow, GuestsRow, ProfilesRow } from "@/types/database";
+import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
@@ -30,7 +33,7 @@ export function GuestCard({
   ownerProfiles,
   openFollowUpsCount,
 }: {
-  guest: GuestsRow;
+  guest: GuestDirectoryEntry;
   groupsById: Map<string, GroupsRow>;
   ownersById: Map<string, ProfilesRow>;
   activeGroups: GroupsRow[];

@@ -16,7 +16,7 @@ import {
   fetchMembersByIds,
   fetchMetricDefaults,
 } from "@/lib/supabase/read-models";
-import { isoWeekStart } from "@/lib/leader/validation";
+import { isoWeekStart } from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,

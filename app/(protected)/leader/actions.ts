@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 import {
   validateLeaderCheckinPayload,
-  isoWeekStart,
   type LeaderCheckinPayload,
 } from "@/lib/leader/validation";
+import { isoWeekStart } from "@/lib/shared/church-time";
 import { type ActionResult } from "@/lib/leader/action-result";
 import {
   runLeaderWriteAction,

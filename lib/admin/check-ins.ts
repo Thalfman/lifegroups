@@ -27,7 +27,7 @@ import {
   fetchMetricDefaults,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
-import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/leader/validation";
+import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,

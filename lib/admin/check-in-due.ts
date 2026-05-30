@@ -9,7 +9,7 @@
 // check-in screen, and the admin check-ins review aligned -- no
 // component recomputes "due" with its own date math.
 
-import { CHURCH_TIMEZONE } from "@/lib/leader/validation";
+import { CHURCH_TIMEZONE, isoWeekNumberOf } from "@/lib/shared/church-time";
 import {
   effectiveCheckInDueOffsetHours,
   type MetricDefaults,
@@ -187,31 +187,6 @@ function meetingOccurrenceInWeek(
     minute: meetingMinute,
     dayOfWeek: targetDay,
   };
-}
-
-// ISO week number (1..53) for any YYYY-MM-DD date. Works on a Monday
-// (the legacy call site `groupMeetsInWeek` passes the Monday-of-week
-// per `lib/leader/validation.isoWeekStart`) as well as on arbitrary
-// calendar dates (used by the occurrence generator in
-// `lib/calendar/occurrences.ts` when iterating day-by-day). Exported so
-// the calendar generator and the cadence check stay aligned on a single
-// week-number implementation.
-export function isoWeekNumberOf(meetingWeekIso: string): number | null {
-  const anchor = new Date(`${meetingWeekIso}T00:00:00Z`);
-  if (Number.isNaN(anchor.getTime())) return null;
-  // Standard ISO week calculation: nearest Thursday is in the right year,
-  // then count weeks from that year's first Thursday.
-  const d = new Date(
-    Date.UTC(
-      anchor.getUTCFullYear(),
-      anchor.getUTCMonth(),
-      anchor.getUTCDate(),
-    ),
-  );
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 // Returns true when a group with the given cadence is scheduled to meet

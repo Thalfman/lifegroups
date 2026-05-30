@@ -15,15 +15,14 @@ import {
   fetchGroupsByIds,
 } from "@/lib/supabase/read-models";
 import {
-  churchMonthIso,
   generateMonthOccurrences,
   mergeOverrides,
   monthBounds,
   monthLabel,
   shiftMonthIso,
-  todayChurchIso,
   toSavedOverrides,
 } from "@/lib/calendar/occurrences";
+import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
 import type { GroupsRow } from "@/types/database";
 import {
   adminArchiveCalendarEvent,
@@ -87,7 +86,7 @@ export default async function AdminGroupCalendarPage({
   if (eventsResult.error) throw eventsResult.error;
 
   const events = eventsResult.data ?? [];
-  const todayIso = todayChurchIso();
+  const todayIso = churchTodayIso();
   const generated = generateMonthOccurrences(
     {
       meetingDay: group.meeting_day,
