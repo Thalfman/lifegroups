@@ -27,6 +27,9 @@ import {
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
+// Julian #145: the multiplication pipeline now lives on its own surface; the
+// candidate writes below revalidate it so edits show up there immediately.
+const REVALIDATE_PATH_MULTIPLICATION = "/admin/multiplication";
 
 // Keep this list in lockstep with the validator's whitelist. The form
 // only POSTs keys that were actually submitted (we read each by name),
@@ -185,7 +188,7 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
     }),
-  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
   noDataError: "The candidate was not saved. Please try again.",
 };
 
@@ -214,7 +217,7 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
     }),
-  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
   noDataError: "The candidate was not saved. Please try again.",
 };
 
@@ -234,7 +237,7 @@ const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: str
   validate: validateCandidateIdPayload,
   rpc: (client, value) =>
     rpcAdminArchiveMultiplicationCandidate(client, { p_candidate_id: value.candidate_id }),
-  revalidate: () => REVALIDATE_PATH_LAUNCH_PLANNING,
+  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
   noDataError: "The candidate was not archived. Please try again.",
 };
 

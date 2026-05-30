@@ -71,6 +71,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/shepherd-care", label: "Shepherd care" });
     items.push({ href: "/admin/launch-planning", label: "Launch planning" });
+    items.push({ href: "/admin/multiplication", label: "Multiplication" });
     items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
     items.push({ href: "/admin/people", label: "People" });
     items.push({ href: "/admin/groups", label: "Groups" });
@@ -130,6 +131,7 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       items: [
         { href: "/admin/shepherd-care", label: "Shepherd care", icon: "heart" },
         { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
+        { href: "/admin/multiplication", label: "Multiplication", icon: "sprout" },
         { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
       ],
     },

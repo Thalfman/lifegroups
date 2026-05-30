@@ -16,7 +16,9 @@ import type {
   GroupAudienceCategory,
   GroupLifeStage,
   MultiplicationCandidateStatus,
+  MultiplicationMeetingTime,
 } from "@/types/enums";
+import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
 
 export const MULTIPLICATION_MIN_MEMBERS = 12;
 export const MULTIPLICATION_MIN_YEARS_ACTIVE = 3;
@@ -127,4 +129,111 @@ export function segmentLabel(
   const a = audience ? AUDIENCE_LABEL[audience] : "Unsegmented";
   const s = lifeStage ? LIFE_STAGE_LABEL[lifeStage] : null;
   return s ? `${a} · ${s}` : a;
+}
+
+// The per-candidate facts the planner surface renders: the group identity, the
+// editable planning fields, and the derived readiness. Computed once on the
+// server so the client component stays presentational.
+export type CandidateView = {
+  candidateId: string;
+  groupName: string;
+  segment: string;
+  targetYear: number | null;
+  status: MultiplicationCandidateStatus;
+  shepherdWilling: boolean;
+  needsSimilarStage: boolean;
+  notes: string | null;
+  successorDesignate: string | null;
+  meetingTime: MultiplicationMeetingTime | null;
+  activeMemberCount: number;
+  readiness: ReadinessResult;
+};
+
+export type SegmentGroup = { segment: string; candidates: CandidateView[] };
+
+// Julian #145: turn the read model's enriched candidate entries into the
+// segmented, readiness-scored view the planner renders. Grouped by audience ×
+// life stage (the Doc's gender-category × age-bracket shape) and sorted by
+// segment label so the layout is stable and scannable. Pure — readiness is
+// computed against the supplied `todayIso`.
+export function buildPlannerSegments(
+  entries: MultiplicationCandidateEntry[],
+  todayIso: string,
+): SegmentGroup[] {
+  const segmentMap = new Map<string, SegmentGroup>();
+  for (const entry of entries) {
+    const segment = segmentLabel(
+      entry.group?.audience_category ?? null,
+      entry.group?.life_stage ?? null,
+    );
+    const view: CandidateView = {
+      candidateId: entry.candidate.id,
+      groupName: entry.group?.name ?? "Unknown group",
+      segment,
+      targetYear: entry.candidate.target_year,
+      status: entry.candidate.status,
+      shepherdWilling: entry.candidate.shepherd_willing,
+      needsSimilarStage: entry.candidate.needs_similar_stage,
+      notes: entry.candidate.notes,
+      successorDesignate: entry.candidate.successor_designate,
+      meetingTime: entry.candidate.meeting_time,
+      activeMemberCount: entry.activeMemberCount,
+      readiness: evaluateReadiness(
+        {
+          activeMemberCount: entry.activeMemberCount,
+          launchedOn: entry.group?.launched_on ?? null,
+          coShepherdSince: entry.coShepherdSince,
+          shepherdWilling: entry.candidate.shepherd_willing,
+          needsSimilarStage: entry.candidate.needs_similar_stage,
+        },
+        todayIso,
+      ),
+    };
+    const bucket = segmentMap.get(segment);
+    if (bucket) bucket.candidates.push(view);
+    else segmentMap.set(segment, { segment, candidates: [view] });
+  }
+  return [...segmentMap.values()].sort((a, b) => a.segment.localeCompare(b.segment));
+}
+
+// The active year filter: "all" shows every cohort; a number shows that
+// target year; null shows the candidates whose year is not yet decided.
+export type TargetYearFilter = number | null | "all";
+
+// Julian #145 / R4: narrow the segmented view to a single target-year cohort.
+// "all" is a pass-through; any other value keeps only the matching candidates
+// and drops segments left empty so the surface stays scannable.
+export function filterSegmentsByYear(
+  segments: SegmentGroup[],
+  filter: TargetYearFilter,
+): SegmentGroup[] {
+  if (filter === "all") return segments;
+  return segments
+    .map((segment) => ({
+      segment: segment.segment,
+      candidates: segment.candidates.filter((c) => c.targetYear === filter),
+    }))
+    .filter((segment) => segment.candidates.length > 0);
+}
+
+export type TargetYearTally = { year: number | null; count: number };
+
+// Julian #145 / R4: count candidates per target year so the planner can show
+// the 2026-vs-2027 split at a glance and offer a year filter. Years sort
+// ascending; the "unset" bucket (no year decided yet) sorts last because it is
+// the work still to be resolved.
+export function summarizeTargetYears(segments: SegmentGroup[]): TargetYearTally[] {
+  const counts = new Map<number | null, number>();
+  for (const segment of segments) {
+    for (const c of segment.candidates) {
+      counts.set(c.targetYear, (counts.get(c.targetYear) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => {
+      if (a.year === null) return 1;
+      if (b.year === null) return -1;
+      return a.year - b.year;
+    });
 }

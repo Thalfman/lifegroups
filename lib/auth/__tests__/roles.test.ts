@@ -114,6 +114,21 @@ describe("navItemsForRole", () => {
   it("gives staff_viewer only the home item", () => {
     expect(navItemsForRole("staff_viewer").map((i) => i.href)).toEqual(["/"]);
   });
+
+  // Julian #145: the multiplication pipeline is promoted to its own admin
+  // surface and must be reachable from the admin nav for admin roles only.
+  it("surfaces /admin/multiplication for admin roles only", () => {
+    for (const role of ["super_admin", "ministry_admin"] as const) {
+      expect(navItemsForRole(role).map((i) => i.href)).toContain(
+        "/admin/multiplication",
+      );
+    }
+    for (const role of ["over_shepherd", "leader", "co_leader", "staff_viewer"] as const) {
+      expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
+        "/admin/multiplication",
+      );
+    }
+  });
 });
 
 describe("adminNavGroups", () => {
@@ -141,7 +156,7 @@ describe("adminNavGroups", () => {
     }
   });
 
-  it("leads the shepherd group with shepherd care + launch planning", () => {
+  it("leads the shepherd group with shepherd care + launch planning + multiplication", () => {
     const groups = adminNavGroups("ministry_admin");
     const shepherd = groups.find((g) => g.group === "shepherd");
     expect(shepherd).toBeDefined();
@@ -149,6 +164,7 @@ describe("adminNavGroups", () => {
     expect(shepherd!.items.map((i) => i.href)).toEqual([
       "/admin/shepherd-care",
       "/admin/launch-planning",
+      "/admin/multiplication",
       "/admin/follow-ups",
     ]);
   });

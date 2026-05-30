@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
@@ -10,8 +10,13 @@ import {
 import {
   CANDIDATE_STATUS_LABEL,
   CRITERION_LABEL,
+  filterSegmentsByYear,
+  summarizeTargetYears,
+  type CandidateView,
   type MultiplicationCriterion,
   type ReadinessResult,
+  type SegmentGroup,
+  type TargetYearFilter,
 } from "@/lib/admin/multiplication";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
@@ -28,22 +33,7 @@ import type {
 
 type State = ActionResult<{ id: string }> | undefined;
 
-export type CandidateView = {
-  candidateId: string;
-  groupName: string;
-  segment: string;
-  targetYear: number | null;
-  status: MultiplicationCandidateStatus;
-  shepherdWilling: boolean;
-  needsSimilarStage: boolean;
-  notes: string | null;
-  successorDesignate: string | null;
-  meetingTime: MultiplicationMeetingTime | null;
-  activeMemberCount: number;
-  readiness: ReadinessResult;
-};
-
-export type SegmentGroup = { segment: string; candidates: CandidateView[] };
+export type { CandidateView, SegmentGroup };
 
 const STATUS_OPTIONS: MultiplicationCandidateStatus[] = [
   "watching",
@@ -212,6 +202,11 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
 
 function CandidateRow({ c }: { c: CandidateView }) {
   const [editing, setEditing] = useState(false);
+  // Doc-shaped read view: surface the planning facts Julian scans for —
+  // successor and meeting time — without opening the edit form.
+  const facts: string[] = [];
+  if (c.successorDesignate) facts.push(`Successor: ${c.successorDesignate}`);
+  if (c.meetingTime) facts.push(MEETING_TIME_LABEL[c.meetingTime]);
   return (
     <div
       style={{
@@ -228,10 +223,15 @@ function CandidateRow({ c }: { c: CandidateView }) {
         </strong>
         <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
           {CANDIDATE_STATUS_LABEL[c.status]}
-          {c.targetYear ? ` · target ${c.targetYear}` : ""} · {c.activeMemberCount} members ·{" "}
+          {c.targetYear ? ` · target ${c.targetYear}` : " · year TBD"} · {c.activeMemberCount} members ·{" "}
           {c.readiness.metCount}/{c.readiness.totalCount} criteria
         </span>
       </div>
+      {facts.length > 0 ? (
+        <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
+          {facts.join(" · ")}
+        </span>
+      ) : null}
       <ReadinessChips readiness={c.readiness} />
       <button
         type="button"
@@ -361,13 +361,77 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
   );
 }
 
-export function MultiplicationPipelinePanel({
+function yearFilterLabel(year: number | null): string {
+  return year === null ? "Year TBD" : String(year);
+}
+
+// R4: the target-year filter bar. Counts come from the full (unfiltered)
+// segments so the split stays visible regardless of the active filter.
+function YearFilterBar({
+  segments,
+  active,
+  onChange,
+}: {
+  segments: SegmentGroup[];
+  active: TargetYearFilter;
+  onChange: (f: TargetYearFilter) => void;
+}) {
+  const tallies = useMemo(() => summarizeTargetYears(segments), [segments]);
+  const total = tallies.reduce((sum, t) => sum + t.count, 0);
+  const chips: { key: string; label: string; value: TargetYearFilter }[] = [
+    { key: "all", label: `All · ${total}`, value: "all" },
+    ...tallies.map((t) => ({
+      key: t.year === null ? "tbd" : String(t.year),
+      label: `${yearFilterLabel(t.year)} · ${t.count}`,
+      value: t.year,
+    })),
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="Filter by target year"
+      style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+    >
+      {chips.map((chip) => {
+        const isActive = chip.value === active;
+        return (
+          <button
+            key={chip.key}
+            type="button"
+            aria-pressed={isActive}
+            onClick={() => onChange(chip.value)}
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              padding: "4px 12px",
+              borderRadius: 999,
+              cursor: "pointer",
+              border: `1px solid ${isActive ? P.terra : P.line}`,
+              background: isActive ? P.terraSoft : P.surface,
+              color: isActive ? "#7d3621" : P.ink2,
+              fontWeight: isActive ? 600 : 400,
+            }}
+          >
+            {chip.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function MultiplicationPlanner({
   segments,
   availableGroups,
 }: {
   segments: SegmentGroup[];
   availableGroups: { id: string; name: string }[];
 }) {
+  const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
+  const visible = useMemo(
+    () => filterSegmentsByYear(segments, yearFilter),
+    [segments, yearFilter],
+  );
   return (
     <section
       style={{
@@ -398,18 +462,27 @@ export function MultiplicationPipelinePanel({
         <p style={{ margin: "6px 0 0", fontFamily: fontBody, fontSize: 12, color: P.ink3, lineHeight: 1.5 }}>
           Groups slated to multiply, grouped by audience and life stage.
           Readiness chips reflect Julian&rsquo;s criteria; a group does not need
-          to meet all of them.
+          to meet all of them. Filter by target year to resolve the 2026 / 2027
+          split.
         </p>
       </header>
 
       <AddCandidateForm availableGroups={availableGroups} />
 
+      {segments.length === 0 ? null : (
+        <YearFilterBar segments={segments} active={yearFilter} onChange={setYearFilter} />
+      )}
+
       {segments.length === 0 ? (
         <p style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2, margin: 0 }}>
           No candidates yet. Add a group above to start the pipeline.
         </p>
+      ) : visible.length === 0 ? (
+        <p style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2, margin: 0 }}>
+          No candidates match this target year.
+        </p>
       ) : (
-        segments.map((seg) => (
+        visible.map((seg) => (
           <div key={seg.segment} style={{ display: "grid", gap: 8 }}>
             <h3
               style={{
