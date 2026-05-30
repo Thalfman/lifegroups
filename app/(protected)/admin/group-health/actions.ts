@@ -119,57 +119,37 @@ export async function recomputeGroupHealthFormAction(
   await adminRecomputeGroupHealthAssessment(undefined, formData);
 }
 
-// #128 ratings write: capture the admin-entered spiritual-growth and/or relayed
-// group-question 1–5 ratings for the current month, recompute the composite, and
-// persist through the audited runner. Each dimension carries a `set_` flag; an
-// untouched dimension keeps its prior value (merged from the persisted row) so a
-// single-dimension edit never clobbers the other. The RPC forces the
-// group-question leader-reported provenance flag server-side.
+// #128 ratings write: capture the admin-entered spiritual-growth + relayed
+// group-question 1–5 ratings (+ note) for the current month, recompute the
+// composite, and persist through the audited runner. The editor submits the
+// full state of both dimensions, so the validated payload IS the desired row (an
+// empty score is an explicit clear) — no merge-from-prior needed. The RPC forces
+// the group-question leader-reported provenance flag server-side.
 const RATINGS_SPEC: AdminWriteActionSpec<GroupHealthRatingsPayload, { id: string }> = {
   name: "admin.group_health.set_ratings",
-  // The form posts the set_ flags, scores, and note alongside group_id, so the
-  // keys lift must name all of them — the runner's default forwards only the
-  // listed FormData fields, and a short list would hand the validator an
-  // untouched payload (rejecting every Save).
+  // The form posts both scores and the note alongside group_id; the runner's
+  // default lift forwards only the listed FormData fields, so name them all.
   keys: [
     "group_id",
-    "set_spiritual_growth",
     "spiritual_growth_score",
     "spiritual_growth_note",
-    "set_group_question",
     "group_question_score",
   ],
   validate: validateGroupHealthRatingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: async (client, value) => {
-    const priorRes = await fetchGroupHealthRatings(client, value.group_id);
-    if (priorRes.error) {
-      return { data: null, error: { message: "ratings_read_failed" } };
-    }
-    // Merge the edit onto the persisted values: a set dimension takes the new
-    // value (including an explicit clear to null); an untouched one is preserved.
-    const spiritualScore = value.set_spiritual_growth
-      ? value.spiritual_growth_score
-      : priorRes.data.spiritual_growth_score;
-    const spiritualNote = value.set_spiritual_growth
-      ? value.spiritual_growth_note
-      : priorRes.data.spiritual_growth_note;
-    const questionScore = value.set_group_question
-      ? value.group_question_score
-      : priorRes.data.group_question_score;
-
     const recomputed = await recomputeGrade(client, value.group_id, {
-      spiritual_growth_score: spiritualScore,
-      group_question_score: questionScore,
+      spiritual_growth_score: value.spiritual_growth_score,
+      group_question_score: value.group_question_score,
     });
     if (recomputed.error) return { data: null, error: recomputed.error };
 
     return rpcAdminSetGroupHealthRatings(client, {
       p_group_id: value.group_id,
       p_period_month: currentPeriodMonthIso(),
-      p_spiritual_growth_score: spiritualScore,
-      p_spiritual_growth_note: spiritualNote,
-      p_group_question_score: questionScore,
+      p_spiritual_growth_score: value.spiritual_growth_score,
+      p_spiritual_growth_note: value.spiritual_growth_note,
+      p_group_question_score: value.group_question_score,
       p_attendance_pct: recomputed.data.attendance_pct,
       p_attendance_weeks_counted: recomputed.data.attendance_weeks_counted,
       p_computed_numeric: recomputed.data.computed_numeric,

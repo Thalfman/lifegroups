@@ -114,8 +114,6 @@ export default async function GroupHealthPage() {
                     className="flex flex-wrap items-end gap-2"
                   >
                     <input type="hidden" name="group_id" value={row.group_id} />
-                    <input type="hidden" name="set_spiritual_growth" value="true" />
-                    <input type="hidden" name="set_group_question" value="true" />
                     <label className="flex flex-col text-xs text-gray-600">
                       <span className="sr-only">{SPIRITUAL_GROWTH_LABEL}</span>
                       Growth

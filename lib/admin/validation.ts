@@ -835,16 +835,14 @@ export function validateGroupMetricSettingsPayload(
 
 // Group-Health Grade rated dimensions (#128). The two net-new admin-entered
 // 1–5 ratings — spiritual growth (+ optional pastoral note) and the relayed
-// group question. Each dimension carries a `set_` flag so the admin can edit one
-// without clobbering the other; a toggled-but-empty score is an explicit clear
-// (null). The leader-reported provenance of the group question is forced
-// server-side in the RPC, so it is not a client input here.
+// group question — captured together: the editor submits the full state of both
+// for the group's month, so the payload IS the desired row (an empty score is an
+// explicit clear). The leader-reported provenance of the group question is
+// forced server-side in the RPC, so it is not a client input here.
 export type GroupHealthRatingsPayload = {
   group_id: string;
-  set_spiritual_growth: boolean;
   spiritual_growth_score: number | null;
   spiritual_growth_note: string | null;
-  set_group_question: boolean;
   group_question_score: number | null;
 };
 
@@ -856,10 +854,7 @@ export function validateGroupHealthRatingsPayload(
 
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
 
-  const setSpiritual = readBooleanFlag(input.set_spiritual_growth);
-  const setQuestion = readBooleanFlag(input.set_group_question);
-
-  // A toggled rating is either a 1–5 or empty (an explicit clear → null).
+  // Each rating is a 1–5 or empty (an explicit clear → null).
   const readRating = (raw: unknown, label: string): number | null => {
     const n = readOptionalInteger(raw);
     if (n === "invalid") {
@@ -874,26 +869,21 @@ export function validateGroupHealthRatingsPayload(
     return n;
   };
 
-  let spiritualScore: number | null = null;
-  if (setSpiritual) spiritualScore = readRating(input.spiritual_growth_score, "Spiritual-growth");
+  const spiritualScore = readRating(input.spiritual_growth_score, "Spiritual-growth");
+  const questionScore = readRating(input.group_question_score, "Group-question");
 
-  let questionScore: number | null = null;
-  if (setQuestion) questionScore = readRating(input.group_question_score, "Group-question");
-
+  const noteRaw = readOptionalString(input.spiritual_growth_note);
   let note: string | null = null;
-  if (setSpiritual) {
-    const raw = readOptionalString(input.spiritual_growth_note);
-    if (raw !== undefined && raw.length > 2000) {
-      errors.push("Spiritual-growth note is too long (max 2000 characters).");
-    } else {
-      note = raw ?? null;
-    }
+  if (noteRaw !== undefined && noteRaw.length > 2000) {
+    errors.push("Spiritual-growth note is too long (max 2000 characters).");
+  } else {
+    note = noteRaw ?? null;
   }
 
-  // At least one dimension must be touched; an edit that changes nothing would
-  // still write an audit row, which is wasteful (mirrors the care-profile rule).
-  if (!setSpiritual && !setQuestion) {
-    errors.push("Choose at least one dimension to update.");
+  // Reject an all-empty submit: it would wipe both ratings + the note and write
+  // an audit row for a no-op. Clearing one rating while the other stands is fine.
+  if (spiritualScore === null && questionScore === null && note === null) {
+    errors.push("Enter at least one rating or a note.");
   }
 
   if (errors.length > 0) return { ok: false, errors };
@@ -902,11 +892,9 @@ export function validateGroupHealthRatingsPayload(
     ok: true,
     value: {
       group_id: normalizeUuid(input.group_id as string),
-      set_spiritual_growth: setSpiritual,
-      spiritual_growth_score: setSpiritual ? spiritualScore : null,
-      spiritual_growth_note: setSpiritual ? note : null,
-      set_group_question: setQuestion,
-      group_question_score: setQuestion ? questionScore : null,
+      spiritual_growth_score: spiritualScore,
+      spiritual_growth_note: note,
+      group_question_score: questionScore,
     },
   };
 }

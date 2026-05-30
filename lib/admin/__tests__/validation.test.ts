@@ -313,13 +313,12 @@ describe("validateGroupHealthRatingsPayload", () => {
   it("rejects a non-uuid group_id", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: "nope",
-      set_spiritual_growth: "true",
       spiritual_growth_score: "4",
     });
     expect(r.ok).toBe(false);
   });
 
-  it("rejects a payload that toggles no dimension", () => {
+  it("rejects an all-empty submit (no ratings, no note)", () => {
     const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -330,19 +329,17 @@ describe("validateGroupHealthRatingsPayload", () => {
   it("rejects an out-of-range rating", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: UUID_A,
-      set_spiritual_growth: "true",
       spiritual_growth_score: "6",
     });
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.errors.some((e) => /1 (and|to|through).*5|between 1 and 5/i.test(e))).toBe(true);
+      expect(r.errors.some((e) => /between 1 and 5/i.test(e))).toBe(true);
     }
   });
 
   it("rejects an oversized spiritual-growth note", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: UUID_A,
-      set_spiritual_growth: "true",
       spiritual_growth_score: "3",
       spiritual_growth_note: "a".repeat(2001),
     });
@@ -352,33 +349,31 @@ describe("validateGroupHealthRatingsPayload", () => {
     }
   });
 
-  it("accepts a spiritual-growth rating + note and canonicalizes the uuid", () => {
+  it("accepts both ratings + note and canonicalizes the uuid", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: UUID_A.toUpperCase(),
-      set_spiritual_growth: "true",
       spiritual_growth_score: "4",
       spiritual_growth_note: "  steady growth  ",
+      group_question_score: "3",
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.group_id).toBe(UUID_A);
-      expect(r.value.set_spiritual_growth).toBe(true);
       expect(r.value.spiritual_growth_score).toBe(4);
       expect(r.value.spiritual_growth_note).toBe("steady growth");
-      // An untouched dimension carries no edit.
-      expect(r.value.set_group_question).toBe(false);
+      expect(r.value.group_question_score).toBe(3);
     }
   });
 
-  it("treats a toggled-but-empty rating as an explicit clear (null score)", () => {
+  it("treats an empty score as an explicit clear (null) while the other stands", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: UUID_A,
-      set_group_question: "true",
+      spiritual_growth_score: "4",
       group_question_score: "",
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.set_group_question).toBe(true);
+      expect(r.value.spiritual_growth_score).toBe(4);
       expect(r.value.group_question_score).toBeNull();
     }
   });
