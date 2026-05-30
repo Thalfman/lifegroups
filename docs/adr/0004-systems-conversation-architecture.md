@@ -22,21 +22,35 @@ interaction must remember (issue/good-thing + whether/when/what follow-up).
 [`../julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)
 map onto profile fields.
 
-## D2 — A per-leader status enum, kept small  · _answers Q2_
-**Decision.** Ship one low-cardinality `shepherd_care_status`
-(`healthy / watch / needs_attention`) plus free-text notes, rather than encoding
-Julian's candidate five-word vocabulary. Q2 showed he thinks in *issue + next step*,
-not a fixed taxonomy.
-**Open.** Whether to widen the enum to his five words is deferred to Julian (see PRD Q2);
-the enum is the cheap thing to change later.
+## D2 — A per-leader status enum  · _answers Q2_
+**Decision.** Ship one `shepherd_care_status` enum plus free-text notes. Originally three
+low-cardinality values (`healthy / watch / needs_attention`); **resolved 2026-05-30** to
+adopt Julian's five verbatim — `doing_well / needs_encouragement / needs_follow_up /
+concern / inactive`. The note field still carries the "next step" Julian thinks in; the
+enum carries "is there an issue, and how bad."
+**Migration.** Backfill existing rows `healthy → doing_well`, `watch →
+needs_encouragement`, `needs_attention → needs_follow_up` (the milder action state, so the
+migration never silently escalates a record to `concern`). `concern` and `inactive` are
+net-new, populated by hand. The one-time backfill is a schema migration, not a
+`runAdminWriteAction` call; *ongoing* status edits keep flowing through the audited runner.
+**Note.** `inactive` is a lifecycle state, not a severity level — it shares the enum but
+reads on a different axis. `needs_follow_up` now also exists in `group_health_status`
+(the pulse); different enum types, distinct concepts (Leader Care Status vs Health Pulse).
 
 ## D3 — Cadence is tiered by oversight, not a global interval  · _answers Q5, Q7_
 **Decision.** There is **no single check-in interval**. Model *who oversees whom*
 (`shepherd_coverage_assignments`) and derive a configurable staleness signal
 (`shepherd_care_stale_days`) instead of a hard cadence. This is the data backbone for
 the oversight ladder in [ADR 0002](./0002-oversight-ladder-and-leader-gating.md).
-**Open.** One staleness window vs. per-tier windows (directly-overseen mixed/couples vs.
-delegated men's/women's) is Julian's call.
+**Resolved 2026-05-30 — per-tier.** Two staleness windows, derived from coverage (no new
+per-group field): **directly-overseen** (falls to the Ministry Admin) gets the shorter
+window — "in the weeds"; **delegated** (has an active over-shepherd assignment) gets the
+longer one, since the over-shepherd carries frequent contact. Proposed defaults **30 / 60
+days** (Julian confirms the exact numbers).
+**Clock source — Julian only, for now.** The staleness clock resets on **Ministry-Admin
+interactions only**; over-shepherds have no write path yet (#126), so there are no
+over-shepherd interactions to count. Once #126 ships, revisit whether an over-shepherd's
+logged note should reset the clock on their delegated groups. Build tracked in #123.
 
 ## D4 — Over-Shepherd is a new, coverage-scoped login tier  · _answers Q5, Q7_
 **Decision.** Add `over_shepherd` to the role ladder with a login bridge and
@@ -72,14 +86,31 @@ authorized and audited uniformly.
 **Known gap.** Reliable *capture* of church attendance is operational, not architectural
 (Q9). **Open:** app vs. Google Doc as system of record (Q11).
 
-## D8 — Group health is deliberately unbuilt  · _answers Q12_
-**Decision.** Do **not** design a group-health schema until Julian's rubric exists. Q12
-says he's *still designing* the evaluation system, and "spiritual growth" has no data
-source today. Keep it in discovery
-([`../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md))
-rather than guess.
-**Open.** Dimensions, weights, output shape, and growth capture — the one gate left on
-Julian's stated vision.
+## D8 — Group health is a tunable, admin-entered rubric  · _answers Q12_
+**Decision (rubric locked 2026-05-30).** The group-health grade is computed from
+**three fixed dimensions** — attendance consistency (rolling 8-week average % vs. the
+configurable healthy threshold), an admin-entered spiritual-growth 1–5, and a leader-
+answered group question relayed and entered by the admin — output as a **letter A–D**
+backed by an internal numeric, on a **monthly** review period. Multiplication readiness
+is excluded to avoid double-counting D7's launch pipeline. The full rubric is
+[`../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md);
+build slices are #127/#128/#129.
+
+**Why it's recorded here.** Two non-obvious calls a future reader will question:
+1. **The rubric is *configuration data, not hardcoded constants*.** Weights, A/B/C/D
+   cut-lines, and per-dimension thresholds are admin-tunable through the audited write
+   path, so the grade math reads from settings, not literals. Julian is "still tuning his
+   evaluation system" — this lets him dial it in over months without an engineer. The
+   *set* of three dimensions stays code-level (each needs its own data source), so the
+   tunability is deliberately bounded.
+2. **The whole grade is admin-entered + computed, by design.** Two of three dimensions are
+   1–5 judgments keyed by the Ministry Admin (spiritual growth; the relayed leader
+   question). This keeps the build off the **frozen leader surface** (LDR.1) and inside
+   the established admin-scoped, `SECURITY DEFINER` + paired-audit pattern.
+
+**Held earlier; superseded.** D8 originally deferred all schema until the rubric existed;
+that gate is now cleared. **Outstanding:** only Julian's exact *question wordings* for the
+two 1–5 inputs.
 
 ---
 
@@ -89,4 +120,5 @@ Julian's stated vision.
 - Two guarantees are load-bearing under review: the **downward-visibility ladder** (ADR 0002)
   and its single **private-note inversion** (ADR 0003 / D5).
 - The open items are all **Julian decisions**, not engineering unknowns: Q2 wording, Q5
-  cadence, Q11 ownership, and Q12 rubric.
+  cadence, and Q11 ownership. Q12's rubric is now **locked** (D8); only Julian's two
+  question wordings remain before #128/#129 ship.

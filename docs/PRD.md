@@ -23,11 +23,12 @@ Detail: [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PL
 category on every leader for quick notes; did **not** adopt the proposed five-word
 vocabulary verbatim.
 **Requirement:** a per-leader status plus free-text notes.
-**Status:** 🟡 **Shipped, wording open.** `shepherd_care_status` enum
-(`healthy / watch / needs_attention`) ships today. Whether to adopt Julian's fuller
-set (doing well / needs encouragement / needs follow-up / concern / inactive) is an
-open refinement — see [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
-❓ **Decision owed:** keep the three, or adopt his five.
+**Status:** 🟡 **Shipped; wording decided, migration pending.** `shepherd_care_status`
+shipped as `healthy / watch / needs_attention`. **Resolved 2026-05-30:** adopt Julian's
+five verbatim — `doing_well / needs_encouragement / needs_follow_up / concern / inactive`
+(ADR 0004 / D2). Backfill maps `healthy→doing_well`, `watch→needs_encouragement`,
+`needs_attention→needs_follow_up`; `concern`/`inactive` are net-new. Mechanical
+implementation tracked in #122.
 
 ## Q3 — What to remember after connecting with a leader
 **Julian:** the issue/concern (or good thing), and whether/when/what follow-up.
@@ -47,10 +48,12 @@ over-shepherds directly; delegated cadence for men's/women's groups that have th
 own over-shepherd. No single standing interval.
 **Requirement:** track who oversees whom; a configurable staleness signal, not a
 fixed global cadence.
-**Status:** 🟡 **Partly shipped.** Over-shepherd coverage ships (SC.2); a
+**Status:** 🟡 **Partly shipped; model decided.** Over-shepherd coverage ships (SC.2); a
 configurable `shepherd_care_stale_days` ships (default 60, migration `20260528120000`).
-❓ **Decision owed:** one staleness window or a different one for directly-overseen
-vs. delegated groups, and what values.
+**Resolved 2026-05-30 (ADR 0004 / D3):** **per-tier** windows derived from coverage —
+directly-overseen (admin) shorter, delegated (has an over-shepherd) longer; proposed
+**30 / 60 days**, Julian confirms the numbers. Staleness clock resets on **Ministry-Admin
+interactions only for now** (over-shepherd reset deferred to when #126 ships). Build in #123.
 
 ## Q6 — History log, task list, or both?
 **Julian:** "Maybe both!"
@@ -111,10 +114,12 @@ designing*).
 **Status:**
 - Job 1 (leaders) — ✅ delivered by Q1–Q8.
 - Job 2 (launches) — ✅ delivered by Q9–Q11.
-- Job 3 (group health) — 🔬 **Discovery, blocked on Julian's rubric.** No schema yet;
-  dimensions/weights/output and how to capture "spiritual growth" are undecided. See
-  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
-  ❓ **Decision owed — this is the one gate left on Julian's stated vision.**
+- Job 3 (group health) — 🟡 **Rubric locked; build pending.** Three dimensions
+  (attendance consistency · admin-entered spiritual-growth 1–5 · a relayed leader
+  1–5), letter A–D output, monthly cadence, tunable weights/cut-lines/thresholds; see
+  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)
+  and ADR 0004 / D8. Build slices #127/#128/#129 can now be cut. ❓ **Only owed:**
+  Julian's exact wording for the two 1–5 questions.
 
 ---
 
@@ -125,7 +130,11 @@ designing. The remaining items are **decisions for Julian** (Q2 wording, Q5 cade
 Q11 pipeline ownership), none of which block launch.
 
 ## Decisions owed by Julian
-1. **Group-health rubric (Q12)** — dimensions, weights, output shape, "spiritual growth" capture. *Gates Job 3.*
-2. **Care cadence (Q5)** — one staleness window or per-oversight-tier, and the values.
-3. **Care-status wording (Q2)** — keep three statuses or adopt his five.
+1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).
+   Only his exact wording for the two 1–5 questions (spiritual growth, relayed group
+   question) is still outstanding before #128/#129 ship.
+2. ~~**Care cadence (Q5)**~~ — ✅ **Resolved** (per-tier, 30/60 proposed, admin-only clock
+   for now; ADR 0004 / D3). Build in #123; Julian confirms the two numbers.
+3. ~~**Care-status wording (Q2)**~~ — ✅ **Resolved** (adopt Julian's five; ADR 0004 / D2).
+   Mechanical migration tracked in #122.
 4. **Multiplication ownership (Q11)** — app as system of record vs. Google Doc, and the 2026/2027 split.
