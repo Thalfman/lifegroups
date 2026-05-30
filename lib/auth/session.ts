@@ -274,6 +274,34 @@ export async function requireLeaderActor(): Promise<
   }
 }
 
+// Server-action variant for the Over-Shepherd surface (#126). Mirrors
+// requireAdminSession() but admits only an active over_shepherd, so the
+// broad-note write never accepts an admin or leader caller. The coverage
+// boundary itself is enforced in the SECURITY DEFINER RPC
+// (auth_over_shepherd_covers); this gate only confirms the login tier.
+export async function requireOverShepherdSession(): Promise<
+  | { ok: true; session: CurrentSession }
+  | { ok: false; error: string }
+> {
+  const session = await getCurrentSession();
+  switch (session.kind) {
+    case "anonymous":
+      return { ok: false, error: "You need to sign in to do that." };
+    case "profile_missing":
+      return { ok: false, error: "Your account isn't set up yet." };
+    case "backend_error":
+      logGuardBackendError("requireOverShepherdSession", session.stage);
+      return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
+    case "authenticated": {
+      if (session.profile.status !== "active")
+        return { ok: false, error: "Your account isn't active." };
+      if (session.profile.role !== "over_shepherd")
+        return { ok: false, error: "Only an over-shepherd can perform that action." };
+      return { ok: true, session };
+    }
+  }
+}
+
 // Server-action variant for the Phase 5A.3 super-admin-only console.
 // Mirrors requireAdminSession() above but tightens the role check to
 // super_admin alone, so role-management writes never accept a

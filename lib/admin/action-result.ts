@@ -73,6 +73,10 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That over-shepherd is inactive. Reactivate them before assigning coverage.",
   missing_assignment:
     "That assignment isn't active. Refresh the page and try again.",
+  // Phase LDR.1 (#126) over-shepherd broad-note token: the caller tried to
+  // write a note on a Shepherd outside their active coverage.
+  not_covered:
+    "That Shepherd isn't in your coverage. Refresh your list and try again.",
   invalid_assigned_at_before_prior:
     "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
   invalid_ended_at_before_start:
