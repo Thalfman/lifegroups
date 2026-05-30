@@ -5,8 +5,8 @@ import type { AttendanceWeekTally, GroupHealthRubricConfig } from "@/lib/admin/g
 import {
   attendanceConsistency,
   computeGrade,
+  decodeGroupHealthRubric,
   dimensionScoresFromInputs,
-  rubricFromMetricDefaults,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
 } from "@/lib/admin/group-health";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
@@ -14,6 +14,7 @@ import {
   fetchAllGroups,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupHealthRubricSetting,
   fetchMetricDefaults,
   type ReadResult,
 } from "@/lib/supabase/read-models";
@@ -44,17 +45,28 @@ export function currentPeriodMonthIso(now: Date = new Date()): string {
     .slice(0, 10);
 }
 
-// Build the rubric from the existing audited metric defaults so a tuned
-// healthy-attendance threshold is honored (a missing settings row decodes to
-// the documented defaults). Read failures propagate rather than silently
-// falling back, so a transient error can't quietly grade on the wrong rubric.
+// Build the live rubric from the audited settings: the admin-tuned weights /
+// cut-lines / attendance window (group_health_rubric, decoded with per-field
+// defaults + validation), with the healthy-attendance threshold overlaid from
+// its canonical home (metric_defaults.default_healthy_attendance_pct). A missing
+// row on either side decodes to the documented defaults; read failures propagate
+// rather than silently falling back, so a transient error can't quietly grade on
+// the wrong rubric.
 export async function fetchGroupHealthRubric(
   client: AppSupabaseClient,
 ): Promise<ReadResult<GroupHealthRubricConfig>> {
-  const res = await fetchMetricDefaults(client);
-  if (res.error) return { data: null, error: wrapError("fetchGroupHealthRubric", res.error) };
-  const defaults = decodeMetricDefaults(res.data);
-  return { data: rubricFromMetricDefaults(defaults), error: null };
+  const rubricRes = await fetchGroupHealthRubricSetting(client);
+  if (rubricRes.error) return { data: null, error: wrapError("fetchGroupHealthRubric", rubricRes.error) };
+
+  const defaultsRes = await fetchMetricDefaults(client);
+  if (defaultsRes.error) return { data: null, error: wrapError("fetchGroupHealthRubric", defaultsRes.error) };
+
+  const tuned = decodeGroupHealthRubric(rubricRes.data?.setting_value ?? null);
+  const metricDefaults = decodeMetricDefaults(defaultsRes.data);
+  return {
+    data: { ...tuned, healthy_attendance_pct: metricDefaults.default_healthy_attendance_pct },
+    error: null,
+  };
 }
 
 // Aggregate the most-recent `limitWeeks` attendance sessions for a group into

@@ -395,6 +395,29 @@ export async function fetchMetricDefaults(
   return { data, error: null };
 }
 
+// Returns the single `group_health_rubric` row from `app_settings`, holding the
+// admin-tuned Group-Health weights / cut-lines / attendance window (#129). No
+// row yet means the rubric has never been tuned; callers decode `null` to the
+// built-in rubric, so an absent row is a safe no-op rather than an error.
+export async function fetchGroupHealthRubricSetting(
+  client: ReadClient,
+): Promise<ReadResult<AppSettingsRow | null>> {
+  const { data, error } = await client
+    .from("app_settings")
+    .select("*")
+    .eq("setting_key", "group_health_rubric")
+    .maybeSingle();
+  if (error) return { data: null, error: wrapError("fetchGroupHealthRubricSetting", error) };
+  if (data === null || data === undefined) return { data: null, error: null };
+  if (!isAppSettingsRow(data)) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubricSetting", new Error("shape_invalid")),
+    };
+  }
+  return { data, error: null };
+}
+
 const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
   "id, snapshot_date, attendance_count, note, created_by_profile_id, " +
   "created_at, updated_at";

@@ -14,6 +14,7 @@
 // and docs/adr/0004-systems-conversation-architecture.md (D8).
 
 import type { GroupHealthLetter } from "@/types/enums";
+import { isRecord } from "@/lib/admin/validation";
 
 // ---------------------------------------------------------------------------
 // Rubric configuration (tunable; defaults documented in the rubric).
@@ -210,26 +211,80 @@ export function computeGrade(
 }
 
 // ---------------------------------------------------------------------------
-// Rubric from settings.
+// Tunable rubric configuration (#129 / ADR 0004 D8).
+//
+// The healthy-attendance threshold lives in its canonical home
+// (metric_defaults.default_healthy_attendance_pct) and is overlaid by the read
+// path; the weights / cut-lines / attendance window are decoded here from the
+// audited group_health_rubric setting.
 // ---------------------------------------------------------------------------
 
-// Subset of lib/admin/metrics.ts MetricDefaults this rubric reads. Kept
-// structural (not an import of the whole shape) so callers can pass the decoded
-// defaults directly.
-export type GroupHealthMetricDefaults = {
-  default_healthy_attendance_pct: number;
-};
+// Decode an admin-tuned rubric from a settings JSON value (app_settings, the
+// same trust seam decodeMetricDefaults uses), merging over the built-in rubric
+// so a missing or partial setting still yields a complete, usable config. A
+// non-object value (no row yet, corrupt JSON) decodes to the built-in defaults.
+export function decodeGroupHealthRubric(raw: unknown): GroupHealthRubricConfig {
+  const source = isRecord(raw) ? raw : null;
+  if (!source) return { ...BUILT_IN_GROUP_HEALTH_RUBRIC };
 
-// Build the rubric from the existing audited metric defaults. The healthy-
-// attendance threshold is already an admin-tunable setting today
-// (default_healthy_attendance_pct), so the tracer honors it rather than the
-// built-in 60. Weights, cut-lines, and the window stay at their built-in
-// defaults here; making *those* admin-tunable is #129's rubric-config work.
-export function rubricFromMetricDefaults(
-  defaults: GroupHealthMetricDefaults,
-): GroupHealthRubricConfig {
   return {
-    ...BUILT_IN_GROUP_HEALTH_RUBRIC,
-    healthy_attendance_pct: defaults.default_healthy_attendance_pct,
+    attendance_window_weeks: readNumber(
+      source,
+      "attendance_window_weeks",
+      BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
+    ),
+    healthy_attendance_pct: readNumber(
+      source,
+      "healthy_attendance_pct",
+      BUILT_IN_GROUP_HEALTH_RUBRIC.healthy_attendance_pct,
+    ),
+    weights: decodeWeights(source.weights),
+    cut_lines: decodeCutLines(source.cut_lines),
   };
+}
+
+function decodeWeights(raw: unknown): GroupHealthDimensionWeights {
+  const source = isRecord(raw) ? raw : null;
+  const def = BUILT_IN_GROUP_HEALTH_RUBRIC.weights;
+  if (!source) return { ...def };
+  const tuned = {
+    attendance: readNumber(source, "attendance", def.attendance),
+    spiritual_growth: readNumber(source, "spiritual_growth", def.spiritual_growth),
+    group_question: readNumber(source, "group_question", def.group_question),
+  };
+  // Every weight must be non-negative and at least one positive, or computeGrade
+  // has no usable total and grades to null. Reject the set wholesale otherwise.
+  const values = [tuned.attendance, tuned.spiritual_growth, tuned.group_question];
+  if (values.some((w) => w < 0) || values.reduce((s, w) => s + w, 0) <= 0) {
+    return { ...def };
+  }
+  return tuned;
+}
+
+function decodeCutLines(raw: unknown): GroupHealthCutLines {
+  const source = isRecord(raw) ? raw : null;
+  const def = BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines;
+  if (!source) return { ...def };
+  const tuned = {
+    a: readNumber(source, "a", def.a),
+    b: readNumber(source, "b", def.b),
+    c: readNumber(source, "c", def.c),
+  };
+  // The letter ladder only works on a strictly descending set (a > b > c).
+  // A tuned set that isn't is rejected wholesale rather than graded on — a
+  // half-applied ladder would silently mis-letter every group.
+  if (!(tuned.a > tuned.b && tuned.b > tuned.c)) return { ...def };
+  return tuned;
+}
+
+// A finite number under `key`, or the fallback when absent/invalid. Mirrors
+// metrics.ts readJsonInt but accepts non-integers (cut-lines/weights may be
+// fractional as the rubric is tuned).
+function readNumber(
+  source: Record<string, unknown>,
+  key: string,
+  fallback: number,
+): number {
+  const value = source[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
