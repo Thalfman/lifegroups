@@ -41,3 +41,7 @@ export type GroupCalendarEventStatus = 'scheduled' | 'off' | 'cancelled';
 export type ShepherdCareStatus = 'healthy' | 'watch' | 'needs_attention';
 export type ShepherdCareInteractionType = 'call' | 'text' | 'in_person' | 'meeting' | 'other';
 export type ShepherdCareFollowUpStatus = 'open' | 'in_progress' | 'done';
+// Group-Health Grade (#127). A–D report-card letter, plus the scope a manual
+// override is held under (#129): cleared at the monthly rollover, or standing.
+export type GroupHealthLetter = 'A' | 'B' | 'C' | 'D';
+export type GroupHealthOverrideScope = 'this_month' | 'until_cleared';
