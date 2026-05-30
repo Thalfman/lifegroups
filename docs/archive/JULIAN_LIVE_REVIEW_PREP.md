@@ -95,7 +95,7 @@ write paths are narrow `SECURITY DEFINER` RPCs with audit rows.
    `npm run seed:test-auth`. The CLI script requires
    `ENABLE_TEST_AUTH_USERS=true` and (for remote Supabase)
    `ALLOW_TEST_USERS_ON_REMOTE_SUPABASE=true`. See
-   [`docs/TEST_AUTH_USERS.md`](../process/TEST_AUTH_USERS.md) for the full
+   [`docs/TEST_AUTH_USERS.md`](./TEST_AUTH_USERS.md) for the full
    safety contract.
 
 2. **Sign in as `test.admin@lifegroups.local`** at `/login` in a fresh
@@ -212,7 +212,7 @@ for the variant that includes the super-admin audit-trail step.
 - **Primary:** `test.admin@lifegroups.local` (`ministry_admin` role) —
   use for the entire walkthrough. Passwords live only in the Edge
   Function's environment / your local `.env.local`; see
-  [`docs/TEST_AUTH_USERS.md`](../process/TEST_AUTH_USERS.md).
+  [`docs/TEST_AUTH_USERS.md`](./TEST_AUTH_USERS.md).
 - **Optional:** super_admin account — only if showing
   `/admin/super-admin` audit trail at the end. Do this off-screen if
   possible; Julian is `ministry_admin` in the role model.
@@ -265,7 +265,7 @@ than improvise on the call.
 - `npm run seed:test-auth` honors safety env flags
   (`ENABLE_TEST_AUTH_USERS=true` and, for remote Supabase,
   `ALLOW_TEST_USERS_ON_REMOTE_SUPABASE=true`). Don't bypass those
-  flags — see [`docs/TEST_AUTH_USERS.md`](../process/TEST_AUTH_USERS.md).
+  flags — see [`docs/TEST_AUTH_USERS.md`](./TEST_AUTH_USERS.md).
 - Service-role keys remain confined to Supabase Edge Functions and the
   optional Node CLI scripts in `scripts/`. They are never present in
   the Next runtime — see the "No service-role usage in Next runtime"
@@ -280,7 +280,7 @@ than improvise on the call.
 After the review, clean up in this order:
 
 - Use `npm run remove:test-auth` only according to
-  [`docs/TEST_AUTH_USERS.md`](../process/TEST_AUTH_USERS.md) and the script's
+  [`docs/TEST_AUTH_USERS.md`](./TEST_AUTH_USERS.md) and the script's
   documented safety flags.
 - Soft-archive demo over-shepherds via the edit form on
   `/admin/shepherd-care/over-shepherds/[overShepherdId]` (toggle

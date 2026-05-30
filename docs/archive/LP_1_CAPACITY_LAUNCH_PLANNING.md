@@ -1,7 +1,7 @@
 # LP.1 — Capacity & Launch Planning MVP
 
 Implementation reference for the
-[`LAUNCH_PLANNING_PLAN.md`](../plans/LAUNCH_PLANNING_PLAN.md) LP.1 phase
+[`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md) LP.1 phase
 ("Assumptions storage + decoder + pure calculation + route UI + audit
 verification"). Read alongside the plan; this document is the as-built
 spec.

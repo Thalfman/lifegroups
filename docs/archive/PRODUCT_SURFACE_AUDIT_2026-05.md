@@ -4,7 +4,7 @@
 
 The product pivoted in May 2026 to **Julian's admin operating system**:
 shepherd care + launch planning, admin-only (see
-[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) §2). The PRD, schema, RPCs,
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2). The PRD, schema, RPCs,
 and read models all moved with the pivot — SC.1A / SC.2 / SC.3 / LP.1 /
 LP.2 shipped. The **UI surface had not moved with them**. Julian's
 landing page still led with the weekly check-in workflow ("This week"),

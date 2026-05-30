@@ -1,7 +1,7 @@
 # Launch Planning — Plan
 
 Implementation plan for LP.1 / LP.2 in
-[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md). LP.1 and LP.2 have shipped;
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). LP.1 and LP.2 have shipped;
 this plan remains the forward-looking reference for any extensions.
 
 ## Shipped — as-built summary

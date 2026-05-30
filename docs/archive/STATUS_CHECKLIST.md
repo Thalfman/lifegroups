@@ -5,7 +5,7 @@ stage map see [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md); for the debt detai
 see [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) Appendix A._
 
 Measured against the three jobs Julian named on **2026-05-27**
-([`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md) Q12).
+([`julian-inputs/SYSTEMS_CONVERSATION.md`](../julian-inputs/SYSTEMS_CONVERSATION.md) Q12).
 Each shipped line cites the migration or PR so it can be verified in git.
 
 ---
@@ -44,7 +44,7 @@ absent.
 ### Job 3 — Grade group health
 - [ ] **P5** Group-health grading. **In discovery, not buildable yet** — waiting on
   Julian's rubric (see "Waiting on Julian" below and
-  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)).
+  [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)).
 
 ### Reliability / security debt still owed (PRD Appendix A / blueprint §G)
 Not launch-blockers, but the "…reliably" bar in the README depends on these.

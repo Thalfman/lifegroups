@@ -1,7 +1,7 @@
 # Architecture
 
 Snapshot of the running app. For active product direction see
-[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md); for the SQL schema see
+[`PRD.md`](../PRD.md); for the SQL schema see
 [`DATABASE_SCHEMA.md`](./DATABASE_SCHEMA.md).
 
 ## Stack

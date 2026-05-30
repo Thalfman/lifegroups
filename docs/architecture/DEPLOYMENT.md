@@ -60,4 +60,4 @@ function secrets.
 7. Visit `/login` and sign in. Real users (Julian as
    `ministry_admin`, leaders) are then invited from
    `/admin/super-admin` — see
-   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](../specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](../archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).

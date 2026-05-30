@@ -1,8 +1,8 @@
 # LP.2 — Forecast Scenarios
 
 Implementation reference for the LP.2 phase from
-[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) and
-[`LAUNCH_PLANNING_PLAN.md`](../plans/LAUNCH_PLANNING_PLAN.md). Builds on
+[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) and
+[`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md). Builds on
 [`LP_1_CAPACITY_LAUNCH_PLANNING.md`](./LP_1_CAPACITY_LAUNCH_PLANNING.md).
 
 ## Purpose

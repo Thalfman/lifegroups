@@ -1,18 +1,24 @@
 # Docs Archive
 
-This directory holds documentation that is **no longer part of the
-active roadmap** but is preserved for implementation history. Use these
-files as a reference when you need to understand how a particular phase
-was built. **Do not** use them as the source of truth for what to build
-next.
+This directory holds documentation that is **off the North-Star path** —
+preserved for implementation history. Use these files as a reference when you
+need to understand how a particular phase was built. **Do not** use them as the
+source of truth for what to build next.
 
-For the active roadmap, see:
+The North Star is Julian's systems conversation. For current truth, see:
 
-- [`../PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) — current ordered
-  execution plan (pivot rationale and reliability / security debt
-  appendix included).
-- [`../FEATURE_BACKLOG.md`](../FEATURE_BACKLOG.md) — broader feature
-  inventory.
+- [`../julian-inputs/SYSTEMS_CONVERSATION.md`](../julian-inputs/SYSTEMS_CONVERSATION.md)
+  — ⭐ the North Star (Q1–Q12).
+- [`../PRD.md`](../PRD.md) — 📌 the PRD (requirements, 1:1 with Q1–Q12).
+- [`../adr/0004-systems-conversation-architecture.md`](../adr/0004-systems-conversation-architecture.md)
+  — 🏛️ the ADR (decisions, 1:1 with Q1–Q12).
+
+The former planning docs — `MASTER_BLUEPRINT.md`, `PRODUCT_ROADMAP.md` (the old
+PRD), `FEATURE_BACKLOG.md`, `STATUS_CHECKLIST.md` — now live **here** in the
+archive, superseded by the PRD/ADR pair above. Per-feature specs
+(`SC_4_*`, `SUPER_ADMIN_INVITE_USER_WORKFLOW.md`), process docs
+(`CODEX_REVIEW_LOOP.md`, `TEST_AUTH_USERS.md`), and `LAUNCH_PLANNING_PLAN.md`
+were archived in the same pass.
 
 ## Why archive instead of delete?
 
@@ -25,9 +31,9 @@ here keeps the active `docs/` directory scannable.
 
 ### Julian spine implementation specs (shipped)
 
-These are the as-built specs for the SC.* / LP.* phases. The
-forward-looking plans (`SHEPHERD_CARE_TRACKER_PLAN.md`,
-`LAUNCH_PLANNING_PLAN.md`) remain in `docs/plans/`.
+These are the as-built specs for the SC.* / LP.* phases. The shepherd-care plan
+(`SHEPHERD_CARE_TRACKER_PLAN.md`) remains live in `docs/plans/`;
+`LAUNCH_PLANNING_PLAN.md` is now archived here.
 
 - `SC_1A_SHEPHERD_CARE_FOUNDATION.md` — shepherd care directory + detail
   page, `shepherd_care_profiles` / `shepherd_care_interactions` tables,

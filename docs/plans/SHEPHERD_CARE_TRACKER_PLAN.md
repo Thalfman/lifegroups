@@ -1,7 +1,7 @@
 # Shepherd Care Tracker — Plan
 
 Implementation plan for SC.1 / SC.2 / SC.3 / SC.4 in
-[`PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md). SC.1A, SC.1B, SC.2, and SC.3
+[`PRD.md`](../PRD.md). SC.1A, SC.1B, SC.2, and SC.3
 have shipped; this plan remains the forward-looking reference for **SC.4**
 (private / encrypted notes — new, from Q8), plus any later care work.
 
@@ -260,7 +260,7 @@ Care-specific task list. **Never** exposed to leaders. Separate from
 
 Julian asked for notes "that should only be readable by you" — readable by
 **Julian alone**, excluding even `super_admin`. The full buildable design now
-lives in its own spec: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md).
+lives in its own spec: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md).
 
 In brief: a separate **fenced table** (following the OS.5 `admin_summary`
 precedent) whose RLS is **creator-scoped** so only the creating admin can SELECT
@@ -385,7 +385,7 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
 - **Endorsed by Julian's Q6 ("both"); A1 is the target model (§ 6).**
 
 ### SC.4 — Private / encrypted care notes — NEW (from Q8) — SPECCED
-- Full design: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md).
+- Full design: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md).
 - **Decide the interpretation first** (spec §2 / blueprint Q1): Tier 1 —
   creator-scoped RLS on a separate fenced table (recommended) vs. Tier 2 —
   encryption-at-rest with a Julian-held key.

@@ -1,10 +1,10 @@
 # Julian's inputs — source materials
 
 Verbatim captures of the raw materials Julian sent on **2026-05-27** so the
-product decisions in [`../PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md) and the
-status map in [`../MASTER_BLUEPRINT.md`](../MASTER_BLUEPRINT.md) trace back to a
-source of record. These files are **reference inputs**, not plans; the synthesis
-that turns them into roadmap actions lives in
+product requirements in [`../PRD.md`](../PRD.md) and the matching architecture
+decisions in [`../adr/0004-systems-conversation-architecture.md`](../adr/0004-systems-conversation-architecture.md)
+trace back to a source of record. These files are **reference inputs**, not plans;
+the synthesis that turns them into actions lives in
 [`FEEDBACK_MAP.md`](./FEEDBACK_MAP.md).
 
 ## Contents

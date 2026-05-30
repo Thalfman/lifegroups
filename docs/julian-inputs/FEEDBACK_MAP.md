@@ -1,7 +1,7 @@
 # Feedback map — Julian's 2026-05-27 inputs → roadmap
 
 Synthesis of the captures in this folder against
-[`../PRODUCT_ROADMAP.md`](../PRODUCT_ROADMAP.md). The roadmap's §2 listed nine
+[`../PRD.md`](../PRD.md). The roadmap's §2 listed nine
 "Open questions for future Julian sync." The 2026-05-27 materials answer most of
 them. This file records the answers, the gaps that remain, and the new product
 signals these materials surface.

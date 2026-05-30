@@ -1,78 +1,54 @@
 # Documentation Index
 
-Everything in `docs/` at a glance. **New here? Start with
-[`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md)** (the live status map), then read
-the PRD.
+The documentation maps to **one North Star**: Julian's systems conversation. Everything
+live below traces to it; everything else has been archived.
 
-> 📌 **THE PRD:** [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) — the single
-> product requirements / ordered execution plan. (Kept under this filename
-> intentionally; it *is* the PRD.)
+> ⭐ **North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
+> — Julian's twelve questions and answers (2026-05-27).
 >
-> 🏛️ **Architecture decisions (ADRs):** live in [`adr/`](./adr/) —
-> [0001](./adr/0001-admin-write-action-runner.md),
-> [0002](./adr/0002-oversight-ladder-and-leader-gating.md),
-> [0003](./adr/0003-private-care-note-encryption.md).
+> 📌 **THE PRD:** [`PRD.md`](./PRD.md) — product requirements, mapped 1:1 to Q1–Q12.
 >
-> ✅ **Where do we stand / what's left?** →
-> [`STATUS_CHECKLIST.md`](./STATUS_CHECKLIST.md).
+> 🏛️ **THE ADR:** [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md)
+> — architecture decisions, mapped 1:1 to Q1–Q12 (with deep records in
+> [`adr/0001`](./adr/0001-admin-write-action-runner.md)–[`0003`](./adr/0003-private-care-note-encryption.md)).
 
-## Canonical triad — `docs/` root, source of truth
-
-| Doc | What it is |
-|---|---|
-| [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md) | The at-a-glance stage map: every workstream, its stage, what's next. **Start here.** |
-| [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) | 📌 **THE PRD** — ordered execution plan + reliability/security debt appendix. |
-| [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md) | Full feature inventory, including deferred and rejected items. |
-| [`STATUS_CHECKLIST.md`](./STATUS_CHECKLIST.md) | ✅ Plain checklist: what's shipped, what's left, what's waiting on Julian. |
-
-## `plans/` — forward-looking area plans & discovery
+## The North Star and its sources (`julian-inputs/`)
 
 | Doc | What it is |
 |---|---|
-| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Shepherd-care tracker plan (the SC.* track). |
-| [`plans/LAUNCH_PLANNING_PLAN.md`](./plans/LAUNCH_PLANNING_PLAN.md) | Capacity & launch-planning plan (the LP.* track). |
-| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health rubric — discovery only, pre-spec (blocked on Julian). |
+| [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md) | ⭐ Julian's Q1–Q12, verbatim. The source of truth. |
+| [`julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md) | The blank care spreadsheet (Q1). |
+| [`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Julian's multiplication Google Doc (Q11/Q12). |
+| [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) | How his inputs map to decisions. |
 
-## `specs/` — feature specs & build contracts
+## The 1:1 mapping
 
 | Doc | What it is |
 |---|---|
-| [`specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./specs/SC_4_PRIVATE_CARE_NOTES_SPEC.md) | Zero-knowledge private care notes spec (see ADR 0003). |
-| [`specs/SC_4_HANDOFF_CONTRACT.md`](./specs/SC_4_HANDOFF_CONTRACT.md) | SC.4 build handoff contract (the stable surface). |
-| [`specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md) | Super-admin invite-user workflow (RPC + Edge Function). |
+| [`PRD.md`](./PRD.md) | 📌 **THE PRD** — requirements per question, with shipped/blocked status. |
+| [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md) | 🏛️ **THE ADR** — architecture decisions per question. |
 
-## `architecture/` — how the system is built & run
+## Referenced plans (linked from the conversation)
+
+| Doc | What it is |
+|---|---|
+| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Shepherd-care detail (Q1–Q8). |
+| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health discovery (Q12) — blocked on Julian's rubric. |
+
+## Engineering reference
 
 | Doc | What it is |
 |---|---|
 | [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md) | Stack, routes, auth, RLS, read/write paths. |
-| [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables, the core model, auth vs. participant identity. |
+| [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model. |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md) | Hosting, env vars, Edge Function setup. |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints. |
-
-## `process/` — repeatable team workflows
-
-| Doc | What it is |
-|---|---|
-| [`process/CODEX_REVIEW_LOOP.md`](./process/CODEX_REVIEW_LOOP.md) | The Codex PR-review automation loop. |
-| [`process/TEST_AUTH_USERS.md`](./process/TEST_AUTH_USERS.md) | Test auth users — setup and runbook. |
-
-## Reference folders
-
-| Folder | What it is |
-|---|---|
-| [`adr/`](./adr/) | 🏛️ **Architecture Decision Records** — why a load-bearing decision was made (0001–0003). |
+| [`adr/`](./adr/) | Architecture Decision Records (0001–0004). |
 | [`agents/`](./agents/) | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
-| [`julian-inputs/`](./julian-inputs/README.md) | **Source of record** — Julian's own words (Q&A, care spreadsheet, multiplication plan). |
-| [`archive/`](./archive/README.md) | Closed/historical specs & verification logs. Not the source of truth for what to build next. |
 
-## Folder legend
+## Archived
 
-- **root triad** — always-current source of truth (blueprint, PRD, backlog, checklist).
-- **`plans/`** — not-yet-built or in-discovery work.
-- **`specs/`** — detailed contracts for specific features.
-- **`architecture/`** — how the system is built and deployed.
-- **`process/`** — repeatable team workflows.
-- **`adr/`** — why a decision was made (immutable record).
-- **`julian-inputs/`** — raw product inputs from Julian (source of record).
-- **`archive/`** — built/closed; history only.
+Everything not on the North-Star path — the former blueprint, the old product roadmap,
+the feature backlog, per-feature specs, process docs, and historical phase specs — lives
+in [`archive/`](./archive/README.md). It is history, not the source of truth for what to
+build next.
