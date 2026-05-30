@@ -72,7 +72,11 @@ begin
   end if;
 
   -- A broad note is required and bounded; trimmed to null/empty is rejected.
-  v_note := nullif(btrim(coalesce(p_note, '')), '');
+  -- Trim ALL leading/trailing whitespace (regexp \s: space, tab, newline, CR,
+  -- form feed), not btrim's space-only default, so a note made of tabs or
+  -- newlines (e.g. E'\n\t' from a direct RPC call) is rejected here at the
+  -- write boundary — matching the JS validator's trim().
+  v_note := nullif(regexp_replace(coalesce(p_note, ''), '^\s+|\s+$', '', 'g'), '');
   if v_note is null then
     raise exception 'invalid_input';
   end if;
