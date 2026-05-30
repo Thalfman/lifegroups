@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000" viewBox="0 0 1500 1000" font-family="ui-monospace, Menlo, Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa0a6"/>
+    </marker>
+    <marker id="arrowP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7d6aa8"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="1000" fill="#0d0d0d"/>
+
+  <!-- Title -->
+  <text x="750" y="52" fill="#f5f5f5" font-size="30" font-weight="700" text-anchor="middle">Matt Pocock Skills — how the pipeline actually flows</text>
+  <text x="750" y="84" fill="#9aa0a6" font-size="16" text-anchor="middle">one repeating loop · on-ramps feed in · docs are the substrate underneath</text>
+
+  <!-- Run once tag -->
+  <rect x="40" y="104" width="360" height="34" rx="8" fill="#1a1a1a" stroke="#444"/>
+  <text x="58" y="126" fill="#9aa0a6" font-size="14">run once:</text>
+  <text x="128" y="126" fill="#c9a8ff" font-size="14" font-weight="600">setup-matt-pocock-skills</text>
+  <text x="332" y="126" fill="#6b7075" font-size="13">→ writes config</text>
+
+  <!-- ===== ON-RAMPS (top lane) ===== -->
+  <text x="60" y="186" fill="#6b7075" font-size="14" font-weight="600">ON-RAMPS · you don't always start at DECIDE</text>
+
+  <!-- ramp boxes: each sits above the stage it feeds -->
+  <!-- prototype / design-an-interface -> DECIDE/SPEC -->
+  <rect x="150" y="200" width="300" height="62" rx="8" fill="#161616" stroke="#3a3a3a"/>
+  <text x="300" y="226" fill="#c9a8ff" font-size="15" font-weight="600" text-anchor="middle">prototype · design-an-interface</text>
+  <text x="300" y="248" fill="#8a8f94" font-size="13" text-anchor="middle">explore a shape before committing</text>
+  <path d="M300,262 L300,344" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="4 4"/>
+
+  <!-- request-refactor-plan -> SLICE -->
+  <rect x="540" y="200" width="225" height="62" rx="8" fill="#161616" stroke="#3a3a3a"/>
+  <text x="652" y="226" fill="#c9a8ff" font-size="15" font-weight="600" text-anchor="middle">request-refactor-plan</text>
+  <text x="652" y="248" fill="#8a8f94" font-size="13" text-anchor="middle">refactor → issues</text>
+  <path d="M652,262 L652,344" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="4 4"/>
+
+  <!-- qa -> TRIAGE -->
+  <rect x="795" y="200" width="160" height="62" rx="8" fill="#161616" stroke="#3a3a3a"/>
+  <text x="875" y="226" fill="#c9a8ff" font-size="15" font-weight="600" text-anchor="middle">qa</text>
+  <text x="875" y="248" fill="#8a8f94" font-size="13" text-anchor="middle">file bugs as issues</text>
+  <path d="M875,262 L875,344" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="4 4"/>
+
+  <!-- diagnose -> BUILD -->
+  <rect x="990" y="200" width="225" height="62" rx="8" fill="#161616" stroke="#3a3a3a"/>
+  <text x="1102" y="226" fill="#c9a8ff" font-size="15" font-weight="600" text-anchor="middle">diagnose</text>
+  <text x="1102" y="248" fill="#8a8f94" font-size="13" text-anchor="middle">debug a hard bug</text>
+  <path d="M1102,262 L1102,344" stroke="#5a5a5a" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="4 4"/>
+
+  <!-- ===== MAIN SPINE ===== -->
+  <!-- stage labels -->
+  <g font-size="17" font-weight="700">
+    <text x="187" y="338" fill="#8a8f94" text-anchor="middle">DECIDE</text>
+    <text x="412" y="338" fill="#8a8f94" text-anchor="middle">SPEC</text>
+    <text x="637" y="338" fill="#c9a8ff" text-anchor="middle">SLICE</text>
+    <text x="862" y="338" fill="#ffb454" text-anchor="middle">GATE</text>
+    <text x="1087" y="338" fill="#8a8f94" text-anchor="middle">BUILD</text>
+    <text x="1312" y="338" fill="#c9a8ff" text-anchor="middle">CHECK</text>
+  </g>
+
+  <!-- boxes -->
+  <!-- DECIDE -->
+  <rect x="90" y="348" width="195" height="96" rx="10" fill="#1c1c1c" stroke="#7a7a7a" stroke-width="1.5"/>
+  <text x="187" y="392" fill="#e8e8e8" font-size="17" font-weight="600" text-anchor="middle">grill-with-docs</text>
+  <text x="187" y="416" fill="#7d8388" font-size="12.5" text-anchor="middle">(or grill-me)</text>
+  <!-- SPEC -->
+  <rect x="315" y="348" width="195" height="96" rx="10" fill="#1c1c1c" stroke="#7a7a7a" stroke-width="1.5"/>
+  <text x="412" y="402" fill="#e8e8e8" font-size="17" font-weight="600" text-anchor="middle">to-prd</text>
+  <!-- SLICE -->
+  <rect x="540" y="348" width="195" height="96" rx="10" fill="#1c1c1c" stroke="#7a7a7a" stroke-width="1.5"/>
+  <text x="637" y="402" fill="#e8e8e8" font-size="17" font-weight="600" text-anchor="middle">to-issues</text>
+  <!-- GATE / triage (highlighted) -->
+  <rect x="765" y="348" width="195" height="96" rx="10" fill="#241c0f" stroke="#ffb454" stroke-width="2"/>
+  <text x="862" y="395" fill="#ffd596" font-size="17" font-weight="700" text-anchor="middle">triage</text>
+  <text x="862" y="418" fill="#d8b97a" font-size="12" text-anchor="middle">the gate</text>
+  <!-- BUILD -->
+  <rect x="990" y="348" width="195" height="96" rx="10" fill="#1c1c1c" stroke="#7a7a7a" stroke-width="1.5"/>
+  <text x="1087" y="402" fill="#e8e8e8" font-size="17" font-weight="600" text-anchor="middle">tdd</text>
+  <!-- CHECK -->
+  <rect x="1215" y="348" width="195" height="96" rx="10" fill="#1c1c1c" stroke="#7a7a7a" stroke-width="1.5"/>
+  <text x="1312" y="395" fill="#e8e8e8" font-size="16" font-weight="600" text-anchor="middle">review /</text>
+  <text x="1312" y="417" fill="#e8e8e8" font-size="16" font-weight="600" text-anchor="middle">code-review</text>
+
+  <!-- spine arrows -->
+  <g>
+    <path d="M285,396 L313,396" stroke="#9aa0a6" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M510,396 L538,396" stroke="#9aa0a6" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M735,396 L763,396" stroke="#9aa0a6" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M960,396 L988,396" stroke="#9aa0a6" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M1185,396 L1213,396" stroke="#9aa0a6" stroke-width="2.5" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- artifacts under each box -->
+  <g font-size="13" text-anchor="middle">
+    <text x="187" y="468" fill="#9aa0a6">sharpen the plan</text>
+    <text x="187" y="486" fill="#6b7075">vs CONTEXT.md + ADRs</text>
+
+    <text x="412" y="468" fill="#9aa0a6">a PRD issue</text>
+    <text x="412" y="486" fill="#6b7075">published to tracker</text>
+
+    <text x="637" y="468" fill="#9aa0a6">tracer-bullet</text>
+    <text x="637" y="486" fill="#6b7075">slice issues</text>
+
+    <text x="862" y="468" fill="#ffd596">label + agent brief</text>
+    <text x="862" y="486" fill="#6b7075">ready-for-agent / -human</text>
+
+    <text x="1087" y="468" fill="#9aa0a6">red → green →</text>
+    <text x="1087" y="486" fill="#6b7075">refactor</text>
+
+    <text x="1312" y="468" fill="#9aa0a6">standards axis</text>
+    <text x="1312" y="486" fill="#6b7075">+ spec axis</text>
+  </g>
+
+  <!-- ===== LOOP BACK ===== -->
+  <path d="M1312,444 L1312,560 L187,560 L187,446" fill="none" stroke="#7d6aa8" stroke-width="2.5" marker-end="url(#arrowP)"/>
+  <rect x="560" y="538" width="380" height="44" rx="8" fill="#15121c" stroke="#4a3f63"/>
+  <text x="750" y="560" fill="#c9a8ff" font-size="14.5" font-weight="600" text-anchor="middle">improve-codebase-architecture</text>
+  <text x="750" y="577" fill="#8a8f94" font-size="12.5" text-anchor="middle">deepen the codebase between cycles</text>
+
+  <!-- ===== FOUNDATION ===== -->
+  <rect x="90" y="640" width="1320" height="118" rx="12" fill="#10160f" stroke="#33502f"/>
+  <text x="750" y="676" fill="#9bd68a" font-size="17" font-weight="700" text-anchor="middle">FOUNDATION · every stage reads &amp; writes these</text>
+  <g font-size="15" text-anchor="middle">
+    <text x="270" y="714" fill="#cfe8c6" font-weight="600">CONTEXT.md</text>
+    <text x="270" y="736" fill="#6f8a68" font-size="12.5">domain language</text>
+
+    <text x="540" y="714" fill="#cfe8c6" font-weight="600">docs/adr/</text>
+    <text x="540" y="736" fill="#6f8a68" font-size="12.5">decisions you must respect</text>
+
+    <text x="850" y="714" fill="#cfe8c6" font-weight="600">.out-of-scope/</text>
+    <text x="850" y="736" fill="#6f8a68" font-size="12.5">why things were rejected</text>
+
+    <text x="1160" y="714" fill="#cfe8c6" font-weight="600">agent briefs</text>
+    <text x="1160" y="736" fill="#6f8a68" font-size="12.5">the contract an AFK agent builds from</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="13">
+    <text x="90" y="800" fill="#6b7075">Read it left→right as one loop. Most work is one trip around; on-ramps let you enter mid-pipeline; the foundation persists across sessions.</text>
+    <text x="90" y="824" fill="#6b7075">Solid grey arrows = the main flow · dashed = an on-ramp feeding in · purple = the between-cycles deepening pass · amber = the human/agent gate.</text>
+  </g>
+</svg>
