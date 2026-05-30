@@ -11,7 +11,11 @@ oversight tiers only — not for group leaders themselves.
 **Shepherd**:
 A person who leads a Life Group. Julian's word for what the codebase calls
 a `leader` (and `co_leader` → Co-Life Shepherd). Shepherds are the people
-the ministry cares for; they do not currently log in to the app.
+the ministry cares for. They have a deliberately minimal, **maintenance-mode**
+surface — they log in only to submit weekly check-ins (the source of the
+Health Pulse) and view their group calendar. The app is built for the
+oversight tiers; no new leader-facing features ship without Julian's explicit
+go-ahead (LDR.1).
 _Avoid_: Leader, group leader (these are the code-level identifiers only).
 
 **Over-Shepherd**:
@@ -37,9 +41,11 @@ below sees, and more:
 
 **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
 
-The Shepherd tier is currently gated off (no leader-facing surface). The
-one deliberate exception to "higher tiers see everything below" is private
-care notes — see CONTEXT note on Private Care Note below.
+The Shepherd tier has only a minimal **maintenance-mode** surface (weekly
+check-ins + group calendar); it is not the headline product and is frozen to
+new features without Julian's go-ahead (LDR.1). The one deliberate exception
+to "higher tiers see everything below" is private care notes — see CONTEXT
+note on Private Care Note below.
 
 ### Care concepts
 
