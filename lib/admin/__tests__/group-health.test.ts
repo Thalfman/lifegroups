@@ -4,9 +4,9 @@ import {
   attendanceConsistency,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
   computeGrade,
+  decodeGroupHealthRubric,
   dimensionScoresFromInputs,
   ratingToScore,
-  rubricFromMetricDefaults,
   type AttendanceWeekTally,
 } from "@/lib/admin/group-health";
 
@@ -177,21 +177,62 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
   });
 });
 
-describe("rubricFromMetricDefaults — honors the configured threshold", () => {
-  it("uses default_healthy_attendance_pct from the audited settings", () => {
-    const rubric = rubricFromMetricDefaults({ default_healthy_attendance_pct: 70 });
+describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
+  it("falls back to the built-in rubric for missing or non-object settings", () => {
+    expect(decodeGroupHealthRubric(null)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
+    expect(decodeGroupHealthRubric(undefined)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
+    expect(decodeGroupHealthRubric("nope")).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
+    expect(decodeGroupHealthRubric(42)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
+  });
+
+  it("reads tuned attendance window and healthy-attendance threshold", () => {
+    const rubric = decodeGroupHealthRubric({
+      attendance_window_weeks: 12,
+      healthy_attendance_pct: 70,
+    });
+    expect(rubric.attendance_window_weeks).toBe(12);
     expect(rubric.healthy_attendance_pct).toBe(70);
-    // Window and cut-lines stay at the built-in defaults (tuning those is #129).
-    expect(rubric.attendance_window_weeks).toBe(
-      BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
-    );
+    // Untouched fields keep their built-in defaults.
+    expect(rubric.weights).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.weights);
     expect(rubric.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
   });
 
-  it("changes the meets-threshold verdict when the configured threshold moves", () => {
-    const rubric = rubricFromMetricDefaults({ default_healthy_attendance_pct: 50 });
-    // 55% average fails the default 60 line but clears a configured 50.
-    const result = attendanceConsistency([week("2026-05-04", 11, 9)], rubric);
-    expect(result.meets_threshold).toBe(true);
+  it("reads tuned dimension weights, filling absent ones from defaults", () => {
+    const rubric = decodeGroupHealthRubric({
+      weights: { attendance: 60, group_question: 10 },
+    });
+    expect(rubric.weights.attendance).toBe(60);
+    expect(rubric.weights.group_question).toBe(10);
+    // spiritual_growth wasn't supplied — keeps its default.
+    expect(rubric.weights.spiritual_growth).toBe(
+      BUILT_IN_GROUP_HEALTH_RUBRIC.weights.spiritual_growth,
+    );
+  });
+
+  it("reads tuned A/B/C cut-lines, filling absent ones from defaults", () => {
+    const rubric = decodeGroupHealthRubric({ cut_lines: { a: 85, c: 50 } });
+    expect(rubric.cut_lines.a).toBe(85);
+    expect(rubric.cut_lines.c).toBe(50);
+    expect(rubric.cut_lines.b).toBe(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines.b);
+  });
+
+  it("rejects non-descending cut-lines, keeping the built-in ladder intact", () => {
+    // a must be > b > c; this set would make every score an A. Reject wholesale
+    // rather than grade on a broken ladder.
+    const rubric = decodeGroupHealthRubric({ cut_lines: { a: 50, b: 75, c: 60 } });
+    expect(rubric.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
+  });
+
+  it("rejects a weight set that can't grade (negative or all-zero)", () => {
+    // A negative weight or a set summing to zero leaves computeGrade with no
+    // usable total — fall back to the built-in weights rather than ungradeable.
+    expect(
+      decodeGroupHealthRubric({ weights: { attendance: -5, spiritual_growth: 40, group_question: 20 } })
+        .weights,
+    ).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.weights);
+    expect(
+      decodeGroupHealthRubric({ weights: { attendance: 0, spiritual_growth: 0, group_question: 0 } })
+        .weights,
+    ).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.weights);
   });
 });
