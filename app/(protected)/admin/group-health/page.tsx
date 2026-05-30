@@ -4,7 +4,6 @@ import {
   listGroupHealthOverview,
 } from "@/lib/admin/group-health-read";
 import { rankByGrade } from "@/lib/admin/group-health-segmentation";
-import type { GroupHealthLetter } from "@/types/enums";
 import {
   recomputeGroupHealthFormAction,
   setGroupHealthRatingsFormAction,
@@ -55,7 +54,7 @@ export default async function GroupHealthPage() {
     overview.data.map((row) => ({
       group_id: row.group_id,
       group_name: row.group_name,
-      letter: row.computed_letter as GroupHealthLetter | null,
+      letter: row.computed_letter,
     })),
   ).map((g) => rowsById.get(g.group_id)!);
 
