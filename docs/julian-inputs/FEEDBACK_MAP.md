@@ -36,7 +36,7 @@ two conclusions and added one signal:
 | Care cadence — weekly / monthly / custom? (Q5) | **Tiered by oversight**, not a single interval: Julian is "more in the weeds" on the mixed/couples groups he directly over-shepherds, and delegates cadence to the over-shepherds for men's/women's groups (Q5). Follow-up dates are conversation-driven (Q3). | **Partial** |
 | Should over-shepherds see assigned shepherds / notes / update? (Q7) | Men's & women's groups have an over-shepherd (coach); mixed/couples groups report to Julian directly (Q5). Eventually have over-shepherds "update the system too, but broad notes given simplicity and confidentiality" (Q7). No request for over-shepherd **login**. | **Partial** — MVP coverage-only stance holds; write access is future scope |
 | Should leaders see / update their own care status? (Q7) | Yes, eventually: "would also like something for leaders at some point too," limited to **broad** notes (Q7). | **Partial** — future scope (LDR.1) |
-| Private pastoral content, or out of the app? (Q7 + Q8) | **Two tiers.** Q7: broad, shareable notes — admin-only design already shipped covers this. Q8: a **private-to-Julian / encrypted** tier readable by him alone — **requested but not built**. | **Q7 answered; Q8 is a new requirement (SC.4)** |
+| Private pastoral content, or out of the app? (Q7 + Q8) | **Two tiers.** Q7: broad, shareable notes — admin-only design already shipped covers this. Q8: a **private-to-Julian / encrypted** tier readable by him alone — **shipped as SC.4** (client-side zero-knowledge encryption; super-admin excluded). | **Q7 answered; Q8 shipped (SC.4)** |
 | Capacity demand model? (Q9) | Primary signal = people in groups (leader-updated); church attendance is "extremely important" as the denominator (% in a group; ~60% now). Still "figuring out best method to capture church numbers." Matches LP.1's manual-input model. | **Answered** |
 | Auto-flag "no contact in N weeks"? Threshold? | The *knob* now exists (`shepherd_care_stale_days`, default 60). Julian named no specific value, and per Q5 the right value may differ by oversight tier. | **Partial — value still Julian's call** |
 | When to loop in the communications director? | Not addressed in these materials. | **Open** |
@@ -98,10 +98,9 @@ default is 12, and the kept-open case is representable. See `PRODUCT_ROADMAP.md
 
 Outstanding after this reconciliation:
 
-1. **Build SC.1B — care follow-ups** (`shepherd_care_follow_ups`). Q6 confirms
-   Julian wants the task-list side; it is currently deferred-but-stubbed.
-2. **Spike SC.4 — private/encrypted notes** (Q8). Decide the interpretation
-   with Julian (private-to-creator RLS flag vs. real encryption), then spec.
+1. ~~Build SC.1B — care follow-ups~~ — ✅ **shipped** (`shepherd_care_follow_ups`, #107).
+2. ~~Spike SC.4 — private/encrypted notes~~ — ✅ **shipped** (Q8): Tier 2
+   client-side zero-knowledge encryption, super-admin excluded (#112–#114).
 3. **Decide cadence tiering** (Q5): should `shepherd_care_stale_days` differ for
    groups Julian directly covers vs. those an over-shepherd covers?
 4. **Reconcile the care status vocabulary** (Q2) against the shipped
