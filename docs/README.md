@@ -33,7 +33,8 @@ live below traces to it; everything else has been archived.
 | Doc | What it is |
 |---|---|
 | [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Shepherd-care detail (Q1–Q8). |
-| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health discovery (Q12) — blocked on Julian's rubric. |
+| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007). |
+| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md) | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). |
 
 ## Engineering reference
 
@@ -43,7 +44,7 @@ live below traces to it; everything else has been archived.
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model. |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md) | Hosting, env vars, Edge Function setup. |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints. |
-| [`adr/`](./adr/) | Architecture Decision Records (0001–0004). |
+| [`adr/`](./adr/) | Architecture Decision Records (0001–0007). |
 | [`agents/`](./agents/) | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
 
 ## Archived

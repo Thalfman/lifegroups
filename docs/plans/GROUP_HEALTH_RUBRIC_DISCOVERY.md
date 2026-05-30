@@ -9,10 +9,12 @@ conversation](../julian-inputs/SYSTEMS_CONVERSATION.md) answer 12;
 (#127/#128/#129) are cut against; the design-space material that follows it is
 retained for context.
 
-> One item still needs Julian's sign-off before #128/#129 ship: the **exact
-> wording** of the spiritual-growth rating and the relayed group question (his
-> pastoral call). The rubric *shape* is locked; only his two question texts are
-> outstanding.
+> One item still needs Julian's input: the **exact wording** of the
+> spiritual-growth rating and the relayed group question (his pastoral call).
+> This is **no longer a launch gate** — the grade ships with placeholder ("TBD")
+> labels and his wording is a deferred cosmetic swap
+> ([ADR 0007](../adr/0007-group-health-ships-with-placeholder-labels.md); #125).
+> The rubric *shape* is locked; only the two question texts are outstanding.
 
 ## Locked rubric decisions
 

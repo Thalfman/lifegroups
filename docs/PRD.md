@@ -124,17 +124,24 @@ designing*).
 ---
 
 ## Where we stand, in one line
-Jobs 1 and 2 (Q1–Q11) are **functionally shipped**; the only North-Star item not built
-is **Job 3 / group health (Q12)**, which is blocked on the rubric Julian is still
-designing. The remaining items are **decisions for Julian** (Q2 wording, Q5 cadence,
-Q11 pipeline ownership), none of which block launch.
+All three jobs (Q1–Q12) are **functionally built** — group health included, now that the
+rubric is locked (ADR 0004 / D8). **No North-Star item is gated on awaiting Julian:** the
+multiplication system-of-record question is resolved by building the better tool
+(ADR 0006), and the two group-health question wordings ship as placeholders, a deferred
+cosmetic swap (ADR 0007). Remaining work is execution, not decisions — e.g. exposing the
+group-health surface in the nav and the multiplication-planner slices.
 
 ## Decisions owed by Julian
 1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).
-   Only his exact wording for the two 1–5 questions (spiritual growth, relayed group
-   question) is still outstanding before #128/#129 ship.
+   The two 1–5 question wordings are **no longer a launch gate**: the grade ships with
+   placeholder ("TBD") labels and Julian's wording is a deferred cosmetic swap
+   ([ADR 0007](./adr/0007-group-health-ships-with-placeholder-labels.md); #125).
 2. ~~**Care cadence (Q5)**~~ — ✅ **Resolved** (per-tier, 30/60 proposed, admin-only clock
    for now; ADR 0004 / D3). Build in #123; Julian confirms the two numbers.
 3. ~~**Care-status wording (Q2)**~~ — ✅ **Resolved** (adopt Julian's five; ADR 0004 / D2).
    Mechanical migration tracked in #122.
-4. **Multiplication ownership (Q11)** — app as system of record vs. Google Doc, and the 2026/2027 split.
+4. ~~**Multiplication ownership (Q11)**~~ — ✅ **Resolved** — the in-app planner supersedes
+   the Google Doc **by adoption, not by decree**, and the 2026/2027 split becomes in-app
+   data Julian sets per group, not a paper decision
+   ([ADR 0006](./adr/0006-multiplication-planner-supersedes-google-doc.md); build spec
+   [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md)).
