@@ -23,11 +23,12 @@ Detail: [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PL
 category on every leader for quick notes; did **not** adopt the proposed five-word
 vocabulary verbatim.
 **Requirement:** a per-leader status plus free-text notes.
-**Status:** 🟡 **Shipped, wording open.** `shepherd_care_status` enum
-(`healthy / watch / needs_attention`) ships today. Whether to adopt Julian's fuller
-set (doing well / needs encouragement / needs follow-up / concern / inactive) is an
-open refinement — see [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
-❓ **Decision owed:** keep the three, or adopt his five.
+**Status:** 🟡 **Shipped; wording decided, migration pending.** `shepherd_care_status`
+shipped as `healthy / watch / needs_attention`. **Resolved 2026-05-30:** adopt Julian's
+five verbatim — `doing_well / needs_encouragement / needs_follow_up / concern / inactive`
+(ADR 0004 / D2). Backfill maps `healthy→doing_well`, `watch→needs_encouragement`,
+`needs_attention→needs_follow_up`; `concern`/`inactive` are net-new. Mechanical
+implementation tracked in #122.
 
 ## Q3 — What to remember after connecting with a leader
 **Julian:** the issue/concern (or good thing), and whether/when/what follow-up.
@@ -131,5 +132,6 @@ Q11 pipeline ownership), none of which block launch.
    Only his exact wording for the two 1–5 questions (spiritual growth, relayed group
    question) is still outstanding before #128/#129 ship.
 2. **Care cadence (Q5)** — one staleness window or per-oversight-tier, and the values.
-3. **Care-status wording (Q2)** — keep three statuses or adopt his five.
+3. ~~**Care-status wording (Q2)**~~ — ✅ **Resolved** (adopt Julian's five; ADR 0004 / D2).
+   Mechanical migration tracked in #122.
 4. **Multiplication ownership (Q11)** — app as system of record vs. Google Doc, and the 2026/2027 split.

@@ -22,13 +22,20 @@ interaction must remember (issue/good-thing + whether/when/what follow-up).
 [`../julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)
 map onto profile fields.
 
-## D2 — A per-leader status enum, kept small  · _answers Q2_
-**Decision.** Ship one low-cardinality `shepherd_care_status`
-(`healthy / watch / needs_attention`) plus free-text notes, rather than encoding
-Julian's candidate five-word vocabulary. Q2 showed he thinks in *issue + next step*,
-not a fixed taxonomy.
-**Open.** Whether to widen the enum to his five words is deferred to Julian (see PRD Q2);
-the enum is the cheap thing to change later.
+## D2 — A per-leader status enum  · _answers Q2_
+**Decision.** Ship one `shepherd_care_status` enum plus free-text notes. Originally three
+low-cardinality values (`healthy / watch / needs_attention`); **resolved 2026-05-30** to
+adopt Julian's five verbatim — `doing_well / needs_encouragement / needs_follow_up /
+concern / inactive`. The note field still carries the "next step" Julian thinks in; the
+enum carries "is there an issue, and how bad."
+**Migration.** Backfill existing rows `healthy → doing_well`, `watch →
+needs_encouragement`, `needs_attention → needs_follow_up` (the milder action state, so the
+migration never silently escalates a record to `concern`). `concern` and `inactive` are
+net-new, populated by hand. The one-time backfill is a schema migration, not a
+`runAdminWriteAction` call; *ongoing* status edits keep flowing through the audited runner.
+**Note.** `inactive` is a lifecycle state, not a severity level — it shares the enum but
+reads on a different axis. `needs_follow_up` now also exists in `group_health_status`
+(the pulse); different enum types, distinct concepts (Leader Care Status vs Health Pulse).
 
 ## D3 — Cadence is tiered by oversight, not a global interval  · _answers Q5, Q7_
 **Decision.** There is **no single check-in interval**. Model *who oversees whom*
