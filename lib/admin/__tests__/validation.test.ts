@@ -1188,6 +1188,50 @@ describe("multiplication candidate payloads (Julian P4)", () => {
       expect(r.value.candidate_id).toBe(UUID_A);
     }
   });
+
+  // Julian #143: successor/leader-designate + meeting-time fields.
+  it("round-trips a successor/leader-designate, defaulting it to null when absent", () => {
+    const present = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      successor_designate: "  Tony L.  ",
+    });
+    expect(present.ok).toBe(true);
+    if (present.ok) expect(present.value.successor_designate).toBe("Tony L.");
+
+    const absent = validateCreateMultiplicationCandidatePayload({ group_id: UUID_A });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) expect(absent.value.successor_designate).toBeNull();
+  });
+
+  it("rejects a successor/leader-designate longer than the text-field bound", () => {
+    const r = validateUpdateMultiplicationCandidatePayload({
+      candidate_id: UUID_A,
+      successor_designate: "x".repeat(121),
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("accepts both meeting-time values and defaults to null when absent", () => {
+    for (const meeting_time of ["during_the_day", "evening"] as const) {
+      const r = validateCreateMultiplicationCandidatePayload({
+        group_id: UUID_A,
+        meeting_time,
+      });
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.meeting_time).toBe(meeting_time);
+    }
+    const absent = validateCreateMultiplicationCandidatePayload({ group_id: UUID_A });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) expect(absent.value.meeting_time).toBeNull();
+  });
+
+  it("rejects a meeting-time outside the allowed values", () => {
+    const r = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      meeting_time: "midnight",
+    });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe("validateCreateShepherdCareFollowUpPayload", () => {

@@ -8,6 +8,7 @@ import type {
   MeetingFrequency,
   MeetingWeekParity,
   MultiplicationCandidateStatus,
+  MultiplicationMeetingTime,
   RoleInGroup,
   ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
@@ -2296,12 +2297,33 @@ function isMultiplicationStatus(value: unknown): value is MultiplicationCandidat
   );
 }
 
+const MULTIPLICATION_MEETING_TIMES: ReadonlySet<MultiplicationMeetingTime> = new Set([
+  "during_the_day",
+  "evening",
+]);
+
+function isMultiplicationMeetingTime(value: unknown): value is MultiplicationMeetingTime {
+  return (
+    typeof value === "string" &&
+    MULTIPLICATION_MEETING_TIMES.has(value as MultiplicationMeetingTime)
+  );
+}
+
+// Julian #143: the successor/leader-designate is a free-text name, bounded
+// like the other admin text fields (e.g. group name) so a stray paste can't
+// balloon the row.
+const MULTIPLICATION_SUCCESSOR_MAX = 120;
+
 type MultiplicationCandidateFields = {
   target_year: number | null;
   status: MultiplicationCandidateStatus;
   shepherd_willing: boolean;
   needs_similar_stage: boolean;
   notes: string | null;
+  // Julian #143: net-new, manually-entered designation — distinct from the
+  // derived co-shepherd readiness signal; it does not feed readiness.
+  successor_designate: string | null;
+  meeting_time: MultiplicationMeetingTime | null;
 };
 
 function validateMultiplicationCandidateFields(
@@ -2335,12 +2357,31 @@ function validateMultiplicationCandidateFields(
     errors.push("Notes are too long (max 2000 characters).");
   }
 
+  const successor = readOptionalString(input.successor_designate);
+  if (successor !== undefined && successor.length > MULTIPLICATION_SUCCESSOR_MAX) {
+    errors.push(
+      `Successor / leader-designate is too long (max ${MULTIPLICATION_SUCCESSOR_MAX} characters).`,
+    );
+  }
+
+  const meetingTimeRaw = readOptionalString(input.meeting_time);
+  let meetingTime: MultiplicationMeetingTime | null = null;
+  if (meetingTimeRaw !== undefined) {
+    if (!isMultiplicationMeetingTime(meetingTimeRaw)) {
+      errors.push("Meeting time must be during the day or evening.");
+    } else {
+      meetingTime = meetingTimeRaw;
+    }
+  }
+
   return {
     target_year: targetYear,
     status,
     shepherd_willing: readBooleanFlag(input.shepherd_willing),
     needs_similar_stage: readBooleanFlag(input.needs_similar_stage),
     notes: notes ?? null,
+    successor_designate: successor ?? null,
+    meeting_time: meetingTime,
   };
 }
 

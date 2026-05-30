@@ -21,7 +21,10 @@ import {
   fieldSelectStyle,
 } from "@/components/admin/forms/field-styles";
 import type { ActionResult } from "@/lib/admin/action-result";
-import type { MultiplicationCandidateStatus } from "@/types/enums";
+import type {
+  MultiplicationCandidateStatus,
+  MultiplicationMeetingTime,
+} from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
 
@@ -34,6 +37,8 @@ export type CandidateView = {
   shepherdWilling: boolean;
   needsSimilarStage: boolean;
   notes: string | null;
+  successorDesignate: string | null;
+  meetingTime: MultiplicationMeetingTime | null;
   activeMemberCount: number;
   readiness: ReadinessResult;
 };
@@ -46,6 +51,13 @@ const STATUS_OPTIONS: MultiplicationCandidateStatus[] = [
   "launched",
   "deferred",
 ];
+
+const MEETING_TIME_OPTIONS: MultiplicationMeetingTime[] = ["during_the_day", "evening"];
+
+const MEETING_TIME_LABEL: Record<MultiplicationMeetingTime, string> = {
+  during_the_day: "During the day",
+  evening: "Evening",
+};
 
 const CRITERIA_ORDER: MultiplicationCriterion[] = [
   "enough_members",
@@ -118,6 +130,37 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {CANDIDATE_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div
+          className="lg-m-grid-stack"
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
+        >
+          <div>
+            <label style={fieldLabelStyle}>Successor / leader-designate</label>
+            <input
+              name="successor_designate"
+              type="text"
+              maxLength={120}
+              defaultValue={c.successorDesignate ?? ""}
+              placeholder="e.g. Tony L."
+              style={fieldInputStyle}
+            />
+          </div>
+          <div>
+            <label style={fieldLabelStyle}>Meeting time</label>
+            <select
+              name="meeting_time"
+              defaultValue={c.meetingTime ?? ""}
+              style={fieldSelectStyle}
+            >
+              <option value="">Unset</option>
+              {MEETING_TIME_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {MEETING_TIME_LABEL[m]}
                 </option>
               ))}
             </select>
@@ -258,6 +301,37 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
                 {CANDIDATE_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div
+        className="lg-m-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
+      >
+        <div>
+          <label htmlFor="mc-successor" style={fieldLabelStyle}>
+            Successor / leader-designate
+          </label>
+          <input
+            id="mc-successor"
+            name="successor_designate"
+            type="text"
+            maxLength={120}
+            placeholder="e.g. Tony L."
+            style={fieldInputStyle}
+          />
+        </div>
+        <div>
+          <label htmlFor="mc-meeting-time" style={fieldLabelStyle}>
+            Meeting time
+          </label>
+          <select id="mc-meeting-time" name="meeting_time" defaultValue="" style={fieldSelectStyle}>
+            <option value="">Unset</option>
+            {MEETING_TIME_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {MEETING_TIME_LABEL[m]}
               </option>
             ))}
           </select>

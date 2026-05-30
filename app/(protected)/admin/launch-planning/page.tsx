@@ -158,6 +158,8 @@ async function loadData(): Promise<PageData> {
       shepherdWilling: entry.candidate.shepherd_willing,
       needsSimilarStage: entry.candidate.needs_similar_stage,
       notes: entry.candidate.notes,
+      successorDesignate: entry.candidate.successor_designate,
+      meetingTime: entry.candidate.meeting_time,
       activeMemberCount: entry.activeMemberCount,
       readiness: evaluateReadiness(
         {
