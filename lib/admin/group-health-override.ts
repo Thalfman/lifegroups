@@ -9,10 +9,12 @@
 //                     must not quietly persist for a year).
 //   "until_cleared" — stands across periods until the admin clears it.
 
+import type { GroupHealthLetter } from "@/types/enums";
+
 export type GradeOverrideScope = "this_month" | "until_cleared";
 
 export type GradeOverride = {
-  letter: string;
+  letter: GroupHealthLetter;
   scope: GradeOverrideScope;
   // The review month the override was set for (yyyy-mm-dd, first of month).
   // Consulted only for "this_month" expiry; "until_cleared" ignores it.
@@ -20,14 +22,14 @@ export type GradeOverride = {
 };
 
 export type ResolvedGrade = {
-  computed_letter: string | null;
-  effective_letter: string | null;
+  computed_letter: GroupHealthLetter | null;
+  effective_letter: GroupHealthLetter | null;
   is_overridden: boolean;
   override_scope: GradeOverrideScope | null;
 };
 
 export function resolveGrade(
-  computedLetter: string | null,
+  computedLetter: GroupHealthLetter | null,
   override: GradeOverride | null,
   currentPeriodMonth: string,
 ): ResolvedGrade {
