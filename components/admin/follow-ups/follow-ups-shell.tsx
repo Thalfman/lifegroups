@@ -9,7 +9,6 @@ import {
 } from "@/lib/dashboard/labels";
 import { PBadge } from "@/components/pastoral/atoms";
 import type {
-  FollowUpsRow,
   GroupsRow,
   MembersRow,
   ProfilesRow,
@@ -18,7 +17,10 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
 } from "@/types/enums";
-import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
+import type {
+  AdminFollowUpEntry,
+  GuestDirectoryEntry,
+} from "@/lib/supabase/read-models";
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import {
@@ -29,7 +31,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 
 export type AdminFollowUpsData = {
-  followUps: FollowUpsRow[];
+  followUps: AdminFollowUpEntry[];
   groups: GroupsRow[];
   members: MembersRow[];
   guests: GuestDirectoryEntry[];
@@ -136,7 +138,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
   ]);
 
   const grouped = useMemo(() => {
-    const out: Record<FollowUpStatus, FollowUpsRow[]> = {
+    const out: Record<FollowUpStatus, AdminFollowUpEntry[]> = {
       open: [],
       in_progress: [],
       snoozed: [],
@@ -427,7 +429,7 @@ function FollowUpRow({
   profilesById,
   today,
 }: {
-  followUp: FollowUpsRow;
+  followUp: AdminFollowUpEntry;
   groupsById: Map<string, GroupsRow>;
   membersById: Map<string, MembersRow>;
   guestsById: Map<string, GuestDirectoryEntry>;

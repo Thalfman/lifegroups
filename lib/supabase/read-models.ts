@@ -655,13 +655,46 @@ export type LeaderFollowUpRow = Omit<FollowUpsRow, "admin_private_note">;
  * {@link fetchFollowUpsForLeader} which selects through
  * {@link LEADER_FOLLOW_UP_COLUMNS} and returns {@link LeaderFollowUpRow}.
  */
+/**
+ * Admin follow-ups column allowlist. Unlike {@link LEADER_FOLLOW_UP_COLUMNS}
+ * this one **deliberately includes `admin_private_note`** — it is the
+ * admin-only surface. Spelling the columns out (rather than `select("*")`)
+ * keeps the admin-private exposure explicit at the read seam and stops
+ * audit / future schema columns leaking into the page.
+ */
+const ADMIN_FOLLOW_UP_COLUMNS =
+  "id, type, title, related_group_id, related_member_id, related_guest_id, " +
+  "assigned_to, priority, due_date, status, leader_visible_note, " +
+  "admin_private_note, created_at";
+
+/**
+ * Domain read-model for the `/admin/follow-ups` directory. Includes the
+ * admin-only `admin_private_note` by design; see {@link ADMIN_FOLLOW_UP_COLUMNS}.
+ */
+export type AdminFollowUpEntry = Pick<
+  FollowUpsRow,
+  | "id"
+  | "type"
+  | "title"
+  | "related_group_id"
+  | "related_member_id"
+  | "related_guest_id"
+  | "assigned_to"
+  | "priority"
+  | "due_date"
+  | "status"
+  | "leader_visible_note"
+  | "admin_private_note"
+  | "created_at"
+>;
+
 export async function fetchFollowUpsForAdmin(
   client: ReadClient,
   options: { statuses?: FollowUpStatus[]; limit?: number } = {},
-): Promise<ReadResult<FollowUpsRow[]>> {
+): Promise<ReadResult<AdminFollowUpEntry[]>> {
   let query = client
     .from("follow_ups")
-    .select("*")
+    .select(ADMIN_FOLLOW_UP_COLUMNS)
     .order("priority", { ascending: false })
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -669,7 +702,7 @@ export async function fetchFollowUpsForAdmin(
     query = query.in("status", options.statuses);
   }
   if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query.range(0, 9999);
+  const { data, error } = await query.range(0, 9999).returns<AdminFollowUpEntry[]>();
   if (error) return { data: null, error: wrapError("fetchFollowUpsForAdmin", error) };
   return { data: data ?? [], error: null };
 }

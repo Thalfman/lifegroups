@@ -5,7 +5,7 @@ import { PButton } from "@/components/pastoral/button";
 import { adminUpdateFollowUpStatus } from "@/app/(protected)/admin/follow-ups/actions";
 import { errorTextStyle, successTextStyle } from "@/components/admin/forms/field-styles";
 import type { ActionResult } from "@/lib/admin/action-result";
-import type { FollowUpsRow } from "@/types/database";
+import type { AdminFollowUpEntry } from "@/lib/supabase/read-models";
 import type { FollowUpStatus } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
@@ -16,7 +16,11 @@ type Action = {
   tone: "solid" | "ghost" | "terra";
 };
 
-export function FollowUpStatusControls({ followUp }: { followUp: FollowUpsRow }) {
+export function FollowUpStatusControls({
+  followUp,
+}: {
+  followUp: Pick<AdminFollowUpEntry, "id" | "status">;
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateFollowUpStatus,
     undefined,
