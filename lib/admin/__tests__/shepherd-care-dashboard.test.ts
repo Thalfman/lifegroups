@@ -70,7 +70,7 @@ function careRow(
   return {
     id: `care-${shepherdId}`,
     shepherd_profile_id: shepherdId,
-    current_status: opts.status ?? "healthy",
+    current_status: opts.status ?? "doing_well",
     last_contact_at: opts.last ?? null,
     next_touchpoint_due: opts.next ?? null,
     archived_at: null,
@@ -201,23 +201,23 @@ describe("buildShepherdCareDashboardModel", () => {
         "A Overdue",
         careRow(UUID_1, { next: OVERDUE, last: STALE_OLD }),
       ),
-      // needs_attention_status only
+      // needs_follow_up_status only
       entry(
         UUID_2,
         "B Status",
-        careRow(UUID_2, { status: "needs_attention", last: RECENT }),
+        careRow(UUID_2, { status: "needs_follow_up", last: RECENT }),
       ),
       // no_contact_yet (care row exists but last_contact_at null)
       entry(UUID_3, "C NoContact", careRow(UUID_3, { last: null })),
       // stale_last_contact only
       entry(UUID_4, "D Stale", careRow(UUID_4, { last: STALE_OLD })),
-      // no_over_shepherd: unassigned and otherwise healthy/recent
+      // no_over_shepherd: unassigned and otherwise doing_well/recent
       entry(UUID_5, "E Unassigned", careRow(UUID_5, { last: RECENT })),
-      // watch_status
+      // needs_encouragement_status
       entry(
         UUID_6,
-        "F Watch",
-        careRow(UUID_6, { status: "watch", last: RECENT }),
+        "F Encouragement",
+        careRow(UUID_6, { status: "needs_encouragement", last: RECENT }),
       ),
     ];
     const assignments = [
@@ -241,11 +241,11 @@ describe("buildShepherdCareDashboardModel", () => {
     const reasons = model.attentionQueue.map((i) => i.reason);
     expect(reasons).toEqual<CareAttentionReason[]>([
       "overdue_touchpoint",
-      "needs_attention_status",
+      "needs_follow_up_status",
       "no_contact_yet",
       "stale_last_contact",
       "no_over_shepherd",
-      "watch_status",
+      "needs_encouragement_status",
     ]);
   });
 
@@ -255,7 +255,7 @@ describe("buildShepherdCareDashboardModel", () => {
         UUID_1,
         "Multi",
         careRow(UUID_1, {
-          status: "needs_attention",
+          status: "needs_follow_up",
           next: OVERDUE,
           last: STALE_OLD,
         }),
@@ -272,7 +272,7 @@ describe("buildShepherdCareDashboardModel", () => {
     const item = model.attentionQueue[0];
     expect(item.reason).toBe("overdue_touchpoint");
     expect(item.secondaryReasons).toEqual([
-      "needs_attention_status",
+      "needs_follow_up_status",
       "stale_last_contact",
       "no_over_shepherd",
     ]);
@@ -426,7 +426,7 @@ describe("buildShepherdCareDashboardModel", () => {
         `11111111-1111-1111-1111-${String(i).padStart(12, "0")}`,
         `Shepherd ${String(i).padStart(2, "0")}`,
         careRow(`11111111-1111-1111-1111-${String(i).padStart(12, "0")}`, {
-          status: "needs_attention",
+          status: "needs_follow_up",
           last: RECENT,
         }),
       ),

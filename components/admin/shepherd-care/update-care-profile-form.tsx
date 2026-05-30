@@ -20,7 +20,13 @@ import type { ShepherdCareStatus } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
 
-const STATUSES: ShepherdCareStatus[] = ["healthy", "watch", "needs_attention"];
+const STATUSES: ShepherdCareStatus[] = [
+  "doing_well",
+  "needs_encouragement",
+  "needs_follow_up",
+  "concern",
+  "inactive",
+];
 
 export function UpdateCareProfileForm({
   shepherdProfileId,
@@ -50,7 +56,7 @@ export function UpdateCareProfileForm({
           <select
             id="ucp-current_status"
             name="current_status"
-            defaultValue={current?.current_status ?? "healthy"}
+            defaultValue={current?.current_status ?? "doing_well"}
             style={fieldSelectStyle}
           >
             {STATUSES.map((s) => (

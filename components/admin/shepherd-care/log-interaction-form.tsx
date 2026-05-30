@@ -33,7 +33,13 @@ const INTERACTION_TYPES: ShepherdCareInteractionType[] = [
   "other",
 ];
 
-const STATUSES: ShepherdCareStatus[] = ["healthy", "watch", "needs_attention"];
+const STATUSES: ShepherdCareStatus[] = [
+  "doing_well",
+  "needs_encouragement",
+  "needs_follow_up",
+  "concern",
+  "inactive",
+];
 
 // `defaultValue` uses the caller's LOCAL calendar day so the picker
 // pre-fills with their natural "today" — using `toISOString().slice(0,10)`
@@ -143,7 +149,7 @@ export function LogInteractionForm({
           <select
             id="sc-current_status"
             name="current_status"
-            defaultValue="healthy"
+            defaultValue="doing_well"
             style={fieldSelectStyle}
           >
             {STATUSES.map((s) => (

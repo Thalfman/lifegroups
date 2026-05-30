@@ -10,21 +10,23 @@ import type {
 const REASON_LABEL: Record<CareAttentionReason, string> = {
   overdue_touchpoint: "Overdue",
   overdue_care_follow_up: "Follow-up due",
-  needs_attention_status: "Needs attention",
+  concern_status: "Concern",
+  needs_follow_up_status: "Needs follow-up",
   no_contact_yet: "No contact",
   stale_last_contact: "Stale contact",
   no_over_shepherd: "No over-shepherd",
-  watch_status: "Watch",
+  needs_encouragement_status: "Needs encouragement",
 };
 
 const REASON_TONE: Record<CareAttentionReason, { bg: string; fg: string; border: string }> = {
   overdue_touchpoint: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   overdue_care_follow_up: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  needs_attention_status: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
+  concern_status: { bg: "#f6d6cd", fg: "#7a1d10", border: "#dc9c8a" },
+  needs_follow_up_status: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   no_contact_yet: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
   stale_last_contact: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
   no_over_shepherd: { bg: P.bgDeep, fg: P.ink2, border: P.line2 },
-  watch_status: { bg: "#fff5d9", fg: "#6a4d11", border: "#efdfa3" },
+  needs_encouragement_status: { bg: "#fff5d9", fg: "#6a4d11", border: "#efdfa3" },
 };
 
 const PRIMARY_BADGE: CSSProperties = {
@@ -88,7 +90,7 @@ export function CareAttentionQueue({
   items: CareAttentionItem[];
   totalCount: number;
 }) {
-  // Queue reasons (e.g. no_over_shepherd, watch_status) don't all map onto
+  // Queue reasons (e.g. no_over_shepherd, needs_encouragement_status) don't all map onto
   // the directory's `needs_attention` filter, so a single CTA can't reliably
   // surface the rest of the queue. The full queue size is shown as
   // non-clickable copy and users scroll the directory below for more.

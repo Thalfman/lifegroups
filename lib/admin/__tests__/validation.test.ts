@@ -266,7 +266,7 @@ describe("validateUpsertShepherdCareProfilePayload", () => {
     const r = validateUpsertShepherdCareProfilePayload({
       shepherd_profile_id: "nope",
       set_current_status: "true",
-      current_status: "healthy",
+      current_status: "doing_well",
     });
     expect(r.ok).toBe(false);
   });
@@ -296,13 +296,13 @@ describe("validateUpsertShepherdCareProfilePayload", () => {
     const r = validateUpsertShepherdCareProfilePayload({
       shepherd_profile_id: UUID_A.toUpperCase(),
       set_current_status: "true",
-      current_status: "watch",
+      current_status: "needs_encouragement",
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.shepherd_profile_id).toBe(UUID_A);
       expect(r.value.set_current_status).toBe(true);
-      expect(r.value.current_status).toBe("watch");
+      expect(r.value.current_status).toBe("needs_encouragement");
       expect(r.value.set_next_touchpoint_due).toBe(false);
       expect(r.value.set_admin_summary).toBe(false);
     }
@@ -491,7 +491,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         set_next_touchpoint_due: "true",
         next_touchpoint_due: "2026-06-05",
         set_current_status: "true",
-        current_status: "needs_attention",
+        current_status: "needs_follow_up",
       },
       { todayIso: "2026-05-21" },
     );
@@ -500,7 +500,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
       expect(r.value.set_next_touchpoint_due).toBe(true);
       expect(r.value.next_touchpoint_due).toBe("2026-06-05");
       expect(r.value.set_current_status).toBe(true);
-      expect(r.value.current_status).toBe("needs_attention");
+      expect(r.value.current_status).toBe("needs_follow_up");
       expect(r.value.notes).toBeNull();
     }
   });

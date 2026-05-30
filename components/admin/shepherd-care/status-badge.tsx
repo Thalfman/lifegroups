@@ -16,20 +16,30 @@ const BASE: CSSProperties = {
 };
 
 const TONES: Record<ShepherdCareStatus, CSSProperties> = {
-  healthy: {
+  doing_well: {
     background: P.sageSoft,
     color: "#3e4f29",
     border: `1px solid ${P.line}`,
   },
-  watch: {
+  needs_encouragement: {
     background: "#fff5d9",
     color: "#6a4d11",
     border: "1px solid #efdfa3",
   },
-  needs_attention: {
+  needs_follow_up: {
     background: P.terraSoft,
     color: "#923220",
     border: "1px solid #e4b9a8",
+  },
+  concern: {
+    background: "#f6d6cd",
+    color: "#7a1d10",
+    border: "1px solid #dc9c8a",
+  },
+  inactive: {
+    background: "#ececea",
+    color: "#5c5852",
+    border: "1px solid #d8d4cd",
   },
 };
 
