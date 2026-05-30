@@ -28,37 +28,34 @@ be considered done.
 
 "Done" is **outcome-based, not a feature checklist**: the app is done when it
 does Julian's three jobs *reliably*. Each job below has a done bar and its
-current state. The authoritative, always-current stage map is
-[`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — this section is the
-target those stages are measured against.
+current state. The authoritative requirements, mapped 1:1 to Julian's twelve
+questions, live in the PRD ([`docs/PRD.md`](./docs/PRD.md)) — this section is the
+target those requirements are measured against.
 
 | # | Job | Done when… | Today |
 |---|---|---|---|
-| 1 | **Leaders' health is visible** | Julian can record care status, log interactions, track the next step he owes each leader, and triage who needs attention — privately. | **Nearly there.** Care profiles, interaction log, over-shepherd coverage, and the triage dashboard have shipped. Remaining: **SC.1B** (the follow-up/task list — the "what I owe them next" half) and a decision on **SC.4** (private-to-Julian notes). |
-| 2 | **Launch timing is clear** | Julian can see capacity, forecast group demand by season, and track which groups are ready to multiply and in what year. | **Largely there.** Capacity (=12 + opt-to-stay-open), forecast scenarios, seasonality quick-fills, and the multiplication pipeline have shipped. Remaining: Julian's call on pipeline scope and reliable church-attendance capture. |
-| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The biggest gap.** This is in **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. |
-| — | **…reliably** | The reliability/security debt is cleared: baseline observability, a minimum test suite, and the open hardening items in [roadmap Appendix A](./docs/PRODUCT_ROADMAP.md). | **Partial.** Auth/RLS/audit posture and several hardening items have shipped; observability, `getCurrentSession()` hardening, and test coverage are still owed (blueprint §G). |
+| 1 | **Leaders' health is visible** | Julian can record care status, log interactions, track the next step he owes each leader, and triage who needs attention — privately. | **Shipped.** Care profiles, interaction log, follow-up task list (SC.1B), over-shepherd coverage, the triage dashboard, and private-to-Julian encrypted notes (SC.4) have all shipped. See PRD Q1–Q8. |
+| 2 | **Launch timing is clear** | Julian can see capacity, forecast group demand by season, and track which groups are ready to multiply and in what year. | **Shipped.** Capacity (=12 + opt-to-stay-open), forecast scenarios, seasonality quick-fills, and the multiplication pipeline have shipped. Remaining: Julian's call on pipeline ownership and reliable church-attendance capture. See PRD Q9–Q11. |
+| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The one gap left.** In **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. See PRD Q12. |
 
-**In one line:** the app is done when jobs 1 and 2 are fully shipped, job 3's
-rubric is settled with Julian and built, and the Appendix-A debt is cleared.
-The open decisions that gate this are listed under
-"Decisions needed from Julian" in the
-[blueprint](./docs/MASTER_BLUEPRINT.md#decisions-needed-from-julian-blockers).
+**In one line:** jobs 1 and 2 (Q1–Q11) are shipped; job 3's rubric (Q12) is the
+one North-Star item left, blocked on Julian. The open decisions that gate the
+remaining work are listed under "Decisions owed by Julian" in the
+[PRD](./docs/PRD.md#decisions-owed-by-julian).
 
 ## Where to look next
 
-- [`docs/MASTER_BLUEPRINT.md`](./docs/MASTER_BLUEPRINT.md) — **start here:** the
-  at-a-glance map of every workstream, its stage, and what's next.
-- [`docs/PRODUCT_ROADMAP.md`](./docs/PRODUCT_ROADMAP.md) — ordered execution
-  plan, pivot rationale, and the reliability/security debt appendix.
-- [`docs/FEATURE_BACKLOG.md`](./docs/FEATURE_BACKLOG.md) — full feature
-  inventory including deferred items.
-- [`docs/SHEPHERD_CARE_TRACKER_PLAN.md`](./docs/SHEPHERD_CARE_TRACKER_PLAN.md)
-  and [`docs/LAUNCH_PLANNING_PLAN.md`](./docs/LAUNCH_PLANNING_PLAN.md) — per-area
-  plans and as-built summaries.
+- [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
+  — ⭐ **the North Star:** Julian's twelve questions and answers. Everything traces here.
+- [`docs/PRD.md`](./docs/PRD.md) — 📌 **THE PRD:** requirements mapped 1:1 to Q1–Q12,
+  with shipped / blocked status for each.
+- [`docs/adr/0004-systems-conversation-architecture.md`](./docs/adr/0004-systems-conversation-architecture.md)
+  — 🏛️ **THE ADR:** the architecture decisions, mapped 1:1 to Q1–Q12.
+- [`docs/README.md`](./docs/README.md) — the documentation index (what's live, what's archived).
 - [`docs/julian-inputs/`](./docs/julian-inputs/README.md) — **source of record**
   for Julian's own words (the Q&A, the care spreadsheet, the multiplication plan).
-- [`docs/adr/`](./docs/adr/) — architecture decision records.
+- [`docs/archive/`](./docs/archive/README.md) — everything off the North-Star path
+  (the former blueprint, roadmap, backlog, and historical specs). History, not current truth.
 - [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Shepherd, Over-Shepherd,
   Ministry Admin, …). Use this vocabulary.
 
@@ -183,7 +180,7 @@ Two clarifications:
 
 Real users (e.g. Julian as `ministry_admin`, over-shepherds, additional leaders)
 are invited from `/admin/super-admin` once a `super_admin` is signed in. See
-[`docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+[`docs/archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
 
 ## Supabase notes
 
@@ -191,7 +188,7 @@ are invited from `/admin/super-admin` once a `super_admin` is signed in. See
 - RLS migration: `supabase/migrations/20260518000000_phase4_rls.sql`
 - Seed file: `supabase/seed/phase2_seed.sql`
 - Dev auth bootstrap: `supabase/dev/README.md`
-- Schema docs: [`docs/DATABASE_SCHEMA.md`](./docs/DATABASE_SCHEMA.md)
+- Schema docs: [`docs/architecture/DATABASE_SCHEMA.md`](./docs/architecture/DATABASE_SCHEMA.md)
 - Env vars are **optional** for build; required only for sign-in and live data.
 
 ## Personas

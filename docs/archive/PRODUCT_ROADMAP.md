@@ -1,5 +1,9 @@
 # Product Roadmap
 
+> 📌 **This is THE PRD for Life Group Operations.** It is the single product
+> requirements document — the ordered, authoritative plan of what to build and
+> why. (Kept under the filename `PRODUCT_ROADMAP.md` intentionally.)
+
 ## 1. Purpose
 
 This is the **active product roadmap** for the Life Group Operations
@@ -7,7 +11,7 @@ Dashboard. It is the ordered execution plan; the broader inventory of
 possible features (including deferred and rejected items) lives in
 [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md). Historical phase specs and
 verification logs are preserved under
-[`docs/archive/`](./archive/README.md). For an at-a-glance status map of every
+[`docs/archive/`](./README.md). For an at-a-glance status map of every
 workstream — what stage each is in and what's blocked on Julian — see
 [`MASTER_BLUEPRINT.md`](./MASTER_BLUEPRINT.md).
 
@@ -59,9 +63,9 @@ runtime, no hard deletes in normal workflows).
 
 **Open questions for future Julian sync** (originally posed before SC
 follow-on work). The **2026-05-27** materials Julian sent — captured
-verbatim under [`julian-inputs/`](./julian-inputs/README.md) with a
+verbatim under [`julian-inputs/`](../julian-inputs/README.md) with a
 question-by-question mapping in
-[`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) — answer
+[`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) — answer
 most of them. The verbatim **questions** (not just Julian's answers) are now
 captured too, which resolved the care data-model question (Q6 → A1) and surfaced
 a new private-notes requirement (Q8). Status per question:
@@ -69,7 +73,7 @@ a new private-notes requirement (Q8). Status per question:
 - **Answered** — What fields does Julian's spreadsheet contain? Name,
   Issue, Date of first communication, Next step, Update of communication,
   Misc. note
-  ([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)).
+  ([template](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)).
 - **Answered** — History log, task list, or both? (Q6) **Both** ("Maybe
   both!"). Julian wants the history **and** a follow-up/task list → the **A1**
   data model; **SC.1B (care follow-ups) is wanted, not optional.**
@@ -201,7 +205,7 @@ They never sign in. No public signup.
 
 - **Julian admin OS** — Shepherd care + launch planning, owned by this
   roadmap. Plans:
-  [`SHEPHERD_CARE_TRACKER_PLAN.md`](./SHEPHERD_CARE_TRACKER_PLAN.md),
+  [`SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md),
   [`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md).
 - **Full inventory of features** — [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md).
 - **Invite user workflow contract** —
@@ -215,7 +219,7 @@ Execution order:
 **INV.1 → SC.1 → SC.2 → SC.3 → LP.1 → LP.2 → LDR.1 → EXT.1.**
 
 The Julian spine (SC.1A, SC.2, SC.3, LP.1, LP.2) has shipped; the as-
-built specs are in [`docs/archive/`](./archive/README.md). The plans in
+built specs are in [`docs/archive/`](./README.md). The plans in
 `SHEPHERD_CARE_TRACKER_PLAN.md` and `LAUNCH_PLANNING_PLAN.md` remain the
 forward-looking reference for SC.1B/follow-ons and LDR.1 / EXT.1.
 
@@ -250,7 +254,7 @@ build the gap in a separate implementation PR.
 - `app/(protected)/admin/super-admin/invite-user-actions.ts`
 - `components/admin/forms/invite-user-form.tsx`
 - `supabase/functions/invite-user/index.ts`
-- `docs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md` (source of truth contract)
+- `docs/specs/SUPER_ADMIN_INVITE_USER_WORKFLOW.md` (source of truth contract)
 
 **Security / privacy.**
 - Service role only inside the Edge Function.
@@ -543,7 +547,7 @@ scope conversation with Julian + the comms director before any work.
 
 ## 6. New signals from Julian's 2026-05-27 inputs
 
-Surfaced by [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md)
+Surfaced by [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md)
 §3.
 
 **Implementation status (PR #87, branch `claude/julian-feedback-plan-4vDle`).**
@@ -563,7 +567,7 @@ each landed:
   readiness rubric (12+ members, 3+ years, co-shepherd 1+ year, willing, need)
   is on the launch-planning page, grouped by audience × life stage.
 - **P5 — Group-health grading**: discovery only — see
-  [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md).
+  [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md).
   Held pending Julian's rubric.
 - **P6 — Leader self-update + comms-director**: deferred design notes added to
   LDR.1 / EXT.1 below.
@@ -583,7 +587,7 @@ The original signal descriptions follow.
   dimensions before any feature work. Distinct from shepherd care and
   launch planning.
 - **Multiplication candidate pipeline (LP gap).** The
-  [2026 multiplication plan](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md)
+  [2026 multiplication plan](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md)
   is a named pipeline (group → stage-of-life segment → readiness → target
   year) that LP.* does not model — LP aggregates capacity math but does
   not track *which named groups* multiply and when. **Scope call for

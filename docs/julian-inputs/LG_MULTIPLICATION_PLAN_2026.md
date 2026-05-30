@@ -113,7 +113,7 @@ Names, counts, and notes below are verbatim from the source.
 
 ## How this maps to Launch Planning
 
-This is the real-world data behind [`../LAUNCH_PLANNING_PLAN.md`](../LAUNCH_PLANNING_PLAN.md):
+This is the real-world data behind [`../LAUNCH_PLANNING_PLAN.md`](../archive/LAUNCH_PLANNING_PLAN.md):
 
 - The **multiplication criteria** above are exactly the launch triggers Julian
   named in answer 10 (12+ members, 3+ years, need for a similar-stage group).

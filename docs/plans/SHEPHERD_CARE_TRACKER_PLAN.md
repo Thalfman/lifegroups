@@ -1,9 +1,10 @@
 # Shepherd Care Tracker — Plan
 
 Implementation plan for SC.1 / SC.2 / SC.3 / SC.4 in
-[`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md). SC.1A, SC.1B, SC.2, and SC.3
-have shipped; this plan remains the forward-looking reference for **SC.4**
-(private / encrypted notes — new, from Q8), plus any later care work.
+[`PRD.md`](../PRD.md). **SC.1A, SC.1B, SC.2, SC.3, and SC.4 have all shipped**
+(SC.4 = private / encrypted notes, from Q8 — see [`PRD.md`](../PRD.md) Q8 and
+[`adr/0004`](../adr/0004-systems-conversation-architecture.md) D5). This plan now
+serves as the design reference behind that shipped work, plus any later care work.
 
 **SC.1B shipped (issue #107):** the care follow-up task list (the "both" half
 of Julian's Q6) is built — `shepherd_care_follow_ups` table + enum, the
@@ -16,7 +17,7 @@ detail UI. Over-shepherd write of care follow-ups (#104) remains out of scope.
 ## Shipped — as-built summary
 
 The detailed as-built specs are archived under
-[`docs/archive/`](./archive/README.md) as
+[`docs/archive/`](../archive/README.md) as
 `SC_1A_SHEPHERD_CARE_FOUNDATION.md`,
 `SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md`, and
 `SC_3_JULIAN_CARE_DASHBOARD.md`.
@@ -28,8 +29,8 @@ leader's `profiles.id`).
 **Tables.** `shepherd_care_profiles`, `shepherd_care_interactions`,
 `over_shepherds`, `shepherd_coverage_assignments`. Admin-only SELECT;
 no table-level write policies. `shepherd_care_follow_ups` (the **SC.1B**
-feature) is not yet shipped; a **private-to-Julian notes tier (SC.4)** is not
-yet built.
+feature) and the **private-to-Julian notes tier (SC.4)** — `shepherd_care_private_notes`
+with client-side zero-knowledge encryption — have since shipped.
 
 **RPCs.**
 - `admin_upsert_shepherd_care_profile`
@@ -133,7 +134,7 @@ shepherd care because:
 ## 6. Recommended MVP data model
 
 **Decided: A1.** Both inputs are now in hand. The spreadsheet
-([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) is note/date-oriented,
+([template](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) is note/date-oriented,
 but Julian's answer to **Q6** ("history log, a follow-up/task list, or both?")
 was **"Maybe both!"** — an explicit ask for the task/follow-up list as well as
 the history. That settles the earlier A1-vs-A2 question in favor of **A1**:
@@ -256,18 +257,19 @@ Care-specific task list. **Never** exposed to leaders. Separate from
   excluded from any future EXT.1 work unless explicitly added with a
   separate privacy review.
 
-### Planned: a private-to-Julian tier (SC.4, from Q8)
+### Shipped: a private-to-Julian tier (SC.4, from Q8)
 
 Julian asked for notes "that should only be readable by you" — readable by
-**Julian alone**, excluding even `super_admin`. The full buildable design now
-lives in its own spec: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./SC_4_PRIVATE_CARE_NOTES_SPEC.md).
+**Julian alone**, excluding even `super_admin`. The design spec is archived at
+[`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md);
+the decision is recorded in [`adr/0003`](../adr/0003-private-care-note-encryption.md)
+and summarized in [`adr/0004`](../adr/0004-systems-conversation-architecture.md) D5.
 
-In brief: a separate **fenced table** (following the OS.5 `admin_summary`
-precedent) whose RLS is **creator-scoped** so only the creating admin can SELECT
-— excluding other admins and `super_admin` through the app. The one open
-decision (blueprint Q1) is Tier 1 (creator-scoped RLS, **recommended**) vs.
-Tier 2 (encryption against raw-DB access). No `leader` / `co_leader` /
-over-shepherd path may ever reach private-tier notes.
+What shipped: the **Tier 2** option (client-side **zero-knowledge encryption** —
+keys wrapped under WebAuthn PRF + recovery code, server stores ciphertext only),
+so the notes are unreadable even with raw-DB access. The super-admin read path was
+explicitly closed and proven (#114). No `leader` / `co_leader` / over-shepherd path
+can ever reach private-tier notes.
 
 ## 13. Suggested UI
 
@@ -384,15 +386,15 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
   items into the SC.3 dashboard buckets.
 - **Endorsed by Julian's Q6 ("both"); A1 is the target model (§ 6).**
 
-### SC.4 — Private / encrypted care notes — NEW (from Q8) — SPECCED
-- Full design: [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](./SC_4_PRIVATE_CARE_NOTES_SPEC.md).
-- **Decide the interpretation first** (spec §2 / blueprint Q1): Tier 1 —
-  creator-scoped RLS on a separate fenced table (recommended) vs. Tier 2 —
-  encryption-at-rest with a Julian-held key.
-- Tier 1 build: new `shepherd_care_private_notes` fenced table, RLS gated on
-  `auth_is_admin() AND created_by_profile_id = auth_profile_id()`,
-  `admin_upsert_shepherd_care_private_note` SECURITY DEFINER RPC with
-  presence-only audit, a creator-scoped read model, and a "Private notes (only
-  you)" section on the care detail page.
-- Never expose to leaders / over-shepherds; requires a privacy review before
-  build.
+### SC.4 — Private / encrypted care notes — NEW (from Q8) — ✅ SHIPPED
+- Full design (archived): [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md);
+  decision in [`adr/0003`](../adr/0003-private-care-note-encryption.md).
+- **Interpretation chosen: Tier 2** — client-side **zero-knowledge encryption**
+  (keys wrapped under WebAuthn PRF + recovery code, server stores ciphertext only),
+  so the notes are unreadable even with raw-DB access — stronger than the
+  creator-scoped-RLS option.
+- Shipped: `shepherd_care_private_notes` table, key-slot table, the crypto module
+  `lib/crypto/private-notes.ts`, the upsert RPC with presence-only audit, a
+  creator-scoped read model, and a "Private notes (only you)" section on the care
+  detail page. The super-admin read path was explicitly closed and proven (#114).
+- Never exposed to leaders / over-shepherds.

@@ -56,8 +56,8 @@ function secrets.
 5. Deploy the Edge Functions under `supabase/functions/` if you need
    the invite-user workflow.
 6. Bootstrap your own `super_admin` and link seed auth users by
-   following [`supabase/dev/README.md`](../supabase/dev/README.md).
+   following [`supabase/dev/README.md`](../../supabase/dev/README.md).
 7. Visit `/login` and sign in. Real users (Julian as
    `ministry_admin`, leaders) are then invited from
    `/admin/super-admin` — see
-   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+   [`SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](../archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).

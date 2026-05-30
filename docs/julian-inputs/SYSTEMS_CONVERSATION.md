@@ -35,7 +35,7 @@ concern, inactive, etc.
 
 *Note: the question proposed a candidate status vocabulary (doing well / needs
 encouragement / needs follow-up / concern / inactive). Julian did not adopt it
-verbatim — see [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../GROUP_HEALTH_RUBRIC_DISCOVERY.md)
+verbatim — see [`../GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)
 for how this bears on the shipped `shepherd_care_status` enum.*
 
 **Q3.** What do you usually want to remember after connecting with a leader?
@@ -71,7 +71,7 @@ follow-up/task list, or both?
 = history log **and** a task/follow-up list, which points to the **A1** model
 (profiles + interactions + `shepherd_care_follow_ups`), i.e. SC.1B is wanted,
 not optional. See [`MIN_CARE_LIST_TEMPLATE.md`](./MIN_CARE_LIST_TEMPLATE.md) and
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../SHEPHERD_CARE_TRACKER_PLAN.md) §6.*
+[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §6.*
 
 **Q7.** For the 3 over-shepherds, do you mainly want to track who they are
 covering, or eventually have them help update the system too?
@@ -94,7 +94,7 @@ notes" and is **not** satisfied by the shipped admin-only RLS (which grants
 SELECT to `super_admin` and `ministry_admin` alike). The Shepherd Care
 foundation migration already deferred this "if Julian asks for" it — that trigger
 is now met. Tracked as SC.4; see
-[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../SHEPHERD_CARE_TRACKER_PLAN.md) §12.*
+[`../SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) §12.*
 
 **Q9.** For launch planning, what numbers do you currently use or estimate?
 Church attendance, people in groups, guests, expected growth, target group

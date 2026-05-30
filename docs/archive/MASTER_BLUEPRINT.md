@@ -18,13 +18,13 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
     reliability/security debt appendix.
   - [`FEATURE_BACKLOG.md`](./FEATURE_BACKLOG.md) — full inventory incl. deferred
     / rejected.
-  - [`SHEPHERD_CARE_TRACKER_PLAN.md`](./SHEPHERD_CARE_TRACKER_PLAN.md),
+  - [`SHEPHERD_CARE_TRACKER_PLAN.md`](../plans/SHEPHERD_CARE_TRACKER_PLAN.md),
     [`LAUNCH_PLANNING_PLAN.md`](./LAUNCH_PLANNING_PLAN.md),
-    [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) —
+    [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) —
     per-area plans / discovery.
-  - [`julian-inputs/`](./julian-inputs/README.md) — **source of record** for
+  - [`julian-inputs/`](../julian-inputs/README.md) — **source of record** for
     Julian's own words (the Q&A, the spreadsheet, the multiplication plan).
-  - [`archive/`](./archive/README.md) — as-built specs + verification logs.
+  - [`archive/`](./README.md) — as-built specs + verification logs.
 
 ## Stage legend
 
@@ -50,33 +50,33 @@ behind the 2026-05-27 answers; see the [change log](#change-log))._
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| SC.1A | Care foundation — `shepherd_care_profiles` + `shepherd_care_interactions` | ✅ Shipped | [as-built](./archive/SC_1A_SHEPHERD_CARE_FOUNDATION.md) | — |
-| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](./SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
-| SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./archive/SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
-| SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./archive/SC_3_JULIAN_CARE_DASHBOARD.md) | — |
+| SC.1A | Care foundation — `shepherd_care_profiles` + `shepherd_care_interactions` | ✅ Shipped | [as-built](./SC_1A_SHEPHERD_CARE_FOUNDATION.md) | — |
+| SC.1B | Care follow-ups — `shepherd_care_follow_ups` task list | ✅ Shipped (#107) | [plan](../plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Completes the A1 care model (profiles + interactions + follow-ups). |
+| SC.2 | Over-shepherd coverage tracking (3 over-shepherds) | ✅ Shipped | [as-built](./SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md) | — |
+| SC.3 | Julian care dashboard (triage buckets) | ✅ Shipped | [as-built](./SC_3_JULIAN_CARE_DASHBOARD.md) | — |
 | SC.4 | Private / encrypted care notes — readable by Julian alone | 🟡 Planned **(Q8)** | [spec](./SC_4_PRIVATE_CARE_NOTES_SPEC.md) | **Tier 2 (zero-knowledge) chosen** (Q1 resolved). Crypto design + threat model in #111 (human sign-off), then build #112–#114. |
 | — | Stale-contact threshold `shepherd_care_stale_days` (default 60) | ✅ Shipped (configurable) | [roadmap §6 P1](./PRODUCT_ROADMAP.md) | Value is Julian's call (see ❓ below). |
-| — | Cadence tiering by oversight | ❓ Open (Julian, **Q5**) | [FEEDBACK_MAP](./julian-inputs/FEEDBACK_MAP.md) | Decide: one global threshold vs. per-tier (direct vs. delegated). |
-| — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
+| — | Cadence tiering by oversight | ❓ Open (Julian, **Q5**) | [FEEDBACK_MAP](../julian-inputs/FEEDBACK_MAP.md) | Decide: one global threshold vs. per-tier (direct vs. delegated). |
+| — | Care-status vocabulary | ❓ Open refinement (**Q2**) | [rubric discovery](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Align `healthy/watch/needs_attention` if Julian settles a vocabulary. |
 
 ## C. Launch Planning
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| LP.1 | Capacity & launch-planning MVP | ✅ Shipped | [plan](./LAUNCH_PLANNING_PLAN.md), [as-built](./archive/LP_1_CAPACITY_LAUNCH_PLANNING.md) | — |
-| LP.2 | Forecast scenarios (conservative / expected / stretch) | ✅ Shipped | [as-built](./archive/LP_2_FORECAST_SCENARIOS.md) | — |
+| LP.1 | Capacity & launch-planning MVP | ✅ Shipped | [plan](./LAUNCH_PLANNING_PLAN.md), [as-built](./LP_1_CAPACITY_LAUNCH_PLANNING.md) | — |
+| LP.2 | Forecast scenarios (conservative / expected / stretch) | ✅ Shipped | [as-built](./LP_2_FORECAST_SCENARIOS.md) | — |
 | P2 | Capacity = 12 + `allow_over_capacity`; church-attendance snapshots (% in a group) | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md) | — |
 | P3 | Seasonality quick-fills (Aug/Jan) + worship-center demand scenario | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md) | — |
-| P4 | Multiplication candidate pipeline — `multiplication_candidates` (audience × life stage, readiness rubric) | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md), [2026 plan](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Scope call below. |
-| — | Extend in-app pipeline vs. keep Google Doc as system of record | ❓ Open (Julian) | [FEEDBACK_MAP §4](./julian-inputs/FEEDBACK_MAP.md) | Julian's scope decision. |
-| — | 2026-vs-2027 multiplication split | ❓ Open (Julian) | [2026 plan](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md#timeline-buckets) | Set per-candidate `target_year`. |
-| — | Reliable church-attendance capture | ❓ Open / data-quality gap | [FEEDBACK_MAP §3.6](./julian-inputs/FEEDBACK_MAP.md) | Manual entry for now. |
+| P4 | Multiplication candidate pipeline — `multiplication_candidates` (audience × life stage, readiness rubric) | ✅ Shipped | [roadmap §6](./PRODUCT_ROADMAP.md), [2026 plan](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Scope call below. |
+| — | Extend in-app pipeline vs. keep Google Doc as system of record | ❓ Open (Julian) | [FEEDBACK_MAP §4](../julian-inputs/FEEDBACK_MAP.md) | Julian's scope decision. |
+| — | 2026-vs-2027 multiplication split | ❓ Open (Julian) | [2026 plan](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md#timeline-buckets) | Set per-candidate `target_year`. |
+| — | Reliable church-attendance capture | ❓ Open / data-quality gap | [FEEDBACK_MAP §3.6](../julian-inputs/FEEDBACK_MAP.md) | Manual entry for now. |
 
 ## D. Group Health
 
 | ID | Item | Stage | Detail | Next action |
 |---|---|---|---|---|
-| P5 | Group-health grading rubric (attendance + spiritual growth + TBD) | 🔬 Discovery | [discovery](./GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Settle dimensions & output shape with Julian (his rubric is unfinished). |
+| P5 | Group-health grading rubric (attendance + spiritual growth + TBD) | 🔬 Discovery | [discovery](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Settle dimensions & output shape with Julian (his rubric is unfinished). |
 
 ## E. Leader tools
 
@@ -137,11 +137,11 @@ product consequences of the newly-captured questions.
 ## Source of record
 
 All product decisions above trace to Julian's own materials in
-[`julian-inputs/`](./julian-inputs/README.md):
-[the Q&A](./julian-inputs/SYSTEMS_CONVERSATION.md),
-[the care-list template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md),
-[the 2026 multiplication plan](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md),
-and [the feedback map](./julian-inputs/FEEDBACK_MAP.md) that synthesizes them.
+[`julian-inputs/`](../julian-inputs/README.md):
+[the Q&A](../julian-inputs/SYSTEMS_CONVERSATION.md),
+[the care-list template](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md),
+[the 2026 multiplication plan](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md),
+and [the feedback map](../julian-inputs/FEEDBACK_MAP.md) that synthesizes them.
 
 ## Change log
 

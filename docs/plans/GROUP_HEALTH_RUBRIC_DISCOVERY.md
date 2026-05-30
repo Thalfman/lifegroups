@@ -3,8 +3,8 @@
 **Status: discovery only. No schema or feature work until Julian confirms the
 dimensions below.** This document exists because Julian asked for a way to
 "grade" group health but is, in his own words, "still working on an evaluation
-system" ([systems conversation](./julian-inputs/SYSTEMS_CONVERSATION.md) answer
-12; [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) §3.1).
+system" ([systems conversation](../julian-inputs/SYSTEMS_CONVERSATION.md) answer
+12; [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) §3.1).
 Building a scoring model before his rubric is settled would bake in the wrong
 assumptions, so this captures the design space and the open questions instead.
 

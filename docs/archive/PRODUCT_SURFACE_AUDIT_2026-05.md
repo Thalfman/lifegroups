@@ -188,7 +188,7 @@ strand data or break other surfaces.
   (comms-director surface, guest forms) remain deferred. Neither is
   scoped yet.
 - **Group-health rubric** (P5) is in discovery
-  ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md)),
+  ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)),
   not in this audit.
 - The Check-ins page itself still works as the operational review
   surface. If Julian later confirms the weekly check-in workflow is

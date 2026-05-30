@@ -13,8 +13,8 @@ launch — your answers here let us finish. Section B is parked for after launch
 nothing there is holding us up, it's listed so you know it's not forgotten.
 
 > Source of these questions: the open items in
-> [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) §5 and
-> [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./GROUP_HEALTH_RUBRIC_DISCOVERY.md),
+> [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) §5 and
+> [`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](../plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md),
 > rewritten for a non-technical read and split by what's launch-gating vs.
 > post-launch (see "Already handled" at the bottom for what's done).
 

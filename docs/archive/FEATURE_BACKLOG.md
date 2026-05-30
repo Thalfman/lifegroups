@@ -80,7 +80,7 @@ Verified from repo inspection. Each item below has an implemented
 These items in `PRODUCT_ROADMAP.md` have shipped. The deep dives in §5
 remain as feature-level reference (problem framing, scope, audit
 events, open questions); the as-built specs live under
-[`docs/archive/`](./archive/README.md).
+[`docs/archive/`](./README.md).
 
 - **INV.1** — Super Admin Invite User.
 - **SC.1A** — Julian Shepherd Care Tracker MVP.
@@ -94,7 +94,7 @@ Outstanding from the SC.* line:
 - **SC.1B** — admin-only care follow-ups (the `shepherd_care_follow_ups` task
   list, parallel to `follow_ups`); planned, not yet built. **Endorsed by
   Julian's Q6 ("Maybe both!")** — see
-  [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md).
+  [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md).
 - **SC.4** — private / encrypted care notes readable by Julian alone (from Q8);
   new, not built, needs a design decision (visibility flag vs. encryption)
   first.
@@ -152,7 +152,7 @@ Outstanding from the SC.* line:
   private / encrypted notes (**SC.4 — from Q8**), smart cadence flags, AI
   summaries (only if Julian asks).
 - **Open questions.** Resolved: the spreadsheet columns are known
-  ([template](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) and Q6 settled the
+  ([template](../julian-inputs/MIN_CARE_LIST_TEMPLATE.md)) and Q6 settled the
   data model (A1). Still open: the private-notes interpretation (Q8) and cadence
   tiering (Q5) — see [`PRODUCT_ROADMAP.md`](./PRODUCT_ROADMAP.md) §2.
 - **Acceptance criteria.** Julian can open a care profile, log an

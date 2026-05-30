@@ -7,7 +7,7 @@ this plan remains the forward-looking reference for any extensions.
 ## Shipped — as-built summary
 
 The detailed as-built specs are archived under
-[`docs/archive/`](./archive/README.md) as
+[`docs/archive/`](../archive/README.md) as
 `LP_1_CAPACITY_LAUNCH_PLANNING.md` and `LP_2_FORECAST_SCENARIOS.md`.
 
 **Route.** `/admin/launch-planning`.
