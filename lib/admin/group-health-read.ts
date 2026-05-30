@@ -5,6 +5,7 @@ import type { AttendanceWeekTally, GroupHealthRubricConfig } from "@/lib/admin/g
 import {
   attendanceConsistency,
   computeGrade,
+  dimensionScoresFromInputs,
   rubricFromMetricDefaults,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
 } from "@/lib/admin/group-health";
@@ -106,6 +107,12 @@ export type GroupHealthOverviewRow = {
   group_name: string;
   attendance_pct: number | null;
   attendance_weeks_counted: number;
+  // The two admin-entered 1–5 ratings (#128), carried from the month's
+  // persisted assessment so the surface can show them and pre-fill the editor.
+  spiritual_growth_score: number | null;
+  spiritual_growth_note: string | null;
+  group_question_score: number | null;
+  group_question_leader_reported: boolean;
   computed_letter: string | null;
   // True when the live attendance read failed and we fell back to the last
   // persisted assessment (so the surface can flag it rather than mislead).
@@ -118,8 +125,51 @@ type PersistedAssessment = {
   group_id: string;
   attendance_pct: number | null;
   attendance_weeks_counted: number;
+  spiritual_growth_score: number | null;
+  spiritual_growth_note: string | null;
+  group_question_score: number | null;
+  group_question_leader_reported: boolean;
   computed_letter: string | null;
 };
+
+const ASSESSMENT_COLUMNS =
+  "group_id, attendance_pct, attendance_weeks_counted, spiritual_growth_score, " +
+  "spiritual_growth_note, group_question_score, group_question_leader_reported, computed_letter";
+
+// The two admin-entered 1–5 ratings (and the spiritual-growth note) for a
+// group's month, or nulls when no assessment row exists yet. The write action
+// reads this to merge a single-dimension edit without clobbering the other.
+export type GroupHealthRatings = {
+  spiritual_growth_score: number | null;
+  spiritual_growth_note: string | null;
+  group_question_score: number | null;
+};
+
+export async function fetchGroupHealthRatings(
+  client: AppSupabaseClient,
+  groupId: string,
+  periodMonthIso: string = currentPeriodMonthIso(),
+): Promise<ReadResult<GroupHealthRatings>> {
+  const { data, error } = await (client as AppSupabaseClient)
+    .from("group_health_assessments" as never)
+    .select(ASSESSMENT_COLUMNS as never)
+    .eq("group_id" as never, groupId as never)
+    .eq("period_month" as never, periodMonthIso as never)
+    .maybeSingle<PersistedAssessment>();
+
+  if (error) {
+    return { data: null, error: wrapError("fetchGroupHealthRatings", error) };
+  }
+  return {
+    data: {
+      spiritual_growth_score: data?.spiritual_growth_score ?? null,
+      spiritual_growth_note: data?.spiritual_growth_note ?? null,
+      group_question_score: data?.group_question_score ?? null,
+    },
+    error: null,
+  };
+}
+
 
 // Overview for the admin surface: every active group with its current-month
 // grade, recomputed live from the configured rubric. On a per-group attendance
@@ -144,7 +194,7 @@ export async function listGroupHealthOverview(
 
   const { data: assessments, error: assessmentsError } = await (client as AppSupabaseClient)
     .from("group_health_assessments" as never)
-    .select("group_id, attendance_pct, attendance_weeks_counted, computed_letter" as never)
+    .select(ASSESSMENT_COLUMNS as never)
     .eq("period_month" as never, periodMonthIso as never)
     .returns<PersistedAssessment[]>();
 
@@ -165,14 +215,19 @@ export async function listGroupHealthOverview(
       rubric.attendance_window_weeks,
     );
 
+    const prior = persisted.get(group.id);
+
     if (weeksRes.error) {
       // Don't fail the whole page for one group's read; show last-known-good.
-      const prior = persisted.get(group.id);
       rows.push({
         group_id: group.id,
         group_name: group.name,
         attendance_pct: prior?.attendance_pct ?? null,
         attendance_weeks_counted: prior?.attendance_weeks_counted ?? 0,
+        spiritual_growth_score: prior?.spiritual_growth_score ?? null,
+        spiritual_growth_note: prior?.spiritual_growth_note ?? null,
+        group_question_score: prior?.group_question_score ?? null,
+        group_question_leader_reported: prior?.group_question_leader_reported ?? false,
         computed_letter: prior?.computed_letter ?? null,
         stale: true,
         unassessed: prior === undefined,
@@ -181,8 +236,14 @@ export async function listGroupHealthOverview(
     }
 
     const attendance = attendanceConsistency(weeksRes.data, rubric);
+    // Recompute live: the rolling attendance dimension plus whatever 1–5
+    // ratings the admin has already entered for the month.
+    const ratings = {
+      spiritual_growth_score: prior?.spiritual_growth_score ?? null,
+      group_question_score: prior?.group_question_score ?? null,
+    };
     const grade = computeGrade(
-      attendance.rolling_pct === null ? {} : { attendance: attendance.rolling_pct },
+      dimensionScoresFromInputs({ attendance_pct: attendance.rolling_pct, ...ratings }),
       rubric,
     );
     rows.push({
@@ -190,9 +251,17 @@ export async function listGroupHealthOverview(
       group_name: group.name,
       attendance_pct: attendance.rolling_pct,
       attendance_weeks_counted: attendance.weeks_counted,
+      spiritual_growth_score: prior?.spiritual_growth_score ?? null,
+      spiritual_growth_note: prior?.spiritual_growth_note ?? null,
+      group_question_score: prior?.group_question_score ?? null,
+      group_question_leader_reported: prior?.group_question_leader_reported ?? false,
       computed_letter: grade.letter,
+      unassessed:
+        attendance.rolling_pct === null &&
+        ratings.spiritual_growth_score === null &&
+        ratings.group_question_score === null &&
+        !persisted.has(group.id),
       stale: false,
-      unassessed: attendance.rolling_pct === null && !persisted.has(group.id),
     });
   }
 

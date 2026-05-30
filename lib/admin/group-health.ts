@@ -114,6 +114,19 @@ export function attendanceConsistency(
 }
 
 // ---------------------------------------------------------------------------
+// Rated dimensions (#128): admin-entered 1–5 → 0–100 dimension score.
+// ---------------------------------------------------------------------------
+
+// The two net-new dimensions — spiritual growth and the relayed group question
+// — are captured as a 1–5 rating, but the grade math works in 0–100 like the
+// attendance dimension. Map linearly with the floor at the bottom of the scale:
+// a 1 contributes nothing, a 3 is a middling 50, a 5 is full marks, so the five
+// steps spread across the whole range and a rating moves the letter grade.
+export function ratingToScore(rating: number): number {
+  return ((rating - 1) / 4) * 100;
+}
+
+// ---------------------------------------------------------------------------
 // Grade computation (weighted dimensions → internal numeric → A–D letter).
 // ---------------------------------------------------------------------------
 
@@ -132,6 +145,34 @@ export type ComputedGrade = {
   // A–D letter from the cut-lines, or null when numeric is null.
   letter: GroupHealthLetter | null;
 };
+
+// The raw per-dimension inputs as they sit on an assessment row: a 0–100
+// attendance % and the two admin-entered 1–5 ratings, any of which may be
+// absent (null) for the period.
+export type GroupHealthDimensionInputs = {
+  attendance_pct: number | null;
+  spiritual_growth_score: number | null;
+  group_question_score: number | null;
+};
+
+// Normalize the raw inputs into the 0–100 dimension scores computeGrade
+// consumes: attendance passes through, the 1–5 ratings go through
+// ratingToScore, and an absent dimension is omitted so its weight renormalizes
+// away. The single place attendance-vs-rating scales are reconciled, shared by
+// the live read overview and the recompute write path.
+export function dimensionScoresFromInputs(
+  inputs: GroupHealthDimensionInputs,
+): GroupHealthDimensionScores {
+  const scores: GroupHealthDimensionScores = {};
+  if (inputs.attendance_pct !== null) scores.attendance = inputs.attendance_pct;
+  if (inputs.spiritual_growth_score !== null) {
+    scores.spiritual_growth = ratingToScore(inputs.spiritual_growth_score);
+  }
+  if (inputs.group_question_score !== null) {
+    scores.group_question = ratingToScore(inputs.group_question_score);
+  }
+  return scores;
+}
 
 function letterFor(numeric: number, cutLines: GroupHealthCutLines): GroupHealthLetter {
   if (numeric >= cutLines.a) return "A";

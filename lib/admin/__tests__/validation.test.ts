@@ -15,6 +15,7 @@ import {
   validateLaunchPlanningAssumptionsPayload,
   validateCreateMultiplicationCandidatePayload,
   validateLogShepherdCareInteractionPayload,
+  validateGroupHealthRatingsPayload,
   validateMetricDefaultsPayload,
   validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
@@ -304,6 +305,76 @@ describe("validateUpsertShepherdCareProfilePayload", () => {
       expect(r.value.current_status).toBe("watch");
       expect(r.value.set_next_touchpoint_due).toBe(false);
       expect(r.value.set_admin_summary).toBe(false);
+    }
+  });
+});
+
+describe("validateGroupHealthRatingsPayload", () => {
+  it("rejects a non-uuid group_id", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: "nope",
+      spiritual_growth_score: "4",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects an all-empty submit (no ratings, no note)", () => {
+    const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /at least one/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects an out-of-range rating", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      spiritual_growth_score: "6",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /between 1 and 5/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects an oversized spiritual-growth note", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      spiritual_growth_score: "3",
+      spiritual_growth_note: "a".repeat(2001),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
+    }
+  });
+
+  it("accepts both ratings + note and canonicalizes the uuid", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A.toUpperCase(),
+      spiritual_growth_score: "4",
+      spiritual_growth_note: "  steady growth  ",
+      group_question_score: "3",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.spiritual_growth_score).toBe(4);
+      expect(r.value.spiritual_growth_note).toBe("steady growth");
+      expect(r.value.group_question_score).toBe(3);
+    }
+  });
+
+  it("treats an empty score as an explicit clear (null) while the other stands", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      spiritual_growth_score: "4",
+      group_question_score: "",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.spiritual_growth_score).toBe(4);
+      expect(r.value.group_question_score).toBeNull();
     }
   });
 });
