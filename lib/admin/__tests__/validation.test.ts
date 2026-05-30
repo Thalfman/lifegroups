@@ -15,6 +15,7 @@ import {
   validateLaunchPlanningAssumptionsPayload,
   validateCreateMultiplicationCandidatePayload,
   validateLogShepherdCareInteractionPayload,
+  validateOverShepherdBroadNotePayload,
   validateGroupHealthRatingsPayload,
   validateMetricDefaultsPayload,
   validateRecordChurchAttendancePayload,
@@ -1273,5 +1274,47 @@ describe("validateUpdateShepherdCareFollowUpPayload", () => {
       expect(r.errors).toContain("Title is required.");
       expect(r.errors).toContain("Due date must be YYYY-MM-DD.");
     }
+  });
+});
+
+describe("validateOverShepherdBroadNotePayload (#126)", () => {
+  it("accepts a uuid + non-empty note and canonicalizes the uuid", () => {
+    const r = validateOverShepherdBroadNotePayload({
+      shepherd_profile_id: UUID_A.toUpperCase(),
+      note: "  Checked in — doing well.  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.shepherd_profile_id).toBe(UUID_A);
+      expect(r.value.note).toBe("Checked in — doing well.");
+    }
+  });
+
+  it("rejects a non-uuid shepherd_profile_id", () => {
+    const r = validateOverShepherdBroadNotePayload({
+      shepherd_profile_id: "nope",
+      note: "hi",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("requires a non-empty note", () => {
+    for (const note of [undefined, "", "   "]) {
+      const r = validateOverShepherdBroadNotePayload({
+        shepherd_profile_id: UUID_A,
+        note,
+      });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.errors.some((e) => /broad note is required/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects an oversized note", () => {
+    const r = validateOverShepherdBroadNotePayload({
+      shepherd_profile_id: UUID_A,
+      note: "a".repeat(2001),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
   });
 });

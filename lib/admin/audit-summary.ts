@@ -61,6 +61,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.update_over_shepherd": "Updated over-shepherd",
   "admin.assign_shepherd_coverage": "Assigned coverage",
   "admin.end_shepherd_coverage": "Ended coverage",
+  // LDR.1 (#126) over-shepherd broad-note write.
+  "over_shepherd.log_broad_note": "Logged a broad note",
   // LP.1 / LP.2 launch planning.
   "admin.update_launch_planning_assumptions": "Updated launch baseline",
   "admin.create_launch_planning_scenario": "Created launch scenario",

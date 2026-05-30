@@ -1765,6 +1765,43 @@ export function validateCreateOverShepherdPayload(
   return { ok: true, value: fields };
 }
 
+// Phase LDR.1 (#126): the over-shepherd broad-note write payload. Deliberately
+// minimal — a Shepherd id (the coverage target) plus the broad note. No status,
+// touchpoint, interaction type, admin summary, or private-note fields reach
+// this surface.
+export type OverShepherdBroadNotePayload = {
+  shepherd_profile_id: string;
+  note: string;
+};
+
+export function validateOverShepherdBroadNotePayload(
+  input: unknown,
+): ValidationResult<OverShepherdBroadNotePayload> {
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+
+  if (!isUuid(input.shepherd_profile_id)) {
+    errors.push("shepherd_profile_id must be a uuid");
+  }
+
+  const note = trimString(input.note);
+  if (note === null || note.length === 0) {
+    errors.push("A broad note is required.");
+  } else if (note.length > 2000) {
+    errors.push("Note is too long (max 2000 characters).");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      shepherd_profile_id: normalizeUuid(input.shepherd_profile_id as string),
+      note: note as string,
+    },
+  };
+}
+
 export type UpdateOverShepherdPayload = {
   over_shepherd_id: string;
   full_name: string;
