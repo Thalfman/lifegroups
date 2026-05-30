@@ -833,6 +833,84 @@ export function validateGroupMetricSettingsPayload(
   };
 }
 
+// Group-Health Grade rated dimensions (#128). The two net-new admin-entered
+// 1–5 ratings — spiritual growth (+ optional pastoral note) and the relayed
+// group question. Each dimension carries a `set_` flag so the admin can edit one
+// without clobbering the other; a toggled-but-empty score is an explicit clear
+// (null). The leader-reported provenance of the group question is forced
+// server-side in the RPC, so it is not a client input here.
+export type GroupHealthRatingsPayload = {
+  group_id: string;
+  set_spiritual_growth: boolean;
+  spiritual_growth_score: number | null;
+  spiritual_growth_note: string | null;
+  set_group_question: boolean;
+  group_question_score: number | null;
+};
+
+export function validateGroupHealthRatingsPayload(
+  input: unknown,
+): ValidationResult<GroupHealthRatingsPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+
+  const setSpiritual = readBooleanFlag(input.set_spiritual_growth);
+  const setQuestion = readBooleanFlag(input.set_group_question);
+
+  // A toggled rating is either a 1–5 or empty (an explicit clear → null).
+  const readRating = (raw: unknown, label: string): number | null => {
+    const n = readOptionalInteger(raw);
+    if (n === "invalid") {
+      errors.push(`${label} rating must be a whole number between 1 and 5.`);
+      return null;
+    }
+    if (n === undefined) return null;
+    if (n < 1 || n > 5) {
+      errors.push(`${label} rating must be between 1 and 5.`);
+      return null;
+    }
+    return n;
+  };
+
+  let spiritualScore: number | null = null;
+  if (setSpiritual) spiritualScore = readRating(input.spiritual_growth_score, "Spiritual-growth");
+
+  let questionScore: number | null = null;
+  if (setQuestion) questionScore = readRating(input.group_question_score, "Group-question");
+
+  let note: string | null = null;
+  if (setSpiritual) {
+    const raw = readOptionalString(input.spiritual_growth_note);
+    if (raw !== undefined && raw.length > 2000) {
+      errors.push("Spiritual-growth note is too long (max 2000 characters).");
+    } else {
+      note = raw ?? null;
+    }
+  }
+
+  // At least one dimension must be touched; an edit that changes nothing would
+  // still write an audit row, which is wasteful (mirrors the care-profile rule).
+  if (!setSpiritual && !setQuestion) {
+    errors.push("Choose at least one dimension to update.");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      group_id: normalizeUuid(input.group_id as string),
+      set_spiritual_growth: setSpiritual,
+      spiritual_growth_score: setSpiritual ? spiritualScore : null,
+      spiritual_growth_note: setSpiritual ? note : null,
+      set_group_question: setQuestion,
+      group_question_score: setQuestion ? questionScore : null,
+    },
+  };
+}
+
 export type ChangeLeaderRolePayload = {
   profile_id: string;
   new_role: "leader" | "co_leader";

@@ -4,6 +4,7 @@ import {
   attendanceConsistency,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
   computeGrade,
+  dimensionScoresFromInputs,
   ratingToScore,
   rubricFromMetricDefaults,
   type AttendanceWeekTally,
@@ -87,6 +88,29 @@ describe("ratingToScore — admin 1–5 rating onto the 0–100 dimension scale"
   it("steps evenly between the extremes", () => {
     expect(ratingToScore(2)).toBe(25);
     expect(ratingToScore(4)).toBe(75);
+  });
+});
+
+describe("dimensionScoresFromInputs — assessment row → 0–100 dimension scores", () => {
+  it("passes attendance through and converts the two 1–5 ratings", () => {
+    expect(
+      dimensionScoresFromInputs({
+        attendance_pct: 82,
+        spiritual_growth_score: 4,
+        group_question_score: 3,
+      }),
+    ).toEqual({ attendance: 82, spiritual_growth: 75, group_question: 50 });
+  });
+
+  it("omits any dimension with no input so its weight renormalizes away", () => {
+    // Attendance present, both ratings absent: the tracer case, attendance only.
+    expect(
+      dimensionScoresFromInputs({
+        attendance_pct: 70,
+        spiritual_growth_score: null,
+        group_question_score: null,
+      }),
+    ).toEqual({ attendance: 70 });
   });
 });
 

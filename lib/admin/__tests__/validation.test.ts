@@ -15,6 +15,7 @@ import {
   validateLaunchPlanningAssumptionsPayload,
   validateCreateMultiplicationCandidatePayload,
   validateLogShepherdCareInteractionPayload,
+  validateGroupHealthRatingsPayload,
   validateMetricDefaultsPayload,
   validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
@@ -304,6 +305,81 @@ describe("validateUpsertShepherdCareProfilePayload", () => {
       expect(r.value.current_status).toBe("watch");
       expect(r.value.set_next_touchpoint_due).toBe(false);
       expect(r.value.set_admin_summary).toBe(false);
+    }
+  });
+});
+
+describe("validateGroupHealthRatingsPayload", () => {
+  it("rejects a non-uuid group_id", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: "nope",
+      set_spiritual_growth: "true",
+      spiritual_growth_score: "4",
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects a payload that toggles no dimension", () => {
+    const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /at least one/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects an out-of-range rating", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      set_spiritual_growth: "true",
+      spiritual_growth_score: "6",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /1 (and|to|through).*5|between 1 and 5/i.test(e))).toBe(true);
+    }
+  });
+
+  it("rejects an oversized spiritual-growth note", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      set_spiritual_growth: "true",
+      spiritual_growth_score: "3",
+      spiritual_growth_note: "a".repeat(2001),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
+    }
+  });
+
+  it("accepts a spiritual-growth rating + note and canonicalizes the uuid", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A.toUpperCase(),
+      set_spiritual_growth: "true",
+      spiritual_growth_score: "4",
+      spiritual_growth_note: "  steady growth  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.set_spiritual_growth).toBe(true);
+      expect(r.value.spiritual_growth_score).toBe(4);
+      expect(r.value.spiritual_growth_note).toBe("steady growth");
+      // An untouched dimension carries no edit.
+      expect(r.value.set_group_question).toBe(false);
+    }
+  });
+
+  it("treats a toggled-but-empty rating as an explicit clear (null score)", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      set_group_question: "true",
+      group_question_score: "",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.set_group_question).toBe(true);
+      expect(r.value.group_question_score).toBeNull();
     }
   });
 });

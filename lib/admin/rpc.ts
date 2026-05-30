@@ -620,3 +620,26 @@ export function rpcAdminUpsertGroupHealthAssessment(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_upsert_group_health_assessment", args);
 }
+
+// #128 group-health rated dimensions: persist the admin-entered spiritual-growth
+// and relayed group-question 1–5 ratings (+ recomputed grade) for a group's
+// month. The composite math is done in TS first; the RPC forces the
+// group-question leader-reported provenance flag from the score's presence.
+export type AdminSetGroupHealthRatingsArgs = {
+  p_group_id: string;
+  p_period_month: string;
+  p_spiritual_growth_score: number | null;
+  p_spiritual_growth_note: string | null;
+  p_group_question_score: number | null;
+  p_attendance_pct: number | null;
+  p_attendance_weeks_counted: number;
+  p_computed_numeric: number | null;
+  p_computed_letter: string | null;
+};
+
+export function rpcAdminSetGroupHealthRatings(
+  client: AppSupabaseClient,
+  args: AdminSetGroupHealthRatingsArgs,
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_health_ratings", args);
+}
