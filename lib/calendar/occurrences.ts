@@ -10,8 +10,7 @@
 // retained for backward compatibility with merged migration
 // 20260518140000_phase5a6_group_calendar.sql but ignored everywhere.
 
-import { isoWeekNumberOf } from "@/lib/admin/check-in-due";
-import { CHURCH_TIMEZONE } from "@/lib/leader/validation";
+import { isoWeekNumberOf } from "@/lib/shared/church-time";
 import type { GroupCalendarEventsRow } from "@/types/database";
 import type {
   GroupCalendarEventStatus,
@@ -72,24 +71,12 @@ export type ResolvedOccurrence = {
 };
 
 // ---------------------------------------------------------------------------
-// Church-local date helpers.
+// Month-range helpers.
+//
+// Church-local "today" / "this month" / ISO-week primitives live in
+// lib/shared/church-time; this module only deals in calendar-date ranges
+// once a month string has been chosen.
 // ---------------------------------------------------------------------------
-
-const CHURCH_YMD_FMT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: CHURCH_TIMEZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-export function todayChurchIso(now: Date = new Date()): string {
-  return CHURCH_YMD_FMT.format(now);
-}
-
-// Returns YYYY-MM for the church-local month containing `d`.
-export function churchMonthIso(d: Date = new Date()): string {
-  return todayChurchIso(d).slice(0, 7);
-}
 
 function parseMonthIso(monthIso: string): { year: number; month: number } | null {
   const match = /^(\d{4})-(\d{2})$/.exec(monthIso);

@@ -7,12 +7,11 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { loadMasterCalendar } from "@/lib/admin/master-calendar";
 import {
-  churchMonthIso,
   monthBounds,
   monthLabel,
   shiftMonthIso,
-  todayChurchIso,
 } from "@/lib/calendar/occurrences";
+import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +56,7 @@ export default async function AdminMasterCalendarPage({
   if (!client) notFound();
 
   const data = await loadMasterCalendar(client, { monthIso });
-  const todayIso = todayChurchIso();
+  const todayIso = churchTodayIso();
   const prevMonth = shiftMonthIso(monthIso, -1);
   const nextMonth = shiftMonthIso(monthIso, 1);
   const isCurrentMonth = monthIso === churchMonthIso();
