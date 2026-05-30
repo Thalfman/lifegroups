@@ -5,12 +5,14 @@ import { SectionHeader } from "@/components/layout/shell";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import type {
-  GuestsRow,
   GroupsRow,
   ProfilesRow,
 } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
-import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import {
+  GUEST_PIPELINE_STAGES,
+  type GuestDirectoryEntry,
+} from "@/lib/supabase/read-models";
 import { GuestCreateForm } from "./guest-create-form";
 import { GuestCard } from "./guest-card";
 import {
@@ -21,7 +23,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 
 export type GuestsManagementData = {
-  guests: GuestsRow[];
+  guests: GuestDirectoryEntry[];
   groups: GroupsRow[];
   ownerProfiles: ProfilesRow[];
   openFollowUpsByGuest: Record<string, number>;
@@ -89,7 +91,7 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
   }, [guests, search, stageFilter, groupFilter, ownerFilter]);
 
   const grouped = useMemo(() => {
-    const buckets: Record<GuestPipelineStage, GuestsRow[]> = {
+    const buckets: Record<GuestPipelineStage, GuestDirectoryEntry[]> = {
       new: [],
       contacted: [],
       interested: [],

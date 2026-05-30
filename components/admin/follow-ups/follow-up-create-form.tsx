@@ -19,7 +19,6 @@ import {
 import type { ActionResult } from "@/lib/admin/action-result";
 import type {
   GroupsRow,
-  GuestsRow,
   MembersRow,
   ProfilesRow,
 } from "@/types/database";
@@ -27,6 +26,7 @@ import type {
   FollowUpPriority,
   FollowUpType,
 } from "@/types/enums";
+import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
 
 type State = ActionResult<{ id: string }> | undefined;
 
@@ -50,7 +50,7 @@ export function FollowUpCreateForm({
 }: {
   groups: GroupsRow[];
   members: MembersRow[];
-  guests: GuestsRow[];
+  guests: GuestDirectoryEntry[];
   assignees: ProfilesRow[];
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(

@@ -11,7 +11,6 @@ import { PBadge } from "@/components/pastoral/atoms";
 import type {
   FollowUpsRow,
   GroupsRow,
-  GuestsRow,
   MembersRow,
   ProfilesRow,
 } from "@/types/database";
@@ -19,6 +18,7 @@ import type {
   FollowUpPriority,
   FollowUpStatus,
 } from "@/types/enums";
+import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import {
@@ -32,7 +32,7 @@ export type AdminFollowUpsData = {
   followUps: FollowUpsRow[];
   groups: GroupsRow[];
   members: MembersRow[];
-  guests: GuestsRow[];
+  guests: GuestDirectoryEntry[];
   assigneeProfiles: ProfilesRow[];
   errors: {
     followUps: string | null;
@@ -430,7 +430,7 @@ function FollowUpRow({
   followUp: FollowUpsRow;
   groupsById: Map<string, GroupsRow>;
   membersById: Map<string, MembersRow>;
-  guestsById: Map<string, GuestsRow>;
+  guestsById: Map<string, GuestDirectoryEntry>;
   profilesById: Map<string, ProfilesRow>;
   today: Date;
 }) {
