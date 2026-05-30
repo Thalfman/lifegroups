@@ -48,10 +48,12 @@ over-shepherds directly; delegated cadence for men's/women's groups that have th
 own over-shepherd. No single standing interval.
 **Requirement:** track who oversees whom; a configurable staleness signal, not a
 fixed global cadence.
-**Status:** 🟡 **Partly shipped.** Over-shepherd coverage ships (SC.2); a
+**Status:** 🟡 **Partly shipped; model decided.** Over-shepherd coverage ships (SC.2); a
 configurable `shepherd_care_stale_days` ships (default 60, migration `20260528120000`).
-❓ **Decision owed:** one staleness window or a different one for directly-overseen
-vs. delegated groups, and what values.
+**Resolved 2026-05-30 (ADR 0004 / D3):** **per-tier** windows derived from coverage —
+directly-overseen (admin) shorter, delegated (has an over-shepherd) longer; proposed
+**30 / 60 days**, Julian confirms the numbers. Staleness clock resets on **Ministry-Admin
+interactions only for now** (over-shepherd reset deferred to when #126 ships). Build in #123.
 
 ## Q6 — History log, task list, or both?
 **Julian:** "Maybe both!"
@@ -131,7 +133,8 @@ Q11 pipeline ownership), none of which block launch.
 1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).
    Only his exact wording for the two 1–5 questions (spiritual growth, relayed group
    question) is still outstanding before #128/#129 ship.
-2. **Care cadence (Q5)** — one staleness window or per-oversight-tier, and the values.
+2. ~~**Care cadence (Q5)**~~ — ✅ **Resolved** (per-tier, 30/60 proposed, admin-only clock
+   for now; ADR 0004 / D3). Build in #123; Julian confirms the two numbers.
 3. ~~**Care-status wording (Q2)**~~ — ✅ **Resolved** (adopt Julian's five; ADR 0004 / D2).
    Mechanical migration tracked in #122.
 4. **Multiplication ownership (Q11)** — app as system of record vs. Google Doc, and the 2026/2027 split.

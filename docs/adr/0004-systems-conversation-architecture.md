@@ -42,8 +42,15 @@ reads on a different axis. `needs_follow_up` now also exists in `group_health_st
 (`shepherd_coverage_assignments`) and derive a configurable staleness signal
 (`shepherd_care_stale_days`) instead of a hard cadence. This is the data backbone for
 the oversight ladder in [ADR 0002](./0002-oversight-ladder-and-leader-gating.md).
-**Open.** One staleness window vs. per-tier windows (directly-overseen mixed/couples vs.
-delegated men's/women's) is Julian's call.
+**Resolved 2026-05-30 — per-tier.** Two staleness windows, derived from coverage (no new
+per-group field): **directly-overseen** (falls to the Ministry Admin) gets the shorter
+window — "in the weeds"; **delegated** (has an active over-shepherd assignment) gets the
+longer one, since the over-shepherd carries frequent contact. Proposed defaults **30 / 60
+days** (Julian confirms the exact numbers).
+**Clock source — Julian only, for now.** The staleness clock resets on **Ministry-Admin
+interactions only**; over-shepherds have no write path yet (#126), so there are no
+over-shepherd interactions to count. Once #126 ships, revisit whether an over-shepherd's
+logged note should reset the clock on their delegated groups. Build tracked in #123.
 
 ## D4 — Over-Shepherd is a new, coverage-scoped login tier  · _answers Q5, Q7_
 **Decision.** Add `over_shepherd` to the role ladder with a login bridge and
