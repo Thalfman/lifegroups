@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const MIGRATION_PATH = fileURLToPath(
   new URL(
-    "../../../supabase/migrations/20260530030000_julian_p4c_multiplication_successor_meeting_time.sql",
+    "../../../supabase/migrations/20260530060000_julian_p4c_multiplication_successor_meeting_time.sql",
     import.meta.url,
   ),
 );
