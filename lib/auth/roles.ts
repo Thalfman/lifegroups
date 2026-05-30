@@ -127,10 +127,14 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
     {
       group: "shepherd",
       label: "Admin OS",
+      // Group health (#146) joins the Admin OS spine as an oversight surface:
+      // it ships dimension-complete with ADR 0007 placeholder labels and was
+      // previously reachable only by direct URL.
       items: [
         { href: "/admin/shepherd-care", label: "Shepherd care", icon: "heart" },
         { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
         { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
+        { href: "/admin/group-health", label: "Group health", icon: "sprout" },
       ],
     },
     {

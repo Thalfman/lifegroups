@@ -131,6 +131,20 @@ describe("adminNavGroups", () => {
     expect(system!.items.map((i) => i.href)).not.toContain("/admin/super-admin");
   });
 
+  // #146: the Group-Health surface ships dimension-complete (ADR 0007) but was
+  // only reachable by direct URL; expose it in the admin nav. adminNavGroups
+  // renders only behind the admin layout guard, so the entry is admin-only for
+  // free — consistent with every other admin nav item.
+  it("exposes a Group-Health entry pointing at /admin/group-health for both admin roles", () => {
+    for (const role of ["super_admin", "ministry_admin"] as const) {
+      const item = adminNavGroups(role)
+        .flatMap((g) => g.items)
+        .find((i) => i.href === "/admin/group-health");
+      expect(item).toBeDefined();
+      expect(item!.label).toBe("Group health");
+    }
+  });
+
   // Julian admin OS pivot (2026-05): the "shepherd" group leads
   // operational manage now, and is labeled "Admin OS" in the UI. See
   // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
@@ -150,6 +164,7 @@ describe("adminNavGroups", () => {
       "/admin/shepherd-care",
       "/admin/launch-planning",
       "/admin/follow-ups",
+      "/admin/group-health",
     ]);
   });
 
