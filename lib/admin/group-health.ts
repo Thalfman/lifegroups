@@ -167,3 +167,28 @@ export function computeGrade(
   const numeric = present.reduce((sum, d) => sum + d.score * d.weight, 0) / totalWeight;
   return { numeric, letter: letterFor(numeric, config.cut_lines) };
 }
+
+// ---------------------------------------------------------------------------
+// Rubric from settings.
+// ---------------------------------------------------------------------------
+
+// Subset of lib/admin/metrics.ts MetricDefaults this rubric reads. Kept
+// structural (not an import of the whole shape) so callers can pass the decoded
+// defaults directly.
+export type GroupHealthMetricDefaults = {
+  default_healthy_attendance_pct: number;
+};
+
+// Build the rubric from the existing audited metric defaults. The healthy-
+// attendance threshold is already an admin-tunable setting today
+// (default_healthy_attendance_pct), so the tracer honors it rather than the
+// built-in 60. Weights, cut-lines, and the window stay at their built-in
+// defaults here; making *those* admin-tunable is #129's rubric-config work.
+export function rubricFromMetricDefaults(
+  defaults: GroupHealthMetricDefaults,
+): GroupHealthRubricConfig {
+  return {
+    ...BUILT_IN_GROUP_HEALTH_RUBRIC,
+    healthy_attendance_pct: defaults.default_healthy_attendance_pct,
+  };
+}

@@ -60,7 +60,9 @@ describe("attendanceConsistency — rolling 8-week average %", () => {
 
   it("flags whether the rolling average meets the healthy threshold (default 60)", () => {
     const below = attendanceConsistency([week("2026-05-04", 11, 9)]); // 55%
-    expect(below.rolling_pct).toBe(55);
+    // Percentage arithmetic (11/20*100) lands at 55.00000000000001 in IEEE-754,
+    // so compare with tolerance rather than exact equality.
+    expect(below.rolling_pct).toBeCloseTo(55);
     expect(below.meets_threshold).toBe(false);
 
     const at = attendanceConsistency([week("2026-05-04", 12, 8)]); // 60%
@@ -114,5 +116,24 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
     };
     // 72 would be a B under defaults but an A under these cut-lines.
     expect(computeGrade({ attendance: 72 }, config).letter).toBe("A");
+  });
+});
+
+describe("rubricFromMetricDefaults — honors the configured threshold", () => {
+  it("uses default_healthy_attendance_pct from the audited settings", () => {
+    const rubric = rubricFromMetricDefaults({ default_healthy_attendance_pct: 70 });
+    expect(rubric.healthy_attendance_pct).toBe(70);
+    // Window and cut-lines stay at the built-in defaults (tuning those is #129).
+    expect(rubric.attendance_window_weeks).toBe(
+      BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
+    );
+    expect(rubric.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
+  });
+
+  it("changes the meets-threshold verdict when the configured threshold moves", () => {
+    const rubric = rubricFromMetricDefaults({ default_healthy_attendance_pct: 50 });
+    // 55% average fails the default 60 line but clears a configured 50.
+    const result = attendanceConsistency([week("2026-05-04", 11, 9)], rubric);
+    expect(result.meets_threshold).toBe(true);
   });
 });

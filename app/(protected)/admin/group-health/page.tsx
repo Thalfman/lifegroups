@@ -6,9 +6,9 @@ import {
 import { recomputeGroupHealthFormAction } from "./actions";
 
 // #127 tracer surface: the attendance-consistency dimension + current
-// Group-Health Grade for each active group, for the current month. Admin-only
-// (admin layout guard + table RLS). The rated dimensions and override land in
-// #128/#129.
+// Group-Health Grade for each active group, recomputed live on read for the
+// current month. Admin-only (admin layout guard + table RLS). The rated
+// dimensions and override land in #128/#129.
 export default async function GroupHealthPage() {
   const client = await createSupabaseServerClient();
   if (!client) {
@@ -23,14 +23,27 @@ export default async function GroupHealthPage() {
   }
 
   const period = currentPeriodMonthIso();
-  const rows = await listGroupHealthOverview(client, period);
+  const overview = await listGroupHealthOverview(client, period);
+
+  if (overview.error) {
+    return (
+      <main className="p-6">
+        <h1 className="text-xl font-semibold">Group health</h1>
+        <p className="mt-2 text-sm text-red-700">
+          Couldn&apos;t load group-health grades. Refresh to try again.
+        </p>
+      </main>
+    );
+  }
+
+  const rows = overview.data;
 
   return (
     <main className="p-6">
       <h1 className="text-xl font-semibold">Group health</h1>
       <p className="mt-1 text-sm text-gray-600">
-        Attendance-consistency grade (rolling 8-week average) for {period}. Recompute
-        a group to refresh its current-month assessment.
+        Attendance-consistency grade (rolling 8-week average) for {period}, recomputed
+        live. Recompute saves the current snapshot to the month&apos;s history.
       </p>
 
       <table className="mt-4 w-full border-collapse text-sm">
@@ -57,9 +70,12 @@ export default async function GroupHealthPage() {
                   {row.attendance_pct === null
                     ? "—"
                     : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
+                  {row.stale ? (
+                    <span className="ml-2 text-xs text-amber-700">last saved</span>
+                  ) : null}
                 </td>
                 <td className="py-2 pr-4">
-                  {row.computed_letter ?? (row.assessed ? "—" : "Not assessed")}
+                  {row.computed_letter ?? (row.unassessed ? "Not assessed" : "—")}
                 </td>
                 <td className="py-2 pr-4">
                   <form action={recomputeGroupHealthFormAction}>
