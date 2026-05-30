@@ -125,33 +125,20 @@ export async function recomputeGroupHealthFormAction(
 // untouched dimension keeps its prior value (merged from the persisted row) so a
 // single-dimension edit never clobbers the other. The RPC forces the
 // group-question leader-reported provenance flag server-side.
-const RATINGS_FORM_KEYS = [
-  "group_id",
-  "set_spiritual_growth",
-  "spiritual_growth_score",
-  "spiritual_growth_note",
-  "set_group_question",
-  "group_question_score",
-] as const;
-
 const RATINGS_SPEC: AdminWriteActionSpec<GroupHealthRatingsPayload, { id: string }> = {
   name: "admin.group_health.set_ratings",
-  // The default `keys` lift forwards only the listed fields; the ratings form
-  // posts the set_ flags, scores, and note too, so lift all of them here or the
-  // validator sees an untouched payload and rejects every Save.
-  read: (input) => {
-    if (input instanceof FormData) {
-      const out: Record<string, unknown> = {};
-      for (const key of RATINGS_FORM_KEYS) {
-        const v = input.get(key);
-        out[key] = v === null ? undefined : String(v);
-      }
-      return out;
-    }
-    return typeof input === "object" && input !== null && !Array.isArray(input)
-      ? (input as Record<string, unknown>)
-      : {};
-  },
+  // The form posts the set_ flags, scores, and note alongside group_id, so the
+  // keys lift must name all of them — the runner's default forwards only the
+  // listed FormData fields, and a short list would hand the validator an
+  // untouched payload (rejecting every Save).
+  keys: [
+    "group_id",
+    "set_spiritual_growth",
+    "spiritual_growth_score",
+    "spiritual_growth_note",
+    "set_group_question",
+    "group_question_score",
+  ],
   validate: validateGroupHealthRatingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: async (client, value) => {
