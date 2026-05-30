@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Pill, type PillTone } from "@/components/lg/Pill";
 import { Icon } from "@/components/lg/Icon";
-import { attentionReasonLabel } from "@/lib/dashboard/queries";
+import { attentionReasonLabel } from "@/lib/dashboard/admin-group-model";
 import type { AttentionItem, AttentionReason } from "@/lib/dashboard/types";
 
 const VISIBLE_LIMIT = 6;
