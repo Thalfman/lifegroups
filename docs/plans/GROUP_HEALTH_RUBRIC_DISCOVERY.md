@@ -1,12 +1,90 @@
-# Group-health grading rubric — discovery
+# Group-health grading rubric
 
-**Status: discovery only. No schema or feature work until Julian confirms the
-dimensions below.** This document exists because Julian asked for a way to
-"grade" group health but is, in his own words, "still working on an evaluation
-system" ([systems conversation](../julian-inputs/SYSTEMS_CONVERSATION.md) answer
-12; [`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) §3.1).
-Building a scoring model before his rubric is settled would bake in the wrong
-assumptions, so this captures the design space and the open questions instead.
+**Status: rubric being locked (grill session 2026-05-30).** This document
+started as discovery because Julian asked for a way to "grade" group health but
+was, in his own words, "still working on an evaluation system" ([systems
+conversation](../julian-inputs/SYSTEMS_CONVERSATION.md) answer 12;
+[`julian-inputs/FEEDBACK_MAP.md`](../julian-inputs/FEEDBACK_MAP.md) §3.1). The
+**Locked rubric decisions** section below is the settled rubric the build slices
+(#127/#128/#129) are cut against; the design-space material that follows it is
+retained for context.
+
+## Locked rubric decisions
+
+Decided in a grill session walking #125 (PRD Q12 / ADR 0004 D8). These are the
+contract for the build slices.
+
+### Dimensions (fixed in code)
+
+The grade is computed from **three** dimensions:
+
+1. **Attendance consistency** — computable from existing data.
+2. **Spiritual growth** — net-new capture (see below).
+3. **Leader support-need** — derived from the existing `pulse` /
+   `follow_up_needed` signals.
+
+**Multiplication readiness is deliberately excluded.** The launch pipeline
+already owns "ready to multiply"; folding it into the health grade would
+double-count it (a group can be healthy yet nowhere near multiplying, and vice
+versa). The dimension *set* is a code-level decision — Julian cannot add or drop
+whole dimensions at runtime, because each new dimension needs its own data
+source.
+
+### Output shape
+
+A **letter grade (A–D)**, derived from an internal numeric the math produces.
+Julian asked to "grade them," so the surface speaks report-card; storing the
+underlying number keeps the grade sortable/segmentable and lets the A/B/C/D
+cut-lines move without a migration.
+
+### Tunable rubric configuration
+
+Julian can tune, through the audited admin write path, three kinds of number:
+**dimension weights**, **A/B/C/D cut-lines**, and **per-dimension thresholds**
+(e.g. the healthy-attendance %). The rubric is therefore *configuration data,
+not hardcoded constants*. What he cannot change at runtime is the dimension
+*membership* (above). The existing per-group **manual override**
+(`group_metric_settings.manual_health_status_override`) is retained and is
+distinct from rubric tuning.
+
+### Attendance-consistency definition
+
+**Rolling 8-week average attendance %**, compared against the configurable
+healthy-attendance threshold (reuses `default_healthy_attendance_pct`, default
+60). The 8-week window is itself an admin-tunable per-dimension threshold.
+
+*Why average, not variance:* a pure variance/"steadiness" measure rewards the
+wrong thing — a group that reliably gets 30% every week is maximally
+"consistent" yet plainly unhealthy. Average-vs-threshold cannot be gamed that
+way and reuses the cut-line the app already ships.
+
+*Why 8 weeks:* 4 weeks is too jumpy (a single holiday week tanks the grade), 12
+is too laggy for a week-to-week tool; ~2 months smooths noise while still
+reacting within a quarter. Tunable if it proves wrong.
+
+*Known limitation:* this measures attendance **level**, not literal
+steadiness/decline. A group sliding 90% → 50% can still average above the line.
+Trend/decline detection is a possible later refinement, not part of the tracer
+(#127).
+
+### Spiritual-growth capture
+
+A **periodic 1–5 rating per group, plus an optional qualitative note**, entered
+by **Ministry Admin only**. The 1–5 feeds the computed grade; the note carries
+pastoral color. Because there is no rolling data source for spiritual growth, it
+is an inherently periodic human judgment, not a continuously-computed signal.
+
+Admin-only entry honors **Q7**'s "broad notes only" ceiling for over-shepherds:
+a structured rating is not a broad note, so over-shepherds get **no**
+spiritual-growth surface. (Over-shepherd-entered ratings remain a possible
+future slice, explicitly outside the Q7 envelope.)
+
+---
+
+## Design-space notes (retained for context)
+
+The material below predates the locked decisions above and is kept for the
+reasoning trail.
 
 ## What Julian said
 
