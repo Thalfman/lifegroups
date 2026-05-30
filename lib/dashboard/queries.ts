@@ -64,6 +64,7 @@ import { isoWeekStart, localTodayIso } from "@/lib/leader/validation";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import {
   capacityStatus as computeCapacityStatus,
+  careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
   effectiveCapacity as computeEffectiveCapacity,
   effectiveCapacityFullPct,
@@ -75,6 +76,7 @@ import {
   type CapacityStatus,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
+import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 import {
   buildCalendarEventsByGroup,
   computeCheckInDue,
@@ -596,7 +598,7 @@ function buildShepherdCareSummary(
   assignmentsRes: Awaited<
     ReturnType<typeof fetchActiveShepherdCoverageAssignmentsForAdmin>
   >,
-  staleDays: number,
+  windows: CareCadenceWindows,
   todayIso: string,
 ): ShepherdCareDashboardSummary {
   if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
@@ -621,13 +623,13 @@ function buildShepherdCareSummary(
     recentInteractions: [],
     todayIso,
     assignmentsAvailable,
-    staleDays,
+    windows,
   });
   const attentionItemsTotal = countAllAttentionItems(
     shepherdDirectoryRes.data,
     assignmentsRes.data ?? [],
     todayIso,
-    { coverageAvailable: assignmentsAvailable, staleDays },
+    { coverageAvailable: assignmentsAvailable, windows },
   );
   return {
     totalActiveShepherds: model.summary.totalActiveShepherds,
@@ -793,7 +795,7 @@ export async function getAdminDashboardData(
       // the whole page.
       fetchShepherdCareDirectoryForAdmin(client, {
         todayIso,
-        staleDays: defaultsForRead.shepherd_care_stale_days,
+        windows: careCadenceWindowsFromDefaults(defaultsForRead),
       }),
       fetchOverShepherdsForAdmin(client, { includeArchived: true }),
       fetchActiveShepherdCoverageAssignmentsForAdmin(client),
@@ -1012,7 +1014,7 @@ export async function getAdminDashboardData(
       shepherdDirectoryResult,
       overShepherdsResult,
       shepherdAssignmentsResult,
-      defaults.shepherd_care_stale_days,
+      careCadenceWindowsFromDefaults(defaults),
       todayIso,
     );
     const launchPlanning = buildLaunchPlanningSnapshot(

@@ -27,7 +27,11 @@ import {
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
-import { decodeMetricDefaults } from "@/lib/admin/metrics";
+import {
+  careCadenceWindowsFromDefaults,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
+import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
@@ -63,7 +67,7 @@ type LoadedData = {
   recentInteractionsAvailable: boolean;
   careFollowUps: CareFollowUpDashboardRow[];
   careFollowUpsAvailable: boolean;
-  staleDays: number;
+  windows: CareCadenceWindows;
   error: string | null;
 };
 
@@ -79,18 +83,18 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       recentInteractionsAvailable: false,
       careFollowUps: [],
       careFollowUpsAvailable: false,
-      staleDays: decodeMetricDefaults(null).shepherd_care_stale_days,
+      windows: careCadenceWindowsFromDefaults(decodeMetricDefaults(null)),
       error: "Database is not configured in this environment.",
     };
   }
-  // Resolve the configured stale-contact window first so the directory read
-  // flags needs_attention against the same threshold the dashboard later
-  // uses. A missing/failed settings read falls back to the documented
-  // baseline via decodeMetricDefaults(null).
+  // Resolve the configured per-tier stale-contact windows first so the
+  // directory read flags needs_attention against the same thresholds the
+  // dashboard later uses. A missing/failed settings read falls back to the
+  // documented 30 / 60 baseline via decodeMetricDefaults(null).
   const metricDefaultsRes = await fetchMetricDefaults(client);
-  const staleDays = decodeMetricDefaults(
-    metricDefaultsRes.data ?? null,
-  ).shepherd_care_stale_days;
+  const windows = careCadenceWindowsFromDefaults(
+    decodeMetricDefaults(metricDefaultsRes.data ?? null),
+  );
   // The remaining reads are independent; run them in parallel so the page
   // TTFB is bounded by the slowest query rather than their sum. The
   // directory read receives the same todayIso the page later uses for the
@@ -98,7 +102,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
   // directory and a dashboard built off different calendar days.
   const [directory, overShepherdsRes, assignmentsRes, recentRes, followUpsRes] =
     await Promise.all([
-      fetchShepherdCareDirectoryForAdmin(client, { todayIso, staleDays }),
+      fetchShepherdCareDirectoryForAdmin(client, { todayIso, windows }),
       fetchOverShepherdsForAdmin(client, { includeArchived: true }),
       fetchActiveShepherdCoverageAssignmentsForAdmin(client),
       fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
@@ -114,7 +118,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       recentInteractionsAvailable: false,
       careFollowUps: [],
       careFollowUpsAvailable: false,
-      staleDays,
+      windows,
       error: directory.error.message,
     };
   }
@@ -134,7 +138,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
     recentInteractionsAvailable,
     careFollowUps: followUpsRes.data ?? [],
     careFollowUpsAvailable,
-    staleDays,
+    windows,
     error:
       overShepherdsRes.error?.message ??
       assignmentsRes.error?.message ??
@@ -170,7 +174,7 @@ export default async function AdminShepherdCarePage({
     recentInteractionsAvailable,
     careFollowUps,
     careFollowUpsAvailable,
-    staleDays,
+    windows,
     error,
   } = await loadData(today);
 
@@ -191,11 +195,11 @@ export default async function AdminShepherdCarePage({
     careFollowUpsAvailable,
     todayIso: today,
     assignmentsAvailable,
-    staleDays,
+    windows,
   });
   const totalAttention = countAllAttentionItems(entries, assignments, today, {
     coverageAvailable: assignmentsAvailable,
-    staleDays,
+    windows,
     careFollowUps,
   });
 

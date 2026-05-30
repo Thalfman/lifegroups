@@ -27,6 +27,7 @@ import {
   buildCareDirectoryEntries,
   fetchShepherdCareInteractionsForAdmin,
 } from "@/lib/supabase/read-models";
+import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
 type ReadClient = AppSupabaseClient;
 
@@ -56,7 +57,10 @@ export type OverShepherdCareProfile = Omit<ShepherdCareProfilesRow, "admin_summa
 export async function fetchOverShepherdCareDirectory(
   client: ReadClient,
   coveredShepherdIds: string[],
-  options: { todayIso?: string; staleDays?: number } = {},
+  // No delegatedShepherdIds is passed through to buildCareDirectoryEntries:
+  // every shepherd an over-shepherd covers is delegated by definition, so they
+  // all use the delegated staleness window (Julian Q5).
+  options: { todayIso?: string; windows?: CareCadenceWindows } = {},
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   if (coveredShepherdIds.length === 0) {
     return { data: [], error: null };

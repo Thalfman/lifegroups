@@ -34,7 +34,8 @@ const METRIC_DEFAULT_FIELDS = [
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
   "check_in_due_offset_hours",
-  "shepherd_care_stale_days",
+  "shepherd_care_stale_days_direct",
+  "shepherd_care_stale_days_delegated",
 ] as const;
 
 const GROUP_METRIC_FIELDS = [

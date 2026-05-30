@@ -18,6 +18,7 @@ import type {
 } from "@/types/database";
 import type { GroupHealthStatus } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
+import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
 // ---------------------------------------------------------------------------
 // Defaults decoding
@@ -36,10 +37,14 @@ export type MetricDefaults = {
   // Phase 5A.5: hours after a group's scheduled meeting time before its
   // check-in is considered overdue. 24 = "due 24 hours after meeting".
   check_in_due_offset_hours: number;
-  // Julian P1: days since last shepherd contact before the care dashboard
-  // flags the shepherd as stale ("haven't connected in N weeks"). 60 = the
-  // original hardcoded window, now operator-configurable.
-  shepherd_care_stale_days: number;
+  // Julian Q5: per-tier days since last Ministry-Admin contact before the care
+  // dashboard flags a shepherd as stale ("haven't connected in N weeks").
+  // Keyed by coverage tier (derived from shepherd_coverage_assignments):
+  //   * directly-overseen (falls to the Ministry Admin) — shorter, 30.
+  //   * delegated (active over-shepherd assignment)      — longer, 60.
+  // Both operator-configurable; replaces the former single shepherd_care_stale_days.
+  shepherd_care_stale_days_direct: number;
+  shepherd_care_stale_days_delegated: number;
 };
 
 // Documented baseline values. Mirrors the Phase 5A.5 reset RPC so
@@ -53,7 +58,8 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   missed_checkin_warning_weeks: 2,
   default_healthy_attendance_pct: 60,
   check_in_due_offset_hours: 24,
-  shepherd_care_stale_days: 60,
+  shepherd_care_stale_days_direct: 30,
+  shepherd_care_stale_days_delegated: 60,
 };
 
 function readJsonInt(
@@ -118,11 +124,30 @@ export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults
       "check_in_due_offset_hours",
       BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours,
     ),
-    shepherd_care_stale_days: readJsonInt(
+    shepherd_care_stale_days_direct: readJsonInt(
       source,
-      "shepherd_care_stale_days",
-      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days,
+      "shepherd_care_stale_days_direct",
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct,
     ),
+    shepherd_care_stale_days_delegated: readJsonInt(
+      source,
+      "shepherd_care_stale_days_delegated",
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated,
+    ),
+  };
+}
+
+// Bundle the two decoded windows into the cadence module's config shape, so a
+// caller can decode settings once and hand the pure module its config.
+export function careCadenceWindowsFromDefaults(
+  defaults: Pick<
+    MetricDefaults,
+    "shepherd_care_stale_days_direct" | "shepherd_care_stale_days_delegated"
+  >,
+): CareCadenceWindows {
+  return {
+    directlyOverseenStaleDays: defaults.shepherd_care_stale_days_direct,
+    delegatedStaleDays: defaults.shepherd_care_stale_days_delegated,
   };
 }
 

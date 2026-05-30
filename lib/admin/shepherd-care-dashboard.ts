@@ -1,5 +1,4 @@
 import {
-  SHEPHERD_CARE_STALE_DAYS,
   computeNeedsAttention,
   differenceInDaysIso,
   type ActiveShepherdCoverageAssignmentSummary,
@@ -9,6 +8,28 @@ import {
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
 import { isFollowUpOverdue } from "@/lib/admin/shepherd-care-follow-ups";
+import {
+  BUILT_IN_CARE_CADENCE_WINDOWS,
+  coverageTierForShepherd,
+  staleWindowDaysForTier,
+  type CareCadenceWindows,
+} from "@/lib/admin/shepherd-care-cadence";
+
+// Resolve the per-tier staleness window (in days) for one shepherd. When
+// coverage data is unavailable we can't know the tier, so fall back to the
+// longer (delegated) window rather than over-flagging everyone as stale —
+// mirroring how no_over_shepherd is suppressed in the same situation.
+function staleDaysForEntry(
+  shepherdProfileId: string,
+  assignedShepherdIds: Set<string>,
+  coverageAvailable: boolean,
+  windows: CareCadenceWindows,
+): number {
+  const tier = coverageAvailable
+    ? coverageTierForShepherd(assignedShepherdIds.has(shepherdProfileId))
+    : "delegated";
+  return staleWindowDaysForTier(tier, windows);
+}
 
 export type CareAttentionReason =
   | "overdue_touchpoint"
@@ -122,9 +143,9 @@ export type BuildShepherdCareDashboardModelInput = {
   // errored so coverage-dependent surfaces (unassigned count, coverage
   // buckets, no_over_shepherd queue reason) can be safely suppressed.
   assignmentsAvailable?: boolean;
-  // Julian P1: configured stale-contact window. Defaults to the documented
-  // 60-day baseline when omitted so existing callers/tests keep working.
-  staleDays?: number;
+  // Julian Q5: the two per-tier staleness windows. Defaults to the documented
+  // 30 / 60 baseline when omitted so existing callers/tests keep working.
+  windows?: CareCadenceWindows;
   limits?: {
     attention?: number;
     upcoming?: number;
@@ -247,11 +268,17 @@ function detectReasons(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
-  staleDays: number,
+  windows: CareCadenceWindows,
   followUpStats: Map<string, CareFollowUpShepherdStats>,
 ): CareAttentionReason[] {
   const reasons: CareAttentionReason[] = [];
   const care = entry.care;
+  const staleDays = staleDaysForEntry(
+    entry.profile.id,
+    assignedShepherdIds,
+    coverageAvailable,
+    windows,
+  );
 
   if (care?.next_touchpoint_due && care.next_touchpoint_due < todayIso) {
     reasons.push("overdue_touchpoint");
@@ -286,7 +313,7 @@ function buildAttentionQueue(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
-  staleDays: number,
+  windows: CareCadenceWindows,
   followUpStats: Map<string, CareFollowUpShepherdStats>,
 ): CareAttentionItem[] {
   const items: CareAttentionItem[] = [];
@@ -296,18 +323,24 @@ function buildAttentionQueue(
       assignedShepherdIds,
       todayIso,
       coverageAvailable,
-      staleDays,
+      windows,
       followUpStats,
     );
     if (reasons.length === 0) continue;
     reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
     const [primary, ...secondary] = reasons;
+    const entryStaleDays = staleDaysForEntry(
+      entry.profile.id,
+      assignedShepherdIds,
+      coverageAvailable,
+      windows,
+    );
     items.push({
       shepherdProfileId: entry.profile.id,
       shepherdName: entry.profile.full_name,
       reason: primary,
       secondaryReasons: secondary,
-      detail: detailForReason(primary, entry, todayIso, staleDays, followUpStats),
+      detail: detailForReason(primary, entry, todayIso, entryStaleDays, followUpStats),
       priority: REASON_PRIORITY[primary],
       href: shepherdHref(entry.profile.id),
     });
@@ -324,7 +357,7 @@ function buildSummary(
   assignedShepherdIds: Set<string>,
   todayIso: string,
   coverageAvailable: boolean,
-  staleDays: number,
+  windows: CareCadenceWindows,
   followUpTotals: { overdue: number; outstanding: number },
 ): CareDashboardSummary {
   let needsAttention = 0;
@@ -341,7 +374,13 @@ function buildSummary(
     }
     if (
       entry.care?.last_contact_at &&
-      differenceInDaysIso(todayIso, entry.care.last_contact_at) > staleDays
+      differenceInDaysIso(todayIso, entry.care.last_contact_at) >
+        staleDaysForEntry(
+          entry.profile.id,
+          assignedShepherdIds,
+          coverageAvailable,
+          windows,
+        )
     ) {
       notContactedRecently += 1;
     }
@@ -451,7 +490,7 @@ export function buildShepherdCareDashboardModel(
 ): ShepherdCareDashboardModel {
   const limits = { ...DEFAULT_LIMITS, ...(input.limits ?? {}) };
   const coverageAvailable = input.assignmentsAvailable ?? true;
-  const staleDays = input.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
+  const windows = input.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
   const assignedShepherdIds = new Set<string>();
   for (const a of input.assignments) {
     assignedShepherdIds.add(a.shepherd_profile_id);
@@ -471,7 +510,7 @@ export function buildShepherdCareDashboardModel(
     assignedShepherdIds,
     input.todayIso,
     coverageAvailable,
-    staleDays,
+    windows,
     { overdue: followUps.totalOverdue, outstanding: followUps.totalOutstanding },
   );
   const fullQueue = buildAttentionQueue(
@@ -479,7 +518,7 @@ export function buildShepherdCareDashboardModel(
     assignedShepherdIds,
     input.todayIso,
     coverageAvailable,
-    staleDays,
+    windows,
     followUps.byShepherdId,
   );
 
@@ -515,12 +554,12 @@ export function countAllAttentionItems(
   todayIso: string,
   options: {
     coverageAvailable?: boolean;
-    staleDays?: number;
+    windows?: CareCadenceWindows;
     careFollowUps?: CareFollowUpDashboardRow[];
   } = {},
 ): number {
   const coverageAvailable = options.coverageAvailable ?? true;
-  const staleDays = options.staleDays ?? SHEPHERD_CARE_STALE_DAYS;
+  const windows = options.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
   const ids = new Set<string>();
   for (const a of assignments) ids.add(a.shepherd_profile_id);
   const followUpStats = buildFollowUpStats(
@@ -531,7 +570,7 @@ export function countAllAttentionItems(
   let total = 0;
   for (const entry of entries) {
     if (
-      detectReasons(entry, ids, todayIso, coverageAvailable, staleDays, followUpStats)
+      detectReasons(entry, ids, todayIso, coverageAvailable, windows, followUpStats)
         .length > 0
     ) {
       total += 1;

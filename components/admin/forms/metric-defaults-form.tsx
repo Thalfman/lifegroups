@@ -179,22 +179,42 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
 
         <div>
-          <label htmlFor="shepherd_care_stale_days" style={fieldLabelStyle}>
-            Shepherd care stale-contact (days)
+          <label htmlFor="shepherd_care_stale_days_direct" style={fieldLabelStyle}>
+            Care stale-contact — directly overseen (days)
           </label>
           <input
-            id="shepherd_care_stale_days"
-            name="shepherd_care_stale_days"
+            id="shepherd_care_stale_days_direct"
+            name="shepherd_care_stale_days_direct"
             type="number"
             min={7}
             max={365}
             inputMode="numeric"
-            defaultValue={defaults.shepherd_care_stale_days}
+            defaultValue={defaults.shepherd_care_stale_days_direct}
             style={fieldInputStyle}
           />
           <p style={hintStyle}>
-            Days since last contact before a shepherd is flagged on the care
-            dashboard. 7–365.
+            Days since last contact before a shepherd the Ministry Admin
+            oversees directly is flagged on the care dashboard. 7–365.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="shepherd_care_stale_days_delegated" style={fieldLabelStyle}>
+            Care stale-contact — delegated (days)
+          </label>
+          <input
+            id="shepherd_care_stale_days_delegated"
+            name="shepherd_care_stale_days_delegated"
+            type="number"
+            min={7}
+            max={365}
+            inputMode="numeric"
+            defaultValue={defaults.shepherd_care_stale_days_delegated}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Days since last contact before a shepherd with an active
+            over-shepherd is flagged on the care dashboard. 7–365.
           </p>
         </div>
       </div>

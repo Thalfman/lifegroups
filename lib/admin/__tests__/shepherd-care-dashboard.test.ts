@@ -443,51 +443,81 @@ describe("buildShepherdCareDashboardModel", () => {
     expect(countAllAttentionItems(entries, [], TODAY)).toBe(12);
   });
 
-  // Julian P1: the stale-contact window is configurable. A shepherd last
-  // contacted 40 days ago is fresh at the default 60-day window but stale
-  // at a tightened 30-day window.
-  describe("configurable staleDays threshold", () => {
+  // Julian Q5: the stale-contact window is keyed by coverage tier. A shepherd
+  // last contacted 40 days ago is fresh under the 60-day delegated window but
+  // stale under the 30-day directly-overseen window.
+  describe("per-tier staleness windows (Julian Q5)", () => {
     const FORTY_DAYS_AGO = "2026-04-12"; // 40 days before TODAY (2026-05-22)
 
-    const entries = [
-      entry(UUID_1, "Anna One", careRow(UUID_1, { last: FORTY_DAYS_AGO })),
-    ];
-
-    it("does not flag stale contact at the default 60-day window", () => {
+    it("does not flag a delegated shepherd at 40 days (60-day window)", () => {
+      // An active over-shepherd assignment -> delegated tier -> 60-day window.
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: FORTY_DAYS_AGO })),
+      ];
+      const assignments = [assignment(UUID_1, OS_A)];
       const model = buildShepherdCareDashboardModel({
         entries,
-        assignments: [assignment(UUID_1, OS_A)],
+        assignments,
         overShepherds: [overShepherd(OS_A, "Coach A")],
         recentInteractions: [],
         todayIso: TODAY,
       });
       expect(model.summary.notContactedRecently).toBe(0);
       expect(model.attentionQueue).toEqual([]);
-      expect(
-        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY),
-      ).toBe(0);
+      expect(countAllAttentionItems(entries, assignments, TODAY)).toBe(0);
     });
 
-    it("flags stale contact once the window tightens to 30 days", () => {
+    it("flags a directly-overseen shepherd at 40 days (30-day window)", () => {
+      // No coverage assignment -> directly overseen -> 30-day window -> stale.
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: FORTY_DAYS_AGO })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
-        assignments: [assignment(UUID_1, OS_A)],
-        overShepherds: [overShepherd(OS_A, "Coach A")],
+        assignments: [],
+        overShepherds: [],
         recentInteractions: [],
         todayIso: TODAY,
-        staleDays: 30,
       });
       expect(model.summary.notContactedRecently).toBe(1);
-      expect(model.attentionQueue).toHaveLength(1);
+      // stale_last_contact (priority 5) outranks no_over_shepherd (6), which
+      // also fires for an unassigned shepherd.
       expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
         "stale_last_contact",
       );
       expect(model.attentionQueue[0].detail).toBe("Last contact 40 days ago");
-      expect(
-        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY, {
-          staleDays: 30,
-        }),
-      ).toBe(1);
+      expect(model.attentionQueue[0].secondaryReasons).toContain(
+        "no_over_shepherd",
+      );
+      expect(countAllAttentionItems(entries, [], TODAY)).toBe(1);
+    });
+
+    it("honours configured windows over the 30 / 60 defaults", () => {
+      // Widen the directly-overseen window to 50 so 40 days is fresh again.
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: FORTY_DAYS_AGO })),
+      ];
+      const windows = {
+        directlyOverseenStaleDays: 50,
+        delegatedStaleDays: 60,
+      };
+      const model = buildShepherdCareDashboardModel({
+        entries,
+        assignments: [],
+        overShepherds: [],
+        recentInteractions: [],
+        todayIso: TODAY,
+        windows,
+      });
+      // The widened window means staleness no longer fires; the only remaining
+      // reason is the unrelated no_over_shepherd (the shepherd is unassigned).
+      expect(model.summary.notContactedRecently).toBe(0);
+      const reasons = model.attentionQueue.flatMap((i) => [
+        i.reason,
+        ...i.secondaryReasons,
+      ]);
+      expect(reasons).not.toContain("stale_last_contact");
+      expect(reasons).toContain("no_over_shepherd");
     });
   });
 

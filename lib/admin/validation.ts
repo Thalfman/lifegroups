@@ -575,7 +575,8 @@ export type MetricDefaultsPayload = {
   missed_checkin_warning_weeks?: number;
   default_healthy_attendance_pct?: number;
   check_in_due_offset_hours?: number;
-  shepherd_care_stale_days?: number;
+  shepherd_care_stale_days_direct?: number;
+  shepherd_care_stale_days_delegated?: number;
 };
 
 const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
@@ -586,7 +587,8 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
   "check_in_due_offset_hours",
-  "shepherd_care_stale_days",
+  "shepherd_care_stale_days_direct",
+  "shepherd_care_stale_days_delegated",
 ]);
 
 export function validateMetricDefaultsPayload(
@@ -668,13 +670,22 @@ export function validateMetricDefaultsPayload(
     else if (n !== undefined) value.check_in_due_offset_hours = n;
   }
 
-  if ("shepherd_care_stale_days" in input) {
-    const n = readOptionalInteger(input.shepherd_care_stale_days);
+  if ("shepherd_care_stale_days_direct" in input) {
+    const n = readOptionalInteger(input.shepherd_care_stale_days_direct);
     if (n === "invalid")
-      errors.push("Stale-contact days must be a whole number.");
+      errors.push("Directly-overseen stale-contact days must be a whole number.");
     else if (n !== undefined && (n < 7 || n > 365))
-      errors.push("Stale-contact days must be between 7 and 365.");
-    else if (n !== undefined) value.shepherd_care_stale_days = n;
+      errors.push("Directly-overseen stale-contact days must be between 7 and 365.");
+    else if (n !== undefined) value.shepherd_care_stale_days_direct = n;
+  }
+
+  if ("shepherd_care_stale_days_delegated" in input) {
+    const n = readOptionalInteger(input.shepherd_care_stale_days_delegated);
+    if (n === "invalid")
+      errors.push("Delegated stale-contact days must be a whole number.");
+    else if (n !== undefined && (n < 7 || n > 365))
+      errors.push("Delegated stale-contact days must be between 7 and 365.");
+    else if (n !== undefined) value.shepherd_care_stale_days_delegated = n;
   }
 
   // Cross-field: full % must be >= warning % when both present (or fall
