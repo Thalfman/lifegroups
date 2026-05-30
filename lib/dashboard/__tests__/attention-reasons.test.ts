@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { collectReasonsFor, type DerivedGroupRow } from "@/lib/dashboard/queries";
+import {
+  collectReasonsFor,
+  type DerivedGroupRow,
+} from "@/lib/dashboard/admin-group-model";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import type { GroupsRow } from "@/types/database";
 

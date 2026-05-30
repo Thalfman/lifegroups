@@ -2,7 +2,7 @@ import Link from "next/link";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import { attentionReasonLabel } from "@/lib/dashboard/queries";
+import { attentionReasonLabel } from "@/lib/dashboard/admin-group-model";
 import type {
   AttentionItem,
   AttentionReason,
