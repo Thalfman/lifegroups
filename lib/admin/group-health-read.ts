@@ -9,10 +9,18 @@ import {
   BUILT_IN_GROUP_HEALTH_RUBRIC,
 } from "@/lib/admin/group-health";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
-import { fetchMetricDefaults } from "@/lib/supabase/read-models";
+import {
+  fetchAllGroups,
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
+  fetchMetricDefaults,
+  type ReadResult,
+} from "@/lib/supabase/read-models";
 
 // Read side for the group-health tracer (#127). Admin-only data; these run
-// behind the admin layout guard and the table's admin-only RLS.
+// behind the admin layout guard and the table's admin-only RLS. Reads go
+// through the typed read-model helpers (which already return ReadResult and
+// propagate Supabase errors) rather than re-rolling queries here.
 //
 // Per the locked rubric, the *current* month recomputes on read: the overview
 // computes each active group's live attendance grade from the configured rubric
@@ -21,7 +29,7 @@ import { fetchMetricDefaults } from "@/lib/supabase/read-models";
 // months (and the home of #129's override); the manual Recompute action writes
 // the same numbers through the audited RPC.
 
-export type ReadResult<T> = { data: T; error: null } | { data: null; error: Error };
+export type { ReadResult } from "@/lib/supabase/read-models";
 
 function wrapError(prefix: string, err: unknown): Error {
   if (err instanceof Error) return new Error(`${prefix}: ${err.message}`);
@@ -57,17 +65,15 @@ export async function fetchGroupAttendanceWeeks(
   groupId: string,
   limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
 ): Promise<ReadResult<AttendanceWeekTally[]>> {
-  const { data: sessions, error: sessionsError } = await client
-    .from("attendance_sessions")
-    .select("id, meeting_week")
-    .eq("group_id", groupId)
-    .order("meeting_week", { ascending: false })
-    .limit(limitWeeks);
-
-  if (sessionsError) {
-    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsError) };
+  const sessionsRes = await fetchAttendanceSessions(client, {
+    groupId,
+    limit: limitWeeks,
+  });
+  if (sessionsRes.error) {
+    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsRes.error) };
   }
-  if (!sessions || sessions.length === 0) return { data: [], error: null };
+  const sessions = sessionsRes.data;
+  if (sessions.length === 0) return { data: [], error: null };
 
   const byId = new Map<string, AttendanceWeekTally>();
   for (const session of sessions) {
@@ -79,16 +85,12 @@ export async function fetchGroupAttendanceWeeks(
     });
   }
 
-  const { data: records, error: recordsError } = await client
-    .from("attendance_records")
-    .select("session_id, attendance_status")
-    .in("session_id", [...byId.keys()]);
-
-  if (recordsError) {
-    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/records", recordsError) };
+  const recordsRes = await fetchAttendanceRecordsForSessions(client, [...byId.keys()]);
+  if (recordsRes.error) {
+    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/records", recordsRes.error) };
   }
 
-  for (const record of records ?? []) {
+  for (const record of recordsRes.data) {
     const tally = byId.get(record.session_id);
     if (!tally) continue;
     if (record.attendance_status === "present") tally.present += 1;
@@ -125,19 +127,16 @@ type PersistedAssessment = {
 //
 // The new group_health_assessments table is not in the generated supabase
 // schema types, so its select is cast in this one place — the same trust seam
-// callUuidRpc uses for admin RPCs. Columns are listed explicitly (never *).
+// callUuidRpc uses for admin RPCs.
 export async function listGroupHealthOverview(
   client: AppSupabaseClient,
   periodMonthIso: string = currentPeriodMonthIso(),
 ): Promise<ReadResult<GroupHealthOverviewRow[]>> {
-  const { data: groups, error: groupsError } = await client
-    .from("groups")
-    .select("id, name")
-    .neq("lifecycle_status", "closed")
-    .order("name", { ascending: true });
-
-  if (groupsError) return { data: null, error: wrapError("listGroupHealthOverview/groups", groupsError) };
-  if (!groups || groups.length === 0) return { data: [], error: null };
+  const groupsRes = await fetchAllGroups(client);
+  if (groupsRes.error) return { data: null, error: groupsRes.error };
+  // Active groups only; fetchAllGroups already sorts by name.
+  const groups = groupsRes.data.filter((g) => g.lifecycle_status !== "closed");
+  if (groups.length === 0) return { data: [], error: null };
 
   const rubricRes = await fetchGroupHealthRubric(client);
   if (rubricRes.error) return { data: null, error: rubricRes.error };
@@ -145,17 +144,16 @@ export async function listGroupHealthOverview(
 
   const { data: assessments, error: assessmentsError } = await (client as AppSupabaseClient)
     .from("group_health_assessments" as never)
-    .select(
-      "group_id, attendance_pct, attendance_weeks_counted, computed_letter" as never,
-    )
-    .eq("period_month" as never, periodMonthIso as never);
+    .select("group_id, attendance_pct, attendance_weeks_counted, computed_letter" as never)
+    .eq("period_month" as never, periodMonthIso as never)
+    .returns<PersistedAssessment[]>();
 
   if (assessmentsError) {
     return { data: null, error: wrapError("listGroupHealthOverview/assessments", assessmentsError) };
   }
 
   const persisted = new Map<string, PersistedAssessment>();
-  for (const row of (assessments as PersistedAssessment[] | null) ?? []) {
+  for (const row of assessments ?? []) {
     persisted.set(row.group_id, row);
   }
 

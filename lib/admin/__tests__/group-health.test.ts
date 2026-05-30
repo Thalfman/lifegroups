@@ -4,6 +4,7 @@ import {
   attendanceConsistency,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
   computeGrade,
+  rubricFromMetricDefaults,
   type AttendanceWeekTally,
 } from "@/lib/admin/group-health";
 
