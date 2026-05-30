@@ -96,7 +96,7 @@ describe("fetchOverShepherdCareDirectory — in-scope visibility", () => {
           {
             id: "ca-1",
             shepherd_profile_id: SHEP_1,
-            current_status: "watch",
+            current_status: "needs_encouragement",
             last_contact_at: "2026-05-01",
             next_touchpoint_due: "2026-06-01",
             archived_at: null,
@@ -113,7 +113,7 @@ describe("fetchOverShepherdCareDirectory — in-scope visibility", () => {
     expect(r.error).toBeNull();
     expect(r.data).toHaveLength(2);
     const ann = r.data!.find((e) => e.profile.id === SHEP_1)!;
-    expect(ann.care?.current_status).toBe("watch");
+    expect(ann.care?.current_status).toBe("needs_encouragement");
     // Bob has no care row yet -> needs first contact.
     const bob = r.data!.find((e) => e.profile.id === SHEP_2)!;
     expect(bob.care).toBeNull();

@@ -169,7 +169,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
   it("renders 'Created care profile' on first upsert and 'Updated …' otherwise", () => {
     const created = summarizeAuditEvent(
       event("admin.upsert_shepherd_care_profile", {
-        after: { current_status: "healthy", has_summary: false },
+        after: { current_status: "doing_well", has_summary: false },
         before: {},
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: true,
@@ -180,16 +180,16 @@ describe("summarizeAuditEvent — shepherd care", () => {
 
     const updated = summarizeAuditEvent(
       event("admin.upsert_shepherd_care_profile", {
-        after: { current_status: "needs_attention", has_summary: true },
-        before: { current_status: "healthy", has_summary: false },
+        after: { current_status: "needs_follow_up", has_summary: true },
+        before: { current_status: "doing_well", has_summary: false },
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: false,
       }),
       mapsWithShepherd(),
     );
     expect(updated).toContain("Avery Bennett");
-    expect(updated).toContain("healthy");
-    expect(updated).toContain("needs_attention");
+    expect(updated).toContain("doing_well");
+    expect(updated).toContain("needs_follow_up");
   });
 
   it("does not treat event.entity_id as a profile id on upsert (entity is the care_profile_id)", () => {
@@ -204,7 +204,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
         {
           // Intentionally omit md.shepherd_profile_id so only the
           // (incorrect) entity_id fallback could match.
-          after: { current_status: "healthy", has_summary: false },
+          after: { current_status: "doing_well", has_summary: false },
           before: {},
           was_just_created: false,
         },
@@ -222,11 +222,11 @@ describe("summarizeAuditEvent — shepherd care", () => {
         // Hypothetical leak — the summary helper must not surface this.
         admin_summary: "CONFIDENTIAL summary that must not appear in audit",
         after: {
-          current_status: "healthy",
+          current_status: "doing_well",
           has_summary: true,
           admin_summary: "ALSO PRIVATE",
         },
-        before: { current_status: "healthy", has_summary: false },
+        before: { current_status: "doing_well", has_summary: false },
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: false,
       }),

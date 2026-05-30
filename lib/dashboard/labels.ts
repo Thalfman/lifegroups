@@ -90,9 +90,11 @@ export function sessionStatusLabel(status: AttendanceSessionStatus): string {
 }
 
 const shepherdCareStatusLabels: Record<ShepherdCareStatus, string> = {
-  healthy: "Healthy",
-  watch: "Watch",
-  needs_attention: "Needs attention",
+  doing_well: "Doing well",
+  needs_encouragement: "Needs encouragement",
+  needs_follow_up: "Needs follow-up",
+  concern: "Concern",
+  inactive: "Inactive",
 };
 
 const shepherdCareInteractionTypeLabels: Record<ShepherdCareInteractionType, string> = {

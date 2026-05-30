@@ -90,7 +90,7 @@ export function CareDirectoryTable({
         </thead>
         <tbody>
           {entries.map((entry) => {
-            const status = entry.care?.current_status ?? "healthy";
+            const status = entry.care?.current_status ?? "doing_well";
             const lastContact = entry.care?.last_contact_at ?? null;
             const nextTouchpoint = entry.care?.next_touchpoint_due ?? null;
             return (

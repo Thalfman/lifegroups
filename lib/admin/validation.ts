@@ -1344,9 +1344,11 @@ export function validateInviteUserPayload(
 // ---------------------------------------------------------------------------
 
 const SHEPHERD_CARE_STATUSES: ReadonlySet<ShepherdCareStatus> = new Set([
-  "healthy",
-  "watch",
-  "needs_attention",
+  "doing_well",
+  "needs_encouragement",
+  "needs_follow_up",
+  "concern",
+  "inactive",
 ]);
 
 const SHEPHERD_CARE_INTERACTION_TYPES: ReadonlySet<ShepherdCareInteractionType> = new Set([
@@ -1413,10 +1415,12 @@ export function validateUpsertShepherdCareProfilePayload(
   const setNext = readBooleanFlag(input.set_next_touchpoint_due);
   const setSummary = readBooleanFlag(input.set_admin_summary);
 
-  let status: ShepherdCareStatus = "healthy";
+  let status: ShepherdCareStatus = "doing_well";
   if (setStatus) {
     if (!isShepherdCareStatus(input.current_status)) {
-      errors.push("Status must be healthy, watch, or needs_attention.");
+      errors.push(
+        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive.",
+      );
     } else {
       status = input.current_status;
     }
@@ -1527,10 +1531,12 @@ export function validateLogShepherdCareInteractionPayload(
     }
   }
 
-  let status: ShepherdCareStatus = "healthy";
+  let status: ShepherdCareStatus = "doing_well";
   if (setStatus) {
     if (!isShepherdCareStatus(input.current_status)) {
-      errors.push("Status must be healthy, watch, or needs_attention.");
+      errors.push(
+        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive.",
+      );
     } else {
       status = input.current_status;
     }

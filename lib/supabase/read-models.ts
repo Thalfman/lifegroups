@@ -949,6 +949,19 @@ export function computeNeedsAttention(
   staleDays: number = SHEPHERD_CARE_STALE_DAYS,
 ): boolean {
   if (care === null) return true;
+  // Julian Q2 (#122): the action-required care statuses (`concern`,
+  // `needs_follow_up`) raise an attention-queue reason on their own, so they
+  // must also drive the "Needs attention" count + directory filter — otherwise
+  // a shepherd marked `concern` with recent contact shows in the triage queue
+  // while the chip reads 0 and the filter hides the same row. `needs_encouragement`
+  // is a soft nudge (queue-only, lowest priority) and is deliberately excluded
+  // here; `inactive` is a lifecycle state, not an attention signal.
+  if (
+    care.current_status === "concern" ||
+    care.current_status === "needs_follow_up"
+  ) {
+    return true;
+  }
   if (care.last_contact_at === null) return true;
   if (care.next_touchpoint_due !== null && care.next_touchpoint_due < todayIso) {
     return true;

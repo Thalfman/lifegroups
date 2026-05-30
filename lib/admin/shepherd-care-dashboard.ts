@@ -13,23 +13,29 @@ import { isFollowUpOverdue } from "@/lib/admin/shepherd-care-follow-ups";
 export type CareAttentionReason =
   | "overdue_touchpoint"
   | "overdue_care_follow_up"
-  | "needs_attention_status"
+  | "concern_status"
+  | "needs_follow_up_status"
   | "no_contact_yet"
   | "stale_last_contact"
   | "no_over_shepherd"
-  | "watch_status";
+  | "needs_encouragement_status";
 
 // Priority order: lower number = higher priority. Matches the SC.3 spec.
 // overdue_care_follow_up ("what I owe this person, now past due") sits just
 // below an overdue touchpoint and above the softer status/staleness signals.
+// The status-derived reasons rank by Julian's severity ladder: `concern`
+// (most severe) above `needs_follow_up`, with `needs_encouragement` as the
+// softest nudge at the bottom. `inactive` is a lifecycle state, not a
+// severity, so it does not raise an attention reason.
 const REASON_PRIORITY: Record<CareAttentionReason, number> = {
   overdue_touchpoint: 1,
   overdue_care_follow_up: 2,
-  needs_attention_status: 3,
-  no_contact_yet: 4,
-  stale_last_contact: 5,
-  no_over_shepherd: 6,
-  watch_status: 7,
+  concern_status: 3,
+  needs_follow_up_status: 4,
+  no_contact_yet: 5,
+  stale_last_contact: 6,
+  no_over_shepherd: 7,
+  needs_encouragement_status: 8,
 };
 
 // Per-shepherd care follow-up rollup the dashboard derives from the
@@ -222,8 +228,10 @@ function detailForReason(
         ? "1 follow-up overdue"
         : `${overdue} follow-ups overdue`;
     }
-    case "needs_attention_status":
-      return "Marked as needs attention";
+    case "concern_status":
+      return "Marked as concern";
+    case "needs_follow_up_status":
+      return "Marked as needs follow-up";
     case "no_contact_yet":
       return care === null ? "No care profile yet" : "No contact logged yet";
     case "stale_last_contact": {
@@ -237,8 +245,8 @@ function detailForReason(
     }
     case "no_over_shepherd":
       return "No over-shepherd assigned";
-    case "watch_status":
-      return "Marked as watch";
+    case "needs_encouragement_status":
+      return "Marked as needs encouragement";
   }
 }
 
@@ -259,8 +267,11 @@ function detectReasons(
   if ((followUpStats.get(entry.profile.id)?.overdue ?? 0) > 0) {
     reasons.push("overdue_care_follow_up");
   }
-  if (care?.current_status === "needs_attention") {
-    reasons.push("needs_attention_status");
+  if (care?.current_status === "concern") {
+    reasons.push("concern_status");
+  }
+  if (care?.current_status === "needs_follow_up") {
+    reasons.push("needs_follow_up_status");
   }
   if (care === null || care.last_contact_at === null) {
     reasons.push("no_contact_yet");
@@ -275,8 +286,8 @@ function detectReasons(
   if (coverageAvailable && !assignedShepherdIds.has(entry.profile.id)) {
     reasons.push("no_over_shepherd");
   }
-  if (care?.current_status === "watch") {
-    reasons.push("watch_status");
+  if (care?.current_status === "needs_encouragement") {
+    reasons.push("needs_encouragement_status");
   }
   return reasons;
 }

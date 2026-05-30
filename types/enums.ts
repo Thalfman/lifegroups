@@ -38,7 +38,16 @@ export type GroupCalendarEventType =
   | 'cancelled'
   | 'other';
 export type GroupCalendarEventStatus = 'scheduled' | 'off' | 'cancelled';
-export type ShepherdCareStatus = 'healthy' | 'watch' | 'needs_attention';
+// Leader Care Status (PRD Q2 / ADR 0004 D2): Julian's five. `inactive` is a
+// lifecycle state, not a severity level. `needs_follow_up` also exists in
+// group_health_status (the Health Pulse) — distinct enum types, distinct
+// concepts (see CONTEXT.md).
+export type ShepherdCareStatus =
+  | 'doing_well'
+  | 'needs_encouragement'
+  | 'needs_follow_up'
+  | 'concern'
+  | 'inactive';
 export type ShepherdCareInteractionType = 'call' | 'text' | 'in_person' | 'meeting' | 'other';
 export type ShepherdCareFollowUpStatus = 'open' | 'in_progress' | 'done';
 // Group-Health Grade (#127). A–D report-card letter, plus the scope a manual
