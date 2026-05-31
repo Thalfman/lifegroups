@@ -39,7 +39,7 @@ begin;
 --    no-access per ADR 0002, so 'leader' + inactive preserves the no-access
 --    posture while vacating the value from live data.
 -- ---------------------------------------------------------------------------
-insert into public.audit_events (action, entity_type, entity_id, actor_profile_id, payload)
+insert into public.audit_events (action, entity_type, entity_id, actor_profile_id, metadata)
 select
   'system.migration.remove_staff_viewer',
   'profiles',
