@@ -19,7 +19,14 @@ _Disposition legend:_
 
 ---
 
-## A — Half-finished Shepherd→Leader copy renames ✏️
+## A — Half-finished Shepherd→Leader copy renames ✅ RESOLVED
+
+> ✅ **Resolved (V1 / #194).** All six strings below were corrected in commit
+> `78fea60` ("Finish Shepherd→Leader copy renames (6 stale strings)"). A
+> codebase grep confirms no user-facing string still uses "coach" or "My
+> Shepherds"/"This Shepherd" where the glossary says Leader / Over-Shepherd; the
+> remaining matches are code identifiers and test fixtures, kept per section D /
+> ADR 0008. The worklist table is retained below for history.
 
 ADR 0008 renamed the _user-facing_ labels from "Shepherd" to "Leader" but a few strings were
 missed. These contradict the glossary, which lists **"Coach"** as an _Avoid_ term for
@@ -34,8 +41,8 @@ Over-Shepherd and reserves "Shepherd" as non-existent as a standalone tier.
 | stale fallback name    | `app/(protected)/over-shepherd/[profileId]/page.tsx:69`                | "This Shepherd"                                         | "This Leader"                   |
 | stale empty-state      | `app/(protected)/over-shepherd/[profileId]/page.tsx:137`               | "Care touches with this Shepherd will appear here."     | "…with this Leader…"            |
 
-**Disposition:** ✏️ mechanical copy fixes — no decision needed. Highest priority, because
-these are live in production UX and directly violate `CONTEXT.md`.
+**Disposition:** ✅ done — landed as mechanical copy fixes in `78fea60` (#194). No
+user-facing string remains in violation of `CONTEXT.md`.
 
 ## B — Deprecated `staff_viewer` role still present 🗑️ / 🧊
 
@@ -101,7 +108,7 @@ functionally built but **not** "done"; that plan is the live spec.
 
 Each row is owner-actionable in a future session:
 
-- **✏️ (A)** — mechanical copy fixes; safe to batch in one small PR.
+- **✅ (A)** — done; the mechanical copy fixes landed in `78fea60` (#194).
 - **🔀 (E, F)** — already ticketed; track in their issues/plans, nothing new owed.
 - **🟢 (D)** — no action; documented so it reads as decided, not accidental.
 - **🗑️ / 🧊 (B, C)** — need a Julian/Tom decision before code changes (remove vs. quarantine;
