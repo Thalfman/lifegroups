@@ -31,7 +31,7 @@ here keeps the active `docs/` directory scannable.
 
 ### Julian spine implementation specs (shipped)
 
-These are the as-built specs for the SC.* / LP.* phases. The shepherd-care plan
+These are the as-built specs for the SC._ / LP._ phases. The shepherd-care plan
 (`SHEPHERD_CARE_TRACKER_PLAN.md`) remains live in `docs/plans/`;
 `LAUNCH_PLANNING_PLAN.md` is now archived here.
 
@@ -122,10 +122,16 @@ window in May 2026. Closed.
 
 ### Old completion roadmaps (superseded)
 
-- `APP_COMPLETION_ROADMAP.md` — independent review snapshot from
-  2026-05-19; superseded by the post-Julian pivot.
-- `CLAUDE_APP_COMPLETION_ROADMAP.md` — extended review snapshot from
-  2026-05-19; superseded by the post-Julian pivot.
+Two 2026-05-19 review snapshots once competed here. To leave a single source
+of truth, **`CLAUDE_APP_COMPLETION_ROADMAP.md` is the authoritative one**; the
+earlier `APP_COMPLETION_ROADMAP.md` is the duplicate, superseded by it. Both
+are themselves off the North-Star path (current truth is the PRD/ADR pair
+above) and are kept for implementation history only.
+
+- `CLAUDE_APP_COMPLETION_ROADMAP.md` — ✅ authoritative archived completion
+  roadmap; the extended review snapshot from 2026-05-19.
+- `APP_COMPLETION_ROADMAP.md` — 🗑️ superseded duplicate; the earlier
+  independent review snapshot from 2026-05-19, replaced by the file above.
 
 ### Old roadmap doc (superseded)
 
