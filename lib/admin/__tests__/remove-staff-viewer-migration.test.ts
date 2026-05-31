@@ -2,82 +2,61 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MIGRATION = readFileSync(
-  join(
-    process.cwd(),
-    "supabase/migrations/20260531140000_phase_rr1_remove_staff_viewer_role.sql"
-  ),
-  "utf8"
+// Migration-content assertions for Concept Reconciliation §B (#190): retire the
+// deprecated staff_viewer role. No live DB in unit tests, so — mirroring the
+// other *-migration.test.ts files — we assert the migration SQL contains the
+// load-bearing clauses.
+const MIGRATION_PATH = join(
+  process.cwd(),
+  "supabase/migrations/20260531140000_remove_staff_viewer_role.sql"
 );
+const sql = readFileSync(MIGRATION_PATH, "utf8");
 
-describe("phase RR.1 remove staff_viewer role migration", () => {
-  it("vacates staff_viewer rows to an inactive leader", () => {
-    expect(MIGRATION).toMatch(/update public\.profiles/);
-    expect(MIGRATION).toMatch(/where role = 'staff_viewer'/);
-    expect(MIGRATION).toMatch(/set\s+role = 'leader'/);
-    expect(MIGRATION).toMatch(/status = 'inactive'/);
-  });
-
-  it("recreates the user_role enum without staff_viewer", () => {
-    expect(MIGRATION).toContain(
-      "alter type public.user_role rename to user_role_old"
-    );
-    expect(MIGRATION).toMatch(
-      /create type public\.user_role as enum \(\s*'super_admin','ministry_admin','over_shepherd','leader','co_leader'\s*\)/
-    );
-    // The new enum literal must not list staff_viewer.
-    const enumDecl = MIGRATION.slice(
-      MIGRATION.indexOf("create type public.user_role as enum")
-    );
-    const enumLiteral = enumDecl.slice(0, enumDecl.indexOf(");"));
-    expect(enumLiteral).not.toContain("staff_viewer");
-  });
-
-  it("swaps the profiles.role column onto the new type and restores its default", () => {
-    expect(MIGRATION).toContain("alter column role drop default");
-    expect(MIGRATION).toMatch(
-      /alter column role type public\.user_role\s+using role::text::public\.user_role/
-    );
-    expect(MIGRATION).toContain("alter column role set default 'leader'");
-    expect(MIGRATION).toContain("drop type public.user_role_old");
-  });
-
-  it("removes the unused auth_is_staff_viewer helper", () => {
-    expect(MIGRATION).toContain(
-      "drop function if exists public.auth_is_staff_viewer()"
-    );
-    expect(MIGRATION).not.toContain(
-      "create or replace function public.auth_is_staff_viewer"
-    );
-  });
-
-  it("recreates the role-write RPCs without a staff_viewer guard", () => {
-    expect(MIGRATION).toContain(
-      "create or replace function public.change_user_role"
-    );
-    expect(MIGRATION).toContain(
-      "create or replace function public.set_profile_role"
-    );
-    // set_profile_role keeps its super_admin guard ...
-    expect(MIGRATION).toMatch(/super_admin is not assignable/);
-    // ... but no staff_viewer guard survives anywhere.
-    expect(MIGRATION).not.toMatch(/staff_viewer is not assignable/);
-  });
-
-  it("restores execute grants for the recreated functions", () => {
-    expect(MIGRATION).toMatch(
-      /grant execute on function\s+public\.change_user_role\(uuid, uuid, public\.user_role, text\) to authenticated/
-    );
-    expect(MIGRATION).toMatch(
-      /grant execute on function\s+public\.set_profile_role\(uuid, uuid, public\.user_role, text\) to authenticated/
-    );
-    expect(MIGRATION).toMatch(
-      /grant execute on function public\.auth_role\(\) to authenticated/
-    );
-  });
-
+describe("remove staff_viewer migration (#190)", () => {
   it("is wrapped in a transaction", () => {
-    expect(MIGRATION).toMatch(/^begin;/m);
-    expect(MIGRATION.trim().endsWith("commit;")).toBe(true);
+    expect(sql).toMatch(/begin;/i);
+    expect(sql).toMatch(/commit;/i);
+  });
+
+  it("reassigns any existing staff_viewer rows to a no-access disabled state", () => {
+    expect(sql).toMatch(
+      /update public\.profiles[\s\S]*set role = 'leader', status = 'inactive'/i
+    );
+    expect(sql).toMatch(/where role = 'staff_viewer'/i);
+  });
+
+  it("audits each reassignment before mutating", () => {
+    expect(sql).toMatch(/insert into public\.audit_events/i);
+    expect(sql).toMatch(/system\.migration\.remove_staff_viewer/);
+  });
+
+  it("neutralises auth_is_staff_viewer so the value can never resolve to access", () => {
+    expect(sql).toMatch(
+      /create or replace function public\.auth_is_staff_viewer\(\)[\s\S]*select false;/i
+    );
+  });
+
+  it("drops staff_viewer from the admin-or-staff read tier", () => {
+    expect(sql).toMatch(
+      /create or replace function public\.auth_is_admin_or_staff\(\)[\s\S]*'super_admin','ministry_admin'\), false\)/i
+    );
+    // and the recreated body no longer lists staff_viewer
+    expect(sql).not.toMatch(
+      /auth_is_admin_or_staff[\s\S]*'super_admin','ministry_admin','staff_viewer'/i
+    );
+  });
+
+  it("neutralises in place — no DROP/CASCADE statements, no enum type-swap", () => {
+    // The safety property: we neutralise via CREATE OR REPLACE rather than
+    // dropping auth_role() (whose return type the RLS policy graph depends on).
+    // Strip comment lines first so the assertion checks executable SQL, not the
+    // explanatory prose (which discusses the rejected cascade approach).
+    const executable = sql
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n");
+    expect(executable).not.toMatch(/drop function/i);
+    expect(executable).not.toMatch(/cascade/i);
+    expect(executable).not.toMatch(/alter type public\.user_role rename/i);
   });
 });
