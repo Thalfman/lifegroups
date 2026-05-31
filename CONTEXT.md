@@ -86,6 +86,19 @@ launcher; Over-Shepherd sees a focused one) and shows navigation tiles plus
 at-a-glance live stats. Replaces the old straight-to-`/admin` redirect.
 _Avoid_: Dashboard (ambiguous with the admin metrics surface), home page.
 
+**Admin OS**:
+The working surface a Ministry Admin / Super Admin operates in after leaving the
+Home Hub — the sidebar-shell app at `/admin` and its tabs (Leader care, Launch
+planning, etc.). In the UI it is **labelled "Ministry Admin"** (the landing
+title and the sidebar section header), not "Admin OS" — the canonical decision
+recorded in the PRD (#175); the rename itself ships with that implementation.
+This deliberately overloads "Ministry Admin": it names both the _role_ (the
+person, above) and this _surface_ (where that person works). "Admin OS" stays as
+the internal name in code and docs; it is not shown to users. Bare "Admin"
+remains avoided.
+_Avoid_: Admin OS (as a user-facing label), Admin (ambiguous), admin panel,
+dashboard.
+
 **Settings**:
 The Ministry-Admin configuration surface — ministry/pastoral knobs (thresholds,
 care cadence, group-health weights) and the Julian-owned pastoral copy
