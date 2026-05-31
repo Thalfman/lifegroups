@@ -95,6 +95,13 @@ describe("candidate ⇄ apprentice link migration — successor seed", () => {
     expect(lower()).toContain("c.successor_designate is not null");
   });
 
+  it("audits the seeded apprentice creation and the candidate link in the same transaction", () => {
+    // The seed CTE ends in an audit_events insert covering both entities.
+    expect(lower()).toContain("insert into public.audit_events");
+    expect(lower()).toContain("'seeded_from_successor'");
+    expect(lower()).toContain("'seeded_apprentice_link'");
+  });
+
   it("does not service-role write or hard-delete", () => {
     expect(lower()).not.toContain("service_role");
     expect(lower()).not.toMatch(

@@ -57,6 +57,9 @@ type PageData = {
   participationPct: number | null;
   staffingForecast: StaffingForecast;
   staffingSourceLabel: string;
+  // #186: the pipeline is the source of truth for staffing supply. A read
+  // failure must not silently read as "0 Ready" / inflated shortfall.
+  pipelineError: string | null;
 };
 
 function emptyData(): PageData {
@@ -95,6 +98,7 @@ function emptyData(): PageData {
       []
     ),
     staffingSourceLabel: "baseline",
+    pipelineError: "Database is not configured in this environment.",
   };
 }
 
@@ -175,6 +179,7 @@ async function loadData(): Promise<PageData> {
     ),
     staffingForecast,
     staffingSourceLabel,
+    pipelineError: pipelineRes.error?.message ?? null,
   };
 }
 
@@ -232,11 +237,29 @@ export default async function AdminLaunchPlanningPage() {
             outputs={data.outputs}
           />
 
-          <StaffingSupplyCard
-            forecast={data.staffingForecast}
-            inputs={data.inputs}
-            sourceLabel={data.staffingSourceLabel}
-          />
+          {data.pipelineError ? (
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: "#7d3621",
+                background: P.terraSoft,
+                border: `1px solid ${P.terra}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+              }}
+            >
+              The leader pipeline could not be loaded, so the staffing supply
+              below may understate who is ready. {data.pipelineError}
+            </p>
+          ) : (
+            <StaffingSupplyCard
+              forecast={data.staffingForecast}
+              inputs={data.inputs}
+              sourceLabel={data.staffingSourceLabel}
+            />
+          )}
 
           <ChurchAttendanceCard
             latest={data.churchAttendanceLatest}

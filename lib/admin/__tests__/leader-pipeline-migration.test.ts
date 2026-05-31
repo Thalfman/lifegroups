@@ -114,6 +114,15 @@ describe("leader pipeline migration — audited write path", () => {
     expect(lower()).not.toMatch(/delete\s+from\s+public\.leader_pipeline/);
   });
 
+  it("archive clears any linked candidate so the planner can't resolve an archived apprentice", () => {
+    const body = slice("admin_archive_apprentice");
+    // Clears multiplication_candidates.leader_pipeline_id pointing at it...
+    expect(body).toContain("set leader_pipeline_id = null");
+    expect(body).toContain("where leader_pipeline_id = p_apprentice_id");
+    // ...and audits each cleared link.
+    expect(body).toContain("'cleared_apprentice_link'");
+  });
+
   it("grants execute on every RPC to authenticated only", () => {
     for (const fn of fns) {
       expect(lower()).toContain(`grant execute on function public.${fn}`);

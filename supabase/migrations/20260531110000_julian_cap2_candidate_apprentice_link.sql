@@ -338,6 +338,11 @@ comment on function public.admin_update_multiplication_candidate(
 --    linked. One active candidate per group (partial unique index) lets us map
 --    the seeded apprentice back to its candidate by group_id. Idempotent: only
 --    fires for candidates that have a successor name and no link yet.
+--
+--    These mutate the same entities the audited RPCs do, so the seed pairs an
+--    audit_events row for each seeded apprentice and each candidate link, on
+--    the actor the candidate was created by (best-effort attribution; may be
+--    null for pre-existing seed data, which the column allows).
 -- ---------------------------------------------------------------------------
 
 with seeded as (
@@ -355,11 +360,29 @@ with seeded as (
      and c.leader_pipeline_id is null
      and c.successor_designate is not null
      and btrim(c.successor_designate) <> ''
-  returning id, group_id
+  returning id, group_id, created_by
+),
+linked as (
+  update public.multiplication_candidates c
+     set leader_pipeline_id = s.id
+    from seeded s
+   where c.group_id = s.group_id
+     and c.archived_at is null
+     and c.leader_pipeline_id is null
+  returning c.id as candidate_id, c.leader_pipeline_id as apprentice_id,
+            c.group_id, s.created_by as actor
 )
-update public.multiplication_candidates c
-   set leader_pipeline_id = s.id
-  from seeded s
- where c.group_id = s.group_id
-   and c.archived_at is null
-   and c.leader_pipeline_id is null;
+insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
+select l.actor, 'admin.create_apprentice', 'leader_pipeline', l.apprentice_id,
+       jsonb_build_object(
+         'after', jsonb_build_object('group_id', l.group_id, 'readiness_stage', 'identified'),
+         'seeded_from_successor', true
+       )
+  from linked l
+union all
+select l.actor, 'admin.update_multiplication_candidate', 'multiplication_candidates', l.candidate_id,
+       jsonb_build_object(
+         'after', jsonb_build_object('has_apprentice_link', true),
+         'seeded_apprentice_link', l.apprentice_id
+       )
+  from linked l;

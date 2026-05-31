@@ -354,6 +354,20 @@ begin
      set archived_at = now(), updated_by = v_actor
    where id = p_apprentice_id;
 
+  -- Clear any active multiplication candidate that links to this apprentice, so
+  -- the planner/board (which resolve the linked apprentice by id) never surface
+  -- an archived apprentice + stale stage. Each cleared link is audited.
+  with cleared as (
+    update public.multiplication_candidates
+       set leader_pipeline_id = null, updated_by = v_actor
+     where leader_pipeline_id = p_apprentice_id and archived_at is null
+    returning id
+  )
+  insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
+  select v_actor, 'admin.update_multiplication_candidate', 'multiplication_candidates', id,
+         jsonb_build_object('cleared_apprentice_link', p_apprentice_id)
+    from cleared;
+
   insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
   values (
     v_actor,

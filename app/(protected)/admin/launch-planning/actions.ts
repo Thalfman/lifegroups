@@ -30,6 +30,17 @@ const REVALIDATE_PATH_ADMIN = "/admin";
 // Julian #145: the multiplication pipeline now lives on its own surface; the
 // candidate writes below revalidate it so edits show up there immediately.
 const REVALIDATE_PATH_MULTIPLICATION = "/admin/multiplication";
+// #185: candidate flags/ids drive the Capacity Board's suggestion annotations
+// and de-duping, so candidate writes must refresh it too.
+const REVALIDATE_PATH_CAPACITY = "/admin/capacity-board";
+
+// Candidate writes touch the multiplication plan, launch planning, and the
+// capacity board's suggestions.
+const CANDIDATE_REVALIDATE = [
+  REVALIDATE_PATH_MULTIPLICATION,
+  REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_CAPACITY,
+] as const;
 
 // Keep this list in lockstep with the validator's whitelist. The form
 // only POSTs keys that were actually submitted (we read each by name),
@@ -202,10 +213,7 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [
-    REVALIDATE_PATH_MULTIPLICATION,
-    REVALIDATE_PATH_LAUNCH_PLANNING,
-  ],
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };
 
@@ -235,10 +243,7 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [
-    REVALIDATE_PATH_MULTIPLICATION,
-    REVALIDATE_PATH_LAUNCH_PLANNING,
-  ],
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };
 
@@ -263,10 +268,7 @@ const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<
     rpcAdminArchiveMultiplicationCandidate(client, {
       p_candidate_id: value.candidate_id,
     }),
-  revalidate: () => [
-    REVALIDATE_PATH_MULTIPLICATION,
-    REVALIDATE_PATH_LAUNCH_PLANNING,
-  ],
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not archived. Please try again.",
 };
 
