@@ -72,10 +72,9 @@ export function resolveGroupGradeBoard(
     letter: r.resolved.effective_letter,
   });
   const byId = new Map(resolved.map((r) => [r.group_id, r]));
-  const ranked = rankByGrade(resolved.map(asGraded)).map(
-    (g) => byId.get(g.group_id)!
-  );
-  const segmented = segmentByGrade(resolved.map(asGraded));
+  const graded = resolved.map(asGraded);
+  const ranked = rankByGrade(graded).map((g) => byId.get(g.group_id)!);
+  const segmented = segmentByGrade(graded);
 
   return { ranked, segmented };
 }
