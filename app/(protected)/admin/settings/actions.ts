@@ -26,14 +26,17 @@ const SETTINGS_REVALIDATE_PATHS = [
   "/leader",
 ] as const;
 
+// Check-in cadence keys (check_in_due_day_of_week, missed_checkin_warning_weeks,
+// check_in_due_offset_hours) are intentionally absent: their Settings form
+// fields were retired (#160, check-ins are a frozen surface per ADR 0002). The
+// underlying metric_defaults columns stay put and still feed the dormant overdue
+// calc; the reset RPC continues to manage them. The form simply no longer edits
+// them, so they must not be read from the submitted FormData.
 const METRIC_DEFAULT_FIELDS = [
   "default_group_capacity",
   "capacity_warning_threshold_pct",
   "capacity_full_threshold_pct",
-  "check_in_due_day_of_week",
-  "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
-  "check_in_due_offset_hours",
   "shepherd_care_stale_days_direct",
   "shepherd_care_stale_days_delegated",
 ] as const;
@@ -90,7 +93,10 @@ function readGroupMetricForm(input: unknown): Record<string, unknown> {
   }
   const out: Record<string, unknown> = {};
   for (const key of GROUP_METRIC_FIELDS) {
-    if (key === "exclude_from_capacity_metrics" || key === "allow_over_capacity") {
+    if (
+      key === "exclude_from_capacity_metrics" ||
+      key === "allow_over_capacity"
+    ) {
       // Browsers omit unchecked checkboxes from the FormData entirely.
       // Treat absence as `false` so a checkbox cleared by the operator
       // round-trips correctly.
@@ -122,14 +128,16 @@ const UPDATE_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
       : null,
   okFields: (value) => ({ changed_field_count: Object.keys(value).length }),
   rpc: (client, value) =>
-    rpcAdminUpdateMetricDefaults(client, { p_settings: value as Record<string, unknown> }),
+    rpcAdminUpdateMetricDefaults(client, {
+      p_settings: value as Record<string, unknown>,
+    }),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
   noDataError: "The settings were not saved. Please try again.",
 };
 
 export async function adminUpdateMetricDefaults(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_METRIC_DEFAULTS_SPEC, prev, input);
 }
@@ -154,7 +162,8 @@ const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
       p_manual_health_status_override: value.manual_health_status_override,
       p_exclude_from_capacity_metrics: value.exclude_from_capacity_metrics,
       p_admin_metric_notes: value.admin_metric_notes,
-      p_check_in_due_offset_hours_override: value.check_in_due_offset_hours_override,
+      p_check_in_due_offset_hours_override:
+        value.check_in_due_offset_hours_override,
       p_allow_over_capacity: value.allow_over_capacity,
     }),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
@@ -163,7 +172,7 @@ const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
 
 export async function adminUpsertGroupMetricSettings(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPSERT_GROUP_METRIC_SPEC, prev, input);
 }
@@ -186,7 +195,7 @@ const RESET_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
 
 export async function adminResetMetricDefaults(
   prev: ActionResult<{ id: string }> | undefined,
-  _input: unknown,
+  _input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RESET_METRIC_DEFAULTS_SPEC, prev, undefined);
 }

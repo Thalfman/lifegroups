@@ -39,12 +39,12 @@ export function GroupMetricOverridesForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpsertGroupMetricSettings,
-    undefined,
+    undefined
   );
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => a.name.localeCompare(b.name)),
-    [groups],
+    [groups]
   );
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
@@ -60,10 +60,10 @@ export function GroupMetricOverridesForm({
   }, [state]);
 
   const selected = selectedGroupId
-    ? sortedGroups.find((g) => g.id === selectedGroupId) ?? null
+    ? (sortedGroups.find((g) => g.id === selectedGroupId) ?? null)
     : null;
   const currentSettings: GroupMetricSettingsRow | null = selected
-    ? settingsByGroupId.get(selected.id) ?? null
+    ? (settingsByGroupId.get(selected.id) ?? null)
     : null;
 
   return (
@@ -78,9 +78,9 @@ export function GroupMetricOverridesForm({
         }}
       >
         Apply per-group overrides when a group needs its own thresholds — a
-        small Bible study with a fixed capacity, a launch group that should
-        not yet count against capacity metrics, or a group whose health
-        status the dashboard misjudges and you want to set by hand.
+        small Bible study with a fixed capacity, a launch group that should not
+        yet count against capacity metrics, or a group whose health status the
+        dashboard misjudges and you want to set by hand.
       </p>
 
       <div style={{ maxWidth: 420 }}>
@@ -132,11 +132,15 @@ export function GroupMetricOverridesForm({
                 inputMode="numeric"
                 defaultValue={currentSettings?.capacity_override ?? ""}
                 placeholder={
-                  selected.capacity != null ? String(selected.capacity) : "Use default"
+                  selected.capacity != null
+                    ? String(selected.capacity)
+                    : "Use default"
                 }
                 style={fieldInputStyle}
               />
-              <p style={hintStyle}>1–500. Blank = use the group/default capacity.</p>
+              <p style={hintStyle}>
+                1–500. Blank = use the group/default capacity.
+              </p>
             </div>
 
             <div>
@@ -163,7 +167,10 @@ export function GroupMetricOverridesForm({
             </div>
 
             <div>
-              <label htmlFor="healthy_attendance_pct_override" style={fieldLabelStyle}>
+              <label
+                htmlFor="healthy_attendance_pct_override"
+                style={fieldLabelStyle}
+              >
                 Healthy attendance % override
               </label>
               <input
@@ -173,7 +180,9 @@ export function GroupMetricOverridesForm({
                 min={0}
                 max={100}
                 inputMode="numeric"
-                defaultValue={currentSettings?.healthy_attendance_pct_override ?? ""}
+                defaultValue={
+                  currentSettings?.healthy_attendance_pct_override ?? ""
+                }
                 placeholder="Use default"
                 style={fieldInputStyle}
               />
@@ -181,7 +190,10 @@ export function GroupMetricOverridesForm({
             </div>
 
             <div>
-              <label htmlFor="manual_health_status_override" style={fieldLabelStyle}>
+              <label
+                htmlFor="manual_health_status_override"
+                style={fieldLabelStyle}
+              >
                 Manual health status
               </label>
               <select
@@ -199,32 +211,8 @@ export function GroupMetricOverridesForm({
                   </option>
                 ))}
               </select>
-              <p style={hintStyle}>Pins the group&rsquo;s health label on the dashboard.</p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="check_in_due_offset_hours_override"
-                style={fieldLabelStyle}
-              >
-                Check-in due offset (hours)
-              </label>
-              <input
-                id="check_in_due_offset_hours_override"
-                name="check_in_due_offset_hours_override"
-                type="number"
-                min={0}
-                max={336}
-                inputMode="numeric"
-                defaultValue={
-                  currentSettings?.check_in_due_offset_hours_override ?? ""
-                }
-                placeholder="Use default"
-                style={fieldInputStyle}
-              />
               <p style={hintStyle}>
-                0&ndash;336. Hours after this group&rsquo;s meeting time before
-                the check-in is overdue. Blank = follow the global default.
+                Pins the group&rsquo;s health label on the dashboard.
               </p>
             </div>
           </div>
@@ -245,7 +233,9 @@ export function GroupMetricOverridesForm({
                 id="exclude_from_capacity_metrics"
                 name="exclude_from_capacity_metrics"
                 type="checkbox"
-                defaultChecked={currentSettings?.exclude_from_capacity_metrics ?? false}
+                defaultChecked={
+                  currentSettings?.exclude_from_capacity_metrics ?? false
+                }
                 style={{ width: 16, height: 16 }}
               />
               Exclude this group from capacity warnings (e.g. launch group)
@@ -291,7 +281,14 @@ export function GroupMetricOverridesForm({
             <p style={hintStyle}>Up to 1000 characters. Admins only.</p>
           </div>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <PButton type="submit" tone="terra" size="md" disabled={pending}>
               {pending ? "Saving…" : "Save overrides"}
             </PButton>
@@ -301,7 +298,15 @@ export function GroupMetricOverridesForm({
           </div>
 
           {state && !state.ok ? (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+            <ul
+              style={{
+                listStyle: "none",
+                padding: 0,
+                margin: 0,
+                display: "grid",
+                gap: 6,
+              }}
+            >
               {state.errors.map((err, i) => (
                 <li key={i}>
                   <p style={errorTextStyle}>{err}</p>

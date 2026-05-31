@@ -23,7 +23,7 @@ export type SettingsShellData = {
 
 export function SettingsShell({ data }: { data: SettingsShellData }) {
   const settingsByGroupId = new Map(
-    data.groupMetricSettings.map((s) => [s.group_id, s]),
+    data.groupMetricSettings.map((s) => [s.group_id, s])
   );
   const groupsById = new Map(data.groups.map((g) => [g.id, g]));
 
@@ -31,9 +31,7 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
     .filter((s) => hasActiveOverrides(s))
     .map((s) => ({ settings: s, group: groupsById.get(s.group_id) ?? null }))
     .filter((row) => row.group !== null)
-    .sort((a, b) =>
-      (a.group?.name ?? "").localeCompare(b.group?.name ?? ""),
-    );
+    .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
 
   const anyError =
     data.errors.defaults || data.errors.groups || data.errors.overrides;
@@ -59,7 +57,7 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Set the ministry-wide defaults the dashboard uses for capacity, check-in cadence, and attendance health. Per-group overrides below take precedence when needed."
+          description="Set the ministry-wide defaults the dashboard uses for capacity, attendance health, and leader-care cadence. Per-group overrides below take precedence when needed."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
@@ -128,7 +126,7 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
                 <li key={settings.group_id} style={{ marginBottom: 12 }}>
                   <OverrideSummaryRow group={group} settings={settings} />
                 </li>
-              ) : null,
+              ) : null
             )}
           </ul>
         )}
@@ -144,7 +142,11 @@ function OverrideSummaryRow({
   group: GroupsRow;
   settings: GroupMetricSettingsRow;
 }) {
-  const chips: { key: string; label: string; tone?: "neutral" | "watch" | "followup" }[] = [];
+  const chips: {
+    key: string;
+    label: string;
+    tone?: "neutral" | "watch" | "followup";
+  }[] = [];
   if (settings.capacity_override != null)
     chips.push({ key: "cap", label: `Capacity ${settings.capacity_override}` });
   if (settings.capacity_warning_threshold_pct_override != null)
@@ -157,11 +159,6 @@ function OverrideSummaryRow({
       key: "att",
       label: `Healthy ≥ ${settings.healthy_attendance_pct_override}%`,
     });
-  if (settings.check_in_due_offset_hours_override != null)
-    chips.push({
-      key: "due",
-      label: `Check-in due ${settings.check_in_due_offset_hours_override}h after meeting`,
-    });
   if (settings.manual_health_status_override) {
     chips.push({
       key: "health",
@@ -170,8 +167,15 @@ function OverrideSummaryRow({
     });
   }
   if (settings.exclude_from_capacity_metrics)
-    chips.push({ key: "ex", label: "Excluded from capacity", tone: "followup" });
-  if (settings.admin_metric_notes && settings.admin_metric_notes.trim().length > 0)
+    chips.push({
+      key: "ex",
+      label: "Excluded from capacity",
+      tone: "followup",
+    });
+  if (
+    settings.admin_metric_notes &&
+    settings.admin_metric_notes.trim().length > 0
+  )
     chips.push({ key: "note", label: "Has notes" });
 
   return (
@@ -189,7 +193,14 @@ function OverrideSummaryRow({
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: fontDisplay, fontSize: 16, color: P.ink, fontWeight: 500 }}>
+        <div
+          style={{
+            fontFamily: fontDisplay,
+            fontSize: 16,
+            color: P.ink,
+            fontWeight: 500,
+          }}
+        >
           {group.name}
         </div>
         <div
@@ -206,7 +217,8 @@ function OverrideSummaryRow({
             </PBadge>
           ))}
         </div>
-        {settings.admin_metric_notes && settings.admin_metric_notes.trim().length > 0 ? (
+        {settings.admin_metric_notes &&
+        settings.admin_metric_notes.trim().length > 0 ? (
           <p
             style={{
               fontFamily: fontBody,
@@ -220,7 +232,10 @@ function OverrideSummaryRow({
           </p>
         ) : null}
       </div>
-      <ClearGroupMetricOverridesButton groupId={group.id} groupName={group.name} />
+      <ClearGroupMetricOverridesButton
+        groupId={group.id}
+        groupName={group.name}
+      />
     </article>
   );
 }
