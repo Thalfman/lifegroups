@@ -2,14 +2,22 @@
 // TypeScript, no I/O. Used by the server action before it hits the RPC
 // boundary. The RPC re-validates everything at the database layer.
 
+// The UUID trust-boundary regex has one canonical home (lib/shared/uuid),
+// shared with the admin validators and the RPC result readers, so a
+// case/format change lands in exactly one place.
+import { isUuid } from "@/lib/shared/uuid";
+
 export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; errors: string[] };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const SESSION_STATUSES = ["submitted", "did_not_meet", "planned_pause"] as const;
+const SESSION_STATUSES = [
+  "submitted",
+  "did_not_meet",
+  "planned_pause",
+] as const;
 export type LeaderSessionStatus = (typeof SESSION_STATUSES)[number];
 
 const PULSE_VALUES = ["healthy", "watch", "needs_follow_up"] as const;
@@ -40,10 +48,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isUuid(value: unknown): value is string {
-  return typeof value === "string" && UUID_RE.test(value);
-}
-
 function isIsoDate(value: unknown): value is string {
   if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return false;
   // Reject obviously-bogus calendar values like 2026-13-40.
@@ -72,11 +76,17 @@ function readOptionalString(value: unknown): string | null {
 }
 
 function isSessionStatus(value: unknown): value is LeaderSessionStatus {
-  return typeof value === "string" && (SESSION_STATUSES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (SESSION_STATUSES as readonly string[]).includes(value)
+  );
 }
 
 function isPulse(value: unknown): value is LeaderPulseValue {
-  return typeof value === "string" && (PULSE_VALUES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (PULSE_VALUES as readonly string[]).includes(value)
+  );
 }
 
 function isAttendanceValue(value: unknown): value is LeaderAttendanceValue {
@@ -118,7 +128,11 @@ function readAttendance(raw: unknown): {
       // Last entry wins; the RPC also de-dupes server-side.
       // Replace the prior entry to keep client and server in sync.
       const existing = entries.findIndex((e) => e.member_id === normalized);
-      if (existing >= 0) entries[existing] = { member_id: normalized, attendance_status: status };
+      if (existing >= 0)
+        entries[existing] = {
+          member_id: normalized,
+          attendance_status: status,
+        };
       continue;
     }
     seen.add(normalized);
@@ -129,7 +143,7 @@ function readAttendance(raw: unknown): {
 }
 
 export function validateLeaderCheckinPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<LeaderCheckinPayload> {
   if (!isRecord(input)) {
     return { ok: false, errors: ["The check-in payload was malformed."] };
@@ -151,7 +165,11 @@ export function validateLeaderCheckinPayload(
     errors.push("Choose whether the group met, didn't meet, or paused.");
 
   let meetingDate: string | null = null;
-  if (meetingDateRaw !== undefined && meetingDateRaw !== null && meetingDateRaw !== "") {
+  if (
+    meetingDateRaw !== undefined &&
+    meetingDateRaw !== null &&
+    meetingDateRaw !== ""
+  ) {
     if (!isIsoDate(meetingDateRaw)) {
       errors.push("The meeting date was invalid.");
     } else {
@@ -169,7 +187,9 @@ export function validateLeaderCheckinPayload(
   }
 
   if (leaderNote !== null && leaderNote.length > LEADER_NOTE_MAX) {
-    errors.push(`The leader note is too long (max ${LEADER_NOTE_MAX} characters).`);
+    errors.push(
+      `The leader note is too long (max ${LEADER_NOTE_MAX} characters).`
+    );
   }
 
   const attendance = readAttendance(input.attendance);

@@ -9,32 +9,30 @@
 // check-in screen, and the admin check-ins review aligned -- no
 // component recomputes "due" with its own date math.
 
-import { CHURCH_TIMEZONE, isoWeekNumberOf } from "@/lib/shared/church-time";
+import {
+  CHURCH_TIMEZONE,
+  DAY_INDEX,
+  isoWeekNumberOf,
+} from "@/lib/shared/church-time";
 import {
   effectiveCheckInDueOffsetHours,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
-import type { GroupCalendarEventsRow, GroupMetricSettingsRow } from "@/types/database";
+import type {
+  GroupCalendarEventsRow,
+  GroupMetricSettingsRow,
+} from "@/types/database";
 import type {
   GroupCalendarEventStatus,
   MeetingFrequency,
   MeetingWeekParity,
 } from "@/types/enums";
 
-// Canonical Sunday-Saturday names map to JS Date.getDay() (0 = Sunday).
-const DAY_INDEX: Record<string, number> = {
-  Sunday: 0,
-  Monday: 1,
-  Tuesday: 2,
-  Wednesday: 3,
-  Thursday: 4,
-  Friday: 5,
-  Saturday: 6,
-};
-
 const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
-function parseMeetingTime(value: string | null): { hour: number; minute: number } | null {
+function parseMeetingTime(
+  value: string | null
+): { hour: number; minute: number } | null {
   if (!value) return null;
   const match = TIME_RE.exec(value);
   if (!match) return null;
@@ -109,7 +107,7 @@ function ymdHmToMinutes(
   month: number,
   day: number,
   hour: number,
-  minute: number,
+  minute: number
 ): number {
   // Construct a fake UTC instant and use it as a stable
   // wall-clock-minutes value. The absolute number is meaningless --
@@ -119,7 +117,9 @@ function ymdHmToMinutes(
   const dayStr = String(day).padStart(2, "0");
   const hourStr = String(hour).padStart(2, "0");
   const minuteStr = String(minute).padStart(2, "0");
-  const t = Date.parse(`${yearStr}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00Z`);
+  const t = Date.parse(
+    `${yearStr}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00Z`
+  );
   return Math.round(t / 60000);
 }
 
@@ -131,7 +131,7 @@ function lastMeetingChurchLocal(
   nowParts: ChurchClockParts,
   targetDay: number,
   meetingHour: number,
-  meetingMinute: number,
+  meetingMinute: number
 ): ChurchClockParts {
   // Days-since-Sunday delta to walk back to the target day.
   let daysBack = (nowParts.dayOfWeek - targetDay + 7) % 7;
@@ -170,7 +170,7 @@ function meetingOccurrenceInWeek(
   meetingWeekIso: string,
   targetDay: number,
   meetingHour: number,
-  meetingMinute: number,
+  meetingMinute: number
 ): ChurchClockParts | null {
   // meetingWeekIso is the Monday of the ISO week (per lib/leader/validation.isoWeekStart).
   const anchor = new Date(`${meetingWeekIso}T00:00:00Z`);
@@ -207,7 +207,7 @@ function meetingOccurrenceInWeek(
 function groupMeetsInWeek(
   meetingWeekIso: string,
   frequency: MeetingFrequency,
-  parity: MeetingWeekParity | null,
+  parity: MeetingWeekParity | null
 ): boolean {
   if (frequency === "weekly") return true;
   if (frequency === "monthly") return true;
@@ -272,11 +272,11 @@ export type CalendarOverride = {
 // if the constraint were ever loosened.
 export function pickCalendarOverrideForOccurrence(
   events: ReadonlyArray<CalendarEventLite>,
-  occurrenceDate: string | null,
+  occurrenceDate: string | null
 ): CalendarOverride | null {
   if (!occurrenceDate) return null;
   const matches = events.filter(
-    (e) => e.archived_at == null && e.event_date === occurrenceDate,
+    (e) => e.archived_at == null && e.event_date === occurrenceDate
   );
   if (matches.length === 0) return null;
   const sorted = [...matches].sort((a, b) => {
@@ -295,7 +295,7 @@ export function pickCalendarOverrideForOccurrence(
 // (`lib/dashboard/queries.ts`); kept here next to the lite type so the
 // two call paths stay aligned automatically.
 export function buildCalendarEventsByGroup(
-  events: ReadonlyArray<GroupCalendarEventsRow>,
+  events: ReadonlyArray<GroupCalendarEventsRow>
 ): Map<string, CalendarEventLite[]> {
   const m = new Map<string, CalendarEventLite[]>();
   for (const e of events) {
@@ -319,11 +319,20 @@ export function buildCalendarEventsByGroup(
 // week-anchored occurrence date.
 export function expectedMeetingDateForWeek(
   meetingWeekIso: string,
-  group: Pick<CheckInDueInput, "meetingDay" | "meetingFrequency" | "meetingWeekParity">,
+  group: Pick<
+    CheckInDueInput,
+    "meetingDay" | "meetingFrequency" | "meetingWeekParity"
+  >
 ): string | null {
   const dayName = group.meetingDay?.trim() ?? "";
   if (!(dayName in DAY_INDEX)) return null;
-  if (!groupMeetsInWeek(meetingWeekIso, group.meetingFrequency, group.meetingWeekParity)) {
+  if (
+    !groupMeetsInWeek(
+      meetingWeekIso,
+      group.meetingFrequency,
+      group.meetingWeekParity
+    )
+  ) {
     return null;
   }
   const targetDay = DAY_INDEX[dayName];
@@ -333,7 +342,6 @@ export function expectedMeetingDateForWeek(
   anchor.setUTCDate(anchor.getUTCDate() + daysFromMonday);
   return anchor.toISOString().slice(0, 10);
 }
-
 
 export type CheckInDueResult = {
   // Church-local wall-clock parts for the "due" instant. Null when we
@@ -359,9 +367,10 @@ export type CheckInDueResult = {
 
 export function computeCheckInDue(args: {
   group: CheckInDueInput;
-  override:
-    | Pick<GroupMetricSettingsRow, "check_in_due_offset_hours_override">
-    | null;
+  override: Pick<
+    GroupMetricSettingsRow,
+    "check_in_due_offset_hours_override"
+  > | null;
   defaults: MetricDefaults;
   // The Monday-of-ISO-week (YYYY-MM-DD) the caller is reviewing. When
   // provided, the meeting occurrence is anchored to that calendar week
@@ -381,7 +390,7 @@ export function computeCheckInDue(args: {
 }): CheckInDueResult {
   const offsetHours = effectiveCheckInDueOffsetHours(
     args.override,
-    args.defaults,
+    args.defaults
   );
   const now = args.now ?? new Date();
   const nowParts = churchClockParts(now);
@@ -426,7 +435,7 @@ export function computeCheckInDue(args: {
   const scheduled = groupMeetsInWeek(
     cadenceWeekIso,
     args.group.meetingFrequency,
-    args.group.meetingWeekParity,
+    args.group.meetingWeekParity
   );
 
   if (!scheduled) {
@@ -451,13 +460,13 @@ export function computeCheckInDue(args: {
         args.meetingWeek,
         DAY_INDEX[dayName],
         timeParts.hour,
-        timeParts.minute,
+        timeParts.minute
       )
     : lastMeetingChurchLocal(
         nowParts,
         DAY_INDEX[dayName],
         timeParts.hour,
-        timeParts.minute,
+        timeParts.minute
       );
   if (!candidateMeeting) return empty(true);
 
@@ -466,15 +475,12 @@ export function computeCheckInDue(args: {
     candidateMeeting.month,
     candidateMeeting.day,
     candidateMeeting.hour,
-    candidateMeeting.minute,
+    candidateMeeting.minute
   );
   const dueMinutes = meetingMinutes + offsetHours * 60;
   const nowMinutes = churchWallClockMinutes(now);
   const minutesUntilDue = dueMinutes - nowMinutes;
-  const dueParts = addMinutesToChurchClock(
-    candidateMeeting,
-    offsetHours * 60,
-  );
+  const dueParts = addMinutesToChurchClock(candidateMeeting, offsetHours * 60);
   return {
     due: dueParts,
     offsetHours,
@@ -504,7 +510,7 @@ function mondayOfWeekIso(year: number, month: number, day: number): string {
 
 function addMinutesToChurchClock(
   parts: ChurchClockParts,
-  minutes: number,
+  minutes: number
 ): ChurchClockParts {
   const yearStr = String(parts.year).padStart(4, "0");
   const monthStr = String(parts.month).padStart(2, "0");
@@ -512,7 +518,7 @@ function addMinutesToChurchClock(
   const hourStr = String(parts.hour).padStart(2, "0");
   const minuteStr = String(parts.minute).padStart(2, "0");
   const anchor = new Date(
-    `${yearStr}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00Z`,
+    `${yearStr}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}:00Z`
   );
   anchor.setUTCMinutes(anchor.getUTCMinutes() + minutes);
   return {
@@ -558,7 +564,9 @@ function formatHourMinute(hour: number, minute: number): string {
 }
 
 // "Monday, May 19 at 6:00 PM" — friendly label.
-export function formatCheckInDueLabel(due: ChurchClockParts | null): string | null {
+export function formatCheckInDueLabel(
+  due: ChurchClockParts | null
+): string | null {
   if (!due) return null;
   const dayName = DAY_NAMES[due.dayOfWeek] ?? "";
   const month = MONTH_NAMES_SHORT[(due.month - 1) % 12] ?? "";
@@ -566,9 +574,10 @@ export function formatCheckInDueLabel(due: ChurchClockParts | null): string | nu
 }
 
 // "due in 4h" / "due 2h ago"
-export function formatCheckInDueRelative(
-  result: { minutesUntilDue: number; due: ChurchClockParts | null },
-): string | null {
+export function formatCheckInDueRelative(result: {
+  minutesUntilDue: number;
+  due: ChurchClockParts | null;
+}): string | null {
   if (!result.due) return null;
   const minutes = result.minutesUntilDue;
   const past = minutes < 0;

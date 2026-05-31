@@ -10,7 +10,7 @@
 // retained for backward compatibility with merged migration
 // 20260518140000_phase5a6_group_calendar.sql but ignored everywhere.
 
-import { isoWeekNumberOf } from "@/lib/shared/church-time";
+import { DAY_INDEX, isoWeekNumberOf } from "@/lib/shared/church-time";
 import type { GroupCalendarEventsRow } from "@/types/database";
 import type {
   GroupCalendarEventStatus,
@@ -18,17 +18,6 @@ import type {
   MeetingFrequency,
   MeetingWeekParity,
 } from "@/types/enums";
-
-// Canonical day names mapped to JS Date.getDay() (0 = Sunday).
-const DAY_INDEX: Record<string, number> = {
-  Sunday: 0,
-  Monday: 1,
-  Tuesday: 2,
-  Wednesday: 3,
-  Thursday: 4,
-  Friday: 5,
-  Saturday: 6,
-};
 
 export type GroupSchedule = {
   meetingDay: string | null;
@@ -78,7 +67,9 @@ export type ResolvedOccurrence = {
 // once a month string has been chosen.
 // ---------------------------------------------------------------------------
 
-function parseMonthIso(monthIso: string): { year: number; month: number } | null {
+function parseMonthIso(
+  monthIso: string
+): { year: number; month: number } | null {
   const match = /^(\d{4})-(\d{2})$/.exec(monthIso);
   if (!match) return null;
   const year = Number.parseInt(match[1], 10);
@@ -208,7 +199,7 @@ export function formatClock(hhmm: string | null): string | null {
 function groupMeetsOnDate(
   schedule: GroupSchedule,
   iso: string,
-  meetingDayIndex: number,
+  meetingDayIndex: number
 ): boolean {
   if (dayOfWeekIso(iso) !== meetingDayIndex) return false;
   if (schedule.meetingFrequency === "weekly") return true;
@@ -230,7 +221,7 @@ function groupMeetsOnDate(
 
 export function generateMonthOccurrences(
   schedule: GroupSchedule,
-  monthIso: string,
+  monthIso: string
 ): GeneratedOccurrence[] {
   const bounds = monthBounds(monthIso);
   if (!bounds) return [];
@@ -245,7 +236,7 @@ export function generateMonthOccurrences(
 export function generateOccurrencesInRange(
   schedule: GroupSchedule,
   fromIso: string,
-  toIso: string,
+  toIso: string
 ): GeneratedOccurrence[] {
   if (!schedule.meetingDay || !schedule.meetingTime) return [];
   const dayIndex = DAY_INDEX[schedule.meetingDay];
@@ -278,7 +269,7 @@ export function generateOccurrencesInRange(
 export function mergeOverrides(
   generated: GeneratedOccurrence[],
   saved: SavedOverride[],
-  groupMeetingTime: string | null,
+  groupMeetingTime: string | null
 ): ResolvedOccurrence[] {
   const normalizedGroupTime = normalizeHhMm(groupMeetingTime);
   const generatedByDate = new Map<string, GeneratedOccurrence>();
@@ -342,7 +333,7 @@ export function mergeOverrides(
 // Helper to map a GroupCalendarEventsRow into the lean SavedOverride
 // shape consumed by mergeOverrides. Skips archived rows.
 export function toSavedOverrides(
-  rows: ReadonlyArray<GroupCalendarEventsRow>,
+  rows: ReadonlyArray<GroupCalendarEventsRow>
 ): SavedOverride[] {
   return rows
     .filter((r) => r.archived_at == null)
@@ -372,7 +363,7 @@ export type GridCell = {
 // cells are rendered greyed-out by the grid component.
 export function gridCellsForMonth(
   monthIso: string,
-  todayIso: string,
+  todayIso: string
 ): GridCell[] {
   const bounds = monthBounds(monthIso);
   if (!bounds) return [];

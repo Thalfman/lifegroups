@@ -1,20 +1,18 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requireAdminSession } from "@/lib/auth/session";
-import { startActionLog } from "@/lib/observability/instrument";
 import {
   validateCreateLaunchPlanningScenarioPayload,
   validateScenarioIdPayload,
   validateUpdateLaunchPlanningScenarioPayload,
+  type CreateLaunchPlanningScenarioPayload,
+  type ScenarioIdPayload,
+  type UpdateLaunchPlanningScenarioPayload,
 } from "@/lib/admin/validation";
+import { type ActionResult } from "@/lib/admin/action-result";
 import {
-  type ActionResult,
-  actionFail,
-  actionOk,
-  mapRpcError,
-} from "@/lib/admin/action-result";
+  runAdminWriteAction,
+  type AdminWriteActionSpec,
+} from "@/lib/admin/run-action";
 import {
   rpcAdminArchiveLaunchPlanningScenario,
   rpcAdminCreateLaunchPlanningScenario,
@@ -24,6 +22,10 @@ import {
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
+const SCENARIO_REVALIDATE_PATHS = [
+  REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_ADMIN,
+] as const;
 
 // Mirrors the LP.1 assumption form fields so the scenario create / edit
 // form can POST with the same input names. Numeric fields are passed as
@@ -42,7 +44,7 @@ const SCENARIO_ASSUMPTION_FIELDS = [
 ] as const;
 
 function readScenarioAssumptionsFromForm(
-  form: FormData,
+  form: FormData
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const key of SCENARIO_ASSUMPTION_FIELDS) {
@@ -61,6 +63,9 @@ function readScenarioAssumptionsFromForm(
   return out;
 }
 
+// Translate a scenario create / edit FormData (or plain object) into the
+// validator's expected shape: a nested `assumptions` record plus the
+// scenario's own name / description / make_current fields.
 function readScenarioFormPayload(input: unknown): Record<string, unknown> {
   if (!(input instanceof FormData)) {
     return typeof input === "object" && input !== null
@@ -86,222 +91,133 @@ function readScenarioFormPayload(input: unknown): Record<string, unknown> {
   return payload;
 }
 
-export async function adminCreateLaunchPlanningScenario(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
-): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.create_scenario");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw = readScenarioFormPayload(input);
-  const v = validateCreateLaunchPlanningScenarioPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminCreateLaunchPlanningScenario(client, {
-    p_name: v.value.name,
-    p_description: v.value.description,
-    p_assumptions: v.value.assumptions as Record<string, unknown>,
-    p_make_current: v.value.make_current,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The scenario was not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  // Diagnostic counts only — never log notes contents or descriptions.
-  ctx.finish("ok", {
-    actor_role,
-    has_description: v.value.description !== null,
-    make_current: v.value.make_current,
-    has_notes_field: Object.prototype.hasOwnProperty.call(v.value.assumptions, "notes"),
-  });
-  return actionOk({ id: data });
+function readScenarioId(input: unknown): Record<string, unknown> {
+  return input instanceof FormData
+    ? { scenario_id: String(input.get("scenario_id") ?? "") }
+    : typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>)
+      : {};
 }
+
+// Diagnostic counts only — never log notes contents or descriptions. These
+// only appear on the success line, matching the create/update RPCs that
+// carry an assumptions body.
+function scenarioOkFields(
+  value:
+    | CreateLaunchPlanningScenarioPayload
+    | UpdateLaunchPlanningScenarioPayload
+) {
+  return {
+    has_description: value.description !== null,
+    make_current: value.make_current,
+    has_notes_field: Object.prototype.hasOwnProperty.call(
+      value.assumptions,
+      "notes"
+    ),
+  };
+}
+
+// ----- adminCreateLaunchPlanningScenario -----------------------------------
+
+const CREATE_SCENARIO_SPEC: AdminWriteActionSpec<
+  CreateLaunchPlanningScenarioPayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.create_scenario",
+  read: readScenarioFormPayload,
+  validate: validateCreateLaunchPlanningScenarioPayload,
+  okFields: (value) => scenarioOkFields(value),
+  rpc: (client, value) =>
+    rpcAdminCreateLaunchPlanningScenario(client, {
+      p_name: value.name,
+      p_description: value.description,
+      p_assumptions: value.assumptions as Record<string, unknown>,
+      p_make_current: value.make_current,
+    }),
+  revalidate: () => SCENARIO_REVALIDATE_PATHS,
+  noDataError: "The scenario was not saved. Please try again.",
+};
+
+export async function adminCreateLaunchPlanningScenario(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(CREATE_SCENARIO_SPEC, prev, input);
+}
+
+// ----- adminUpdateLaunchPlanningScenario -----------------------------------
+
+const UPDATE_SCENARIO_SPEC: AdminWriteActionSpec<
+  UpdateLaunchPlanningScenarioPayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.update_scenario",
+  read: readScenarioFormPayload,
+  validate: validateUpdateLaunchPlanningScenarioPayload,
+  okFields: (value) => scenarioOkFields(value),
+  rpc: (client, value) =>
+    rpcAdminUpdateLaunchPlanningScenario(client, {
+      p_scenario_id: value.scenario_id,
+      p_name: value.name,
+      p_description: value.description,
+      p_assumptions: value.assumptions as Record<string, unknown>,
+      p_make_current: value.make_current,
+    }),
+  revalidate: () => SCENARIO_REVALIDATE_PATHS,
+  noDataError: "The scenario was not saved. Please try again.",
+};
 
 export async function adminUpdateLaunchPlanningScenario(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.update_scenario");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw = readScenarioFormPayload(input);
-  const v = validateUpdateLaunchPlanningScenarioPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminUpdateLaunchPlanningScenario(client, {
-    p_scenario_id: v.value.scenario_id,
-    p_name: v.value.name,
-    p_description: v.value.description,
-    p_assumptions: v.value.assumptions as Record<string, unknown>,
-    p_make_current: v.value.make_current,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The scenario was not saved. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  ctx.finish("ok", {
-    actor_role,
-    has_description: v.value.description !== null,
-    make_current: v.value.make_current,
-    has_notes_field: Object.prototype.hasOwnProperty.call(v.value.assumptions, "notes"),
-  });
-  return actionOk({ id: data });
+  return runAdminWriteAction(UPDATE_SCENARIO_SPEC, prev, input);
 }
+
+// ----- adminArchiveLaunchPlanningScenario ----------------------------------
+
+const ARCHIVE_SCENARIO_SPEC: AdminWriteActionSpec<
+  ScenarioIdPayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.archive_scenario",
+  read: readScenarioId,
+  validate: validateScenarioIdPayload,
+  rpc: (client, value) =>
+    rpcAdminArchiveLaunchPlanningScenario(client, {
+      p_scenario_id: value.scenario_id,
+    }),
+  revalidate: () => SCENARIO_REVALIDATE_PATHS,
+  noDataError: "The scenario was not archived. Please try again.",
+};
 
 export async function adminArchiveLaunchPlanningScenario(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.archive_scenario");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw =
-    input instanceof FormData
-      ? { scenario_id: String(input.get("scenario_id") ?? "") }
-      : input;
-  const v = validateScenarioIdPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminArchiveLaunchPlanningScenario(client, {
-    p_scenario_id: v.value.scenario_id,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The scenario was not archived. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+  return runAdminWriteAction(ARCHIVE_SCENARIO_SPEC, prev, input);
 }
 
+// ----- adminSetCurrentLaunchPlanningScenario -------------------------------
+
+const SET_CURRENT_SCENARIO_SPEC: AdminWriteActionSpec<
+  ScenarioIdPayload,
+  { id: string }
+> = {
+  name: "admin.launch_planning.set_current_scenario",
+  read: readScenarioId,
+  validate: validateScenarioIdPayload,
+  rpc: (client, value) =>
+    rpcAdminSetCurrentLaunchPlanningScenario(client, {
+      p_scenario_id: value.scenario_id,
+    }),
+  revalidate: () => SCENARIO_REVALIDATE_PATHS,
+  noDataError: "The scenario was not made current. Please try again.",
+};
+
 export async function adminSetCurrentLaunchPlanningScenario(
-  _prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const ctx = startActionLog("admin.launch_planning.set_current_scenario");
-
-  const auth = await requireAdminSession();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor_role = auth.session.profile.role;
-
-  const raw =
-    input instanceof FormData
-      ? { scenario_id: String(input.get("scenario_id") ?? "") }
-      : input;
-  const v = validateScenarioIdPayload(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", actor_role });
-    return actionFail(v.errors);
-  }
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", { error_code: "supabase_not_configured", actor_role });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await rpcAdminSetCurrentLaunchPlanningScenario(client, {
-    p_scenario_id: v.value.scenario_id,
-  });
-
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      actor_role,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", actor_role });
-    return actionFail(["The scenario was not made current. Please try again."]);
-  }
-
-  revalidatePath(REVALIDATE_PATH_LAUNCH_PLANNING);
-  revalidatePath(REVALIDATE_PATH_ADMIN);
-  ctx.finish("ok", { actor_role });
-  return actionOk({ id: data });
+  return runAdminWriteAction(SET_CURRENT_SCENARIO_SPEC, prev, input);
 }
