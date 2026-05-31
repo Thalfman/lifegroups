@@ -2,7 +2,7 @@ with inserted_profiles as (
   insert into profiles (full_name, email, phone, role, status)
   values
     ('Avery Bennett','avery.bennett@example.org','555-0101','ministry_admin','active'),
-    ('Jordan Hayes','jordan.hayes@example.org','555-0102','staff_viewer','active'),
+    ('Jordan Hayes','jordan.hayes@example.org','555-0102','co_leader','active'),
     ('Casey Morgan','casey.morgan@example.org','555-0103','leader','active'),
     ('Riley Cruz','riley.cruz@example.org','555-0104','leader','active'),
     ('Taylor Kim','taylor.kim@example.org','555-0105','leader','active')
