@@ -105,7 +105,6 @@ declare
   v_row_id uuid;
   v_before jsonb;
   v_merged jsonb;
-  v_after  jsonb;
   v_note   text;
 begin
   if public.auth_role() <> 'super_admin' then
@@ -152,9 +151,14 @@ begin
 
   update public.platform_config
      set setting_value = v_merged
-   where id = v_row_id
-   returning setting_value into v_after;
+   where id = v_row_id;
 
+  -- Audit the change WITHOUT the raw before/after values. audit_events is
+  -- readable by ministry_admin (audit_events_admin_read uses auth_is_admin()),
+  -- so logging the config values here would leak Super-Admin-only platform
+  -- config across the platform_config RLS boundary. We record only the key
+  -- names that were submitted — enough to trace who changed what, without
+  -- exposing the values (current or future flags / editable copy).
   insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
   values (
     v_actor,
@@ -162,8 +166,6 @@ begin
     'platform_config',
     v_row_id,
     jsonb_build_object(
-      'before', v_before,
-      'after',  v_after,
       'submitted_keys', (select jsonb_agg(k) from jsonb_object_keys(p_config) k)
     )
   );
