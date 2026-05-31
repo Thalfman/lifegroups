@@ -188,8 +188,9 @@ life-stage** — the shape of Julian's Doc — each row tied to its **group** an
 **apprentice**. Two ways to drive it, per the locked decision:
 
 - **System-suggested.** The board flags groups that are **Full + have a Ready
-  apprentice + meet the readiness criteria** as suggested candidates — Julian
-  doesn't have to hunt for them.
+  apprentice** as suggested candidates — Julian doesn't have to hunt for them. The
+  5-criterion readiness is shown as **context** (e.g. "meets 4/5"), used to rank
+  and annotate, not to suppress (see R9 for the exact rule).
 - **Scenario planning on top.** Julian runs *"launch N groups in `<year>`"* against
   seasonal demand (reusing scenarios + the August/January anchors) and sees a
   **live leader-supply-vs-demand gap**: *"3 groups planned for August · 2
