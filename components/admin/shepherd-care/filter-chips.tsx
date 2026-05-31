@@ -2,13 +2,20 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
+import {
+  buildShepherdCareViewHref,
+  type CoverageFilter,
+  type DirectoryFilter,
+} from "@/lib/admin/shepherd-care-view";
 
-export type DirectoryFilter = "all" | "needs_attention";
-
-// Coverage filter is a separate URL dimension that composes with the
-// needs-attention filter. Values: undefined (any), a uuid (specific
-// over-shepherd), or "unassigned".
-export type CoverageFilter = string | null;
+// The view-state types live in the pure shepherd-care-view module (#178); they
+// are re-exported here so existing component imports keep resolving. Coverage
+// filter is a separate URL dimension that composes with the needs-attention
+// filter: undefined (any), a uuid (specific over-shepherd), or "unassigned".
+export type {
+  DirectoryFilter,
+  CoverageFilter,
+} from "@/lib/admin/shepherd-care-view";
 
 const CHIP: CSSProperties = {
   display: "inline-flex",
@@ -44,18 +51,17 @@ const COUNT: CSSProperties = {
   background: "rgba(255,255,255,0.18)",
 };
 
+// The filter chips live in the Directory view, so their links stay in the
+// Directory view (view=directory) while toggling the needs-attention filter.
 function buildHref(params: {
   filter: DirectoryFilter;
   coverage: CoverageFilter | undefined;
 }): string {
-  const qs = new URLSearchParams();
-  if (params.filter === "needs_attention") qs.set("filter", "needs_attention");
-  if (params.coverage === "unassigned") qs.set("coverage", "unassigned");
-  else if (params.coverage) qs.set("coverage", params.coverage);
-  const s = qs.toString();
-  return s.length === 0
-    ? "/admin/shepherd-care"
-    : `/admin/shepherd-care?${s}`;
+  return buildShepherdCareViewHref({
+    view: "directory",
+    filter: params.filter,
+    coverage: params.coverage,
+  });
 }
 
 export function ShepherdCareFilterChips({
@@ -71,7 +77,12 @@ export function ShepherdCareFilterChips({
 }) {
   return (
     <div
-      style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
+      style={{
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
     >
       <Link
         href={buildHref({ filter: "all", coverage })}
@@ -119,8 +130,15 @@ export function ShepherdCareCoverageFilter({
     <form
       method="get"
       action="/admin/shepherd-care"
-      style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}
+      style={{
+        display: "flex",
+        gap: 6,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
     >
+      {/* Stay in the Directory view when applying a coverage filter. */}
+      <input type="hidden" name="view" value="directory" />
       {filter === "needs_attention" ? (
         <input type="hidden" name="filter" value="needs_attention" />
       ) : null}
