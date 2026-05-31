@@ -79,6 +79,11 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
     "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
   invalid_ended_at_before_start:
     "The end date can't be earlier than the assignment's start date.",
+  // Capacity & Multiplication (#183/#184) leader-pipeline tokens.
+  missing_apprentice:
+    "We couldn't find that apprentice. Refresh the page and try again.",
+  apprentice_group_mismatch:
+    "That apprentice belongs to a different group. An apprentice can only lead the next group out of its own group.",
   // LP.2 launch planning scenario tokens.
   missing_scenario:
     "We couldn't find that scenario. Refresh the page and try again.",

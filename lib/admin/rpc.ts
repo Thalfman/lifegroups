@@ -14,6 +14,7 @@ import type {
   GroupCalendarEventType,
   GroupLifeStage,
   GuestPipelineStage,
+  LeaderReadinessStage,
   MeetingFrequency,
   MeetingWeekParity,
   MultiplicationCandidateStatus,
@@ -232,6 +233,7 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
+    p_leader_pipeline_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -248,6 +250,7 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
+    p_leader_pipeline_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);
@@ -258,6 +261,57 @@ export function rpcAdminArchiveMultiplicationCandidate(
   args: { p_candidate_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_archive_multiplication_candidate", args);
+}
+
+// Capacity & Multiplication #183: Leader Pipeline (apprentice) writes.
+export function rpcAdminCreateApprentice(
+  client: AppSupabaseClient,
+  args: {
+    p_group_id: string;
+    p_display_name: string;
+    p_member_id: string | null;
+    p_readiness_stage: LeaderReadinessStage;
+    p_expected_ready_on: string | null;
+    p_notes: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_apprentice", args);
+}
+
+export function rpcAdminUpdateApprentice(
+  client: AppSupabaseClient,
+  args: {
+    p_apprentice_id: string;
+    p_display_name: string;
+    p_member_id: string | null;
+    p_readiness_stage: LeaderReadinessStage;
+    p_expected_ready_on: string | null;
+    p_notes: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_update_apprentice", args);
+}
+
+export function rpcAdminAdvanceApprenticeStage(
+  client: AppSupabaseClient,
+  args: { p_apprentice_id: string; p_readiness_stage: LeaderReadinessStage }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_advance_apprentice_stage", args);
+}
+
+export function rpcAdminArchiveApprentice(
+  client: AppSupabaseClient,
+  args: { p_apprentice_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_archive_apprentice", args);
+}
+
+// Capacity & Multiplication #185: set a group's target size (effective source).
+export function rpcAdminSetGroupCapacityTarget(
+  client: AppSupabaseClient,
+  args: { p_group_id: string; p_target: number | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_capacity_target", args);
 }
 
 // Phase 5C.0 guest + follow-up admin RPCs.

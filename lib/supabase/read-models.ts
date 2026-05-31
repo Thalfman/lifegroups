@@ -14,6 +14,7 @@ import type {
   GroupsRow,
   GuestsRow,
   LaunchPlanningScenariosRow,
+  LeaderPipelineRow,
   MembersRow,
   MultiplicationCandidatesRow,
   OverShepherdsRow,
@@ -27,6 +28,7 @@ import type {
 import type {
   FollowUpStatus,
   GuestPipelineStage,
+  LeaderReadinessStage,
   MembershipStatus,
   ProfileStatus,
   UserRole,
@@ -563,8 +565,8 @@ export async function fetchChurchAttendanceSnapshots(
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
-  "notes, successor_designate, meeting_time, archived_at, created_by, updated_by, " +
-  "created_at, updated_at";
+  "notes, successor_designate, meeting_time, leader_pipeline_id, archived_at, " +
+  "created_by, updated_by, created_at, updated_at";
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
@@ -576,12 +578,22 @@ export type MultiplicationCandidateGroup = Pick<
   | "lifecycle_status"
 >;
 
+// Capacity & Multiplication #184: the linked apprentice's identity + stage,
+// surfaced inline in the planner. Null when the candidate has no link.
+export type MultiplicationCandidateApprentice = {
+  id: string;
+  displayName: string;
+  stage: LeaderReadinessStage;
+};
+
 export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
   activeMemberCount: number;
   // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
   coShepherdSince: string | null;
+  // The linked leader_pipeline apprentice, or null when unlinked.
+  linkedApprentice: MultiplicationCandidateApprentice | null;
 };
 
 // Julian P4: active (non-archived) multiplication candidates enriched with the
@@ -610,26 +622,40 @@ export async function fetchMultiplicationCandidatesForAdmin(
   if (candidates.length === 0) return { data: [], error: null };
 
   const groupIds = [...new Set(candidates.map((c) => c.group_id))];
+  const apprenticeIds = [
+    ...new Set(
+      candidates
+        .map((c) => c.leader_pipeline_id)
+        .filter((id): id is string => id != null)
+    ),
+  ];
 
-  const [groupsRes, membershipsRes, leadersRes] = await Promise.all([
-    client
-      .from("groups")
-      .select(
-        "id, name, audience_category, life_stage, launched_on, lifecycle_status"
-      )
-      .in("id", groupIds),
-    client
-      .from("group_memberships")
-      .select("group_id, status")
-      .in("group_id", groupIds)
-      .eq("status", "active"),
-    client
-      .from("group_leaders")
-      .select("group_id, assigned_at, role, active")
-      .in("group_id", groupIds)
-      .eq("role", "co_leader")
-      .eq("active", true),
-  ]);
+  const [groupsRes, membershipsRes, leadersRes, apprenticesRes] =
+    await Promise.all([
+      client
+        .from("groups")
+        .select(
+          "id, name, audience_category, life_stage, launched_on, lifecycle_status"
+        )
+        .in("id", groupIds),
+      client
+        .from("group_memberships")
+        .select("group_id, status")
+        .in("group_id", groupIds)
+        .eq("status", "active"),
+      client
+        .from("group_leaders")
+        .select("group_id, assigned_at, role, active")
+        .in("group_id", groupIds)
+        .eq("role", "co_leader")
+        .eq("active", true),
+      apprenticeIds.length > 0
+        ? client
+            .from("leader_pipeline")
+            .select("id, display_name, readiness_stage")
+            .in("id", apprenticeIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
   if (groupsRes.error) {
     return {
       data: null,
@@ -656,6 +682,28 @@ export async function fetchMultiplicationCandidatesForAdmin(
         leadersRes.error
       ),
     };
+  }
+  if (apprenticesRes.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/apprentices",
+        apprenticesRes.error
+      ),
+    };
+  }
+
+  const apprenticeById = new Map<string, MultiplicationCandidateApprentice>();
+  for (const a of (apprenticesRes.data ?? []) as {
+    id: string;
+    display_name: string;
+    readiness_stage: LeaderReadinessStage;
+  }[]) {
+    apprenticeById.set(a.id, {
+      id: a.id,
+      displayName: a.display_name,
+      stage: a.readiness_stage,
+    });
   }
 
   const groupById = new Map<string, MultiplicationCandidateGroup>();
@@ -688,10 +736,170 @@ export async function fetchMultiplicationCandidatesForAdmin(
       group: groupById.get(candidate.group_id) ?? null,
       activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
       coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+      linkedApprentice: candidate.leader_pipeline_id
+        ? (apprenticeById.get(candidate.leader_pipeline_id) ?? null)
+        : null,
     })
   );
 
   return { data: entries, error: null };
+}
+
+const LEADER_PIPELINE_COLUMNS =
+  "id, group_id, display_name, member_id, readiness_stage, expected_ready_on, " +
+  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+
+export type LeaderPipelineEntry = {
+  apprentice: LeaderPipelineRow;
+  // Group name for the apprentice's group, or null when the group is missing.
+  groupName: string | null;
+};
+
+// Capacity & Multiplication #183: active (non-archived) apprentices enriched
+// with their group name. Admin-only via RLS. Batches the group-name read by the
+// apprentices' group ids to avoid N+1. Ordered by created_at so the roll-up is
+// stable before the pure layer re-sorts within each stage.
+export async function fetchLeaderPipelineForAdmin(
+  client: ReadClient
+): Promise<ReadResult<LeaderPipelineEntry[]>> {
+  const pipelineRes = await client
+    .from("leader_pipeline")
+    .select(LEADER_PIPELINE_COLUMNS)
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (pipelineRes.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLeaderPipelineForAdmin/pipeline",
+        pipelineRes.error
+      ),
+    };
+  }
+  const apprentices = (pipelineRes.data ?? []) as LeaderPipelineRow[];
+  if (apprentices.length === 0) return { data: [], error: null };
+
+  const groupIds = [...new Set(apprentices.map((a) => a.group_id))];
+  const groupsRes = await client
+    .from("groups")
+    .select("id, name")
+    .in("id", groupIds);
+  if (groupsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchLeaderPipelineForAdmin/groups", groupsRes.error),
+    };
+  }
+  const nameById = new Map<string, string>();
+  for (const g of (groupsRes.data ?? []) as { id: string; name: string }[]) {
+    nameById.set(g.id, g.name);
+  }
+
+  const entries: LeaderPipelineEntry[] = apprentices.map((apprentice) => ({
+    apprentice,
+    groupName: nameById.get(apprentice.group_id) ?? null,
+  }));
+  return { data: entries, error: null };
+}
+
+// Capacity & Multiplication #185: everything the Capacity Board + system
+// suggestions need beyond the launch-planning inputs bundle — the apprentices
+// per group (for the ready-to-multiply badge), the co-shepherd tenure for every
+// group (for the readiness annotation), and the candidate flags/ids (so
+// suggestions can be annotated and de-duped). Group/override/membership/default
+// data is fetched separately via fetchLaunchPlanningInputsForAdmin.
+export type CapacityBoardExtras = {
+  apprentices: {
+    id: string;
+    group_id: string;
+    display_name: string;
+    readiness_stage: LeaderReadinessStage;
+  }[];
+  coShepherdSinceByGroup: Record<string, string>;
+  candidateFlagsByGroup: Record<
+    string,
+    { shepherdWilling: boolean; needsSimilarStage: boolean }
+  >;
+  candidateGroupIds: string[];
+  error: string | null;
+};
+
+export async function fetchCapacityBoardExtras(
+  client: ReadClient
+): Promise<CapacityBoardExtras> {
+  const empty: CapacityBoardExtras = {
+    apprentices: [],
+    coShepherdSinceByGroup: {},
+    candidateFlagsByGroup: {},
+    candidateGroupIds: [],
+    error: null,
+  };
+
+  const [apprenticesRes, leadersRes, candidatesRes] = await Promise.all([
+    client
+      .from("leader_pipeline")
+      .select("id, group_id, display_name, readiness_stage")
+      .is("archived_at", null),
+    client
+      .from("group_leaders")
+      .select("group_id, assigned_at, role, active")
+      .eq("role", "co_leader")
+      .eq("active", true),
+    client
+      .from("multiplication_candidates")
+      .select("group_id, shepherd_willing, needs_similar_stage")
+      .is("archived_at", null),
+  ]);
+
+  const error =
+    (apprenticesRes.error &&
+      wrapError("fetchCapacityBoardExtras/apprentices", apprenticesRes.error)
+        .message) ||
+    (leadersRes.error &&
+      wrapError("fetchCapacityBoardExtras/leaders", leadersRes.error)
+        .message) ||
+    (candidatesRes.error &&
+      wrapError("fetchCapacityBoardExtras/candidates", candidatesRes.error)
+        .message) ||
+    null;
+  if (error) return { ...empty, error };
+
+  const coShepherdSinceByGroup: Record<string, string> = {};
+  for (const l of (leadersRes.data ?? []) as {
+    group_id: string;
+    assigned_at: string;
+  }[]) {
+    const cur = coShepherdSinceByGroup[l.group_id];
+    if (cur === undefined || l.assigned_at < cur) {
+      coShepherdSinceByGroup[l.group_id] = l.assigned_at;
+    }
+  }
+
+  const candidateFlagsByGroup: Record<
+    string,
+    { shepherdWilling: boolean; needsSimilarStage: boolean }
+  > = {};
+  const candidateGroupIds: string[] = [];
+  for (const c of (candidatesRes.data ?? []) as {
+    group_id: string;
+    shepherd_willing: boolean;
+    needs_similar_stage: boolean;
+  }[]) {
+    candidateGroupIds.push(c.group_id);
+    candidateFlagsByGroup[c.group_id] = {
+      shepherdWilling: c.shepherd_willing,
+      needsSimilarStage: c.needs_similar_stage,
+    };
+  }
+
+  return {
+    apprentices: (apprenticesRes.data ??
+      []) as CapacityBoardExtras["apprentices"],
+    coShepherdSinceByGroup,
+    candidateFlagsByGroup,
+    candidateGroupIds,
+    error: null,
+  };
 }
 
 // Returns every row in group_metric_settings. RLS on the table restricts

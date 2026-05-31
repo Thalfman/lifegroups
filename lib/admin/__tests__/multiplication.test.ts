@@ -17,11 +17,7 @@ function entry(over: {
   id: string;
   groupName?: string;
   audience?: "men" | "women" | "mixed" | null;
-  lifeStage?:
-    | "young_professionals"
-    | "young_families"
-    | "retirement"
-    | null;
+  lifeStage?: "young_professionals" | "young_families" | "retirement" | null;
   targetYear?: number | null;
   activeMemberCount?: number;
   launchedOn?: string | null;
@@ -41,6 +37,7 @@ function entry(over: {
       notes: null,
       successor_designate: over.successorDesignate ?? null,
       meeting_time: null,
+      leader_pipeline_id: null,
       archived_at: null,
       created_by: null,
       updated_by: null,
@@ -60,6 +57,7 @@ function entry(over: {
           },
     activeMemberCount: over.activeMemberCount ?? 0,
     coShepherdSince: over.coShepherdSince ?? null,
+    linkedApprentice: null,
   };
 }
 
@@ -86,7 +84,7 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
         shepherdWilling: true,
         needsSimilarStage: true,
       },
-      TODAY,
+      TODAY
     );
     expect(r.criteria).toEqual({
       enough_members: true,
@@ -108,7 +106,7 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
         shepherdWilling: false,
         needsSimilarStage: false,
       },
-      TODAY,
+      TODAY
     );
     expect(r.criteria.enough_members).toBe(false);
     expect(r.criteria.established_long_enough).toBe(false);
@@ -125,7 +123,7 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
         shepherdWilling: false,
         needsSimilarStage: false,
       },
-      TODAY,
+      TODAY
     );
     expect(r.criteria.enough_members).toBe(true);
     expect(r.criteria.established_long_enough).toBe(true);
@@ -135,7 +133,9 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
 
 describe("segmentLabel", () => {
   it("combines audience and life stage", () => {
-    expect(segmentLabel("mixed", "retirement")).toBe("Mixed / couples · Retirement");
+    expect(segmentLabel("mixed", "retirement")).toBe(
+      "Mixed / couples · Retirement"
+    );
     expect(segmentLabel("men", null)).toBe("Men");
     expect(segmentLabel(null, null)).toBe("Unsegmented");
   });
@@ -153,7 +153,7 @@ describe("buildPlannerSegments", () => {
         entry({ id: "2", audience: "men", lifeStage: "young_families" }),
         entry({ id: "3", audience: "men", lifeStage: "young_families" }),
       ],
-      TODAY,
+      TODAY
     );
 
     expect(segments.map((s) => s.segment)).toEqual([
@@ -176,7 +176,7 @@ describe("buildPlannerSegments", () => {
           needsSimilarStage: true,
         }),
       ],
-      TODAY,
+      TODAY
     );
     expect(segment.candidates[0].readiness.metCount).toBe(5);
   });
@@ -184,7 +184,7 @@ describe("buildPlannerSegments", () => {
   it("carries the candidate's target year and successor through to the view", () => {
     const [segment] = buildPlannerSegments(
       [entry({ id: "1", targetYear: 2027, successorDesignate: "Tony L." })],
-      TODAY,
+      TODAY
     );
     expect(segment.candidates[0].targetYear).toBe(2027);
     expect(segment.candidates[0].successorDesignate).toBe("Tony L.");
@@ -193,7 +193,7 @@ describe("buildPlannerSegments", () => {
   it("buckets groups with missing segmentation under Unsegmented", () => {
     const segments = buildPlannerSegments(
       [entry({ id: "1", audience: null })],
-      TODAY,
+      TODAY
     );
     expect(segments[0].segment).toBe("Unsegmented");
     expect(segments[0].candidates[0].groupName).toBe("Unknown group");
@@ -212,7 +212,7 @@ describe("summarizeTargetYears", () => {
         entry({ id: "3", targetYear: 2026 }),
         entry({ id: "4", targetYear: null }),
       ],
-      TODAY,
+      TODAY
     );
     expect(summarizeTargetYears(segments)).toEqual([
       { year: 2026, count: 2 },
@@ -234,11 +234,26 @@ describe("filterSegmentsByYear", () => {
   const segments = () =>
     buildPlannerSegments(
       [
-        entry({ id: "1", audience: "men", lifeStage: "young_families", targetYear: 2026 }),
-        entry({ id: "2", audience: "men", lifeStage: "young_families", targetYear: 2027 }),
-        entry({ id: "3", audience: "women", lifeStage: "retirement", targetYear: null }),
+        entry({
+          id: "1",
+          audience: "men",
+          lifeStage: "young_families",
+          targetYear: 2026,
+        }),
+        entry({
+          id: "2",
+          audience: "men",
+          lifeStage: "young_families",
+          targetYear: 2027,
+        }),
+        entry({
+          id: "3",
+          audience: "women",
+          lifeStage: "retirement",
+          targetYear: null,
+        }),
       ],
-      TODAY,
+      TODAY
     );
 
   it("returns every segment unchanged for 'all'", () => {
@@ -279,7 +294,7 @@ describe("evaluateReadiness ignores fields outside its contract (#143)", () => {
     } as typeof base;
 
     expect(evaluateReadiness(withSuccessor, TODAY)).toEqual(
-      evaluateReadiness(base, TODAY),
+      evaluateReadiness(base, TODAY)
     );
   });
 });

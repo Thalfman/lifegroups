@@ -5,6 +5,7 @@ import type {
   GroupAudienceCategory,
   GroupLifeStage,
   GuestPipelineStage,
+  LeaderReadinessStage,
   MeetingFrequency,
   MeetingWeekParity,
   MultiplicationCandidateStatus,
@@ -2207,6 +2208,12 @@ export type LaunchPlanningAssumptionsPayload = {
   launch_buffer_pct?: number;
   leaders_per_new_group?: number;
   notes?: string | null;
+  // Capacity & Multiplication #186: the explicit "launch N by <season>" plan a
+  // scenario carries on top of the demand assumptions. Drives the staffing gap.
+  planned_launch_count?: number;
+  // Julian's planting seasons: January (1) or August (8). Null = no target set.
+  target_launch_month?: number | null;
+  target_launch_year?: number | null;
 };
 
 const LAUNCH_PLANNING_KEYS: ReadonlySet<string> = new Set([
@@ -2218,6 +2225,9 @@ const LAUNCH_PLANNING_KEYS: ReadonlySet<string> = new Set([
   "launch_buffer_pct",
   "leaders_per_new_group",
   "notes",
+  "planned_launch_count",
+  "target_launch_month",
+  "target_launch_year",
 ]);
 
 // Local numeric parser that accepts `number | numeric string` and rejects
@@ -2352,6 +2362,41 @@ export function validateLaunchPlanningAssumptionsPayload(
       } else {
         value.notes = trimmed;
       }
+    }
+  }
+
+  // Capacity & Multiplication #186 — explicit launch plan.
+  if ("planned_launch_count" in input) {
+    const n = readOptionalInteger(input.planned_launch_count);
+    if (n === "invalid")
+      errors.push("Planned launch count must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 100))
+      errors.push("Planned launch count must be between 0 and 100.");
+    else if (n !== undefined) value.planned_launch_count = n;
+  }
+
+  if ("target_launch_month" in input) {
+    const raw = input.target_launch_month;
+    if (raw === null || raw === "" || raw === undefined) {
+      value.target_launch_month = null;
+    } else {
+      const n = readOptionalInteger(raw);
+      // Julian's planting seasons only: January (1) or August (8).
+      if (n === "invalid" || n === undefined || (n !== 1 && n !== 8))
+        errors.push("Target launch month must be January (1) or August (8).");
+      else value.target_launch_month = n;
+    }
+  }
+
+  if ("target_launch_year" in input) {
+    const raw = input.target_launch_year;
+    if (raw === null || raw === "" || raw === undefined) {
+      value.target_launch_year = null;
+    } else {
+      const n = readOptionalInteger(raw);
+      if (n === "invalid" || n === undefined || n < 2024 || n > 2100)
+        errors.push("Target launch year must be between 2024 and 2100.");
+      else value.target_launch_year = n;
     }
   }
 
@@ -2580,6 +2625,9 @@ type MultiplicationCandidateFields = {
   // derived co-shepherd readiness signal; it does not feed readiness.
   successor_designate: string | null;
   meeting_time: MultiplicationMeetingTime | null;
+  // Capacity & Multiplication #184: the linked apprentice (leader_pipeline).
+  // Same-group enforcement lives server-side (RPC + trigger).
+  leader_pipeline_id: string | null;
 };
 
 function validateMultiplicationCandidateFields(
@@ -2637,6 +2685,16 @@ function validateMultiplicationCandidateFields(
     }
   }
 
+  let leaderPipelineId: string | null = null;
+  const linkRaw = readOptionalString(input.leader_pipeline_id);
+  if (linkRaw !== undefined) {
+    if (!isUuid(linkRaw)) {
+      errors.push("leader_pipeline_id must be a uuid.");
+    } else {
+      leaderPipelineId = normalizeUuid(linkRaw);
+    }
+  }
+
   return {
     target_year: targetYear,
     status,
@@ -2645,6 +2703,7 @@ function validateMultiplicationCandidateFields(
     notes: notes ?? null,
     successor_designate: successor ?? null,
     meeting_time: meetingTime,
+    leader_pipeline_id: leaderPipelineId,
   };
 }
 
@@ -2688,6 +2747,43 @@ export function validateUpdateMultiplicationCandidatePayload(
       candidate_id: normalizeUuid(input.candidate_id as string),
       ...fields,
     },
+  };
+}
+
+// Capacity & Multiplication #185: set a group's target size. `target` may be a
+// whole number in [1, 500] or null/blank to clear (fall back to the ministry
+// default). The RPC writes the effective target source (groups.capacity) and
+// clears any override so there is one visible source of truth.
+export type SetGroupCapacityTargetPayload = {
+  group_id: string;
+  target: number | null;
+};
+
+export function validateSetGroupCapacityTargetPayload(
+  input: unknown
+): ValidationResult<SetGroupCapacityTargetPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+
+  let target: number | null = null;
+  const raw = readOptionalString(input.target);
+  if (raw !== undefined) {
+    const n = readOptionalInteger(raw);
+    if (n === "invalid" || n === undefined) {
+      errors.push("Target size must be a whole number.");
+    } else if (n < 1 || n > 500) {
+      errors.push("Target size must be between 1 and 500.");
+    } else {
+      target = n;
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string), target },
   };
 }
 
@@ -3045,5 +3141,181 @@ export function validateRemovePrivateNoteKeySlotPayload(
   return {
     ok: true,
     value: { slot_id: normalizeUuid(input.slot_id as string) },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Capacity & Multiplication #183 — Leader Pipeline (apprentice) payloads.
+// ---------------------------------------------------------------------------
+
+const LEADER_READINESS_STAGE_SET: ReadonlySet<LeaderReadinessStage> = new Set([
+  "identified",
+  "in_training",
+  "ready_to_lead",
+  "launched",
+]);
+
+function isLeaderReadinessStage(value: unknown): value is LeaderReadinessStage {
+  return (
+    typeof value === "string" &&
+    LEADER_READINESS_STAGE_SET.has(value as LeaderReadinessStage)
+  );
+}
+
+const APPRENTICE_DISPLAY_NAME_MAX = 120;
+
+type ApprenticeFields = {
+  display_name: string;
+  member_id: string | null;
+  readiness_stage: LeaderReadinessStage;
+  expected_ready_on: string | null;
+  notes: string | null;
+};
+
+// Shared field validation for create/update. `display_name` is required (the
+// apprentice's name); `member_id` is the optional members link (provisional
+// person shape, PRD §6-1); stage defaults to Identified; expected-ready date is
+// optional. Pushes friendly messages to `errors`.
+function validateApprenticeFields(
+  input: Record<string, unknown>,
+  errors: string[]
+): ApprenticeFields {
+  const name = readOptionalString(input.display_name);
+  if (name === undefined) {
+    errors.push("Apprentice name is required.");
+  } else if (name.length > APPRENTICE_DISPLAY_NAME_MAX) {
+    errors.push(
+      `Apprentice name is too long (max ${APPRENTICE_DISPLAY_NAME_MAX} characters).`
+    );
+  }
+
+  let memberId: string | null = null;
+  const memberRaw = readOptionalString(input.member_id);
+  if (memberRaw !== undefined) {
+    if (!isUuid(memberRaw)) {
+      errors.push("member_id must be a uuid.");
+    } else {
+      memberId = normalizeUuid(memberRaw);
+    }
+  }
+
+  let stage: LeaderReadinessStage = "identified";
+  if (
+    input.readiness_stage !== undefined &&
+    input.readiness_stage !== null &&
+    input.readiness_stage !== ""
+  ) {
+    if (!isLeaderReadinessStage(input.readiness_stage)) {
+      errors.push(
+        "Readiness stage must be identified, in_training, ready_to_lead, or launched."
+      );
+    } else {
+      stage = input.readiness_stage;
+    }
+  }
+
+  let expectedReadyOn: string | null = null;
+  const dateRaw = readOptionalString(input.expected_ready_on);
+  if (dateRaw !== undefined) {
+    if (!isIsoDate(dateRaw)) {
+      errors.push("Expected-ready date must be YYYY-MM-DD.");
+    } else {
+      expectedReadyOn = dateRaw;
+    }
+  }
+
+  const notes = readOptionalString(input.notes);
+  if (notes !== undefined && notes.length > 2000) {
+    errors.push("Notes are too long (max 2000 characters).");
+  }
+
+  return {
+    display_name: name ?? "",
+    member_id: memberId,
+    readiness_stage: stage,
+    expected_ready_on: expectedReadyOn,
+    notes: notes ?? null,
+  };
+}
+
+export type CreateApprenticePayload = ApprenticeFields & {
+  group_id: string;
+};
+
+export function validateCreateApprenticePayload(
+  input: unknown
+): ValidationResult<CreateApprenticePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  const fields = validateApprenticeFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string), ...fields },
+  };
+}
+
+export type UpdateApprenticePayload = ApprenticeFields & {
+  apprentice_id: string;
+};
+
+export function validateUpdateApprenticePayload(
+  input: unknown
+): ValidationResult<UpdateApprenticePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.apprentice_id)) errors.push("apprentice_id must be a uuid");
+  const fields = validateApprenticeFields(input, errors);
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      apprentice_id: normalizeUuid(input.apprentice_id as string),
+      ...fields,
+    },
+  };
+}
+
+export type AdvanceApprenticeStagePayload = {
+  apprentice_id: string;
+  readiness_stage: LeaderReadinessStage;
+};
+
+export function validateAdvanceApprenticeStagePayload(
+  input: unknown
+): ValidationResult<AdvanceApprenticeStagePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.apprentice_id)) errors.push("apprentice_id must be a uuid");
+  if (!isLeaderReadinessStage(input.readiness_stage))
+    errors.push(
+      "Readiness stage must be identified, in_training, ready_to_lead, or launched."
+    );
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      apprentice_id: normalizeUuid(input.apprentice_id as string),
+      readiness_stage: input.readiness_stage as LeaderReadinessStage,
+    },
+  };
+}
+
+export type ApprenticeIdPayload = { apprentice_id: string };
+
+export function validateApprenticeIdPayload(
+  input: unknown
+): ValidationResult<ApprenticeIdPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.apprentice_id))
+    return { ok: false, errors: ["apprentice_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { apprentice_id: normalizeUuid(input.apprentice_id as string) },
   };
 }

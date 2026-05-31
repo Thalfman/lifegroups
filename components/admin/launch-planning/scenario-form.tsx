@@ -34,7 +34,9 @@ const hintStyle = {
 
 function pctValue(ratio: number): string {
   const pct = ratio * 100;
-  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1).replace(/\.0$/, "");
+  return Number.isInteger(pct)
+    ? String(pct)
+    : pct.toFixed(1).replace(/\.0$/, "");
 }
 
 // Shared assumption-field grid. Used by both create and edit forms so the
@@ -63,7 +65,10 @@ function AssumptionFields({
     <>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
-          <label htmlFor={fieldId("current_church_attendance")} style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("current_church_attendance")}
+            style={fieldLabelStyle}
+          >
             Current church attendance
           </label>
           <input
@@ -102,7 +107,10 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor={fieldId("expected_growth_date")} style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("expected_growth_date")}
+            style={fieldLabelStyle}
+          >
             Expected growth date
           </label>
           <input
@@ -141,7 +149,10 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor={fieldId("average_group_size")} style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("average_group_size")}
+            style={fieldLabelStyle}
+          >
             Average group size
           </label>
           <input
@@ -183,7 +194,10 @@ function AssumptionFields({
         </div>
 
         <div>
-          <label htmlFor={fieldId("leaders_per_new_group")} style={fieldLabelStyle}>
+          <label
+            htmlFor={fieldId("leaders_per_new_group")}
+            style={fieldLabelStyle}
+          >
             Leaders per new group
           </label>
           <input
@@ -198,6 +212,71 @@ function AssumptionFields({
             style={fieldInputStyle}
           />
           <p style={hintStyle}>e.g. 2 = one leader + one co-leader.</p>
+        </div>
+
+        <div>
+          <label
+            htmlFor={fieldId("planned_launch_count")}
+            style={fieldLabelStyle}
+          >
+            Planned launches
+          </label>
+          <input
+            id={fieldId("planned_launch_count")}
+            name="planned_launch_count"
+            type="number"
+            min={0}
+            max={100}
+            inputMode="numeric"
+            defaultValue={defaults.planned_launch_count}
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            New groups to launch in this scenario (drives the leader gap).
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor={fieldId("target_launch_month")}
+            style={fieldLabelStyle}
+          >
+            Target season
+          </label>
+          <select
+            id={fieldId("target_launch_month")}
+            name="target_launch_month"
+            defaultValue={defaults.target_launch_month ?? ""}
+            style={fieldInputStyle}
+          >
+            <option value="">No target</option>
+            <option value="1">January</option>
+            <option value="8">August</option>
+          </select>
+          <p style={hintStyle}>Julian&rsquo;s planting seasons.</p>
+        </div>
+
+        <div>
+          <label
+            htmlFor={fieldId("target_launch_year")}
+            style={fieldLabelStyle}
+          >
+            Target year
+          </label>
+          <input
+            id={fieldId("target_launch_year")}
+            name="target_launch_year"
+            type="number"
+            min={2024}
+            max={2100}
+            inputMode="numeric"
+            defaultValue={defaults.target_launch_year ?? ""}
+            placeholder="2026"
+            style={fieldInputStyle}
+          />
+          <p style={hintStyle}>
+            Apprentices Ready by this date count as staffing supply.
+          </p>
         </div>
       </div>
 
@@ -237,7 +316,7 @@ export function CreateScenarioForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateLaunchPlanningScenario,
-    undefined,
+    undefined
   );
 
   return (
@@ -304,7 +383,14 @@ export function CreateScenarioForm({
         Mark as the current scenario (replaces any prior current).
       </label>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save scenario"}
         </PButton>
@@ -325,7 +411,15 @@ export function CreateScenarioForm({
       </div>
 
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>
@@ -344,7 +438,7 @@ export function EditScenarioForm({
 }) {
   const [editState, editAction, editPending] = useActionState<State, FormData>(
     adminUpdateLaunchPlanningScenario,
-    undefined,
+    undefined
   );
   const [archiveState, archiveAction, archivePending] = useActionState<
     State,
@@ -481,19 +575,28 @@ export function EditScenarioForm({
         </label>
 
         <div
-          style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
         >
           <PButton type="submit" tone="terra" size="md" disabled={editPending}>
             {editPending ? "Saving…" : "Save scenario"}
           </PButton>
-          {editState?.ok ? (
-            <span style={successTextStyle}>Saved.</span>
-          ) : null}
+          {editState?.ok ? <span style={successTextStyle}>Saved.</span> : null}
         </div>
 
         {editState && !editState.ok ? (
           <ul
-            style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gap: 6,
+            }}
           >
             {editState.errors.map((err, i) => (
               <li key={i}>

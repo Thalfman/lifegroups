@@ -19,12 +19,14 @@ import type {
   GroupsRow,
   LaunchPlanningScenariosRow,
 } from "@/types/database";
+import type { LeaderReadinessStage } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
 import {
   effectiveCapacity,
   isExcludedFromCapacityMetrics,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
+import { apprenticeReadyBy } from "@/lib/admin/leader-pipeline";
 
 // ---------------------------------------------------------------------------
 // Assumptions: typed shape + defaults + decoder
@@ -39,6 +41,13 @@ export type LaunchPlanningAssumptions = {
   launch_buffer_pct: number;
   leaders_per_new_group: number;
   notes: string | null;
+  // Capacity & Multiplication #186: the explicit "launch N by <season>" plan a
+  // scenario carries on top of the demand assumptions. These drive the staffing
+  // (leader) gap, reported separately from seat capacity (§3.4).
+  planned_launch_count: number;
+  // Julian's planting seasons: January (1) or August (8). Null = none set.
+  target_launch_month: number | null;
+  target_launch_year: number | null;
 };
 
 // Documented baseline values. Mirrors the seed block in
@@ -53,23 +62,27 @@ export const BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS: LaunchPlanningAssumptions = {
   launch_buffer_pct: 0.15,
   leaders_per_new_group: 2,
   notes: null,
+  planned_launch_count: 0,
+  target_launch_month: null,
+  target_launch_year: null,
 };
 
 function readJsonInt(
   source: Record<string, unknown> | null,
   key: string,
-  fallback: number,
+  fallback: number
 ): number {
   if (!source) return fallback;
   const raw = source[key];
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw)) return raw;
+  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
+    return raw;
   return fallback;
 }
 
 function readJsonNumber(
   source: Record<string, unknown> | null,
   key: string,
-  fallback: number,
+  fallback: number
 ): number {
   if (!source) return fallback;
   const raw = source[key];
@@ -80,12 +93,25 @@ function readJsonNumber(
 function readJsonNullableString(
   source: Record<string, unknown> | null,
   key: string,
-  fallback: string | null,
+  fallback: string | null
 ): string | null {
   if (!source) return fallback;
   const raw = source[key];
   if (raw === null) return null;
   if (typeof raw === "string") return raw;
+  return fallback;
+}
+
+function readJsonIntOrNull(
+  source: Record<string, unknown> | null,
+  key: string,
+  fallback: number | null
+): number | null {
+  if (!source) return fallback;
+  const raw = source[key];
+  if (raw === null) return null;
+  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
+    return raw;
   return fallback;
 }
 
@@ -97,7 +123,7 @@ function readJsonNullableString(
 // only applies when `average_group_size` is missing from the stored row.
 export function decodeLaunchPlanningAssumptions(
   row: AppSettingsRow | null,
-  metricDefaults?: Pick<MetricDefaults, "default_group_capacity"> | null,
+  metricDefaults?: Pick<MetricDefaults, "default_group_capacity"> | null
 ): LaunchPlanningAssumptions {
   const raw = row?.setting_value;
   const source: Record<string, unknown> | null = isRecord(raw) ? raw : null;
@@ -112,42 +138,57 @@ export function decodeLaunchPlanningAssumptions(
     current_church_attendance: readJsonInt(
       source,
       "current_church_attendance",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.current_church_attendance,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.current_church_attendance
     ),
     expected_growth: readJsonInt(
       source,
       "expected_growth",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth
     ),
     expected_growth_date: readJsonNullableString(
       source,
       "expected_growth_date",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth_date,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth_date
     ),
     target_group_participation_pct: readJsonNumber(
       source,
       "target_group_participation_pct",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct
     ),
     average_group_size: readJsonInt(
       source,
       "average_group_size",
-      fallbackAverageGroupSize,
+      fallbackAverageGroupSize
     ),
     launch_buffer_pct: readJsonNumber(
       source,
       "launch_buffer_pct",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct
     ),
     leaders_per_new_group: readJsonInt(
       source,
       "leaders_per_new_group",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group
     ),
     notes: readJsonNullableString(
       source,
       "notes",
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.notes,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.notes
+    ),
+    planned_launch_count: readJsonInt(
+      source,
+      "planned_launch_count",
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.planned_launch_count
+    ),
+    target_launch_month: readJsonIntOrNull(
+      source,
+      "target_launch_month",
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_month
+    ),
+    target_launch_year: readJsonIntOrNull(
+      source,
+      "target_launch_year",
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_year
     ),
   };
 }
@@ -177,10 +218,7 @@ export type LaunchPlanningInputs = {
   available_seats: number;
 };
 
-type GroupForInputs = Pick<
-  GroupsRow,
-  "id" | "lifecycle_status" | "capacity"
->;
+type GroupForInputs = Pick<GroupsRow, "id" | "lifecycle_status" | "capacity">;
 
 type OverrideForInputs = Pick<
   GroupMetricSettingsRow,
@@ -195,10 +233,7 @@ type OverrideForInputs = Pick<
   | "allow_over_capacity"
 >;
 
-type MembershipForInputs = Pick<
-  GroupMembershipsRow,
-  "group_id" | "status"
->;
+type MembershipForInputs = Pick<GroupMembershipsRow, "group_id" | "status">;
 
 export function buildLaunchPlanningInputs(args: {
   groups: readonly GroupForInputs[];
@@ -214,7 +249,7 @@ export function buildLaunchPlanningInputs(args: {
     if (m.status !== "active") continue;
     activeMembershipCounts.set(
       m.group_id,
-      (activeMembershipCounts.get(m.group_id) ?? 0) + 1,
+      (activeMembershipCounts.get(m.group_id) ?? 0) + 1
     );
   }
 
@@ -237,7 +272,7 @@ export function buildLaunchPlanningInputs(args: {
     const cap = effectiveCapacity(
       { capacity: g.capacity },
       override,
-      args.metricDefaults,
+      args.metricDefaults
     );
     if (cap == null || cap <= 0) {
       unknownCapacityGroupCount += 1;
@@ -249,7 +284,7 @@ export function buildLaunchPlanningInputs(args: {
 
   const availableSeats = Math.max(
     0,
-    effectiveTotalCapacity - currentParticipants,
+    effectiveTotalCapacity - currentParticipants
   );
 
   return {
@@ -301,7 +336,7 @@ function subtractDaysIso(iso: string, days: number): string | null {
 
 export function computeLaunchPlan(
   assumptions: LaunchPlanningAssumptions,
-  inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">,
+  inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">
 ): LaunchPlanningOutputs {
   // expected_growth can legitimately be negative (shrinkage), but the
   // *projected attendance* and *demand* must stay non-negative — a
@@ -309,15 +344,15 @@ export function computeLaunchPlan(
   // negative demand / oversized capacity gap in the UI. Clamp at zero
   // so the forecast stays physically meaningful even at the extremes.
   const projectedTotalAttendance = clampNonNegative(
-    assumptions.current_church_attendance + assumptions.expected_growth,
+    assumptions.current_church_attendance + assumptions.expected_growth
   );
 
   const participationPct = Math.min(
     1,
-    Math.max(0, assumptions.target_group_participation_pct),
+    Math.max(0, assumptions.target_group_participation_pct)
   );
   const projectedGroupDemand = clampNonNegative(
-    projectedTotalAttendance * participationPct,
+    projectedTotalAttendance * participationPct
   );
 
   const bufferPct = Math.min(
@@ -325,21 +360,25 @@ export function computeLaunchPlan(
     // caps at 0.95; clamp here too so a stale payload from disk can't
     // produce Infinity.
     0.95,
-    Math.max(0, assumptions.launch_buffer_pct),
+    Math.max(0, assumptions.launch_buffer_pct)
   );
   const targetCapacityWithBuffer = projectedGroupDemand / (1 - bufferPct);
 
-  const capacityGap = targetCapacityWithBuffer - inputs.effective_total_capacity;
+  const capacityGap =
+    targetCapacityWithBuffer - inputs.effective_total_capacity;
 
   // `average_group_size` is validated >= 1 at the RPC and validator, but
   // we still defend against a 0/negative slipping in from a hand-rolled
   // payload — fall back to 1 so we never divide by zero.
   const avgGroupSize = Math.max(1, Math.floor(assumptions.average_group_size));
   const recommendedNewGroups = Math.ceil(
-    clampNonNegative(capacityGap) / avgGroupSize,
+    clampNonNegative(capacityGap) / avgGroupSize
   );
 
-  const leadersPerNewGroup = Math.max(0, Math.floor(assumptions.leaders_per_new_group));
+  const leadersPerNewGroup = Math.max(
+    0,
+    Math.floor(assumptions.leaders_per_new_group)
+  );
   const estimatedNewLeadersNeeded = recommendedNewGroups * leadersPerNewGroup;
 
   // Risk level:
@@ -393,10 +432,13 @@ export type LaunchPlanningAuditSnapshot = {
   launch_buffer_pct: number;
   leaders_per_new_group: number;
   has_notes: boolean;
+  planned_launch_count: number;
+  target_launch_month: number | null;
+  target_launch_year: number | null;
 };
 
 export function redactNotesForAudit(
-  assumptions: LaunchPlanningAssumptions,
+  assumptions: LaunchPlanningAssumptions
 ): LaunchPlanningAuditSnapshot {
   return {
     current_church_attendance: assumptions.current_church_attendance,
@@ -407,8 +449,132 @@ export function redactNotesForAudit(
     launch_buffer_pct: assumptions.launch_buffer_pct,
     leaders_per_new_group: assumptions.leaders_per_new_group,
     has_notes:
-      typeof assumptions.notes === "string" && assumptions.notes.trim().length > 0,
+      typeof assumptions.notes === "string" &&
+      assumptions.notes.trim().length > 0,
+    planned_launch_count: assumptions.planned_launch_count,
+    target_launch_month: assumptions.target_launch_month,
+    target_launch_year: assumptions.target_launch_year,
   };
+}
+
+// ---------------------------------------------------------------------------
+// #186 — Staffing supply vs demand (the leader gap)
+// ---------------------------------------------------------------------------
+//
+// Capacity supply (seats) and staffing supply (leaders) are DIFFERENT
+// constraints and are reported on their own axes — never summed (PRD §3.4).
+// This block owns the staffing axis: how many leaders a planned launch needs,
+// how many apprentices will be Ready by the target date, and the gap.
+
+// Resolve the scenario's target launch date as YYYY-MM-DD. Prefers an explicit
+// month + year; falls back to the next occurrence of the season month when only
+// the month is set; null when no season is chosen. Reuses nextSeasonAnchorIso
+// for the Aug/Jan anchors.
+export function scenarioTargetDateIso(
+  assumptions: Pick<
+    LaunchPlanningAssumptions,
+    "target_launch_month" | "target_launch_year"
+  >,
+  today: Date = new Date()
+): string | null {
+  const month = assumptions.target_launch_month;
+  if (month !== 1 && month !== 8) return null;
+  const year = assumptions.target_launch_year;
+  if (year != null) {
+    return new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
+  }
+  return nextSeasonAnchorIso(month, today);
+}
+
+// The staffing axis of the forecast. Demand uses the SAME unit as the rest of
+// the model — launch count × leaders_per_new_group (default 2) — so "launch 3"
+// needs 6 leaders, not 3 (§3.4, §9-f). Supply is the apprentices Ready (or
+// projected Ready) by the target date. Gap = demand − supply, in leaders; a
+// negative gap is a surplus.
+export type StaffingForecast = {
+  plannedLaunchCount: number;
+  leadersPerNewGroup: number;
+  targetDateIso: string | null;
+  // Leaders needed for the planned launches.
+  demand: number;
+  // Apprentices Ready (or projected Ready) by the target date.
+  supply: number;
+  // demand − supply. Positive = short; negative = surplus.
+  gap: number;
+  // Convenience: max(0, gap) — the "short N" figure.
+  shortfall: number;
+};
+
+// An apprentice's stage + expected-ready date, the only fields staffing supply
+// needs. Matches the pure shape in lib/admin/leader-pipeline.
+export type StaffingApprentice = {
+  stage: LeaderReadinessStage;
+  expectedReadyOn: string | null;
+};
+
+export function computeStaffingForecast(args: {
+  plannedLaunchCount: number;
+  leadersPerNewGroup: number;
+  staffingSupply: number;
+}): Omit<StaffingForecast, "targetDateIso"> {
+  const launches = Math.max(0, Math.floor(args.plannedLaunchCount));
+  const perGroup = Math.max(0, Math.floor(args.leadersPerNewGroup));
+  const supply = Math.max(0, Math.floor(args.staffingSupply));
+  const demand = launches * perGroup;
+  const gap = demand - supply;
+  return {
+    plannedLaunchCount: launches,
+    leadersPerNewGroup: perGroup,
+    demand,
+    supply,
+    gap,
+    shortfall: Math.max(0, gap),
+  };
+}
+
+// Count apprentices that are (or are projected to be) Ready to lead by the
+// target date. When there is no target date, only those Ready *today* count
+// (an open-ended plan can't bank on a future projection).
+export function countStaffingSupply(
+  apprentices: readonly StaffingApprentice[],
+  targetDateIso: string | null
+): number {
+  // No target date: "today" is the only date we can measure projections
+  // against, so only currently-Ready apprentices count.
+  const asOf = targetDateIso ?? "0000-00-00";
+  let count = 0;
+  for (const a of apprentices) {
+    if (targetDateIso == null) {
+      if (a.stage === "ready_to_lead") count += 1;
+    } else if (apprenticeReadyBy(a, asOf)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+// Tie the scenario's launch plan to the live pipeline: derive the target date,
+// count the apprentices Ready by then, and compute the leader gap. This is the
+// number today's tool can't show because it has no pipeline to count.
+export function buildStaffingForecast(
+  assumptions: Pick<
+    LaunchPlanningAssumptions,
+    | "planned_launch_count"
+    | "leaders_per_new_group"
+    | "target_launch_month"
+    | "target_launch_year"
+  >,
+  apprentices: readonly StaffingApprentice[],
+  today: Date = new Date()
+): StaffingForecast {
+  const targetDateIso = scenarioTargetDateIso(assumptions, today);
+  const supply = countStaffingSupply(apprentices, targetDateIso);
+  const core = computeStaffingForecast({
+    plannedLaunchCount: assumptions.planned_launch_count,
+    leadersPerNewGroup: assumptions.leaders_per_new_group,
+    staffingSupply: supply,
+  });
+  return { ...core, targetDateIso };
 }
 
 // ---------------------------------------------------------------------------
@@ -446,7 +612,7 @@ export type LaunchPlanningScenario = {
 // CHECK constraint.
 export function decodeLaunchPlanningScenario(
   row: LaunchPlanningScenariosRow,
-  metricDefaults?: Parameters<typeof decodeLaunchPlanningAssumptions>[1],
+  metricDefaults?: Parameters<typeof decodeLaunchPlanningAssumptions>[1]
 ): LaunchPlanningScenario {
   const assumptions = decodeLaunchPlanningAssumptions(
     {
@@ -456,7 +622,7 @@ export function decodeLaunchPlanningScenario(
       created_at: row.created_at,
       updated_at: row.updated_at,
     } as AppSettingsRow,
-    metricDefaults,
+    metricDefaults
   );
   return {
     id: row.id,
@@ -475,17 +641,15 @@ export function decodeLaunchPlanningScenario(
 // index's "where archived_at is null" predicate so the UI can never show
 // an archived scenario in the active list.
 export function filterActiveScenarios<T extends { archived_at: string | null }>(
-  scenarios: readonly T[],
+  scenarios: readonly T[]
 ): T[] {
   return scenarios.filter((s) => s.archived_at == null);
 }
 
 export function findCurrentScenario(
-  scenarios: readonly LaunchPlanningScenario[],
+  scenarios: readonly LaunchPlanningScenario[]
 ): LaunchPlanningScenario | null {
-  return (
-    scenarios.find((s) => s.is_current && s.status === "active") ?? null
-  );
+  return scenarios.find((s) => s.is_current && s.status === "active") ?? null;
 }
 
 // Computed view of a scenario for the comparison table. Bundles the
@@ -502,7 +666,7 @@ export type LaunchPlanningScenarioComparisonEntry = {
 // against the same effective capacity number.
 export function buildScenarioComparison(
   scenarios: readonly LaunchPlanningScenario[],
-  inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">,
+  inputs: Pick<LaunchPlanningInputs, "effective_total_capacity">
 ): LaunchPlanningScenarioComparisonEntry[] {
   return scenarios.map((scenario) => ({
     scenario,
@@ -515,7 +679,7 @@ export function buildScenarioComparison(
 // denominator is available so the UI can show "—" instead of a bogus 0%.
 export function participationPct(
   currentParticipants: number,
-  churchAttendance: number | null,
+  churchAttendance: number | null
 ): number | null {
   if (churchAttendance == null || churchAttendance <= 0) return null;
   return Math.round((currentParticipants / churchAttendance) * 100);
@@ -529,12 +693,12 @@ export type PlantingSeasonMonth = 1 | 8;
 
 export function nextSeasonAnchorIso(
   month: PlantingSeasonMonth,
-  today: Date = new Date(),
+  today: Date = new Date()
 ): string {
   const todayUtc = Date.UTC(
     today.getUTCFullYear(),
     today.getUTCMonth(),
-    today.getUTCDate(),
+    today.getUTCDate()
   );
   const thisYear = today.getUTCFullYear();
   const candidate = Date.UTC(thisYear, month - 1, 1);

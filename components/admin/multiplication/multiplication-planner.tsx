@@ -18,6 +18,11 @@ import {
   type SegmentGroup,
   type TargetYearFilter,
 } from "@/lib/admin/multiplication";
+import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
+import {
+  CAPACITY_STATUS_LABEL,
+  type SuggestedMultiplicationGroup,
+} from "@/lib/admin/capacity-board";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   errorTextStyle,
@@ -32,6 +37,10 @@ import type {
 } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
+
+// Capacity & Multiplication #184: a same-group apprentice the candidate can be
+// linked to. `label` already includes the readiness stage for the picker.
+export type ApprenticeOption = { id: string; label: string };
 
 export type { CandidateView, SegmentGroup };
 
@@ -87,7 +96,13 @@ function ReadinessChips({ readiness }: { readiness: ReadinessResult }) {
   );
 }
 
-function CandidateEditForm({ c }: { c: CandidateView }) {
+function CandidateEditForm({
+  c,
+  apprenticeOptions,
+}: {
+  c: CandidateView;
+  apprenticeOptions: ApprenticeOption[];
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateMultiplicationCandidate,
     undefined
@@ -163,6 +178,32 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
             </select>
           </div>
         </div>
+        <div>
+          <label style={fieldLabelStyle}>Linked apprentice</label>
+          <select
+            name="leader_pipeline_id"
+            defaultValue={c.leaderPipelineId ?? ""}
+            style={fieldSelectStyle}
+          >
+            <option value="">No apprentice linked</option>
+            {apprenticeOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: P.ink3,
+            }}
+          >
+            Only apprentices in this group can lead its next group. Add one in
+            the Leader pipeline.
+          </p>
+        </div>
         <label style={{ ...checkboxLabelStyle }}>
           <input
             type="checkbox"
@@ -211,12 +252,25 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
   );
 }
 
-function CandidateRow({ c }: { c: CandidateView }) {
+function CandidateRow({
+  c,
+  apprenticeOptions,
+}: {
+  c: CandidateView;
+  apprenticeOptions: ApprenticeOption[];
+}) {
   const [editing, setEditing] = useState(false);
-  // Doc-shaped read view: surface the planning facts Julian scans for —
-  // successor and meeting time — without opening the edit form.
+  // Doc-shaped read view: surface the planning facts Julian scans for — the
+  // linked apprentice and its stage (R8), then successor/meeting time —
+  // without opening the edit form.
   const facts: string[] = [];
-  if (c.successorDesignate) facts.push(`Successor: ${c.successorDesignate}`);
+  if (c.linkedApprentice) {
+    facts.push(
+      `Apprentice: ${c.linkedApprentice.displayName} (${STAGE_LABEL[c.linkedApprentice.stage]})`
+    );
+  } else if (c.successorDesignate) {
+    facts.push(`Successor: ${c.successorDesignate}`);
+  }
   if (c.meetingTime) facts.push(MEETING_TIME_LABEL[c.meetingTime]);
   return (
     <div
@@ -259,7 +313,9 @@ function CandidateRow({ c }: { c: CandidateView }) {
       >
         {editing ? "Close" : "Edit"}
       </button>
-      {editing ? <CandidateEditForm c={c} /> : null}
+      {editing ? (
+        <CandidateEditForm c={c} apprenticeOptions={apprenticeOptions} />
+      ) : null}
     </div>
   );
 }
@@ -468,27 +524,21 @@ function YearFilterBar({
   );
 }
 
-export function MultiplicationPlanner({
-  segments,
-  availableGroups,
+function SuggestionsPanel({
+  suggestions,
 }: {
-  segments: SegmentGroup[];
-  availableGroups: { id: string; name: string }[];
+  suggestions: SuggestedMultiplicationGroup[];
 }) {
-  const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
-  const visible = useMemo(
-    () => filterSegmentsByYear(segments, yearFilter),
-    [segments, yearFilter]
-  );
+  if (suggestions.length === 0) return null;
   return (
     <section
       style={{
         background: P.surface,
         border: `1px solid ${P.line}`,
         borderRadius: 14,
-        padding: "22px 24px",
+        padding: "20px 22px",
         display: "grid",
-        gap: 18,
+        gap: 12,
       }}
     >
       <header>
@@ -502,19 +552,8 @@ export function MultiplicationPlanner({
             fontWeight: 600,
           }}
         >
-          Multiplication
+          Suggested candidates
         </span>
-        <h2
-          style={{
-            margin: "4px 0 0",
-            fontFamily: fontBody,
-            fontSize: 18,
-            color: P.ink,
-            fontWeight: 600,
-          }}
-        >
-          Candidate pipeline
-        </h2>
         <p
           style={{
             margin: "6px 0 0",
@@ -524,72 +563,188 @@ export function MultiplicationPlanner({
             lineHeight: 1.5,
           }}
         >
-          Groups slated to multiply, grouped by audience and life stage.
-          Readiness chips reflect Julian&rsquo;s criteria; a group does not need
-          to meet all of them. Filter by target year to resolve the 2026 / 2027
-          split.
+          Groups at or over target with an apprentice ready to lead. Readiness
+          is shown as context (&ldquo;meets N/5&rdquo;), not a gate &mdash; a
+          group does not need to meet each criterion.
         </p>
       </header>
-
-      <AddCandidateForm availableGroups={availableGroups} />
-
-      {segments.length === 0 ? null : (
-        <YearFilterBar
-          segments={segments}
-          active={yearFilter}
-          onChange={setYearFilter}
-        />
-      )}
-
-      {segments.length === 0 ? (
-        <p
+      {suggestions.map((s) => (
+        <div
+          key={s.groupId}
           style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: 0,
+            border: `1px solid ${P.sage}`,
+            background: P.sageSoft,
+            borderRadius: 10,
+            padding: "10px 14px",
+            display: "grid",
+            gap: 4,
           }}
         >
-          No candidates yet. Add a group above to start the pipeline.
-        </p>
-      ) : visible.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
-          No candidates match this target year.
-        </p>
-      ) : (
-        visible.map((seg) => (
-          <div key={seg.segment} style={{ display: "grid", gap: 8 }}>
-            <h3
-              style={{
-                margin: 0,
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
-                color: P.ink2,
-                fontWeight: 600,
-              }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              alignItems: "baseline",
+              flexWrap: "wrap",
+            }}
+          >
+            <strong
+              style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}
             >
-              {seg.segment}
-              <span style={{ color: P.ink3, fontWeight: 400 }}>
-                {" "}
-                · {seg.candidates.length}
-              </span>
-            </h3>
-            {seg.candidates.map((c) => (
-              <CandidateRow key={c.candidateId} c={c} />
-            ))}
+              {s.groupName}
+            </strong>
+            <span
+              style={{ fontFamily: fontBody, fontSize: 12, color: "#3e4f29" }}
+            >
+              meets {s.metCount}/{s.totalCount}
+            </span>
           </div>
-        ))
-      )}
+          <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+            {s.segment} · {s.activeMemberCount}/{s.effectiveTarget ?? "—"} ·{" "}
+            {CAPACITY_STATUS_LABEL[s.status]} · {s.readyApprentice.displayName}{" "}
+            ready to lead
+            {s.alreadyCandidate ? " · already in the plan" : ""}
+          </span>
+        </div>
+      ))}
     </section>
+  );
+}
+
+export function MultiplicationPlanner({
+  segments,
+  availableGroups,
+  apprenticesByGroup,
+  suggestions,
+}: {
+  segments: SegmentGroup[];
+  availableGroups: { id: string; name: string }[];
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
+  suggestions: SuggestedMultiplicationGroup[];
+}) {
+  const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
+  const visible = useMemo(
+    () => filterSegmentsByYear(segments, yearFilter),
+    [segments, yearFilter]
+  );
+  return (
+    <div style={{ display: "grid", gap: 24 }}>
+      <SuggestionsPanel suggestions={suggestions} />
+      <section
+        style={{
+          background: P.surface,
+          border: `1px solid ${P.line}`,
+          borderRadius: 14,
+          padding: "22px 24px",
+          display: "grid",
+          gap: 18,
+        }}
+      >
+        <header>
+          <span
+            style={{
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 600,
+            }}
+          >
+            Multiplication
+          </span>
+          <h2
+            style={{
+              margin: "4px 0 0",
+              fontFamily: fontBody,
+              fontSize: 18,
+              color: P.ink,
+              fontWeight: 600,
+            }}
+          >
+            Candidate pipeline
+          </h2>
+          <p
+            style={{
+              margin: "6px 0 0",
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              lineHeight: 1.5,
+            }}
+          >
+            Groups slated to multiply, grouped by audience and life stage.
+            Readiness chips reflect Julian&rsquo;s criteria; a group does not
+            need to meet all of them. Filter by target year to resolve the 2026
+            / 2027 split.
+          </p>
+        </header>
+
+        <AddCandidateForm availableGroups={availableGroups} />
+
+        {segments.length === 0 ? null : (
+          <YearFilterBar
+            segments={segments}
+            active={yearFilter}
+            onChange={setYearFilter}
+          />
+        )}
+
+        {segments.length === 0 ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+              margin: 0,
+            }}
+          >
+            No candidates yet. Add a group above to start the pipeline.
+          </p>
+        ) : visible.length === 0 ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+              margin: 0,
+            }}
+          >
+            No candidates match this target year.
+          </p>
+        ) : (
+          visible.map((seg) => (
+            <div key={seg.segment} style={{ display: "grid", gap: 8 }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontFamily: fontSans,
+                  fontSize: 11,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: P.ink2,
+                  fontWeight: 600,
+                }}
+              >
+                {seg.segment}
+                <span style={{ color: P.ink3, fontWeight: 400 }}>
+                  {" "}
+                  · {seg.candidates.length}
+                </span>
+              </h3>
+              {seg.candidates.map((c) => (
+                <CandidateRow
+                  key={c.candidateId}
+                  c={c}
+                  apprenticeOptions={apprenticesByGroup[c.groupId] ?? []}
+                />
+              ))}
+            </div>
+          ))
+        )}
+      </section>
+    </div>
   );
 }
 

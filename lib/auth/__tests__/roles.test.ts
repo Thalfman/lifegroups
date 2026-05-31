@@ -185,6 +185,8 @@ describe("adminNavGroups", () => {
     expect(shepherd!.label).toBe("Ministry Admin");
     expect(shepherd!.items.map((i) => i.href)).toEqual([
       "/admin/shepherd-care",
+      "/admin/capacity-board",
+      "/admin/leader-pipeline",
       "/admin/launch-planning",
       "/admin/multiplication",
       "/admin/follow-ups",

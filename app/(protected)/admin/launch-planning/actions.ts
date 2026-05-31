@@ -30,6 +30,17 @@ const REVALIDATE_PATH_ADMIN = "/admin";
 // Julian #145: the multiplication pipeline now lives on its own surface; the
 // candidate writes below revalidate it so edits show up there immediately.
 const REVALIDATE_PATH_MULTIPLICATION = "/admin/multiplication";
+// #185: candidate flags/ids drive the Capacity Board's suggestion annotations
+// and de-duping, so candidate writes must refresh it too.
+const REVALIDATE_PATH_CAPACITY = "/admin/capacity-board";
+
+// Candidate writes touch the multiplication plan, launch planning, and the
+// capacity board's suggestions.
+const CANDIDATE_REVALIDATE = [
+  REVALIDATE_PATH_MULTIPLICATION,
+  REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_CAPACITY,
+] as const;
 
 // Keep this list in lockstep with the validator's whitelist. The form
 // only POSTs keys that were actually submitted (we read each by name),
@@ -92,7 +103,20 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
     notes: input.get("notes") ?? undefined,
     successor_designate: input.get("successor_designate") ?? undefined,
     meeting_time: input.get("meeting_time") ?? undefined,
+    // Empty string = "no apprentice linked"; collapse to undefined so the
+    // validator reads it as unset (null) rather than a malformed uuid.
+    leader_pipeline_id: readBlankableField(input.get("leader_pipeline_id")),
   };
+}
+
+// A form field where an empty string means "unset". Returns undefined for null
+// or blank so the validator treats it as absent.
+function readBlankableField(
+  value: FormDataEntryValue | null
+): string | undefined {
+  if (value === null) return undefined;
+  const s = String(value);
+  return s.trim() === "" ? undefined : s;
 }
 
 // ----- adminUpdateLaunchPlanningAssumptions --------------------------------
@@ -128,7 +152,7 @@ const UPDATE_ASSUMPTIONS_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateLaunchPlanningAssumptions(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_ASSUMPTIONS_SPEC, prev, input);
 }
@@ -163,7 +187,7 @@ const RECORD_ATTENDANCE_SPEC: AdminWriteActionSpec<
 
 export async function adminRecordChurchAttendanceSnapshot(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RECORD_ATTENDANCE_SPEC, prev, input);
 }
@@ -187,14 +211,15 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_notes: value.notes,
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
+      p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };
 
 export async function adminCreateMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_CANDIDATE_SPEC, prev, input);
 }
@@ -216,19 +241,23 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_notes: value.notes,
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
+      p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
 };
 
 export async function adminUpdateMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_CANDIDATE_SPEC, prev, input);
 }
 
-const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: string }> = {
+const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<
+  CandidateIdPayload,
+  { id: string }
+> = {
   name: "admin.launch_planning.archive_multiplication_candidate",
   read: (input) =>
     input instanceof FormData
@@ -236,14 +265,16 @@ const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: str
       : (input as Record<string, unknown>),
   validate: validateCandidateIdPayload,
   rpc: (client, value) =>
-    rpcAdminArchiveMultiplicationCandidate(client, { p_candidate_id: value.candidate_id }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+    rpcAdminArchiveMultiplicationCandidate(client, {
+      p_candidate_id: value.candidate_id,
+    }),
+  revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not archived. Please try again.",
 };
 
 export async function adminArchiveMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ARCHIVE_CANDIDATE_SPEC, prev, input);
 }

@@ -41,7 +41,21 @@ const SCENARIO_ASSUMPTION_FIELDS = [
   "launch_buffer_pct",
   "leaders_per_new_group",
   "notes",
+  // Capacity & Multiplication #186: the explicit launch plan.
+  "planned_launch_count",
+  "target_launch_month",
+  "target_launch_year",
 ] as const;
+
+// Fields where a blank input means an explicit null clear (rather than "leave
+// the stored value"): the date, the notes, and the optional launch-season
+// month/year.
+const SCENARIO_NULLABLE_BLANK_FIELDS: ReadonlySet<string> = new Set([
+  "expected_growth_date",
+  "notes",
+  "target_launch_month",
+  "target_launch_year",
+]);
 
 function readScenarioAssumptionsFromForm(
   form: FormData
@@ -52,7 +66,7 @@ function readScenarioAssumptionsFromForm(
     const value = form.get(key);
     if (value === null) continue;
     const str = String(value);
-    if (key === "expected_growth_date" || key === "notes") {
+    if (SCENARIO_NULLABLE_BLANK_FIELDS.has(key)) {
       out[key] = str.trim() === "" ? null : str;
     } else if (str.trim() === "") {
       continue;

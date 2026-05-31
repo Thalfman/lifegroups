@@ -7,19 +7,25 @@ import {
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
   fetchLaunchPlanningScenariosForAdmin,
+  fetchLeaderPipelineForAdmin,
   type LaunchPlanningInputsBundle,
 } from "@/lib/supabase/read-models";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
   buildLaunchPlanningInputs,
   buildScenarioComparison,
+  buildStaffingForecast,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
+  findCurrentScenario,
   participationPct,
   type LaunchPlanningScenario,
+  type StaffingApprentice,
+  type StaffingForecast,
 } from "@/lib/admin/launch-planning";
+import { StaffingSupplyCard } from "@/components/admin/launch-planning/staffing-supply-card";
 import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
@@ -49,6 +55,11 @@ type PageData = {
     attendanceCount: number;
   } | null;
   participationPct: number | null;
+  staffingForecast: StaffingForecast;
+  staffingSourceLabel: string;
+  // #186: the pipeline is the source of truth for staffing supply. A read
+  // failure must not silently read as "0 Ready" / inflated shortfall.
+  pipelineError: string | null;
 };
 
 function emptyData(): PageData {
@@ -82,6 +93,12 @@ function emptyData(): PageData {
     comparison: [],
     churchAttendanceLatest: null,
     participationPct: null,
+    staffingForecast: buildStaffingForecast(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+      []
+    ),
+    staffingSourceLabel: "baseline",
+    pipelineError: "Database is not configured in this environment.",
   };
 }
 
@@ -91,12 +108,13 @@ async function loadData(): Promise<PageData> {
 
   // Run the independent fetches in parallel so TTFB tracks the slowest
   // rather than their sum.
-  const [assumptionsRes, inputsBundle, scenariosRes, churchRes] =
+  const [assumptionsRes, inputsBundle, scenariosRes, churchRes, pipelineRes] =
     await Promise.all([
       fetchLaunchPlanningAssumptions(client),
       fetchLaunchPlanningInputsForAdmin(client),
       fetchLaunchPlanningScenariosForAdmin(client),
       fetchChurchAttendanceSnapshots(client, { limit: 1 }),
+      fetchLeaderPipelineForAdmin(client),
     ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
@@ -117,6 +135,24 @@ async function loadData(): Promise<PageData> {
     decodeLaunchPlanningScenario(row, metricDefaults)
   );
   const comparison = buildScenarioComparison(activeScenarios, inputs);
+
+  // #186: staffing supply comes from the live pipeline. Prefer the current
+  // scenario's launch plan; fall back to the baseline assumptions.
+  const apprentices: StaffingApprentice[] = (pipelineRes.data ?? []).map(
+    (e) => ({
+      stage: e.apprentice.readiness_stage,
+      expectedReadyOn: e.apprentice.expected_ready_on,
+    })
+  );
+  const currentScenario = findCurrentScenario(activeScenarios);
+  const staffingAssumptions = currentScenario?.assumptions ?? assumptions;
+  const staffingForecast = buildStaffingForecast(
+    staffingAssumptions,
+    apprentices
+  );
+  const staffingSourceLabel = currentScenario
+    ? `current scenario: ${currentScenario.name}`
+    : "baseline assumptions";
 
   const latestSnapshot = churchRes.data?.[0] ?? null;
   const churchAttendanceLatest = latestSnapshot
@@ -141,6 +177,9 @@ async function loadData(): Promise<PageData> {
       inputs.current_participants,
       churchAttendanceLatest?.attendanceCount ?? null
     ),
+    staffingForecast,
+    staffingSourceLabel,
+    pipelineError: pipelineRes.error?.message ?? null,
   };
 }
 
@@ -197,6 +236,30 @@ export default async function AdminLaunchPlanningPage() {
             inputs={data.inputs}
             outputs={data.outputs}
           />
+
+          {data.pipelineError ? (
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: "#7d3621",
+                background: P.terraSoft,
+                border: `1px solid ${P.terra}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+              }}
+            >
+              The leader pipeline could not be loaded, so the staffing supply
+              below may understate who is ready. {data.pipelineError}
+            </p>
+          ) : (
+            <StaffingSupplyCard
+              forecast={data.staffingForecast}
+              inputs={data.inputs}
+              sourceLabel={data.staffingSourceLabel}
+            />
+          )}
 
           <ChurchAttendanceCard
             latest={data.churchAttendanceLatest}

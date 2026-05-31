@@ -228,6 +228,25 @@ export interface MultiplicationCandidatesRow {
   notes: string | null;
   successor_designate: string | null;
   meeting_time: E.MultiplicationMeetingTime | null;
+  // Capacity & Multiplication #184: same-group apprentice raised to lead the
+  // multiplied group. Source of truth for "who leads it"; successor_designate
+  // is retained through the migration.
+  leader_pipeline_id: UUID | null;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface LeaderPipelineRow {
+  id: UUID;
+  group_id: UUID;
+  display_name: string;
+  member_id: UUID | null;
+  readiness_stage: E.LeaderReadinessStage;
+  expected_ready_on: DateString | null;
+  notes: string | null;
   archived_at: Timestamp | null;
   created_by: UUID | null;
   updated_by: UUID | null;
@@ -499,8 +518,27 @@ export interface Database {
           | "notes"
           | "successor_designate"
           | "meeting_time"
+          | "leader_pipeline_id"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
+        Relationships: [];
+      };
+      leader_pipeline: {
+        Row: LeaderPipelineRow;
+        Insert: InsertOf<
+          LeaderPipelineRow,
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "created_by"
+          | "updated_by"
+          | "member_id"
+          | "readiness_stage"
+          | "expected_ready_on"
+          | "notes"
+        >;
+        Update: Partial<LeaderPipelineRow>;
         Relationships: [];
       };
       group_calendar_events: {

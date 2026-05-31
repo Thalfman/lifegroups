@@ -21,6 +21,7 @@ import {
   validatePlatformConfigPayload,
   validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
+  validateSetGroupCapacityTargetPayload,
   validateUpdateMultiplicationCandidatePayload,
   validateUpdateLaunchPlanningScenarioPayload,
   validateUpdateOverShepherdPayload,
@@ -1267,6 +1268,30 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  // Capacity & Multiplication #184: the apprentice link.
+  it("round-trips a leader_pipeline_id, defaulting to null when absent or blank", () => {
+    const present = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      leader_pipeline_id: UUID_B,
+    });
+    expect(present.ok).toBe(true);
+    if (present.ok) expect(present.value.leader_pipeline_id).toBe(UUID_B);
+
+    const absent = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) expect(absent.value.leader_pipeline_id).toBeNull();
+  });
+
+  it("rejects a non-uuid leader_pipeline_id", () => {
+    const r = validateUpdateMultiplicationCandidatePayload({
+      candidate_id: UUID_A,
+      leader_pipeline_id: "not-a-uuid",
+    });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe("validateCreateShepherdCareFollowUpPayload", () => {
@@ -1446,5 +1471,37 @@ describe("validatePlatformConfigPayload", () => {
   it("rejects a non-object payload", () => {
     expect(validatePlatformConfigPayload(null).ok).toBe(false);
     expect(validatePlatformConfigPayload("nope").ok).toBe(false);
+  });
+});
+
+describe("validateSetGroupCapacityTargetPayload (Capacity & Multiplication #185)", () => {
+  it("accepts a whole-number target in range", () => {
+    const r = validateSetGroupCapacityTargetPayload({
+      group_id: UUID_A,
+      target: "12",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.target).toBe(12);
+  });
+
+  it("treats a blank/absent target as a clear (null)", () => {
+    const r = validateSetGroupCapacityTargetPayload({ group_id: UUID_A });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.target).toBeNull();
+  });
+
+  it("rejects a bad group id or out-of-range target", () => {
+    expect(
+      validateSetGroupCapacityTargetPayload({ group_id: "nope", target: "12" })
+        .ok
+    ).toBe(false);
+    expect(
+      validateSetGroupCapacityTargetPayload({ group_id: UUID_A, target: "0" })
+        .ok
+    ).toBe(false);
+    expect(
+      validateSetGroupCapacityTargetPayload({ group_id: UUID_A, target: "501" })
+        .ok
+    ).toBe(false);
   });
 });
