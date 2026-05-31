@@ -14,9 +14,14 @@ import {
   fetchAllGroupLeaders,
   fetchAllGroups,
   fetchAllMembers,
+  fetchPlatformConfig,
   fetchProfilesForAdmin,
   fetchRecentAuditEvents,
 } from "@/lib/supabase/read-models";
+import {
+  BUILT_IN_APP_CONFIG,
+  decodeAppConfig,
+} from "@/lib/admin/app-config-decode";
 import type {
   AuditEventsRow,
   GroupsRow,
@@ -31,21 +36,21 @@ export const dynamic = "force-dynamic";
 // demoted from the app surface). Legacy staff_viewer accounts remain
 // reassignable so operators can migrate them to an active role.
 function isAssignableTargetRole(
-  role: ProfilesRow["role"],
+  role: ProfilesRow["role"]
 ): role is Exclude<ProfilesRow["role"], "super_admin"> {
   return role !== "super_admin";
 }
 
 function buildAssignableProfiles(
   profiles: ProfilesRow[],
-  currentActorProfileId: string,
+  currentActorProfileId: string
 ): AssignableProfile[] {
   return profiles
     .filter(
       (p) =>
         p.status === "active" &&
         p.id !== currentActorProfileId &&
-        isAssignableTargetRole(p.role),
+        isAssignableTargetRole(p.role)
     )
     .map((p) => ({
       id: p.id,
@@ -77,11 +82,14 @@ type ChecklistInputs = {
 // row still shows so the 8-row layout is preserved, but the data rows
 // read "unknown" instead of pretending to be empty.
 function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
-  const { hasClient, profiles, groups, members, activeGroupLeaders, errors } = input;
+  const { hasClient, profiles, groups, members, activeGroupLeaders, errors } =
+    input;
   const leaderProfiles = profiles.filter(
-    (p) => p.role === "leader" || p.role === "co_leader",
+    (p) => p.role === "leader" || p.role === "co_leader"
   );
-  const leadersWithAssignment = new Set(activeGroupLeaders.map((l) => l.profile_id));
+  const leadersWithAssignment = new Set(
+    activeGroupLeaders.map((l) => l.profile_id)
+  );
 
   return [
     {
@@ -109,7 +117,12 @@ function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
           : groups.length > 0
             ? `${groups.length} group${groups.length === 1 ? "" : "s"} on file (active and closed).`
             : "No groups yet. Add one via Manage Groups.",
-      tone: !hasClient || errors.groups ? "warn" : groups.length > 0 ? "ok" : "warn",
+      tone:
+        !hasClient || errors.groups
+          ? "warn"
+          : groups.length > 0
+            ? "ok"
+            : "warn",
     },
     {
       key: "leaders",
@@ -124,7 +137,11 @@ function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
               } on file.`
             : "No leader or co-leader profiles yet. Add one via Manage People.",
       tone:
-        !hasClient || errors.profiles ? "warn" : leaderProfiles.length > 0 ? "ok" : "warn",
+        !hasClient || errors.profiles
+          ? "warn"
+          : leaderProfiles.length > 0
+            ? "ok"
+            : "warn",
     },
     {
       key: "members",
@@ -136,7 +153,12 @@ function buildChecklist(input: ChecklistInputs): ChecklistRow[] {
           : members.length > 0
             ? `${members.length} member record${members.length === 1 ? "" : "s"} on file.`
             : "No members yet. Members are non-auth participant records added via Manage People.",
-      tone: !hasClient || errors.members ? "warn" : members.length > 0 ? "ok" : "warn",
+      tone:
+        !hasClient || errors.members
+          ? "warn"
+          : members.length > 0
+            ? "ok"
+            : "warn",
     },
     {
       key: "leader_assignment",
@@ -175,6 +197,7 @@ function buildNoClientData(): SuperAdminConsoleData {
   return {
     assignableProfiles: [],
     inviteUserGroups: [],
+    appConfig: BUILT_IN_APP_CONFIG,
     auditEvents: [],
     profilesById: new Map(),
     membersById: new Map(),
@@ -199,25 +222,35 @@ function buildNoClientData(): SuperAdminConsoleData {
       groups: notConfigured,
       members: notConfigured,
       leaders: notConfigured,
+      platformConfig: notConfigured,
     },
   };
 }
 
-async function loadData(currentActorProfileId: string): Promise<SuperAdminConsoleData> {
+async function loadData(
+  currentActorProfileId: string
+): Promise<SuperAdminConsoleData> {
   const client = await createSupabaseServerClient();
   if (!client) return buildNoClientData();
 
-  const [profilesResult, groupsResult, membersResult, leadersResult, auditResult] =
-    await Promise.all([
-      fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
-      fetchAllGroups(client),
-      fetchAllMembers(client, { statuses: ["active", "inactive"] }),
-      fetchAllGroupLeaders(client, { activeOnly: true }),
-      fetchRecentAuditEvents(client, {
-        limit: 25,
-        actionsLike: ["admin.%", "leader.%", "super_admin.%"],
-      }),
-    ]);
+  const [
+    profilesResult,
+    groupsResult,
+    membersResult,
+    leadersResult,
+    auditResult,
+    platformConfigResult,
+  ] = await Promise.all([
+    fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
+    fetchAllGroups(client),
+    fetchAllMembers(client, { statuses: ["active", "inactive"] }),
+    fetchAllGroupLeaders(client, { activeOnly: true }),
+    fetchRecentAuditEvents(client, {
+      limit: 25,
+      actionsLike: ["admin.%", "leader.%", "super_admin.%"],
+    }),
+    fetchPlatformConfig(client),
+  ]);
 
   const profiles = profilesResult.data ?? [];
   const groups = groupsResult.data ?? [];
@@ -237,9 +270,13 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
     members: membersResult.error?.message ?? null,
     leaders: leadersResult.error?.message ?? null,
     audit: auditResult.error?.message ?? null,
+    platformConfig: platformConfigResult.error?.message ?? null,
   };
 
-  const assignableProfiles = buildAssignableProfiles(profiles, currentActorProfileId);
+  const assignableProfiles = buildAssignableProfiles(
+    profiles,
+    currentActorProfileId
+  );
 
   // Active-only, name-sorted view of groups for the Invite user form.
   // Reuses the already-fetched groupsResult so no extra DB read.
@@ -260,6 +297,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
   return {
     assignableProfiles,
     inviteUserGroups,
+    appConfig: decodeAppConfig(platformConfigResult.data),
     auditEvents: auditEvents as AuditEventsRow[],
     profilesById,
     membersById,
@@ -270,7 +308,7 @@ async function loadData(currentActorProfileId: string): Promise<SuperAdminConsol
 }
 
 function buildTestAccountsSummary(
-  result: Awaited<ReturnType<typeof testAccountsStatus>>,
+  result: Awaited<ReturnType<typeof testAccountsStatus>>
 ): SuperAdminTestAccountsSummary {
   if (!result.ok) {
     return {
@@ -329,8 +367,12 @@ export default async function AdminSuperAdminPage() {
           testAccountsSummary={testAccountsSummary}
           testAccountsPanel={
             <TestAccountsPanel
-              initialStatus={initialTestAccounts.ok ? initialTestAccounts.value : null}
-              initialErrors={initialTestAccounts.ok ? [] : initialTestAccounts.errors}
+              initialStatus={
+                initialTestAccounts.ok ? initialTestAccounts.value : null
+              }
+              initialErrors={
+                initialTestAccounts.ok ? [] : initialTestAccounts.errors
+              }
             />
           }
         />

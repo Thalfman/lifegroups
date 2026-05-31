@@ -18,6 +18,7 @@ import type {
 import { isUuid } from "@/lib/shared/uuid";
 import { isUserRole } from "@/lib/auth/roles";
 import { base64ToBytes } from "@/lib/crypto/encoding";
+import { APP_CONFIG_TRACER_MAX_LENGTH } from "@/lib/admin/app-config-decode";
 
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
@@ -69,10 +70,11 @@ export type CreateMinistryAdminPayload = {
 };
 
 export function validateCreateMinistryAdminPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateMinistryAdminPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const fullName = trimString(input.full_name) ?? "";
   const email = trimString(input.email) ?? "";
   if (fullName.length === 0) errors.push("full_name is required");
@@ -88,16 +90,18 @@ export type CreateLeaderProfilePayload = {
 };
 
 export function validateCreateLeaderProfilePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateLeaderProfilePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const fullName = trimString(input.full_name) ?? "";
   const email = trimString(input.email) ?? "";
   const phone = readOptionalString(input.phone);
   if (fullName.length === 0) errors.push("full_name is required");
   if (!isEmail(email)) errors.push("email must be a valid address");
-  if (phone !== undefined && !isPhone(phone)) errors.push("phone format is invalid");
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("phone format is invalid");
   if (errors.length > 0) return { ok: false, errors };
   const value: CreateLeaderProfilePayload = { full_name: fullName, email };
   if (phone !== undefined) value.phone = phone;
@@ -111,16 +115,19 @@ export type CreateMemberPayload = {
 };
 
 export function validateCreateMemberPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateMemberPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const fullName = trimString(input.full_name) ?? "";
   const email = readOptionalString(input.email);
   const phone = readOptionalString(input.phone);
   if (fullName.length === 0) errors.push("full_name is required");
-  if (email !== undefined && !isEmail(email)) errors.push("email must be a valid address");
-  if (phone !== undefined && !isPhone(phone)) errors.push("phone format is invalid");
+  if (email !== undefined && !isEmail(email))
+    errors.push("email must be a valid address");
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("phone format is invalid");
   if (errors.length > 0) return { ok: false, errors };
   const value: CreateMemberPayload = { full_name: fullName };
   if (email !== undefined) value.email = email;
@@ -135,10 +142,11 @@ export type AssignLeaderToGroupPayload = {
 };
 
 export function validateAssignLeaderToGroupPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<AssignLeaderToGroupPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
   if (!isUuid(input.profile_id)) errors.push("profile_id must be a uuid");
   if (input.role !== "leader" && input.role !== "co_leader") {
@@ -164,10 +172,11 @@ export type AssignMemberToGroupPayload = {
 };
 
 export function validateAssignMemberToGroupPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<AssignMemberToGroupPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
   if (!isUuid(input.member_id)) errors.push("member_id must be a uuid");
   if (errors.length > 0) return { ok: false, errors };
@@ -183,21 +192,31 @@ export function validateAssignMemberToGroupPayload(
 export type DeactivateProfilePayload = { profile_id: string };
 
 export function validateDeactivateProfilePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<DeactivateProfilePayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.profile_id)) return { ok: false, errors: ["profile_id must be a uuid"] };
-  return { ok: true, value: { profile_id: normalizeUuid(input.profile_id as string) } };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.profile_id))
+    return { ok: false, errors: ["profile_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { profile_id: normalizeUuid(input.profile_id as string) },
+  };
 }
 
 export type DeactivateMemberPayload = { member_id: string };
 
 export function validateDeactivateMemberPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<DeactivateMemberPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.member_id)) return { ok: false, errors: ["member_id must be a uuid"] };
-  return { ok: true, value: { member_id: normalizeUuid(input.member_id as string) } };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.member_id))
+    return { ok: false, errors: ["member_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { member_id: normalizeUuid(input.member_id as string) },
+  };
 }
 
 export type ChangeUserRolePayload = {
@@ -206,12 +225,14 @@ export type ChangeUserRolePayload = {
 };
 
 export function validateChangeUserRolePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<ChangeUserRolePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.profile_id)) errors.push("profile_id must be a uuid");
-  if (!isUserRole(input.new_role)) errors.push("new_role must be a valid user_role");
+  if (!isUserRole(input.new_role))
+    errors.push("new_role must be a valid user_role");
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
@@ -229,7 +250,7 @@ export function validateChangeUserRolePayload(
 
 export function guardAgainstSelfTarget(
   actorProfileId: string,
-  targetProfileId: string,
+  targetProfileId: string
 ): string | null {
   if (normalizeUuid(actorProfileId) === normalizeUuid(targetProfileId)) {
     return "Admins cannot perform this action against their own profile.";
@@ -239,7 +260,7 @@ export function guardAgainstSelfTarget(
 
 export function guardAgainstSelfRoleChange(
   actor: { id: string; role: UserRole },
-  payload: ChangeUserRolePayload,
+  payload: ChangeUserRolePayload
 ): string | null {
   if (normalizeUuid(actor.id) === normalizeUuid(payload.profile_id)) {
     return "Admins cannot change their own role.";
@@ -248,7 +269,7 @@ export function guardAgainstSelfRoleChange(
 }
 
 export function guardAgainstSuperAdminAssignment(
-  payload: ChangeUserRolePayload,
+  payload: ChangeUserRolePayload
 ): string | null {
   if (payload.new_role === "super_admin") {
     return "super_admin cannot be assigned through the app. Use the documented bootstrap procedure.";
@@ -261,7 +282,7 @@ export function guardAgainstSuperAdminAssignment(
 // Phase 5A.3 role-change form omits it from the role select, and this
 // guard provides defense-in-depth for direct callers.
 export function guardAgainstStaffViewerAssignment(
-  payload: ChangeUserRolePayload,
+  payload: ChangeUserRolePayload
 ): string | null {
   if (payload.new_role === "staff_viewer") {
     return "staff_viewer is deprecated and can't be assigned from the app.";
@@ -343,7 +364,9 @@ const GROUP_LIFE_STAGES: ReadonlySet<GroupLifeStage> = new Set([
   "spanish_speaking",
 ]);
 
-function isGroupAudienceCategory(value: unknown): value is GroupAudienceCategory {
+function isGroupAudienceCategory(
+  value: unknown
+): value is GroupAudienceCategory {
   return (
     typeof value === "string" &&
     GROUP_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
@@ -351,15 +374,23 @@ function isGroupAudienceCategory(value: unknown): value is GroupAudienceCategory
 }
 
 function isGroupLifeStage(value: unknown): value is GroupLifeStage {
-  return typeof value === "string" && GROUP_LIFE_STAGES.has(value as GroupLifeStage);
+  return (
+    typeof value === "string" && GROUP_LIFE_STAGES.has(value as GroupLifeStage)
+  );
 }
 
 function isMeetingFrequency(value: unknown): value is MeetingFrequency {
-  return typeof value === "string" && MEETING_FREQUENCIES.has(value as MeetingFrequency);
+  return (
+    typeof value === "string" &&
+    MEETING_FREQUENCIES.has(value as MeetingFrequency)
+  );
 }
 
 function isMeetingWeekParity(value: unknown): value is MeetingWeekParity {
-  return typeof value === "string" && MEETING_WEEK_PARITIES.has(value as MeetingWeekParity);
+  return (
+    typeof value === "string" &&
+    MEETING_WEEK_PARITIES.has(value as MeetingWeekParity)
+  );
 }
 
 export type GroupWritablePayload = {
@@ -378,10 +409,11 @@ export type GroupWritablePayload = {
 };
 
 function validateGroupWritablePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<GroupWritablePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   const name = trimString(input.name) ?? "";
   const description = readOptionalString(input.description);
@@ -420,7 +452,8 @@ function validateGroupWritablePayload(
   }
 
   if (name.length === 0) errors.push("Group name is required.");
-  if (name.length > 120) errors.push("Group name is too long (max 120 characters).");
+  if (name.length > 120)
+    errors.push("Group name is too long (max 120 characters).");
   if (description !== undefined && description.length > 500)
     errors.push("Description is too long (max 500 characters).");
   if (meetingDay !== undefined && !MEETING_DAYS.has(meetingDay))
@@ -434,7 +467,8 @@ function validateGroupWritablePayload(
   if (capacity !== undefined) {
     if (Number.isNaN(capacity)) errors.push("Capacity must be a whole number.");
     else if (capacity < 0) errors.push("Capacity can't be negative.");
-    else if (capacity > 1000) errors.push("Capacity is unusually large (max 1000).");
+    else if (capacity > 1000)
+      errors.push("Capacity is unusually large (max 1000).");
   }
 
   // Julian P4 segmentation. All optional; an empty select submits "" which
@@ -459,7 +493,8 @@ function validateGroupWritablePayload(
   const launchedOnRaw = readOptionalString(input.launched_on);
   let launchedOn: string | undefined;
   if (launchedOnRaw !== undefined) {
-    if (!isIsoDate(launchedOnRaw)) errors.push("Launch date must be YYYY-MM-DD.");
+    if (!isIsoDate(launchedOnRaw))
+      errors.push("Launch date must be YYYY-MM-DD.");
     else launchedOn = launchedOnRaw;
   }
 
@@ -476,7 +511,8 @@ function validateGroupWritablePayload(
   if (locationArea !== undefined) value.location_area = locationArea;
   if (addressOptional !== undefined) value.address_optional = addressOptional;
   if (capacity !== undefined) value.capacity = capacity;
-  if (audienceCategory !== undefined) value.audience_category = audienceCategory;
+  if (audienceCategory !== undefined)
+    value.audience_category = audienceCategory;
   if (lifeStage !== undefined) value.life_stage = lifeStage;
   if (launchedOn !== undefined) value.launched_on = launchedOn;
   return { ok: true, value };
@@ -485,7 +521,7 @@ function validateGroupWritablePayload(
 export type CreateGroupPayload = GroupWritablePayload;
 
 export function validateCreateGroupPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateGroupPayload> {
   return validateGroupWritablePayload(input);
 }
@@ -493,26 +529,36 @@ export function validateCreateGroupPayload(
 export type UpdateGroupPayload = GroupWritablePayload & { group_id: string };
 
 export function validateUpdateGroupPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateGroupPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.group_id)) return { ok: false, errors: ["group_id must be a uuid"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.group_id))
+    return { ok: false, errors: ["group_id must be a uuid"] };
   const inner = validateGroupWritablePayload(input);
   if (!inner.ok) return inner;
   return {
     ok: true,
-    value: { ...inner.value, group_id: normalizeUuid(input.group_id as string) },
+    value: {
+      ...inner.value,
+      group_id: normalizeUuid(input.group_id as string),
+    },
   };
 }
 
 export type GroupIdPayload = { group_id: string };
 
 export function validateGroupIdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<GroupIdPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.group_id)) return { ok: false, errors: ["group_id must be a uuid"] };
-  return { ok: true, value: { group_id: normalizeUuid(input.group_id as string) } };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.group_id))
+    return { ok: false, errors: ["group_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string) },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -557,7 +603,8 @@ function readOptionalBoolean(value: unknown): boolean | undefined | "invalid" {
     const trimmed = value.trim().toLowerCase();
     if (trimmed === "") return undefined;
     if (trimmed === "true" || trimmed === "on" || trimmed === "1") return true;
-    if (trimmed === "false" || trimmed === "off" || trimmed === "0") return false;
+    if (trimmed === "false" || trimmed === "off" || trimmed === "0")
+      return false;
     return "invalid";
   }
   return "invalid";
@@ -593,10 +640,11 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 export function validateMetricDefaultsPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<MetricDefaultsPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   // Reject keys outside the whitelist so the UI surfaces typos.
   for (const key of Object.keys(input)) {
@@ -615,7 +663,8 @@ export function validateMetricDefaultsPayload(
       value.default_group_capacity = null;
     } else {
       const n = readOptionalInteger(raw);
-      if (n === "invalid") errors.push("Default capacity must be a whole number.");
+      if (n === "invalid")
+        errors.push("Default capacity must be a whole number.");
       else if (n !== undefined && (n < 1 || n > 500))
         errors.push("Default capacity must be between 1 and 500.");
       else if (n !== undefined) value.default_group_capacity = n;
@@ -624,7 +673,8 @@ export function validateMetricDefaultsPayload(
 
   if ("capacity_warning_threshold_pct" in input) {
     const n = readOptionalInteger(input.capacity_warning_threshold_pct);
-    if (n === "invalid") errors.push("Capacity warning % must be a whole number.");
+    if (n === "invalid")
+      errors.push("Capacity warning % must be a whole number.");
     else if (n !== undefined && (n < 0 || n > 300))
       errors.push("Capacity warning % must be between 0 and 300.");
     else if (n !== undefined) value.capacity_warning_threshold_pct = n;
@@ -640,7 +690,8 @@ export function validateMetricDefaultsPayload(
 
   if ("check_in_due_day_of_week" in input) {
     const n = readOptionalInteger(input.check_in_due_day_of_week);
-    if (n === "invalid") errors.push("Check-in due day must be a whole number 0-6.");
+    if (n === "invalid")
+      errors.push("Check-in due day must be a whole number 0-6.");
     else if (n !== undefined && (n < 0 || n > 6))
       errors.push("Check-in due day must be 0 (Sunday) through 6 (Saturday).");
     else if (n !== undefined) value.check_in_due_day_of_week = n;
@@ -648,7 +699,8 @@ export function validateMetricDefaultsPayload(
 
   if ("missed_checkin_warning_weeks" in input) {
     const n = readOptionalInteger(input.missed_checkin_warning_weeks);
-    if (n === "invalid") errors.push("Missed check-in warning weeks must be a whole number.");
+    if (n === "invalid")
+      errors.push("Missed check-in warning weeks must be a whole number.");
     else if (n !== undefined && (n < 1 || n > 12))
       errors.push("Missed check-in warning weeks must be between 1 and 12.");
     else if (n !== undefined) value.missed_checkin_warning_weeks = n;
@@ -656,7 +708,8 @@ export function validateMetricDefaultsPayload(
 
   if ("default_healthy_attendance_pct" in input) {
     const n = readOptionalInteger(input.default_healthy_attendance_pct);
-    if (n === "invalid") errors.push("Healthy attendance % must be a whole number.");
+    if (n === "invalid")
+      errors.push("Healthy attendance % must be a whole number.");
     else if (n !== undefined && (n < 0 || n > 100))
       errors.push("Healthy attendance % must be between 0 and 100.");
     else if (n !== undefined) value.default_healthy_attendance_pct = n;
@@ -667,16 +720,22 @@ export function validateMetricDefaultsPayload(
     if (n === "invalid")
       errors.push("Check-in due offset hours must be a whole number.");
     else if (n !== undefined && (n < 0 || n > 336))
-      errors.push("Check-in due offset hours must be between 0 and 336 (14 days).");
+      errors.push(
+        "Check-in due offset hours must be between 0 and 336 (14 days)."
+      );
     else if (n !== undefined) value.check_in_due_offset_hours = n;
   }
 
   if ("shepherd_care_stale_days_direct" in input) {
     const n = readOptionalInteger(input.shepherd_care_stale_days_direct);
     if (n === "invalid")
-      errors.push("Directly-overseen stale-contact days must be a whole number.");
+      errors.push(
+        "Directly-overseen stale-contact days must be a whole number."
+      );
     else if (n !== undefined && (n < 7 || n > 365))
-      errors.push("Directly-overseen stale-contact days must be between 7 and 365.");
+      errors.push(
+        "Directly-overseen stale-contact days must be between 7 and 365."
+      );
     else if (n !== undefined) value.shepherd_care_stale_days_direct = n;
   }
 
@@ -700,8 +759,14 @@ export function validateMetricDefaultsPayload(
     value.capacity_warning_threshold_pct !== undefined
       ? value.capacity_warning_threshold_pct
       : undefined;
-  if (stagedFull !== undefined && stagedWarning !== undefined && stagedFull < stagedWarning) {
-    errors.push("Capacity full % must be greater than or equal to capacity warning %.");
+  if (
+    stagedFull !== undefined &&
+    stagedWarning !== undefined &&
+    stagedFull < stagedWarning
+  ) {
+    errors.push(
+      "Capacity full % must be greater than or equal to capacity warning %."
+    );
   }
 
   if (errors.length > 0) return { ok: false, errors };
@@ -720,11 +785,45 @@ export type GroupMetricSettingsPayload = {
   allow_over_capacity: boolean;
 };
 
+// Phase SAC.1 (#159): Super Admin Console platform-config write payload. The
+// foundation slice carries a single editable key — the round-trip tracer — and
+// an empty string is a valid value (clearing the note), so unlike most optional
+// fields we keep "" rather than normalizing it away.
+export type PlatformConfigPayload = {
+  console_tracer_note: string;
+};
+
+export function validatePlatformConfigPayload(
+  input: unknown
+): ValidationResult<PlatformConfigPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const raw = input.console_tracer_note;
+  // A missing field is treated as the empty (cleared) note; a non-string,
+  // non-null value is a malformed submission.
+  const note = typeof raw === "string" ? raw : raw == null ? "" : null;
+  if (note === null) {
+    return { ok: false, errors: ["Tracer note must be text."] };
+  }
+  if (note.length > APP_CONFIG_TRACER_MAX_LENGTH) {
+    return {
+      ok: false,
+      errors: [
+        `Tracer note must be ${APP_CONFIG_TRACER_MAX_LENGTH} characters or fewer.`,
+      ],
+    };
+  }
+
+  return { ok: true, value: { console_tracer_note: note } };
+}
+
 export function validateGroupMetricSettingsPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<GroupMetricSettingsPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
 
@@ -735,7 +834,8 @@ export function validateGroupMetricSettingsPayload(
       capacityOverride = null;
     } else {
       const n = readOptionalInteger(raw);
-      if (n === "invalid") errors.push("Capacity override must be a whole number.");
+      if (n === "invalid")
+        errors.push("Capacity override must be a whole number.");
       else if (n === undefined) capacityOverride = null;
       else if (n < 1 || n > 500)
         errors.push("Capacity override must be between 1 and 500.");
@@ -787,7 +887,7 @@ export function validateGroupMetricSettingsPayload(
       else if (n === undefined) checkInOffsetOverride = null;
       else if (n < 0 || n > 336)
         errors.push(
-          "Check-in due offset override must be between 0 and 336 (14 days).",
+          "Check-in due offset override must be between 0 and 336 (14 days)."
         );
       else checkInOffsetOverride = n;
     }
@@ -808,14 +908,16 @@ export function validateGroupMetricSettingsPayload(
   let excludeFromCapacity = false;
   {
     const raw = readOptionalBoolean(input.exclude_from_capacity_metrics);
-    if (raw === "invalid") errors.push("Exclude from capacity must be true or false.");
+    if (raw === "invalid")
+      errors.push("Exclude from capacity must be true or false.");
     else if (raw !== undefined) excludeFromCapacity = raw;
   }
 
   let allowOverCapacity = false;
   {
     const raw = readOptionalBoolean(input.allow_over_capacity);
-    if (raw === "invalid") errors.push("Keep open past capacity must be true or false.");
+    if (raw === "invalid")
+      errors.push("Keep open past capacity must be true or false.");
     else if (raw !== undefined) allowOverCapacity = raw;
   }
 
@@ -823,7 +925,8 @@ export function validateGroupMetricSettingsPayload(
   {
     const raw = readOptionalString(input.admin_metric_notes);
     if (raw === undefined) notes = null;
-    else if (raw.length > 1000) errors.push("Notes are too long (max 1000 characters).");
+    else if (raw.length > 1000)
+      errors.push("Notes are too long (max 1000 characters).");
     else notes = raw;
   }
 
@@ -859,10 +962,11 @@ export type GroupHealthRatingsPayload = {
 };
 
 export function validateGroupHealthRatingsPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<GroupHealthRatingsPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
 
@@ -881,8 +985,14 @@ export function validateGroupHealthRatingsPayload(
     return n;
   };
 
-  const spiritualScore = readRating(input.spiritual_growth_score, "Spiritual-growth");
-  const questionScore = readRating(input.group_question_score, "Group-question");
+  const spiritualScore = readRating(
+    input.spiritual_growth_score,
+    "Spiritual-growth"
+  );
+  const questionScore = readRating(
+    input.group_question_score,
+    "Group-question"
+  );
 
   const noteRaw = readOptionalString(input.spiritual_growth_note);
   let note: string | null = null;
@@ -917,10 +1027,11 @@ export type ChangeLeaderRolePayload = {
 };
 
 export function validateChangeLeaderRolePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<ChangeLeaderRolePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.profile_id)) errors.push("profile_id must be a uuid");
   if (input.new_role !== "leader" && input.new_role !== "co_leader") {
     errors.push("new_role must be 'leader' or 'co_leader'");
@@ -986,23 +1097,36 @@ function isIsoDate(value: string): boolean {
 }
 
 function isPipelineStage(value: unknown): value is GuestPipelineStage {
-  return typeof value === "string" && GUEST_PIPELINE_STAGES.has(value as GuestPipelineStage);
+  return (
+    typeof value === "string" &&
+    GUEST_PIPELINE_STAGES.has(value as GuestPipelineStage)
+  );
 }
 
 function isFollowUpType(value: unknown): value is FollowUpType {
-  return typeof value === "string" && FOLLOW_UP_TYPES.has(value as FollowUpType);
+  return (
+    typeof value === "string" && FOLLOW_UP_TYPES.has(value as FollowUpType)
+  );
 }
 
 function isFollowUpPriority(value: unknown): value is FollowUpPriority {
-  return typeof value === "string" && FOLLOW_UP_PRIORITIES.has(value as FollowUpPriority);
+  return (
+    typeof value === "string" &&
+    FOLLOW_UP_PRIORITIES.has(value as FollowUpPriority)
+  );
 }
 
 function isFollowUpStatus(value: unknown): value is FollowUpStatus {
-  return typeof value === "string" && FOLLOW_UP_STATUSES.has(value as FollowUpStatus);
+  return (
+    typeof value === "string" && FOLLOW_UP_STATUSES.has(value as FollowUpStatus)
+  );
 }
 
 function isLeaderFollowUpStatus(value: unknown): value is FollowUpStatus {
-  return typeof value === "string" && LEADER_FOLLOW_UP_STATUSES.has(value as FollowUpStatus);
+  return (
+    typeof value === "string" &&
+    LEADER_FOLLOW_UP_STATUSES.has(value as FollowUpStatus)
+  );
 }
 
 // HTML forms post boolean fields as "true" / "false" / "on" / "1" / "0".
@@ -1031,27 +1155,32 @@ export type CreateGuestPayload = {
 };
 
 export function validateCreateGuestPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateGuestPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const fullName = trimString(input.full_name) ?? "";
   const email = readOptionalString(input.email);
   const phone = readOptionalString(input.phone);
-  const firstAttendedGroupId = readOptionalString(input.first_attended_group_id);
+  const firstAttendedGroupId = readOptionalString(
+    input.first_attended_group_id
+  );
   const firstAttendedDate = readOptionalString(input.first_attended_date);
   const assignedGroupId = readOptionalString(input.assigned_group_id);
   const followUpOwnerId = readOptionalString(input.follow_up_owner_id);
   const notes = readOptionalString(input.notes);
   const rawStage = readOptionalString(input.pipeline_stage);
-  const stage: GuestPipelineStage = rawStage !== undefined
-    ? (rawStage as GuestPipelineStage)
-    : "new";
+  const stage: GuestPipelineStage =
+    rawStage !== undefined ? (rawStage as GuestPipelineStage) : "new";
 
   if (fullName.length === 0) errors.push("Guest name is required.");
-  if (fullName.length > 120) errors.push("Guest name is too long (max 120 characters).");
-  if (email !== undefined && !isEmail(email)) errors.push("Email must be a valid address.");
-  if (phone !== undefined && !isPhone(phone)) errors.push("Phone format is invalid.");
+  if (fullName.length > 120)
+    errors.push("Guest name is too long (max 120 characters).");
+  if (email !== undefined && !isEmail(email))
+    errors.push("Email must be a valid address.");
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("Phone format is invalid.");
   if (firstAttendedGroupId !== undefined && !isUuid(firstAttendedGroupId)) {
     errors.push("First-attended group is invalid.");
   }
@@ -1084,8 +1213,12 @@ export function validateCreateGuestPayload(
         : null,
       first_attended_date: firstAttendedDate ?? null,
       pipeline_stage: stage,
-      assigned_group_id: assignedGroupId ? normalizeUuid(assignedGroupId) : null,
-      follow_up_owner_id: followUpOwnerId ? normalizeUuid(followUpOwnerId) : null,
+      assigned_group_id: assignedGroupId
+        ? normalizeUuid(assignedGroupId)
+        : null,
+      follow_up_owner_id: followUpOwnerId
+        ? normalizeUuid(followUpOwnerId)
+        : null,
       notes: notes ?? null,
     },
   };
@@ -1103,10 +1236,11 @@ export type UpdateGuestPipelinePayload = {
 };
 
 export function validateUpdateGuestPipelinePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateGuestPipelinePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.guest_id)) errors.push("guest_id must be a uuid");
   if (!isPipelineStage(input.pipeline_stage)) {
@@ -1139,11 +1273,12 @@ export function validateUpdateGuestPipelinePayload(
       guest_id: normalizeUuid(input.guest_id as string),
       pipeline_stage: input.pipeline_stage as GuestPipelineStage,
       set_assigned_group_id: setAssigned,
-      assigned_group_id: setAssigned && assignedRaw ? normalizeUuid(assignedRaw) : null,
+      assigned_group_id:
+        setAssigned && assignedRaw ? normalizeUuid(assignedRaw) : null,
       set_follow_up_owner_id: setOwner,
       follow_up_owner_id: setOwner && ownerRaw ? normalizeUuid(ownerRaw) : null,
       set_notes: setNotes,
-      notes: setNotes ? notesRaw ?? null : null,
+      notes: setNotes ? (notesRaw ?? null) : null,
     },
   };
 }
@@ -1162,14 +1297,16 @@ export type CreateFollowUpPayload = {
 };
 
 export function validateCreateFollowUpPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateFollowUpPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   const title = trimString(input.title) ?? "";
   if (title.length === 0) errors.push("Title is required.");
-  if (title.length > 200) errors.push("Title is too long (max 200 characters).");
+  if (title.length > 200)
+    errors.push("Title is too long (max 200 characters).");
 
   if (!isFollowUpType(input.type)) errors.push("Type isn't a valid value.");
   const priority: FollowUpPriority = isFollowUpPriority(input.priority)
@@ -1184,9 +1321,12 @@ export function validateCreateFollowUpPayload(
   const leaderNote = readOptionalString(input.leader_visible_note);
   const adminNote = readOptionalString(input.admin_private_note);
 
-  if (group !== undefined && !isUuid(group)) errors.push("Related group is invalid.");
-  if (member !== undefined && !isUuid(member)) errors.push("Related member is invalid.");
-  if (guest !== undefined && !isUuid(guest)) errors.push("Related guest is invalid.");
+  if (group !== undefined && !isUuid(group))
+    errors.push("Related group is invalid.");
+  if (member !== undefined && !isUuid(member))
+    errors.push("Related member is invalid.");
+  if (guest !== undefined && !isUuid(guest))
+    errors.push("Related guest is invalid.");
   if (assignedTo !== undefined && !isUuid(assignedTo))
     errors.push("Assigned-to is invalid.");
   if (dueDate !== undefined && !isIsoDate(dueDate))
@@ -1225,13 +1365,15 @@ export type AdminUpdateFollowUpStatusPayload = {
 };
 
 export function validateAdminUpdateFollowUpStatusPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<AdminUpdateFollowUpStatusPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
-  if (!isFollowUpStatus(input.status)) errors.push("Status isn't a valid value.");
+  if (!isFollowUpStatus(input.status))
+    errors.push("Status isn't a valid value.");
 
   const setLeader = readBooleanFlag(input.set_leader_visible_note);
   const setAdmin = readBooleanFlag(input.set_admin_private_note);
@@ -1251,9 +1393,9 @@ export function validateAdminUpdateFollowUpStatusPayload(
       follow_up_id: normalizeUuid(input.follow_up_id as string),
       status: input.status as FollowUpStatus,
       set_leader_visible_note: setLeader,
-      leader_visible_note: setLeader ? leaderNote ?? null : null,
+      leader_visible_note: setLeader ? (leaderNote ?? null) : null,
       set_admin_private_note: setAdmin,
-      admin_private_note: setAdmin ? adminNote ?? null : null,
+      admin_private_note: setAdmin ? (adminNote ?? null) : null,
     },
   };
 }
@@ -1264,10 +1406,11 @@ export type LeaderUpdateFollowUpStatusPayload = {
 };
 
 export function validateLeaderUpdateFollowUpStatusPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<LeaderUpdateFollowUpStatusPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
   if (!isLeaderFollowUpStatus(input.status))
     errors.push("Leaders can only mark follow-ups in progress or done.");
@@ -1306,10 +1449,11 @@ export type InviteUserPayload = {
 };
 
 export function validateInviteUserPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<InviteUserPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   const fullName = trimString(input.full_name) ?? "";
   const emailRaw = trimString(input.email) ?? "";
@@ -1322,10 +1466,14 @@ export function validateInviteUserPayload(
   if (email.length === 0) errors.push("Email is required.");
   else if (!isEmail(email)) errors.push("Email must be a valid address.");
   if (!INVITE_USER_ROLES.has(role as InviteUserPayload["role"])) {
-    errors.push("Role must be Ministry Admin, Over-Shepherd, Leader, or Co-Leader.");
+    errors.push(
+      "Role must be Ministry Admin, Over-Shepherd, Leader, or Co-Leader."
+    );
   }
-  if (phone !== undefined && !isPhone(phone)) errors.push("Phone format is invalid.");
-  if (groupIdRaw !== undefined && !isUuid(groupIdRaw)) errors.push("Group selection is invalid.");
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("Phone format is invalid.");
+  if (groupIdRaw !== undefined && !isUuid(groupIdRaw))
+    errors.push("Group selection is invalid.");
   // Neither ministry_admin nor over_shepherd is a group leader, so neither
   // takes a group assignment.
   if (
@@ -1335,7 +1483,7 @@ export function validateInviteUserPayload(
     errors.push(
       role === "over_shepherd"
         ? "Over-Shepherds are not assigned to a group."
-        : "Ministry admins are not assigned to a group.",
+        : "Ministry admins are not assigned to a group."
     );
   }
 
@@ -1363,13 +1511,8 @@ const SHEPHERD_CARE_STATUSES: ReadonlySet<ShepherdCareStatus> = new Set([
   "inactive",
 ]);
 
-const SHEPHERD_CARE_INTERACTION_TYPES: ReadonlySet<ShepherdCareInteractionType> = new Set([
-  "call",
-  "text",
-  "in_person",
-  "meeting",
-  "other",
-]);
+const SHEPHERD_CARE_INTERACTION_TYPES: ReadonlySet<ShepherdCareInteractionType> =
+  new Set(["call", "text", "in_person", "meeting", "other"]);
 
 function isShepherdCareStatus(value: unknown): value is ShepherdCareStatus {
   return (
@@ -1379,7 +1522,7 @@ function isShepherdCareStatus(value: unknown): value is ShepherdCareStatus {
 }
 
 function isShepherdCareInteractionType(
-  value: unknown,
+  value: unknown
 ): value is ShepherdCareInteractionType {
   return (
     typeof value === "string" &&
@@ -1391,7 +1534,7 @@ function isShepherdCareInteractionType(
 // future-date guard for an interaction the admin entered moments ago.
 function todayIsoUtc(now: Date = new Date()): string {
   return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   )
     .toISOString()
     .slice(0, 10);
@@ -1414,10 +1557,11 @@ export type UpsertShepherdCareProfilePayload = {
 };
 
 export function validateUpsertShepherdCareProfilePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpsertShepherdCareProfilePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.shepherd_profile_id)) {
     errors.push("shepherd_profile_id must be a uuid");
@@ -1431,7 +1575,7 @@ export function validateUpsertShepherdCareProfilePayload(
   if (setStatus) {
     if (!isShepherdCareStatus(input.current_status)) {
       errors.push(
-        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive.",
+        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive."
       );
     } else {
       status = input.current_status;
@@ -1495,10 +1639,11 @@ export type LogShepherdCareInteractionPayload = {
 
 export function validateLogShepherdCareInteractionPayload(
   input: unknown,
-  options: { todayIso?: string } = {},
+  options: { todayIso?: string } = {}
 ): ValidationResult<LogShepherdCareInteractionPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.shepherd_profile_id)) {
     errors.push("shepherd_profile_id must be a uuid");
@@ -1522,7 +1667,9 @@ export function validateLogShepherdCareInteractionPayload(
   }
 
   if (!isShepherdCareInteractionType(input.interaction_type)) {
-    errors.push("Interaction type must be call, text, in_person, meeting, or other.");
+    errors.push(
+      "Interaction type must be call, text, in_person, meeting, or other."
+    );
   }
 
   const notes = readOptionalString(input.notes);
@@ -1547,7 +1694,7 @@ export function validateLogShepherdCareInteractionPayload(
   if (setStatus) {
     if (!isShepherdCareStatus(input.current_status)) {
       errors.push(
-        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive.",
+        "Status must be doing_well, needs_encouragement, needs_follow_up, concern, or inactive."
       );
     } else {
       status = input.current_status;
@@ -1583,7 +1730,7 @@ const SHEPHERD_CARE_FOLLOW_UP_STATUSES: ReadonlySet<ShepherdCareFollowUpStatus> 
   new Set(["open", "in_progress", "done"]);
 
 function isShepherdCareFollowUpStatusValue(
-  value: unknown,
+  value: unknown
 ): value is ShepherdCareFollowUpStatus {
   return (
     typeof value === "string" &&
@@ -1599,10 +1746,11 @@ export type CreateShepherdCareFollowUpPayload = {
 };
 
 export function validateCreateShepherdCareFollowUpPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateShepherdCareFollowUpPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.care_profile_id)) {
     errors.push("care_profile_id must be a uuid");
@@ -1610,7 +1758,8 @@ export function validateCreateShepherdCareFollowUpPayload(
 
   const title = trimString(input.title) ?? "";
   if (title.length === 0) errors.push("Title is required.");
-  if (title.length > 200) errors.push("Title is too long (max 200 characters).");
+  if (title.length > 200)
+    errors.push("Title is too long (max 200 characters).");
 
   const dueRaw = readOptionalString(input.due_date);
   let dueDate: string | null = null;
@@ -1643,10 +1792,11 @@ export type UpdateShepherdCareFollowUpStatusPayload = {
 };
 
 export function validateUpdateShepherdCareFollowUpStatusPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateShepherdCareFollowUpStatusPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
   if (!isShepherdCareFollowUpStatusValue(input.status)) {
@@ -1674,16 +1824,18 @@ export type UpdateShepherdCareFollowUpPayload = {
 };
 
 export function validateUpdateShepherdCareFollowUpPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateShepherdCareFollowUpPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.follow_up_id)) errors.push("follow_up_id must be a uuid");
 
   const title = trimString(input.title) ?? "";
   if (title.length === 0) errors.push("Title is required.");
-  if (title.length > 200) errors.push("Title is too long (max 200 characters).");
+  if (title.length > 200)
+    errors.push("Title is too long (max 200 characters).");
 
   const setDue = readBooleanFlag(input.set_due_date);
   const setNotes = readBooleanFlag(input.set_notes);
@@ -1710,7 +1862,7 @@ export function validateUpdateShepherdCareFollowUpPayload(
       set_due_date: setDue,
       due_date: setDue ? dueDate : null,
       set_notes: setNotes,
-      notes: setNotes ? notesRaw ?? null : null,
+      notes: setNotes ? (notesRaw ?? null) : null,
     },
   };
 }
@@ -1725,7 +1877,7 @@ const OVER_SHEPHERD_NOTES_MAX = 2000;
 
 function validateOverShepherdCommonFields(
   input: Record<string, unknown>,
-  errors: string[],
+  errors: string[]
 ): {
   full_name: string;
   email: string | null;
@@ -1737,7 +1889,7 @@ function validateOverShepherdCommonFields(
     errors.push("Full name is required.");
   } else if (fullName.length > OVER_SHEPHERD_FULL_NAME_MAX) {
     errors.push(
-      `Full name is too long (max ${OVER_SHEPHERD_FULL_NAME_MAX} characters).`,
+      `Full name is too long (max ${OVER_SHEPHERD_FULL_NAME_MAX} characters).`
     );
   }
 
@@ -1754,7 +1906,7 @@ function validateOverShepherdCommonFields(
   const notes = readOptionalString(input.notes);
   if (notes !== undefined && notes.length > OVER_SHEPHERD_NOTES_MAX) {
     errors.push(
-      `Notes are too long (max ${OVER_SHEPHERD_NOTES_MAX} characters).`,
+      `Notes are too long (max ${OVER_SHEPHERD_NOTES_MAX} characters).`
     );
   }
 
@@ -1774,9 +1926,10 @@ export type CreateOverShepherdPayload = {
 };
 
 export function validateCreateOverShepherdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateOverShepherdPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
   const fields = validateOverShepherdCommonFields(input, errors);
   if (errors.length > 0) return { ok: false, errors };
@@ -1793,9 +1946,10 @@ export type OverShepherdBroadNotePayload = {
 };
 
 export function validateOverShepherdBroadNotePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<OverShepherdBroadNotePayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
 
   if (!isUuid(input.shepherd_profile_id)) {
@@ -1830,9 +1984,10 @@ export type UpdateOverShepherdPayload = {
 };
 
 export function validateUpdateOverShepherdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateOverShepherdPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
 
   if (!isUuid(input.over_shepherd_id)) {
@@ -1862,9 +2017,10 @@ export type AssignShepherdCoveragePayload = {
 
 export function validateAssignShepherdCoveragePayload(
   input: unknown,
-  options: { todayIso?: string } = {},
+  options: { todayIso?: string } = {}
 ): ValidationResult<AssignShepherdCoveragePayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
 
   if (!isUuid(input.shepherd_profile_id)) {
@@ -1909,9 +2065,10 @@ export type EndShepherdCoverageAssignmentPayload = {
 
 export function validateEndShepherdCoverageAssignmentPayload(
   input: unknown,
-  options: { todayIso?: string } = {},
+  options: { todayIso?: string } = {}
 ): ValidationResult<EndShepherdCoverageAssignmentPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
 
   if (!isUuid(input.assignment_id)) {
@@ -2008,10 +2165,11 @@ function isRealIsoDate(value: string): boolean {
 }
 
 export function validateLaunchPlanningAssumptionsPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<LaunchPlanningAssumptionsPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   for (const key of Object.keys(input)) {
     if (!LAUNCH_PLANNING_KEYS.has(key)) {
@@ -2057,7 +2215,9 @@ export function validateLaunchPlanningAssumptionsPayload(
   if ("target_group_participation_pct" in input) {
     const n = readOptionalNumber(input.target_group_participation_pct);
     if (n === "invalid")
-      errors.push("Target group participation % must be a number between 0 and 1.");
+      errors.push(
+        "Target group participation % must be a number between 0 and 1."
+      );
     else if (n !== undefined && (n < 0 || n > 1))
       errors.push("Target group participation % must be between 0 and 1.");
     else if (n !== undefined) value.target_group_participation_pct = n;
@@ -2065,7 +2225,8 @@ export function validateLaunchPlanningAssumptionsPayload(
 
   if ("average_group_size" in input) {
     const n = readOptionalInteger(input.average_group_size);
-    if (n === "invalid") errors.push("Average group size must be a whole number.");
+    if (n === "invalid")
+      errors.push("Average group size must be a whole number.");
     else if (n !== undefined && (n < 1 || n > 500))
       errors.push("Average group size must be between 1 and 500.");
     else if (n !== undefined) value.average_group_size = n;
@@ -2084,7 +2245,8 @@ export function validateLaunchPlanningAssumptionsPayload(
 
   if ("leaders_per_new_group" in input) {
     const n = readOptionalInteger(input.leaders_per_new_group);
-    if (n === "invalid") errors.push("Leaders per new group must be a whole number.");
+    if (n === "invalid")
+      errors.push("Leaders per new group must be a whole number.");
     else if (n !== undefined && (n < 0 || n > 10))
       errors.push("Leaders per new group must be between 0 and 10.");
     else if (n !== undefined) value.leaders_per_new_group = n;
@@ -2127,7 +2289,7 @@ const SCENARIO_DESCRIPTION_MAX = 1000;
 
 function validateScenarioCommon(
   input: Record<string, unknown>,
-  errors: string[],
+  errors: string[]
 ): {
   name: string;
   description: string | null;
@@ -2139,7 +2301,7 @@ function validateScenarioCommon(
     errors.push("Scenario name is required.");
   } else if (name.length > SCENARIO_NAME_MAX) {
     errors.push(
-      `Scenario name is too long (max ${SCENARIO_NAME_MAX} characters).`,
+      `Scenario name is too long (max ${SCENARIO_NAME_MAX} characters).`
     );
   }
 
@@ -2148,7 +2310,7 @@ function validateScenarioCommon(
   if (descriptionRaw !== undefined) {
     if (descriptionRaw.length > SCENARIO_DESCRIPTION_MAX) {
       errors.push(
-        `Description is too long (max ${SCENARIO_DESCRIPTION_MAX} characters).`,
+        `Description is too long (max ${SCENARIO_DESCRIPTION_MAX} characters).`
       );
     } else {
       description = descriptionRaw;
@@ -2159,7 +2321,8 @@ function validateScenarioCommon(
   // match the baseline form's bounds exactly. Bubble up any per-field
   // errors into the scenario payload's error list.
   const assumptionsInput = isRecord(input.assumptions) ? input.assumptions : {};
-  const assumptions = validateLaunchPlanningAssumptionsPayload(assumptionsInput);
+  const assumptions =
+    validateLaunchPlanningAssumptionsPayload(assumptionsInput);
   let value: LaunchPlanningAssumptionsPayload = {};
   if (!assumptions.ok) {
     for (const e of assumptions.errors) errors.push(e);
@@ -2185,9 +2348,10 @@ export type CreateLaunchPlanningScenarioPayload = {
 };
 
 export function validateCreateLaunchPlanningScenarioPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateLaunchPlanningScenarioPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
   const fields = validateScenarioCommon(input, errors);
   if (errors.length > 0) return { ok: false, errors };
@@ -2203,9 +2367,10 @@ export type UpdateLaunchPlanningScenarioPayload = {
 };
 
 export function validateUpdateLaunchPlanningScenarioPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateLaunchPlanningScenarioPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
   if (!isUuid(input.scenario_id)) errors.push("scenario_id must be a uuid");
   const fields = validateScenarioCommon(input, errors);
@@ -2222,9 +2387,10 @@ export function validateUpdateLaunchPlanningScenarioPayload(
 export type ScenarioIdPayload = { scenario_id: string };
 
 export function validateScenarioIdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<ScenarioIdPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.scenario_id))
     return { ok: false, errors: ["scenario_id must be a uuid"] };
   return {
@@ -2244,10 +2410,11 @@ export type RecordChurchAttendancePayload = {
 };
 
 export function validateRecordChurchAttendancePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<RecordChurchAttendancePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   const snapshotDate = trimString(input.snapshot_date) ?? "";
   if (snapshotDate.length === 0) {
@@ -2290,19 +2457,23 @@ export function validateRecordChurchAttendancePayload(
 const MULTIPLICATION_CANDIDATE_STATUSES: ReadonlySet<MultiplicationCandidateStatus> =
   new Set(["watching", "planned", "launched", "deferred"]);
 
-function isMultiplicationStatus(value: unknown): value is MultiplicationCandidateStatus {
+function isMultiplicationStatus(
+  value: unknown
+): value is MultiplicationCandidateStatus {
   return (
     typeof value === "string" &&
-    MULTIPLICATION_CANDIDATE_STATUSES.has(value as MultiplicationCandidateStatus)
+    MULTIPLICATION_CANDIDATE_STATUSES.has(
+      value as MultiplicationCandidateStatus
+    )
   );
 }
 
-const MULTIPLICATION_MEETING_TIMES: ReadonlySet<MultiplicationMeetingTime> = new Set([
-  "during_the_day",
-  "evening",
-]);
+const MULTIPLICATION_MEETING_TIMES: ReadonlySet<MultiplicationMeetingTime> =
+  new Set(["during_the_day", "evening"]);
 
-function isMultiplicationMeetingTime(value: unknown): value is MultiplicationMeetingTime {
+function isMultiplicationMeetingTime(
+  value: unknown
+): value is MultiplicationMeetingTime {
   return (
     typeof value === "string" &&
     MULTIPLICATION_MEETING_TIMES.has(value as MultiplicationMeetingTime)
@@ -2328,7 +2499,7 @@ type MultiplicationCandidateFields = {
 
 function validateMultiplicationCandidateFields(
   input: Record<string, unknown>,
-  errors: string[],
+  errors: string[]
 ): MultiplicationCandidateFields {
   let targetYear: number | null = null;
   const yearRaw = readOptionalString(input.target_year);
@@ -2344,7 +2515,11 @@ function validateMultiplicationCandidateFields(
   }
 
   let status: MultiplicationCandidateStatus = "watching";
-  if (input.status !== undefined && input.status !== null && input.status !== "") {
+  if (
+    input.status !== undefined &&
+    input.status !== null &&
+    input.status !== ""
+  ) {
     if (!isMultiplicationStatus(input.status)) {
       errors.push("Status must be watching, planned, launched, or deferred.");
     } else {
@@ -2358,9 +2533,12 @@ function validateMultiplicationCandidateFields(
   }
 
   const successor = readOptionalString(input.successor_designate);
-  if (successor !== undefined && successor.length > MULTIPLICATION_SUCCESSOR_MAX) {
+  if (
+    successor !== undefined &&
+    successor.length > MULTIPLICATION_SUCCESSOR_MAX
+  ) {
     errors.push(
-      `Successor / leader-designate is too long (max ${MULTIPLICATION_SUCCESSOR_MAX} characters).`,
+      `Successor / leader-designate is too long (max ${MULTIPLICATION_SUCCESSOR_MAX} characters).`
     );
   }
 
@@ -2385,14 +2563,16 @@ function validateMultiplicationCandidateFields(
   };
 }
 
-export type CreateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
-  group_id: string;
-};
+export type CreateMultiplicationCandidatePayload =
+  MultiplicationCandidateFields & {
+    group_id: string;
+  };
 
 export function validateCreateMultiplicationCandidatePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CreateMultiplicationCandidatePayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
   if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
   const fields = validateMultiplicationCandidateFields(input, errors);
@@ -2403,30 +2583,36 @@ export function validateCreateMultiplicationCandidatePayload(
   };
 }
 
-export type UpdateMultiplicationCandidatePayload = MultiplicationCandidateFields & {
-  candidate_id: string;
-};
+export type UpdateMultiplicationCandidatePayload =
+  MultiplicationCandidateFields & {
+    candidate_id: string;
+  };
 
 export function validateUpdateMultiplicationCandidatePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpdateMultiplicationCandidatePayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
   if (!isUuid(input.candidate_id)) errors.push("candidate_id must be a uuid");
   const fields = validateMultiplicationCandidateFields(input, errors);
   if (errors.length > 0) return { ok: false, errors };
   return {
     ok: true,
-    value: { candidate_id: normalizeUuid(input.candidate_id as string), ...fields },
+    value: {
+      candidate_id: normalizeUuid(input.candidate_id as string),
+      ...fields,
+    },
   };
 }
 
 export type CandidateIdPayload = { candidate_id: string };
 
 export function validateCandidateIdPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<CandidateIdPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
   if (!isUuid(input.candidate_id))
     return { ok: false, errors: ["candidate_id must be a uuid"] };
   return {
@@ -2463,17 +2649,20 @@ export type UpsertShepherdCarePrivateNotePayload = {
 };
 
 export function validateUpsertShepherdCarePrivateNotePayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<UpsertShepherdCarePrivateNotePayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (!isUuid(input.care_profile_id)) {
     errors.push("care_profile_id must be a uuid");
   }
 
   const dekVersion =
-    typeof input.dek_version === "number" ? input.dek_version : Number(input.dek_version);
+    typeof input.dek_version === "number"
+      ? input.dek_version
+      : Number(input.dek_version);
   if (!Number.isInteger(dekVersion) || dekVersion < 1 || dekVersion > 32767) {
     errors.push("dek_version must be a positive smallint.");
   }
@@ -2544,7 +2733,11 @@ function isBase64OfLength(value: string, bytes: number): boolean {
   return base64ToBytes(value).length === bytes;
 }
 
-function validateKeySlot(raw: unknown, index: number, errors: string[]): PrivateNoteKeySlotInput | null {
+function validateKeySlot(
+  raw: unknown,
+  index: number,
+  errors: string[]
+): PrivateNoteKeySlotInput | null {
   if (!isRecord(raw)) {
     errors.push(`Key slot ${index} is malformed.`);
     return null;
@@ -2554,7 +2747,11 @@ function validateKeySlot(raw: unknown, index: number, errors: string[]): Private
     errors.push(`Key slot ${index} has an unknown type.`);
     return null;
   }
-  if (!isBase64Blob(raw.hkdf_salt) || !isBase64Blob(raw.wrapped_dek) || !isBase64Blob(raw.wrap_iv)) {
+  if (
+    !isBase64Blob(raw.hkdf_salt) ||
+    !isBase64Blob(raw.wrapped_dek) ||
+    !isBase64Blob(raw.wrap_iv)
+  ) {
     errors.push(`Key slot ${index} is missing wrapped-key material.`);
     return null;
   }
@@ -2563,14 +2760,19 @@ function validateKeySlot(raw: unknown, index: number, errors: string[]): Private
     !isBase64OfLength(raw.wrap_iv, WRAP_IV_BYTES) ||
     !isBase64OfLength(raw.wrapped_dek, WRAPPED_DEK_BYTES)
   ) {
-    errors.push(`Key slot ${index} has wrapped-key material of the wrong size.`);
+    errors.push(
+      `Key slot ${index} has wrapped-key material of the wrong size.`
+    );
     return null;
   }
   if (!isOptionalBase64(raw.credential_id) || !isOptionalBase64(raw.prf_salt)) {
     errors.push(`Key slot ${index} has malformed passkey material.`);
     return null;
   }
-  if (typeof raw.prf_salt === "string" && !isBase64OfLength(raw.prf_salt, PRF_SALT_BYTES)) {
+  if (
+    typeof raw.prf_salt === "string" &&
+    !isBase64OfLength(raw.prf_salt, PRF_SALT_BYTES)
+  ) {
     errors.push(`Key slot ${index} has a PRF salt of the wrong size.`);
     return null;
   }
@@ -2583,7 +2785,8 @@ function validateKeySlot(raw: unknown, index: number, errors: string[]): Private
   }
   return {
     slot_type: slotType,
-    credential_id: typeof raw.credential_id === "string" ? raw.credential_id : null,
+    credential_id:
+      typeof raw.credential_id === "string" ? raw.credential_id : null,
     label: readOptionalString(raw.label) ?? null,
     prf_salt: typeof raw.prf_salt === "string" ? raw.prf_salt : null,
     hkdf_salt: raw.hkdf_salt,
@@ -2593,13 +2796,16 @@ function validateKeySlot(raw: unknown, index: number, errors: string[]): Private
 }
 
 export function validateEnrollPrivateNoteKeysPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<EnrollPrivateNoteKeysPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   const dekVersion =
-    typeof input.dek_version === "number" ? input.dek_version : Number(input.dek_version);
+    typeof input.dek_version === "number"
+      ? input.dek_version
+      : Number(input.dek_version);
   if (!Number.isInteger(dekVersion) || dekVersion < 1 || dekVersion > 32767) {
     errors.push("dek_version must be a positive smallint.");
   }
@@ -2642,10 +2848,11 @@ export type AddPrivateNoteKeySlotPayload = {
 // Adds a passkey slot (recovery is rotated, not added). Reuses the fixed-length
 // rules from the enroll validator.
 export function validateAddPrivateNoteKeySlotPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<AddPrivateNoteKeySlotPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
   if (
     !isBase64Blob(input.credential_id) ||
@@ -2653,16 +2860,28 @@ export function validateAddPrivateNoteKeySlotPayload(
   ) {
     errors.push("Passkey credential id is missing or malformed.");
   }
-  if (!isBase64Blob(input.prf_salt) || !isBase64OfLength(input.prf_salt, PRF_SALT_BYTES)) {
+  if (
+    !isBase64Blob(input.prf_salt) ||
+    !isBase64OfLength(input.prf_salt, PRF_SALT_BYTES)
+  ) {
     errors.push("Passkey PRF salt is missing or the wrong size.");
   }
-  if (!isBase64Blob(input.hkdf_salt) || !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)) {
+  if (
+    !isBase64Blob(input.hkdf_salt) ||
+    !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)
+  ) {
     errors.push("HKDF salt is missing or the wrong size.");
   }
-  if (!isBase64Blob(input.wrapped_dek) || !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)) {
+  if (
+    !isBase64Blob(input.wrapped_dek) ||
+    !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)
+  ) {
     errors.push("Wrapped key is missing or the wrong size.");
   }
-  if (!isBase64Blob(input.wrap_iv) || !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)) {
+  if (
+    !isBase64Blob(input.wrap_iv) ||
+    !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)
+  ) {
     errors.push("Wrap nonce is missing or the wrong size.");
   }
 
@@ -2689,18 +2908,28 @@ export type RotatePrivateNoteRecoveryPayload = {
 };
 
 export function validateRotatePrivateNoteRecoveryPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<RotatePrivateNoteRecoveryPayload> {
   const errors: string[] = [];
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
 
-  if (!isBase64Blob(input.hkdf_salt) || !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)) {
+  if (
+    !isBase64Blob(input.hkdf_salt) ||
+    !isBase64OfLength(input.hkdf_salt, HKDF_SALT_BYTES)
+  ) {
     errors.push("HKDF salt is missing or the wrong size.");
   }
-  if (!isBase64Blob(input.wrapped_dek) || !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)) {
+  if (
+    !isBase64Blob(input.wrapped_dek) ||
+    !isBase64OfLength(input.wrapped_dek, WRAPPED_DEK_BYTES)
+  ) {
     errors.push("Wrapped key is missing or the wrong size.");
   }
-  if (!isBase64Blob(input.wrap_iv) || !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)) {
+  if (
+    !isBase64Blob(input.wrap_iv) ||
+    !isBase64OfLength(input.wrap_iv, WRAP_IV_BYTES)
+  ) {
     errors.push("Wrap nonce is missing or the wrong size.");
   }
 
@@ -2722,9 +2951,14 @@ export type RemovePrivateNoteKeySlotPayload = {
 };
 
 export function validateRemovePrivateNoteKeySlotPayload(
-  input: unknown,
+  input: unknown
 ): ValidationResult<RemovePrivateNoteKeySlotPayload> {
-  if (!isRecord(input)) return { ok: false, errors: ["payload must be an object"] };
-  if (!isUuid(input.slot_id)) return { ok: false, errors: ["slot_id must be a uuid"] };
-  return { ok: true, value: { slot_id: normalizeUuid(input.slot_id as string) } };
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.slot_id))
+    return { ok: false, errors: ["slot_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { slot_id: normalizeUuid(input.slot_id as string) },
+  };
 }

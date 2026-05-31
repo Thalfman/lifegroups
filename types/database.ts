@@ -1,4 +1,4 @@
-import type * as E from './enums';
+import type * as E from "./enums";
 
 type UUID = string;
 type Timestamp = string;
@@ -183,6 +183,17 @@ export interface AppSettingsRow {
   updated_at: Timestamp;
 }
 
+// Phase SAC.1 (#159): Super-Admin-only platform config (feature flags + editable
+// copy). Mirrors the AppSettingsRow keyed-row shape but lives in its own table
+// with Super-Admin-only RLS, so the Ministry Admin can never read it.
+export interface PlatformConfigRow {
+  id: UUID;
+  setting_key: string;
+  setting_value: Record<string, unknown>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface GroupMetricSettingsRow {
   group_id: UUID;
   capacity_override: number | null;
@@ -358,87 +369,111 @@ export interface LaunchPlanningScenariosRow {
   updated_at: Timestamp;
 }
 
-type InsertOf<Row, Auto extends keyof Row, Optional extends keyof Row = never> =
-  Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
+type InsertOf<
+  Row,
+  Auto extends keyof Row,
+  Optional extends keyof Row = never,
+> = Omit<Row, Auto | Optional> & Partial<Pick<Row, Auto | Optional>>;
 
 export interface Database {
   public: {
     Tables: {
       profiles: {
         Row: ProfilesRow;
-        Insert: InsertOf<ProfilesRow, 'id' | 'created_at' | 'updated_at'>;
+        Insert: InsertOf<ProfilesRow, "id" | "created_at" | "updated_at">;
         Update: Partial<ProfilesRow>;
         Relationships: [];
       };
       groups: {
         Row: GroupsRow;
-        Insert: InsertOf<GroupsRow, 'id' | 'created_at' | 'updated_at' | 'closed_at'>;
+        Insert: InsertOf<
+          GroupsRow,
+          "id" | "created_at" | "updated_at" | "closed_at"
+        >;
         Update: Partial<GroupsRow>;
         Relationships: [];
       };
       group_leaders: {
         Row: GroupLeadersRow;
-        Insert: InsertOf<GroupLeadersRow, 'id' | 'created_at' | 'assigned_at' | 'active'>;
+        Insert: InsertOf<
+          GroupLeadersRow,
+          "id" | "created_at" | "assigned_at" | "active"
+        >;
         Update: Partial<GroupLeadersRow>;
         Relationships: [];
       };
       members: {
         Row: MembersRow;
-        Insert: InsertOf<MembersRow, 'id' | 'created_at' | 'updated_at'>;
+        Insert: InsertOf<MembersRow, "id" | "created_at" | "updated_at">;
         Update: Partial<MembersRow>;
         Relationships: [];
       };
       group_memberships: {
         Row: GroupMembershipsRow;
-        Insert: InsertOf<GroupMembershipsRow, 'id' | 'created_at' | 'joined_at' | 'ended_at'>;
+        Insert: InsertOf<
+          GroupMembershipsRow,
+          "id" | "created_at" | "joined_at" | "ended_at"
+        >;
         Update: Partial<GroupMembershipsRow>;
         Relationships: [];
       };
       attendance_sessions: {
         Row: AttendanceSessionsRow;
-        Insert: InsertOf<AttendanceSessionsRow, 'id' | 'created_at' | 'updated_at' | 'submitted_by' | 'submitted_at'>;
+        Insert: InsertOf<
+          AttendanceSessionsRow,
+          "id" | "created_at" | "updated_at" | "submitted_by" | "submitted_at"
+        >;
         Update: Partial<AttendanceSessionsRow>;
         Relationships: [];
       };
       attendance_records: {
         Row: AttendanceRecordsRow;
-        Insert: InsertOf<AttendanceRecordsRow, 'id' | 'created_at'>;
+        Insert: InsertOf<AttendanceRecordsRow, "id" | "created_at">;
         Update: Partial<AttendanceRecordsRow>;
         Relationships: [];
       };
       guests: {
         Row: GuestsRow;
-        Insert: InsertOf<GuestsRow, 'id' | 'created_at' | 'updated_at'>;
+        Insert: InsertOf<GuestsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<GuestsRow>;
         Relationships: [];
       };
       follow_ups: {
         Row: FollowUpsRow;
-        Insert: InsertOf<FollowUpsRow, 'id' | 'created_at' | 'updated_at' | 'completed_at'>;
+        Insert: InsertOf<
+          FollowUpsRow,
+          "id" | "created_at" | "updated_at" | "completed_at"
+        >;
         Update: Partial<FollowUpsRow>;
         Relationships: [];
       };
       group_health_updates: {
         Row: GroupHealthUpdatesRow;
-        Insert: InsertOf<GroupHealthUpdatesRow, 'id' | 'created_at'>;
+        Insert: InsertOf<GroupHealthUpdatesRow, "id" | "created_at">;
         Update: Partial<GroupHealthUpdatesRow>;
         Relationships: [];
       };
       audit_events: {
         Row: AuditEventsRow;
-        Insert: InsertOf<AuditEventsRow, 'id' | 'created_at' | 'metadata'>;
+        Insert: InsertOf<AuditEventsRow, "id" | "created_at" | "metadata">;
         Update: Partial<AuditEventsRow>;
         Relationships: [];
       };
       app_settings: {
         Row: AppSettingsRow;
-        Insert: InsertOf<AppSettingsRow, 'id' | 'created_at' | 'updated_at'>;
+        Insert: InsertOf<AppSettingsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<AppSettingsRow>;
+        Relationships: [];
+      };
+      platform_config: {
+        Row: PlatformConfigRow;
+        Insert: InsertOf<PlatformConfigRow, "id" | "created_at" | "updated_at">;
+        Update: Partial<PlatformConfigRow>;
         Relationships: [];
       };
       group_metric_settings: {
         Row: GroupMetricSettingsRow;
-        Insert: InsertOf<GroupMetricSettingsRow, 'created_at' | 'updated_at'>;
+        Insert: InsertOf<GroupMetricSettingsRow, "created_at" | "updated_at">;
         Update: Partial<GroupMetricSettingsRow>;
         Relationships: [];
       };
@@ -446,7 +481,7 @@ export interface Database {
         Row: ChurchAttendanceSnapshotsRow;
         Insert: InsertOf<
           ChurchAttendanceSnapshotsRow,
-          'id' | 'created_at' | 'updated_at' | 'created_by_profile_id' | 'note'
+          "id" | "created_at" | "updated_at" | "created_by_profile_id" | "note"
         >;
         Update: Partial<ChurchAttendanceSnapshotsRow>;
         Relationships: [];
@@ -455,15 +490,15 @@ export interface Database {
         Row: MultiplicationCandidatesRow;
         Insert: InsertOf<
           MultiplicationCandidatesRow,
-          | 'id'
-          | 'created_at'
-          | 'updated_at'
-          | 'archived_at'
-          | 'created_by'
-          | 'updated_by'
-          | 'notes'
-          | 'successor_designate'
-          | 'meeting_time'
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "created_by"
+          | "updated_by"
+          | "notes"
+          | "successor_designate"
+          | "meeting_time"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];
@@ -472,7 +507,12 @@ export interface Database {
         Row: GroupCalendarEventsRow;
         Insert: InsertOf<
           GroupCalendarEventsRow,
-          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'created_by' | 'updated_by'
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "created_by"
+          | "updated_by"
         >;
         Update: Partial<GroupCalendarEventsRow>;
         Relationships: [];
@@ -481,14 +521,14 @@ export interface Database {
         Row: ShepherdCareProfilesRow;
         Insert: InsertOf<
           ShepherdCareProfilesRow,
-          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'current_status'
+          "id" | "created_at" | "updated_at" | "archived_at" | "current_status"
         >;
         Update: Partial<ShepherdCareProfilesRow>;
         Relationships: [];
       };
       shepherd_care_interactions: {
         Row: ShepherdCareInteractionsRow;
-        Insert: InsertOf<ShepherdCareInteractionsRow, 'id' | 'created_at'>;
+        Insert: InsertOf<ShepherdCareInteractionsRow, "id" | "created_at">;
         Update: Partial<ShepherdCareInteractionsRow>;
         Relationships: [];
       };
@@ -496,7 +536,7 @@ export interface Database {
         Row: ShepherdCareFollowUpsRow;
         Insert: InsertOf<
           ShepherdCareFollowUpsRow,
-          'id' | 'created_at' | 'updated_at' | 'completed_at' | 'status'
+          "id" | "created_at" | "updated_at" | "completed_at" | "status"
         >;
         Update: Partial<ShepherdCareFollowUpsRow>;
         Relationships: [];
@@ -505,7 +545,7 @@ export interface Database {
         Row: ShepherdCarePrivateNotesRow;
         Insert: InsertOf<
           ShepherdCarePrivateNotesRow,
-          'id' | 'created_at' | 'updated_at' | 'dek_version'
+          "id" | "created_at" | "updated_at" | "dek_version"
         >;
         Update: Partial<ShepherdCarePrivateNotesRow>;
         Relationships: [];
@@ -514,7 +554,7 @@ export interface Database {
         Row: ShepherdCareNoteKeySlotsRow;
         Insert: InsertOf<
           ShepherdCareNoteKeySlotsRow,
-          'id' | 'created_at' | 'dek_version'
+          "id" | "created_at" | "dek_version"
         >;
         Update: Partial<ShepherdCareNoteKeySlotsRow>;
         Relationships: [];
@@ -523,7 +563,7 @@ export interface Database {
         Row: OverShepherdsRow;
         Insert: InsertOf<
           OverShepherdsRow,
-          'id' | 'created_at' | 'updated_at' | 'archived_at' | 'active'
+          "id" | "created_at" | "updated_at" | "archived_at" | "active"
         >;
         Update: Partial<OverShepherdsRow>;
         Relationships: [];
@@ -532,7 +572,12 @@ export interface Database {
         Row: ShepherdCoverageAssignmentsRow;
         Insert: InsertOf<
           ShepherdCoverageAssignmentsRow,
-          'id' | 'created_at' | 'updated_at' | 'ended_at' | 'active' | 'assigned_at'
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "ended_at"
+          | "active"
+          | "assigned_at"
         >;
         Update: Partial<ShepherdCoverageAssignmentsRow>;
         Relationships: [];
@@ -541,14 +586,14 @@ export interface Database {
         Row: LaunchPlanningScenariosRow;
         Insert: InsertOf<
           LaunchPlanningScenariosRow,
-          | 'id'
-          | 'created_at'
-          | 'updated_at'
-          | 'archived_at'
-          | 'is_current'
-          | 'created_by'
-          | 'updated_by'
-          | 'description'
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "is_current"
+          | "created_by"
+          | "updated_by"
+          | "description"
         >;
         Update: Partial<LaunchPlanningScenariosRow>;
         Relationships: [];
@@ -561,7 +606,11 @@ export interface Database {
         Returns: UUID;
       };
       admin_create_member: {
-        Args: { p_full_name: string; p_email: string | null; p_phone: string | null };
+        Args: {
+          p_full_name: string;
+          p_email: string | null;
+          p_phone: string | null;
+        };
         Returns: UUID;
       };
       admin_assign_leader_to_group: {
@@ -622,11 +671,14 @@ export interface Database {
           p_group_id: UUID;
           p_meeting_week: DateString;
           p_meeting_date: DateString | null;
-          p_status: 'submitted' | 'did_not_meet' | 'planned_pause';
+          p_status: "submitted" | "did_not_meet" | "planned_pause";
           p_leader_note: string | null;
-          p_pulse: 'healthy' | 'watch' | 'needs_follow_up' | null;
+          p_pulse: "healthy" | "watch" | "needs_follow_up" | null;
           p_follow_up_needed: boolean;
-          p_attendance: { member_id: UUID; attendance_status: E.AttendanceStatus }[];
+          p_attendance: {
+            member_id: UUID;
+            attendance_status: E.AttendanceStatus;
+          }[];
         };
         Returns: UUID;
       };
@@ -636,6 +688,10 @@ export interface Database {
       };
       admin_reset_metric_defaults: {
         Args: Record<string, never>;
+        Returns: UUID;
+      };
+      super_admin_set_platform_config: {
+        Args: { p_config: Record<string, unknown> };
         Returns: UUID;
       };
       admin_upsert_group_metric_settings: {

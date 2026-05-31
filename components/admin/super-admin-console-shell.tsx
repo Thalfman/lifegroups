@@ -8,10 +8,12 @@ import {
   type AssignableProfile,
 } from "@/components/admin/forms/role-change-form";
 import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
+import { PlatformConfigTracerForm } from "@/components/admin/forms/platform-config-tracer-form";
 import {
   SystemStatusChecklist,
   type ChecklistRow,
 } from "@/components/admin/system-status-checklist";
+import type { AppConfig } from "@/lib/admin/app-config-decode";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
@@ -37,6 +39,9 @@ export type SuperAdminTestAccountsSummary = {
 export type SuperAdminConsoleData = {
   assignableProfiles: AssignableProfile[];
   inviteUserGroups: { id: string; name: string }[];
+  // Phase SAC.1 (#159): decoded Super-Admin-only platform config, backing the
+  // console's config tracer. Decodes to built-in defaults when unreadable.
+  appConfig: AppConfig;
   auditEvents: AuditEventsRow[];
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
@@ -48,6 +53,7 @@ export type SuperAdminConsoleData = {
     groups: string | null;
     members: string | null;
     leaders: string | null;
+    platformConfig: string | null;
   };
 };
 
@@ -68,8 +74,16 @@ const STATUS_STYLE: Record<
   { background: string; border: string; color: string }
 > = {
   good: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
-  warning: { background: P.mustardSoft, border: P.mustard, color: P.mustardTextStrong },
-  blocked: { background: P.terraSoft, border: P.terra, color: P.terraTextStrong },
+  warning: {
+    background: P.mustardSoft,
+    border: P.mustard,
+    color: P.mustardTextStrong,
+  },
+  blocked: {
+    background: P.terraSoft,
+    border: P.terra,
+    color: P.terraTextStrong,
+  },
   disabled: { background: P.surface, border: P.line, color: P.ink3 },
   active: { background: P.sageSoft, border: P.sage, color: P.sageTextStrong },
   planned: { background: P.surface, border: P.line, color: P.ink2 },
@@ -132,7 +146,9 @@ function CommandCard({
   children?: ReactNode;
 }) {
   return (
-    <div style={{ ...cardStyle, display: "grid", gap: 10, alignContent: "start" }}>
+    <div
+      style={{ ...cardStyle, display: "grid", gap: 10, alignContent: "start" }}
+    >
       <div
         style={{
           display: "flex",
@@ -153,7 +169,9 @@ function CommandCard({
         >
           {title}
         </h3>
-        {status ? <StatusBadge label={status.label} tone={status.tone} /> : null}
+        {status ? (
+          <StatusBadge label={status.label} tone={status.tone} />
+        ) : null}
       </div>
       <p
         style={{
@@ -171,7 +189,13 @@ function CommandCard({
   );
 }
 
-function MetricRow({ label, value }: { label: string; value: string | number }) {
+function MetricRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div
       style={{
@@ -204,7 +228,11 @@ function CommandSection({
 }) {
   return (
     <section id={id} style={{ display: "grid", gap: 18, scrollMarginTop: 20 }}>
-      <SectionHeader eyebrow={eyebrow} title={title} description={description} />
+      <SectionHeader
+        eyebrow={eyebrow}
+        title={title}
+        description={description}
+      />
       {children}
     </section>
   );
@@ -262,8 +290,8 @@ function ErrorBanner() {
         color: P.terraTextStrong,
       }}
     >
-      Some sections could not load. The page below shows what did load; retry in a
-      moment or check the database connection.
+      Some sections could not load. The page below shows what did load; retry in
+      a moment or check the database connection.
     </div>
   );
 }
@@ -278,7 +306,9 @@ export function SuperAdminConsoleShell({
   testAccountsSummary: SuperAdminTestAccountsSummary;
 }) {
   const errorCount = Object.values(data.errors).filter(Boolean).length;
-  const checklistWarningCount = data.checklist.filter((row) => row.tone === "warn").length;
+  const checklistWarningCount = data.checklist.filter(
+    (row) => row.tone === "warn"
+  ).length;
   const readinessTone: StatusTone =
     errorCount > 0 || checklistWarningCount > 0 ? "warning" : "good";
   const readinessLabel = readinessTone === "good" ? "Good" : "Warning";
@@ -319,13 +349,22 @@ export function SuperAdminConsoleShell({
               }}
             >
               <MetricRow label="Active profiles" value={activeProfiles} />
-              <MetricRow label="Eligible role targets" value={data.assignableProfiles.length} />
-              <MetricRow label="Legacy staff_viewer rows" value={legacyStaffViewers} />
+              <MetricRow
+                label="Eligible role targets"
+                value={data.assignableProfiles.length}
+              />
+              <MetricRow
+                label="Legacy staff_viewer rows"
+                value={legacyStaffViewers}
+              />
             </CommandCard>
             <CommandCard
               title="Initial test-account snapshot"
               description={`${testAccountsSummary.description} Live status updates in the Test tools panel below after any action.`}
-              status={{ label: testAccountsSummary.label, tone: testAccountsSummary.tone }}
+              status={{
+                label: testAccountsSummary.label,
+                tone: testAccountsSummary.tone,
+              }}
             />
           </div>
           <OwnerControlsOverview />
@@ -343,7 +382,10 @@ export function SuperAdminConsoleShell({
               description="Read-only counts from the current super-admin data load."
               status={{ label: "Read only", tone: "planned" }}
             >
-              <MetricRow label="Profiles loaded" value={data.profilesById.size} />
+              <MetricRow
+                label="Profiles loaded"
+                value={data.profilesById.size}
+              />
               <MetricRow label="Groups loaded" value={data.groupsById.size} />
               <MetricRow label="Members loaded" value={data.membersById.size} />
             </CommandCard>
@@ -355,7 +397,10 @@ export function SuperAdminConsoleShell({
                 tone: legacyStaffViewers > 0 ? "warning" : "good",
               }}
             >
-              <MetricRow label="Legacy staff_viewer rows" value={legacyStaffViewers} />
+              <MetricRow
+                label="Legacy staff_viewer rows"
+                value={legacyStaffViewers}
+              />
             </CommandCard>
           </div>
           <div style={cardStyle}>
@@ -400,9 +445,52 @@ export function SuperAdminConsoleShell({
           <div className="lg-m-grid-stack" style={twoCardGridStyle}>
             <CommandCard
               title="Owner settings"
-              description="Future owner settings will use allowlisted app_settings keys, typed validation, RPC writes, and audit events."
-              status={{ label: "Planned", tone: "planned" }}
-            />
+              description="Platform config persists in the Super-Admin-only platform_config store via an audited RPC with a paired audit event. The tracer below round-trips set → persist → read."
+              status={
+                data.errors.platformConfig
+                  ? { label: "Read failed", tone: "blocked" }
+                  : { label: "Live", tone: "active" }
+              }
+            >
+              {data.errors.platformConfig ? (
+                // The form is intentionally withheld on a failed read: the
+                // built-in fallback would render the tracer as empty, and
+                // saving that would overwrite the real stored value.
+                <p
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 12.5,
+                    color: P.terraTextStrong,
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Couldn’t load platform config ({data.errors.platformConfig}).
+                  Editing is disabled until the config row reads successfully,
+                  so a failed read can’t silently overwrite the stored value.
+                </p>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: 12,
+                      color: P.ink2,
+                    }}
+                  >
+                    Current tracer value:{" "}
+                    <strong style={{ color: P.ink }}>
+                      {data.appConfig.consoleTracerNote
+                        ? data.appConfig.consoleTracerNote
+                        : "(empty)"}
+                    </strong>
+                  </div>
+                  <PlatformConfigTracerForm
+                    value={data.appConfig.consoleTracerNote}
+                  />
+                </>
+              )}
+            </CommandCard>
             <CommandCard
               title="Ministry operating settings"
               description="Capacity, check-in due timing, and health thresholds stay in the day-to-day admin settings page."
@@ -502,8 +590,8 @@ export function SuperAdminConsoleShell({
                 margin: 0,
               }}
             >
-              No purge action, broad delete, raw SQL, schema editor, or auth bypass is
-              available from this command center shell.
+              No purge action, broad delete, raw SQL, schema editor, or auth
+              bypass is available from this command center shell.
             </p>
           </div>
         </CommandSection>
