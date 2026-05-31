@@ -79,14 +79,26 @@ export function isoWeekNumberOf(meetingWeekIso: string): number | null {
   // Standard ISO week calculation: nearest Thursday is in the right year,
   // then count weeks from that year's first Thursday.
   const d = new Date(
-    Date.UTC(
-      anchor.getUTCFullYear(),
-      anchor.getUTCMonth(),
-      anchor.getUTCDate(),
-    ),
+    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate())
   );
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
+
+// Canonical day-of-week name → JS `Date.getDay()` / `getUTCDay()` index
+// (Sunday = 0). Resolving a group's scheduled meeting day against the
+// church week is shared between calendar occurrence generation
+// (lib/calendar/occurrences) and check-in due-date math
+// (lib/admin/check-in-due), which previously each held a byte-identical
+// copy of this map.
+export const DAY_INDEX: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
