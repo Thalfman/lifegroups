@@ -63,7 +63,7 @@ export function OverShepherdList({
             <th style={thStyle}>Email</th>
             <th style={thStyle}>Phone</th>
             <th style={thStyle}>Status</th>
-            <th style={thStyle}>Shepherds covered</th>
+            <th style={thStyle}>Leaders covered</th>
           </tr>
         </thead>
         <tbody>

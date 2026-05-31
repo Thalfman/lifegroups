@@ -37,10 +37,10 @@ describe("hubTilesForRole", () => {
     expect(hrefs).not.toContain("/admin/super-admin");
   });
 
-  it("gives over_shepherd a focused My Shepherds tile, not the admin-OS set", () => {
+  it("gives over_shepherd a focused My Leaders tile, not the admin-OS set", () => {
     const tiles = hubTilesForRole("over_shepherd");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
-      ["My Shepherds", "/over-shepherd"],
+      ["My Leaders", "/over-shepherd"],
     ]);
   });
 
@@ -50,6 +50,6 @@ describe("hubTilesForRole", () => {
     "gives no tiles to the no-access role %s",
     (role) => {
       expect(hubTilesForRole(role)).toEqual([]);
-    },
+    }
   );
 });

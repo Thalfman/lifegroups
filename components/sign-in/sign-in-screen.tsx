@@ -87,7 +87,7 @@ export function SignInScreen({
         >
           Welcome back.{" "}
           <em style={{ fontStyle: "italic", color: "var(--c-ink2)" }}>
-            Let&rsquo;s shepherd well.
+            Let&rsquo;s lead well.
           </em>
         </h1>
 
@@ -139,7 +139,6 @@ export function SignInScreen({
             Colossians 1:28
           </p>
         </aside>
-
       </div>
     </main>
   );

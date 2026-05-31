@@ -18,15 +18,23 @@ type State = ActionResult<{ id: string }> | undefined;
 // No care-status, touchpoint, interaction-type, admin-summary, or private-note
 // control is exposed here (docs/adr/0002, #126). The server action's RPC scopes
 // the write to the over-shepherd's coverage and writes the paired audit row.
-export function LogBroadNoteForm({ shepherdProfileId }: { shepherdProfileId: string }) {
+export function LogBroadNoteForm({
+  shepherdProfileId,
+}: {
+  shepherdProfileId: string;
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     overShepherdLogBroadNote,
-    undefined,
+    undefined
   );
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 10 }}>
-      <input type="hidden" name="shepherd_profile_id" value={shepherdProfileId} />
+      <input
+        type="hidden"
+        name="shepherd_profile_id"
+        value={shepherdProfileId}
+      />
       <div>
         <label htmlFor="osbn-note" style={fieldLabelStyle}>
           Add a broad note
@@ -38,7 +46,7 @@ export function LogBroadNoteForm({ shepherdProfileId }: { shepherdProfileId: str
           maxLength={2000}
           required
           style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
-          placeholder="A broad, shareable note on how this Shepherd is doing."
+          placeholder="A broad, shareable note on how this Leader is doing."
         />
         <p style={formNoteStyle}>
           Broad notes are visible to ministry admins. Keep anything private out
@@ -51,7 +59,15 @@ export function LogBroadNoteForm({ shepherdProfileId }: { shepherdProfileId: str
         </PButton>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

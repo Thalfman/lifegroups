@@ -49,7 +49,7 @@ function resolveFilter(value: string | string[] | undefined): DirectoryFilter {
 }
 
 function resolveCoverage(
-  value: string | string[] | undefined,
+  value: string | string[] | undefined
 ): CoverageFilter | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw === undefined || raw === null || raw === "") return undefined;
@@ -93,7 +93,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
   // documented 30 / 60 baseline via decodeMetricDefaults(null).
   const metricDefaultsRes = await fetchMetricDefaults(client);
   const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes.data ?? null),
+    decodeMetricDefaults(metricDefaultsRes.data ?? null)
   );
   // Fetch the coverage assignments + the other independent reads in parallel,
   // then build the directory from the SAME active-coverage set the dashboard
@@ -237,8 +237,8 @@ export default async function AdminShepherdCarePage({
   return (
     <>
       <PageHeader
-        eyebrow="Shepherd care"
-        title="Shepherd"
+        eyebrow="Leader care"
+        title="Leader"
         italic="care"
         lede="Track leader and co-leader care: recent connections, next touchpoints, and current care status. Admin-only — care notes never leave this surface."
       />

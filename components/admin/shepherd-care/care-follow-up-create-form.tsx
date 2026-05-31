@@ -27,7 +27,7 @@ export function CareFollowUpCreateForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateShepherdCareFollowUp,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -36,12 +36,20 @@ export function CareFollowUpCreateForm({
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <input type="hidden" name="care_profile_id" value={careProfileId} />
-      <input type="hidden" name="shepherd_profile_id" value={shepherdProfileId} />
+      <input
+        type="hidden"
+        name="shepherd_profile_id"
+        value={shepherdProfileId}
+      />
       <p style={formNoteStyle}>
-        Capture the concrete next step you owe this shepherd. Title is required;
-        a due date and notes are optional. New follow-ups start as open.
+        Capture the concrete next step you owe this leader. Title is required; a
+        due date and notes are optional. New follow-ups start as open.
         Admin-only — these never appear on leader or member surfaces.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
@@ -90,7 +98,15 @@ export function CareFollowUpCreateForm({
         </div>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

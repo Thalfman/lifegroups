@@ -51,7 +51,10 @@ export type ReadinessResult = {
 // Whole years between two YYYY-MM-DD dates (anniversary-aware), or null when
 // either input is missing/malformed. Used for "3+ years" and "co-shepherd 1+
 // year". Exported for testing.
-export function wholeYearsBetween(fromIso: string | null, toIso: string): number | null {
+export function wholeYearsBetween(
+  fromIso: string | null,
+  toIso: string
+): number | null {
   if (!fromIso) return null;
   const from = parseIsoParts(fromIso);
   const to = parseIsoParts(toIso);
@@ -62,13 +65,18 @@ export function wholeYearsBetween(fromIso: string | null, toIso: string): number
   return years;
 }
 
-function parseIsoParts(iso: string): { y: number; m: number; d: number } | null {
+function parseIsoParts(
+  iso: string
+): { y: number; m: number; d: number } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) return null;
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
 
-export function evaluateReadiness(input: ReadinessInput, todayIso: string): ReadinessResult {
+export function evaluateReadiness(
+  input: ReadinessInput,
+  todayIso: string
+): ReadinessResult {
   const yearsActive = wholeYearsBetween(input.launchedOn, todayIso);
   const coShepherdYears = wholeYearsBetween(input.coShepherdSince, todayIso);
 
@@ -77,7 +85,8 @@ export function evaluateReadiness(input: ReadinessInput, todayIso: string): Read
     established_long_enough:
       yearsActive != null && yearsActive >= MULTIPLICATION_MIN_YEARS_ACTIVE,
     co_shepherd_tenured:
-      coShepherdYears != null && coShepherdYears >= MULTIPLICATION_MIN_CO_SHEPHERD_YEARS,
+      coShepherdYears != null &&
+      coShepherdYears >= MULTIPLICATION_MIN_CO_SHEPHERD_YEARS,
     shepherd_willing: input.shepherdWilling,
     needs_similar_stage: input.needsSimilarStage,
   };
@@ -93,12 +102,15 @@ export function evaluateReadiness(input: ReadinessInput, todayIso: string): Read
 export const CRITERION_LABEL: Record<MultiplicationCriterion, string> = {
   enough_members: "12+ members",
   established_long_enough: "3+ years",
-  co_shepherd_tenured: "Co-shepherd 1+ yr",
-  shepherd_willing: "Shepherd willing",
+  co_shepherd_tenured: "Co-Leader 1+ yr",
+  shepherd_willing: "Leader willing",
   needs_similar_stage: "Need for similar group",
 };
 
-export const CANDIDATE_STATUS_LABEL: Record<MultiplicationCandidateStatus, string> = {
+export const CANDIDATE_STATUS_LABEL: Record<
+  MultiplicationCandidateStatus,
+  string
+> = {
   watching: "Watching",
   planned: "Planned",
   launched: "Launched",
@@ -124,7 +136,7 @@ export const LIFE_STAGE_LABEL: Record<GroupLifeStage, string> = {
 // A human-readable segment key for grouping candidates: audience × life stage.
 export function segmentLabel(
   audience: GroupAudienceCategory | null,
-  lifeStage: GroupLifeStage | null,
+  lifeStage: GroupLifeStage | null
 ): string {
   const a = audience ? AUDIENCE_LABEL[audience] : "Unsegmented";
   const s = lifeStage ? LIFE_STAGE_LABEL[lifeStage] : null;
@@ -158,13 +170,13 @@ export type SegmentGroup = { segment: string; candidates: CandidateView[] };
 // computed against the supplied `todayIso`.
 export function buildPlannerSegments(
   entries: MultiplicationCandidateEntry[],
-  todayIso: string,
+  todayIso: string
 ): SegmentGroup[] {
   const segmentMap = new Map<string, SegmentGroup>();
   for (const entry of entries) {
     const segment = segmentLabel(
       entry.group?.audience_category ?? null,
-      entry.group?.life_stage ?? null,
+      entry.group?.life_stage ?? null
     );
     const view: CandidateView = {
       candidateId: entry.candidate.id,
@@ -186,14 +198,16 @@ export function buildPlannerSegments(
           shepherdWilling: entry.candidate.shepherd_willing,
           needsSimilarStage: entry.candidate.needs_similar_stage,
         },
-        todayIso,
+        todayIso
       ),
     };
     const bucket = segmentMap.get(segment);
     if (bucket) bucket.candidates.push(view);
     else segmentMap.set(segment, { segment, candidates: [view] });
   }
-  return [...segmentMap.values()].sort((a, b) => a.segment.localeCompare(b.segment));
+  return [...segmentMap.values()].sort((a, b) =>
+    a.segment.localeCompare(b.segment)
+  );
 }
 
 // The active year filter: "all" shows every cohort; a number shows that
@@ -205,7 +219,7 @@ export type TargetYearFilter = number | null | "all";
 // and drops segments left empty so the surface stays scannable.
 export function filterSegmentsByYear(
   segments: SegmentGroup[],
-  filter: TargetYearFilter,
+  filter: TargetYearFilter
 ): SegmentGroup[] {
   if (filter === "all") return segments;
   return segments
@@ -222,7 +236,9 @@ export type TargetYearTally = { year: number | null; count: number };
 // the 2026-vs-2027 split at a glance and offer a year filter. Years sort
 // ascending; the "unset" bucket (no year decided yet) sorts last because it is
 // the work still to be resolved.
-export function summarizeTargetYears(segments: SegmentGroup[]): TargetYearTally[] {
+export function summarizeTargetYears(
+  segments: SegmentGroup[]
+): TargetYearTally[] {
   const counts = new Map<number | null, number>();
   for (const segment of segments) {
     for (const c of segment.candidates) {

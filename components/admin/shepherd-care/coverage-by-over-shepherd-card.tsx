@@ -57,7 +57,11 @@ export function CoverageByOverShepherdCard({
         }}
       >
         {namedBuckets.map((bucket) => (
-          <Link key={bucket.overShepherdId ?? "unassigned"} href={bucket.href} style={tileStyle}>
+          <Link
+            key={bucket.overShepherdId ?? "unassigned"}
+            href={bucket.href}
+            style={tileStyle}
+          >
             <div
               style={{
                 fontFamily: fontSans,
@@ -70,7 +74,8 @@ export function CoverageByOverShepherdCard({
               {bucket.overShepherdName}
             </div>
             <div style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-              {bucket.shepherdCount} shepherd{bucket.shepherdCount === 1 ? "" : "s"}
+              {bucket.shepherdCount} leader
+              {bucket.shepherdCount === 1 ? "" : "s"}
             </div>
           </Link>
         ))}
@@ -90,7 +95,8 @@ export function CoverageByOverShepherdCard({
               {unassigned.overShepherdName}
             </div>
             <div style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-              {unassigned.shepherdCount} shepherd{unassigned.shepherdCount === 1 ? "" : "s"}
+              {unassigned.shepherdCount} leader
+              {unassigned.shepherdCount === 1 ? "" : "s"}
             </div>
           </Link>
         ) : null}

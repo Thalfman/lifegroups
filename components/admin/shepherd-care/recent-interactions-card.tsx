@@ -43,19 +43,16 @@ export function RecentInteractionsCard({
   available?: boolean;
 }) {
   return (
-    <StatusCard
-      eyebrow="Activity"
-      title="Recent interactions"
-    >
+    <StatusCard eyebrow="Activity" title="Recent interactions">
       {!available ? (
         <EmptyState
           title="Recent interactions unavailable"
-          description="We couldn't load the latest interactions just now. Refresh in a moment, or check a specific shepherd's detail page for their full timeline."
+          description="We couldn't load the latest interactions just now. Refresh in a moment, or check a specific leader's detail page for their full timeline."
         />
       ) : items.length === 0 ? (
         <EmptyState
           title="No interactions logged yet"
-          description="Log a call, text, or visit from any shepherd detail page to start the trail."
+          description="Log a call, text, or visit from any leader detail page to start the trail."
         />
       ) : (
         <div>

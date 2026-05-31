@@ -54,14 +54,14 @@ export default async function AdminOverShepherdsPage() {
   for (const a of assignments) {
     shepherdCountById.set(
       a.over_shepherd_id,
-      (shepherdCountById.get(a.over_shepherd_id) ?? 0) + 1,
+      (shepherdCountById.get(a.over_shepherd_id) ?? 0) + 1
     );
   }
 
   return (
     <>
       <PageHeader
-        eyebrow="Shepherd care"
+        eyebrow="Leader care"
         title="Over-"
         italic="shepherds"
         lede="Coaches and over-shepherds Julian tracks. These are admin-only records — they do not log in to the app."
@@ -78,7 +78,7 @@ export default async function AdminOverShepherdsPage() {
                 textDecoration: "underline",
               }}
             >
-              ← Back to shepherd care
+              ← Back to leader care
             </Link>
           </div>
 

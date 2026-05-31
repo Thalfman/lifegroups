@@ -20,7 +20,10 @@ import {
   participationPct,
   type LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
-import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
 import { LaunchPlanningAssumptionsForm } from "@/components/admin/launch-planning/assumptions-form";
 import { LaunchPlanningSummaryCards } from "@/components/admin/launch-planning/summary-cards";
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
@@ -41,7 +44,10 @@ type PageData = {
   activeScenarios: LaunchPlanningScenario[];
   scenariosError: string | null;
   comparison: ReturnType<typeof buildScenarioComparison>;
-  churchAttendanceLatest: { snapshotDate: string; attendanceCount: number } | null;
+  churchAttendanceLatest: {
+    snapshotDate: string;
+    attendanceCount: number;
+  } | null;
   participationPct: number | null;
 };
 
@@ -96,7 +102,7 @@ async function loadData(): Promise<PageData> {
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
   const assumptions = decodeLaunchPlanningAssumptions(
     assumptionsRes.data ?? null,
-    metricDefaults,
+    metricDefaults
   );
   const inputs = buildLaunchPlanningInputs({
     groups: inputsBundle.groups,
@@ -108,7 +114,7 @@ async function loadData(): Promise<PageData> {
 
   const rawScenarios = scenariosRes.data ?? [];
   const activeScenarios = filterActiveScenarios(rawScenarios).map((row) =>
-    decodeLaunchPlanningScenario(row, metricDefaults),
+    decodeLaunchPlanningScenario(row, metricDefaults)
   );
   const comparison = buildScenarioComparison(activeScenarios, inputs);
 
@@ -133,7 +139,7 @@ async function loadData(): Promise<PageData> {
     churchAttendanceLatest,
     participationPct: participationPct(
       inputs.current_participants,
-      churchAttendanceLatest?.attendanceCount ?? null,
+      churchAttendanceLatest?.attendanceCount ?? null
     ),
   };
 }
@@ -165,8 +171,8 @@ export default async function AdminLaunchPlanningPage() {
                 padding: "10px 14px",
               }}
             >
-              Saved assumptions could not be loaded. Showing built-in
-              defaults: {data.assumptionsError}
+              Saved assumptions could not be loaded. Showing built-in defaults:{" "}
+              {data.assumptionsError}
             </p>
           ) : null}
 
@@ -187,7 +193,10 @@ export default async function AdminLaunchPlanningPage() {
             </p>
           ) : null}
 
-          <LaunchPlanningSummaryCards inputs={data.inputs} outputs={data.outputs} />
+          <LaunchPlanningSummaryCards
+            inputs={data.inputs}
+            outputs={data.outputs}
+          />
 
           <ChurchAttendanceCard
             latest={data.churchAttendanceLatest}
@@ -313,7 +322,7 @@ export default async function AdminLaunchPlanningPage() {
               href="/admin/shepherd-care"
               style={{ color: P.ink, textDecoration: "underline" }}
             >
-              Shepherd care
+              Leader care
             </Link>
           </nav>
         </div>

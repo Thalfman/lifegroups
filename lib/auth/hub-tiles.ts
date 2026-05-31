@@ -33,7 +33,7 @@ const SUPER_ADMIN_CONSOLE_TILE: HubTile = {
 // Over-Shepherd lands on a focused hub centered on My Shepherds, matching the
 // single-entry nav in navItemsForRole rather than the admin-OS spine.
 const OVER_SHEPHERD_TILES: readonly HubTile[] = [
-  { href: "/over-shepherd", label: "My Shepherds", icon: "people" },
+  { href: "/over-shepherd", label: "My Leaders", icon: "people" },
 ];
 
 export function hubTilesForRole(role: UserRole): HubTile[] {

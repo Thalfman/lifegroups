@@ -34,17 +34,22 @@ async function loadData(): Promise<AdminFollowUpsData> {
   const client = await createSupabaseServerClient();
   if (!client) return EMPTY_DATA;
 
-  const [followUpsResult, groupsResult, membersResult, guestsResult, profilesResult] =
-    await Promise.all([
-      fetchFollowUpsForAdmin(client),
-      fetchAllGroups(client),
-      fetchAllMembers(client, { statuses: ["active"] }),
-      fetchGuests(client),
-      fetchProfilesForAdmin(client, {
-        roles: ["super_admin", "ministry_admin", "leader", "co_leader"],
-        statuses: ["active"],
-      }),
-    ]);
+  const [
+    followUpsResult,
+    groupsResult,
+    membersResult,
+    guestsResult,
+    profilesResult,
+  ] = await Promise.all([
+    fetchFollowUpsForAdmin(client),
+    fetchAllGroups(client),
+    fetchAllMembers(client, { statuses: ["active"] }),
+    fetchGuests(client),
+    fetchProfilesForAdmin(client, {
+      roles: ["super_admin", "ministry_admin", "leader", "co_leader"],
+      statuses: ["active"],
+    }),
+  ]);
 
   return {
     followUps: followUpsResult.data ?? [],
@@ -71,7 +76,7 @@ export default async function AdminFollowUpsPage() {
       <PageHeader
         eyebrow="Follow-ups"
         title="Follow-ups"
-        lede="Open follow-ups tied to a group, member, guest, or leader. Leader-visible task queue — admin-only shepherd-care notes live in Shepherd care, not here. Mark in progress when you start. Mark done when it lands."
+        lede="Open follow-ups tied to a group, member, guest, or leader. Leader-visible task queue — admin-only leader-care notes live in Leader care, not here. Mark in progress when you start. Mark done when it lands."
       />
       <PageBody>
         <AdminFollowUpsShell data={data} />

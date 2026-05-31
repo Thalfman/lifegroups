@@ -68,7 +68,7 @@ async function loadDetail(
   // SC.4: only a ministry_admin may read private notes. requireAdmin() also
   // admits super_admin, so gate the reader CALLS here — never invoke the
   // private-note readers on a super_admin request (no read path, not just no UI).
-  canReadPrivateNotes: boolean,
+  canReadPrivateNotes: boolean
 ): Promise<
   | {
       kind: "ok";
@@ -118,16 +118,24 @@ async function loadDetail(
 
   // Private-note key slots are per-creator (not per care profile), so they load
   // alongside the care profile. RLS scopes them to the calling admin.
-  const [careResult, overShepherdsRes, coverageRes, genericCountRes, keySlotsRes] =
-    await Promise.all([
-      fetchShepherdCareProfileByShepherdId(client, profileId),
-      fetchOverShepherdsForAdmin(client, { includeArchived: false }),
-      fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
-      fetchGenericFollowUpCountForAssignee(client, profileId),
-      canReadPrivateNotes
-        ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
-        : Promise.resolve({ data: [] as PrivateNoteKeySlot[], error: null as Error | null }),
-    ]);
+  const [
+    careResult,
+    overShepherdsRes,
+    coverageRes,
+    genericCountRes,
+    keySlotsRes,
+  ] = await Promise.all([
+    fetchShepherdCareProfileByShepherdId(client, profileId),
+    fetchOverShepherdsForAdmin(client, { includeArchived: false }),
+    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
+    fetchGenericFollowUpCountForAssignee(client, profileId),
+    canReadPrivateNotes
+      ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
+      : Promise.resolve({
+          data: [] as PrivateNoteKeySlot[],
+          error: null as Error | null,
+        }),
+  ]);
   if (careResult.error) {
     return {
       kind: "ok",
@@ -159,9 +167,12 @@ async function loadDetail(
         ? fetchShepherdCarePrivateNoteCiphertextForCreator(
             client,
             careResult.data.id,
-            creatorProfileId,
+            creatorProfileId
           )
-        : Promise.resolve({ data: null as PrivateNoteCiphertext | null, error: null as Error | null }),
+        : Promise.resolve({
+            data: null as PrivateNoteCiphertext | null,
+            error: null as Error | null,
+          }),
     ]);
     if (inter.error) childError = inter.error.message;
     else interactions = inter.data;
@@ -201,23 +212,29 @@ export default async function AdminShepherdCareDetailPage({
   const session = await requireAdmin();
   // requireAdmin redirects every non-authenticated case, so this is always the
   // authenticated branch; narrow for the creator id used to scope private notes.
-  const creatorProfileId = session.kind === "authenticated" ? session.profile.id : null;
+  const creatorProfileId =
+    session.kind === "authenticated" ? session.profile.id : null;
   if (!creatorProfileId) notFound();
   // SC.4 private notes are ministry_admin-only. requireAdmin also admits
   // super_admin, so gate the section explicitly: no super-admin component path.
-  const actorRole = session.kind === "authenticated" ? session.profile.role : null;
+  const actorRole =
+    session.kind === "authenticated" ? session.profile.role : null;
 
   const { profileId } = await params;
   if (!isUuid(profileId)) notFound();
 
-  const detail = await loadDetail(profileId, creatorProfileId, actorRole === "ministry_admin");
+  const detail = await loadDetail(
+    profileId,
+    creatorProfileId,
+    actorRole === "ministry_admin"
+  );
   if (detail.kind === "not_found") notFound();
   if (detail.kind === "db_unavailable") {
     return (
       <>
         <PageHeader
-          eyebrow="Shepherd care"
-          title="Shepherd"
+          eyebrow="Leader care"
+          title="Leader"
           italic="care"
           lede="Database is not configured in this environment."
         />
@@ -239,7 +256,7 @@ export default async function AdminShepherdCareDetailPage({
   return (
     <>
       <PageHeader
-        eyebrow="Shepherd care"
+        eyebrow="Leader care"
         title={detail.profileFullName}
         lede="Care notes here are admin-only. They never appear on leader or member surfaces."
       />
@@ -290,7 +307,9 @@ export default async function AdminShepherdCareDetailPage({
                 <span style={labelStyle}>Current status</span>
                 <div style={valueStyle}>
                   {detail.care ? (
-                    <ShepherdCareStatusBadge status={detail.care.current_status} />
+                    <ShepherdCareStatusBadge
+                      status={detail.care.current_status}
+                    />
                   ) : (
                     <span style={{ color: P.ink3 }}>Not set</span>
                   )}
@@ -299,7 +318,10 @@ export default async function AdminShepherdCareDetailPage({
               <div>
                 <span style={labelStyle}>Last contact</span>
                 <div style={valueStyle}>
-                  {formatIsoDateOr(detail.care?.last_contact_at ?? null, "Never")}
+                  {formatIsoDateOr(
+                    detail.care?.last_contact_at ?? null,
+                    "Never"
+                  )}
                 </div>
               </div>
               <div>
@@ -420,7 +442,7 @@ export default async function AdminShepherdCareDetailPage({
                 margin: "0 0 12px",
               }}
             >
-              The concrete next steps you owe this shepherd. Overdue items show
+              The concrete next steps you owe this leader. Overdue items show
               first.
               {detail.genericFollowUpCount > 0
                 ? ` They're also assigned to ${detail.genericFollowUpCount} open general follow-up${detail.genericFollowUpCount === 1 ? "" : "s"}.`
