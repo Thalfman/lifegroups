@@ -38,8 +38,7 @@ export const dynamic = "force-dynamic";
 
 // Every active profile except super_admin is reassignable through this form.
 // Self-target and super_admin are both blocked (the bootstrap owner isn't
-// demoted from the app surface). Legacy staff_viewer accounts remain
-// reassignable so operators can migrate them to an active role.
+// demoted from the app surface).
 function isAssignableTargetRole(
   role: ProfilesRow["role"]
 ): role is Exclude<ProfilesRow["role"], "super_admin"> {

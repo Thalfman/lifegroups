@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   guardAgainstSelfRoleChange,
   guardAgainstSelfTarget,
-  guardAgainstStaffViewerAssignment,
   guardAgainstSuperAdminAssignment,
   validateAssignLeaderToGroupPayload,
   validateAssignShepherdCoveragePayload,
@@ -46,11 +45,11 @@ describe("validateInviteUserPayload", () => {
     }
   });
 
-  it("rejects staff_viewer as an assignable role", () => {
+  it("rejects an unknown / retired role as an assignable role", () => {
     const r = validateInviteUserPayload({
       full_name: "X",
       email: "x@example.com",
-      role: "staff_viewer",
+      role: "retired_role",
     });
     expect(r.ok).toBe(false);
   });
@@ -171,7 +170,7 @@ describe("validateChangeUserRolePayload", () => {
 
   // Converting an existing profile into the coach login tier (Codex #3); the
   // over_shepherd value is a valid user_role and is not one of the guarded
-  // targets (super_admin / staff_viewer).
+  // targets (super_admin).
   it("accepts over_shepherd as a role-change target", () => {
     const r = validateChangeUserRolePayload({
       profile_id: UUID_A,
@@ -238,21 +237,6 @@ describe("self-target guards", () => {
       guardAgainstSuperAdminAssignment({
         profile_id: UUID_A,
         new_role: "ministry_admin",
-      })
-    ).toBeNull();
-  });
-
-  it("guardAgainstStaffViewerAssignment blocks staff_viewer assignments", () => {
-    expect(
-      guardAgainstStaffViewerAssignment({
-        profile_id: UUID_A,
-        new_role: "staff_viewer",
-      })
-    ).not.toBeNull();
-    expect(
-      guardAgainstStaffViewerAssignment({
-        profile_id: UUID_A,
-        new_role: "leader",
       })
     ).toBeNull();
   });

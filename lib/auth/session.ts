@@ -98,7 +98,11 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
     };
   }
   const rawProfile: unknown = profileQuery.data;
-  if (rawProfile !== null && rawProfile !== undefined && !isProfilesRow(rawProfile)) {
+  if (
+    rawProfile !== null &&
+    rawProfile !== undefined &&
+    !isProfilesRow(rawProfile)
+  ) {
     log.error({
       event: "session_lookup_failed",
       outcome: "fail",
@@ -116,7 +120,8 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   // generated row type is intentionally incompatible with our
   // hand-rolled ProfilesRow (see lib/admin/rpc.ts file-level note),
   // so an explicit assertion after the runtime guard is required.
-  const profile: ProfilesRow | null = (rawProfile ?? null) as ProfilesRow | null;
+  const profile: ProfilesRow | null = (rawProfile ??
+    null) as ProfilesRow | null;
 
   if (!profile) {
     return { kind: "profile_missing", authUser };
@@ -167,7 +172,7 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
 
 function logGuardBackendError(
   route_or_action: string,
-  stage: "profile_lookup" | "leader_assignments",
+  stage: "profile_lookup" | "leader_assignments"
 ): void {
   log.error({
     event: "auth_guard_backend_error",
@@ -178,7 +183,7 @@ function logGuardBackendError(
 }
 
 export async function requireRole(
-  allowed: readonly UserRole[],
+  allowed: readonly UserRole[]
 ): Promise<CurrentSession> {
   const session = await getCurrentSession();
   switch (session.kind) {
@@ -196,19 +201,21 @@ export async function requireRole(
   }
 }
 
-export const requireAdmin = () => requireRole(["super_admin", "ministry_admin"] as const);
+export const requireAdmin = () =>
+  requireRole(["super_admin", "ministry_admin"] as const);
 export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
 // Over-Shepherd route-group guard per
 // docs/adr/0002-oversight-ladder-and-leader-gating.md. Admits only
 // over_shepherd; every other role (including admins and leaders) is
 // redirected to /unauthorized, and over_shepherd cannot reach /admin/* or
 // /leader/* because those guards never list it.
-export const requireOverShepherd = () => requireRole(["over_shepherd"] as const);
+export const requireOverShepherd = () =>
+  requireRole(["over_shepherd"] as const);
 // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md.
 // Every /leader/* page calls this shared guard, so allowing no role here
 // gates the whole dormant surface in one place: leader / co_leader (and any
 // other role that reaches a leader route) are redirected to /unauthorized,
-// the same no-access treatment staff_viewer already gets. The export is kept
+// the same no-access treatment. The export is kept
 // so the dormant leader pages still typecheck.
 export const requireLeader = () => requireRole([] as const);
 
@@ -216,8 +223,7 @@ export const requireLeader = () => requireRole([] as const);
 // action can surface in the UI. Page routes still use requireAdmin() for
 // the redirect behavior.
 export async function requireAdminSession(): Promise<
-  | { ok: true; session: CurrentSession }
-  | { ok: false; error: string }
+  { ok: true; session: CurrentSession } | { ok: false; error: string }
 > {
   const session = await getCurrentSession();
   switch (session.kind) {
@@ -235,7 +241,10 @@ export async function requireAdminSession(): Promise<
         session.profile.role !== "super_admin" &&
         session.profile.role !== "ministry_admin"
       )
-        return { ok: false, error: "Only ministry admins can perform that action." };
+        return {
+          ok: false,
+          error: "Only ministry admins can perform that action.",
+        };
       return { ok: true, session };
     }
   }
@@ -280,8 +289,7 @@ export async function requireLeaderActor(): Promise<
 // boundary itself is enforced in the SECURITY DEFINER RPC
 // (auth_over_shepherd_covers); this gate only confirms the login tier.
 export async function requireOverShepherdSession(): Promise<
-  | { ok: true; session: CurrentSession }
-  | { ok: false; error: string }
+  { ok: true; session: CurrentSession } | { ok: false; error: string }
 > {
   const session = await getCurrentSession();
   switch (session.kind) {
@@ -296,7 +304,10 @@ export async function requireOverShepherdSession(): Promise<
       if (session.profile.status !== "active")
         return { ok: false, error: "Your account isn't active." };
       if (session.profile.role !== "over_shepherd")
-        return { ok: false, error: "Only an over-shepherd can perform that action." };
+        return {
+          ok: false,
+          error: "Only an over-shepherd can perform that action.",
+        };
       return { ok: true, session };
     }
   }
@@ -307,8 +318,7 @@ export async function requireOverShepherdSession(): Promise<
 // super_admin alone, so role-management writes never accept a
 // ministry_admin caller.
 export async function requireSuperAdminSession(): Promise<
-  | { ok: true; session: CurrentSession }
-  | { ok: false; error: string }
+  { ok: true; session: CurrentSession } | { ok: false; error: string }
 > {
   const session = await getCurrentSession();
   switch (session.kind) {
@@ -323,7 +333,10 @@ export async function requireSuperAdminSession(): Promise<
       if (session.profile.status !== "active")
         return { ok: false, error: "Your account isn't active." };
       if (session.profile.role !== "super_admin")
-        return { ok: false, error: "Only the super admin can perform that action." };
+        return {
+          ok: false,
+          error: "Only the super admin can perform that action.",
+        };
       return { ok: true, session };
     }
   }

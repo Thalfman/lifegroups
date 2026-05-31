@@ -18,7 +18,7 @@ type State = ActionResult<{ id: string }> | undefined;
 export function OverShepherdCreateForm() {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateOverShepherd,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -27,11 +27,15 @@ export function OverShepherdCreateForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <p style={formNoteStyle}>
-        Add a coach or over-shepherd. They do not need an app login —
-        these records exist only so Julian can track coverage. Notes are
-        admin-only and never appear in audit summaries.
+        Add an over-shepherd. They do not need an app login — these records
+        exist only so Julian can track coverage. Notes are admin-only and never
+        appear in audit summaries.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
@@ -89,7 +93,15 @@ export function OverShepherdCreateForm() {
         </div>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

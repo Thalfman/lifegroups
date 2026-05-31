@@ -44,9 +44,9 @@ describe("hubTilesForRole", () => {
     ]);
   });
 
-  // leader / co_leader / staff_viewer are no-access (ADR 0002): they never reach
+  // leader / co_leader are no-access (ADR 0002): they never reach
   // the hub (page routes them to /unauthorized), so they must surface no tiles.
-  it.each<UserRole>(["leader", "co_leader", "staff_viewer"])(
+  it.each<UserRole>(["leader", "co_leader"])(
     "gives no tiles to the no-access role %s",
     (role) => {
       expect(hubTilesForRole(role)).toEqual([]);

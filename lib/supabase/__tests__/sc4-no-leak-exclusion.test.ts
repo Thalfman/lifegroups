@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 // SC.4 #114 — app-layer no-leak proof. Scans the runtime source tree and asserts
 // the two private-note tables are referenced ONLY by the creator-scoped admin
 // readers. This is the regression guard against a future leader / over-shepherd
-// / staff_viewer / super_admin reader, or an SC.2 / SC.3 aggregate, ever
+// / super_admin reader, or an SC.2 / SC.3 aggregate, ever
 // pulling these rows onto a non-creator surface.
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -29,7 +29,12 @@ function walk(dir: string, acc: string[]): string[] {
     const full = `${dir}/${entry}`;
     const st = statSync(full);
     if (st.isDirectory()) {
-      if (entry === "__tests__" || entry === "node_modules" || entry === ".next") continue;
+      if (
+        entry === "__tests__" ||
+        entry === "node_modules" ||
+        entry === ".next"
+      )
+        continue;
       walk(full, acc);
     } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
       acc.push(full);
@@ -64,7 +69,10 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
       const content = readFileSync(file, "utf8");
       if (TABLES.some((t) => content.includes(t))) offenders.push(relPath);
     }
-    expect(offenders, `unexpected references to SC.4 tables in: ${offenders.join(", ")}`).toEqual([]);
+    expect(
+      offenders,
+      `unexpected references to SC.4 tables in: ${offenders.join(", ")}`
+    ).toEqual([]);
   });
 
   it("the only PostgREST .from() reads of the tables live in read-models.ts", () => {
@@ -74,18 +82,29 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
       if (relPath === "lib/supabase/read-models.ts") continue;
       const content = readFileSync(file, "utf8");
       for (const t of TABLES) {
-        if (content.includes(`.from("${t}")`) || content.includes(`.from('${t}')`)) {
+        if (
+          content.includes(`.from("${t}")`) ||
+          content.includes(`.from('${t}')`)
+        ) {
           fromOffenders.push(`${relPath} -> ${t}`);
         }
       }
     }
-    expect(fromOffenders, `unexpected .from() reads: ${fromOffenders.join(", ")}`).toEqual([]);
+    expect(
+      fromOffenders,
+      `unexpected .from() reads: ${fromOffenders.join(", ")}`
+    ).toEqual([]);
   });
 
   it("EVERY private-note read in read-models.ts is scoped by created_by_profile_id", () => {
-    const readModels = readFileSync(`${REPO_ROOT}lib/supabase/read-models.ts`, "utf8");
+    const readModels = readFileSync(
+      `${REPO_ROOT}lib/supabase/read-models.ts`,
+      "utf8"
+    );
     // Every read filters on the creator (belt-and-braces with RLS).
-    expect(readModels).toContain("fetchShepherdCarePrivateNoteCiphertextForCreator");
+    expect(readModels).toContain(
+      "fetchShepherdCarePrivateNoteCiphertextForCreator"
+    );
     expect(readModels).toContain("fetchPrivateNoteKeySlotsForCreator");
     for (const t of TABLES) {
       const marker = `.from("${t}")`;
@@ -97,12 +116,16 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
         occurrences += 1;
         // The read chain following EACH .from(table) must scope by the creator.
         const window = readModels.slice(idx, idx + 400);
-        expect(window, `read #${occurrences} of ${t} must scope by creator`).toContain(
-          "created_by_profile_id",
-        );
+        expect(
+          window,
+          `read #${occurrences} of ${t} must scope by creator`
+        ).toContain("created_by_profile_id");
         from = idx + marker.length;
       }
-      expect(occurrences, `read-models must read ${t} at least once`).toBeGreaterThan(0);
+      expect(
+        occurrences,
+        `read-models must read ${t} at least once`
+      ).toBeGreaterThan(0);
     }
   });
 });
@@ -126,7 +149,7 @@ describe("SC.4 no-leak — service-role edge functions never touch the tables", 
       .map(rel);
     expect(
       offenders,
-      `service-role edge functions must never reference SC.4 tables: ${offenders.join(", ")}`,
+      `service-role edge functions must never reference SC.4 tables: ${offenders.join(", ")}`
     ).toEqual([]);
   });
 });
@@ -149,11 +172,12 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
       const relPath = rel(file);
       if (SYMBOL_ALLOWLIST.has(relPath)) continue;
       const content = readFileSync(file, "utf8");
-      if (READER_SYMBOLS.some((s) => content.includes(s))) offenders.push(relPath);
+      if (READER_SYMBOLS.some((s) => content.includes(s)))
+        offenders.push(relPath);
     }
     expect(
       offenders,
-      `private-note readers used outside the admin detail path: ${offenders.join(", ")}`,
+      `private-note readers used outside the admin detail path: ${offenders.join(", ")}`
     ).toEqual([]);
   });
 
@@ -163,16 +187,17 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
     // ministry_admin gate into loadDetail and each reader call sits in that branch.
     const page = readFileSync(
       `${REPO_ROOT}app/(protected)/admin/shepherd-care/[profileId]/page.tsx`,
-      "utf8",
+      "utf8"
     );
     expect(page).toMatch(/loadDetail\([^)]*actorRole === "ministry_admin"/);
     for (const sym of READER_SYMBOLS) {
       const idx = page.indexOf(`${sym}(`);
       expect(idx, `page must call ${sym}`).toBeGreaterThan(-1);
       const before = page.slice(Math.max(0, idx - 160), idx);
-      expect(before, `${sym} call must be gated by canReadPrivateNotes`).toContain(
-        "canReadPrivateNotes",
-      );
+      expect(
+        before,
+        `${sym} call must be gated by canReadPrivateNotes`
+      ).toContain("canReadPrivateNotes");
     }
   });
 });

@@ -2,13 +2,10 @@ import type { UserRole } from "@/types/enums";
 
 export type { UserRole };
 
-// staff_viewer is legacy/no-access only — kept in the enum for DB compatibility;
-// never assigned from the UI and always routed to /unauthorized.
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super Admin",
   ministry_admin: "Ministry Admin",
   over_shepherd: "Over-Shepherd",
-  staff_viewer: "Legacy (no access)",
   leader: "Leader",
   co_leader: "Co-Leader",
 };
@@ -31,7 +28,6 @@ export const USER_ROLES: ReadonlySet<UserRole> = new Set([
   "super_admin",
   "ministry_admin",
   "over_shepherd",
-  "staff_viewer",
   "leader",
   "co_leader",
 ]);
@@ -57,8 +53,8 @@ export function defaultLandingPathForRole(role: UserRole): string {
   // Over-Shepherd lands on its own focused care surface, distinct from /admin.
   if (isOverShepherdRole(role)) return "/over-shepherd";
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // leader / co_leader are treated as no-access, exactly like staff_viewer.
-  // They fall through to /unauthorized rather than landing on /leader.
+  // leader / co_leader are treated as no-access. They fall through to
+  // /unauthorized rather than landing on /leader.
   return "/unauthorized";
 }
 
@@ -101,7 +97,7 @@ export function navItemsForRole(
   }
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
   // no leader nav entry is emitted for any role. leader / co_leader see only
-  // the minimal no-access shell (Home), the same as staff_viewer.
+  // the minimal no-access shell (Home).
   return items;
 }
 

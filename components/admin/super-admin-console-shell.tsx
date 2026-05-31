@@ -353,10 +353,8 @@ export function SuperAdminConsoleShell({
   const readinessTone: StatusTone =
     errorCount > 0 || checklistWarningCount > 0 ? "warning" : "good";
   const readinessLabel = readinessTone === "good" ? "Good" : "Warning";
-  let legacyStaffViewers = 0;
   let activeProfiles = 0;
   for (const profile of data.profilesById.values()) {
-    if (profile.role === "staff_viewer") legacyStaffViewers += 1;
     if (profile.status === "active") activeProfiles += 1;
   }
 
@@ -384,19 +382,12 @@ export function SuperAdminConsoleShell({
             <CommandCard
               title="Access surface"
               description="Role changes remain limited to active, non-self, non-super-admin profiles."
-              status={{
-                label: legacyStaffViewers > 0 ? "Review" : "Good",
-                tone: legacyStaffViewers > 0 ? "warning" : "good",
-              }}
+              status={{ label: "Good", tone: "good" }}
             >
               <MetricRow label="Active profiles" value={activeProfiles} />
               <MetricRow
                 label="Eligible role targets"
                 value={data.assignableProfiles.length}
-              />
-              <MetricRow
-                label="Legacy staff_viewer rows"
-                value={legacyStaffViewers}
               />
             </CommandCard>
             <CommandCard
@@ -429,19 +420,6 @@ export function SuperAdminConsoleShell({
               />
               <MetricRow label="Groups loaded" value={data.groupsById.size} />
               <MetricRow label="Members loaded" value={data.membersById.size} />
-            </CommandCard>
-            <CommandCard
-              title="Legacy role detection"
-              description="Legacy staff_viewer rows remain targetable only so operators can migrate them to active roles."
-              status={{
-                label: legacyStaffViewers > 0 ? "Review" : "Clear",
-                tone: legacyStaffViewers > 0 ? "warning" : "good",
-              }}
-            >
-              <MetricRow
-                label="Legacy staff_viewer rows"
-                value={legacyStaffViewers}
-              />
             </CommandCard>
           </div>
           <div style={cardStyle}>

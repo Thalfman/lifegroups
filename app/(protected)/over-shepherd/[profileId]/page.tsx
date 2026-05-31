@@ -66,13 +66,13 @@ export default async function OverShepherdShepherdPage({
   ]);
   const shepherdName =
     (profileQuery.data as { full_name?: string } | null)?.full_name ??
-    "This Shepherd";
+    "This Leader";
 
   let interactions: ShepherdCareInteractionsRow[] = [];
   if (careResult.data) {
     const inter = await fetchOverShepherdCareInteractions(
       client!,
-      careResult.data.id,
+      careResult.data.id
     );
     if (!inter.error) interactions = inter.data;
   }
@@ -92,7 +92,7 @@ export default async function OverShepherdShepherdPage({
             href="/over-shepherd"
             style={{ color: P.ink3, fontFamily: fontBody, fontSize: 13 }}
           >
-            ← My Shepherds
+            ← My Leaders
           </Link>
         </div>
       }
@@ -116,7 +116,9 @@ export default async function OverShepherdShepherdPage({
           )}
           <span style={{ color: P.ink3 }}>
             Last contact:{" "}
-            {care?.last_contact_at ? formatIsoDateOr(care.last_contact_at, "—") : "Never"}
+            {care?.last_contact_at
+              ? formatIsoDateOr(care.last_contact_at, "—")
+              : "Never"}
           </span>
         </section>
 
@@ -134,7 +136,7 @@ export default async function OverShepherdShepherdPage({
         {interactions.length === 0 ? (
           <EmptyState
             title="No care interactions logged yet"
-            description="Care touches with this Shepherd will appear here."
+            description="Care touches with this Leader will appear here."
           />
         ) : (
           <InteractionTimeline interactions={interactions} />

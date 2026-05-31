@@ -278,19 +278,6 @@ export function guardAgainstSuperAdminAssignment(
   return null;
 }
 
-// staff_viewer is retained in the SQL enum and TS union for backwards
-// compatibility but is no longer a promoted product workflow. The
-// Phase 5A.3 role-change form omits it from the role select, and this
-// guard provides defense-in-depth for direct callers.
-export function guardAgainstStaffViewerAssignment(
-  payload: ChangeUserRolePayload
-): string | null {
-  if (payload.new_role === "staff_viewer") {
-    return "staff_viewer is deprecated and can't be assigned from the app.";
-  }
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Phase 5A.2 — Group management payloads
 // ---------------------------------------------------------------------------
@@ -1518,8 +1505,8 @@ export { normalizeUuid };
 // ---------------------------------------------------------------------------
 
 // Roles the invite form is allowed to assign. super_admin is forbidden
-// (bootstrap procedure only). staff_viewer is forbidden (legacy).
-// over_shepherd is invitable so the coach login tier can be provisioned from
+// (bootstrap procedure only). over_shepherd is invitable so the coach login
+// tier can be provisioned from
 // the app (docs/adr/0002-oversight-ladder-and-leader-gating.md, Codex #3); it
 // takes no group assignment, like ministry_admin.
 const INVITE_USER_ROLES: ReadonlySet<
