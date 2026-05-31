@@ -59,7 +59,16 @@ and clutters the role system for new readers.
 **Disposition:** 🗑️/🧊 needs a call — either remove the enum value (and migrate any rows) or
 explicitly quarantine it (e.g. an "archived roles" grouping) so it reads as dead, not live.
 
-## C — Frozen / dormant surfaces still reachable by URL 🧊
+## C — Frozen / dormant surfaces still reachable by URL ✅ RESOLVED
+
+> ✅ **Resolved (C2 / #198).** Gate-and-mark was chosen over leave-as-is and landed
+> in commit `7a23c5d` ("Gate-and-mark frozen surfaces behind default-off feature
+> flags"). All three surfaces now route through the ADR 0009 default-off
+> feature-flag mechanism (`isFrozenSurfaceLive` in `lib/admin/frozen-surface.ts`,
+> resolving the `leader_surface` / `check_ins` / `guests` flags), and render an
+> explicit `FrozenSurfaceNotice` until a flag is enabled-and-verified. With a flag
+> off the surface no longer resolves by URL — it is explicitly frozen, not silently
+> live. The inventory below is retained for history.
 
 These surfaces are dropped from nav but still resolve behind `requireAdmin()` / role gates.
 They are gated correctly but carry no visible "frozen" signal, so they can be re-discovered
@@ -69,10 +78,9 @@ or accidentally re-exposed.
 - `app/(protected)/admin/guests/page.tsx` — guest pipeline, deferred under EXT.1.
 - `app/(protected)/admin/check-ins/page.tsx` — Admin check-in review, demoted from nav.
 
-**Disposition:** 🧊 keep frozen per LDR.1 / EXT.1, but mark explicitly. ADR 0009 already
-establishes that runtime flags may re-enable frozen surfaces — consider routing these through
-that mechanism (a feature flag default-off) rather than leaving them silently live. Decision
-for Julian/Tom: gate-and-mark vs. leave as-is.
+**Disposition:** ✅ done — gated behind default-off ADR 0009 feature flags in `7a23c5d`
+(#198). Each frozen surface now shows an explicit frozen notice and does not resolve by URL
+while its flag is off; re-enabling stays subject to ADR 0009's verify-before-flip rule.
 
 ## D — Intentional code ↔ label mismatch (ADR 0008) 🟢
 
@@ -111,8 +119,10 @@ Each row is owner-actionable in a future session:
 - **✅ (A)** — done; the mechanical copy fixes landed in `78fea60` (#194).
 - **🔀 (E, F)** — already ticketed; track in their issues/plans, nothing new owed.
 - **🟢 (D)** — no action; documented so it reads as decided, not accidental.
-- **🗑️ / 🧊 (B, C)** — need a Julian/Tom decision before code changes (remove vs. quarantine;
-  gate-and-mark vs. leave).
+- **🗑️ (B)** — needs a Julian/Tom decision before code changes (remove the `staff_viewer`
+  enum value vs. quarantine it).
+- **✅ (C)** — done; the frozen surfaces were gated behind default-off ADR 0009 flags in
+  `7a23c5d` (#198).
 
 When an item is resolved, strike it here and, if it changes intent, fold the outcome into
 [`../PRD.md`](../PRD.md) and the relevant ADR.
