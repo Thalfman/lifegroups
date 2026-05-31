@@ -42,7 +42,10 @@ const STATUS_OPTIONS: MultiplicationCandidateStatus[] = [
   "deferred",
 ];
 
-const MEETING_TIME_OPTIONS: MultiplicationMeetingTime[] = ["during_the_day", "evening"];
+const MEETING_TIME_OPTIONS: MultiplicationMeetingTime[] = [
+  "during_the_day",
+  "evening",
+];
 
 const MEETING_TIME_LABEL: Record<MultiplicationMeetingTime, string> = {
   during_the_day: "During the day",
@@ -87,12 +90,12 @@ function ReadinessChips({ readiness }: { readiness: ReadinessResult }) {
 function CandidateEditForm({ c }: { c: CandidateView }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateMultiplicationCandidate,
-    undefined,
+    undefined
   );
-  const [archiveState, archiveAction, archivePending] = useActionState<State, FormData>(
-    adminArchiveMultiplicationCandidate,
-    undefined,
-  );
+  const [archiveState, archiveAction, archivePending] = useActionState<
+    State,
+    FormData
+  >(adminArchiveMultiplicationCandidate, undefined);
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <form action={formAction} style={{ display: "grid", gap: 10 }}>
@@ -116,7 +119,11 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
           </div>
           <div>
             <label style={fieldLabelStyle}>Status</label>
-            <select name="status" defaultValue={c.status} style={fieldSelectStyle}>
+            <select
+              name="status"
+              defaultValue={c.status}
+              style={fieldSelectStyle}
+            >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {CANDIDATE_STATUS_LABEL[s]}
@@ -157,8 +164,12 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
           </div>
         </div>
         <label style={{ ...checkboxLabelStyle }}>
-          <input type="checkbox" name="shepherd_willing" defaultChecked={c.shepherdWilling} />
-          Shepherd willing to multiply
+          <input
+            type="checkbox"
+            name="shepherd_willing"
+            defaultChecked={c.shepherdWilling}
+          />
+          Leader willing to multiply
         </label>
         <label style={{ ...checkboxLabelStyle }}>
           <input
@@ -217,14 +228,22 @@ function CandidateRow({ c }: { c: CandidateView }) {
         gap: 8,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 10,
+          alignItems: "baseline",
+        }}
+      >
         <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
           {c.groupName}
         </strong>
         <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
           {CANDIDATE_STATUS_LABEL[c.status]}
-          {c.targetYear ? ` · target ${c.targetYear}` : " · year TBD"} · {c.activeMemberCount} members ·{" "}
-          {c.readiness.metCount}/{c.readiness.totalCount} criteria
+          {c.targetYear ? ` · target ${c.targetYear}` : " · year TBD"} ·{" "}
+          {c.activeMemberCount} members · {c.readiness.metCount}/
+          {c.readiness.totalCount} criteria
         </span>
       </div>
       {facts.length > 0 ? (
@@ -245,14 +264,20 @@ function CandidateRow({ c }: { c: CandidateView }) {
   );
 }
 
-function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; name: string }[] }) {
+function AddCandidateForm({
+  availableGroups,
+}: {
+  availableGroups: { id: string; name: string }[];
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateMultiplicationCandidate,
-    undefined,
+    undefined
   );
   if (availableGroups.length === 0) {
     return (
-      <p style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3, margin: 0 }}>
+      <p
+        style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3, margin: 0 }}
+      >
         Every active group is already in the pipeline.
       </p>
     );
@@ -267,7 +292,12 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
           <label htmlFor="mc-group" style={fieldLabelStyle}>
             Group
           </label>
-          <select id="mc-group" name="group_id" defaultValue="" style={fieldSelectStyle}>
+          <select
+            id="mc-group"
+            name="group_id"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
             <option value="" disabled>
               Select a group…
             </option>
@@ -297,7 +327,12 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
           <label htmlFor="mc-status" style={fieldLabelStyle}>
             Status
           </label>
-          <select id="mc-status" name="status" defaultValue="watching" style={fieldSelectStyle}>
+          <select
+            id="mc-status"
+            name="status"
+            defaultValue="watching"
+            style={fieldSelectStyle}
+          >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
                 {CANDIDATE_STATUS_LABEL[s]}
@@ -327,7 +362,12 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
           <label htmlFor="mc-meeting-time" style={fieldLabelStyle}>
             Meeting time
           </label>
-          <select id="mc-meeting-time" name="meeting_time" defaultValue="" style={fieldSelectStyle}>
+          <select
+            id="mc-meeting-time"
+            name="meeting_time"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
             <option value="">Unset</option>
             {MEETING_TIME_OPTIONS.map((m) => (
               <option key={m} value={m}>
@@ -339,7 +379,7 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
       </div>
       <label style={checkboxLabelStyle}>
         <input type="checkbox" name="shepherd_willing" />
-        Shepherd willing to multiply
+        Leader willing to multiply
       </label>
       <label style={checkboxLabelStyle}>
         <input type="checkbox" name="needs_similar_stage" />
@@ -349,13 +389,21 @@ function AddCandidateForm({ availableGroups }: { availableGroups: { id: string; 
         <label htmlFor="mc-notes" style={fieldLabelStyle}>
           Notes
         </label>
-        <input id="mc-notes" name="notes" type="text" maxLength={2000} style={fieldInputStyle} />
+        <input
+          id="mc-notes"
+          name="notes"
+          type="text"
+          maxLength={2000}
+          style={fieldInputStyle}
+        />
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Adding…" : "Add to pipeline"}
         </PButton>
-        {state && !state.ok ? <span style={errorTextStyle}>{state.errors[0]}</span> : null}
+        {state && !state.ok ? (
+          <span style={errorTextStyle}>{state.errors[0]}</span>
+        ) : null}
       </div>
     </form>
   );
@@ -430,7 +478,7 @@ export function MultiplicationPlanner({
   const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
   const visible = useMemo(
     () => filterSegmentsByYear(segments, yearFilter),
-    [segments, yearFilter],
+    [segments, yearFilter]
   );
   return (
     <section
@@ -456,10 +504,26 @@ export function MultiplicationPlanner({
         >
           Multiplication
         </span>
-        <h2 style={{ margin: "4px 0 0", fontFamily: fontBody, fontSize: 18, color: P.ink, fontWeight: 600 }}>
+        <h2
+          style={{
+            margin: "4px 0 0",
+            fontFamily: fontBody,
+            fontSize: 18,
+            color: P.ink,
+            fontWeight: 600,
+          }}
+        >
           Candidate pipeline
         </h2>
-        <p style={{ margin: "6px 0 0", fontFamily: fontBody, fontSize: 12, color: P.ink3, lineHeight: 1.5 }}>
+        <p
+          style={{
+            margin: "6px 0 0",
+            fontFamily: fontBody,
+            fontSize: 12,
+            color: P.ink3,
+            lineHeight: 1.5,
+          }}
+        >
           Groups slated to multiply, grouped by audience and life stage.
           Readiness chips reflect Julian&rsquo;s criteria; a group does not need
           to meet all of them. Filter by target year to resolve the 2026 / 2027
@@ -470,15 +534,33 @@ export function MultiplicationPlanner({
       <AddCandidateForm availableGroups={availableGroups} />
 
       {segments.length === 0 ? null : (
-        <YearFilterBar segments={segments} active={yearFilter} onChange={setYearFilter} />
+        <YearFilterBar
+          segments={segments}
+          active={yearFilter}
+          onChange={setYearFilter}
+        />
       )}
 
       {segments.length === 0 ? (
-        <p style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2, margin: 0 }}>
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            margin: 0,
+          }}
+        >
           No candidates yet. Add a group above to start the pipeline.
         </p>
       ) : visible.length === 0 ? (
-        <p style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2, margin: 0 }}>
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            margin: 0,
+          }}
+        >
           No candidates match this target year.
         </p>
       ) : (

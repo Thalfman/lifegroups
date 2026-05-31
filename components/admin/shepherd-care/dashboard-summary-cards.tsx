@@ -24,7 +24,11 @@ function buildHref(params: {
   return qs ? `/admin/shepherd-care?${qs}` : "/admin/shepherd-care";
 }
 
-const linkResetStyle = { textDecoration: "none", color: "inherit", display: "block" };
+const linkResetStyle = {
+  textDecoration: "none",
+  color: "inherit",
+  display: "block",
+};
 
 export function ShepherdCareDashboardSummaryCards({
   summary,
@@ -47,7 +51,7 @@ export function ShepherdCareDashboardSummaryCards({
   const needsAttentionMeta =
     summary.needsAttention === 0
       ? "Everyone is up to date"
-      : `${plural(summary.needsAttention, "Shepherd needs", "Shepherds need")} a touch this week`;
+      : `${plural(summary.needsAttention, "Leader needs", "Leaders need")} a touch this week`;
 
   const overdueMeta =
     summary.overdueTouchpoints === 0
@@ -57,12 +61,12 @@ export function ShepherdCareDashboardSummaryCards({
   const staleMeta =
     summary.notContactedRecently === 0
       ? "All recent contact is fresh"
-      : `${plural(summary.notContactedRecently, "Shepherd not", "Shepherds not")} contacted in 60+ days`;
+      : `${plural(summary.notContactedRecently, "Leader not", "Leaders not")} contacted in 60+ days`;
 
   const noProfileMeta =
     summary.noCareProfile === 0
-      ? "Every shepherd has a profile"
-      : `${plural(summary.noCareProfile, "Shepherd has", "Shepherds have")} no care profile yet`;
+      ? "Every leader has a profile"
+      : `${plural(summary.noCareProfile, "Leader has", "Leaders have")} no care profile yet`;
 
   const followUpMeta = !followUpsAvailable
     ? "Follow-up data temporarily unavailable"
@@ -79,8 +83,8 @@ export function ShepherdCareDashboardSummaryCards({
   const unassignedMeta = !coverageAvailable
     ? "Coverage data temporarily unavailable"
     : summary.unassignedCoverage === 0
-      ? "Every active shepherd is covered"
-      : `${plural(summary.unassignedCoverage, "Shepherd has", "Shepherds have")} no over-shepherd`;
+      ? "Every active leader is covered"
+      : `${plural(summary.unassignedCoverage, "Leader has", "Leaders have")} no over-shepherd`;
   // The dashboard renders "—" instead of a misleading "0" when the coverage
   // assignments read failed, so admins can tell apart "no unassigned" from
   // "we don't know".
@@ -97,7 +101,7 @@ export function ShepherdCareDashboardSummaryCards({
   return (
     <section aria-labelledby="shepherd-care-summary">
       <h2 id="shepherd-care-summary" className="sr-only">
-        Shepherd care summary
+        Leader care summary
       </h2>
       <div
         className="lg-m-grid-stack"
@@ -108,7 +112,7 @@ export function ShepherdCareDashboardSummaryCards({
         }}
       >
         <MetricCard
-          title="Active shepherds"
+          title="Active leaders"
           value={String(summary.totalActiveShepherds)}
           meta={totalMeta}
           accent={P.sage}

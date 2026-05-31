@@ -6,7 +6,10 @@ import {
   fetchAllGroups,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
-import { buildPlannerSegments, type SegmentGroup } from "@/lib/admin/multiplication";
+import {
+  buildPlannerSegments,
+  type SegmentGroup,
+} from "@/lib/admin/multiplication";
 import { MultiplicationPlanner } from "@/components/admin/multiplication/multiplication-planner";
 import { P, fontBody } from "@/lib/pastoral";
 
@@ -37,10 +40,12 @@ async function loadData(): Promise<PageData> {
   const segments = buildPlannerSegments(candidatesRes.data ?? [], todayIso);
 
   const candidateGroupIds = new Set(
-    (candidatesRes.data ?? []).map((e) => e.candidate.group_id),
+    (candidatesRes.data ?? []).map((e) => e.candidate.group_id)
   );
   const availableGroups = (allGroupsRes.data ?? [])
-    .filter((g) => g.lifecycle_status === "active" && !candidateGroupIds.has(g.id))
+    .filter(
+      (g) => g.lifecycle_status === "active" && !candidateGroupIds.has(g.id)
+    )
     .map((g) => ({ id: g.id, name: g.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -116,7 +121,7 @@ export default async function AdminMultiplicationPage() {
               href="/admin/shepherd-care"
               style={{ color: P.ink, textDecoration: "underline" }}
             >
-              Shepherd care
+              Leader care
             </Link>
           </nav>
         </div>

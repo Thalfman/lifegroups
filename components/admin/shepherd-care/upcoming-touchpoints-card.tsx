@@ -25,14 +25,18 @@ export function UpcomingTouchpointsCard({
       {items.length === 0 ? (
         <EmptyState
           title="No touchpoints due"
-          description="Nothing on the calendar for the next 7 days. Schedule a next touchpoint from any shepherd detail page."
+          description="Nothing on the calendar for the next 7 days. Schedule a next touchpoint from any leader detail page."
         />
       ) : (
         <div>
           {items.map((item) => {
             const overdue = item.daysFromToday < 0;
             return (
-              <Link key={item.shepherdProfileId} href={item.href} style={ROW_LINK}>
+              <Link
+                key={item.shepherdProfileId}
+                href={item.href}
+                style={ROW_LINK}
+              >
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     style={{

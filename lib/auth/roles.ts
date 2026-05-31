@@ -13,7 +13,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   co_leader: "Co-Leader",
 };
 
-const ADMIN_ROLES: ReadonlySet<UserRole> = new Set(["super_admin", "ministry_admin"]);
+const ADMIN_ROLES: ReadonlySet<UserRole> = new Set([
+  "super_admin",
+  "ministry_admin",
+]);
 const LEADER_ROLES: ReadonlySet<UserRole> = new Set(["leader", "co_leader"]);
 // Over-Shepherd is its own role category per
 // docs/adr/0002-oversight-ladder-and-leader-gating.md — deliberately NOT a
@@ -65,11 +68,15 @@ export function defaultLandingPathForRole(role: UserRole): string {
 // omitted from nav per PRODUCT_ROADMAP.md EXT.1, and Check-ins is omitted
 // per docs/adr/0002-oversight-ladder-and-leader-gating.md — both routes
 // still resolve for existing bookmarks / direct URLs under the admin guard.
-export function navItemsForRole(role: UserRole): { href: string; label: string }[] {
-  const items: { href: string; label: string }[] = [{ href: "/", label: "Home" }];
+export function navItemsForRole(
+  role: UserRole
+): { href: string; label: string }[] {
+  const items: { href: string; label: string }[] = [
+    { href: "/", label: "Home" },
+  ];
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
-    items.push({ href: "/admin/shepherd-care", label: "Shepherd care" });
+    items.push({ href: "/admin/shepherd-care", label: "Leader care" });
     items.push({ href: "/admin/launch-planning", label: "Launch planning" });
     items.push({ href: "/admin/multiplication", label: "Multiplication" });
     items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
@@ -88,7 +95,7 @@ export function navItemsForRole(role: UserRole): { href: string; label: string }
     // Focused Over-Shepherd nav: a single "My Shepherds" entry. The directory
     // it links to arrives in the read-surface slice; this slice lands the
     // entry pointing at the placeholder landing.
-    items.push({ href: "/over-shepherd", label: "My Shepherds" });
+    items.push({ href: "/over-shepherd", label: "My Leaders" });
   }
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
   // no leader nav entry is emitted for any role. leader / co_leader see only
@@ -132,9 +139,17 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       // it ships dimension-complete with ADR 0007 placeholder labels and was
       // previously reachable only by direct URL.
       items: [
-        { href: "/admin/shepherd-care", label: "Shepherd care", icon: "heart" },
-        { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
-        { href: "/admin/multiplication", label: "Multiplication", icon: "sprout" },
+        { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
+        {
+          href: "/admin/launch-planning",
+          label: "Launch planning",
+          icon: "compass",
+        },
+        {
+          href: "/admin/multiplication",
+          label: "Multiplication",
+          icon: "sprout",
+        },
         { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
         { href: "/admin/group-health", label: "Group health", icon: "sprout" },
       ],

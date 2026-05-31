@@ -18,15 +18,30 @@ const REASON_LABEL: Record<CareAttentionReason, string> = {
   needs_encouragement_status: "Needs encouragement",
 };
 
-const REASON_TONE: Record<CareAttentionReason, { bg: string; fg: string; border: string }> = {
+const REASON_TONE: Record<
+  CareAttentionReason,
+  { bg: string; fg: string; border: string }
+> = {
   overdue_touchpoint: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   overdue_care_follow_up: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
   concern_status: { bg: "#f6d6cd", fg: "#7a1d10", border: "#dc9c8a" },
   needs_follow_up_status: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  no_contact_yet: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
-  stale_last_contact: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
+  no_contact_yet: {
+    bg: P.mustardSoft,
+    fg: P.mustardTextStrong,
+    border: "#efdfa3",
+  },
+  stale_last_contact: {
+    bg: P.mustardSoft,
+    fg: P.mustardTextStrong,
+    border: "#efdfa3",
+  },
   no_over_shepherd: { bg: P.bgDeep, fg: P.ink2, border: P.line2 },
-  needs_encouragement_status: { bg: "#fff5d9", fg: "#6a4d11", border: "#efdfa3" },
+  needs_encouragement_status: {
+    bg: "#fff5d9",
+    fg: "#6a4d11",
+    border: "#efdfa3",
+  },
 };
 
 const PRIMARY_BADGE: CSSProperties = {
@@ -96,19 +111,20 @@ export function CareAttentionQueue({
   // non-clickable copy and users scroll the directory below for more.
   const remaining = totalCount - items.length;
   return (
-    <StatusCard
-      eyebrow="Triage queue"
-      title="Needs attention this week"
-    >
+    <StatusCard eyebrow="Triage queue" title="Needs attention this week">
       {items.length === 0 ? (
         <EmptyState
           title="Nothing urgent right now"
-          description="No shepherds match the attention rules today. Keep checking back as touchpoints come due."
+          description="No leaders match the attention rules today. Keep checking back as touchpoints come due."
         />
       ) : (
         <div>
           {items.map((item) => (
-            <Link key={item.shepherdProfileId} href={item.href} style={ROW_LINK}>
+            <Link
+              key={item.shepherdProfileId}
+              href={item.href}
+              style={ROW_LINK}
+            >
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div
                   style={{
@@ -133,7 +149,14 @@ export function CareAttentionQueue({
                   {item.detail}
                 </div>
                 {item.secondaryReasons.length > 0 ? (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      marginTop: 6,
+                    }}
+                  >
                     {item.secondaryReasons.map((r) => (
                       <span key={r} style={SECONDARY_CHIP}>
                         {REASON_LABEL[r]}

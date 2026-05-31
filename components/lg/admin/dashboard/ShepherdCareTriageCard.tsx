@@ -15,7 +15,7 @@ export function ShepherdCareTriageCard({
     return (
       <Card>
         <CardHeader
-          eyebrow="Shepherd care"
+          eyebrow="Leader care"
           title="Care triage"
           href="/admin/shepherd-care"
         />
@@ -24,12 +24,12 @@ export function ShepherdCareTriageCard({
     );
   }
 
-  const overdueTone: PillTone = summary.overdueTouchpoints > 0 ? "clay" : "ghost";
+  const overdueTone: PillTone =
+    summary.overdueTouchpoints > 0 ? "clay" : "ghost";
   const needsTone: PillTone = summary.needsAttention > 0 ? "clay" : "ghost";
   const staleTone: PillTone =
     summary.notContactedRecently > 0 ? "amber" : "ghost";
-  const noProfileTone: PillTone =
-    summary.noCareProfile > 0 ? "amber" : "ghost";
+  const noProfileTone: PillTone = summary.noCareProfile > 0 ? "amber" : "ghost";
   const coverageTone: PillTone =
     summary.coverageAvailable && summary.unassignedCoverage > 0
       ? "amber"
@@ -38,7 +38,7 @@ export function ShepherdCareTriageCard({
   return (
     <Card>
       <CardHeader
-        eyebrow="Shepherd care"
+        eyebrow="Leader care"
         title="Care triage"
         href="/admin/shepherd-care"
       />
@@ -113,8 +113,8 @@ export function ShepherdCareTriageCard({
           {summary.attentionItemsTotal === 0
             ? "Care queue is clear this week."
             : summary.attentionItemsTotal === 1
-              ? "1 shepherd in the attention queue."
-              : `${summary.attentionItemsTotal} shepherds in the attention queue.`}
+              ? "1 leader in the attention queue."
+              : `${summary.attentionItemsTotal} leaders in the attention queue.`}
         </span>
         <Link
           href="/admin/shepherd-care"

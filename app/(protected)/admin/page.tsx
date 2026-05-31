@@ -28,7 +28,7 @@ export default async function AdminPage({
     <>
       <PageHeader
         eyebrow="Admin OS"
-        title="Shepherd care"
+        title="Leader care"
         italic="and launch planning"
         lede="Who needs your attention, and whether the church needs more groups soon. Weekly check-in status is below."
       />

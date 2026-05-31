@@ -30,7 +30,7 @@ const WEEK_DAYS: { value: string; label: string }[] = [
 export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateMetricDefaults,
-    undefined,
+    undefined
   );
 
   return (
@@ -69,7 +69,10 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
 
         <div>
-          <label htmlFor="capacity_warning_threshold_pct" style={fieldLabelStyle}>
+          <label
+            htmlFor="capacity_warning_threshold_pct"
+            style={fieldLabelStyle}
+          >
             Capacity warning %
           </label>
           <input
@@ -139,8 +142,8 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
             ))}
           </select>
           <p style={hintStyle}>
-            Kept for historical context. The dashboard now uses each group&rsquo;s
-            meeting day + the offset above.
+            Kept for historical context. The dashboard now uses each
+            group&rsquo;s meeting day + the offset above.
           </p>
         </div>
 
@@ -162,7 +165,10 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
 
         <div>
-          <label htmlFor="default_healthy_attendance_pct" style={fieldLabelStyle}>
+          <label
+            htmlFor="default_healthy_attendance_pct"
+            style={fieldLabelStyle}
+          >
             Healthy attendance %
           </label>
           <input
@@ -179,7 +185,10 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
 
         <div>
-          <label htmlFor="shepherd_care_stale_days_direct" style={fieldLabelStyle}>
+          <label
+            htmlFor="shepherd_care_stale_days_direct"
+            style={fieldLabelStyle}
+          >
             Care stale-contact — directly overseen (days)
           </label>
           <input
@@ -193,13 +202,16 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
             style={fieldInputStyle}
           />
           <p style={hintStyle}>
-            Days since last contact before a shepherd the Ministry Admin
-            oversees directly is flagged on the care dashboard. 7–365.
+            Days since last contact before a leader the Ministry Admin oversees
+            directly is flagged on the care dashboard. 7–365.
           </p>
         </div>
 
         <div>
-          <label htmlFor="shepherd_care_stale_days_delegated" style={fieldLabelStyle}>
+          <label
+            htmlFor="shepherd_care_stale_days_delegated"
+            style={fieldLabelStyle}
+          >
             Care stale-contact — delegated (days)
           </label>
           <input
@@ -213,8 +225,8 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
             style={fieldInputStyle}
           />
           <p style={hintStyle}>
-            Days since last contact before a shepherd with an active
-            over-shepherd is flagged on the care dashboard. 7–365.
+            Days since last contact before a leader with an active over-shepherd
+            is flagged on the care dashboard. 7–365.
           </p>
         </div>
       </div>
@@ -223,11 +235,21 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save defaults"}
         </PButton>
-        {state?.ok ? <span style={successTextStyle}>Defaults saved.</span> : null}
+        {state?.ok ? (
+          <span style={successTextStyle}>Defaults saved.</span>
+        ) : null}
       </div>
 
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

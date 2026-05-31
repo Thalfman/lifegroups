@@ -25,8 +25,10 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   duplicate_assignment:
     "That assignment already exists. They're already part of the group.",
   missing_group: "We couldn't find that group. Refresh the page and try again.",
-  missing_profile: "We couldn't find that profile. Refresh the page and try again.",
-  missing_member: "We couldn't find that member. Refresh the page and try again.",
+  missing_profile:
+    "We couldn't find that profile. Refresh the page and try again.",
+  missing_member:
+    "We couldn't find that member. Refresh the page and try again.",
   forbidden_target:
     "That target isn't allowed through this screen. super_admin must be set via the documented bootstrap procedure, and ministry admins can't deactivate the super admin.",
   self_target_not_allowed:
@@ -38,15 +40,12 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   invalid_input: "Some required fields are missing or malformed.",
   group_already_closed:
     "That group is already closed. Reopen it if you need to make changes.",
-  group_not_closed:
-    "That group is already active — there's nothing to reopen.",
-  no_role_change:
-    "That profile already has that role. Nothing to change.",
+  group_not_closed: "That group is already active — there's nothing to reopen.",
+  no_role_change: "That profile already has that role. Nothing to change.",
   missing_settings:
     "The settings record is missing. Refresh the page and try again.",
   // Phase 5C.0 tokens.
-  missing_guest:
-    "We couldn't find that guest. Refresh the page and try again.",
+  missing_guest: "We couldn't find that guest. Refresh the page and try again.",
   missing_follow_up:
     "We couldn't find that follow-up. Refresh the page and try again.",
   missing_care_profile:
@@ -58,8 +57,7 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   invalid_status_transition:
     "That follow-up has already been closed or moved past this step. Refresh to see the latest state.",
   // Phase 5A.6 group calendar tokens.
-  missing_event:
-    "We couldn't find that calendar event. Refresh and try again.",
+  missing_event: "We couldn't find that calendar event. Refresh and try again.",
   event_already_archived:
     "That calendar event is already archived. Restore it before editing.",
   event_not_archived:
@@ -74,9 +72,9 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
   missing_assignment:
     "That assignment isn't active. Refresh the page and try again.",
   // Phase LDR.1 (#126) over-shepherd broad-note token: the caller tried to
-  // write a note on a Shepherd outside their active coverage.
+  // write a note on a Leader outside their active coverage.
   not_covered:
-    "That Shepherd isn't in your coverage. Refresh your list and try again.",
+    "That Leader isn't in your coverage. Refresh your list and try again.",
   invalid_assigned_at_before_prior:
     "That assigned date is earlier than the previous assignment's start. Pick a date on or after the prior assignment began.",
   invalid_ended_at_before_start:
@@ -101,7 +99,8 @@ export const RPC_ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function mapRpcError(raw: string | undefined | null): string {
-  if (!raw) return "Something went wrong saving that change. Try again in a moment.";
+  if (!raw)
+    return "Something went wrong saving that change. Try again in a moment.";
   // Postgres prefixes a token-form message with nothing extra; supabase-js
   // surfaces the message via PostgrestError.message. Match exactly first,
   // then fall back to substring.

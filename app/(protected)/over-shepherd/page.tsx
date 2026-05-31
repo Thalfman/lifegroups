@@ -36,7 +36,7 @@ export default async function OverShepherdPage() {
     navItems,
     currentUser,
     eyebrow: "Over-Shepherd",
-    title: "My Shepherds",
+    title: "My Leaders",
     contentMaxWidth: 980,
   } as const;
 
@@ -45,7 +45,7 @@ export default async function OverShepherdPage() {
   const unavailable = (
     <PastoralAppShell
       {...shellProps}
-      lede="We couldn't load your Shepherds just now."
+      lede="We couldn't load your Leaders just now."
     >
       <EmptyState
         title="Temporarily unavailable"
@@ -72,13 +72,13 @@ export default async function OverShepherdPage() {
   // a missing/failed settings read falls back to the documented baseline.
   const metricDefaultsRes = client ? await fetchMetricDefaults(client) : null;
   const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes?.data ?? null),
+    decodeMetricDefaults(metricDefaultsRes?.data ?? null)
   );
 
   const directoryResult = await fetchOverShepherdCareDirectory(
     client!,
     coveredIds,
-    { windows },
+    { windows }
   );
 
   if (directoryResult.error) return unavailable;
@@ -86,8 +86,8 @@ export default async function OverShepherdPage() {
   const entries = directoryResult.data;
   const lede =
     entries.length === 0
-      ? "No Shepherds are assigned to your care yet. A ministry admin will route coverage your way."
-      : "The Shepherds you cover, with their current care status.";
+      ? "No Leaders are assigned to your care yet. A ministry admin will route coverage your way."
+      : "The Leaders you cover, with their current care status.";
 
   return (
     <PastoralAppShell {...shellProps} lede={lede}>
