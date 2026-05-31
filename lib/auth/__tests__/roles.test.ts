@@ -106,18 +106,14 @@ describe("navItemsForRole", () => {
     expect(hrefs).not.toContain("/admin");
   });
 
-  // Julian #145: the multiplication pipeline is promoted to its own admin
-  // surface and must be reachable from the admin nav for admin roles only.
-  it("surfaces /admin/multiplication for admin roles only", () => {
+  // Capacity board and Multiplication were folded into Launch planning
+  // (ADR 0010 surface-budget consolidation); they no longer appear in the nav.
+  it("no longer surfaces /admin/capacity-board or /admin/multiplication", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
-      expect(navItemsForRole(role).map((i) => i.href)).toContain(
-        "/admin/multiplication"
-      );
-    }
-    for (const role of ["over_shepherd", "leader", "co_leader"] as const) {
-      expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
-        "/admin/multiplication"
-      );
+      const hrefs = navItemsForRole(role).map((i) => i.href);
+      expect(hrefs).not.toContain("/admin/capacity-board");
+      expect(hrefs).not.toContain("/admin/multiplication");
+      expect(hrefs).toContain("/admin/launch-planning");
     }
   });
 });
@@ -164,17 +160,16 @@ describe("adminNavGroups", () => {
     }
   });
 
-  it("leads the shepherd group with shepherd care + launch planning + multiplication", () => {
+  it("leads the shepherd group with leader care + launch planning, then leader pipeline", () => {
     const groups = adminNavGroups("ministry_admin");
     const shepherd = groups.find((g) => g.group === "shepherd");
     expect(shepherd).toBeDefined();
     expect(shepherd!.label).toBe("Ministry Admin");
+    // Capacity board and Multiplication folded into Launch planning (ADR 0010).
     expect(shepherd!.items.map((i) => i.href)).toEqual([
       "/admin/shepherd-care",
-      "/admin/capacity-board",
-      "/admin/leader-pipeline",
       "/admin/launch-planning",
-      "/admin/multiplication",
+      "/admin/leader-pipeline",
       "/admin/follow-ups",
       "/admin/group-health",
     ]);

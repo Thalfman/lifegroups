@@ -13,8 +13,10 @@ export interface HubTile {
 // rename sits on top of the deliberately-frozen shepherd_care_* schema.
 const ADMIN_TILES: readonly HubTile[] = [
   { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
+  // Launch planning now carries the former Capacity board and Multiplication
+  // surfaces (ADR 0010 surface-budget consolidation); both old routes redirect
+  // here, so they no longer get their own hub tile.
   { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
-  { href: "/admin/multiplication", label: "Multiplication", icon: "sprout" },
   { href: "/admin/group-health", label: "Group health", icon: "sprout" },
   { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
   { href: "/admin/people", label: "People", icon: "people" },
