@@ -6,6 +6,7 @@ import type {
   CareAttentionItem,
   CareAttentionReason,
 } from "@/lib/admin/shepherd-care-dashboard";
+import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
 
 const REASON_LABEL: Record<CareAttentionReason, string> = {
   overdue_touchpoint: "Overdue",
@@ -105,13 +106,28 @@ export function CareAttentionQueue({
   items: CareAttentionItem[];
   totalCount: number;
 }) {
-  // Queue reasons (e.g. no_over_shepherd, needs_encouragement_status) don't all map onto
-  // the directory's `needs_attention` filter, so a single CTA can't reliably
-  // surface the rest of the queue. The full queue size is shown as
-  // non-clickable copy and users scroll the directory below for more.
+  // The Dashboard scans; the Directory is where you act. The queue header and
+  // the "+N more" footer both link into the needs-attention Directory view so a
+  // click jumps straight to the filtered, actionable list (#180).
   const remaining = totalCount - items.length;
+  const directoryHref = buildShepherdCareTriageLink({
+    kind: "needs_attention",
+  });
   return (
-    <StatusCard eyebrow="Triage queue" title="Needs attention this week">
+    <StatusCard
+      eyebrow="Triage queue"
+      title="Needs attention this week"
+      action={
+        items.length > 0 ? (
+          <Link
+            href={directoryHref}
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            View in Directory →
+          </Link>
+        ) : undefined
+      }
+    >
       {items.length === 0 ? (
         <EmptyState
           title="Nothing urgent right now"
@@ -179,7 +195,9 @@ export function CareAttentionQueue({
                 fontStyle: "italic",
               }}
             >
-              +{remaining} more in the directory below
+              <Link href={directoryHref} style={{ color: "inherit" }}>
+                +{remaining} more in the Directory →
+              </Link>
             </div>
           ) : null}
         </div>

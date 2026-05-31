@@ -253,8 +253,6 @@ export default async function AdminShepherdCarePage({
             <>
               <ShepherdCareDashboardSummaryCards
                 summary={dashboard.summary}
-                filter={filter}
-                coverage={coverage}
                 coverageAvailable={dashboard.coverageAvailable}
                 followUpsAvailable={dashboard.followUpsAvailable}
               />

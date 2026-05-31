@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildShepherdCareTriageLink,
   buildShepherdCareViewHref,
   resolveCoverageFilter,
   resolveDirectoryFilter,
@@ -133,5 +134,28 @@ describe("buildShepherdCareViewHref", () => {
     expect(
       buildShepherdCareViewHref({ view: "dashboard", coverage: UUID })
     ).toBe(`/admin/shepherd-care?coverage=${UUID}`);
+  });
+});
+
+describe("buildShepherdCareTriageLink", () => {
+  it("maps needs_attention to the attention-filtered Directory URL", () => {
+    expect(buildShepherdCareTriageLink({ kind: "needs_attention" })).toBe(
+      "/admin/shepherd-care?view=directory&filter=needs_attention"
+    );
+  });
+
+  it("maps a specific over-shepherd id to its coverage param on the Directory", () => {
+    expect(
+      buildShepherdCareTriageLink({
+        kind: "over_shepherd",
+        overShepherdId: UUID,
+      })
+    ).toBe(`/admin/shepherd-care?view=directory&coverage=${UUID}`);
+  });
+
+  it("maps unassigned to the unassigned coverage param on the Directory", () => {
+    expect(buildShepherdCareTriageLink({ kind: "unassigned" })).toBe(
+      "/admin/shepherd-care?view=directory&coverage=unassigned"
+    );
   });
 });

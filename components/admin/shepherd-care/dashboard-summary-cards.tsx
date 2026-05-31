@@ -2,26 +2,10 @@ import Link from "next/link";
 import { MetricCard } from "@/components/dashboard/cards";
 import { P } from "@/lib/pastoral";
 import type { CareDashboardSummary } from "@/lib/admin/shepherd-care-dashboard";
-import type {
-  CoverageFilter,
-  DirectoryFilter,
-} from "@/components/admin/shepherd-care/filter-chips";
+import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
-}
-
-function buildHref(params: {
-  filter?: DirectoryFilter;
-  coverage?: CoverageFilter;
-}): string {
-  const sp = new URLSearchParams();
-  if (params.filter && params.filter !== "all") sp.set("filter", params.filter);
-  if (params.coverage !== undefined && params.coverage !== null) {
-    sp.set("coverage", params.coverage);
-  }
-  const qs = sp.toString();
-  return qs ? `/admin/shepherd-care?${qs}` : "/admin/shepherd-care";
 }
 
 const linkResetStyle = {
@@ -32,14 +16,10 @@ const linkResetStyle = {
 
 export function ShepherdCareDashboardSummaryCards({
   summary,
-  filter,
-  coverage,
   coverageAvailable,
   followUpsAvailable,
 }: {
   summary: CareDashboardSummary;
-  filter: DirectoryFilter;
-  coverage: CoverageFilter | undefined;
   coverageAvailable: boolean;
   followUpsAvailable: boolean;
 }) {
@@ -92,11 +72,14 @@ export function ShepherdCareDashboardSummaryCards({
     ? String(summary.unassignedCoverage)
     : "—";
 
-  // Tiles that map to an existing directory filter render as Links so a click
-  // narrows the directory below to the matching rows. Tiles without a clean
-  // filter mapping (totals, no-profile) stay as plain metric cards.
-  const needsAttentionHref = buildHref({ filter: "needs_attention", coverage });
-  const unassignedHref = buildHref({ filter, coverage: "unassigned" });
+  // Tiles that map to a triage target render as Links into the Directory view
+  // with the matching filter pre-applied (#180) — the Dashboard scans, the
+  // Directory is where you act. Tiles without a clean filter mapping (totals,
+  // no-profile) stay as plain metric cards.
+  const needsAttentionHref = buildShepherdCareTriageLink({
+    kind: "needs_attention",
+  });
+  const unassignedHref = buildShepherdCareTriageLink({ kind: "unassigned" });
 
   return (
     <section aria-labelledby="shepherd-care-summary">

@@ -61,6 +61,14 @@ export function resolveShepherdCareViewState(
   };
 }
 
+// A triage entry point on the Dashboard. The Dashboard is a scan surface; each
+// of these targets is somewhere you go to *act*, so they all resolve to a
+// filtered Directory view (#180).
+export type ShepherdCareTriageTarget =
+  | { kind: "needs_attention" }
+  | { kind: "unassigned" }
+  | { kind: "over_shepherd"; overShepherdId: string };
+
 const BASE_PATH = "/admin/shepherd-care";
 
 // Build a bookmarkable Leader-care URL. Dashboard is the default view so it is
@@ -79,4 +87,30 @@ export function buildShepherdCareViewHref(state: {
   }
   const s = qs.toString();
   return s.length === 0 ? BASE_PATH : `${BASE_PATH}?${s}`;
+}
+
+// Cross-view link builder (#180): map a Dashboard triage target to the
+// bookmarkable Directory-view URL with the matching filter / coverage param
+// pre-applied, so a click on a summary card or attention item lands you in the
+// Directory ready to act.
+export function buildShepherdCareTriageLink(
+  target: ShepherdCareTriageTarget
+): string {
+  switch (target.kind) {
+    case "needs_attention":
+      return buildShepherdCareViewHref({
+        view: "directory",
+        filter: "needs_attention",
+      });
+    case "unassigned":
+      return buildShepherdCareViewHref({
+        view: "directory",
+        coverage: "unassigned",
+      });
+    case "over_shepherd":
+      return buildShepherdCareViewHref({
+        view: "directory",
+        coverage: target.overShepherdId,
+      });
+  }
 }

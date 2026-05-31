@@ -32,7 +32,7 @@ const OS_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 function entry(
   id: string,
   name: string,
-  care: ShepherdCareDirectoryEntry["care"],
+  care: ShepherdCareDirectoryEntry["care"]
 ): ShepherdCareDirectoryEntry {
   // computeNeedsAttention is exercised by the directory read-model tests
   // already; for the builder unit tests we set it explicitly so the
@@ -65,7 +65,7 @@ function careRow(
       : never;
     last?: string | null;
     next?: string | null;
-  } = {},
+  } = {}
 ): ShepherdCareDirectoryEntry["care"] {
   return {
     id: `care-${shepherdId}`,
@@ -81,7 +81,7 @@ function careRow(
 
 function assignment(
   shepherdId: string,
-  overShepherdId: string,
+  overShepherdId: string
 ): ActiveShepherdCoverageAssignmentSummary {
   return {
     id: `assn-${shepherdId}`,
@@ -96,7 +96,11 @@ function assignment(
   };
 }
 
-function overShepherd(id: string, name: string, active = true): OverShepherdListRow {
+function overShepherd(
+  id: string,
+  name: string,
+  active = true
+): OverShepherdListRow {
   return {
     id,
     full_name: name,
@@ -162,7 +166,7 @@ describe("buildShepherdCareDashboardModel", () => {
     // otherwise healthy/recent so the queue is empty.
     expect(model.attentionQueue).toEqual([]);
     expect(
-      countAllAttentionItems(entries, [], TODAY, { coverageAvailable: false }),
+      countAllAttentionItems(entries, [], TODAY, { coverageAvailable: false })
     ).toBe(0);
   });
 
@@ -182,13 +186,23 @@ describe("buildShepherdCareDashboardModel", () => {
     // Both shepherds are healthy and recent, so the only reason is
     // no_over_shepherd, which puts them in the queue.
     expect(model.attentionQueue).toHaveLength(2);
-    expect(model.attentionQueue.every((i) => i.reason === "no_over_shepherd")).toBe(true);
+    expect(
+      model.attentionQueue.every((i) => i.reason === "no_over_shepherd")
+    ).toBe(true);
     const unassignedBucket = model.coverageBuckets.find((b) => b.isUnassigned)!;
     expect(unassignedBucket.shepherdCount).toBe(2);
-    expect(unassignedBucket.href).toBe("/admin/shepherd-care?coverage=unassigned");
-    const coachBucket = model.coverageBuckets.find((b) => b.overShepherdId === OS_A)!;
+    // Coverage tiles are triage entry points: they link into the Directory
+    // view with the coverage filter pre-applied (#180).
+    expect(unassignedBucket.href).toBe(
+      "/admin/shepherd-care?view=directory&coverage=unassigned"
+    );
+    const coachBucket = model.coverageBuckets.find(
+      (b) => b.overShepherdId === OS_A
+    )!;
     expect(coachBucket.shepherdCount).toBe(0);
-    expect(coachBucket.href).toBe(`/admin/shepherd-care?coverage=${OS_A}`);
+    expect(coachBucket.href).toBe(
+      `/admin/shepherd-care?view=directory&coverage=${OS_A}`
+    );
   });
 
   it("orders attention queue by reason priority then name", () => {
@@ -199,13 +213,13 @@ describe("buildShepherdCareDashboardModel", () => {
       entry(
         UUID_1,
         "A Overdue",
-        careRow(UUID_1, { next: OVERDUE, last: STALE_OLD }),
+        careRow(UUID_1, { next: OVERDUE, last: STALE_OLD })
       ),
       // needs_follow_up_status only
       entry(
         UUID_2,
         "B Status",
-        careRow(UUID_2, { status: "needs_follow_up", last: RECENT }),
+        careRow(UUID_2, { status: "needs_follow_up", last: RECENT })
       ),
       // no_contact_yet (care row exists but last_contact_at null)
       entry(UUID_3, "C NoContact", careRow(UUID_3, { last: null })),
@@ -217,7 +231,7 @@ describe("buildShepherdCareDashboardModel", () => {
       entry(
         UUID_6,
         "F Encouragement",
-        careRow(UUID_6, { status: "needs_encouragement", last: RECENT }),
+        careRow(UUID_6, { status: "needs_encouragement", last: RECENT })
       ),
     ];
     const assignments = [
@@ -258,7 +272,7 @@ describe("buildShepherdCareDashboardModel", () => {
           status: "needs_follow_up",
           next: OVERDUE,
           last: STALE_OLD,
-        }),
+        })
       ),
     ];
     const model = buildShepherdCareDashboardModel({
@@ -281,11 +295,7 @@ describe("buildShepherdCareDashboardModel", () => {
   it("counts each summary card independently", () => {
     const entries = [
       // overdue AND stale AND unassigned -> counts in three cards once each
-      entry(
-        UUID_1,
-        "X",
-        careRow(UUID_1, { next: OVERDUE, last: STALE_OLD }),
-      ),
+      entry(UUID_1, "X", careRow(UUID_1, { next: OVERDUE, last: STALE_OLD })),
       // no care profile and unassigned
       entry(UUID_2, "Y", null),
     ];
@@ -309,8 +319,16 @@ describe("buildShepherdCareDashboardModel", () => {
     const entries = [
       entry(UUID_1, "A", careRow(UUID_1, { next: SOON, last: RECENT })),
       entry(UUID_2, "B", careRow(UUID_2, { next: OVERDUE, last: RECENT })),
-      entry(UUID_3, "C", careRow(UUID_3, { next: NEXT_WEEK_EDGE, last: RECENT })),
-      entry(UUID_4, "D", careRow(UUID_4, { next: OUTSIDE_WINDOW, last: RECENT })),
+      entry(
+        UUID_3,
+        "C",
+        careRow(UUID_3, { next: NEXT_WEEK_EDGE, last: RECENT })
+      ),
+      entry(
+        UUID_4,
+        "D",
+        careRow(UUID_4, { next: OUTSIDE_WINDOW, last: RECENT })
+      ),
       entry(UUID_5, "E", careRow(UUID_5, { next: null, last: RECENT })),
     ];
     const model = buildShepherdCareDashboardModel({
@@ -374,7 +392,9 @@ describe("buildShepherdCareDashboardModel", () => {
     });
     expect(model.recentInteractions.map((r) => r.id)).toEqual(["i3", "i2"]);
     // Each row carries an href into the shepherd's detail page.
-    expect(model.recentInteractions[0].href).toBe(`/admin/shepherd-care/${UUID_2}`);
+    expect(model.recentInteractions[0].href).toBe(
+      `/admin/shepherd-care/${UUID_2}`
+    );
   });
 
   it("does not leak notes or admin_summary into the serialized model", () => {
@@ -390,7 +410,7 @@ describe("buildShepherdCareDashboardModel", () => {
         {
           ...(careRow(UUID_1, { last: RECENT }) as object),
           admin_summary: "SECRET ADMIN SUMMARY BODY",
-        } as unknown as ShepherdCareDirectoryEntry["care"],
+        } as unknown as ShepherdCareDirectoryEntry["care"]
       ),
     ];
     const interactions = [
@@ -428,8 +448,8 @@ describe("buildShepherdCareDashboardModel", () => {
         careRow(`11111111-1111-1111-1111-${String(i).padStart(12, "0")}`, {
           status: "needs_follow_up",
           last: RECENT,
-        }),
-      ),
+        })
+      )
     );
     const model = buildShepherdCareDashboardModel({
       entries,
@@ -483,11 +503,11 @@ describe("buildShepherdCareDashboardModel", () => {
       // stale_last_contact (priority 5) outranks no_over_shepherd (6), which
       // also fires for an unassigned shepherd.
       expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
-        "stale_last_contact",
+        "stale_last_contact"
       );
       expect(model.attentionQueue[0].detail).toBe("Last contact 40 days ago");
       expect(model.attentionQueue[0].secondaryReasons).toContain(
-        "no_over_shepherd",
+        "no_over_shepherd"
       );
       expect(countAllAttentionItems(entries, [], TODAY)).toBe(1);
     });
@@ -528,13 +548,15 @@ describe("buildShepherdCareDashboardModel", () => {
     function followUp(
       shepherdId: string,
       status: CareFollowUpDashboardRow["status"],
-      due: string | null,
+      due: string | null
     ): CareFollowUpDashboardRow {
       return { care_profile_id: `care-${shepherdId}`, status, due_date: due };
     }
 
     it("surfaces an overdue_care_follow_up reason and counts overdue/outstanding", () => {
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
         assignments: [assignment(UUID_1, OS_A)],
@@ -550,13 +572,15 @@ describe("buildShepherdCareDashboardModel", () => {
       expect(model.summary.outstandingFollowUps).toBe(2);
       expect(model.attentionQueue).toHaveLength(1);
       expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
-        "overdue_care_follow_up",
+        "overdue_care_follow_up"
       );
       expect(model.attentionQueue[0].detail).toBe("1 follow-up overdue");
     });
 
     it("pluralizes the overdue detail string", () => {
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
         assignments: [assignment(UUID_1, OS_A)],
@@ -573,7 +597,9 @@ describe("buildShepherdCareDashboardModel", () => {
     });
 
     it("counts a non-overdue open follow-up as outstanding without an attention reason", () => {
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
         assignments: [assignment(UUID_1, OS_A)],
@@ -590,7 +616,11 @@ describe("buildShepherdCareDashboardModel", () => {
 
     it("ranks an overdue follow-up below an overdue touchpoint as a secondary reason", () => {
       const entries = [
-        entry(UUID_1, "Anna One", careRow(UUID_1, { next: OVERDUE, last: RECENT })),
+        entry(
+          UUID_1,
+          "Anna One",
+          careRow(UUID_1, { next: OVERDUE, last: RECENT })
+        ),
       ];
       const model = buildShepherdCareDashboardModel({
         entries,
@@ -601,15 +631,17 @@ describe("buildShepherdCareDashboardModel", () => {
         todayIso: TODAY,
       });
       expect(model.attentionQueue[0].reason).toBe<CareAttentionReason>(
-        "overdue_touchpoint",
+        "overdue_touchpoint"
       );
-      expect(model.attentionQueue[0].secondaryReasons).toContain<CareAttentionReason>(
-        "overdue_care_follow_up",
-      );
+      expect(
+        model.attentionQueue[0].secondaryReasons
+      ).toContain<CareAttentionReason>("overdue_care_follow_up");
     });
 
     it("ignores follow-ups whose care profile isn't in the visible directory", () => {
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
         assignments: [assignment(UUID_1, OS_A)],
@@ -629,7 +661,9 @@ describe("buildShepherdCareDashboardModel", () => {
       // page passes careFollowUps=[] (safe fallback) AND
       // careFollowUpsAvailable=false. The builder must NOT report a false 0
       // or omit the data silently — it flags followUpsAvailable=false instead.
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const model = buildShepherdCareDashboardModel({
         entries,
         assignments: [assignment(UUID_1, OS_A)],
@@ -647,16 +681,18 @@ describe("buildShepherdCareDashboardModel", () => {
     });
 
     it("reflects overdue follow-ups in countAllAttentionItems", () => {
-      const entries = [entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT }))];
+      const entries = [
+        entry(UUID_1, "Anna One", careRow(UUID_1, { last: RECENT })),
+      ];
       const careFollowUps = [followUp(UUID_1, "open", OVERDUE)];
       expect(
         countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY, {
           careFollowUps,
-        }),
+        })
       ).toBe(1);
       // Without the follow-up the same shepherd is not flagged.
       expect(
-        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY),
+        countAllAttentionItems(entries, [assignment(UUID_1, OS_A)], TODAY)
       ).toBe(0);
     });
   });
