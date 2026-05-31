@@ -2581,6 +2581,9 @@ type MultiplicationCandidateFields = {
   // derived co-shepherd readiness signal; it does not feed readiness.
   successor_designate: string | null;
   meeting_time: MultiplicationMeetingTime | null;
+  // Capacity & Multiplication #184: the linked apprentice (leader_pipeline).
+  // Same-group enforcement lives server-side (RPC + trigger).
+  leader_pipeline_id: string | null;
 };
 
 function validateMultiplicationCandidateFields(
@@ -2638,6 +2641,16 @@ function validateMultiplicationCandidateFields(
     }
   }
 
+  let leaderPipelineId: string | null = null;
+  const linkRaw = readOptionalString(input.leader_pipeline_id);
+  if (linkRaw !== undefined) {
+    if (!isUuid(linkRaw)) {
+      errors.push("leader_pipeline_id must be a uuid.");
+    } else {
+      leaderPipelineId = normalizeUuid(linkRaw);
+    }
+  }
+
   return {
     target_year: targetYear,
     status,
@@ -2646,6 +2659,7 @@ function validateMultiplicationCandidateFields(
     notes: notes ?? null,
     successor_designate: successor ?? null,
     meeting_time: meetingTime,
+    leader_pipeline_id: leaderPipelineId,
   };
 }
 

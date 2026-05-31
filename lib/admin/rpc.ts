@@ -233,6 +233,7 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
+    p_leader_pipeline_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -249,6 +250,7 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
+    p_leader_pipeline_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);

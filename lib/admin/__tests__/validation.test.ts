@@ -1267,6 +1267,30 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  // Capacity & Multiplication #184: the apprentice link.
+  it("round-trips a leader_pipeline_id, defaulting to null when absent or blank", () => {
+    const present = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      leader_pipeline_id: UUID_B,
+    });
+    expect(present.ok).toBe(true);
+    if (present.ok) expect(present.value.leader_pipeline_id).toBe(UUID_B);
+
+    const absent = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) expect(absent.value.leader_pipeline_id).toBeNull();
+  });
+
+  it("rejects a non-uuid leader_pipeline_id", () => {
+    const r = validateUpdateMultiplicationCandidatePayload({
+      candidate_id: UUID_A,
+      leader_pipeline_id: "not-a-uuid",
+    });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe("validateCreateShepherdCareFollowUpPayload", () => {

@@ -15,6 +15,7 @@
 import type {
   GroupAudienceCategory,
   GroupLifeStage,
+  LeaderReadinessStage,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
@@ -148,6 +149,7 @@ export function segmentLabel(
 // server so the client component stays presentational.
 export type CandidateView = {
   candidateId: string;
+  groupId: string;
   groupName: string;
   segment: string;
   targetYear: number | null;
@@ -159,6 +161,14 @@ export type CandidateView = {
   meetingTime: MultiplicationMeetingTime | null;
   activeMemberCount: number;
   readiness: ReadinessResult;
+  // Capacity & Multiplication #184: the linked apprentice (leader_pipeline),
+  // shown inline. Null when the candidate has no link.
+  leaderPipelineId: string | null;
+  linkedApprentice: {
+    id: string;
+    displayName: string;
+    stage: LeaderReadinessStage;
+  } | null;
 };
 
 export type SegmentGroup = { segment: string; candidates: CandidateView[] };
@@ -180,6 +190,7 @@ export function buildPlannerSegments(
     );
     const view: CandidateView = {
       candidateId: entry.candidate.id,
+      groupId: entry.candidate.group_id,
       groupName: entry.group?.name ?? "Unknown group",
       segment,
       targetYear: entry.candidate.target_year,
@@ -190,6 +201,8 @@ export function buildPlannerSegments(
       successorDesignate: entry.candidate.successor_designate,
       meetingTime: entry.candidate.meeting_time,
       activeMemberCount: entry.activeMemberCount,
+      leaderPipelineId: entry.candidate.leader_pipeline_id,
+      linkedApprentice: entry.linkedApprentice,
       readiness: evaluateReadiness(
         {
           activeMemberCount: entry.activeMemberCount,

@@ -18,6 +18,7 @@ import {
   type SegmentGroup,
   type TargetYearFilter,
 } from "@/lib/admin/multiplication";
+import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   errorTextStyle,
@@ -32,6 +33,10 @@ import type {
 } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
+
+// Capacity & Multiplication #184: a same-group apprentice the candidate can be
+// linked to. `label` already includes the readiness stage for the picker.
+export type ApprenticeOption = { id: string; label: string };
 
 export type { CandidateView, SegmentGroup };
 
@@ -87,7 +92,13 @@ function ReadinessChips({ readiness }: { readiness: ReadinessResult }) {
   );
 }
 
-function CandidateEditForm({ c }: { c: CandidateView }) {
+function CandidateEditForm({
+  c,
+  apprenticeOptions,
+}: {
+  c: CandidateView;
+  apprenticeOptions: ApprenticeOption[];
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateMultiplicationCandidate,
     undefined
@@ -163,6 +174,32 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
             </select>
           </div>
         </div>
+        <div>
+          <label style={fieldLabelStyle}>Linked apprentice</label>
+          <select
+            name="leader_pipeline_id"
+            defaultValue={c.leaderPipelineId ?? ""}
+            style={fieldSelectStyle}
+          >
+            <option value="">No apprentice linked</option>
+            {apprenticeOptions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: P.ink3,
+            }}
+          >
+            Only apprentices in this group can lead its next group. Add one in
+            the Leader pipeline.
+          </p>
+        </div>
         <label style={{ ...checkboxLabelStyle }}>
           <input
             type="checkbox"
@@ -211,12 +248,25 @@ function CandidateEditForm({ c }: { c: CandidateView }) {
   );
 }
 
-function CandidateRow({ c }: { c: CandidateView }) {
+function CandidateRow({
+  c,
+  apprenticeOptions,
+}: {
+  c: CandidateView;
+  apprenticeOptions: ApprenticeOption[];
+}) {
   const [editing, setEditing] = useState(false);
-  // Doc-shaped read view: surface the planning facts Julian scans for —
-  // successor and meeting time — without opening the edit form.
+  // Doc-shaped read view: surface the planning facts Julian scans for — the
+  // linked apprentice and its stage (R8), then successor/meeting time —
+  // without opening the edit form.
   const facts: string[] = [];
-  if (c.successorDesignate) facts.push(`Successor: ${c.successorDesignate}`);
+  if (c.linkedApprentice) {
+    facts.push(
+      `Apprentice: ${c.linkedApprentice.displayName} (${STAGE_LABEL[c.linkedApprentice.stage]})`
+    );
+  } else if (c.successorDesignate) {
+    facts.push(`Successor: ${c.successorDesignate}`);
+  }
   if (c.meetingTime) facts.push(MEETING_TIME_LABEL[c.meetingTime]);
   return (
     <div
@@ -259,7 +309,9 @@ function CandidateRow({ c }: { c: CandidateView }) {
       >
         {editing ? "Close" : "Edit"}
       </button>
-      {editing ? <CandidateEditForm c={c} /> : null}
+      {editing ? (
+        <CandidateEditForm c={c} apprenticeOptions={apprenticeOptions} />
+      ) : null}
     </div>
   );
 }
@@ -471,9 +523,11 @@ function YearFilterBar({
 export function MultiplicationPlanner({
   segments,
   availableGroups,
+  apprenticesByGroup,
 }: {
   segments: SegmentGroup[];
   availableGroups: { id: string; name: string }[];
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
 }) {
   const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
   const visible = useMemo(
@@ -584,7 +638,11 @@ export function MultiplicationPlanner({
               </span>
             </h3>
             {seg.candidates.map((c) => (
-              <CandidateRow key={c.candidateId} c={c} />
+              <CandidateRow
+                key={c.candidateId}
+                c={c}
+                apprenticeOptions={apprenticesByGroup[c.groupId] ?? []}
+              />
             ))}
           </div>
         ))

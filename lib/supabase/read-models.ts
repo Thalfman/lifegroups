@@ -28,6 +28,7 @@ import type {
 import type {
   FollowUpStatus,
   GuestPipelineStage,
+  LeaderReadinessStage,
   MembershipStatus,
   ProfileStatus,
   UserRole,
@@ -564,8 +565,8 @@ export async function fetchChurchAttendanceSnapshots(
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
-  "notes, successor_designate, meeting_time, archived_at, created_by, updated_by, " +
-  "created_at, updated_at";
+  "notes, successor_designate, meeting_time, leader_pipeline_id, archived_at, " +
+  "created_by, updated_by, created_at, updated_at";
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
@@ -577,12 +578,22 @@ export type MultiplicationCandidateGroup = Pick<
   | "lifecycle_status"
 >;
 
+// Capacity & Multiplication #184: the linked apprentice's identity + stage,
+// surfaced inline in the planner. Null when the candidate has no link.
+export type MultiplicationCandidateApprentice = {
+  id: string;
+  displayName: string;
+  stage: LeaderReadinessStage;
+};
+
 export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
   activeMemberCount: number;
   // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
   coShepherdSince: string | null;
+  // The linked leader_pipeline apprentice, or null when unlinked.
+  linkedApprentice: MultiplicationCandidateApprentice | null;
 };
 
 // Julian P4: active (non-archived) multiplication candidates enriched with the
@@ -611,26 +622,40 @@ export async function fetchMultiplicationCandidatesForAdmin(
   if (candidates.length === 0) return { data: [], error: null };
 
   const groupIds = [...new Set(candidates.map((c) => c.group_id))];
+  const apprenticeIds = [
+    ...new Set(
+      candidates
+        .map((c) => c.leader_pipeline_id)
+        .filter((id): id is string => id != null)
+    ),
+  ];
 
-  const [groupsRes, membershipsRes, leadersRes] = await Promise.all([
-    client
-      .from("groups")
-      .select(
-        "id, name, audience_category, life_stage, launched_on, lifecycle_status"
-      )
-      .in("id", groupIds),
-    client
-      .from("group_memberships")
-      .select("group_id, status")
-      .in("group_id", groupIds)
-      .eq("status", "active"),
-    client
-      .from("group_leaders")
-      .select("group_id, assigned_at, role, active")
-      .in("group_id", groupIds)
-      .eq("role", "co_leader")
-      .eq("active", true),
-  ]);
+  const [groupsRes, membershipsRes, leadersRes, apprenticesRes] =
+    await Promise.all([
+      client
+        .from("groups")
+        .select(
+          "id, name, audience_category, life_stage, launched_on, lifecycle_status"
+        )
+        .in("id", groupIds),
+      client
+        .from("group_memberships")
+        .select("group_id, status")
+        .in("group_id", groupIds)
+        .eq("status", "active"),
+      client
+        .from("group_leaders")
+        .select("group_id, assigned_at, role, active")
+        .in("group_id", groupIds)
+        .eq("role", "co_leader")
+        .eq("active", true),
+      apprenticeIds.length > 0
+        ? client
+            .from("leader_pipeline")
+            .select("id, display_name, readiness_stage")
+            .in("id", apprenticeIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
   if (groupsRes.error) {
     return {
       data: null,
@@ -657,6 +682,28 @@ export async function fetchMultiplicationCandidatesForAdmin(
         leadersRes.error
       ),
     };
+  }
+  if (apprenticesRes.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/apprentices",
+        apprenticesRes.error
+      ),
+    };
+  }
+
+  const apprenticeById = new Map<string, MultiplicationCandidateApprentice>();
+  for (const a of (apprenticesRes.data ?? []) as {
+    id: string;
+    display_name: string;
+    readiness_stage: LeaderReadinessStage;
+  }[]) {
+    apprenticeById.set(a.id, {
+      id: a.id,
+      displayName: a.display_name,
+      stage: a.readiness_stage,
+    });
   }
 
   const groupById = new Map<string, MultiplicationCandidateGroup>();
@@ -689,6 +736,9 @@ export async function fetchMultiplicationCandidatesForAdmin(
       group: groupById.get(candidate.group_id) ?? null,
       activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
       coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+      linkedApprentice: candidate.leader_pipeline_id
+        ? (apprenticeById.get(candidate.leader_pipeline_id) ?? null)
+        : null,
     })
   );
 

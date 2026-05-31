@@ -92,7 +92,20 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
     notes: input.get("notes") ?? undefined,
     successor_designate: input.get("successor_designate") ?? undefined,
     meeting_time: input.get("meeting_time") ?? undefined,
+    // Empty string = "no apprentice linked"; collapse to undefined so the
+    // validator reads it as unset (null) rather than a malformed uuid.
+    leader_pipeline_id: readBlankableField(input.get("leader_pipeline_id")),
   };
+}
+
+// A form field where an empty string means "unset". Returns undefined for null
+// or blank so the validator treats it as absent.
+function readBlankableField(
+  value: FormDataEntryValue | null
+): string | undefined {
+  if (value === null) return undefined;
+  const s = String(value);
+  return s.trim() === "" ? undefined : s;
 }
 
 // ----- adminUpdateLaunchPlanningAssumptions --------------------------------
@@ -128,7 +141,7 @@ const UPDATE_ASSUMPTIONS_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateLaunchPlanningAssumptions(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_ASSUMPTIONS_SPEC, prev, input);
 }
@@ -163,7 +176,7 @@ const RECORD_ATTENDANCE_SPEC: AdminWriteActionSpec<
 
 export async function adminRecordChurchAttendanceSnapshot(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RECORD_ATTENDANCE_SPEC, prev, input);
 }
@@ -187,14 +200,18 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_notes: value.notes,
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
+      p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+  revalidate: () => [
+    REVALIDATE_PATH_MULTIPLICATION,
+    REVALIDATE_PATH_LAUNCH_PLANNING,
+  ],
   noDataError: "The candidate was not saved. Please try again.",
 };
 
 export async function adminCreateMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_CANDIDATE_SPEC, prev, input);
 }
@@ -216,19 +233,26 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_notes: value.notes,
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
+      p_leader_pipeline_id: value.leader_pipeline_id,
     }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+  revalidate: () => [
+    REVALIDATE_PATH_MULTIPLICATION,
+    REVALIDATE_PATH_LAUNCH_PLANNING,
+  ],
   noDataError: "The candidate was not saved. Please try again.",
 };
 
 export async function adminUpdateMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_CANDIDATE_SPEC, prev, input);
 }
 
-const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: string }> = {
+const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<
+  CandidateIdPayload,
+  { id: string }
+> = {
   name: "admin.launch_planning.archive_multiplication_candidate",
   read: (input) =>
     input instanceof FormData
@@ -236,14 +260,19 @@ const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<CandidateIdPayload, { id: str
       : (input as Record<string, unknown>),
   validate: validateCandidateIdPayload,
   rpc: (client, value) =>
-    rpcAdminArchiveMultiplicationCandidate(client, { p_candidate_id: value.candidate_id }),
-  revalidate: () => [REVALIDATE_PATH_MULTIPLICATION, REVALIDATE_PATH_LAUNCH_PLANNING],
+    rpcAdminArchiveMultiplicationCandidate(client, {
+      p_candidate_id: value.candidate_id,
+    }),
+  revalidate: () => [
+    REVALIDATE_PATH_MULTIPLICATION,
+    REVALIDATE_PATH_LAUNCH_PLANNING,
+  ],
   noDataError: "The candidate was not archived. Please try again.",
 };
 
 export async function adminArchiveMultiplicationCandidate(
   prev: ActionResult<{ id: string }> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ARCHIVE_CANDIDATE_SPEC, prev, input);
 }

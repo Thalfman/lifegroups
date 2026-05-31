@@ -4,13 +4,18 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAllGroups,
+  fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
 import {
   buildPlannerSegments,
   type SegmentGroup,
 } from "@/lib/admin/multiplication";
-import { MultiplicationPlanner } from "@/components/admin/multiplication/multiplication-planner";
+import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
+import {
+  MultiplicationPlanner,
+  type ApprenticeOption,
+} from "@/components/admin/multiplication/multiplication-planner";
 import { P, fontBody } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +23,9 @@ export const dynamic = "force-dynamic";
 type PageData = {
   segments: SegmentGroup[];
   availableGroups: { id: string; name: string }[];
+  // Apprentices keyed by group id, so a candidate's link picker only offers
+  // same-group apprentices (the RPC + trigger reject cross-group links).
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
   error: string | null;
 };
 
@@ -27,13 +35,15 @@ async function loadData(): Promise<PageData> {
     return {
       segments: [],
       availableGroups: [],
+      apprenticesByGroup: {},
       error: "Database is not configured in this environment.",
     };
   }
 
-  const [candidatesRes, allGroupsRes] = await Promise.all([
+  const [candidatesRes, allGroupsRes, pipelineRes] = await Promise.all([
     fetchMultiplicationCandidatesForAdmin(client),
     fetchAllGroups(client),
+    fetchLeaderPipelineForAdmin(client),
   ]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -49,10 +59,24 @@ async function loadData(): Promise<PageData> {
     .map((g) => ({ id: g.id, name: g.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const apprenticesByGroup: Record<string, ApprenticeOption[]> = {};
+  for (const e of pipelineRes.data ?? []) {
+    const list = (apprenticesByGroup[e.apprentice.group_id] ??= []);
+    list.push({
+      id: e.apprentice.id,
+      label: `${e.apprentice.display_name} · ${STAGE_LABEL[e.apprentice.readiness_stage]}`,
+    });
+  }
+
   return {
     segments,
     availableGroups,
-    error: candidatesRes.error?.message ?? allGroupsRes.error?.message ?? null,
+    apprenticesByGroup,
+    error:
+      candidatesRes.error?.message ??
+      allGroupsRes.error?.message ??
+      pipelineRes.error?.message ??
+      null,
   };
 }
 
@@ -89,6 +113,7 @@ export default async function AdminMultiplicationPage() {
             <MultiplicationPlanner
               segments={data.segments}
               availableGroups={data.availableGroups}
+              apprenticesByGroup={data.apprenticesByGroup}
             />
           )}
 

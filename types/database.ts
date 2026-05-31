@@ -228,6 +228,10 @@ export interface MultiplicationCandidatesRow {
   notes: string | null;
   successor_designate: string | null;
   meeting_time: E.MultiplicationMeetingTime | null;
+  // Capacity & Multiplication #184: same-group apprentice raised to lead the
+  // multiplied group. Source of truth for "who leads it"; successor_designate
+  // is retained through the migration.
+  leader_pipeline_id: UUID | null;
   archived_at: Timestamp | null;
   created_by: UUID | null;
   updated_by: UUID | null;
@@ -514,6 +518,7 @@ export interface Database {
           | "notes"
           | "successor_designate"
           | "meeting_time"
+          | "leader_pipeline_id"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];
