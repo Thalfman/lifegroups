@@ -4,16 +4,13 @@ import {
   listGroupHealthOverview,
 } from "@/lib/admin/group-health-read";
 import { rankByGrade } from "@/lib/admin/group-health-segmentation";
+import { fetchPlatformConfig } from "@/lib/supabase/read-models";
+import { decodeAppConfig } from "@/lib/admin/app-config-decode";
+import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
 import {
   recomputeGroupHealthFormAction,
   setGroupHealthRatingsFormAction,
 } from "./actions";
-
-// Placeholder question labels until Julian settles the exact wording (#125).
-// The dimensions must target distinct, observable facets (engagement vs.
-// spiritual growth) so the two 1–5 ratings don't collapse into one.
-const SPIRITUAL_GROWTH_LABEL = "Spiritual growth (1–5)";
-const GROUP_QUESTION_LABEL = "Group engagement — leader-reported (1–5)";
 
 // #127 tracer surface, extended for #128: the attendance-consistency dimension,
 // the two admin-entered 1–5 ratings (spiritual growth + relayed group
@@ -36,6 +33,22 @@ export default async function GroupHealthPage() {
   const period = currentPeriodMonthIso();
   const overview = await listGroupHealthOverview(client, period);
 
+  // Phase SAC.2 (#162): the two question wordings are operator-editable via the
+  // Super Admin Console. platform_config is Super-Admin-only via RLS, so for a
+  // ministry_admin this read returns null and decodeAppConfig yields {} — which
+  // makes resolveCopy fall back to the documented placeholders. That graceful
+  // fallback is the intended behaviour, not an error.
+  const platformConfig = await fetchPlatformConfig(client);
+  const editableCopy = decodeAppConfig(platformConfig.data).editableCopy;
+  const spiritualGrowthLabel = resolveCopy(
+    editableCopy,
+    GROUP_HEALTH_COPY_KEYS.spiritualGrowth
+  );
+  const groupQuestionLabel = resolveCopy(
+    editableCopy,
+    GROUP_HEALTH_COPY_KEYS.groupQuestion
+  );
+
   if (overview.error) {
     return (
       <main className="p-6">
@@ -55,7 +68,7 @@ export default async function GroupHealthPage() {
       group_id: row.group_id,
       group_name: row.group_name,
       letter: row.computed_letter,
-    })),
+    }))
   ).map((g) => rowsById.get(g.group_id)!);
 
   return (
@@ -95,7 +108,9 @@ export default async function GroupHealthPage() {
                     ? "—"
                     : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
                   {row.stale ? (
-                    <span className="ml-2 text-xs text-amber-700">last saved</span>
+                    <span className="ml-2 text-xs text-amber-700">
+                      last saved
+                    </span>
                   ) : null}
                 </td>
                 <td className="py-2 pr-4">
@@ -116,7 +131,8 @@ export default async function GroupHealthPage() {
                   ) : null}
                 </td>
                 <td className="py-2 pr-4">
-                  {row.computed_letter ?? (row.unassessed ? "Not assessed" : "—")}
+                  {row.computed_letter ??
+                    (row.unassessed ? "Not assessed" : "—")}
                 </td>
                 <td className="py-2 pr-4">
                   <form
@@ -125,7 +141,7 @@ export default async function GroupHealthPage() {
                   >
                     <input type="hidden" name="group_id" value={row.group_id} />
                     <label className="flex flex-col text-xs text-gray-600">
-                      <span className="sr-only">{SPIRITUAL_GROWTH_LABEL}</span>
+                      <span className="sr-only">{spiritualGrowthLabel}</span>
                       Growth
                       <input
                         type="number"
@@ -133,12 +149,12 @@ export default async function GroupHealthPage() {
                         min={1}
                         max={5}
                         defaultValue={row.spiritual_growth_score ?? ""}
-                        aria-label={SPIRITUAL_GROWTH_LABEL}
+                        aria-label={spiritualGrowthLabel}
                         className="w-14 rounded border px-1 py-0.5"
                       />
                     </label>
                     <label className="flex flex-col text-xs text-gray-600">
-                      <span className="sr-only">{GROUP_QUESTION_LABEL}</span>
+                      <span className="sr-only">{groupQuestionLabel}</span>
                       Question
                       <input
                         type="number"
@@ -146,7 +162,7 @@ export default async function GroupHealthPage() {
                         min={1}
                         max={5}
                         defaultValue={row.group_question_score ?? ""}
-                        aria-label={GROUP_QUESTION_LABEL}
+                        aria-label={groupQuestionLabel}
                         className="w-14 rounded border px-1 py-0.5"
                       />
                     </label>
@@ -167,7 +183,10 @@ export default async function GroupHealthPage() {
                       Save
                     </button>
                   </form>
-                  <form action={recomputeGroupHealthFormAction} className="mt-1">
+                  <form
+                    action={recomputeGroupHealthFormAction}
+                    className="mt-1"
+                  >
                     <input type="hidden" name="group_id" value={row.group_id} />
                     <button
                       type="submit"

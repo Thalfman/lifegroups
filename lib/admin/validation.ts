@@ -818,6 +818,91 @@ export function validatePlatformConfigPayload(
   return { ok: true, value: { console_tracer_note: note } };
 }
 
+// Phase SAC.3 (#163): set a profile's active/inactive status from the Super
+// Admin Console. The self-target and bootstrap-super_admin guards are enforced
+// server-side in the RPC; this is the shape + status-enum check.
+export type SetProfileStatusPayload = {
+  profile_id: string;
+  status: "active" | "inactive";
+};
+
+export function validateSetProfileStatusPayload(
+  input: unknown
+): ValidationResult<SetProfileStatusPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.profile_id)) errors.push("profile_id must be a uuid");
+  if (input.status !== "active" && input.status !== "inactive") {
+    errors.push("status must be 'active' or 'inactive'");
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      profile_id: normalizeUuid(input.profile_id as string),
+      status: input.status as "active" | "inactive",
+    },
+  };
+}
+
+// Phase SAC.4 (#164): assign / end over-shepherd → leader coverage from the
+// console. Dates are optional ISO strings (the RPC defaults to current_date).
+export type AssignCoveragePayload = {
+  shepherd_profile_id: string;
+  over_shepherd_id: string;
+  assigned_at: string | null;
+};
+
+export function validateAssignCoveragePayload(
+  input: unknown
+): ValidationResult<AssignCoveragePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.shepherd_profile_id))
+    errors.push("shepherd_profile_id must be a uuid");
+  if (!isUuid(input.over_shepherd_id))
+    errors.push("over_shepherd_id must be a uuid");
+  const assignedAt = readOptionalString(input.assigned_at);
+  if (assignedAt !== undefined && !isIsoDate(assignedAt))
+    errors.push("Assigned date must be YYYY-MM-DD.");
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      shepherd_profile_id: normalizeUuid(input.shepherd_profile_id as string),
+      over_shepherd_id: normalizeUuid(input.over_shepherd_id as string),
+      assigned_at: assignedAt ?? null,
+    },
+  };
+}
+
+export type EndCoveragePayload = {
+  assignment_id: string;
+  ended_at: string | null;
+};
+
+export function validateEndCoveragePayload(
+  input: unknown
+): ValidationResult<EndCoveragePayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.assignment_id)) errors.push("assignment_id must be a uuid");
+  const endedAt = readOptionalString(input.ended_at);
+  if (endedAt !== undefined && !isIsoDate(endedAt))
+    errors.push("End date must be YYYY-MM-DD.");
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      assignment_id: normalizeUuid(input.assignment_id as string),
+      ended_at: endedAt ?? null,
+    },
+  };
+}
+
 export function validateGroupMetricSettingsPayload(
   input: unknown
 ): ValidationResult<GroupMetricSettingsPayload> {

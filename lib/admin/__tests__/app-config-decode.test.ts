@@ -61,6 +61,10 @@ describe("decodeAppConfig", () => {
         injected: { nested: "ignored" },
       },
     });
-    expect(config).toEqual({ consoleTracerNote: "kept" });
+    expect(config).toEqual({
+      consoleTracerNote: "kept",
+      featureFlags: {},
+      editableCopy: {},
+    });
   });
 });

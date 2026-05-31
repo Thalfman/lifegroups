@@ -9,6 +9,11 @@ import type {
   ShepherdCareInteractionType,
   ShepherdCareStatus,
 } from "@/types/enums";
+import {
+  CARE_STATUS_COPY_KEYS,
+  resolveCopy,
+  type EditableCopyConfig,
+} from "@/lib/admin/editable-copy";
 
 const lifecycleLabels: Record<GroupLifecycleStatus, string> = {
   active: "Active",
@@ -97,7 +102,10 @@ const shepherdCareStatusLabels: Record<ShepherdCareStatus, string> = {
   inactive: "Inactive",
 };
 
-const shepherdCareInteractionTypeLabels: Record<ShepherdCareInteractionType, string> = {
+const shepherdCareInteractionTypeLabels: Record<
+  ShepherdCareInteractionType,
+  string
+> = {
   call: "Call",
   text: "Text",
   in_person: "In person",
@@ -105,24 +113,39 @@ const shepherdCareInteractionTypeLabels: Record<ShepherdCareInteractionType, str
   other: "Other",
 };
 
-export function shepherdCareStatusLabel(status: ShepherdCareStatus): string {
+// Phase SAC.2 (#162): the care-status display labels are now operator-editable
+// via the Super Admin Console's editable_copy config. The optional `copyConfig`
+// lets a config-aware caller (e.g. the care dashboard, which already loads
+// platform config) render the configured wording; omitting it keeps the
+// built-in labels, so every existing caller compiles and behaves unchanged.
+export function shepherdCareStatusLabel(
+  status: ShepherdCareStatus,
+  copyConfig?: EditableCopyConfig
+): string {
+  if (copyConfig) {
+    const key = CARE_STATUS_COPY_KEYS[status];
+    if (key) return resolveCopy(copyConfig, key);
+  }
   return shepherdCareStatusLabels[status] ?? status;
 }
 
 export function shepherdCareInteractionTypeLabel(
-  type: ShepherdCareInteractionType,
+  type: ShepherdCareInteractionType
 ): string {
   return shepherdCareInteractionTypeLabels[type] ?? type;
 }
 
-const shepherdCareFollowUpStatusLabels: Record<ShepherdCareFollowUpStatus, string> = {
+const shepherdCareFollowUpStatusLabels: Record<
+  ShepherdCareFollowUpStatus,
+  string
+> = {
   open: "Open",
   in_progress: "In progress",
   done: "Done",
 };
 
 export function shepherdCareFollowUpStatusLabel(
-  status: ShepherdCareFollowUpStatus,
+  status: ShepherdCareFollowUpStatus
 ): string {
   return shepherdCareFollowUpStatusLabels[status] ?? status;
 }

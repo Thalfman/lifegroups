@@ -9,11 +9,26 @@ import {
 } from "@/components/admin/forms/role-change-form";
 import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
 import { PlatformConfigTracerForm } from "@/components/admin/forms/platform-config-tracer-form";
+import { FeatureFlagToggleForm } from "@/components/admin/forms/feature-flag-toggle-form";
+import { EditableCopyForm } from "@/components/admin/forms/editable-copy-form";
+import { ProfileStatusForm } from "@/components/admin/forms/profile-status-form";
+import { PasswordResetForm } from "@/components/admin/forms/password-reset-form";
+import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-form";
+import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
+import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import {
   SystemStatusChecklist,
   type ChecklistRow,
 } from "@/components/admin/system-status-checklist";
 import type { AppConfig } from "@/lib/admin/app-config-decode";
+import {
+  FEATURE_FLAG_DEFINITIONS,
+  resolveFlag,
+} from "@/lib/admin/feature-flags";
+import {
+  EDITABLE_COPY_DEFINITIONS,
+  resolveCopy,
+} from "@/lib/admin/editable-copy";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
@@ -36,9 +51,33 @@ export type SuperAdminTestAccountsSummary = {
   description: string;
 };
 
+// Phase SAC.4 (#164) coverage editing read shapes.
+export type SuperAdminConsoleCoverageAssignment = {
+  id: string;
+  shepherd_profile_id: string;
+  shepherd_name: string;
+  over_shepherd_id: string;
+  over_shepherd_name: string;
+  assigned_at: string;
+};
+
+export type SuperAdminConsoleOverShepherd = {
+  id: string;
+  full_name: string;
+};
+
+export type SuperAdminConsoleCoverageLeader = {
+  profile_id: string;
+  full_name: string;
+};
+
 export type SuperAdminConsoleData = {
   assignableProfiles: AssignableProfile[];
   inviteUserGroups: { id: string; name: string }[];
+  // Phase SAC.4 (#164): current coverage + the pools the assign form draws from.
+  coverageAssignments: SuperAdminConsoleCoverageAssignment[];
+  overShepherds: SuperAdminConsoleOverShepherd[];
+  coverageLeaders: SuperAdminConsoleCoverageLeader[];
   // Phase SAC.1 (#159): decoded Super-Admin-only platform config, backing the
   // console's config tracer. Decodes to built-in defaults when unreadable.
   appConfig: AppConfig;
@@ -60,6 +99,8 @@ export type SuperAdminConsoleData = {
 const COMMAND_SECTIONS = [
   { id: "overview", label: "Overview" },
   { id: "access", label: "Access" },
+  { id: "people-import", label: "People import" },
+  { id: "coverage", label: "Coverage" },
   { id: "features", label: "Features" },
   { id: "settings", label: "Settings" },
   { id: "diagnostics", label: "Diagnostics" },
@@ -409,31 +450,36 @@ export function SuperAdminConsoleShell({
           <div style={cardStyle}>
             <InviteUserForm groups={data.inviteUserGroups} />
           </div>
+          <AccountManagementCard data={data} />
+        </CommandSection>
+
+        <CommandSection
+          id="people-import"
+          eyebrow="People import"
+          title="Bulk import people"
+          description="Paste CSV to create leader profiles and member records in one audited batch. Parsing + de-duplication happen before any write; skipped rows are reported back."
+        >
+          <div style={cardStyle}>
+            <PeopleImportForm />
+          </div>
+        </CommandSection>
+
+        <CommandSection
+          id="coverage"
+          eyebrow="Coverage"
+          title="Over-Shepherd → Leader coverage"
+          description="Assign or end coverage. Edits write to the same coverage records the cadence tiers and over-shepherd scoping already read, so they take effect on those surfaces."
+        >
+          <CoverageManagementCard data={data} />
         </CommandSection>
 
         <CommandSection
           id="features"
           eyebrow="Features"
-          title="Safe feature visibility controls"
-          description="Planned owner controls for allowlisted feature visibility. This phase adds the landing place only."
+          title="Feature flags"
+          description="Toggle feature surfaces. New surfaces toggle freely; frozen surfaces (ADR 0002) resolve OFF while on-but-unverified, so a stale toggle can't re-expose a surface before its routes + RLS are re-verified."
         >
-          <div className="lg-m-grid-stack" style={cardGridStyle}>
-            <CommandCard
-              title="Module visibility"
-              description="Future toggles can hide or disable modules without replacing route guards, RLS, or RPC authorization."
-              status={{ label: "Planned", tone: "planned" }}
-            />
-            <CommandCard
-              title="Launch mode"
-              description="Future launch status can increase readiness warnings while leaving authorization unchanged."
-              status={{ label: "Planned", tone: "planned" }}
-            />
-            <CommandCard
-              title="Maintenance banner"
-              description="Future copy can be stored as non-sensitive app settings after migrations and audited RPCs exist."
-              status={{ label: "Planned", tone: "planned" }}
-            />
-          </div>
+          <FeatureFlagsCard data={data} />
         </CommandSection>
 
         <CommandSection
@@ -510,6 +556,7 @@ export function SuperAdminConsoleShell({
               </Link>
             </CommandCard>
           </div>
+          <EditableCopyCard data={data} />
         </CommandSection>
 
         <CommandSection
@@ -595,6 +642,306 @@ export function SuperAdminConsoleShell({
             </p>
           </div>
         </CommandSection>
+      </div>
+    </div>
+  );
+}
+
+// Phase SAC.3 (#163): per-profile disable / re-enable + password reset. Lists
+// every loaded profile except the bootstrap super_admin (which the RPC also
+// refuses). The actor's own profile is guarded server-side.
+function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
+  const profiles = Array.from(data.profilesById.values())
+    .filter((p) => p.role !== "super_admin")
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+
+  return (
+    <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
+      <h3
+        style={{
+          fontFamily: fontDisplay,
+          fontSize: 18,
+          fontWeight: 600,
+          color: P.ink,
+          margin: 0,
+        }}
+      >
+        Account management
+      </h3>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: 0,
+          lineHeight: 1.5,
+        }}
+      >
+        Disable or re-enable a profile, or send a password-reset email. Every
+        action is audited. You can&rsquo;t disable yourself or the super admin.
+      </p>
+      {profiles.length === 0 ? (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12,
+            color: P.ink3,
+            margin: 0,
+          }}
+        >
+          No profiles loaded.
+        </p>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {profiles.map((p) => (
+            <div
+              key={p.id}
+              className="lg-m-grid-stack"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                border: `1px solid ${P.line}`,
+                borderRadius: 8,
+                padding: "10px 12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: P.ink,
+                  }}
+                >
+                  {p.full_name}{" "}
+                  <span style={{ color: P.ink3, fontWeight: 400 }}>
+                    ({p.status})
+                  </span>
+                </div>
+                <div
+                  style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
+                >
+                  {p.email}
+                </div>
+              </div>
+              <div
+                style={{ display: "flex", gap: 10, alignItems: "flex-start" }}
+              >
+                <ProfileStatusForm profileId={p.id} currentStatus={p.status} />
+                <PasswordResetForm profileId={p.id} email={p.email} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Phase SAC.4 (#164): current coverage list (with end controls) + the assign
+// form.
+function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
+  return (
+    <div style={{ ...cardStyle, display: "grid", gap: 14 }}>
+      <CoverageAssignForm
+        overShepherds={data.overShepherds}
+        leaders={data.coverageLeaders}
+      />
+      <div style={{ display: "grid", gap: 8 }}>
+        {data.coverageAssignments.length === 0 ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              margin: 0,
+            }}
+          >
+            No active coverage assignments.
+          </p>
+        ) : (
+          data.coverageAssignments.map((a) => (
+            <div
+              key={a.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                border: `1px solid ${P.line}`,
+                borderRadius: 8,
+                padding: "10px 12px",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: fontSans,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: P.ink,
+                  }}
+                >
+                  {a.shepherd_name} → {a.over_shepherd_name}
+                </div>
+                <div
+                  style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
+                >
+                  since {a.assigned_at}
+                </div>
+              </div>
+              <CoverageEndForm assignmentId={a.id} />
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Phase SAC.2 (#161): real feature-flag list with resolved state + toggles.
+function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
+  const flags = data.appConfig.featureFlags;
+  return (
+    <div style={{ ...cardStyle, display: "grid", gap: 10 }}>
+      {FEATURE_FLAG_DEFINITIONS.map((def) => {
+        const resolved = resolveFlag(flags, def.key);
+        const state = flags[def.key];
+        const enabled = state?.enabled === true;
+        const frozenUnverified =
+          def.kind === "frozen_surface" && enabled && state?.verified !== true;
+        return (
+          <div
+            key={def.key}
+            className="lg-m-grid-stack"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              border: `1px solid ${P.line}`,
+              borderRadius: 8,
+              padding: "10px 12px",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: P.ink,
+                }}
+              >
+                {def.label}{" "}
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: P.ink3,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {def.kind === "new_surface" ? "new" : "frozen"}
+                </span>
+              </div>
+              <p
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 12,
+                  color: P.ink2,
+                  margin: "2px 0 0",
+                  lineHeight: 1.45,
+                }}
+              >
+                {def.description}
+              </p>
+              <p
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 12,
+                  color: frozenUnverified ? P.terraTextStrong : P.ink2,
+                  margin: "4px 0 0",
+                }}
+              >
+                Resolved: {resolved ? "ON" : "OFF"}
+                {frozenUnverified ? " · disabled until verified" : ""}
+              </p>
+            </div>
+            <FeatureFlagToggleForm flagKey={def.key} enabled={enabled} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Phase SAC.2 (#162): editable-copy list with current resolved value + editor.
+function EditableCopyCard({ data }: { data: SuperAdminConsoleData }) {
+  const copy = data.appConfig.editableCopy;
+  return (
+    <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
+      <h3
+        style={{
+          fontFamily: fontDisplay,
+          fontSize: 18,
+          fontWeight: 600,
+          color: P.ink,
+          margin: 0,
+        }}
+      >
+        Editable copy
+      </h3>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: 0,
+          lineHeight: 1.5,
+        }}
+      >
+        Configurable strings. Clearing a value falls back to the built-in
+        placeholder.
+      </p>
+      <div style={{ display: "grid", gap: 10 }}>
+        {EDITABLE_COPY_DEFINITIONS.map((def) => (
+          <div
+            key={def.key}
+            className="lg-m-grid-stack"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              border: `1px solid ${P.line}`,
+              borderRadius: 8,
+              padding: "10px 12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: P.ink,
+                }}
+              >
+                {def.label}
+              </div>
+            </div>
+            <EditableCopyForm
+              copyKey={def.key}
+              currentValue={resolveCopy(copy, def.key)}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
