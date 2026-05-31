@@ -2208,6 +2208,12 @@ export type LaunchPlanningAssumptionsPayload = {
   launch_buffer_pct?: number;
   leaders_per_new_group?: number;
   notes?: string | null;
+  // Capacity & Multiplication #186: the explicit "launch N by <season>" plan a
+  // scenario carries on top of the demand assumptions. Drives the staffing gap.
+  planned_launch_count?: number;
+  // Julian's planting seasons: January (1) or August (8). Null = no target set.
+  target_launch_month?: number | null;
+  target_launch_year?: number | null;
 };
 
 const LAUNCH_PLANNING_KEYS: ReadonlySet<string> = new Set([
@@ -2219,6 +2225,9 @@ const LAUNCH_PLANNING_KEYS: ReadonlySet<string> = new Set([
   "launch_buffer_pct",
   "leaders_per_new_group",
   "notes",
+  "planned_launch_count",
+  "target_launch_month",
+  "target_launch_year",
 ]);
 
 // Local numeric parser that accepts `number | numeric string` and rejects
@@ -2353,6 +2362,41 @@ export function validateLaunchPlanningAssumptionsPayload(
       } else {
         value.notes = trimmed;
       }
+    }
+  }
+
+  // Capacity & Multiplication #186 — explicit launch plan.
+  if ("planned_launch_count" in input) {
+    const n = readOptionalInteger(input.planned_launch_count);
+    if (n === "invalid")
+      errors.push("Planned launch count must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 100))
+      errors.push("Planned launch count must be between 0 and 100.");
+    else if (n !== undefined) value.planned_launch_count = n;
+  }
+
+  if ("target_launch_month" in input) {
+    const raw = input.target_launch_month;
+    if (raw === null || raw === "" || raw === undefined) {
+      value.target_launch_month = null;
+    } else {
+      const n = readOptionalInteger(raw);
+      // Julian's planting seasons only: January (1) or August (8).
+      if (n === "invalid" || n === undefined || (n !== 1 && n !== 8))
+        errors.push("Target launch month must be January (1) or August (8).");
+      else value.target_launch_month = n;
+    }
+  }
+
+  if ("target_launch_year" in input) {
+    const raw = input.target_launch_year;
+    if (raw === null || raw === "" || raw === undefined) {
+      value.target_launch_year = null;
+    } else {
+      const n = readOptionalInteger(raw);
+      if (n === "invalid" || n === undefined || n < 2024 || n > 2100)
+        errors.push("Target launch year must be between 2024 and 2100.");
+      else value.target_launch_year = n;
     }
   }
 

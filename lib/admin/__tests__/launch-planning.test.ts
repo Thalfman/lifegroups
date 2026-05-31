@@ -4,6 +4,9 @@ import {
   buildLaunchPlanningInputs,
   buildScenarioComparison,
   computeLaunchPlan,
+  buildStaffingForecast,
+  computeStaffingForecast,
+  countStaffingSupply,
   decodeLaunchPlanningAssumptions,
   decodeLaunchPlanningScenario,
   filterActiveScenarios,
@@ -11,10 +14,15 @@ import {
   nextSeasonAnchorIso,
   participationPct,
   redactNotesForAudit,
+  scenarioTargetDateIso,
   type LaunchPlanningAssumptions,
   type LaunchPlanningScenario,
+  type StaffingApprentice,
 } from "@/lib/admin/launch-planning";
-import { BUILT_IN_METRIC_DEFAULTS, type MetricDefaults } from "@/lib/admin/metrics";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  type MetricDefaults,
+} from "@/lib/admin/metrics";
 import type {
   AppSettingsRow,
   GroupMembershipsRow,
@@ -65,7 +73,7 @@ function group(overrides: Partial<GroupsRow>): GroupsRow {
 
 function override(
   groupId: string,
-  fields: Partial<GroupMetricSettingsRow> = {},
+  fields: Partial<GroupMetricSettingsRow> = {}
 ): GroupMetricSettingsRow {
   return {
     group_id: groupId,
@@ -73,7 +81,8 @@ function override(
     capacity_warning_threshold_pct_override: null,
     healthy_attendance_pct_override: null,
     manual_health_status_override: null,
-    exclude_from_capacity_metrics: fields.exclude_from_capacity_metrics ?? false,
+    exclude_from_capacity_metrics:
+      fields.exclude_from_capacity_metrics ?? false,
     admin_metric_notes: null,
     check_in_due_offset_hours_override: null,
     allow_over_capacity: fields.allow_over_capacity ?? false,
@@ -82,7 +91,10 @@ function override(
   };
 }
 
-function membership(groupId: string, status: GroupMembershipsRow["status"] = "active"): GroupMembershipsRow {
+function membership(
+  groupId: string,
+  status: GroupMembershipsRow["status"] = "active"
+): GroupMembershipsRow {
   return {
     id: `${groupId}-m-${status}-${Math.random()}`,
     group_id: groupId,
@@ -102,13 +114,13 @@ function membership(groupId: string, status: GroupMembershipsRow["status"] = "ac
 describe("decodeLaunchPlanningAssumptions", () => {
   it("returns built-in defaults when the row is null", () => {
     expect(decodeLaunchPlanningAssumptions(null)).toEqual(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS
     );
   });
 
   it("returns built-in defaults when the row's setting_value is empty", () => {
     expect(decodeLaunchPlanningAssumptions(appSettingsRow({}))).toEqual(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS
     );
   });
 
@@ -125,20 +137,20 @@ describe("decodeLaunchPlanningAssumptions", () => {
     });
     const decoded = decodeLaunchPlanningAssumptions(row);
     expect(decoded.current_church_attendance).toBe(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.current_church_attendance,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.current_church_attendance
     );
     expect(decoded.expected_growth).toBe(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth
     );
     expect(decoded.target_group_participation_pct).toBe(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct
     );
     expect(decoded.average_group_size).toBe(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size
     );
     expect(decoded.launch_buffer_pct).toBe(0.2);
     expect(decoded.leaders_per_new_group).toBe(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group,
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group
     );
     expect(decoded.notes).toBeNull();
     expect(decoded.expected_growth_date).toBeNull();
@@ -164,6 +176,9 @@ describe("decodeLaunchPlanningAssumptions", () => {
       launch_buffer_pct: 0.1,
       leaders_per_new_group: 1,
       notes: "Watch the August influx.",
+      planned_launch_count: 0,
+      target_launch_month: null,
+      target_launch_year: null,
     });
   });
 
@@ -172,13 +187,16 @@ describe("decodeLaunchPlanningAssumptions", () => {
     const defaults: Pick<MetricDefaults, "default_group_capacity"> = {
       default_group_capacity: 14,
     };
-    expect(decodeLaunchPlanningAssumptions(row, defaults).average_group_size).toBe(14);
+    expect(
+      decodeLaunchPlanningAssumptions(row, defaults).average_group_size
+    ).toBe(14);
   });
 
   it("falls back to built-in 10 when metric_defaults has no capacity", () => {
     const row = appSettingsRow({ current_church_attendance: 200 });
     expect(
-      decodeLaunchPlanningAssumptions(row, { default_group_capacity: null }).average_group_size,
+      decodeLaunchPlanningAssumptions(row, { default_group_capacity: null })
+        .average_group_size
     ).toBe(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size);
   });
 });
@@ -234,7 +252,10 @@ describe("buildLaunchPlanningInputs", () => {
       ],
       overrides: [],
       memberships: [membership("g1"), membership("g2")],
-      metricDefaults: { ...BUILT_IN_METRIC_DEFAULTS, default_group_capacity: null },
+      metricDefaults: {
+        ...BUILT_IN_METRIC_DEFAULTS,
+        default_group_capacity: null,
+      },
     });
     expect(inputs.unknown_capacity_group_count).toBe(1);
     expect(inputs.effective_total_capacity).toBe(12);
@@ -271,7 +292,7 @@ describe("buildLaunchPlanningInputs", () => {
 // ---------------------------------------------------------------------------
 
 function makeAssumptions(
-  overrides: Partial<LaunchPlanningAssumptions> = {},
+  overrides: Partial<LaunchPlanningAssumptions> = {}
 ): LaunchPlanningAssumptions {
   return { ...BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS, ...overrides };
 }
@@ -285,7 +306,7 @@ describe("computeLaunchPlan — projected demand math", () => {
         target_group_participation_pct: 0.6,
         launch_buffer_pct: 0.15,
       }),
-      { effective_total_capacity: 80 },
+      { effective_total_capacity: 80 }
     );
     expect(out.projected_total_attendance).toBe(120);
     expect(out.projected_group_demand).toBeCloseTo(72, 6);
@@ -299,7 +320,7 @@ describe("computeLaunchPlan — projected demand math", () => {
         target_group_participation_pct: 0.6,
         launch_buffer_pct: 0.15,
       }),
-      { effective_total_capacity: 80 },
+      { effective_total_capacity: 80 }
     );
     expect(out.projected_total_attendance).toBe(0);
     expect(out.projected_group_demand).toBe(0);
@@ -317,7 +338,7 @@ describe("computeLaunchPlan — projected demand math", () => {
         target_group_participation_pct: 0.5,
         launch_buffer_pct: 0,
       }),
-      { effective_total_capacity: 60 },
+      { effective_total_capacity: 60 }
     );
     expect(out.projected_group_demand).toBeCloseTo(50, 6);
     expect(out.target_capacity_with_buffer).toBeCloseTo(50, 6);
@@ -336,7 +357,7 @@ describe("computeLaunchPlan — capacity gap and recommendations", () => {
         target_group_participation_pct: 0.6, // demand 72
         launch_buffer_pct: 0.15, // target = 72 / 0.85 ≈ 84.7
       }),
-      { effective_total_capacity: 100 }, // over capacity
+      { effective_total_capacity: 100 } // over capacity
     );
     expect(out.recommended_new_groups).toBe(0);
     expect(out.capacity_gap).toBeLessThan(0);
@@ -352,7 +373,7 @@ describe("computeLaunchPlan — capacity gap and recommendations", () => {
         launch_buffer_pct: 0.15, // target ≈ 176.5
         average_group_size: 10,
       }),
-      { effective_total_capacity: 100 }, // gap ≈ 76.5 -> ceil(76.5/10) = 8
+      { effective_total_capacity: 100 } // gap ≈ 76.5 -> ceil(76.5/10) = 8
     );
     expect(out.recommended_new_groups).toBe(8);
   });
@@ -367,7 +388,7 @@ describe("computeLaunchPlan — capacity gap and recommendations", () => {
         average_group_size: 10,
         leaders_per_new_group: 2,
       }),
-      { effective_total_capacity: 100 },
+      { effective_total_capacity: 100 }
     );
     expect(out.estimated_new_leaders_needed).toBe(16); // 8 groups * 2
   });
@@ -381,7 +402,7 @@ describe("computeLaunchPlan — capacity gap and recommendations", () => {
         launch_buffer_pct: 0,
         average_group_size: 0,
       }),
-      { effective_total_capacity: 10 },
+      { effective_total_capacity: 10 }
     );
     expect(Number.isFinite(out.recommended_new_groups)).toBe(true);
     expect(out.recommended_new_groups).toBe(50);
@@ -395,7 +416,7 @@ describe("computeLaunchPlan — capacity gap and recommendations", () => {
         target_group_participation_pct: 0.6,
         launch_buffer_pct: 1.5,
       }),
-      { effective_total_capacity: 10 },
+      { effective_total_capacity: 10 }
     );
     expect(Number.isFinite(out.target_capacity_with_buffer)).toBe(true);
   });
@@ -410,7 +431,7 @@ describe("computeLaunchPlan — risk level transitions", () => {
         target_group_participation_pct: 0.6,
         launch_buffer_pct: 0.15,
       }),
-      { effective_total_capacity: 100 },
+      { effective_total_capacity: 100 }
     );
     expect(out.risk_level).toBe("ok");
   });
@@ -426,7 +447,7 @@ describe("computeLaunchPlan — risk level transitions", () => {
         launch_buffer_pct: 0.2,
         average_group_size: 10,
       }),
-      { effective_total_capacity: 70 },
+      { effective_total_capacity: 70 }
     );
     expect(out.recommended_new_groups).toBeGreaterThan(0);
     expect(out.risk_level).toBe("watch");
@@ -443,7 +464,7 @@ describe("computeLaunchPlan — risk level transitions", () => {
         launch_buffer_pct: 0.1,
         average_group_size: 10,
       }),
-      { effective_total_capacity: 30 },
+      { effective_total_capacity: 30 }
     );
     expect(out.risk_level).toBe("launch_needed");
   });
@@ -459,7 +480,7 @@ describe("computeLaunchPlan — suggested launch date", () => {
         launch_buffer_pct: 0.15,
         expected_growth_date: null,
       }),
-      { effective_total_capacity: 50 },
+      { effective_total_capacity: 50 }
     );
     expect(out.suggested_launch_by_date).toBeNull();
   });
@@ -471,7 +492,7 @@ describe("computeLaunchPlan — suggested launch date", () => {
         expected_growth: 0,
         expected_growth_date: "2026-08-01",
       }),
-      { effective_total_capacity: 200 },
+      { effective_total_capacity: 200 }
     );
     expect(out.suggested_launch_by_date).toBeNull();
   });
@@ -485,7 +506,7 @@ describe("computeLaunchPlan — suggested launch date", () => {
         launch_buffer_pct: 0.15,
         expected_growth_date: "2026-08-01",
       }),
-      { effective_total_capacity: 50 },
+      { effective_total_capacity: 50 }
     );
     expect(out.suggested_launch_by_date).toBe("2026-07-02");
   });
@@ -499,7 +520,7 @@ describe("computeLaunchPlan — suggested launch date", () => {
         launch_buffer_pct: 0.15,
         expected_growth_date: "next August",
       }),
-      { effective_total_capacity: 50 },
+      { effective_total_capacity: 50 }
     );
     expect(out.suggested_launch_by_date).toBeNull();
   });
@@ -512,7 +533,7 @@ describe("computeLaunchPlan — suggested launch date", () => {
 describe("redactNotesForAudit", () => {
   it("never includes the notes string in the audit snapshot", () => {
     const audit = redactNotesForAudit(
-      makeAssumptions({ notes: "This is sensitive planning context." }),
+      makeAssumptions({ notes: "This is sensitive planning context." })
     );
     const serialized = JSON.stringify(audit);
     expect(serialized).not.toContain("sensitive");
@@ -522,9 +543,15 @@ describe("redactNotesForAudit", () => {
   });
 
   it("reports has_notes=false for null or whitespace notes", () => {
-    expect(redactNotesForAudit(makeAssumptions({ notes: null })).has_notes).toBe(false);
-    expect(redactNotesForAudit(makeAssumptions({ notes: "   " })).has_notes).toBe(false);
-    expect(redactNotesForAudit(makeAssumptions({ notes: "" })).has_notes).toBe(false);
+    expect(
+      redactNotesForAudit(makeAssumptions({ notes: null })).has_notes
+    ).toBe(false);
+    expect(
+      redactNotesForAudit(makeAssumptions({ notes: "   " })).has_notes
+    ).toBe(false);
+    expect(redactNotesForAudit(makeAssumptions({ notes: "" })).has_notes).toBe(
+      false
+    );
   });
 
   it("includes all numeric assumption values in the audit snapshot", () => {
@@ -547,6 +574,9 @@ describe("redactNotesForAudit", () => {
       launch_buffer_pct: 0.1,
       leaders_per_new_group: 1,
       has_notes: true,
+      planned_launch_count: 0,
+      target_launch_month: null,
+      target_launch_year: null,
     });
   });
 });
@@ -556,7 +586,7 @@ describe("redactNotesForAudit", () => {
 // ---------------------------------------------------------------------------
 
 function scenarioRow(
-  overrides: Partial<LaunchPlanningScenariosRow> = {},
+  overrides: Partial<LaunchPlanningScenariosRow> = {}
 ): LaunchPlanningScenariosRow {
   return {
     id: overrides.id ?? "00000000-0000-0000-0000-000000000900",
@@ -601,7 +631,10 @@ describe("decodeLaunchPlanningScenario", () => {
     expect(decoded.name).toBe("Conservative");
     expect(decoded.description).toBe("Tight forecast");
     expect(decoded.status).toBe("active");
-    expect(decoded.assumptions.target_group_participation_pct).toBeCloseTo(0.5, 6);
+    expect(decoded.assumptions.target_group_participation_pct).toBeCloseTo(
+      0.5,
+      6
+    );
     expect(decoded.assumptions.notes).toBe("Soft estimate");
   });
 
@@ -617,7 +650,7 @@ describe("decodeLaunchPlanningScenario", () => {
 
   it("flags archived scenarios as status='archived'", () => {
     const decoded = decodeLaunchPlanningScenario(
-      scenarioRow({ archived_at: "2026-02-01T00:00:00.000Z" }),
+      scenarioRow({ archived_at: "2026-02-01T00:00:00.000Z" })
     );
     expect(decoded.status).toBe("archived");
   });
@@ -626,12 +659,18 @@ describe("decodeLaunchPlanningScenario", () => {
 describe("filterActiveScenarios", () => {
   it("excludes archived scenarios", () => {
     const rows = [
-      scenarioRow({ id: "00000000-0000-0000-0000-000000000a01", archived_at: null }),
+      scenarioRow({
+        id: "00000000-0000-0000-0000-000000000a01",
+        archived_at: null,
+      }),
       scenarioRow({
         id: "00000000-0000-0000-0000-000000000a02",
         archived_at: "2026-02-01T00:00:00.000Z",
       }),
-      scenarioRow({ id: "00000000-0000-0000-0000-000000000a03", archived_at: null }),
+      scenarioRow({
+        id: "00000000-0000-0000-0000-000000000a03",
+        archived_at: null,
+      }),
     ];
     const active = filterActiveScenarios(rows);
     expect(active.map((r) => r.id)).toEqual([
@@ -648,17 +687,32 @@ describe("findCurrentScenario", () => {
 
   it("returns the current scenario when present", () => {
     const scenarios = [
-      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000b01", is_current: false })),
-      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000b02", is_current: true })),
+      decode(
+        scenarioRow({
+          id: "00000000-0000-0000-0000-000000000b01",
+          is_current: false,
+        })
+      ),
+      decode(
+        scenarioRow({
+          id: "00000000-0000-0000-0000-000000000b02",
+          is_current: true,
+        })
+      ),
     ];
     expect(findCurrentScenario(scenarios)?.id).toBe(
-      "00000000-0000-0000-0000-000000000b02",
+      "00000000-0000-0000-0000-000000000b02"
     );
   });
 
   it("returns null when no scenario is current", () => {
     const scenarios = [
-      decode(scenarioRow({ id: "00000000-0000-0000-0000-000000000c01", is_current: false })),
+      decode(
+        scenarioRow({
+          id: "00000000-0000-0000-0000-000000000c01",
+          is_current: false,
+        })
+      ),
     ];
     expect(findCurrentScenario(scenarios)).toBeNull();
   });
@@ -672,7 +726,7 @@ describe("findCurrentScenario", () => {
           id: "00000000-0000-0000-0000-000000000d01",
           is_current: true,
           archived_at: "2026-02-01T00:00:00.000Z",
-        }),
+        })
       ),
     ];
     expect(findCurrentScenario(scenarios)).toBeNull();
@@ -693,7 +747,7 @@ describe("buildScenarioComparison", () => {
           average_group_size: 10,
           leaders_per_new_group: 2,
         },
-      }),
+      })
     );
     const stretch = decodeLaunchPlanningScenario(
       scenarioRow({
@@ -707,7 +761,7 @@ describe("buildScenarioComparison", () => {
           average_group_size: 10,
           leaders_per_new_group: 2,
         },
-      }),
+      })
     );
     const comparison = buildScenarioComparison([conservative, stretch], {
       effective_total_capacity: 80,
@@ -718,7 +772,7 @@ describe("buildScenarioComparison", () => {
     // Stretch's recommended_new_groups must exceed Conservative's because
     // demand is materially higher and capacity is the same.
     expect(comparison[1].outputs.recommended_new_groups).toBeGreaterThan(
-      comparison[0].outputs.recommended_new_groups,
+      comparison[0].outputs.recommended_new_groups
     );
     // Risk level should escalate for Stretch given the much higher demand
     // and the same capacity.
@@ -727,7 +781,7 @@ describe("buildScenarioComparison", () => {
 
   it("returns an empty list when no scenarios are passed", () => {
     expect(
-      buildScenarioComparison([], { effective_total_capacity: 100 }),
+      buildScenarioComparison([], { effective_total_capacity: 100 })
     ).toEqual([]);
   });
 });
@@ -753,25 +807,134 @@ describe("participationPct (Julian P2 answer 9)", () => {
 describe("nextSeasonAnchorIso (Julian P3 answer 11)", () => {
   it("returns this year's August when today is before August", () => {
     expect(nextSeasonAnchorIso(8, new Date("2026-05-28T00:00:00Z"))).toBe(
-      "2026-08-01",
+      "2026-08-01"
     );
   });
 
   it("rolls August to next year once it has passed", () => {
     expect(nextSeasonAnchorIso(8, new Date("2026-09-15T00:00:00Z"))).toBe(
-      "2027-08-01",
+      "2027-08-01"
     );
   });
 
   it("returns the upcoming January", () => {
     expect(nextSeasonAnchorIso(1, new Date("2026-05-28T00:00:00Z"))).toBe(
-      "2027-01-01",
+      "2027-01-01"
     );
   });
 
   it("treats the anchor day itself as still upcoming", () => {
     expect(nextSeasonAnchorIso(8, new Date("2026-08-01T00:00:00Z"))).toBe(
-      "2026-08-01",
+      "2026-08-01"
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #186 — staffing supply vs demand (the leader gap)
+// ---------------------------------------------------------------------------
+
+describe("scenarioTargetDateIso", () => {
+  const today = new Date("2026-05-28T00:00:00Z");
+
+  it("uses an explicit month + year", () => {
+    expect(
+      scenarioTargetDateIso(
+        { target_launch_month: 8, target_launch_year: 2026 },
+        today
+      )
+    ).toBe("2026-08-01");
+  });
+
+  it("falls back to the next season anchor when only the month is set", () => {
+    expect(
+      scenarioTargetDateIso(
+        { target_launch_month: 8, target_launch_year: null },
+        today
+      )
+    ).toBe("2026-08-01");
+    // January is already past in May → next January is 2027.
+    expect(
+      scenarioTargetDateIso(
+        { target_launch_month: 1, target_launch_year: null },
+        today
+      )
+    ).toBe("2027-01-01");
+  });
+
+  it("returns null when no season is chosen", () => {
+    expect(
+      scenarioTargetDateIso(
+        { target_launch_month: null, target_launch_year: 2026 },
+        today
+      )
+    ).toBeNull();
+  });
+});
+
+describe("countStaffingSupply", () => {
+  const apprentices: StaffingApprentice[] = [
+    { stage: "ready_to_lead", expectedReadyOn: null },
+    { stage: "in_training", expectedReadyOn: "2026-07-01" },
+    { stage: "in_training", expectedReadyOn: "2026-09-01" },
+    { stage: "identified", expectedReadyOn: null },
+    { stage: "launched", expectedReadyOn: "2025-01-01" },
+  ];
+
+  it("counts Ready + projected-ready by the target date", () => {
+    // Ready now + the July in-training one ready by August = 2.
+    expect(countStaffingSupply(apprentices, "2026-08-01")).toBe(2);
+  });
+
+  it("counts only currently-Ready when there is no target date", () => {
+    expect(countStaffingSupply(apprentices, null)).toBe(1);
+  });
+});
+
+describe("computeStaffingForecast", () => {
+  it("demand = launches × leaders/group; gap = demand − supply", () => {
+    const f = computeStaffingForecast({
+      plannedLaunchCount: 3,
+      leadersPerNewGroup: 2,
+      staffingSupply: 2,
+    });
+    // 3 groups × 2 = need 6 leaders; 2 Ready → short 4.
+    expect(f.demand).toBe(6);
+    expect(f.supply).toBe(2);
+    expect(f.gap).toBe(4);
+    expect(f.shortfall).toBe(4);
+  });
+
+  it("reports a surplus as a negative gap with zero shortfall", () => {
+    const f = computeStaffingForecast({
+      plannedLaunchCount: 1,
+      leadersPerNewGroup: 2,
+      staffingSupply: 5,
+    });
+    expect(f.gap).toBe(-3);
+    expect(f.shortfall).toBe(0);
+  });
+});
+
+describe("buildStaffingForecast (the walkthrough number)", () => {
+  it("ties the launch plan to the pipeline: 3 by August, 1 Ready → short 5", () => {
+    const apprentices: StaffingApprentice[] = [
+      { stage: "ready_to_lead", expectedReadyOn: null },
+      { stage: "identified", expectedReadyOn: null },
+    ];
+    const f = buildStaffingForecast(
+      {
+        planned_launch_count: 3,
+        leaders_per_new_group: 2,
+        target_launch_month: 8,
+        target_launch_year: 2026,
+      },
+      apprentices,
+      new Date("2026-06-01T00:00:00Z")
+    );
+    expect(f.targetDateIso).toBe("2026-08-01");
+    expect(f.demand).toBe(6);
+    expect(f.supply).toBe(1);
+    expect(f.shortfall).toBe(5);
   });
 });
