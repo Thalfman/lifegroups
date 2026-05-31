@@ -141,10 +141,15 @@ ready group with its ready apprentice attached is one launch, not two):
   stage (§3.2). Answers "do we have people to lead the new groups?" Net-new; the
   pipeline is its source.
 
-The forecast's job is to surface the **binding constraint**: the recommended /
-planned launch count vs. staffing supply, so Julian sees "demand needs 3 new
-groups · 2 leaders Ready · **staffing short by 1**." Capacity and staffing are
-reported side by side, not added together. (See R10.)
+The forecast's job is to surface the **binding constraint**: leaders *needed* for
+the planned launches vs. leaders *available*. Crucially, demand must use the same
+unit as today's model — `launch count × leaders_per_new_group` (default 2), not the
+launch count itself — so "launch 3 groups" needs **6** leaders, not 3. With 2
+apprentices Ready, Julian sees "3 groups planned · need 6 leaders · 2 Ready ·
+**short 4**." (Open decision §9-f: whether one apprentice represents a whole launch
+team, i.e. `leaders_per_new_group = 1` for pipeline purposes — until decided, use
+the scenario's `leaders_per_new_group`.) Capacity and staffing are reported side by
+side, never added together. (See R10.)
 
 **How the four connect (the thread that's missing today):**
 
@@ -187,14 +192,15 @@ Candidates grouped by **target year** (2026 / 2027 / TBD) and **audience ×
 life-stage** — the shape of Julian's Doc — each row tied to its **group** and its
 **apprentice**. Two ways to drive it, per the locked decision:
 
-- **System-suggested.** The board flags groups that are **Full + have a Ready
-  apprentice** as suggested candidates — Julian doesn't have to hunt for them. The
+- **System-suggested.** The board flags groups that are **at/over target** (Full or
+  Open by choice) **and have a Ready apprentice** as suggested candidates. The
   5-criterion readiness is shown as **context** (e.g. "meets 4/5"), used to rank
   and annotate, not to suppress (see R9 for the exact rule).
 - **Scenario planning on top.** Julian runs *"launch N groups in `<year>`"* against
   seasonal demand (reusing scenarios + the August/January anchors) and sees a
-  **live leader-supply-vs-demand gap**: *"3 groups planned for August · 2
-  apprentices Ready · 1 short."* That gap is the number the current tool can't
+  **live leader-supply-vs-demand gap**, in leaders: *"3 groups planned for August ·
+  need 6 leaders · 2 apprentices Ready · short 4"* (demand = launches ×
+  `leaders_per_new_group`; see §3.4). That gap is the number the current tool can't
   show because it has no pipeline to count.
 
 ---
@@ -212,8 +218,12 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
   `exclude_from_capacity_metrics`. (§3.1, Q10)
 - **R3 — Board across the ministry.** A scannable grid of all active groups with
   `members / target`, status color, and segment; filter by segment/status. (§4-A)
-- **R4 — "Ready to multiply" badge.** Compute and show it when a group is Full and
-  has a Ready apprentice. This is the join between capacity and pipeline. (§3.4)
+- **R4 — "Ready to multiply" badge.** Show it when a group is **at/over target**
+  (capacity status `Full` *or* `Open by choice`) **and** has an apprentice at
+  *Ready to lead*. The 5-criterion readiness is **not a gate** by default (same
+  no-floor rule as R9; whether to add a criteria floor is open decision §9-e — if
+  adopted it applies to *both* the badge and suggestions). This is the join between
+  capacity and pipeline. (§3.1, §3.4)
 
 ### Leader Pipeline
 - **R5 — First-class Apprentice records.** Create/edit an apprentice on a group
@@ -236,7 +246,8 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
   status, segment, meeting time, notes, and the readiness chips from
   `evaluateReadiness()`. (§3.3)
 - **R9 — System-suggested candidates.** Surface a group as a suggestion when it is
-  **Full** *and* has an apprentice at **Ready to lead**. The 5-criterion readiness
+  **at/over target** (capacity status `Full` *or* `Open by choice`) *and* has an
+  apprentice at **Ready to lead**. The 5-criterion readiness
   (`evaluateReadiness()`) is shown as **context, not a gate** — its chips/`metCount`
   rank and annotate suggestions (e.g. "meets 4/5") rather than include or exclude
   them, consistent with Julian's "a group does not need to meet each." (Whether a
@@ -247,12 +258,13 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
   planned launch count and target season/year** (net-new inputs — the existing
   `launch_planning_scenarios` only stores demand assumptions and *derives*
   `recommended_new_groups`, so it cannot represent "Julian plans 3 by August"). The
-  forecast then reports the two supply dimensions **separately** (§3.4): the planned
-  (or recommended) launch count vs. **staffing supply** = apprentices that will be
-  **Ready by the scenario's target date** (see R5a / §6-1). Reuse
+  forecast then reports the two supply dimensions **separately** (§3.4). Staffing
+  demand = `launch count × leaders_per_new_group` (reuse the existing assumption,
+  default 2); staffing supply = apprentices that will be **Ready by the scenario's
+  target date** (see R5a / §6-1); the gap is demand − supply, in leaders. Reuse
   `computeLaunchPlan()`, the scenarios table, and `nextSeasonAnchorIso()` for the
   Aug/Jan anchors; add the launch-count + target-date inputs and a staffing-gap
-  output. (§3.4, Q9, Q11)
+  output. (§3.4, §9-f, Q9, Q11)
 - **R11 — Target year stays in-app data.** Keep per-candidate `target_year`,
   filterable (2026 / 2027 / TBD), per ADR-0006 — no paper decision. (Q11)
 
@@ -265,12 +277,18 @@ the existing audited path (`runAdminWriteAction` → `SECURITY DEFINER` `admin_*
 + paired `audit_events`), admin-only RLS, no hard deletes (archive via
 `archived_at`) — consistent with ADR-0001 and the existing pipeline.
 
-1. **`leader_pipeline` (apprentices) — 🆕.** One row per apprentice: `group_id`,
-   the person (see open decision §9-b), a `readiness_stage` enum
-   (`identified / in_training / ready_to_lead / launched`), an optional
-   **`expected_ready_on` date** (R5a — drives by-the-season staffing supply),
-   notes, audit/archival columns. New `admin_*` RPCs for create/advance/archive.
-   Seeded from `successor_designate` + the Doc.
+1. **`leader_pipeline` (apprentices) — 🆕.** One row per apprentice: `group_id`, a
+   `readiness_stage` enum (`identified / in_training / ready_to_lead / launched`),
+   an optional **`expected_ready_on` date** (R5a — drives by-the-season staffing
+   supply), notes, audit/archival columns. New `admin_*` RPCs for
+   create/advance/archive. Seeded from `successor_designate` + the Doc.
+   **The person — provisional shape so the first slice isn't blocked (resolve §9-b
+   before the schema slice lands):** store both a required **`display_name` text**
+   *and* a **nullable `member_id` FK** to `members`. The seed populates only
+   `display_name` (the Doc has names, not records); Julian can later attach the
+   `members` row. This avoids a rewrite whichever way §9-b lands — name-only stays
+   valid, and a `profiles` link, if chosen instead, is an additive nullable column,
+   not a type change to the existing data.
 2. **`multiplication_candidates` — 🟡.** Add a nullable FK to a `leader_pipeline`
    row; retain `successor_designate` through migration, then treat the link as the
    source of truth. **Constraint:** the linked apprentice must belong to the
@@ -311,11 +329,11 @@ the existing audited path (`runAdminWriteAction` → `SECURITY DEFINER` `admin_*
 > **In training**, so no badge.
 >
 > He opens the **Multiplication Plan**. The Cahills' group is already **suggested**
-> for him (Full + Ready apprentice + meets criteria). He runs a scenario:
-> *"launch 3 groups by August."* The forecast reads **demand needs 3 · 1
-> apprentice Ready · 2 short.** That gap is his to-do list — he flips two
-> apprentices' target dates and goes to develop the other two leaders, instead of
-> guessing from a spreadsheet.
+> for him (at/over target + Ready apprentice; readiness shown as "meets 4/5"). He
+> runs a scenario: *"launch 3 groups by August."* At 2 leaders per new group the
+> forecast reads **need 6 leaders · 1 Ready · short 5.** That gap is his to-do list
+> — he develops apprentices and sets their expected-ready dates toward August,
+> instead of guessing from a spreadsheet.
 
 Every step is one surface, and each view feeds the next — the thread that's broken
 today.
@@ -340,13 +358,21 @@ today.
 - **a. "Filling" threshold.** The warning band today is 80% of target — keep, or a
   different cut (e.g. "within 2 of target")?
 - **b. What an Apprentice *is*.** A link to an existing `members` record, a link to
-  a `profiles` person, or a lightweight name + stage? (Drives R5/R7 and §6-1.)
+  a `profiles` person, or a lightweight name? (Drives R5/R7.) **Provisional shape
+  pending this decision:** `display_name` text + nullable `member_id` (§6-1), so the
+  first slice can ship without a rewrite either way — but confirm before the schema
+  slice lands.
 - **c. Default target per segment.** One ministry default (12), or different
   targets by audience/life-stage (e.g. retirement groups smaller)?
 - **d. Stage vocabulary.** Are *Identified / In training / Ready to lead /
   Launched* the right words, or does Julian have his own?
-- **e. "Ready to multiply" rule.** Is the badge "Full + Ready apprentice," or
-  should it also require some of the 5 readiness criteria?
+- **e. Criteria floor for the badge & suggestions.** Default is **no floor** —
+  at/over target + a Ready apprentice is enough (R4, R9), with the 5 criteria shown
+  as context. If Julian wants a floor (e.g. "≥3 of 5"), it applies to **both** the
+  badge and suggestions so they stay consistent.
+- **f. Leaders per launch for staffing supply.** Demand defaults to launches ×
+  `leaders_per_new_group` (2). If Julian counts one apprentice as a whole launch
+  team, set the pipeline multiplier to 1 (§3.4, R10).
 
 None of these block drafting implementation slices; they refine specifics. Per
 ADR-0006's spirit, we prefer building the obviously-better tool over soliciting
