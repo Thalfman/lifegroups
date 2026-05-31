@@ -2706,6 +2706,43 @@ export function validateUpdateMultiplicationCandidatePayload(
   };
 }
 
+// Capacity & Multiplication #185: set a group's target size. `target` may be a
+// whole number in [1, 500] or null/blank to clear (fall back to the ministry
+// default). The RPC writes the effective target source (groups.capacity) and
+// clears any override so there is one visible source of truth.
+export type SetGroupCapacityTargetPayload = {
+  group_id: string;
+  target: number | null;
+};
+
+export function validateSetGroupCapacityTargetPayload(
+  input: unknown
+): ValidationResult<SetGroupCapacityTargetPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+
+  let target: number | null = null;
+  const raw = readOptionalString(input.target);
+  if (raw !== undefined) {
+    const n = readOptionalInteger(raw);
+    if (n === "invalid" || n === undefined) {
+      errors.push("Target size must be a whole number.");
+    } else if (n < 1 || n > 500) {
+      errors.push("Target size must be between 1 and 500.");
+    } else {
+      target = n;
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: { group_id: normalizeUuid(input.group_id as string), target },
+  };
+}
+
 export type CandidateIdPayload = { candidate_id: string };
 
 export function validateCandidateIdPayload(

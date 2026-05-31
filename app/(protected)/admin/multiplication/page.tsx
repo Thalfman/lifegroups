@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAllGroups,
+  fetchCapacityBoardExtras,
+  fetchLaunchPlanningInputsForAdmin,
   fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
@@ -12,6 +14,11 @@ import {
   type SegmentGroup,
 } from "@/lib/admin/multiplication";
 import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
+import {
+  buildCapacityBoardModel,
+  type SuggestedMultiplicationGroup,
+} from "@/lib/admin/capacity-board";
+import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import {
   MultiplicationPlanner,
   type ApprenticeOption,
@@ -26,6 +33,8 @@ type PageData = {
   // Apprentices keyed by group id, so a candidate's link picker only offers
   // same-group apprentices (the RPC + trigger reject cross-group links).
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
+  // R9: system-suggested candidates (at/over target + Ready apprentice).
+  suggestions: SuggestedMultiplicationGroup[];
   error: string | null;
 };
 
@@ -36,15 +45,19 @@ async function loadData(): Promise<PageData> {
       segments: [],
       availableGroups: [],
       apprenticesByGroup: {},
+      suggestions: [],
       error: "Database is not configured in this environment.",
     };
   }
 
-  const [candidatesRes, allGroupsRes, pipelineRes] = await Promise.all([
-    fetchMultiplicationCandidatesForAdmin(client),
-    fetchAllGroups(client),
-    fetchLeaderPipelineForAdmin(client),
-  ]);
+  const [candidatesRes, allGroupsRes, pipelineRes, inputsBundle, boardExtras] =
+    await Promise.all([
+      fetchMultiplicationCandidatesForAdmin(client),
+      fetchAllGroups(client),
+      fetchLeaderPipelineForAdmin(client),
+      fetchLaunchPlanningInputsForAdmin(client),
+      fetchCapacityBoardExtras(client),
+    ]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const segments = buildPlannerSegments(candidatesRes.data ?? [], todayIso);
@@ -68,14 +81,28 @@ async function loadData(): Promise<PageData> {
     });
   }
 
+  const boardModel = buildCapacityBoardModel({
+    groups: inputsBundle.groups,
+    overrides: inputsBundle.groupMetricSettings,
+    memberships: inputsBundle.memberships,
+    metricDefaults: decodeMetricDefaults(inputsBundle.metricDefaultsRow),
+    apprentices: boardExtras.apprentices,
+    coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
+    candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
+    candidateGroupIds: boardExtras.candidateGroupIds,
+    todayIso,
+  });
+
   return {
     segments,
     availableGroups,
     apprenticesByGroup,
+    suggestions: boardModel.suggestions,
     error:
       candidatesRes.error?.message ??
       allGroupsRes.error?.message ??
       pipelineRes.error?.message ??
+      boardExtras.error ??
       null,
   };
 }
@@ -114,6 +141,7 @@ export default async function AdminMultiplicationPage() {
               segments={data.segments}
               availableGroups={data.availableGroups}
               apprenticesByGroup={data.apprenticesByGroup}
+              suggestions={data.suggestions}
             />
           )}
 

@@ -306,6 +306,14 @@ export function rpcAdminArchiveApprentice(
   return callUuidRpc(client, "admin_archive_apprentice", args);
 }
 
+// Capacity & Multiplication #185: set a group's target size (effective source).
+export function rpcAdminSetGroupCapacityTarget(
+  client: AppSupabaseClient,
+  args: { p_group_id: string; p_target: number | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_capacity_target", args);
+}
+
 // Phase 5C.0 guest + follow-up admin RPCs.
 
 export type AdminCreateGuestArgs = {

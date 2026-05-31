@@ -802,6 +802,106 @@ export async function fetchLeaderPipelineForAdmin(
   return { data: entries, error: null };
 }
 
+// Capacity & Multiplication #185: everything the Capacity Board + system
+// suggestions need beyond the launch-planning inputs bundle — the apprentices
+// per group (for the ready-to-multiply badge), the co-shepherd tenure for every
+// group (for the readiness annotation), and the candidate flags/ids (so
+// suggestions can be annotated and de-duped). Group/override/membership/default
+// data is fetched separately via fetchLaunchPlanningInputsForAdmin.
+export type CapacityBoardExtras = {
+  apprentices: {
+    id: string;
+    group_id: string;
+    display_name: string;
+    readiness_stage: LeaderReadinessStage;
+  }[];
+  coShepherdSinceByGroup: Record<string, string>;
+  candidateFlagsByGroup: Record<
+    string,
+    { shepherdWilling: boolean; needsSimilarStage: boolean }
+  >;
+  candidateGroupIds: string[];
+  error: string | null;
+};
+
+export async function fetchCapacityBoardExtras(
+  client: ReadClient
+): Promise<CapacityBoardExtras> {
+  const empty: CapacityBoardExtras = {
+    apprentices: [],
+    coShepherdSinceByGroup: {},
+    candidateFlagsByGroup: {},
+    candidateGroupIds: [],
+    error: null,
+  };
+
+  const [apprenticesRes, leadersRes, candidatesRes] = await Promise.all([
+    client
+      .from("leader_pipeline")
+      .select("id, group_id, display_name, readiness_stage")
+      .is("archived_at", null),
+    client
+      .from("group_leaders")
+      .select("group_id, assigned_at, role, active")
+      .eq("role", "co_leader")
+      .eq("active", true),
+    client
+      .from("multiplication_candidates")
+      .select("group_id, shepherd_willing, needs_similar_stage")
+      .is("archived_at", null),
+  ]);
+
+  const error =
+    (apprenticesRes.error &&
+      wrapError("fetchCapacityBoardExtras/apprentices", apprenticesRes.error)
+        .message) ||
+    (leadersRes.error &&
+      wrapError("fetchCapacityBoardExtras/leaders", leadersRes.error)
+        .message) ||
+    (candidatesRes.error &&
+      wrapError("fetchCapacityBoardExtras/candidates", candidatesRes.error)
+        .message) ||
+    null;
+  if (error) return { ...empty, error };
+
+  const coShepherdSinceByGroup: Record<string, string> = {};
+  for (const l of (leadersRes.data ?? []) as {
+    group_id: string;
+    assigned_at: string;
+  }[]) {
+    const cur = coShepherdSinceByGroup[l.group_id];
+    if (cur === undefined || l.assigned_at < cur) {
+      coShepherdSinceByGroup[l.group_id] = l.assigned_at;
+    }
+  }
+
+  const candidateFlagsByGroup: Record<
+    string,
+    { shepherdWilling: boolean; needsSimilarStage: boolean }
+  > = {};
+  const candidateGroupIds: string[] = [];
+  for (const c of (candidatesRes.data ?? []) as {
+    group_id: string;
+    shepherd_willing: boolean;
+    needs_similar_stage: boolean;
+  }[]) {
+    candidateGroupIds.push(c.group_id);
+    candidateFlagsByGroup[c.group_id] = {
+      shepherdWilling: c.shepherd_willing,
+      needsSimilarStage: c.needs_similar_stage,
+    };
+  }
+
+  return {
+    apprentices: (apprenticesRes.data ??
+      []) as CapacityBoardExtras["apprentices"],
+    coShepherdSinceByGroup,
+    candidateFlagsByGroup,
+    candidateGroupIds,
+    error: null,
+  };
+}
+
 // Returns every row in group_metric_settings. RLS on the table restricts
 // reads to super_admin / ministry_admin, so calling this from any
 // non-admin context will surface as an empty result. Admin pages call
