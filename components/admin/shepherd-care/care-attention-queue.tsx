@@ -6,7 +6,7 @@ import type {
   CareAttentionItem,
   CareAttentionReason,
 } from "@/lib/admin/shepherd-care-dashboard";
-import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
+import { buildShepherdCareViewHref } from "@/lib/admin/shepherd-care-view";
 
 const REASON_LABEL: Record<CareAttentionReason, string> = {
   overdue_touchpoint: "Overdue",
@@ -106,13 +106,13 @@ export function CareAttentionQueue({
   items: CareAttentionItem[];
   totalCount: number;
 }) {
-  // The Dashboard scans; the Directory is where you act. The queue header and
-  // the "+N more" footer both link into the needs-attention Directory view so a
-  // click jumps straight to the filtered, actionable list (#180).
+  // The Dashboard scans; the Directory is where you act. The queue links into
+  // the *unfiltered* Directory view (#180): the triage queue includes reasons
+  // (no_over_shepherd, needs_encouragement, overdue follow-up) that don't set a
+  // row's `needs_attention` flag, so a `filter=needs_attention` target would
+  // hide the very rows the queue lists. The full list keeps them all visible.
   const remaining = totalCount - items.length;
-  const directoryHref = buildShepherdCareTriageLink({
-    kind: "needs_attention",
-  });
+  const directoryHref = buildShepherdCareViewHref({ view: "directory" });
   return (
     <StatusCard
       eyebrow="Triage queue"
