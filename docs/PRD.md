@@ -84,10 +84,13 @@ closed and proven in #114). Decision recorded in [`adr/0003`](./adr/0003-private
 **Julian:** mainly *people in groups* (leader-updated); knows *church attendance* is
 critical (≈60% in a group today); still figuring out how to capture church numbers.
 **Requirement:** capacity/demand model from people-in-groups + church attendance.
-**Status:** 🟡 **Shipped; one data gap.** LP.1 capacity/demand model + church-attendance
-snapshots ship (migration `20260528140000`). The reliable *capture* of church
-attendance is a known operational gap, not a code gap. Detail now in
-[`archive/LAUNCH_PLANNING_PLAN.md`](./archive/LAUNCH_PLANNING_PLAN.md).
+**Status:** 🟡 **Shipped, but being re-framed.** LP.1 capacity/demand model +
+church-attendance snapshots ship (migration `20260528140000`). The reliable
+*capture* of church attendance is a known operational gap, not a code gap. Detail
+now in [`archive/LAUNCH_PLANNING_PLAN.md`](./archive/LAUNCH_PLANNING_PLAN.md).
+➡️ **Active plan:** the capacity story is being re-framed into the integrated
+workspace in [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)
+— issue-slicing for Q9–Q11 should follow that plan, not treat job 2 as closed.
 
 ## Q10 — When is a group "full" / ready to multiply?
 **Julian:** full at **12 members**, but leaders may keep it open; multiply when a group
@@ -101,10 +104,15 @@ readiness rubric.
 **Julian:** mainly by **season/month (August especially, and January)**, also by church
 season — currently launching ahead of the new worship center.
 **Requirement:** season-aware planning (Aug/Jan) and scenario modeling for demand spikes.
-**Status:** ✅ **Shipped.** Seasonality quick-fills (Next August / Next January) and
-forecast scenarios (LP.1/LP.2). Multiplication source: [`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md).
-❓ **Decision owed:** is the in-app pipeline the system of record, or does the Google
-Doc stay master — and the 2026-vs-2027 split per group.
+**Status:** 🟡 **Shipped, but being re-framed.** Seasonality quick-fills (Next August
+/ Next January) and forecast scenarios (LP.1/LP.2). Multiplication source:
+[`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md).
+The system-of-record question is resolved by ADR-0006 (the in-app tool wins by
+adoption; the 2026-vs-2027 split is in-app `target_year` data).
+➡️ **Active plan:** capacity + multiplication are being unified into one workspace —
+with a net-new leader pipeline and a staffing-aware forecast — in
+[`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md).
+Job 2 is **not** "done"; that plan is the current spec for Q9–Q11.
 
 ## Q12 — What makes the tool genuinely useful, week to week
 **Julian:** three jobs — (1) know how my leaders are doing, (2) know what groups need
@@ -113,7 +121,11 @@ designing*).
 **Requirement:** deliver all three jobs.
 **Status:**
 - Job 1 (leaders) — ✅ delivered by Q1–Q8.
-- Job 2 (launches) — ✅ delivered by Q9–Q11.
+- Job 2 (launches) — 🟡 **Functionally shipped, being re-framed.** Capacity,
+  forecast, and the multiplication pipeline all ship, but the surfaces are
+  disconnected and there is no leader pipeline; the integrated re-frame is specced
+  in [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)
+  (Q9–Q11).
 - Job 3 (group health) — 🟡 **Rubric locked; build pending.** Three dimensions
   (attendance consistency · admin-entered spiritual-growth 1–5 · a relayed leader
   1–5), letter A–D output, monthly cadence, tunable weights/cut-lines/thresholds; see
@@ -129,7 +141,10 @@ rubric is locked (ADR 0004 / D8). **No North-Star item is gated on awaiting Juli
 multiplication system-of-record question is resolved by building the better tool
 (ADR 0006), and the two group-health question wordings ship as placeholders, a deferred
 cosmetic swap (ADR 0007). Remaining work is execution, not decisions — e.g. exposing the
-group-health surface in the nav and the multiplication-planner slices.
+group-health surface in the nav, and the **capacity + multiplication re-frame**
+([`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)):
+job 2 is functionally shipped but its surfaces are disconnected and lack a leader
+pipeline, so it is being unified rather than treated as closed.
 
 ## Decisions owed by Julian
 1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).

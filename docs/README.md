@@ -34,7 +34,8 @@ live below traces to it; everything else has been archived.
 |---|---|
 | [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Shepherd-care detail (Q1–Q8). |
 | [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007). |
-| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md) | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). |
+| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md) | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the planner spec below. |
+| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md) | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). **Superseded** by the capacity PRD above. |
 
 ## Engineering reference
 
