@@ -134,6 +134,38 @@ export function rpcSuperAdminSetPlatformConfig(
   return callUuidRpc(client, "super_admin_set_platform_config", args);
 }
 
+// Phase SAC.3 (#163) account management: set a profile's active/inactive
+// status, and log a password-reset email send. Both are audited + super-admin
+// gated in the RPC.
+export function rpcSuperAdminSetProfileStatus(
+  client: AppSupabaseClient,
+  args: { p_profile_id: string; p_status: "active" | "inactive" }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_set_profile_status", args);
+}
+
+export function rpcSuperAdminLogPasswordReset(
+  client: AppSupabaseClient,
+  args: { p_profile_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_log_password_reset", args);
+}
+
+// Phase SAC.4 (#164) coverage editing from the Super Admin Console reuses the
+// existing Phase 5D.1 coverage RPCs (rpcAdminAssignShepherdToOverShepherd /
+// rpcAdminEndShepherdCoverageAssignment). Those gate on auth_is_admin(), which
+// super_admin satisfies, so no new RPC is needed.
+
+// Phase SAC.5 (#165) bulk people import. p_rows is the parsed + de-duped row
+// array from lib/admin/people-import.ts; the RPC returns the created count as
+// text via the shared uuid-string return channel.
+export function rpcSuperAdminBulkImportPeople(
+  client: AppSupabaseClient,
+  args: { p_rows: Array<Record<string, unknown>> }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_bulk_import_people", args);
+}
+
 // Phase 5A.4 admin settings + leader-role-swap RPCs.
 
 export function rpcAdminUpdateMetricDefaults(
