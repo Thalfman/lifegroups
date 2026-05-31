@@ -6,12 +6,67 @@
 > twelve questions. The matching architecture decisions are in
 > [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md).
 
+---
+
+## What this is
+
+**Julian's admin operating system for shepherding Life Group Leaders and planning group
+launches.** It is built for the ministry's **oversight tiers** — not (currently) for the
+Leaders themselves. The oversight ladder is **Super Admin ▸ Ministry Admin ▸ Over-Shepherd
+▸ Leader**. Everything the app does serves Julian's three jobs (Q12):
+
+1. **Know how my Leaders are doing** — Leader Care Status, last contact, what's owed next,
+   and a per-Leader history (Q1–Q8).
+2. **Know what groups need to be launched, and when** — capacity, seasonality, and a
+   multiplication pipeline (Q9–Q11).
+3. **Know the health of a Life Group** — the Group-Health Grade rubric (Q12).
+
+A feature is in scope only if it serves one of these three jobs for an oversight-tier user.
+
+## What this is NOT — the original concept
+
+The app was first built as a **broad, Leader-inclusive group-operations platform**: Leader
+self-service workflows, a weekly-cadence **"This week"** landing centered on check-ins, a
+guest/engagement pipeline, and an eventual communications-director loop. **That is no longer
+the product.** Julian's 2026-05-27 systems conversation inverted the priority toward the
+admin operating system above. The original pillars are deliberately retired or deferred —
+not drifting, not half-decided:
+
+- **Leader self-service features** → **frozen, maintenance-mode only.** Leaders log in only
+  to submit weekly check-ins (the source of the Health Pulse) and view their group calendar.
+  No new Leader-facing feature ships without Julian's go-ahead (**LDR.1**; ADR 0002).
+- **Over-Shepherd login / write access** → **deferred.** Over-Shepherds are a
+  coverage-tracking concept today; broad-note write and any standalone Over-Shepherd product
+  are future scope (Q7; LDR.1).
+- **Guest / engagement pipeline** → **deferred** (**EXT.1**). The surface still resolves but
+  has no destination in the current scope.
+- **External / public / communications-director surfaces** → **out of scope** (EXT.1).
+- **Weekly check-in as the headline** → **demoted.** Check-ins now feed only the Health
+  Pulse; they are not the landing surface (the old "This week" framing; see
+  [`archive/PRODUCT_SURFACE_AUDIT_2026-05.md`](./archive/PRODUCT_SURFACE_AUDIT_2026-05.md)).
+
+The original concept still **lingers in the code, schema, and copy** (dormant routes, a
+deprecated role, half-finished renames). Those concrete artifacts and their suggested
+dispositions are inventoried separately in
+[`plans/CONCEPT_RECONCILIATION.md`](./plans/CONCEPT_RECONCILIATION.md) — to be worked through
+in later sessions, not in this PRD.
+
+## Scope at a glance
+
+- **In scope:** the three jobs (Q1–Q12) and the oversight-tier surfaces — Home Hub, Admin OS
+  (labelled "Ministry Admin"), Settings, Super Admin Console, and the Over-Shepherd surface.
+- **Out of scope / deferred:** everything under _What this is NOT_ — Leader-facing features
+  (LDR.1) and external/comms surfaces (EXT.1).
+
+---
+
 _Status legend:_ ✅ shipped · 🟡 partial / refinement open · 🔬 discovery (not buildable yet) · ❓ decision owed by Julian.
 Evidence cites the migration or PR so each claim is verifiable in git.
 
 ---
 
 ## Q1 — A blank care spreadsheet (headers/structure)
+
 **Julian:** sent the blank care list; wants its structure captured.
 **Requirement:** model the care list as first-class data (one row per leader).
 **Status:** ✅ **Shipped.** Care profiles back the spreadsheet structure; columns
@@ -19,7 +74,8 @@ captured in [`julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](./julian-inputs/MIN_CARE
 Detail: [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) (SC.1A).
 
 ## Q2 — Categories for "how a leader is doing"
-**Julian:** thinks in terms of *is there an issue and what's the next step*; wants a
+
+**Julian:** thinks in terms of _is there an issue and what's the next step_; wants a
 category on every leader for quick notes; did **not** adopt the proposed five-word
 vocabulary verbatim.
 **Requirement:** a per-leader status plus free-text notes.
@@ -31,19 +87,22 @@ five verbatim — `doing_well / needs_encouragement / needs_follow_up / concern 
 implementation tracked in #122.
 
 ## Q3 — What to remember after connecting with a leader
+
 **Julian:** the issue/concern (or good thing), and whether/when/what follow-up.
 **Requirement:** an append-only interaction history with a follow-up hook.
 **Status:** ✅ **Shipped.** `shepherd_care_interactions` (history) + the follow-up
 linkage (SC.1A/SC.1B).
 
 ## Q4 — How he decides someone needs a follow-up
+
 **Julian:** based on what the leader shares; he asks to follow up, then jots it down.
 **Requirement:** ad-hoc, admin-created follow-up tasks.
 **Status:** ✅ **Shipped.** `shepherd_care_follow_ups` (migration
 `20260529007000`, PR #107).
 
 ## Q5 — How often to check in
-**Julian:** *tiered by oversight* — more in the weeds on the mixed/couples groups he
+
+**Julian:** _tiered by oversight_ — more in the weeds on the mixed/couples groups he
 over-shepherds directly; delegated cadence for men's/women's groups that have their
 own over-shepherd. No single standing interval.
 **Requirement:** track who oversees whom; a configurable staleness signal, not a
@@ -56,21 +115,24 @@ directly-overseen (admin) shorter, delegated (has an over-shepherd) longer; prop
 interactions only for now** (over-shepherd reset deferred to when #126 ships). Build in #123.
 
 ## Q6 — History log, task list, or both?
+
 **Julian:** "Maybe both!"
 **Requirement:** both a history log and a follow-up/task list (the A1 model).
 **Status:** ✅ **Shipped.** History (SC.1A) **and** follow-ups (SC.1B, #107).
 
 ## Q7 — The 3 over-shepherds: track them, and let them help update?
-**Julian:** track coverage now; *eventually* let over-shepherds update the system too,
+
+**Julian:** track coverage now; _eventually_ let over-shepherds update the system too,
 but **broad notes only**, given simplicity and confidentiality; wants something for
 leaders at some point too.
 **Requirement:** coverage tracking now; scoped over-shepherd access; leader access later.
 **Status:** 🟡 **Coverage + over-shepherd login shipped; write deferred.** Over-shepherd
 role, login bridge, and coverage-scoped read RLS ship (migrations `20260529000000`–
-`20260529006000`). Over-shepherd *write* (broad notes) and any leader surface are
+`20260529006000`). Over-shepherd _write_ (broad notes) and any leader surface are
 deliberately deferred (roadmap LDR.1) — **not blocking.**
 
 ## Q8 — Notes only Julian can read (privacy/encryption)
+
 **Julian:** "Yes, that would be helpful."
 **Requirement:** a private note tier readable by Julian alone — excluding even
 `super_admin`.
@@ -81,18 +143,20 @@ and a recovery code (migrations `20260529008000`/`20260529009000`; crypto in
 closed and proven in #114). Decision recorded in [`adr/0003`](./adr/0003-private-care-note-encryption.md).
 
 ## Q9 — Launch-planning numbers
-**Julian:** mainly *people in groups* (leader-updated); knows *church attendance* is
+
+**Julian:** mainly _people in groups_ (leader-updated); knows _church attendance_ is
 critical (≈60% in a group today); still figuring out how to capture church numbers.
 **Requirement:** capacity/demand model from people-in-groups + church attendance.
 **Status:** 🟡 **Shipped, but being re-framed.** LP.1 capacity/demand model +
 church-attendance snapshots ship (migration `20260528140000`). The reliable
-*capture* of church attendance is a known operational gap, not a code gap. Detail
+_capture_ of church attendance is a known operational gap, not a code gap. Detail
 now in [`archive/LAUNCH_PLANNING_PLAN.md`](./archive/LAUNCH_PLANNING_PLAN.md).
 ➡️ **Active plan:** the capacity story is being re-framed into the integrated
 workspace in [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)
 — issue-slicing for Q9–Q11 should follow that plan, not treat job 2 as closed.
 
 ## Q10 — When is a group "full" / ready to multiply?
+
 **Julian:** full at **12 members**, but leaders may keep it open; multiply when a group
 is **12+**, has met **3+ years**, and there's a **need** for a similar group.
 **Requirement:** capacity default of 12 with an opt-to-stay-open flag; a multiplication
@@ -101,6 +165,7 @@ readiness rubric.
 `20260528130000`); `multiplication_candidates` rubric (migration `20260528160000`).
 
 ## Q11 — Launch by season, or as capacity fills?
+
 **Julian:** mainly by **season/month (August especially, and January)**, also by church
 season — currently launching ahead of the new worship center.
 **Requirement:** season-aware planning (Aug/Jan) and scenario modeling for demand spikes.
@@ -115,11 +180,13 @@ with a net-new leader pipeline and a staffing-aware forecast — in
 Job 2 is **not** "done"; that plan is the current spec for Q9–Q11.
 
 ## Q12 — What makes the tool genuinely useful, week to week
+
 **Julian:** three jobs — (1) know how my leaders are doing, (2) know what groups need
-to be launched and when, (3) know the **health of a Life Group** (rubric he's *still
-designing*).
+to be launched and when, (3) know the **health of a Life Group** (rubric he's _still
+designing_).
 **Requirement:** deliver all three jobs.
 **Status:**
+
 - Job 1 (leaders) — ✅ delivered by Q1–Q8.
 - Job 2 (launches) — 🟡 **Functionally shipped, being re-framed.** Capacity,
   forecast, and the multiplication pipeline all ship, but the surfaces are
@@ -136,6 +203,7 @@ designing*).
 ---
 
 ## Where we stand, in one line
+
 All three jobs (Q1–Q12) are **functionally built** — group health included, now that the
 rubric is locked (ADR 0004 / D8). **No North-Star item is gated on awaiting Julian:** the
 multiplication system-of-record question is resolved by building the better tool
@@ -147,6 +215,7 @@ job 2 is functionally shipped but its surfaces are disconnected and lack a leade
 pipeline, so it is being unified rather than treated as closed.
 
 ## Decisions owed by Julian
+
 1. ~~**Group-health rubric (Q12)**~~ — ✅ **Locked** (grill 2026-05-30; ADR 0004 / D8).
    The two 1–5 question wordings are **no longer a launch gate**: the grade ships with
    placeholder ("TBD") labels and Julian's wording is a deferred cosmetic swap
