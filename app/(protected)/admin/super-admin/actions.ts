@@ -3,7 +3,6 @@
 import { requireSuperAdminSession } from "@/lib/auth/session";
 import {
   guardAgainstSelfRoleChange,
-  guardAgainstStaffViewerAssignment,
   guardAgainstSuperAdminAssignment,
   validateChangeUserRolePayload,
   type ChangeUserRolePayload,
@@ -36,18 +35,13 @@ const UPDATE_PROFILE_ROLE_SPEC: AdminWriteActionSpec<
   guard: (actor, value) => {
     const selfGuard = guardAgainstSelfRoleChange(
       { id: actor.id, role: actor.role },
-      value,
+      value
     );
     if (selfGuard) return { error: selfGuard, code: "self_guard" };
 
     const superGuard = guardAgainstSuperAdminAssignment(value);
     if (superGuard) {
       return { error: superGuard, code: "super_admin_assignment_blocked" };
-    }
-
-    const staffGuard = guardAgainstStaffViewerAssignment(value);
-    if (staffGuard) {
-      return { error: staffGuard, code: "staff_viewer_assignment_blocked" };
     }
 
     return null;
@@ -67,7 +61,10 @@ const UPDATE_PROFILE_ROLE_SPEC: AdminWriteActionSpec<
 
 export async function superAdminUpdateProfileRole(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<{ profile_id: string; new_role: ChangeUserRolePayload["new_role"] }>,
+  input: ActionInput<{
+    profile_id: string;
+    new_role: ChangeUserRolePayload["new_role"];
+  }>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_PROFILE_ROLE_SPEC, prev, input);
 }

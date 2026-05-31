@@ -13,7 +13,6 @@ const ALL_ROLES: UserRole[] = [
   "super_admin",
   "ministry_admin",
   "over_shepherd",
-  "staff_viewer",
   "leader",
   "co_leader",
 ];
@@ -56,7 +55,7 @@ describe("defaultLandingPathForRole", () => {
   });
 
   // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // leader / co_leader are now treated as no-access, the same as staff_viewer.
+  // leader / co_leader are treated as no-access.
   it("routes leaders to /unauthorized (leader surface gated)", () => {
     expect(defaultLandingPathForRole("leader")).toBe("/unauthorized");
     expect(defaultLandingPathForRole("co_leader")).toBe("/unauthorized");
@@ -64,10 +63,6 @@ describe("defaultLandingPathForRole", () => {
 
   it("routes over_shepherd to /over-shepherd", () => {
     expect(defaultLandingPathForRole("over_shepherd")).toBe("/over-shepherd");
-  });
-
-  it("routes staff_viewer to /unauthorized", () => {
-    expect(defaultLandingPathForRole("staff_viewer")).toBe("/unauthorized");
   });
 });
 
@@ -111,10 +106,6 @@ describe("navItemsForRole", () => {
     expect(hrefs).not.toContain("/admin");
   });
 
-  it("gives staff_viewer only the home item", () => {
-    expect(navItemsForRole("staff_viewer").map((i) => i.href)).toEqual(["/"]);
-  });
-
   // Julian #145: the multiplication pipeline is promoted to its own admin
   // surface and must be reachable from the admin nav for admin roles only.
   it("surfaces /admin/multiplication for admin roles only", () => {
@@ -123,12 +114,7 @@ describe("navItemsForRole", () => {
         "/admin/multiplication"
       );
     }
-    for (const role of [
-      "over_shepherd",
-      "leader",
-      "co_leader",
-      "staff_viewer",
-    ] as const) {
+    for (const role of ["over_shepherd", "leader", "co_leader"] as const) {
       expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
         "/admin/multiplication"
       );

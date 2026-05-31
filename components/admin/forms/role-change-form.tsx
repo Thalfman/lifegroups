@@ -15,9 +15,7 @@ import type { ActionResult } from "@/lib/admin/action-result";
 import type { UserRole } from "@/types/enums";
 
 // Any active profile whose current role is NOT super_admin can be the
-// target of a role change. Legacy staff_viewer accounts are reassignable
-// here so operators have a documented migration path off the deprecated
-// role.
+// target of a role change.
 type AssignableProfile = {
   id: string;
   full_name: string;
@@ -44,7 +42,7 @@ export function RoleChangeForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     superAdminUpdateProfileRole,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -55,7 +53,11 @@ export function RoleChangeForm({
   const noOptions = profiles.length === 0;
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <p
         style={{
           fontFamily: fontBody,
@@ -65,9 +67,9 @@ export function RoleChangeForm({
           lineHeight: 1.5,
         }}
       >
-        Change a profile&rsquo;s role. Promotion to super admin happens
-        through the documented bootstrap procedure, not the app. You
-        can&rsquo;t change your own role here; every change records an audit event.
+        Change a profile&rsquo;s role. Promotion to super admin happens through
+        the documented bootstrap procedure, not the app. You can&rsquo;t change
+        your own role here; every change records an audit event.
       </p>
       <div
         className="lg-m-grid-stack"
@@ -123,7 +125,12 @@ export function RoleChangeForm({
           </select>
         </div>
         <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending || noOptions}>
+          <PButton
+            type="submit"
+            tone="terra"
+            size="md"
+            disabled={pending || noOptions}
+          >
             {pending ? "Saving…" : "Change role"}
           </PButton>
         </div>
@@ -137,12 +144,20 @@ export function RoleChangeForm({
             margin: 0,
           }}
         >
-          No active non-super-admin profiles exist yet. Add a leader or
-          ministry admin via Manage People first.
+          No active non-super-admin profiles exist yet. Add a leader or ministry
+          admin via Manage People first.
         </p>
       ) : null}
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

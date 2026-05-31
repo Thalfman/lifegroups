@@ -323,7 +323,7 @@ export async function fetchNewGuestsForGroupSince(
 }
 
 // Phase 5A.6 group calendar readers. RLS already scopes these to
-// admin / staff_viewer / leader-of-group via the SELECT policies in
+// admin / leader-of-group via the SELECT policies in
 // supabase/migrations/20260518140000_phase5a6_group_calendar.sql, so
 // callers can pass arbitrary filters and the database enforces access.
 //
@@ -402,7 +402,7 @@ export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
 ];
 
 // ----- Admin-scoped readers (Phase 5A.1). RLS already permits these for
-// super_admin / ministry_admin / staff_viewer via the Phase 4 policies.
+// super_admin / ministry_admin via the Phase 4 policies.
 // -------------------------------------------------------------------------
 
 export async function fetchProfilesForAdmin(
@@ -1177,8 +1177,8 @@ export async function fetchRecentAuditEvents(
 /**
  * Admin-only column allowlist for shepherd_care_profiles. Used by every
  * shepherd-care reader so `select("*")` never leaks here. The table-level
- * RLS already restricts SELECT to super_admin / ministry_admin (NOT
- * staff_viewer); this allowlist is the defensive belt-and-braces.
+ * RLS already restricts SELECT to super_admin / ministry_admin;
+ * this allowlist is the defensive belt-and-braces.
  *
  * admin_summary is NOT a column here any more — phase_os5 moved it to the
  * fenced, admin-only shepherd_care_admin_notes table so RLS (not just the app
@@ -1208,7 +1208,7 @@ export const SHEPHERD_CARE_INTERACTION_COLUMNS =
  * never holds plaintext or the key. Both readers run behind requireAdmin() and
  * filter on created_by_profile_id (belt-and-braces with the creator-scoped RLS
  * that excludes super_admin). No leader / co_leader / over_shepherd /
- * staff_viewer / super_admin read path exists.
+ * super_admin read path exists.
  */
 export const SHEPHERD_CARE_PRIVATE_NOTE_COLUMNS =
   "id, care_profile_id, created_by_profile_id, ciphertext, iv, dek_version, " +

@@ -2,9 +2,11 @@ export type UserRole =
   | "super_admin"
   | "ministry_admin"
   | "over_shepherd"
-  | "staff_viewer"
   | "leader"
   | "co_leader";
+// Note: a legacy no-access role was removed from this union (#190). Existing
+// rows were migrated to inactive `leader` (also no-access per ADR 0002) and the
+// value was dropped from the `user_role` Postgres enum.
 export type ProfileStatus = "active" | "inactive" | "invited";
 export type GroupLifecycleStatus =
   | "active"

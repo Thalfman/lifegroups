@@ -31,8 +31,7 @@ type ProfileFixture = {
     | "ministry_admin"
     | "over_shepherd"
     | "leader"
-    | "co_leader"
-    | "staff_viewer";
+    | "co_leader";
   status: "active" | "inactive" | "invited";
   created_at: string;
   updated_at: string;
@@ -111,10 +110,11 @@ function makeClient(state: ClientState) {
           throw new Error(`maybeSingle not stubbed for table ${table}`);
         },
         then<R1, R2>(
-          onResolve: (
-            value: { data: unknown; error: unknown },
-          ) => R1 | PromiseLike<R1>,
-          onReject?: (reason: unknown) => R2 | PromiseLike<R2>,
+          onResolve: (value: {
+            data: unknown;
+            error: unknown;
+          }) => R1 | PromiseLike<R1>,
+          onReject?: (reason: unknown) => R2 | PromiseLike<R2>
         ) {
           if (table === "group_leaders") {
             return Promise.resolve({
@@ -123,7 +123,7 @@ function makeClient(state: ClientState) {
             }).then(onResolve, onReject);
           }
           return Promise.reject(
-            new Error(`await on builder not stubbed for table ${table}`),
+            new Error(`await on builder not stubbed for table ${table}`)
           ).then(onResolve, onReject);
         },
       };
@@ -155,7 +155,7 @@ describe("requireRole (page-route guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: null,
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
@@ -168,7 +168,7 @@ describe("requireRole (page-route guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profileError: { code: "PGRST", message: "transient" },
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
@@ -181,7 +181,7 @@ describe("requireRole (page-route guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: { ...PROFILE_ADMIN, status: "inactive" },
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
@@ -195,7 +195,7 @@ describe("requireRole (page-route guard)", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [],
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
@@ -208,7 +208,7 @@ describe("requireRole (page-route guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     const result = await requireRole(["ministry_admin"]);
@@ -223,7 +223,7 @@ describe("requireRole (page-route guard)", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [{ group_id: GROUP_1_ID }, { group_id: GROUP_2_ID }],
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     const result = await requireRole(["leader"]);
@@ -244,7 +244,7 @@ describe("trust-boundary guards", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: malformed as unknown as ProfileFixture,
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["ministry_admin"])).rejects.toMatchObject({
@@ -252,7 +252,7 @@ describe("trust-boundary guards", () => {
     });
     const { log } = await import("@/lib/observability/logger");
     expect(log.error).toHaveBeenCalledWith(
-      expect.objectContaining({ error_code: "profile_shape_invalid" }),
+      expect.objectContaining({ error_code: "profile_shape_invalid" })
     );
   });
 
@@ -262,7 +262,7 @@ describe("trust-boundary guards", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [{ group_id: 42 }] as unknown as { group_id: string }[],
-      }),
+      })
     );
     const { requireRole } = await loadSession();
     await expect(requireRole(["leader"])).rejects.toMatchObject({
@@ -270,7 +270,7 @@ describe("trust-boundary guards", () => {
     });
     const { log } = await import("@/lib/observability/logger");
     expect(log.error).toHaveBeenCalledWith(
-      expect.objectContaining({ error_code: "leader_rows_shape_invalid" }),
+      expect.objectContaining({ error_code: "leader_rows_shape_invalid" })
     );
   });
 });
@@ -281,7 +281,7 @@ describe("requireAdminSession (server-action guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profileError: { code: "PGRST", message: "transient" },
-      }),
+      })
     );
     const { requireAdminSession } = await loadSession();
     const r = await requireAdminSession();
@@ -304,7 +304,7 @@ describe("requireAdminSession (server-action guard)", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [],
-      }),
+      })
     );
     const { requireAdminSession } = await loadSession();
     const r = await requireAdminSession();
@@ -316,7 +316,7 @@ describe("requireAdminSession (server-action guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
-      }),
+      })
     );
     const { requireAdminSession } = await loadSession();
     const r = await requireAdminSession();
@@ -335,7 +335,7 @@ describe("requireLeader (page-route guard) -- gated", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [{ group_id: GROUP_1_ID }],
-      }),
+      })
     );
     const { requireLeader } = await loadSession();
     await expect(requireLeader()).rejects.toMatchObject({
@@ -348,7 +348,7 @@ describe("requireLeader (page-route guard) -- gated", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
-      }),
+      })
     );
     const { requireLeader } = await loadSession();
     await expect(requireLeader()).rejects.toMatchObject({
@@ -363,7 +363,7 @@ describe("requireOverShepherd (page-route guard)", () => {
       makeClient({
         user: { id: "auth-coach", email: "coach@example.com" },
         profile: PROFILE_OVER_SHEPHERD,
-      }),
+      })
     );
     const { requireOverShepherd } = await loadSession();
     const result = await requireOverShepherd();
@@ -376,7 +376,7 @@ describe("requireOverShepherd (page-route guard)", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
-      }),
+      })
     );
     const { requireOverShepherd } = await loadSession();
     await expect(requireOverShepherd()).rejects.toMatchObject({
@@ -390,7 +390,7 @@ describe("requireOverShepherd (page-route guard)", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [],
-      }),
+      })
     );
     const { requireOverShepherd } = await loadSession();
     await expect(requireOverShepherd()).rejects.toMatchObject({
@@ -406,7 +406,7 @@ describe("requireLeaderActor (server-action guard) -- gated", () => {
         user: { id: "auth-leader", email: "leader@example.com" },
         profile: PROFILE_LEADER,
         leaderRows: [{ group_id: GROUP_1_ID }],
-      }),
+      })
     );
     const { requireLeaderActor } = await loadSession();
     const r = await requireLeaderActor();
@@ -418,7 +418,7 @@ describe("requireLeaderActor (server-action guard) -- gated", () => {
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
         profileError: { code: "PGRST", message: "transient" },
-      }),
+      })
     );
     const { requireLeaderActor } = await loadSession();
     const r = await requireLeaderActor();
@@ -433,7 +433,7 @@ describe("requireLeaderActor (server-action guard) -- gated", () => {
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
-      }),
+      })
     );
     const { requireLeaderActor } = await loadSession();
     const r = await requireLeaderActor();
