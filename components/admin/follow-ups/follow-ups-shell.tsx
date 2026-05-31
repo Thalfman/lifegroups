@@ -8,15 +8,8 @@ import {
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
 import { PBadge } from "@/components/pastoral/atoms";
-import type {
-  GroupsRow,
-  MembersRow,
-  ProfilesRow,
-} from "@/types/database";
-import type {
-  FollowUpPriority,
-  FollowUpStatus,
-} from "@/types/enums";
+import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
+import type { FollowUpPriority, FollowUpStatus } from "@/types/enums";
 import type {
   AdminFollowUpEntry,
   GuestDirectoryEntry,
@@ -45,7 +38,12 @@ export type AdminFollowUpsData = {
   };
 };
 
-const STATUS_ORDER: FollowUpStatus[] = ["open", "in_progress", "snoozed", "done"];
+const STATUS_ORDER: FollowUpStatus[] = [
+  "open",
+  "in_progress",
+  "snoozed",
+  "done",
+];
 
 const STATUS_LABEL: Record<FollowUpStatus, string> = {
   open: "Open",
@@ -73,7 +71,9 @@ type DueFilter = "all" | "overdue" | "this_week" | "no_due_date";
 export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
   const { followUps, groups, members, guests, assigneeProfiles, errors } = data;
 
-  const [priorityFilter, setPriorityFilter] = useState<"all" | FollowUpPriority>("all");
+  const [priorityFilter, setPriorityFilter] = useState<
+    "all" | FollowUpPriority
+  >("all");
   const [dueFilter, setDueFilter] = useState<DueFilter>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
@@ -81,19 +81,19 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
 
   const groupsById = useMemo(
     () => new Map(groups.map((g) => [g.id, g] as const)),
-    [groups],
+    [groups]
   );
   const membersById = useMemo(
     () => new Map(members.map((m) => [m.id, m] as const)),
-    [members],
+    [members]
   );
   const guestsById = useMemo(
     () => new Map(guests.map((g) => [g.id, g] as const)),
-    [guests],
+    [guests]
   );
   const profilesById = useMemo(
     () => new Map(assigneeProfiles.map((p) => [p.id, p] as const)),
-    [assigneeProfiles],
+    [assigneeProfiles]
   );
 
   const { today, inSevenDays } = useMemo(() => {
@@ -106,10 +106,14 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
 
   const filtered = useMemo(() => {
     return followUps.filter((fu) => {
-      if (priorityFilter !== "all" && fu.priority !== priorityFilter) return false;
-      if (assigneeFilter !== "all" && fu.assigned_to !== assigneeFilter) return false;
-      if (groupFilter !== "all" && fu.related_group_id !== groupFilter) return false;
-      if (guestFilter !== "all" && fu.related_guest_id !== guestFilter) return false;
+      if (priorityFilter !== "all" && fu.priority !== priorityFilter)
+        return false;
+      if (assigneeFilter !== "all" && fu.assigned_to !== assigneeFilter)
+        return false;
+      if (groupFilter !== "all" && fu.related_group_id !== groupFilter)
+        return false;
+      if (guestFilter !== "all" && fu.related_guest_id !== guestFilter)
+        return false;
       if (dueFilter !== "all") {
         if (dueFilter === "no_due_date") {
           if (fu.due_date) return false;
@@ -148,9 +152,15 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
     for (const status of STATUS_ORDER) {
       out[status].sort((a, b) => {
         // priority: high > normal > low; due_date asc nulls last; created_at desc
-        const pOrder: Record<FollowUpPriority, number> = { high: 0, normal: 1, low: 2 };
-        if (a.priority !== b.priority) return pOrder[a.priority] - pOrder[b.priority];
-        if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+        const pOrder: Record<FollowUpPriority, number> = {
+          high: 0,
+          normal: 1,
+          low: 2,
+        };
+        if (a.priority !== b.priority)
+          return pOrder[a.priority] - pOrder[b.priority];
+        if (a.due_date && b.due_date)
+          return a.due_date.localeCompare(b.due_date);
         if (a.due_date) return -1;
         if (b.due_date) return 1;
         return b.created_at.localeCompare(a.created_at);
@@ -161,16 +171,18 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => a.name.localeCompare(b.name)),
-    [groups],
+    [groups]
   );
   const sortedGuests = useMemo(
     () => [...guests].sort((a, b) => a.full_name.localeCompare(b.full_name)),
-    [guests],
+    [guests]
   );
   const sortedAssignees = useMemo(
     () =>
-      [...assigneeProfiles].sort((a, b) => a.full_name.localeCompare(b.full_name)),
-    [assigneeProfiles],
+      [...assigneeProfiles].sort((a, b) =>
+        a.full_name.localeCompare(b.full_name)
+      ),
+    [assigneeProfiles]
   );
 
   const anyError =
@@ -184,8 +196,8 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
     <div style={{ display: "grid", gap: 36 }}>
       {anyError ? (
         <div role="alert" style={alertStyle}>
-          One or more reads failed. The page below shows what we did get; retry in
-          a moment or check the database connection.
+          One or more reads failed. The page below shows what we did get; retry
+          in a moment or check the database connection.
           {errors.followUps ? (
             <p style={errorTextStyle}>{errors.followUps}</p>
           ) : null}
@@ -196,7 +208,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
         <SectionHeader
           eyebrow="New follow-up"
           title="Add a thread to track"
-          description="Tie it to a group, a member, a guest, or a leader. Set a priority and a due date if it helps. Assign it to someone now or leave it unassigned for the team to pick up."
+          description="Tie it to a group, a member, or a guest. Set a priority and a due date if it helps. Assign it to someone now or leave it unassigned for the team to pick up."
         />
         <Card>
           <FollowUpCreateForm
@@ -339,7 +351,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
               }}
             >
               {followUps.length === 0
-                ? "Create the first follow-up using the form above. Tie it to a guest, member, group, or leader — and add a leader-visible note if helpful."
+                ? "Create the first follow-up using the form above. Tie it to a guest, member, or group — and add a note if helpful."
                 : "Adjust the filters above — or add a new follow-up at the top."}
             </p>
           </div>
