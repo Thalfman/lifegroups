@@ -45,7 +45,8 @@ export function CoverageByOverShepherdCard({
             fontStyle: "italic",
           }}
         >
-          No over-shepherds yet. Add a coach to start tracking coverage.
+          No over-shepherds yet. Add an over-shepherd to start tracking
+          coverage.
         </p>
       ) : null}
       <div

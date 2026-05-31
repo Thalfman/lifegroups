@@ -64,7 +64,7 @@ export default async function AdminOverShepherdsPage() {
         eyebrow="Leader care"
         title="Over-"
         italic="shepherds"
-        lede="Coaches and over-shepherds Julian tracks. These are admin-only records — they do not log in to the app."
+        lede="Over-Shepherds Julian tracks. These are admin-only records — they do not log in to the app."
       />
       <PageBody>
         <div style={{ display: "grid", gap: 20 }}>
