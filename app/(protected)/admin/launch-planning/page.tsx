@@ -260,9 +260,14 @@ async function loadData(): Promise<PageData> {
       label: `${e.apprentice.display_name} · ${STAGE_LABEL[e.apprentice.readiness_stage]}`,
     });
   }
+  // The pipeline drives apprenticesByGroup; a pipeline failure must block the
+  // planner (as the old /admin/multiplication page did). Otherwise the apprentice
+  // picker renders with no options and saving a linked candidate would submit the
+  // blank option, silently clearing leader_pipeline_id.
   const multiplicationError =
     candidatesRes.error?.message ??
     allGroupsRes.error?.message ??
+    pipelineRes.error?.message ??
     boardExtras.error ??
     null;
 
@@ -460,9 +465,7 @@ export default async function AdminLaunchPlanningPage() {
               The capacity board could not be loaded: {data.capacityError}
             </ErrorBanner>
           ) : (
-            <CapacityBoard
-              model={{ ...data.capacityModel, suggestions: [] }}
-            />
+            <CapacityBoard model={{ ...data.capacityModel, suggestions: [] }} />
           )}
 
           {/* Multiplication planner (merged-in). Owns the single
