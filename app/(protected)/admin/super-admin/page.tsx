@@ -222,6 +222,7 @@ function buildNoClientData(): SuperAdminConsoleData {
       groups: notConfigured,
       members: notConfigured,
       leaders: notConfigured,
+      platformConfig: notConfigured,
     },
   };
 }
@@ -269,6 +270,7 @@ async function loadData(
     members: membersResult.error?.message ?? null,
     leaders: leadersResult.error?.message ?? null,
     audit: auditResult.error?.message ?? null,
+    platformConfig: platformConfigResult.error?.message ?? null,
   };
 
   const assignableProfiles = buildAssignableProfiles(

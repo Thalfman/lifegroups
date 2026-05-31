@@ -17,6 +17,7 @@ import type {
   MembersRow,
   MultiplicationCandidatesRow,
   OverShepherdsRow,
+  PlatformConfigRow,
   ProfilesRow,
   ShepherdCareFollowUpsRow,
   ShepherdCareInteractionsRow,
@@ -480,10 +481,16 @@ export async function fetchMetricDefaults(
 // callers decode null to the built-in config via decodeAppConfig.
 export async function fetchPlatformConfig(
   client: ReadClient
-): Promise<ReadResult<AppSettingsRow | null>> {
+): Promise<
+  ReadResult<Pick<PlatformConfigRow, "setting_key" | "setting_value"> | null>
+> {
+  // Project only the columns the decoder needs. This is a Super-Admin-only
+  // store slated to hold future flags + editable copy, so an explicit column
+  // list keeps later schema additions from silently widening the console's
+  // read surface (vs. select("*")).
   const { data, error } = await client
     .from("platform_config")
-    .select("*")
+    .select("setting_key, setting_value")
     .eq("setting_key", "platform_config")
     .maybeSingle();
   if (error)

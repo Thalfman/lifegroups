@@ -53,6 +53,7 @@ export type SuperAdminConsoleData = {
     groups: string | null;
     members: string | null;
     leaders: string | null;
+    platformConfig: string | null;
   };
 };
 
@@ -445,21 +446,50 @@ export function SuperAdminConsoleShell({
             <CommandCard
               title="Owner settings"
               description="Platform config persists in the Super-Admin-only platform_config store via an audited RPC with a paired audit event. The tracer below round-trips set → persist → read."
-              status={{ label: "Live", tone: "active" }}
+              status={
+                data.errors.platformConfig
+                  ? { label: "Read failed", tone: "blocked" }
+                  : { label: "Live", tone: "active" }
+              }
             >
-              <div
-                style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
-              >
-                Current tracer value:{" "}
-                <strong style={{ color: P.ink }}>
-                  {data.appConfig.consoleTracerNote
-                    ? data.appConfig.consoleTracerNote
-                    : "(empty)"}
-                </strong>
-              </div>
-              <PlatformConfigTracerForm
-                value={data.appConfig.consoleTracerNote}
-              />
+              {data.errors.platformConfig ? (
+                // The form is intentionally withheld on a failed read: the
+                // built-in fallback would render the tracer as empty, and
+                // saving that would overwrite the real stored value.
+                <p
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 12.5,
+                    color: P.terraTextStrong,
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Couldn’t load platform config ({data.errors.platformConfig}).
+                  Editing is disabled until the config row reads successfully,
+                  so a failed read can’t silently overwrite the stored value.
+                </p>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      fontFamily: fontSans,
+                      fontSize: 12,
+                      color: P.ink2,
+                    }}
+                  >
+                    Current tracer value:{" "}
+                    <strong style={{ color: P.ink }}>
+                      {data.appConfig.consoleTracerNote
+                        ? data.appConfig.consoleTracerNote
+                        : "(empty)"}
+                    </strong>
+                  </div>
+                  <PlatformConfigTracerForm
+                    value={data.appConfig.consoleTracerNote}
+                  />
+                </>
+              )}
             </CommandCard>
             <CommandCard
               title="Ministry operating settings"
