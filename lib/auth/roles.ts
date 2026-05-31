@@ -134,7 +134,9 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
     },
     {
       group: "shepherd",
-      label: "Admin OS",
+      // User-facing label is "Ministry Admin" (#177); "Admin OS" stays the
+      // internal name for this spine in comments/docs.
+      label: "Ministry Admin",
       // Group health (#146) joins the Admin OS spine as an oversight surface:
       // it ships dimension-complete with ADR 0007 placeholder labels and was
       // previously reachable only by direct URL.

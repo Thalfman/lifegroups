@@ -3,14 +3,13 @@ import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/dir
 import {
   ShepherdCareCoverageFilter,
   ShepherdCareFilterChips,
-  type CoverageFilter,
-  type DirectoryFilter,
 } from "@/components/admin/shepherd-care/filter-chips";
 import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
 import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
 import { CoverageByOverShepherdCard } from "@/components/admin/shepherd-care/coverage-by-over-shepherd-card";
 import { UpcomingTouchpointsCard } from "@/components/admin/shepherd-care/upcoming-touchpoints-card";
 import { RecentInteractionsCard } from "@/components/admin/shepherd-care/recent-interactions-card";
+import { ShepherdCareViewToggle } from "@/components/admin/shepherd-care/view-toggle";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -36,27 +35,12 @@ import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
-import { isUuid } from "@/lib/shared/uuid";
+import { resolveShepherdCareViewState } from "@/lib/admin/shepherd-care-view";
 import { P, fontBody } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-function resolveFilter(value: string | string[] | undefined): DirectoryFilter {
-  const raw = Array.isArray(value) ? value[0] : value;
-  return raw === "needs_attention" ? "needs_attention" : "all";
-}
-
-function resolveCoverage(
-  value: string | string[] | undefined
-): CoverageFilter | undefined {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (raw === undefined || raw === null || raw === "") return undefined;
-  if (raw === "unassigned") return "unassigned";
-  if (isUuid(raw)) return raw.toLowerCase();
-  return undefined;
-}
 
 type LoadedData = {
   entries: ShepherdCareDirectoryEntry[];
@@ -168,8 +152,7 @@ export default async function AdminShepherdCarePage({
   await requireAdmin();
 
   const sp = await searchParams;
-  const filter = resolveFilter(sp.filter);
-  const coverage = resolveCoverage(sp.coverage);
+  const { view, filter, coverage } = resolveShepherdCareViewState(sp);
 
   // Pin "today" once at the top so every read and composition step uses
   // the same calendar day. Without this, a request crossing UTC midnight
@@ -234,6 +217,23 @@ export default async function AdminShepherdCarePage({
     return c?.over_shepherd_id === effectiveCoverage;
   });
 
+  // The error / data-unavailable banner surfaces in whichever view is active,
+  // since a failed read affects both the dashboard model and the directory.
+  const errorBanner = error ? (
+    <p
+      style={{
+        fontFamily: fontBody,
+        color: "#923220",
+        background: P.terraSoft,
+        padding: "10px 14px",
+        borderRadius: 8,
+        margin: 0,
+      }}
+    >
+      {error}
+    </p>
+  ) : null;
+
   return (
     <>
       <PageHeader
@@ -244,76 +244,78 @@ export default async function AdminShepherdCarePage({
       />
       <PageBody>
         <div style={{ display: "grid", gap: 18 }}>
-          <ShepherdCareDashboardSummaryCards
-            summary={dashboard.summary}
+          <ShepherdCareViewToggle
+            current={view}
             filter={filter}
             coverage={coverage}
-            coverageAvailable={dashboard.coverageAvailable}
-            followUpsAvailable={dashboard.followUpsAvailable}
           />
-          <CareAttentionQueue
-            items={dashboard.attentionQueue}
-            totalCount={totalAttention}
-          />
-          <div
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 18,
-            }}
-          >
-            {dashboard.coverageAvailable ? (
-              <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />
-            ) : null}
-            <UpcomingTouchpointsCard items={dashboard.upcomingTouchpoints} />
-          </div>
-          <RecentInteractionsCard
-            items={dashboard.recentInteractions}
-            available={recentInteractionsAvailable}
-          />
-          {error ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
-              {error}
-            </p>
-          ) : null}
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-            }}
-          >
-            <ShepherdCareFilterChips
-              current={filter}
-              totalCount={entries.length}
-              needsAttentionCount={needsAttentionCount}
-              coverage={effectiveCoverage}
-            />
-            {dashboard.coverageAvailable ? (
-              <ShepherdCareCoverageFilter
-                filter={filter}
-                coverage={coverage}
-                overShepherds={overShepherds}
-                unassignedCount={dashboard.summary.unassignedCoverage}
+          {view === "dashboard" ? (
+            <>
+              <ShepherdCareDashboardSummaryCards
+                summary={dashboard.summary}
+                coverageAvailable={dashboard.coverageAvailable}
+                followUpsAvailable={dashboard.followUpsAvailable}
               />
-            ) : null}
-          </div>
-          <ShepherdCareDirectoryTable
-            entries={visible}
-            coverageByShepherdId={coverageByShepherdId}
-          />
+              <CareAttentionQueue
+                items={dashboard.attentionQueue}
+                totalCount={totalAttention}
+              />
+              <div
+                className="lg-m-grid-stack"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                  gap: 18,
+                }}
+              >
+                {dashboard.coverageAvailable ? (
+                  <CoverageByOverShepherdCard
+                    buckets={dashboard.coverageBuckets}
+                  />
+                ) : null}
+                <UpcomingTouchpointsCard
+                  items={dashboard.upcomingTouchpoints}
+                />
+              </div>
+              <RecentInteractionsCard
+                items={dashboard.recentInteractions}
+                available={recentInteractionsAvailable}
+              />
+              {errorBanner}
+            </>
+          ) : (
+            <>
+              {errorBanner}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  justifyContent: "space-between",
+                }}
+              >
+                <ShepherdCareFilterChips
+                  current={filter}
+                  totalCount={entries.length}
+                  needsAttentionCount={needsAttentionCount}
+                  coverage={effectiveCoverage}
+                />
+                {dashboard.coverageAvailable ? (
+                  <ShepherdCareCoverageFilter
+                    filter={filter}
+                    coverage={coverage}
+                    overShepherds={overShepherds}
+                    unassignedCount={dashboard.summary.unassignedCoverage}
+                  />
+                ) : null}
+              </div>
+              <ShepherdCareDirectoryTable
+                entries={visible}
+                coverageByShepherdId={coverageByShepherdId}
+              />
+            </>
+          )}
         </div>
       </PageBody>
     </>
