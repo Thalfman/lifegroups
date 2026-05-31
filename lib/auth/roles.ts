@@ -77,6 +77,8 @@ export function navItemsForRole(
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/shepherd-care", label: "Leader care" });
+    items.push({ href: "/admin/capacity-board", label: "Capacity board" });
+    items.push({ href: "/admin/leader-pipeline", label: "Leader pipeline" });
     items.push({ href: "/admin/launch-planning", label: "Launch planning" });
     items.push({ href: "/admin/multiplication", label: "Multiplication" });
     items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
@@ -140,6 +142,16 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       // previously reachable only by direct URL.
       items: [
         { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
+        {
+          href: "/admin/capacity-board",
+          label: "Capacity board",
+          icon: "compass",
+        },
+        {
+          href: "/admin/leader-pipeline",
+          label: "Leader pipeline",
+          icon: "people",
+        },
         {
           href: "/admin/launch-planning",
           label: "Launch planning",

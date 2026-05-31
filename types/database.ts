@@ -235,6 +235,21 @@ export interface MultiplicationCandidatesRow {
   updated_at: Timestamp;
 }
 
+export interface LeaderPipelineRow {
+  id: UUID;
+  group_id: UUID;
+  display_name: string;
+  member_id: UUID | null;
+  readiness_stage: E.LeaderReadinessStage;
+  expected_ready_on: DateString | null;
+  notes: string | null;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface GroupCalendarEventsRow {
   id: UUID;
   group_id: UUID;
@@ -501,6 +516,24 @@ export interface Database {
           | "meeting_time"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
+        Relationships: [];
+      };
+      leader_pipeline: {
+        Row: LeaderPipelineRow;
+        Insert: InsertOf<
+          LeaderPipelineRow,
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "archived_at"
+          | "created_by"
+          | "updated_by"
+          | "member_id"
+          | "readiness_stage"
+          | "expected_ready_on"
+          | "notes"
+        >;
+        Update: Partial<LeaderPipelineRow>;
         Relationships: [];
       };
       group_calendar_events: {

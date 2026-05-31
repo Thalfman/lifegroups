@@ -99,7 +99,7 @@ describe("navItemsForRole", () => {
   it("drops /admin/check-ins from the flat nav for admin roles", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
-        "/admin/check-ins",
+        "/admin/check-ins"
       );
     }
   });
@@ -120,12 +120,17 @@ describe("navItemsForRole", () => {
   it("surfaces /admin/multiplication for admin roles only", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       expect(navItemsForRole(role).map((i) => i.href)).toContain(
-        "/admin/multiplication",
+        "/admin/multiplication"
       );
     }
-    for (const role of ["over_shepherd", "leader", "co_leader", "staff_viewer"] as const) {
+    for (const role of [
+      "over_shepherd",
+      "leader",
+      "co_leader",
+      "staff_viewer",
+    ] as const) {
       expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
-        "/admin/multiplication",
+        "/admin/multiplication"
       );
     }
   });
@@ -143,7 +148,9 @@ describe("adminNavGroups", () => {
     const groups = adminNavGroups("ministry_admin");
     const system = groups.find((g) => g.group === "system");
     expect(system).toBeDefined();
-    expect(system!.items.map((i) => i.href)).not.toContain("/admin/super-admin");
+    expect(system!.items.map((i) => i.href)).not.toContain(
+      "/admin/super-admin"
+    );
   });
 
   // #146: the Group-Health surface ships dimension-complete (ADR 0007) but was
@@ -177,6 +184,8 @@ describe("adminNavGroups", () => {
     expect(shepherd!.label).toBe("Admin OS");
     expect(shepherd!.items.map((i) => i.href)).toEqual([
       "/admin/shepherd-care",
+      "/admin/capacity-board",
+      "/admin/leader-pipeline",
       "/admin/launch-planning",
       "/admin/multiplication",
       "/admin/follow-ups",
@@ -187,7 +196,7 @@ describe("adminNavGroups", () => {
   it("drops /admin/guests from nav for both admin roles", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       const allHrefs = adminNavGroups(role).flatMap((g) =>
-        g.items.map((i) => i.href),
+        g.items.map((i) => i.href)
       );
       expect(allHrefs).not.toContain("/admin/guests");
     }
@@ -198,13 +207,13 @@ describe("adminNavGroups", () => {
   it("drops /admin/check-ins from the grouped nav for both admin roles", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       const allHrefs = adminNavGroups(role).flatMap((g) =>
-        g.items.map((i) => i.href),
+        g.items.map((i) => i.href)
       );
       expect(allHrefs).not.toContain("/admin/check-ins");
     }
     // the manage group keeps people / groups / calendar only
     const manage = adminNavGroups("ministry_admin").find(
-      (g) => g.group === "manage",
+      (g) => g.group === "manage"
     );
     expect(manage!.items.map((i) => i.href)).toEqual([
       "/admin/people",

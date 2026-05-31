@@ -14,6 +14,7 @@ import type {
   GroupCalendarEventType,
   GroupLifeStage,
   GuestPipelineStage,
+  LeaderReadinessStage,
   MeetingFrequency,
   MeetingWeekParity,
   MultiplicationCandidateStatus,
@@ -258,6 +259,49 @@ export function rpcAdminArchiveMultiplicationCandidate(
   args: { p_candidate_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_archive_multiplication_candidate", args);
+}
+
+// Capacity & Multiplication #183: Leader Pipeline (apprentice) writes.
+export function rpcAdminCreateApprentice(
+  client: AppSupabaseClient,
+  args: {
+    p_group_id: string;
+    p_display_name: string;
+    p_member_id: string | null;
+    p_readiness_stage: LeaderReadinessStage;
+    p_expected_ready_on: string | null;
+    p_notes: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_apprentice", args);
+}
+
+export function rpcAdminUpdateApprentice(
+  client: AppSupabaseClient,
+  args: {
+    p_apprentice_id: string;
+    p_display_name: string;
+    p_member_id: string | null;
+    p_readiness_stage: LeaderReadinessStage;
+    p_expected_ready_on: string | null;
+    p_notes: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_update_apprentice", args);
+}
+
+export function rpcAdminAdvanceApprenticeStage(
+  client: AppSupabaseClient,
+  args: { p_apprentice_id: string; p_readiness_stage: LeaderReadinessStage }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_advance_apprentice_stage", args);
+}
+
+export function rpcAdminArchiveApprentice(
+  client: AppSupabaseClient,
+  args: { p_apprentice_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_archive_apprentice", args);
 }
 
 // Phase 5C.0 guest + follow-up admin RPCs.

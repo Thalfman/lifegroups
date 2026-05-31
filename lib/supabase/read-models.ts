@@ -14,6 +14,7 @@ import type {
   GroupsRow,
   GuestsRow,
   LaunchPlanningScenariosRow,
+  LeaderPipelineRow,
   MembersRow,
   MultiplicationCandidatesRow,
   OverShepherdsRow,
@@ -691,6 +692,63 @@ export async function fetchMultiplicationCandidatesForAdmin(
     })
   );
 
+  return { data: entries, error: null };
+}
+
+const LEADER_PIPELINE_COLUMNS =
+  "id, group_id, display_name, member_id, readiness_stage, expected_ready_on, " +
+  "notes, archived_at, created_by, updated_by, created_at, updated_at";
+
+export type LeaderPipelineEntry = {
+  apprentice: LeaderPipelineRow;
+  // Group name for the apprentice's group, or null when the group is missing.
+  groupName: string | null;
+};
+
+// Capacity & Multiplication #183: active (non-archived) apprentices enriched
+// with their group name. Admin-only via RLS. Batches the group-name read by the
+// apprentices' group ids to avoid N+1. Ordered by created_at so the roll-up is
+// stable before the pure layer re-sorts within each stage.
+export async function fetchLeaderPipelineForAdmin(
+  client: ReadClient
+): Promise<ReadResult<LeaderPipelineEntry[]>> {
+  const pipelineRes = await client
+    .from("leader_pipeline")
+    .select(LEADER_PIPELINE_COLUMNS)
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (pipelineRes.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLeaderPipelineForAdmin/pipeline",
+        pipelineRes.error
+      ),
+    };
+  }
+  const apprentices = (pipelineRes.data ?? []) as LeaderPipelineRow[];
+  if (apprentices.length === 0) return { data: [], error: null };
+
+  const groupIds = [...new Set(apprentices.map((a) => a.group_id))];
+  const groupsRes = await client
+    .from("groups")
+    .select("id, name")
+    .in("id", groupIds);
+  if (groupsRes.error) {
+    return {
+      data: null,
+      error: wrapError("fetchLeaderPipelineForAdmin/groups", groupsRes.error),
+    };
+  }
+  const nameById = new Map<string, string>();
+  for (const g of (groupsRes.data ?? []) as { id: string; name: string }[]) {
+    nameById.set(g.id, g.name);
+  }
+
+  const entries: LeaderPipelineEntry[] = apprentices.map((apprentice) => ({
+    apprentice,
+    groupName: nameById.get(apprentice.group_id) ?? null,
+  }));
   return { data: entries, error: null };
 }
 
