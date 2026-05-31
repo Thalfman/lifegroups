@@ -1,8 +1,7 @@
-// Deep module behind the leader write-action surface. The parallel of
-// `lib/admin/run-action.ts`: same auth -> read -> guard -> validate ->
-// client -> rpc -> map-error -> revalidate -> log skeleton, but for the
-// pastoral leader surface it differs in three ways that make it a sibling
-// runner rather than a shared one:
+// Leader write-action runner. A thin adapter over the shared write-action core
+// (`lib/shared/run-action.ts`), declaring the pastoral leader surface's
+// variation points and handing them to `runWriteAction`. It differs from the
+// admin adapter in three ways:
 //
 //   1. Auth is `requireLeaderActor`, which returns { profileId,
 //      assignedGroupIds } (no session/profile). Every log line carries
@@ -10,30 +9,28 @@
 //   2. Two guard tiers. Leader writes guard group ownership either before
 //      validation (calendar update/archive/restore read a hidden group_id
 //      off the raw form, `guardRaw`) or after validation (check-in and
-//      calendar create trust the validated `group_id`, `guard`). The
-//      timing changes which fields appear on the validation_failed line,
-//      so the two tiers are distinct hooks.
+//      calendar create trust the validated `group_id`, `guard`).
 //   3. The error-message table is the pastoral leader one.
 //
-// As in the admin runner, the action author supplies only pure data and
-// never threads mutable logging state. See docs/adr/0001-admin-write-action-runner.md.
+// As in the admin adapter, the action author supplies only pure data and
+// never threads mutable logging state. See
+// docs/adr/0001-admin-write-action-runner.md.
 
-import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { requireLeaderActor } from "@/lib/auth/session";
-import { type FinishFields, startActionLog } from "@/lib/observability/instrument";
-import { type ActionResult, actionFail, actionOk, mapRpcError } from "./action-result";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
+import type { FinishFields } from "@/lib/observability/instrument";
+import { type ActionResult, mapRpcError } from "./action-result";
+import {
+  runWriteAction,
+  type RpcResult,
+  type ValidationResult as CoreValidationResult,
+} from "@/lib/shared/run-action";
 
 // Narrow actor the guards see: the profile id plus the groups this leader
 // is assigned to, for the defense-in-depth membership checks.
 export type LeaderActor = { profileId: string; assignedGroupIds: string[] };
 
-type RpcResult = { data: string | null; error: { message: string } | null };
-
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export type ValidationResult<T> = CoreValidationResult<T>;
 
 export type LeaderWriteActionSpec<V, T> = {
   // Stable log/action name, e.g. "leader.checkin.submit".
@@ -47,7 +44,7 @@ export type LeaderWriteActionSpec<V, T> = {
   // validation onward; on denial bails with `denied` + the error_code.
   guardRaw?: (
     actor: LeaderActor,
-    raw: Record<string, unknown>,
+    raw: Record<string, unknown>
   ) =>
     | { ok: true; fields?: FinishFields }
     | { ok: false; error: string; code: string };
@@ -57,7 +54,7 @@ export type LeaderWriteActionSpec<V, T> = {
   // On denial bails with `denied` + the error_code and optional log fields.
   guard?: (
     actor: LeaderActor,
-    value: V,
+    value: V
   ) => { error: string; code: string; fields?: FinishFields } | null;
   // Fields emitted from the supabase stage onward (and on `ok`).
   fields?: (actor: LeaderActor, value: V) => FinishFields;
@@ -67,7 +64,10 @@ export type LeaderWriteActionSpec<V, T> = {
   rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult>;
   // Paths to revalidate on success; `raw` is available for paths derived
   // from a hidden form field outside the validated payload.
-  revalidate: (value: V, raw: Record<string, unknown>) => string | readonly string[];
+  revalidate: (
+    value: V,
+    raw: Record<string, unknown>
+  ) => string | readonly string[];
   // Builds the success value from the RPC's returned id. Defaults to { id }.
   result?: (id: string) => T;
   // User-facing message when the RPC succeeds at the protocol level but
@@ -78,91 +78,42 @@ export type LeaderWriteActionSpec<V, T> = {
 export async function runLeaderWriteAction<V, T>(
   spec: LeaderWriteActionSpec<V, T>,
   _prev: ActionResult<T> | undefined,
-  input: unknown,
+  input: unknown
 ): Promise<ActionResult<T>> {
-  const ctx = startActionLog(spec.name);
-
-  const auth = await requireLeaderActor();
-  if (!auth.ok) {
-    ctx.finish("denied", { error_code: "auth_denied" });
-    return actionFail([auth.error]);
-  }
-  const actor: LeaderActor = {
-    profileId: auth.profileId,
-    assignedGroupIds: auth.assignedGroupIds,
-  };
-  const base: FinishFields = { actor_profile_id: actor.profileId };
-
-  const raw = spec.read(input);
-
-  // Pre-validation ownership tier. Its fields thread into validation_failed
-  // and every later stage; the denial line carries only `base`.
-  let rawFields: FinishFields = {};
-  if (spec.guardRaw) {
-    const g = spec.guardRaw(actor, raw);
-    if (!g.ok) {
-      ctx.finish("denied", { error_code: g.code, ...base });
-      return actionFail([g.error]);
-    }
-    rawFields = g.fields ?? {};
-  }
-
-  const v = spec.validate(raw);
-  if (!v.ok) {
-    ctx.finish("fail", { error_code: "validation_failed", ...base, ...rawFields });
-    return actionFail(v.errors);
-  }
-
-  if (spec.guard) {
-    const denied = spec.guard(actor, v.value);
-    if (denied) {
-      ctx.finish("denied", {
-        error_code: denied.code,
-        ...base,
-        ...rawFields,
-        ...(denied.fields ?? {}),
-      });
-      return actionFail([denied.error]);
-    }
-  }
-
-  const fields: FinishFields = spec.fields ? spec.fields(actor, v.value) : {};
-
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    ctx.finish("fail", {
-      error_code: "supabase_not_configured",
-      ...base,
-      ...rawFields,
-      ...fields,
-    });
-    return actionFail(["Database is not configured."]);
-  }
-
-  const { data, error } = await spec.rpc(client, v.value);
-  if (error) {
-    ctx.finish("fail", {
-      error_code: "rpc_error",
-      rpc_token: error.message,
-      ...base,
-      ...rawFields,
-      ...fields,
-    });
-    return actionFail([mapRpcError(error.message)]);
-  }
-  if (!data) {
-    ctx.finish("fail", { error_code: "rpc_no_data", ...base, ...rawFields, ...fields });
-    return actionFail([spec.noDataError]);
-  }
-
-  const paths = spec.revalidate(v.value, raw);
-  for (const path of typeof paths === "string" ? [paths] : paths) {
-    revalidatePath(path);
-  }
-
-  const okFields = spec.okFields ? spec.okFields(v.value, data) : {};
-  ctx.finish("ok", { ...base, ...rawFields, ...fields, ...okFields });
-
-  const value = spec.result ? spec.result(data) : ({ id: data } as T);
-  return actionOk(value);
+  return runWriteAction<LeaderActor, V, T>(
+    {
+      name: spec.name,
+      authenticate: async () => {
+        const auth = await requireLeaderActor();
+        if (!auth.ok) return { ok: false, error: auth.error };
+        const actor: LeaderActor = {
+          profileId: auth.profileId,
+          assignedGroupIds: auth.assignedGroupIds,
+        };
+        return {
+          ok: true,
+          actor,
+          baseFields: { actor_profile_id: actor.profileId },
+        };
+      },
+      read: spec.read,
+      guardRaw: spec.guardRaw,
+      validate: spec.validate,
+      guard: spec.guard,
+      // The leader spec's fields/okFields don't take `raw`; adapt the wider
+      // core hooks down to the narrower leader signatures.
+      fields: spec.fields
+        ? (actor, value) => spec.fields!(actor, value)
+        : undefined,
+      okFields: spec.okFields
+        ? (value, id) => spec.okFields!(value, id)
+        : undefined,
+      rpc: spec.rpc,
+      revalidate: spec.revalidate,
+      result: spec.result,
+      noDataError: spec.noDataError,
+      mapRpcError,
+    },
+    input
+  );
 }

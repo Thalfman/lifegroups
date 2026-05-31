@@ -3,7 +3,7 @@ import {
   currentPeriodMonthIso,
   listGroupHealthOverview,
 } from "@/lib/admin/group-health-read";
-import { rankByGrade } from "@/lib/admin/group-health-segmentation";
+import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
 import { fetchPlatformConfig } from "@/lib/supabase/read-models";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
 import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
@@ -60,16 +60,21 @@ export default async function GroupHealthPage() {
     );
   }
 
-  // Rank groups by health — best to worst, ungraded last — so the groups that
-  // need attention surface together (PRD Q12 Job 3 / #129).
+  // Resolve each group's effective grade and rank best-to-worst (ungraded
+  // last) through the one Group-Health Grade facade, so the groups that need
+  // attention surface together (PRD Q12 Job 3 / #129). Overrides land with
+  // #129; an empty map ranks by the computed letter as-is.
   const rowsById = new Map(overview.data.map((row) => [row.group_id, row]));
-  const rows = rankByGrade(
+  const board = resolveGroupGradeBoard(
     overview.data.map((row) => ({
       group_id: row.group_id,
       group_name: row.group_name,
-      letter: row.computed_letter,
-    }))
-  ).map((g) => rowsById.get(g.group_id)!);
+      computed_letter: row.computed_letter,
+    })),
+    new Map(),
+    period
+  );
+  const rows = board.ranked.map((g) => rowsById.get(g.group_id)!);
 
   return (
     <main className="p-6">
