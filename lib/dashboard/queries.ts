@@ -82,7 +82,6 @@ function addDaysIsoForWeek(iso: string, days: number): string {
   return anchor.toISOString().slice(0, 10);
 }
 
-
 function fallback<T>(data: T, error?: string): DashboardResult<T> {
   return { source: "fallback", data, error };
 }
@@ -99,7 +98,7 @@ function shortenName(fullName: string): string {
 }
 
 function computeAttendanceRhythm(
-  rows: { presentCount: number; absentCount: number; excusedCount: number }[],
+  rows: { presentCount: number; absentCount: number; excusedCount: number }[]
 ): string {
   if (rows.length === 0) return "No recent sessions";
   const presentTotals = rows.map((r) => r.presentCount);
@@ -129,7 +128,7 @@ function buildShepherdCareSummary(
     ReturnType<typeof fetchActiveShepherdCoverageAssignmentsForAdmin>
   >,
   windows: CareCadenceWindows,
-  todayIso: string,
+  todayIso: string
 ): ShepherdCareDashboardSummary {
   if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
     return {
@@ -159,7 +158,7 @@ function buildShepherdCareSummary(
     shepherdDirectoryRes.data,
     assignmentsRes.data ?? [],
     todayIso,
-    { coverageAvailable: assignmentsAvailable, windows },
+    { coverageAvailable: assignmentsAvailable, windows }
   );
   return {
     totalActiveShepherds: model.summary.totalActiveShepherds,
@@ -184,7 +183,7 @@ function buildShepherdCareSummary(
 function buildLaunchPlanningSnapshot(
   assumptionsRes: Awaited<ReturnType<typeof fetchLaunchPlanningAssumptions>>,
   derivedRows: DerivedGroupRow[],
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): LaunchPlanningDashboardSnapshot {
   // Failed assumption reads (transient DB/RLS) must surface as an
   // explicit "unavailable" state — otherwise the dashboard quietly
@@ -202,7 +201,7 @@ function buildLaunchPlanningSnapshot(
   // dashboard and the deep page agree in unseeded environments.
   const assumptions = decodeLaunchPlanningAssumptions(
     assumptionsRes.data ?? null,
-    defaults,
+    defaults
   );
   const inputs = buildLaunchPlanningInputs({
     groups: derivedRows.map((r) => r.group),
@@ -213,7 +212,7 @@ function buildLaunchPlanningSnapshot(
       Array.from({ length: r.activeMemberCount }, () => ({
         group_id: r.group.id,
         status: "active" as const,
-      })),
+      }))
     ),
     metricDefaults: defaults,
   });
@@ -236,7 +235,7 @@ function buildLaunchPlanningSnapshot(
 }
 
 function emptyLaunchPlanningSnapshot(
-  errorMessage: string,
+  errorMessage: string
 ): LaunchPlanningDashboardSnapshot {
   return {
     effectiveTotalCapacity: 0,
@@ -255,12 +254,91 @@ function emptyLaunchPlanningSnapshot(
   };
 }
 
+// The reads the admin dashboard orchestration depends on, as one interface —
+// the seam between the orchestration (the error-gate, the graceful-degrade
+// branches, the pure-model wiring) and Supabase. The orchestration is a
+// function of this interface, so it can be exercised through an in-memory
+// adapter in a unit test instead of a live client. Each method mirrors a
+// read-model fetcher with the `client` argument already applied.
+type OmitClient<F> = F extends (
+  client: AppSupabaseClient,
+  ...rest: infer R
+) => infer Ret
+  ? (...rest: R) => Ret
+  : never;
+
+export type AdminDashboardReads = {
+  fetchMetricDefaults: OmitClient<typeof fetchMetricDefaults>;
+  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
+  fetchActiveGroupCount: OmitClient<typeof fetchActiveGroupCount>;
+  fetchGuests: OmitClient<typeof fetchGuests>;
+  fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
+  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
+  fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
+  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
+  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
+  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
+  fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
+  fetchGroupCalendarEvents: OmitClient<typeof fetchGroupCalendarEvents>;
+  fetchOverShepherdsForAdmin: OmitClient<typeof fetchOverShepherdsForAdmin>;
+  fetchActiveShepherdCoverageAssignmentsForAdmin: OmitClient<
+    typeof fetchActiveShepherdCoverageAssignmentsForAdmin
+  >;
+  fetchLaunchPlanningAssumptions: OmitClient<
+    typeof fetchLaunchPlanningAssumptions
+  >;
+  fetchShepherdCareDirectoryForAdmin: OmitClient<
+    typeof fetchShepherdCareDirectoryForAdmin
+  >;
+};
+
+// The production adapter at the reads seam: binds the live Supabase client to
+// every read-model fetcher.
+export function supabaseAdminDashboardReads(
+  client: AppSupabaseClient
+): AdminDashboardReads {
+  return {
+    fetchMetricDefaults: (...a) => fetchMetricDefaults(client, ...a),
+    fetchAllGroups: (...a) => fetchAllGroups(client, ...a),
+    fetchActiveGroupCount: (...a) => fetchActiveGroupCount(client, ...a),
+    fetchGuests: (...a) => fetchGuests(client, ...a),
+    fetchOpenFollowUps: (...a) => fetchOpenFollowUps(client, ...a),
+    fetchActiveMemberships: (...a) => fetchActiveMemberships(client, ...a),
+    fetchLatestHealthUpdates: (...a) => fetchLatestHealthUpdates(client, ...a),
+    fetchAttendanceSessions: (...a) => fetchAttendanceSessions(client, ...a),
+    fetchAllGroupLeaders: (...a) => fetchAllGroupLeaders(client, ...a),
+    fetchProfilesForAdmin: (...a) => fetchProfilesForAdmin(client, ...a),
+    fetchAllGroupMetricSettings: (...a) =>
+      fetchAllGroupMetricSettings(client, ...a),
+    fetchGroupCalendarEvents: (...a) => fetchGroupCalendarEvents(client, ...a),
+    fetchOverShepherdsForAdmin: (...a) =>
+      fetchOverShepherdsForAdmin(client, ...a),
+    fetchActiveShepherdCoverageAssignmentsForAdmin: (...a) =>
+      fetchActiveShepherdCoverageAssignmentsForAdmin(client, ...a),
+    fetchLaunchPlanningAssumptions: (...a) =>
+      fetchLaunchPlanningAssumptions(client, ...a),
+    fetchShepherdCareDirectoryForAdmin: (...a) =>
+      fetchShepherdCareDirectoryForAdmin(client, ...a),
+  };
+}
+
 export async function getAdminDashboardData(
   client: AppSupabaseClient | null,
-  options: { selectedWeek?: string; now?: Date } = {},
+  options: { selectedWeek?: string; now?: Date } = {}
 ): Promise<DashboardResult<AdminDashboardData>> {
   if (!client) return fallback(ADMIN_FALLBACK);
+  return buildAdminDashboardData(supabaseAdminDashboardReads(client), options);
+}
 
+// The admin dashboard orchestration, as a deep function of the reads seam:
+// resolve metric defaults, batch the reads, gate on the first error, hand the
+// pure arrays to `buildAdminGroupModel`, and fold in the read-dependent
+// shepherd-care and launch-planning summaries. Every degrade-to-fallback path
+// lives here and is reachable from a test through an in-memory `reads` adapter.
+export async function buildAdminDashboardData(
+  reads: AdminDashboardReads,
+  options: { selectedWeek?: string; now?: Date } = {}
+): Promise<DashboardResult<AdminDashboardData>> {
   const now = options.now ?? new Date();
   const currentWeek = isoWeekStart(now);
   const selectedWeek = options.selectedWeek ?? currentWeek;
@@ -283,9 +361,9 @@ export async function getAdminDashboardData(
     // default while /admin/shepherd-care uses the configured window,
     // and the two surfaces would disagree. Mirrors the loader pattern in
     // app/(protected)/admin/shepherd-care/page.tsx.
-    const metricDefaultsResult = await fetchMetricDefaults(client);
+    const metricDefaultsResult = await reads.fetchMetricDefaults();
     const defaultsForRead = decodeMetricDefaults(
-      metricDefaultsResult.data ?? null,
+      metricDefaultsResult.data ?? null
     );
 
     const [
@@ -304,17 +382,17 @@ export async function getAdminDashboardData(
       shepherdAssignmentsResult,
       launchAssumptionsResult,
     ] = await Promise.all([
-      fetchAllGroups(client),
-      fetchActiveGroupCount(client),
-      fetchGuests(client),
-      fetchOpenFollowUps(client, { limit: 8 }),
-      fetchActiveMemberships(client),
-      fetchLatestHealthUpdates(client, { updateWeek: selectedWeek }),
-      fetchAttendanceSessions(client, { meetingWeek: selectedWeek }),
-      fetchAllGroupLeaders(client, { activeOnly: true }),
-      fetchProfilesForAdmin(client),
-      fetchAllGroupMetricSettings(client),
-      fetchGroupCalendarEvents(client, {
+      reads.fetchAllGroups(),
+      reads.fetchActiveGroupCount(),
+      reads.fetchGuests(),
+      reads.fetchOpenFollowUps({ limit: 8 }),
+      reads.fetchActiveMemberships(),
+      reads.fetchLatestHealthUpdates({ updateWeek: selectedWeek }),
+      reads.fetchAttendanceSessions({ meetingWeek: selectedWeek }),
+      reads.fetchAllGroupLeaders({ activeOnly: true }),
+      reads.fetchProfilesForAdmin(),
+      reads.fetchAllGroupMetricSettings(),
+      reads.fetchGroupCalendarEvents({
         fromDate: selectedWeek,
         toDate: weekEnd,
         includeArchived: false,
@@ -322,9 +400,9 @@ export async function getAdminDashboardData(
       // Julian admin-OS spine reads. Failures here degrade gracefully —
       // the dashboard surfaces "unavailable" cards rather than failing
       // the whole page.
-      fetchOverShepherdsForAdmin(client, { includeArchived: true }),
-      fetchActiveShepherdCoverageAssignmentsForAdmin(client),
-      fetchLaunchPlanningAssumptions(client),
+      reads.fetchOverShepherdsForAdmin({ includeArchived: true }),
+      reads.fetchActiveShepherdCoverageAssignmentsForAdmin(),
+      reads.fetchLaunchPlanningAssumptions(),
     ]);
 
     // Build the shepherd-care directory from the SAME active-coverage set the
@@ -336,13 +414,16 @@ export async function getAdminDashboardData(
     const shepherdDelegatedIds = shepherdAssignmentsResult.error
       ? undefined
       : new Set(
-          (shepherdAssignmentsResult.data ?? []).map((a) => a.shepherd_profile_id),
+          (shepherdAssignmentsResult.data ?? []).map(
+            (a) => a.shepherd_profile_id
+          )
         );
-    const shepherdDirectoryResult = await fetchShepherdCareDirectoryForAdmin(client, {
-      todayIso,
-      windows: careCadenceWindowsFromDefaults(defaultsForRead),
-      delegatedShepherdIds: shepherdDelegatedIds,
-    });
+    const shepherdDirectoryResult =
+      await reads.fetchShepherdCareDirectoryForAdmin({
+        todayIso,
+        windows: careCadenceWindowsFromDefaults(defaultsForRead),
+        delegatedShepherdIds: shepherdDelegatedIds,
+      });
 
     const firstError =
       groupsResult.error ||
@@ -393,12 +474,12 @@ export async function getAdminDashboardData(
       overShepherdsResult,
       shepherdAssignmentsResult,
       careCadenceWindowsFromDefaults(defaults),
-      todayIso,
+      todayIso
     );
     const launchPlanning = buildLaunchPlanningSnapshot(
       launchAssumptionsResult,
       model.derivedRows,
-      defaults,
+      defaults
     );
 
     const { derivedRows: _derivedRows, ...modelPayload } = model;
@@ -420,15 +501,19 @@ export async function getAdminDashboardData(
 async function buildLeaderGroupDashboard(
   client: AppSupabaseClient,
   group: GroupsRow,
-  calendarEvents: GroupCalendarEventsRow[] = [],
+  calendarEvents: GroupCalendarEventsRow[] = []
 ): Promise<LeaderGroupDashboard> {
-  const [sessionsResult, membershipsResult, healthUpdatesResult, followUpsResult] =
-    await Promise.all([
-      fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
-      fetchActiveMemberships(client, { groupId: group.id }),
-      fetchLatestHealthUpdates(client, { groupId: group.id }),
-      fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
-    ]);
+  const [
+    sessionsResult,
+    membershipsResult,
+    healthUpdatesResult,
+    followUpsResult,
+  ] = await Promise.all([
+    fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
+    fetchActiveMemberships(client, { groupId: group.id }),
+    fetchLatestHealthUpdates(client, { groupId: group.id }),
+    fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
+  ]);
 
   const firstError =
     sessionsResult.error ||
@@ -451,7 +536,7 @@ async function buildLeaderGroupDashboard(
   if (sessions.length > 0) {
     const recordsResult = await fetchAttendanceRecordsForSessions(
       client,
-      sessions.map((s) => s.id),
+      sessions.map((s) => s.id)
     );
     if (recordsResult.error) throw recordsResult.error;
     recordsByMember = recordsResult.data ?? [];
@@ -462,9 +547,11 @@ async function buildLeaderGroupDashboard(
     return {
       meetingWeek: session.meeting_week,
       status: session.status,
-      presentCount: recs.filter((r) => r.attendance_status === "present").length,
+      presentCount: recs.filter((r) => r.attendance_status === "present")
+        .length,
       absentCount: recs.filter((r) => r.attendance_status === "absent").length,
-      excusedCount: recs.filter((r) => r.attendance_status === "excused").length,
+      excusedCount: recs.filter((r) => r.attendance_status === "excused")
+        .length,
     };
   });
 
@@ -484,13 +571,13 @@ async function buildLeaderGroupDashboard(
   const newGuestsResult = await fetchNewGuestsForGroupSince(
     client,
     group.id,
-    currentWeekIso,
+    currentWeekIso
   );
   if (newGuestsResult.error) throw newGuestsResult.error;
   const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
 
   const followUpItems = followUps.map((row: LeaderFollowUpRow) =>
-    toFollowUpItem(row, new Map([[group.id, group]])),
+    toFollowUpItem(row, new Map([[group.id, group]]))
   );
 
   const memberList = members
@@ -508,13 +595,13 @@ async function buildLeaderGroupDashboard(
       currentWeekSession?.status === "planned_pause" ||
       currentWeekSession?.status === "admin_entered",
     presentCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "present",
+      (r) => r.attendance_status === "present"
     ).length,
     absentCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "absent",
+      (r) => r.attendance_status === "absent"
     ).length,
     excusedCount: currentWeekRecords.filter(
-      (r) => r.attendance_status === "excused",
+      (r) => r.attendance_status === "excused"
     ).length,
     meetingDate: currentWeekSession?.meeting_date ?? null,
     submittedAt: currentWeekSession?.submitted_at ?? null,
@@ -545,7 +632,7 @@ async function buildLeaderGroupDashboard(
       meetingWeekParity: group.meeting_week_parity,
     },
     todayIso,
-    horizonEndIso,
+    horizonEndIso
   );
   const overridesByDate = new Map<string, GroupCalendarEventsRow>();
   for (const e of calendarEvents) {
@@ -609,7 +696,7 @@ async function buildLeaderGroupDashboard(
 
 export async function getLeaderDashboardData(
   client: AppSupabaseClient | null,
-  options: { assignedGroupIds: readonly string[] },
+  options: { assignedGroupIds: readonly string[] }
 ): Promise<DashboardResult<LeaderDashboardData>> {
   if (!client) return fallback(LEADER_FALLBACK);
   if (options.assignedGroupIds.length === 0) return live({ groups: [] });
@@ -642,8 +729,8 @@ export async function getLeaderDashboardData(
 
     const dashboards = await Promise.all(
       groups.map((g) =>
-        buildLeaderGroupDashboard(client, g, eventsByGroup.get(g.id) ?? []),
-      ),
+        buildLeaderGroupDashboard(client, g, eventsByGroup.get(g.id) ?? [])
+      )
     );
     return live({ groups: dashboards });
   } catch (err) {
