@@ -19,7 +19,10 @@ function fmtPct(ratio: number): string {
   return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
 }
 
-function riskTone(level: LaunchPlanningRiskLevel): { label: string; accent: string } {
+function riskTone(level: LaunchPlanningRiskLevel): {
+  label: string;
+  accent: string;
+} {
   switch (level) {
     case "ok":
       return { label: "OK", accent: P.sage };
@@ -32,9 +35,10 @@ function riskTone(level: LaunchPlanningRiskLevel): { label: string; accent: stri
 
 function recommendation(
   outputs: LaunchPlanningOutputs,
-  assumptions: LaunchPlanningAssumptions,
+  assumptions: LaunchPlanningAssumptions
 ): string {
-  const { recommended_new_groups, capacity_gap, suggested_launch_by_date } = outputs;
+  const { recommended_new_groups, capacity_gap, suggested_launch_by_date } =
+    outputs;
   if (recommended_new_groups === 0) {
     return `Current effective capacity covers projected demand. No new groups are needed under these assumptions.`;
   }
@@ -50,7 +54,7 @@ function recommendation(
       ? ` Aim to have them launched by ${suggested_launch_by_date} (about 30 days before your ${assumptions.expected_growth_date} growth date).`
       : "";
   return `To close the projected ${gapWord} gap with a ${fmtPct(
-    assumptions.launch_buffer_pct,
+    assumptions.launch_buffer_pct
   )} buffer, plan to launch ${recommended_new_groups} new ${groupWord} (~${leaders} ${leaderWord}).${tail}`;
 }
 
@@ -135,19 +139,38 @@ export function LaunchPlanningResultsPanel({
         Risk: {risk.label}
       </div>
 
+      {/* The figures below overlap the summary cards above by design — they
+          are the derivation behind the recommendation, framed as supporting
+          detail (small caption + subdued numbers) rather than a second copy of
+          the headline answer. */}
+      <div
+        style={{
+          fontFamily: fontSans,
+          fontSize: 10,
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+          color: P.ink3,
+          fontWeight: 600,
+          borderTop: `1px solid ${P.line}`,
+          paddingTop: 16,
+        }}
+      >
+        Behind the recommendation
+      </div>
+
       <dl
         style={{
           margin: 0,
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 16,
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: 14,
         }}
       >
         <Detail
           label="Projected total attendance"
           value={fmtNumber(outputs.projected_total_attendance)}
           hint={`${fmtNumber(assumptions.current_church_attendance)} today + ${fmtNumber(
-            assumptions.expected_growth,
+            assumptions.expected_growth
           )} expected`}
         />
         <Detail
@@ -194,10 +217,14 @@ export function LaunchPlanningResultsPanel({
           }}
         >
           Suggested launch by{" "}
-          <strong style={{ color: P.ink }}>{outputs.suggested_launch_by_date}</strong>
+          <strong style={{ color: P.ink }}>
+            {outputs.suggested_launch_by_date}
+          </strong>
           {" — "}
           about 30 days before your{" "}
-          <strong style={{ color: P.ink }}>{assumptions.expected_growth_date}</strong>{" "}
+          <strong style={{ color: P.ink }}>
+            {assumptions.expected_growth_date}
+          </strong>{" "}
           growth date.
         </p>
       ) : null}
@@ -233,9 +260,9 @@ function Detail({
         style={{
           margin: 0,
           fontFamily: fontDisplay,
-          fontSize: 26,
-          color: P.ink,
-          lineHeight: 1.05,
+          fontSize: 19,
+          color: P.ink2,
+          lineHeight: 1.1,
           fontVariantNumeric: "tabular-nums",
         }}
       >

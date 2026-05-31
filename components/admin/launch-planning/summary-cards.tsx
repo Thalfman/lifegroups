@@ -1,10 +1,23 @@
+import type { CSSProperties } from "react";
 import { MetricCard } from "@/components/dashboard/cards";
-import { P } from "@/lib/pastoral";
+import { P, fontSans } from "@/lib/pastoral";
 import type {
   LaunchPlanningInputs,
   LaunchPlanningOutputs,
   LaunchPlanningRiskLevel,
 } from "@/lib/admin/launch-planning";
+
+// Small uppercase tier label, matching the eyebrow treatment used on the cards
+// themselves, so the two tiers read as "answer" then "the inputs behind it".
+const TIER_LABEL: CSSProperties = {
+  fontFamily: fontSans,
+  fontSize: 10,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+  color: P.ink3,
+  fontWeight: 600,
+  marginBottom: 10,
+};
 
 // Map the three risk-level tokens to a card accent + plain-English label.
 // Risk-level colors are intentionally distinct from the capacity-status
@@ -45,69 +58,98 @@ export function LaunchPlanningSummaryCards({
       : "Across active, in-capacity groups.";
 
   return (
-    <div
-      className="lg-m-cards-grid"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 16,
-      }}
-    >
-      <MetricCard
-        title="Active groups"
-        value={fmtInt(inputs.active_group_count)}
-        meta={
-          inputs.excluded_active_group_count > 0
-            ? `${inputs.excluded_active_group_count} excluded from capacity math.`
-            : "Lifecycle = active."
-        }
-      />
-      <MetricCard
-        title="Effective capacity"
-        value={fmtInt(inputs.effective_total_capacity)}
-        meta="Sum of effective capacities."
-      />
-      <MetricCard
-        title="Current participants"
-        value={fmtInt(inputs.current_participants)}
-        meta="Active memberships in non-excluded groups."
-      />
-      <MetricCard
-        title="Available seats"
-        value={fmtInt(inputs.available_seats)}
-        meta={availableSeatsMeta}
-      />
-      <MetricCard
-        title="Projected demand"
-        value={fmtInt(outputs.projected_group_demand)}
-        meta="Attendance × target participation %."
-        accent={P.sage}
-      />
-      <MetricCard
-        title="Recommended new groups"
-        value={fmtInt(outputs.recommended_new_groups)}
-        meta="To meet projected demand with buffer."
-        accent={P.sage}
-      />
-      <MetricCard
-        title="Estimated new leaders"
-        value={fmtInt(outputs.estimated_new_leaders_needed)}
-        meta="New groups × leaders per new group."
-        accent={P.sage}
-      />
-      <MetricCard
-        title="Risk level"
-        value={risk.label}
-        meta={
-          outputs.risk_level === "ok"
-            ? "Current capacity covers projected demand."
-            : outputs.risk_level === "watch"
-              ? "Gap is within configured buffer headroom."
-              : "Gap exceeds configured buffer — plan a launch."
-        }
-        accent={risk.accent}
-        valueColor={risk.accent}
-      />
+    <div style={{ display: "grid", gap: 18 }}>
+      {/* Lead tier: the at-a-glance capacity answer (risk, recommended new
+          groups, available seats) reads first and largest. The fuller
+          breakdown sits below as supporting context, and the side-by-side
+          results panel further down narrates it — glance, then detail. */}
+      <section aria-labelledby="lp-answer">
+        <div id="lp-answer" style={TIER_LABEL}>
+          At a glance
+        </div>
+        <div
+          className="lg-m-cards-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 16,
+          }}
+        >
+          <MetricCard
+            title="Risk level"
+            value={risk.label}
+            meta={
+              outputs.risk_level === "ok"
+                ? "Current capacity covers projected demand."
+                : outputs.risk_level === "watch"
+                  ? "Gap is within configured buffer headroom."
+                  : "Gap exceeds configured buffer — plan a launch."
+            }
+            accent={risk.accent}
+            valueColor={risk.accent}
+          />
+          <MetricCard
+            title="Recommended new groups"
+            value={fmtInt(outputs.recommended_new_groups)}
+            meta="To meet projected demand with buffer."
+            accent={P.sage}
+          />
+          <MetricCard
+            title="Available seats"
+            value={fmtInt(inputs.available_seats)}
+            meta={availableSeatsMeta}
+          />
+        </div>
+      </section>
+
+      {/* Supporting tier: the inputs and intermediate figures behind the
+          answer above. Tighter columns visually subordinate these to the
+          lead trio. */}
+      <section aria-labelledby="lp-supporting">
+        <div id="lp-supporting" style={TIER_LABEL}>
+          Capacity breakdown
+        </div>
+        <div
+          className="lg-m-cards-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 14,
+          }}
+        >
+          <MetricCard
+            title="Active groups"
+            value={fmtInt(inputs.active_group_count)}
+            meta={
+              inputs.excluded_active_group_count > 0
+                ? `${inputs.excluded_active_group_count} excluded from capacity math.`
+                : "Lifecycle = active."
+            }
+          />
+          <MetricCard
+            title="Effective capacity"
+            value={fmtInt(inputs.effective_total_capacity)}
+            meta="Sum of effective capacities."
+          />
+          <MetricCard
+            title="Current participants"
+            value={fmtInt(inputs.current_participants)}
+            meta="Active memberships in non-excluded groups."
+          />
+          <MetricCard
+            title="Projected demand"
+            value={fmtInt(outputs.projected_group_demand)}
+            meta="Attendance × target participation %."
+            accent={P.sage}
+          />
+          <MetricCard
+            title="Estimated new leaders"
+            value={fmtInt(outputs.estimated_new_leaders_needed)}
+            meta="New groups × leaders per new group."
+            accent={P.sage}
+          />
+        </div>
+      </section>
     </div>
   );
 }
