@@ -30,42 +30,42 @@ type RpcResult = UuidRpcResult;
 
 export function rpcAdminCreateLeaderProfile(
   client: AppSupabaseClient,
-  args: { p_full_name: string; p_email: string; p_phone: string | null },
+  args: { p_full_name: string; p_email: string; p_phone: string | null }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_leader_profile", args);
 }
 
 export function rpcAdminCreateMember(
   client: AppSupabaseClient,
-  args: { p_full_name: string; p_email: string | null; p_phone: string | null },
+  args: { p_full_name: string; p_email: string | null; p_phone: string | null }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_member", args);
 }
 
 export function rpcAdminAssignLeaderToGroup(
   client: AppSupabaseClient,
-  args: { p_group_id: string; p_profile_id: string; p_role: RoleInGroup },
+  args: { p_group_id: string; p_profile_id: string; p_role: RoleInGroup }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_assign_leader_to_group", args);
 }
 
 export function rpcAdminAssignMemberToGroup(
   client: AppSupabaseClient,
-  args: { p_group_id: string; p_member_id: string },
+  args: { p_group_id: string; p_member_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_assign_member_to_group", args);
 }
 
 export function rpcAdminDeactivateProfile(
   client: AppSupabaseClient,
-  args: { p_profile_id: string },
+  args: { p_profile_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_deactivate_profile", args);
 }
 
 export function rpcAdminDeactivateMember(
   client: AppSupabaseClient,
-  args: { p_member_id: string },
+  args: { p_member_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_deactivate_member", args);
 }
@@ -89,28 +89,28 @@ export type GroupRpcArgs = {
 
 export function rpcAdminCreateGroup(
   client: AppSupabaseClient,
-  args: GroupRpcArgs,
+  args: GroupRpcArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_group", args);
 }
 
 export function rpcAdminUpdateGroup(
   client: AppSupabaseClient,
-  args: GroupRpcArgs & { p_group_id: string },
+  args: GroupRpcArgs & { p_group_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_group", args);
 }
 
 export function rpcAdminCloseGroup(
   client: AppSupabaseClient,
-  args: { p_group_id: string },
+  args: { p_group_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_close_group", args);
 }
 
 export function rpcAdminReopenGroup(
   client: AppSupabaseClient,
-  args: { p_group_id: string },
+  args: { p_group_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_reopen_group", args);
 }
@@ -119,16 +119,26 @@ export function rpcAdminReopenGroup(
 
 export function rpcSuperAdminUpdateProfileRole(
   client: AppSupabaseClient,
-  args: { p_profile_id: string; p_new_role: UserRole },
+  args: { p_profile_id: string; p_new_role: UserRole }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "super_admin_update_profile_role", args);
+}
+
+// Phase SAC.1 (#159) Super Admin Console platform-config write. The RPC merges
+// the submitted whitelisted keys into platform_config and writes a paired
+// audit_events row in one transaction, behind the super-admin gate.
+export function rpcSuperAdminSetPlatformConfig(
+  client: AppSupabaseClient,
+  args: { p_config: Record<string, unknown> }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_set_platform_config", args);
 }
 
 // Phase 5A.4 admin settings + leader-role-swap RPCs.
 
 export function rpcAdminUpdateMetricDefaults(
   client: AppSupabaseClient,
-  args: { p_settings: Record<string, unknown> },
+  args: { p_settings: Record<string, unknown> }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_metric_defaults", args);
 }
@@ -145,7 +155,7 @@ export function rpcAdminUpsertGroupMetricSettings(
     p_admin_metric_notes: string | null;
     p_check_in_due_offset_hours_override: number | null;
     p_allow_over_capacity: boolean;
-  },
+  }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_upsert_group_metric_settings", args);
 }
@@ -154,14 +164,14 @@ export function rpcAdminUpsertGroupMetricSettings(
 // snapshots the current values, restores the baseline, and writes the
 // audit row in one transaction.
 export function rpcAdminResetMetricDefaults(
-  client: AppSupabaseClient,
+  client: AppSupabaseClient
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_reset_metric_defaults", {});
 }
 
 export function rpcAdminChangeLeaderRole(
   client: AppSupabaseClient,
-  args: { p_profile_id: string; p_new_role: "leader" | "co_leader" },
+  args: { p_profile_id: string; p_new_role: "leader" | "co_leader" }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_change_leader_role", args);
 }
@@ -173,7 +183,7 @@ export function rpcAdminRecordChurchAttendanceSnapshot(
     p_snapshot_date: string;
     p_attendance_count: number;
     p_note: string | null;
-  },
+  }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_record_church_attendance_snapshot", args);
 }
@@ -190,7 +200,7 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
-  },
+  }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
 }
@@ -206,14 +216,14 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_notes: string | null;
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
-  },
+  }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);
 }
 
 export function rpcAdminArchiveMultiplicationCandidate(
   client: AppSupabaseClient,
-  args: { p_candidate_id: string },
+  args: { p_candidate_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_archive_multiplication_candidate", args);
 }
@@ -234,7 +244,7 @@ export type AdminCreateGuestArgs = {
 
 export function rpcAdminCreateGuest(
   client: AppSupabaseClient,
-  args: AdminCreateGuestArgs,
+  args: AdminCreateGuestArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_guest", args);
 }
@@ -252,7 +262,7 @@ export type AdminUpdateGuestPipelineArgs = {
 
 export function rpcAdminUpdateGuestPipeline(
   client: AppSupabaseClient,
-  args: AdminUpdateGuestPipelineArgs,
+  args: AdminUpdateGuestPipelineArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_guest_pipeline", args);
 }
@@ -272,7 +282,7 @@ export type AdminCreateFollowUpArgs = {
 
 export function rpcAdminCreateFollowUp(
   client: AppSupabaseClient,
-  args: AdminCreateFollowUpArgs,
+  args: AdminCreateFollowUpArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_follow_up", args);
 }
@@ -288,7 +298,7 @@ export type AdminUpdateFollowUpStatusArgs = {
 
 export function rpcAdminUpdateFollowUpStatus(
   client: AppSupabaseClient,
-  args: AdminUpdateFollowUpStatusArgs,
+  args: AdminUpdateFollowUpStatusArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_follow_up_status", args);
 }
@@ -308,7 +318,7 @@ export type AdminCreateGroupCalendarEventArgs = {
 
 export function rpcAdminCreateGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: AdminCreateGroupCalendarEventArgs,
+  args: AdminCreateGroupCalendarEventArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_group_calendar_event", args);
 }
@@ -326,21 +336,21 @@ export type AdminUpdateGroupCalendarEventArgs = {
 
 export function rpcAdminUpdateGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: AdminUpdateGroupCalendarEventArgs,
+  args: AdminUpdateGroupCalendarEventArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_group_calendar_event", args);
 }
 
 export function rpcAdminArchiveGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: { p_event_id: string },
+  args: { p_event_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_archive_group_calendar_event", args);
 }
 
 export function rpcAdminRestoreGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: { p_event_id: string },
+  args: { p_event_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_restore_group_calendar_event", args);
 }
@@ -359,7 +369,7 @@ export type AdminUpsertShepherdCareProfileArgs = {
 
 export function rpcAdminUpsertShepherdCareProfile(
   client: AppSupabaseClient,
-  args: AdminUpsertShepherdCareProfileArgs,
+  args: AdminUpsertShepherdCareProfileArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_upsert_shepherd_care_profile", args);
 }
@@ -377,7 +387,7 @@ export type AdminLogShepherdCareInteractionArgs = {
 
 export function rpcAdminLogShepherdCareInteraction(
   client: AppSupabaseClient,
-  args: AdminLogShepherdCareInteractionArgs,
+  args: AdminLogShepherdCareInteractionArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_log_shepherd_care_interaction", args);
 }
@@ -393,7 +403,7 @@ export type AdminCreateShepherdCareFollowUpArgs = {
 
 export function rpcAdminCreateShepherdCareFollowUp(
   client: AppSupabaseClient,
-  args: AdminCreateShepherdCareFollowUpArgs,
+  args: AdminCreateShepherdCareFollowUpArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_shepherd_care_follow_up", args);
 }
@@ -405,9 +415,13 @@ export type AdminUpdateShepherdCareFollowUpStatusArgs = {
 
 export function rpcAdminUpdateShepherdCareFollowUpStatus(
   client: AppSupabaseClient,
-  args: AdminUpdateShepherdCareFollowUpStatusArgs,
+  args: AdminUpdateShepherdCareFollowUpStatusArgs
 ): Promise<RpcResult> {
-  return callUuidRpc(client, "admin_update_shepherd_care_follow_up_status", args);
+  return callUuidRpc(
+    client,
+    "admin_update_shepherd_care_follow_up_status",
+    args
+  );
 }
 
 export type AdminUpdateShepherdCareFollowUpArgs = {
@@ -421,7 +435,7 @@ export type AdminUpdateShepherdCareFollowUpArgs = {
 
 export function rpcAdminUpdateShepherdCareFollowUp(
   client: AppSupabaseClient,
-  args: AdminUpdateShepherdCareFollowUpArgs,
+  args: AdminUpdateShepherdCareFollowUpArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_shepherd_care_follow_up", args);
 }
@@ -437,7 +451,7 @@ export type AdminEnrollPrivateNoteKeysArgs = {
 // Returns the mandatory recovery slot's id (see the migration header deviation).
 export function rpcAdminEnrollPrivateNoteKeys(
   client: AppSupabaseClient,
-  args: AdminEnrollPrivateNoteKeysArgs,
+  args: AdminEnrollPrivateNoteKeysArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_enroll_private_note_keys", args);
 }
@@ -452,7 +466,7 @@ export type AdminUpsertShepherdCarePrivateNoteArgs = {
 
 export function rpcAdminUpsertShepherdCarePrivateNote(
   client: AppSupabaseClient,
-  args: AdminUpsertShepherdCarePrivateNoteArgs,
+  args: AdminUpsertShepherdCarePrivateNoteArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_upsert_shepherd_care_private_note", args);
 }
@@ -471,7 +485,7 @@ export type AdminAddPrivateNoteKeySlotArgs = {
 
 export function rpcAdminAddPrivateNoteKeySlot(
   client: AppSupabaseClient,
-  args: AdminAddPrivateNoteKeySlotArgs,
+  args: AdminAddPrivateNoteKeySlotArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_add_private_note_key_slot", args);
 }
@@ -485,14 +499,14 @@ export type AdminRotatePrivateNoteRecoveryArgs = {
 
 export function rpcAdminRotatePrivateNoteRecovery(
   client: AppSupabaseClient,
-  args: AdminRotatePrivateNoteRecoveryArgs,
+  args: AdminRotatePrivateNoteRecoveryArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_rotate_private_note_recovery", args);
 }
 
 export function rpcAdminRemovePrivateNoteKeySlot(
   client: AppSupabaseClient,
-  args: { p_slot_id: string },
+  args: { p_slot_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_remove_private_note_key_slot", args);
 }
@@ -508,7 +522,7 @@ export type AdminCreateOverShepherdArgs = {
 
 export function rpcAdminCreateOverShepherd(
   client: AppSupabaseClient,
-  args: AdminCreateOverShepherdArgs,
+  args: AdminCreateOverShepherdArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_over_shepherd", args);
 }
@@ -524,7 +538,7 @@ export type AdminUpdateOverShepherdArgs = {
 
 export function rpcAdminUpdateOverShepherd(
   client: AppSupabaseClient,
-  args: AdminUpdateOverShepherdArgs,
+  args: AdminUpdateOverShepherdArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_over_shepherd", args);
 }
@@ -537,7 +551,7 @@ export type AdminAssignShepherdToOverShepherdArgs = {
 
 export function rpcAdminAssignShepherdToOverShepherd(
   client: AppSupabaseClient,
-  args: AdminAssignShepherdToOverShepherdArgs,
+  args: AdminAssignShepherdToOverShepherdArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_assign_shepherd_to_over_shepherd", args);
 }
@@ -549,7 +563,7 @@ export type AdminEndShepherdCoverageAssignmentArgs = {
 
 export function rpcAdminEndShepherdCoverageAssignment(
   client: AppSupabaseClient,
-  args: AdminEndShepherdCoverageAssignmentArgs,
+  args: AdminEndShepherdCoverageAssignmentArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_end_shepherd_coverage_assignment", args);
 }
@@ -557,7 +571,7 @@ export function rpcAdminEndShepherdCoverageAssignment(
 // LP.1 launch planning RPC.
 export function rpcAdminUpdateLaunchPlanningAssumptions(
   client: AppSupabaseClient,
-  args: { p_settings: Record<string, unknown> },
+  args: { p_settings: Record<string, unknown> }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_launch_planning_assumptions", args);
 }
@@ -573,7 +587,7 @@ export type AdminCreateLaunchPlanningScenarioArgs = {
 
 export function rpcAdminCreateLaunchPlanningScenario(
   client: AppSupabaseClient,
-  args: AdminCreateLaunchPlanningScenarioArgs,
+  args: AdminCreateLaunchPlanningScenarioArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_launch_planning_scenario", args);
 }
@@ -588,23 +602,27 @@ export type AdminUpdateLaunchPlanningScenarioArgs = {
 
 export function rpcAdminUpdateLaunchPlanningScenario(
   client: AppSupabaseClient,
-  args: AdminUpdateLaunchPlanningScenarioArgs,
+  args: AdminUpdateLaunchPlanningScenarioArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_launch_planning_scenario", args);
 }
 
 export function rpcAdminArchiveLaunchPlanningScenario(
   client: AppSupabaseClient,
-  args: { p_scenario_id: string },
+  args: { p_scenario_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_archive_launch_planning_scenario", args);
 }
 
 export function rpcAdminSetCurrentLaunchPlanningScenario(
   client: AppSupabaseClient,
-  args: { p_scenario_id: string },
+  args: { p_scenario_id: string }
 ): Promise<RpcResult> {
-  return callUuidRpc(client, "admin_set_current_launch_planning_scenario", args);
+  return callUuidRpc(
+    client,
+    "admin_set_current_launch_planning_scenario",
+    args
+  );
 }
 
 // #127 group-health tracer: persist a group's monthly attendance dimension +
@@ -621,7 +639,7 @@ export type AdminUpsertGroupHealthAssessmentArgs = {
 
 export function rpcAdminUpsertGroupHealthAssessment(
   client: AppSupabaseClient,
-  args: AdminUpsertGroupHealthAssessmentArgs,
+  args: AdminUpsertGroupHealthAssessmentArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_upsert_group_health_assessment", args);
 }
@@ -644,7 +662,7 @@ export type AdminSetGroupHealthRatingsArgs = {
 
 export function rpcAdminSetGroupHealthRatings(
   client: AppSupabaseClient,
-  args: AdminSetGroupHealthRatingsArgs,
+  args: AdminSetGroupHealthRatingsArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_group_health_ratings", args);
 }

@@ -41,7 +41,9 @@ import {
 
 type ReadClient = AppSupabaseClient;
 
-export type ReadResult<T> = { data: T; error: null } | { data: null; error: Error };
+export type ReadResult<T> =
+  | { data: T; error: null }
+  | { data: null; error: Error };
 
 function wrapError(prefix: string, err: unknown): Error {
   if (err instanceof Error) return new Error(`${prefix}: ${err.message}`);
@@ -68,7 +70,9 @@ function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
   return isUuid((v as Record<string, unknown>).group_id);
 }
 
-export async function fetchAllGroups(client: ReadClient): Promise<ReadResult<GroupsRow[]>> {
+export async function fetchAllGroups(
+  client: ReadClient
+): Promise<ReadResult<GroupsRow[]>> {
   const { data, error } = await client
     .from("groups")
     .select("*")
@@ -79,7 +83,7 @@ export async function fetchAllGroups(client: ReadClient): Promise<ReadResult<Gro
 
 export async function fetchGroupsByIds(
   client: ReadClient,
-  ids: string[],
+  ids: string[]
 ): Promise<ReadResult<GroupsRow[]>> {
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
@@ -91,46 +95,54 @@ export async function fetchGroupsByIds(
   return { data: data ?? [], error: null };
 }
 
-export async function fetchActiveGroupCount(client: ReadClient): Promise<ReadResult<number>> {
+export async function fetchActiveGroupCount(
+  client: ReadClient
+): Promise<ReadResult<number>> {
   const { count, error } = await client
     .from("groups")
     .select("id", { count: "exact", head: true })
     .eq("lifecycle_status", "active");
-  if (error) return { data: null, error: wrapError("fetchActiveGroupCount", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchActiveGroupCount", error) };
   return { data: count ?? 0, error: null };
 }
 
 export async function fetchAttendanceSessions(
   client: ReadClient,
-  options: { groupId?: string; meetingWeek?: string; limit?: number } = {},
+  options: { groupId?: string; meetingWeek?: string; limit?: number } = {}
 ): Promise<ReadResult<AttendanceSessionsRow[]>> {
   let query = client
     .from("attendance_sessions")
     .select("*")
     .order("meeting_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
-  if (options.meetingWeek) query = query.eq("meeting_week", options.meetingWeek);
+  if (options.meetingWeek)
+    query = query.eq("meeting_week", options.meetingWeek);
   if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchAttendanceSessions", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchAttendanceSessions", error) };
   return { data: data ?? [], error: null };
 }
 
-export async function fetchLatestMeetingWeek(client: ReadClient): Promise<ReadResult<string | null>> {
+export async function fetchLatestMeetingWeek(
+  client: ReadClient
+): Promise<ReadResult<string | null>> {
   const { data, error } = await client
     .from("attendance_sessions")
     .select("meeting_week")
     .order("meeting_week", { ascending: false })
     .limit(1)
     .returns<{ meeting_week: string }[]>();
-  if (error) return { data: null, error: wrapError("fetchLatestMeetingWeek", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchLatestMeetingWeek", error) };
   if (!data || data.length === 0) return { data: null, error: null };
   return { data: data[0].meeting_week, error: null };
 }
 
 export async function fetchAttendanceRecordsForSessions(
   client: ReadClient,
-  sessionIds: string[],
+  sessionIds: string[]
 ): Promise<ReadResult<AttendanceRecordsRow[]>> {
   if (sessionIds.length === 0) return { data: [], error: null };
   // Widen past the PostgREST default 1000-row cap (see GUEST_PAGE_LIMIT note
@@ -141,7 +153,11 @@ export async function fetchAttendanceRecordsForSessions(
     .select("*")
     .in("session_id", sessionIds)
     .range(0, 9999);
-  if (error) return { data: null, error: wrapError("fetchAttendanceRecordsForSessions", error) };
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAttendanceRecordsForSessions", error),
+    };
   return { data: data ?? [], error: null };
 }
 
@@ -179,7 +195,7 @@ const GUEST_DIRECTORY_COLUMNS =
   "follow_up_owner_id, notes, created_at";
 
 export async function fetchGuests(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<GuestDirectoryEntry[]>> {
   const { data, error } = await client
     .from("guests")
@@ -206,7 +222,7 @@ export async function fetchGuests(
  */
 export async function fetchOpenFollowUps(
   client: ReadClient,
-  options: { groupId?: string; limit?: number } = {},
+  options: { groupId?: string; limit?: number } = {}
 ): Promise<ReadResult<LeaderFollowUpRow[]>> {
   let query = client
     .from("follow_ups")
@@ -217,13 +233,14 @@ export async function fetchOpenFollowUps(
   if (options.groupId) query = query.eq("related_group_id", options.groupId);
   if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query.returns<LeaderFollowUpRow[]>();
-  if (error) return { data: null, error: wrapError("fetchOpenFollowUps", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchOpenFollowUps", error) };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
-  options: { groupId?: string; updateWeek?: string } = {},
+  options: { groupId?: string; updateWeek?: string } = {}
 ): Promise<ReadResult<GroupHealthUpdatesRow[]>> {
   let query = client
     .from("group_health_updates")
@@ -232,13 +249,14 @@ export async function fetchLatestHealthUpdates(
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.updateWeek) query = query.eq("update_week", options.updateWeek);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchLatestHealthUpdates", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchLatestHealthUpdates", error) };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchActiveMemberships(
   client: ReadClient,
-  options: { groupId?: string } = {},
+  options: { groupId?: string } = {}
 ): Promise<ReadResult<GroupMembershipsRow[]>> {
   let query = client
     .from("group_memberships")
@@ -246,23 +264,28 @@ export async function fetchActiveMemberships(
     .eq("status", "active");
   if (options.groupId) query = query.eq("group_id", options.groupId);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchActiveMemberships", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchActiveMemberships", error) };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchMembersByIds(
   client: ReadClient,
-  ids: string[],
+  ids: string[]
 ): Promise<ReadResult<MembersRow[]>> {
   if (ids.length === 0) return { data: [], error: null };
-  const { data, error } = await client.from("members").select("*").in("id", ids);
-  if (error) return { data: null, error: wrapError("fetchMembersByIds", error) };
+  const { data, error } = await client
+    .from("members")
+    .select("*")
+    .in("id", ids);
+  if (error)
+    return { data: null, error: wrapError("fetchMembersByIds", error) };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchAssignedGroupIdsForProfile(
   client: ReadClient,
-  profileId: string,
+  profileId: string
 ): Promise<ReadResult<string[]>> {
   const { data, error } = await client
     .from("group_leaders")
@@ -270,21 +293,29 @@ export async function fetchAssignedGroupIdsForProfile(
     .eq("profile_id", profileId)
     .eq("active", true)
     .returns<Pick<GroupLeadersRow, "group_id">[]>();
-  if (error) return { data: null, error: wrapError("fetchAssignedGroupIdsForProfile", error) };
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAssignedGroupIdsForProfile", error),
+    };
   return { data: (data ?? []).map((row) => row.group_id), error: null };
 }
 
 export async function fetchNewGuestsForGroupSince(
   client: ReadClient,
   groupId: string,
-  sinceIsoDate: string,
+  sinceIsoDate: string
 ): Promise<ReadResult<GuestsRow[]>> {
   const { data, error } = await client
     .from("guests")
     .select("*")
     .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
     .gte("first_attended_date", sinceIsoDate);
-  if (error) return { data: null, error: wrapError("fetchNewGuestsForGroupSince", error) };
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchNewGuestsForGroupSince", error),
+    };
   return { data: data ?? [], error: null };
 }
 
@@ -316,7 +347,7 @@ const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
 
 export async function fetchGroupCalendarEvents(
   client: ReadClient,
-  options: CalendarEventReadOptions = {},
+  options: CalendarEventReadOptions = {}
 ): Promise<ReadResult<GroupCalendarEventsRow[]>> {
   let query = client
     .from("group_calendar_events")
@@ -337,7 +368,8 @@ export async function fetchGroupCalendarEvents(
   }
   query = query.range(0, CALENDAR_EVENTS_PAGE_LIMIT - 1);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
   return { data: data ?? [], error: null };
 }
 
@@ -345,7 +377,7 @@ export async function fetchUpcomingCalendarEventsForGroups(
   client: ReadClient,
   groupIds: string[],
   fromDate: string,
-  toDate: string,
+  toDate: string
 ): Promise<ReadResult<GroupCalendarEventsRow[]>> {
   if (groupIds.length === 0) return { data: [], error: null };
   return fetchGroupCalendarEvents(client, {
@@ -372,22 +404,30 @@ export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
 
 export async function fetchProfilesForAdmin(
   client: ReadClient,
-  options: { roles?: UserRole[]; statuses?: ProfileStatus[] } = {},
+  options: { roles?: UserRole[]; statuses?: ProfileStatus[] } = {}
 ): Promise<ReadResult<ProfilesRow[]>> {
-  let query = client.from("profiles").select("*").order("full_name", { ascending: true });
-  if (options.roles && options.roles.length > 0) query = query.in("role", options.roles);
+  let query = client
+    .from("profiles")
+    .select("*")
+    .order("full_name", { ascending: true });
+  if (options.roles && options.roles.length > 0)
+    query = query.in("role", options.roles);
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchProfilesForAdmin", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchProfilesForAdmin", error) };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchAllMembers(
   client: ReadClient,
-  options: { statuses?: MembershipStatus[] } = {},
+  options: { statuses?: MembershipStatus[] } = {}
 ): Promise<ReadResult<MembersRow[]>> {
-  let query = client.from("members").select("*").order("full_name", { ascending: true });
+  let query = client
+    .from("members")
+    .select("*")
+    .order("full_name", { ascending: true });
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
   const { data, error } = await query;
@@ -397,12 +437,13 @@ export async function fetchAllMembers(
 
 export async function fetchAllGroupLeaders(
   client: ReadClient,
-  options: { activeOnly?: boolean } = {},
+  options: { activeOnly?: boolean } = {}
 ): Promise<ReadResult<GroupLeadersRow[]>> {
   let query = client.from("group_leaders").select("*");
   if (options.activeOnly) query = query.eq("active", true);
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
   return { data: data ?? [], error: null };
 }
 
@@ -413,14 +454,15 @@ export async function fetchAllGroupLeaders(
 // here means either Supabase rejected the read or the row was manually
 // removed. Callers should treat null as "use built-in defaults".
 export async function fetchMetricDefaults(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
     .select("*")
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
-  if (error) return { data: null, error: wrapError("fetchMetricDefaults", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchMetricDefaults", error) };
   if (data === null || data === undefined) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
@@ -431,24 +473,56 @@ export async function fetchMetricDefaults(
   return { data, error: null };
 }
 
+// Phase SAC.1 (#159): returns the single `platform_config` row from the
+// Super-Admin-only platform_config table. RLS scopes the read to super_admin;
+// a non-super-admin caller sees no row (and the console route never reaches
+// here anyway). A `null` return means the row is missing or the read failed;
+// callers decode null to the built-in config via decodeAppConfig.
+export async function fetchPlatformConfig(
+  client: ReadClient
+): Promise<ReadResult<AppSettingsRow | null>> {
+  const { data, error } = await client
+    .from("platform_config")
+    .select("*")
+    .eq("setting_key", "platform_config")
+    .maybeSingle();
+  if (error)
+    return { data: null, error: wrapError("fetchPlatformConfig", error) };
+  if (data === null || data === undefined) return { data: null, error: null };
+  if (!isAppSettingsRow(data)) {
+    return {
+      data: null,
+      error: wrapError("fetchPlatformConfig", new Error("shape_invalid")),
+    };
+  }
+  return { data, error: null };
+}
+
 // Returns the single `group_health_rubric` row from `app_settings`, holding the
 // admin-tuned Group-Health weights / cut-lines / attendance window (#129). No
 // row yet means the rubric has never been tuned; callers decode `null` to the
 // built-in rubric, so an absent row is a safe no-op rather than an error.
 export async function fetchGroupHealthRubricSetting(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
     .select("*")
     .eq("setting_key", "group_health_rubric")
     .maybeSingle();
-  if (error) return { data: null, error: wrapError("fetchGroupHealthRubricSetting", error) };
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubricSetting", error),
+    };
   if (data === null || data === undefined) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
-      error: wrapError("fetchGroupHealthRubricSetting", new Error("shape_invalid")),
+      error: wrapError(
+        "fetchGroupHealthRubricSetting",
+        new Error("shape_invalid")
+      ),
     };
   }
   return { data, error: null };
@@ -463,7 +537,7 @@ const CHURCH_ATTENDANCE_SNAPSHOT_COLUMNS =
 // "% of the church in a life group" headline. Admin-only via RLS.
 export async function fetchChurchAttendanceSnapshots(
   client: ReadClient,
-  options: { limit?: number } = {},
+  options: { limit?: number } = {}
 ): Promise<ReadResult<ChurchAttendanceSnapshotsRow[]>> {
   const limit = options.limit ?? 12;
   const { data, error } = await client
@@ -472,7 +546,10 @@ export async function fetchChurchAttendanceSnapshots(
     .order("snapshot_date", { ascending: false })
     .limit(limit);
   if (error) {
-    return { data: null, error: wrapError("fetchChurchAttendanceSnapshots", error) };
+    return {
+      data: null,
+      error: wrapError("fetchChurchAttendanceSnapshots", error),
+    };
   }
   return { data: (data ?? []) as ChurchAttendanceSnapshotsRow[], error: null };
 }
@@ -484,7 +561,12 @@ const MULTIPLICATION_CANDIDATE_COLUMNS =
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
-  "id" | "name" | "audience_category" | "life_stage" | "launched_on" | "lifecycle_status"
+  | "id"
+  | "name"
+  | "audience_category"
+  | "life_stage"
+  | "launched_on"
+  | "lifecycle_status"
 >;
 
 export type MultiplicationCandidateEntry = {
@@ -500,7 +582,7 @@ export type MultiplicationCandidateEntry = {
 // co-shepherd tenure). Admin-only via RLS. Batches the group/membership/leader
 // reads by the candidates' group ids to avoid N+1.
 export async function fetchMultiplicationCandidatesForAdmin(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<MultiplicationCandidateEntry[]>> {
   const candidatesRes = await client
     .from("multiplication_candidates")
@@ -510,10 +592,14 @@ export async function fetchMultiplicationCandidatesForAdmin(
   if (candidatesRes.error) {
     return {
       data: null,
-      error: wrapError("fetchMultiplicationCandidatesForAdmin/candidates", candidatesRes.error),
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/candidates",
+        candidatesRes.error
+      ),
     };
   }
-  const candidates = (candidatesRes.data ?? []) as MultiplicationCandidatesRow[];
+  const candidates = (candidatesRes.data ??
+    []) as MultiplicationCandidatesRow[];
   if (candidates.length === 0) return { data: [], error: null };
 
   const groupIds = [...new Set(candidates.map((c) => c.group_id))];
@@ -521,7 +607,9 @@ export async function fetchMultiplicationCandidatesForAdmin(
   const [groupsRes, membershipsRes, leadersRes] = await Promise.all([
     client
       .from("groups")
-      .select("id, name, audience_category, life_stage, launched_on, lifecycle_status")
+      .select(
+        "id, name, audience_category, life_stage, launched_on, lifecycle_status"
+      )
       .in("id", groupIds),
     client
       .from("group_memberships")
@@ -538,19 +626,28 @@ export async function fetchMultiplicationCandidatesForAdmin(
   if (groupsRes.error) {
     return {
       data: null,
-      error: wrapError("fetchMultiplicationCandidatesForAdmin/groups", groupsRes.error),
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/groups",
+        groupsRes.error
+      ),
     };
   }
   if (membershipsRes.error) {
     return {
       data: null,
-      error: wrapError("fetchMultiplicationCandidatesForAdmin/memberships", membershipsRes.error),
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/memberships",
+        membershipsRes.error
+      ),
     };
   }
   if (leadersRes.error) {
     return {
       data: null,
-      error: wrapError("fetchMultiplicationCandidatesForAdmin/leaders", leadersRes.error),
+      error: wrapError(
+        "fetchMultiplicationCandidatesForAdmin/leaders",
+        leadersRes.error
+      ),
     };
   }
 
@@ -561,23 +658,31 @@ export async function fetchMultiplicationCandidatesForAdmin(
 
   const memberCountByGroup = new Map<string, number>();
   for (const m of (membershipsRes.data ?? []) as { group_id: string }[]) {
-    memberCountByGroup.set(m.group_id, (memberCountByGroup.get(m.group_id) ?? 0) + 1);
+    memberCountByGroup.set(
+      m.group_id,
+      (memberCountByGroup.get(m.group_id) ?? 0) + 1
+    );
   }
 
   const coShepherdSinceByGroup = new Map<string, string>();
-  for (const l of (leadersRes.data ?? []) as { group_id: string; assigned_at: string }[]) {
+  for (const l of (leadersRes.data ?? []) as {
+    group_id: string;
+    assigned_at: string;
+  }[]) {
     const current = coShepherdSinceByGroup.get(l.group_id);
     if (current === undefined || l.assigned_at < current) {
       coShepherdSinceByGroup.set(l.group_id, l.assigned_at);
     }
   }
 
-  const entries: MultiplicationCandidateEntry[] = candidates.map((candidate) => ({
-    candidate,
-    group: groupById.get(candidate.group_id) ?? null,
-    activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
-    coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
-  }));
+  const entries: MultiplicationCandidateEntry[] = candidates.map(
+    (candidate) => ({
+      candidate,
+      group: groupById.get(candidate.group_id) ?? null,
+      activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
+      coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+    })
+  );
 
   return { data: entries, error: null };
 }
@@ -587,17 +692,22 @@ export async function fetchMultiplicationCandidatesForAdmin(
 // non-admin context will surface as an empty result. Admin pages call
 // this once at load time and join client-side by group_id.
 export async function fetchAllGroupMetricSettings(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<GroupMetricSettingsRow[]>> {
-  const { data, error } = await client.from("group_metric_settings").select("*");
+  const { data, error } = await client
+    .from("group_metric_settings")
+    .select("*");
   if (error)
-    return { data: null, error: wrapError("fetchAllGroupMetricSettings", error) };
+    return {
+      data: null,
+      error: wrapError("fetchAllGroupMetricSettings", error),
+    };
   return { data: data ?? [], error: null };
 }
 
 export async function fetchGroupMetricSettings(
   client: ReadClient,
-  groupId: string,
+  groupId: string
 ): Promise<ReadResult<GroupMetricSettingsRow | null>> {
   const { data, error } = await client
     .from("group_metric_settings")
@@ -697,7 +807,7 @@ export type AdminFollowUpEntry = Pick<
 
 export async function fetchFollowUpsForAdmin(
   client: ReadClient,
-  options: { statuses?: FollowUpStatus[]; limit?: number } = {},
+  options: { statuses?: FollowUpStatus[]; limit?: number } = {}
 ): Promise<ReadResult<AdminFollowUpEntry[]>> {
   let query = client
     .from("follow_ups")
@@ -709,8 +819,11 @@ export async function fetchFollowUpsForAdmin(
     query = query.in("status", options.statuses);
   }
   if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query.range(0, 9999).returns<AdminFollowUpEntry[]>();
-  if (error) return { data: null, error: wrapError("fetchFollowUpsForAdmin", error) };
+  const { data, error } = await query
+    .range(0, 9999)
+    .returns<AdminFollowUpEntry[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchFollowUpsForAdmin", error) };
   return { data: data ?? [], error: null };
 }
 
@@ -724,7 +837,7 @@ export async function fetchFollowUpsForAdmin(
  */
 export async function fetchFollowUpsForLeader(
   client: ReadClient,
-  options: { profileId: string; assignedGroupIds: readonly string[] },
+  options: { profileId: string; assignedGroupIds: readonly string[] }
 ): Promise<ReadResult<LeaderFollowUpRow[]>> {
   const { profileId, assignedGroupIds } = options;
   // Build an OR clause: assigned_to = me, OR related_group_id IN my groups.
@@ -753,7 +866,7 @@ export async function fetchFollowUpsForLeader(
 // client-side so the guest list stays free of N+1 round trips.
 export async function fetchGuestFollowUpCounts(
   client: ReadClient,
-  guestIds: string[],
+  guestIds: string[]
 ): Promise<ReadResult<Map<string, number>>> {
   if (guestIds.length === 0) return { data: new Map(), error: null };
   const { data, error } = await client
@@ -767,7 +880,10 @@ export async function fetchGuestFollowUpCounts(
   const counts = new Map<string, number>();
   for (const row of data ?? []) {
     if (!row.related_guest_id) continue;
-    counts.set(row.related_guest_id, (counts.get(row.related_guest_id) ?? 0) + 1);
+    counts.set(
+      row.related_guest_id,
+      (counts.get(row.related_guest_id) ?? 0) + 1
+    );
   }
   return { data: counts, error: null };
 }
@@ -778,7 +894,7 @@ export async function fetchGuestFollowUpCounts(
 // guest id missing from the set is rendered as "Guest" without a name).
 export async function fetchGuestNamesByIds(
   client: ReadClient,
-  guestIds: string[],
+  guestIds: string[]
 ): Promise<ReadResult<Map<string, string>>> {
   if (guestIds.length === 0) return { data: new Map(), error: null };
   const { data, error } = await client
@@ -796,7 +912,7 @@ export async function fetchGuestNamesByIds(
 
 export async function fetchRecentAuditEvents(
   client: ReadClient,
-  options: { limit?: number; actionsLike?: string | string[] } = {},
+  options: { limit?: number; actionsLike?: string | string[] } = {}
 ): Promise<ReadResult<AuditEventsRow[]>> {
   const limit = options.limit ?? 25;
   let query = client
@@ -820,7 +936,7 @@ export async function fetchRecentAuditEvents(
             data: null,
             error: wrapError(
               "fetchRecentAuditEvents",
-              new Error(`unsafe actionsLike pattern: ${pat}`),
+              new Error(`unsafe actionsLike pattern: ${pat}`)
             ),
           };
         }
@@ -834,7 +950,8 @@ export async function fetchRecentAuditEvents(
     }
   }
   const { data, error } = await query;
-  if (error) return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
+  if (error)
+    return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
   return { data: data ?? [], error: null };
 }
 
@@ -917,7 +1034,9 @@ export type PrivateNoteKeySlot = {
 // PostgREST default bytea output is hex ("\\x..."); some deployments emit
 // base64. Normalise hex to base64 and pass an already-base64 value through.
 function byteaToBase64(value: string): string {
-  return value.startsWith("\\x") || value.startsWith("\\X") ? pgHexToBase64(value) : value;
+  return value.startsWith("\\x") || value.startsWith("\\X")
+    ? pgHexToBase64(value)
+    : value;
 }
 
 function nullableByteaToBase64(value: string | null): string | null {
@@ -943,7 +1062,7 @@ export const SHEPHERD_CARE_STALE_DAYS =
 export function currentUtcDateIso(): string {
   const now = new Date();
   return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   )
     .toISOString()
     .slice(0, 10);
@@ -994,16 +1113,20 @@ export type ShepherdCareDirectoryEntry = {
  * over-flagging when coverage context is unavailable.
  */
 export function buildCareDirectoryEntries(
-  profiles: Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">[],
+  profiles: Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  >[],
   careRows: ShepherdCareDirectorySummary[],
   options: {
     todayIso?: string;
     windows?: CareCadenceWindows;
     delegatedShepherdIds?: ReadonlySet<string>;
-  } = {},
+  } = {}
 ): ShepherdCareDirectoryEntry[] {
   const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
-  for (const row of careRows) careByShepherdId.set(row.shepherd_profile_id, row);
+  for (const row of careRows)
+    careByShepherdId.set(row.shepherd_profile_id, row);
 
   const today = options.todayIso ?? currentUtcDateIso();
   const windows = options.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
@@ -1016,7 +1139,7 @@ export function buildCareDirectoryEntries(
       : true;
     const staleDays = staleWindowDaysForTier(
       coverageTierForShepherd(hasActiveOverShepherd),
-      windows,
+      windows
     );
     return {
       profile,
@@ -1038,7 +1161,7 @@ export function differenceInDaysIso(today: string, then: string): number {
 export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
-  staleDays: number = SHEPHERD_CARE_STALE_DAYS,
+  staleDays: number = SHEPHERD_CARE_STALE_DAYS
 ): boolean {
   if (care === null) return true;
   // Julian Q2 (#122): the action-required care statuses (`concern`,
@@ -1055,7 +1178,10 @@ export function computeNeedsAttention(
     return true;
   }
   if (care.last_contact_at === null) return true;
-  if (care.next_touchpoint_due !== null && care.next_touchpoint_due < todayIso) {
+  if (
+    care.next_touchpoint_due !== null &&
+    care.next_touchpoint_due < todayIso
+  ) {
     return true;
   }
   if (differenceInDaysIso(todayIso, care.last_contact_at) > staleDays) {
@@ -1083,7 +1209,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
     // conservative longer window), which is also exactly right for callers
     // where every shepherd is delegated by definition.
     delegatedShepherdIds?: ReadonlySet<string>;
-  } = {},
+  } = {}
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
     .from("profiles")
@@ -1094,12 +1220,15 @@ export async function fetchShepherdCareDirectoryForAdmin(
   if (profilesQuery.error) {
     return {
       data: null,
-      error: wrapError("fetchShepherdCareDirectoryForAdmin/profiles", profilesQuery.error),
+      error: wrapError(
+        "fetchShepherdCareDirectoryForAdmin/profiles",
+        profilesQuery.error
+      ),
     };
   }
 
   const shepherdIds = (profilesQuery.data ?? []).map(
-    (p) => (p as { id: string }).id,
+    (p) => (p as { id: string }).id
   );
 
   // Filter care rows down to the visible shepherd ids so the response
@@ -1115,7 +1244,10 @@ export async function fetchShepherdCareDirectoryForAdmin(
     if (careQuery.error) {
       return {
         data: null,
-        error: wrapError("fetchShepherdCareDirectoryForAdmin/care", careQuery.error),
+        error: wrapError(
+          "fetchShepherdCareDirectoryForAdmin/care",
+          careQuery.error
+        ),
       };
     }
     careRows = (careQuery.data ?? []) as ShepherdCareDirectorySummary[];
@@ -1143,7 +1275,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
  */
 export async function fetchShepherdCareProfileByShepherdId(
   client: ReadClient,
-  shepherdProfileId: string,
+  shepherdProfileId: string
 ): Promise<ReadResult<ShepherdCareProfilesRow | null>> {
   const { data, error } = await client
     .from("shepherd_care_profiles")
@@ -1171,11 +1303,15 @@ export async function fetchShepherdCareProfileByShepherdId(
   if (note.error) {
     return {
       data: null,
-      error: wrapError("fetchShepherdCareProfileByShepherdId/admin_notes", note.error),
+      error: wrapError(
+        "fetchShepherdCareProfileByShepherdId/admin_notes",
+        note.error
+      ),
     };
   }
   const admin_summary =
-    (note.data as { admin_summary?: string | null } | null)?.admin_summary ?? null;
+    (note.data as { admin_summary?: string | null } | null)?.admin_summary ??
+    null;
   return { data: { ...base, admin_summary }, error: null };
 }
 
@@ -1186,7 +1322,7 @@ export async function fetchShepherdCareProfileByShepherdId(
  */
 export async function fetchShepherdCareInteractionsForAdmin(
   client: ReadClient,
-  careProfileId: string,
+  careProfileId: string
 ): Promise<ReadResult<ShepherdCareInteractionsRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_interactions")
@@ -1238,7 +1374,7 @@ export const SHEPHERD_CARE_FOLLOW_UP_COLUMNS =
  */
 export async function fetchShepherdCareFollowUpsForProfile(
   client: ReadClient,
-  careProfileId: string,
+  careProfileId: string
 ): Promise<ReadResult<ShepherdCareFollowUpsRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
@@ -1273,7 +1409,7 @@ export type CareFollowUpDashboardRow = {
  * partial index) so the scan stays cheap. Note bodies are never projected.
  */
 export async function fetchOutstandingCareFollowUpsForAdmin(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<CareFollowUpDashboardRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
@@ -1299,7 +1435,7 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
  */
 export async function fetchGenericFollowUpCountForAssignee(
   client: ReadClient,
-  profileId: string,
+  profileId: string
 ): Promise<ReadResult<number>> {
   const { count, error } = await client
     .from("follow_ups")
@@ -1329,8 +1465,8 @@ export async function fetchGenericFollowUpCountForAssignee(
 export const SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS =
   "id, care_profile_id, interaction_at, interaction_type, created_at, " +
   "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +
-    "shepherd_profile_id, " +
-    "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, role, status ) " +
+  "shepherd_profile_id, " +
+  "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, role, status ) " +
   ")";
 
 export type ShepherdCareRecentInteractionRow = {
@@ -1344,7 +1480,7 @@ export type ShepherdCareRecentInteractionRow = {
 };
 
 function projectRecentInteractionRows(
-  rows: unknown[],
+  rows: unknown[]
 ): ShepherdCareRecentInteractionRow[] {
   const out: ShepherdCareRecentInteractionRow[] = [];
   for (const r of rows as Array<{
@@ -1371,10 +1507,12 @@ function projectRecentInteractionRows(
       | null;
   }>) {
     const cp = Array.isArray(r.care_profile)
-      ? r.care_profile[0] ?? null
+      ? (r.care_profile[0] ?? null)
       : r.care_profile;
     if (cp === null) continue;
-    const shepherd = Array.isArray(cp.shepherd) ? cp.shepherd[0] ?? null : cp.shepherd;
+    const shepherd = Array.isArray(cp.shepherd)
+      ? (cp.shepherd[0] ?? null)
+      : cp.shepherd;
     if (shepherd === null) continue;
     out.push({
       id: r.id,
@@ -1397,7 +1535,7 @@ function projectRecentInteractionRows(
  */
 export async function fetchRecentShepherdCareInteractionsForAdmin(
   client: ReadClient,
-  options: { limit?: number } = {},
+  options: { limit?: number } = {}
 ): Promise<ReadResult<ShepherdCareRecentInteractionRow[]>> {
   const limit = options.limit ?? 10;
   // Filters apply to the embedded inner-join columns, which excludes
@@ -1410,7 +1548,7 @@ export async function fetchRecentShepherdCareInteractionsForAdmin(
     .eq("care_profile.shepherd.status", "active")
     .in(
       "care_profile.shepherd.role",
-      ELIGIBLE_SHEPHERD_ROLES as unknown as string[],
+      ELIGIBLE_SHEPHERD_ROLES as unknown as string[]
     )
     .order("interaction_at", { ascending: false })
     .order("created_at", { ascending: false })
@@ -1433,19 +1571,30 @@ export async function fetchRecentShepherdCareInteractionsForAdmin(
  */
 export async function fetchAdminShepherdProfileById(
   client: ReadClient,
-  shepherdProfileId: string,
-): Promise<ReadResult<Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status"> | null>> {
+  shepherdProfileId: string
+): Promise<
+  ReadResult<Pick<
+    ProfilesRow,
+    "id" | "full_name" | "email" | "role" | "status"
+  > | null>
+> {
   const { data, error } = await client
     .from("profiles")
     .select("id, full_name, email, role, status")
     .eq("id", shepherdProfileId)
     .maybeSingle();
   if (error) {
-    return { data: null, error: wrapError("fetchAdminShepherdProfileById", error) };
+    return {
+      data: null,
+      error: wrapError("fetchAdminShepherdProfileById", error),
+    };
   }
   if (data === null || data === undefined) return { data: null, error: null };
   return {
-    data: data as Pick<ProfilesRow, "id" | "full_name" | "email" | "role" | "status">,
+    data: data as Pick<
+      ProfilesRow,
+      "id" | "full_name" | "email" | "role" | "status"
+    >,
     error: null,
   };
 }
@@ -1498,7 +1647,7 @@ export type ActiveShepherdCoverageAssignmentSummary = Pick<
  */
 export async function fetchOverShepherdsForAdmin(
   client: ReadClient,
-  options: { includeArchived?: boolean } = {},
+  options: { includeArchived?: boolean } = {}
 ): Promise<ReadResult<OverShepherdListRow[]>> {
   let query = client
     .from("over_shepherds")
@@ -1510,7 +1659,10 @@ export async function fetchOverShepherdsForAdmin(
   }
   const { data, error } = await query;
   if (error) {
-    return { data: null, error: wrapError("fetchOverShepherdsForAdmin", error) };
+    return {
+      data: null,
+      error: wrapError("fetchOverShepherdsForAdmin", error),
+    };
   }
   return { data: (data ?? []) as OverShepherdListRow[], error: null };
 }
@@ -1522,7 +1674,7 @@ export async function fetchOverShepherdsForAdmin(
  */
 export async function fetchOverShepherdByIdForAdmin(
   client: ReadClient,
-  overShepherdId: string,
+  overShepherdId: string
 ): Promise<ReadResult<OverShepherdsRow | null>> {
   const { data, error } = await client
     .from("over_shepherds")
@@ -1530,14 +1682,17 @@ export async function fetchOverShepherdByIdForAdmin(
     .eq("id", overShepherdId)
     .maybeSingle();
   if (error) {
-    return { data: null, error: wrapError("fetchOverShepherdByIdForAdmin", error) };
+    return {
+      data: null,
+      error: wrapError("fetchOverShepherdByIdForAdmin", error),
+    };
   }
   if (data === null || data === undefined) return { data: null, error: null };
   return { data: data as OverShepherdsRow, error: null };
 }
 
 function projectCoverageAssignmentRows(
-  rows: unknown[],
+  rows: unknown[]
 ): ActiveShepherdCoverageAssignmentSummary[] {
   const summaries: ActiveShepherdCoverageAssignmentSummary[] = [];
   for (const r of rows as Array<{
@@ -1551,7 +1706,7 @@ function projectCoverageAssignmentRows(
       | null;
   }>) {
     const embedded = Array.isArray(r.over_shepherd)
-      ? r.over_shepherd[0] ?? null
+      ? (r.over_shepherd[0] ?? null)
       : r.over_shepherd;
     if (embedded === null) continue;
     summaries.push({
@@ -1591,7 +1746,7 @@ const ELIGIBLE_SHEPHERD_ROLES = ["leader", "co_leader"] as const;
  * from the directory page.
  */
 export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary[]>> {
   // The embedded `shepherd:profiles!...!inner` makes the join required,
   // and the `shepherd.status` / `shepherd.role` filters apply to the
@@ -1623,7 +1778,7 @@ export async function fetchActiveShepherdCoverageAssignmentsForAdmin(
  */
 export async function fetchActiveShepherdCoverageAssignmentByShepherdId(
   client: ReadClient,
-  shepherdProfileId: string,
+  shepherdProfileId: string
 ): Promise<ReadResult<ActiveShepherdCoverageAssignmentSummary | null>> {
   const { data, error } = await client
     .from("shepherd_coverage_assignments")
@@ -1636,7 +1791,7 @@ export async function fetchActiveShepherdCoverageAssignmentByShepherdId(
       data: null,
       error: wrapError(
         "fetchActiveShepherdCoverageAssignmentByShepherdId",
-        error,
+        error
       ),
     };
   }
@@ -1661,7 +1816,7 @@ export type ShepherdCoveredByOverShepherd = {
  */
 export async function fetchShepherdsCoveredByOverShepherdForAdmin(
   client: ReadClient,
-  overShepherdId: string,
+  overShepherdId: string
 ): Promise<ReadResult<ShepherdCoveredByOverShepherd[]>> {
   // `!inner` makes the profiles join required; status/role filters
   // exclude shepherds who have been deactivated or moved off
@@ -1671,7 +1826,7 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
     .from("shepherd_coverage_assignments")
     .select(
       "id, shepherd_profile_id, over_shepherd_id, assigned_at, " +
-        "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey!inner ( id, full_name, role, status )",
+        "shepherd:profiles!shepherd_coverage_assignments_shepherd_profile_id_fkey!inner ( id, full_name, role, status )"
     )
     .eq("over_shepherd_id", overShepherdId)
     .eq("active", true)
@@ -1696,7 +1851,7 @@ export async function fetchShepherdsCoveredByOverShepherdForAdmin(
   const out: ShepherdCoveredByOverShepherd[] = [];
   for (const r of rows) {
     const embedded = Array.isArray(r.shepherd)
-      ? r.shepherd[0] ?? null
+      ? (r.shepherd[0] ?? null)
       : r.shepherd;
     if (embedded === null) continue;
     out.push({
@@ -1727,7 +1882,7 @@ const LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS =
   "id, setting_key, setting_value, created_at, updated_at";
 
 export async function fetchLaunchPlanningAssumptions(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
@@ -1735,14 +1890,17 @@ export async function fetchLaunchPlanningAssumptions(
     .eq("setting_key", "launch_planning_assumptions")
     .maybeSingle();
   if (error)
-    return { data: null, error: wrapError("fetchLaunchPlanningAssumptions", error) };
+    return {
+      data: null,
+      error: wrapError("fetchLaunchPlanningAssumptions", error),
+    };
   if (data === null || data === undefined) return { data: null, error: null };
   if (!isAppSettingsRow(data)) {
     return {
       data: null,
       error: wrapError(
         "fetchLaunchPlanningAssumptions",
-        new Error("shape_invalid"),
+        new Error("shape_invalid")
       ),
     };
   }
@@ -1766,14 +1924,15 @@ export type LaunchPlanningInputsBundle = {
 };
 
 export async function fetchLaunchPlanningInputsForAdmin(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<LaunchPlanningInputsBundle> {
-  const [groupsRes, overridesRes, membershipsRes, defaultsRes] = await Promise.all([
-    fetchAllGroups(client),
-    fetchAllGroupMetricSettings(client),
-    fetchActiveMemberships(client),
-    fetchMetricDefaults(client),
-  ]);
+  const [groupsRes, overridesRes, membershipsRes, defaultsRes] =
+    await Promise.all([
+      fetchAllGroups(client),
+      fetchAllGroupMetricSettings(client),
+      fetchActiveMemberships(client),
+      fetchMetricDefaults(client),
+    ]);
   return {
     groups: groupsRes.data ?? [],
     groupMetricSettings: overridesRes.data ?? [],
@@ -1799,7 +1958,9 @@ export async function fetchLaunchPlanningInputsForAdmin(
 const LAUNCH_PLANNING_SCENARIO_COLUMNS =
   "id, name, description, assumptions, is_current, archived_at, created_by, updated_by, created_at, updated_at";
 
-function isLaunchPlanningScenarioRow(v: unknown): v is LaunchPlanningScenariosRow {
+function isLaunchPlanningScenarioRow(
+  v: unknown
+): v is LaunchPlanningScenariosRow {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   const r = v as Record<string, unknown>;
   if (!isUuid(r.id)) return false;
@@ -1816,7 +1977,7 @@ function isLaunchPlanningScenarioRow(v: unknown): v is LaunchPlanningScenariosRo
 }
 
 export async function fetchLaunchPlanningScenariosForAdmin(
-  client: ReadClient,
+  client: ReadClient
 ): Promise<ReadResult<LaunchPlanningScenariosRow[]>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
@@ -1824,7 +1985,10 @@ export async function fetchLaunchPlanningScenariosForAdmin(
     .order("is_current", { ascending: false })
     .order("name", { ascending: true });
   if (error)
-    return { data: null, error: wrapError("fetchLaunchPlanningScenariosForAdmin", error) };
+    return {
+      data: null,
+      error: wrapError("fetchLaunchPlanningScenariosForAdmin", error),
+    };
   const raw: unknown[] = (data ?? []) as unknown[];
   const rows: LaunchPlanningScenariosRow[] = [];
   for (const row of raw) {
@@ -1835,7 +1999,7 @@ export async function fetchLaunchPlanningScenariosForAdmin(
 
 export async function fetchLaunchPlanningScenarioByIdForAdmin(
   client: ReadClient,
-  id: string,
+  id: string
 ): Promise<ReadResult<LaunchPlanningScenariosRow | null>> {
   const { data, error } = await client
     .from("launch_planning_scenarios")
@@ -1843,7 +2007,10 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
     .eq("id", id)
     .maybeSingle();
   if (error)
-    return { data: null, error: wrapError("fetchLaunchPlanningScenarioByIdForAdmin", error) };
+    return {
+      data: null,
+      error: wrapError("fetchLaunchPlanningScenarioByIdForAdmin", error),
+    };
   if (data == null) return { data: null, error: null };
   const raw: unknown = data;
   if (!isLaunchPlanningScenarioRow(raw)) {
@@ -1851,7 +2018,7 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
       data: null,
       error: wrapError(
         "fetchLaunchPlanningScenarioByIdForAdmin",
-        new Error("shape_invalid"),
+        new Error("shape_invalid")
       ),
     };
   }
@@ -1893,7 +2060,7 @@ type RawPrivateNoteKeySlot = {
 export async function fetchShepherdCarePrivateNoteCiphertextForCreator(
   client: ReadClient,
   careProfileId: string,
-  creatorProfileId: string,
+  creatorProfileId: string
 ): Promise<ReadResult<PrivateNoteCiphertext | null>> {
   const { data, error } = await client
     .from("shepherd_care_private_notes")
@@ -1904,7 +2071,10 @@ export async function fetchShepherdCarePrivateNoteCiphertextForCreator(
   if (error) {
     return {
       data: null,
-      error: wrapError("fetchShepherdCarePrivateNoteCiphertextForCreator", error),
+      error: wrapError(
+        "fetchShepherdCarePrivateNoteCiphertextForCreator",
+        error
+      ),
     };
   }
   if (data === null || data === undefined) return { data: null, error: null };
@@ -1931,7 +2101,7 @@ export async function fetchShepherdCarePrivateNoteCiphertextForCreator(
  */
 export async function fetchPrivateNoteKeySlotsForCreator(
   client: ReadClient,
-  creatorProfileId: string,
+  creatorProfileId: string
 ): Promise<ReadResult<PrivateNoteKeySlot[]>> {
   const { data, error } = await client
     .from("shepherd_care_note_key_slots")
@@ -1939,7 +2109,10 @@ export async function fetchPrivateNoteKeySlotsForCreator(
     .eq("created_by_profile_id", creatorProfileId)
     .order("created_at", { ascending: true });
   if (error) {
-    return { data: null, error: wrapError("fetchPrivateNoteKeySlotsForCreator", error) };
+    return {
+      data: null,
+      error: wrapError("fetchPrivateNoteKeySlotsForCreator", error),
+    };
   }
   const rows = (data ?? []) as RawPrivateNoteKeySlot[];
   return {

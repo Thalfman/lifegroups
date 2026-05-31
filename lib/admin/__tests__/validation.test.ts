@@ -18,6 +18,7 @@ import {
   validateOverShepherdBroadNotePayload,
   validateGroupHealthRatingsPayload,
   validateMetricDefaultsPayload,
+  validatePlatformConfigPayload,
   validateRecordChurchAttendancePayload,
   validateScenarioIdPayload,
   validateUpdateMultiplicationCandidatePayload,
@@ -63,7 +64,9 @@ describe("validateInviteUserPayload", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(
-        r.errors.some((e) => /ministry admins are not assigned to a group/i.test(e)),
+        r.errors.some((e) =>
+          /ministry admins are not assigned to a group/i.test(e)
+        )
       ).toBe(true);
     }
   });
@@ -128,7 +131,9 @@ describe("validateInviteUserPayload", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(
-        r.errors.some((e) => /over-shepherds are not assigned to a group/i.test(e)),
+        r.errors.some((e) =>
+          /over-shepherds are not assigned to a group/i.test(e)
+        )
       ).toBe(true);
     }
   });
@@ -210,14 +215,14 @@ describe("self-target guards", () => {
     expect(
       guardAgainstSelfRoleChange(
         { id: UUID_A, role: "super_admin" },
-        { profile_id: UUID_A, new_role: "ministry_admin" },
-      ),
+        { profile_id: UUID_A, new_role: "ministry_admin" }
+      )
     ).not.toBeNull();
     expect(
       guardAgainstSelfRoleChange(
         { id: UUID_A, role: "super_admin" },
-        { profile_id: UUID_B, new_role: "ministry_admin" },
-      ),
+        { profile_id: UUID_B, new_role: "ministry_admin" }
+      )
     ).toBeNull();
   });
 
@@ -226,13 +231,13 @@ describe("self-target guards", () => {
       guardAgainstSuperAdminAssignment({
         profile_id: UUID_A,
         new_role: "super_admin",
-      }),
+      })
     ).not.toBeNull();
     expect(
       guardAgainstSuperAdminAssignment({
         profile_id: UUID_A,
         new_role: "ministry_admin",
-      }),
+      })
     ).toBeNull();
   });
 
@@ -241,13 +246,13 @@ describe("self-target guards", () => {
       guardAgainstStaffViewerAssignment({
         profile_id: UUID_A,
         new_role: "staff_viewer",
-      }),
+      })
     ).not.toBeNull();
     expect(
       guardAgainstStaffViewerAssignment({
         profile_id: UUID_A,
         new_role: "leader",
-      }),
+      })
     ).toBeNull();
   });
 });
@@ -398,7 +403,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_at: "2030-01-01",
         interaction_type: "call",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -413,7 +418,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_at: "2026-05-22",
         interaction_type: "call",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(true);
   });
@@ -425,7 +430,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_at: "2026-05-23",
         interaction_type: "call",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -440,7 +445,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_at: "2026-05-01",
         interaction_type: "smoke_signal",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
   });
@@ -453,7 +458,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_type: "call",
         notes: "x".repeat(2001),
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -469,7 +474,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         interaction_type: "call",
         notes: "  Caught up over coffee.  ",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -494,7 +499,7 @@ describe("validateLogShepherdCareInteractionPayload", () => {
         set_current_status: "true",
         current_status: "needs_follow_up",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(true);
     if (r.ok) {
@@ -679,7 +684,7 @@ describe("validateAssignShepherdCoveragePayload", () => {
         over_shepherd_id: UUID_B,
         assigned_at: "2030-01-01",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -707,7 +712,7 @@ describe("validateAssignShepherdCoveragePayload", () => {
         over_shepherd_id: UUID_B,
         assigned_at: "2026-05-22",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.assigned_at).toBe("2026-05-22");
@@ -739,7 +744,7 @@ describe("validateEndShepherdCoverageAssignmentPayload", () => {
         assignment_id: UUID_A,
         ended_at: "2030-01-01",
       },
-      { todayIso: "2026-05-21" },
+      { todayIso: "2026-05-21" }
     );
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -770,7 +775,9 @@ describe("validateEndShepherdCoverageAssignmentPayload", () => {
 describe("validateLaunchPlanningAssumptionsPayload", () => {
   it("rejects non-object input", () => {
     expect(validateLaunchPlanningAssumptionsPayload(null).ok).toBe(false);
-    expect(validateLaunchPlanningAssumptionsPayload("not an object").ok).toBe(false);
+    expect(validateLaunchPlanningAssumptionsPayload("not an object").ok).toBe(
+      false
+    );
   });
 
   it("accepts the documented default payload", () => {
@@ -812,36 +819,38 @@ describe("validateLaunchPlanningAssumptionsPayload", () => {
     expect(
       validateLaunchPlanningAssumptionsPayload({
         target_group_participation_pct: 1.2,
-      }).ok,
+      }).ok
     ).toBe(false);
     expect(
       validateLaunchPlanningAssumptionsPayload({
         target_group_participation_pct: -0.1,
-      }).ok,
+      }).ok
     ).toBe(false);
   });
 
   it("rejects launch_buffer_pct >= 1 to keep the (1 - buffer) denominator positive", () => {
     expect(
-      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 1 }).ok,
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 1 }).ok
     ).toBe(false);
     expect(
-      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.96 }).ok,
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.96 }).ok
     ).toBe(false);
     expect(
-      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.95 }).ok,
+      validateLaunchPlanningAssumptionsPayload({ launch_buffer_pct: 0.95 }).ok
     ).toBe(true);
   });
 
   it("rejects out-of-range integer fields", () => {
     expect(
-      validateLaunchPlanningAssumptionsPayload({ current_church_attendance: -1 }).ok,
+      validateLaunchPlanningAssumptionsPayload({
+        current_church_attendance: -1,
+      }).ok
     ).toBe(false);
     expect(
-      validateLaunchPlanningAssumptionsPayload({ average_group_size: 0 }).ok,
+      validateLaunchPlanningAssumptionsPayload({ average_group_size: 0 }).ok
     ).toBe(false);
     expect(
-      validateLaunchPlanningAssumptionsPayload({ leaders_per_new_group: 11 }).ok,
+      validateLaunchPlanningAssumptionsPayload({ leaders_per_new_group: 11 }).ok
     ).toBe(false);
   });
 
@@ -1004,7 +1013,7 @@ describe("validateCreateLaunchPlanningScenarioPayload", () => {
       expect(r.value.assumptions.current_church_attendance).toBe(250);
       expect(r.value.assumptions.target_group_participation_pct).toBeCloseTo(
         0.7,
-        6,
+        6
       );
     }
   });
@@ -1028,9 +1037,7 @@ describe("validateUpdateLaunchPlanningScenarioPayload", () => {
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.scenario_id).toBe(
-        "ffffffff-ffff-ffff-ffff-ffffffffffff",
-      );
+      expect(r.value.scenario_id).toBe("ffffffff-ffff-ffff-ffff-ffffffffffff");
     }
   });
 });
@@ -1064,24 +1071,48 @@ describe("validateMetricDefaultsPayload — per-tier stale windows (Julian Q5)",
   });
 
   it("rejects values below 7 and above 365 on either tier", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 6 }).ok).toBe(false);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 366 }).ok).toBe(false);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 6 }).ok).toBe(false);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 366 }).ok).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 6 }).ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 366 }).ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 6 })
+        .ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 366 })
+        .ok
+    ).toBe(false);
   });
 
   it("rejects non-integers", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: "soon" }).ok).toBe(false);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: "soon" }).ok).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: "soon" })
+        .ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({
+        shepherd_care_stale_days_delegated: "soon",
+      }).ok
+    ).toBe(false);
   });
 
   it("accepts the 7 and 365 boundaries", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 7 }).ok).toBe(true);
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 365 }).ok).toBe(true);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_direct: 7 }).ok
+    ).toBe(true);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days_delegated: 365 })
+        .ok
+    ).toBe(true);
   });
 
   it("rejects the superseded single key as unknown", () => {
-    expect(validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 }).ok).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 }).ok
+    ).toBe(false);
   });
 });
 
@@ -1105,10 +1136,10 @@ describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
       validateRecordChurchAttendancePayload({
         snapshot_date: "May 24",
         attendance_count: 100,
-      }).ok,
+      }).ok
     ).toBe(false);
     expect(
-      validateRecordChurchAttendancePayload({ attendance_count: 100 }).ok,
+      validateRecordChurchAttendancePayload({ attendance_count: 100 }).ok
     ).toBe(false);
   });
 
@@ -1117,13 +1148,13 @@ describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
       validateRecordChurchAttendancePayload({
         snapshot_date: "2026-05-24",
         attendance_count: "lots",
-      }).ok,
+      }).ok
     ).toBe(false);
     expect(
       validateRecordChurchAttendancePayload({
         snapshot_date: "2026-05-24",
         attendance_count: 1000001,
-      }).ok,
+      }).ok
     ).toBe(false);
   });
 
@@ -1157,13 +1188,13 @@ describe("multiplication candidate payloads (Julian P4)", () => {
 
   it("rejects a bad group id and out-of-range year", () => {
     expect(
-      validateCreateMultiplicationCandidatePayload({ group_id: "nope" }).ok,
+      validateCreateMultiplicationCandidatePayload({ group_id: "nope" }).ok
     ).toBe(false);
     expect(
       validateCreateMultiplicationCandidatePayload({
         group_id: UUID_A,
         target_year: "1999",
-      }).ok,
+      }).ok
     ).toBe(false);
   });
 
@@ -1172,7 +1203,7 @@ describe("multiplication candidate payloads (Julian P4)", () => {
       validateUpdateMultiplicationCandidatePayload({
         candidate_id: UUID_A,
         status: "maybe",
-      }).ok,
+      }).ok
     ).toBe(false);
   });
 
@@ -1198,7 +1229,9 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     expect(present.ok).toBe(true);
     if (present.ok) expect(present.value.successor_designate).toBe("Tony L.");
 
-    const absent = validateCreateMultiplicationCandidatePayload({ group_id: UUID_A });
+    const absent = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.successor_designate).toBeNull();
   });
@@ -1220,7 +1253,9 @@ describe("multiplication candidate payloads (Julian P4)", () => {
       expect(r.ok).toBe(true);
       if (r.ok) expect(r.value.meeting_time).toBe(meeting_time);
     }
-    const absent = validateCreateMultiplicationCandidatePayload({ group_id: UUID_A });
+    const absent = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.meeting_time).toBeNull();
   });
@@ -1362,7 +1397,10 @@ describe("validateOverShepherdBroadNotePayload (#126)", () => {
         note,
       });
       expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.errors.some((e) => /broad note is required/i.test(e))).toBe(true);
+      if (!r.ok)
+        expect(r.errors.some((e) => /broad note is required/i.test(e))).toBe(
+          true
+        );
     }
   });
 
@@ -1373,5 +1411,40 @@ describe("validateOverShepherdBroadNotePayload (#126)", () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.some((e) => /too long/i.test(e))).toBe(true);
+  });
+});
+
+describe("validatePlatformConfigPayload", () => {
+  it("accepts a tracer note string", () => {
+    const r = validatePlatformConfigPayload({
+      console_tracer_note: "launch soon",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.console_tracer_note).toBe("launch soon");
+  });
+
+  it("treats a missing field as a cleared (empty) note", () => {
+    const r = validatePlatformConfigPayload({});
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.console_tracer_note).toBe("");
+  });
+
+  it("rejects a non-string note", () => {
+    const r = validatePlatformConfigPayload({ console_tracer_note: 7 });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects an oversized note", () => {
+    const r = validatePlatformConfigPayload({
+      console_tracer_note: "a".repeat(201),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok)
+      expect(r.errors.some((e) => /characters or fewer/i.test(e))).toBe(true);
+  });
+
+  it("rejects a non-object payload", () => {
+    expect(validatePlatformConfigPayload(null).ok).toBe(false);
+    expect(validatePlatformConfigPayload("nope").ok).toBe(false);
   });
 });

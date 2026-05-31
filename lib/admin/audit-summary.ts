@@ -32,6 +32,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "leader.mark_did_not_meet": "Did not meet",
   "super_admin.update_profile_role": "Changed role",
   "super_admin.invite_user": "Invited user",
+  "super_admin.set_platform_config": "Updated platform config",
   // Phase 5C.0 guest pipeline + follow-up actions.
   "admin.create_guest": "Added guest",
   "admin.update_guest_pipeline": "Updated guest pipeline",
@@ -112,7 +113,7 @@ export type AuditSummaryMaps = {
 
 export function summarizeAuditEvent(
   event: AuditEventsRow,
-  maps: AuditSummaryMaps,
+  maps: AuditSummaryMaps
 ): string {
   const { profilesById, membersById, groupsById } = maps;
   const md = isRecord(event.metadata) ? event.metadata : {};
@@ -133,7 +134,7 @@ export function summarizeAuditEvent(
       const group = groupId ? groupsById.get(groupId) : undefined;
       return `Assigned ${profile?.full_name ?? "leader"} as ${role.replace(
         /_/g,
-        "-",
+        "-"
       )} to ${group?.name ?? "a group"}`;
     }
     case "admin.assign_member_to_group": {
@@ -147,9 +148,12 @@ export function summarizeAuditEvent(
       const entityProfile = event.entity_id
         ? profilesById.get(event.entity_id)
         : undefined;
-      const count = asNumber(md.deactivated_group_leader_assignments_count) ?? 0;
+      const count =
+        asNumber(md.deactivated_group_leader_assignments_count) ?? 0;
       const cascade =
-        count > 0 ? ` (closed ${count} active assignment${count === 1 ? "" : "s"})` : "";
+        count > 0
+          ? ` (closed ${count} active assignment${count === 1 ? "" : "s"})`
+          : "";
       const previousStatus = isRecord(before) ? asString(before.status) : null;
       return `Deactivated profile ${entityProfile?.full_name ?? ""}${
         previousStatus ? ` (was ${previousStatus})` : ""
@@ -181,11 +185,15 @@ export function summarizeAuditEvent(
       return `Updated group ${name}`;
     }
     case "admin.close_group": {
-      const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
+      const name = event.entity_id
+        ? groupsById.get(event.entity_id)?.name
+        : undefined;
       return `Closed group ${name ?? ""}`.trim();
     }
     case "admin.reopen_group": {
-      const name = event.entity_id ? groupsById.get(event.entity_id)?.name : undefined;
+      const name = event.entity_id
+        ? groupsById.get(event.entity_id)?.name
+        : undefined;
       return `Reopened group ${name ?? ""}`.trim();
     }
     case "admin.create_guest": {
@@ -209,7 +217,9 @@ export function summarizeAuditEvent(
     case "admin.create_follow_up": {
       const title = asString(after.title) ?? "(no title)";
       const type = asString(after.type);
-      return type ? `Created ${type} follow-up: ${title}` : `Created follow-up: ${title}`;
+      return type
+        ? `Created ${type} follow-up: ${title}`
+        : `Created follow-up: ${title}`;
     }
     case "admin.update_follow_up_status": {
       const title = asString(md.title) ?? "follow-up";
@@ -234,7 +244,7 @@ export function summarizeAuditEvent(
     case "admin.update_metric_defaults": {
       const submittedKeys = Array.isArray(md.submitted_keys)
         ? (md.submitted_keys as unknown[]).filter(
-            (k): k is string => typeof k === "string",
+            (k): k is string => typeof k === "string"
           )
         : [];
       return submittedKeys.length > 0
@@ -250,7 +260,9 @@ export function summarizeAuditEvent(
         : "Updated group overrides";
     }
     case "super_admin.update_profile_role": {
-      const target = event.entity_id ? profilesById.get(event.entity_id) : undefined;
+      const target = event.entity_id
+        ? profilesById.get(event.entity_id)
+        : undefined;
       const beforeRole = isRecord(before) ? asString(before.role) : null;
       const afterRole = asString(after.role);
       const name = target?.full_name ?? "(unknown profile)";
@@ -313,7 +325,9 @@ export function summarizeAuditEvent(
       const shepherdId = asString(md.shepherd_profile_id);
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       const replaced = asString(md.replaced_assignment_id);
-      const verb = replaced ? "Reassigned coverage for" : "Assigned coverage for";
+      const verb = replaced
+        ? "Reassigned coverage for"
+        : "Assigned coverage for";
       return `${verb} ${shepherd?.full_name ?? "a shepherd"}`;
     }
     case "admin.end_shepherd_coverage": {
@@ -331,7 +345,9 @@ export function summarizeAuditEvent(
       const shepherd = shepherdId ? profilesById.get(shepherdId) : undefined;
       const name = shepherd?.full_name ?? "a shepherd";
       const wasJustCreated = md.was_just_created === true;
-      const beforeStatus = isRecord(before) ? asString(before.current_status) : null;
+      const beforeStatus = isRecord(before)
+        ? asString(before.current_status)
+        : null;
       const afterStatus = asString(after.current_status);
       if (wasJustCreated) {
         return `Created care profile for ${name}`;
@@ -365,7 +381,7 @@ export function summarizeAuditEvent(
     case "admin.update_launch_planning_assumptions": {
       const submittedKeys = Array.isArray(md.submitted_keys)
         ? (md.submitted_keys as unknown[]).filter(
-            (k): k is string => typeof k === "string",
+            (k): k is string => typeof k === "string"
           )
         : [];
       return submittedKeys.length > 0
@@ -382,7 +398,9 @@ export function summarizeAuditEvent(
     case "admin.update_launch_planning_scenario": {
       const beforeName = isRecord(before) ? asString(before.name) : null;
       const afterName = asString(after.name) ?? "(unnamed)";
-      const beforeCurrent = isRecord(before) ? before.is_current === true : false;
+      const beforeCurrent = isRecord(before)
+        ? before.is_current === true
+        : false;
       const afterCurrent = after.is_current === true;
       if (!beforeCurrent && afterCurrent) {
         return `Made launch scenario ${afterName} current`;
@@ -416,7 +434,9 @@ export function summarizeAuditEvent(
         return `Recorded "did not meet" for ${groupLabel}${weekLabel}`.trim();
       }
       const verb =
-        event.action === "leader.update_checkin" ? "Updated check-in" : "Submitted check-in";
+        event.action === "leader.update_checkin"
+          ? "Updated check-in"
+          : "Submitted check-in";
       const counted =
         attendanceCount > 0
           ? ` (${attendanceCount} attendance record${attendanceCount === 1 ? "" : "s"})`
