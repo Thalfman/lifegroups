@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
-import { adminSetGroupCapacityTarget } from "@/app/(protected)/admin/capacity-board/actions";
+import { adminSetGroupCapacityTarget } from "@/app/(protected)/admin/launch-planning/actions";
 import {
   CAPACITY_STATUS_LABEL,
   filterBoard,

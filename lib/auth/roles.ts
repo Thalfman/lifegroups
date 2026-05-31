@@ -73,10 +73,11 @@ export function navItemsForRole(
   if (isAdminRole(role)) {
     items.push({ href: "/admin", label: "Admin" });
     items.push({ href: "/admin/shepherd-care", label: "Leader care" });
-    items.push({ href: "/admin/capacity-board", label: "Capacity board" });
-    items.push({ href: "/admin/leader-pipeline", label: "Leader pipeline" });
+    // Launch planning now also carries the former Capacity board and
+    // Multiplication surfaces (ADR 0010 surface-budget consolidation); both old
+    // routes redirect here. Leader pipeline stays its own destination.
     items.push({ href: "/admin/launch-planning", label: "Launch planning" });
-    items.push({ href: "/admin/multiplication", label: "Multiplication" });
+    items.push({ href: "/admin/leader-pipeline", label: "Leader pipeline" });
     items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
     items.push({ href: "/admin/people", label: "People" });
     items.push({ href: "/admin/groups", label: "Groups" });
@@ -140,25 +141,18 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       // previously reachable only by direct URL.
       items: [
         { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
-        {
-          href: "/admin/capacity-board",
-          label: "Capacity board",
-          icon: "compass",
-        },
-        {
-          href: "/admin/leader-pipeline",
-          label: "Leader pipeline",
-          icon: "people",
-        },
+        // Launch planning absorbs the former Capacity board and Multiplication
+        // surfaces (ADR 0010 surface-budget consolidation); both old routes
+        // redirect here. Leader pipeline stays its own destination.
         {
           href: "/admin/launch-planning",
           label: "Launch planning",
           icon: "compass",
         },
         {
-          href: "/admin/multiplication",
-          label: "Multiplication",
-          icon: "sprout",
+          href: "/admin/leader-pipeline",
+          label: "Leader pipeline",
+          icon: "people",
         },
         { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
         { href: "/admin/group-health", label: "Group health", icon: "sprout" },

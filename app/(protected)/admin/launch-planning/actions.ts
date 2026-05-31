@@ -5,11 +5,13 @@ import {
   validateCreateMultiplicationCandidatePayload,
   validateLaunchPlanningAssumptionsPayload,
   validateRecordChurchAttendancePayload,
+  validateSetGroupCapacityTargetPayload,
   validateUpdateMultiplicationCandidatePayload,
   type CandidateIdPayload,
   type CreateMultiplicationCandidatePayload,
   type LaunchPlanningAssumptionsPayload,
   type RecordChurchAttendancePayload,
+  type SetGroupCapacityTargetPayload,
   type UpdateMultiplicationCandidatePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -21,25 +23,21 @@ import {
   rpcAdminArchiveMultiplicationCandidate,
   rpcAdminCreateMultiplicationCandidate,
   rpcAdminRecordChurchAttendanceSnapshot,
+  rpcAdminSetGroupCapacityTarget,
   rpcAdminUpdateLaunchPlanningAssumptions,
   rpcAdminUpdateMultiplicationCandidate,
 } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
-// Julian #145: the multiplication pipeline now lives on its own surface; the
-// candidate writes below revalidate it so edits show up there immediately.
-const REVALIDATE_PATH_MULTIPLICATION = "/admin/multiplication";
-// #185: candidate flags/ids drive the Capacity Board's suggestion annotations
-// and de-duping, so candidate writes must refresh it too.
-const REVALIDATE_PATH_CAPACITY = "/admin/capacity-board";
 
-// Candidate writes touch the multiplication plan, launch planning, and the
-// capacity board's suggestions.
+// The former /admin/multiplication and /admin/capacity-board surfaces are now
+// folded into /admin/launch-planning (ADR 0010 surface-budget consolidation;
+// both old routes redirect here). Candidate and capacity-target writes therefore
+// only need to revalidate launch planning + the admin home.
 const CANDIDATE_REVALIDATE = [
-  REVALIDATE_PATH_MULTIPLICATION,
   REVALIDATE_PATH_LAUNCH_PLANNING,
-  REVALIDATE_PATH_CAPACITY,
+  REVALIDATE_PATH_ADMIN,
 ] as const;
 
 // Keep this list in lockstep with the validator's whitelist. The form
@@ -277,4 +275,39 @@ export async function adminArchiveMultiplicationCandidate(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ARCHIVE_CANDIDATE_SPEC, prev, input);
+}
+
+// ----- adminSetGroupCapacityTarget ----------------------------------------
+// Relocated from the merged-away /admin/capacity-board surface (ADR 0010
+// consolidation). The Capacity board now renders inside /admin/launch-planning,
+// so its per-group target editor lives here. Behaviour is unchanged.
+
+const SET_TARGET_SPEC: AdminWriteActionSpec<
+  SetGroupCapacityTargetPayload,
+  { id: string }
+> = {
+  name: "admin.capacity_board.set_group_target",
+  read: (input) =>
+    input instanceof FormData
+      ? {
+          group_id: input.get("group_id") ?? undefined,
+          // Blank clears the per-group target (falls back to the default).
+          target: input.get("target") ?? undefined,
+        }
+      : (input as Record<string, unknown>),
+  validate: validateSetGroupCapacityTargetPayload,
+  rpc: (client, value) =>
+    rpcAdminSetGroupCapacityTarget(client, {
+      p_group_id: value.group_id,
+      p_target: value.target,
+    }),
+  revalidate: () => CANDIDATE_REVALIDATE,
+  noDataError: "The target was not saved. Please try again.",
+};
+
+export async function adminSetGroupCapacityTarget(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_TARGET_SPEC, prev, input);
 }
