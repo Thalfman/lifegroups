@@ -125,13 +125,26 @@ changes:
 
 ### 3.4 Launch Plan / Forecast — ✅
 The **supply-vs-demand** model. **Demand** = projected church attendance × target
-participation %, plus a launch buffer (Q9, Q11). **Supply** = open seats today +
-groups ready to multiply + apprentices ready to lead. Already computed in
+participation %, plus a launch buffer (Q9, Q11). Already computed in
 [`../../lib/admin/launch-planning.ts`](../../lib/admin/launch-planning.ts)
-(`computeLaunchPlan()`, scenarios, seasonality anchors for August/January). The
-gap is that supply currently counts only seats — it should also count **ready
-leaders from the pipeline**, so "you need N groups" can be checked against "you
-have M ready leaders."
+(`computeLaunchPlan()`, scenarios, seasonality anchors for August/January).
+
+**Two supply dimensions — kept separate, never summed.** A launch needs *both* a
+place for people and a person to lead it; these are different constraints and the
+forecast must report each on its own axis (summing them would double-count — a
+ready group with its ready apprentice attached is one launch, not two):
+
+- **Capacity supply (seats)** — open seats in existing groups + seats from each
+  *new* group a launch creates. Answers "is there room for the people?" Already
+  computed (`available_seats`, `recommended_new_groups`).
+- **Staffing supply (leaders)** — the count of apprentices at the **Ready to lead**
+  stage (§3.2). Answers "do we have people to lead the new groups?" Net-new; the
+  pipeline is its source.
+
+The forecast's job is to surface the **binding constraint**: the recommended /
+planned launch count vs. staffing supply, so Julian sees "demand needs 3 new
+groups · 2 leaders Ready · **staffing short by 1**." Capacity and staffing are
+reported side by side, not added together. (See R10.)
 
 **How the four connect (the thread that's missing today):**
 
@@ -205,6 +218,11 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
 - **R5 — First-class Apprentice records.** Create/edit an apprentice on a group
   with a readiness **stage** (Identified → In training → Ready to lead →
   Launched). Net-new. (§3.2)
+- **R5a — Expected-ready date.** Each apprentice carries an optional
+  **expected-ready date/season** — when Julian expects them to reach *Ready to
+  lead*. This is what lets a "launch N by August" scenario count apprentices who
+  *will* be ready by the target date, not only those Ready today (the walkthrough's
+  date-adjustment depends on it). Stored on the pipeline record (§6-1). (§3.4, R10)
 - **R6 — Pipeline roll-up.** List all apprentices grouped by stage; highlight
   groups with no apprentice. (§4-B)
 - **R7 — Migrate `successor_designate`.** Seed apprentices from existing candidate
@@ -216,12 +234,24 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
   (§3.3); the planner shows the apprentice's stage inline. Keep target year,
   status, segment, meeting time, notes, and the readiness chips from
   `evaluateReadiness()`. (§3.3)
-- **R9 — System-suggested candidates.** Surface Full + Ready-apprentice +
-  criteria-meeting groups as suggestions. (§4-C)
-- **R10 — Scenario forecast with leader supply.** Extend the forecast so supply
-  counts ready apprentices, and "launch N in `<year>`" shows the supply-vs-demand
-  gap. Reuse `computeLaunchPlan()`, scenarios, and `nextSeasonAnchorIso()` for
-  August/January. (§3.4, Q9, Q11)
+- **R9 — System-suggested candidates.** Surface a group as a suggestion when it is
+  **Full** *and* has an apprentice at **Ready to lead**. The 5-criterion readiness
+  (`evaluateReadiness()`) is shown as **context, not a gate** — its chips/`metCount`
+  rank and annotate suggestions (e.g. "meets 4/5") rather than include or exclude
+  them, consistent with Julian's "a group does not need to meet each." (Whether a
+  hard criteria floor should *also* gate suggestions is open decision §9-e; default
+  is no floor.) (§4-C, §3.3)
+- **R10 — Scenario forecast with explicit launch count + staffing supply.** A
+  scenario must carry, in addition to today's demand assumptions, an **explicit
+  planned launch count and target season/year** (net-new inputs — the existing
+  `launch_planning_scenarios` only stores demand assumptions and *derives*
+  `recommended_new_groups`, so it cannot represent "Julian plans 3 by August"). The
+  forecast then reports the two supply dimensions **separately** (§3.4): the planned
+  (or recommended) launch count vs. **staffing supply** = apprentices that will be
+  **Ready by the scenario's target date** (see R5a / §6-1). Reuse
+  `computeLaunchPlan()`, the scenarios table, and `nextSeasonAnchorIso()` for the
+  Aug/Jan anchors; add the launch-count + target-date inputs and a staffing-gap
+  output. (§3.4, Q9, Q11)
 - **R11 — Target year stays in-app data.** Keep per-candidate `target_year`,
   filterable (2026 / 2027 / TBD), per ADR-0006 — no paper decision. (Q11)
 
@@ -236,19 +266,36 @@ the existing audited path (`runAdminWriteAction` → `SECURITY DEFINER` `admin_*
 
 1. **`leader_pipeline` (apprentices) — 🆕.** One row per apprentice: `group_id`,
    the person (see open decision §9-b), a `readiness_stage` enum
-   (`identified / in_training / ready_to_lead / launched`), notes, audit/archival
-   columns. New `admin_*` RPCs for create/advance/archive. Seeded from
-   `successor_designate` + the Doc.
+   (`identified / in_training / ready_to_lead / launched`), an optional
+   **`expected_ready_on` date** (R5a — drives by-the-season staffing supply),
+   notes, audit/archival columns. New `admin_*` RPCs for create/advance/archive.
+   Seeded from `successor_designate` + the Doc.
 2. **`multiplication_candidates` — 🟡.** Add a nullable FK to a `leader_pipeline`
    row; retain `successor_designate` through migration, then treat the link as the
-   source of truth. Everything else unchanged.
-3. **Capacity — 🟡.** No new column required; reframe `groups.capacity` as the
-   per-group **target** in UI and prompt Julian to set it. Keep
-   `group_metric_settings` overrides (`capacity_override`, `allow_over_capacity`,
-   `exclude_from_capacity_metrics`).
+   source of truth. **Constraint:** the linked apprentice must belong to the
+   candidate's own group — both rows carry `group_id`, so the RPC (and, where
+   expressible, a DB check) must reject a link where
+   `leader_pipeline.group_id ≠ multiplication_candidates.group_id`, or the planner
+   and ready badges would count the wrong leader for the group. Everything else
+   unchanged.
+3. **Capacity / target — 🟡.** Reframe the per-group **target** in the UI and
+   prompt Julian to set it — but **resolve the override precedence first.**
+   `effectiveCapacity()` today ranks `capacity_override` (on
+   `group_metric_settings`) **above** `groups.capacity`, so a Board edit to
+   `groups.capacity` on a group that has an override would be silently ignored by
+   status and forecast math. The Board must edit **the effective target source**:
+   when an override exists, either edit/clear the override (so the displayed,
+   edited, and computed target are the same number), or migrate legacy overrides
+   onto `groups.capacity` and retire `capacity_override` as the target input. Keep
+   `allow_over_capacity` and `exclude_from_capacity_metrics` (they are not target
+   values). Exact migrate-vs-edit-override choice is a build-slice call; the
+   invariant is **one visible source of truth for a group's target.**
 4. **Forecast supply — 🟡.** Extend the launch-planning inputs aggregator to count
-   `ready_to_lead` apprentices as available leaders; no schema change, a new pure
-   input in `lib/admin/launch-planning.ts`.
+   apprentices that are (or are projected to be) `ready_to_lead` by a scenario's
+   target date as **staffing supply**, reported **separately** from seat capacity
+   (§3.4) — not added to it. New pure inputs/outputs in
+   `lib/admin/launch-planning.ts`; the launch-count + target-date scenario fields
+   (R10) are the only schema additions.
 
 ---
 
