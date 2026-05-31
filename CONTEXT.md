@@ -88,10 +88,15 @@ _Avoid_: Dashboard (ambiguous with the admin metrics surface), home page.
 
 **Settings**:
 The Ministry-Admin configuration surface — ministry/pastoral knobs (thresholds,
-care cadence, group-health weights). Visible to Ministry Admin and Super Admin.
+care cadence, group-health weights) and the Julian-owned pastoral copy
+(group-health question wording + care-status labels; see ADR 0007). Visible to
+Ministry Admin and Super Admin.
 _Avoid_: Admin settings, config (ambiguous with the Super Admin Console).
 
 **Super Admin Console**:
 The platform/app configuration surface — feature flags, user & access
-management, editable copy. Super Admin only; the Ministry Admin never sees it.
+management, and platform-level editable copy. Super Admin only; the Ministry
+Admin never sees it. Julian-owned pastoral copy (the group-health questions and
+care-status labels) is **not** edited here — it stays in Settings so Julian keeps
+ownership of his own wording (ADR 0007, PRD Q2).
 _Avoid_: Settings (that is the ministry surface), admin panel.
