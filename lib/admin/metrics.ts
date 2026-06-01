@@ -28,10 +28,6 @@ export type MetricDefaults = {
   default_group_capacity: number | null;
   capacity_warning_threshold_pct: number;
   capacity_full_threshold_pct: number;
-  // Legacy: a global "check-ins are due on this day-of-week" hint. Kept
-  // for backwards compatibility / nostalgia, but the Phase 5A.5 due-date
-  // computation is now per-group (meeting_day + meeting_time + offset).
-  check_in_due_day_of_week: number;
   missed_checkin_warning_weeks: number;
   default_healthy_attendance_pct: number;
   // Phase 5A.5: hours after a group's scheduled meeting time before its
@@ -54,7 +50,6 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   default_group_capacity: 12,
   capacity_warning_threshold_pct: 80,
   capacity_full_threshold_pct: 100,
-  check_in_due_day_of_week: 1,
   missed_checkin_warning_weeks: 2,
   default_healthy_attendance_pct: 60,
   check_in_due_offset_hours: 24,
@@ -65,74 +60,73 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
 function readJsonInt(
   source: Record<string, unknown> | null | undefined,
   key: string,
-  fallback: number,
+  fallback: number
 ): number {
   if (!source) return fallback;
   const raw = source[key];
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw)) return raw;
+  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
+    return raw;
   return fallback;
 }
 
 function readJsonIntOrNull(
   source: Record<string, unknown> | null | undefined,
   key: string,
-  fallback: number | null,
+  fallback: number | null
 ): number | null {
   if (!source) return fallback;
   const raw = source[key];
   if (raw === null) return null;
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw)) return raw;
+  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
+    return raw;
   return fallback;
 }
 
-export function decodeMetricDefaults(row: AppSettingsRow | null): MetricDefaults {
+export function decodeMetricDefaults(
+  row: AppSettingsRow | null
+): MetricDefaults {
   const raw = row?.setting_value;
   const source: Record<string, unknown> | null = isRecord(raw) ? raw : null;
   return {
     default_group_capacity: readJsonIntOrNull(
       source,
       "default_group_capacity",
-      BUILT_IN_METRIC_DEFAULTS.default_group_capacity,
+      BUILT_IN_METRIC_DEFAULTS.default_group_capacity
     ),
     capacity_warning_threshold_pct: readJsonInt(
       source,
       "capacity_warning_threshold_pct",
-      BUILT_IN_METRIC_DEFAULTS.capacity_warning_threshold_pct,
+      BUILT_IN_METRIC_DEFAULTS.capacity_warning_threshold_pct
     ),
     capacity_full_threshold_pct: readJsonInt(
       source,
       "capacity_full_threshold_pct",
-      BUILT_IN_METRIC_DEFAULTS.capacity_full_threshold_pct,
-    ),
-    check_in_due_day_of_week: readJsonInt(
-      source,
-      "check_in_due_day_of_week",
-      BUILT_IN_METRIC_DEFAULTS.check_in_due_day_of_week,
+      BUILT_IN_METRIC_DEFAULTS.capacity_full_threshold_pct
     ),
     missed_checkin_warning_weeks: readJsonInt(
       source,
       "missed_checkin_warning_weeks",
-      BUILT_IN_METRIC_DEFAULTS.missed_checkin_warning_weeks,
+      BUILT_IN_METRIC_DEFAULTS.missed_checkin_warning_weeks
     ),
     default_healthy_attendance_pct: readJsonInt(
       source,
       "default_healthy_attendance_pct",
-      BUILT_IN_METRIC_DEFAULTS.default_healthy_attendance_pct,
+      BUILT_IN_METRIC_DEFAULTS.default_healthy_attendance_pct
     ),
     check_in_due_offset_hours: readJsonInt(
       source,
       "check_in_due_offset_hours",
-      BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours,
+      BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours
     ),
     shepherd_care_stale_days_direct: readJsonInt(
       source,
       "shepherd_care_stale_days_direct",
-      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct,
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct
     ),
     shepherd_care_stale_days_delegated: readJsonInt(
       source,
       "shepherd_care_stale_days_delegated",
-      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated,
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated
     ),
   };
 }
@@ -143,7 +137,7 @@ export function careCadenceWindowsFromDefaults(
   defaults: Pick<
     MetricDefaults,
     "shepherd_care_stale_days_direct" | "shepherd_care_stale_days_delegated"
-  >,
+  >
 ): CareCadenceWindows {
   return {
     directlyOverseenStaleDays: defaults.shepherd_care_stale_days_direct,
@@ -171,7 +165,7 @@ type OverrideRef = Pick<
 export function effectiveCapacity(
   group: GroupRef,
   override: OverrideRef,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): number | null {
   if (override?.capacity_override != null) return override.capacity_override;
   if (group.capacity != null) return group.capacity;
@@ -188,14 +182,14 @@ export function effectiveCapacity(
 export function unknownCapacity(
   group: GroupRef,
   override: OverrideRef,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): boolean {
   return effectiveCapacity(group, override, defaults) == null;
 }
 
 export function effectiveCapacityWarningPct(
   override: OverrideRef,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): number {
   if (override?.capacity_warning_threshold_pct_override != null)
     return override.capacity_warning_threshold_pct_override;
@@ -208,7 +202,7 @@ export function effectiveCapacityFullPct(defaults: MetricDefaults): number {
 
 export function effectiveHealthyAttendancePct(
   override: OverrideRef,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): number {
   if (override?.healthy_attendance_pct_override != null)
     return override.healthy_attendance_pct_override;
@@ -226,7 +220,7 @@ export function effectiveCheckInDueOffsetHours(
     | Pick<GroupMetricSettingsRow, "check_in_due_offset_hours_override">
     | null
     | undefined,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): number {
   if (override?.check_in_due_offset_hours_override != null)
     return override.check_in_due_offset_hours_override;
@@ -273,9 +267,10 @@ export function capacityStatus(args: {
 
 export function effectiveHealthStatus(
   group: Pick<GroupsRow, "health_status">,
-  override: OverrideRef,
+  override: OverrideRef
 ): GroupHealthStatus {
-  if (override?.manual_health_status_override) return override.manual_health_status_override;
+  if (override?.manual_health_status_override)
+    return override.manual_health_status_override;
   return group.health_status;
 }
 
@@ -293,7 +288,7 @@ export function allowsOverCapacity(override: OverrideRef): boolean {
 // but has every field cleared is treated identically to "no row" for UI
 // purposes (e.g., the overrides summary list filters it out).
 export function hasActiveOverrides(
-  settings: GroupMetricSettingsRow | null | undefined,
+  settings: GroupMetricSettingsRow | null | undefined
 ): boolean {
   if (!settings) return false;
   if (settings.capacity_override != null) return true;

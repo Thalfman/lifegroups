@@ -7,7 +7,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAllGroups,
   fetchCapacityBoardExtras,
-  fetchChurchAttendanceSnapshots,
   fetchLaunchPlanningAssumptions,
   fetchLaunchPlanningInputsForAdmin,
   fetchLaunchPlanningScenariosForAdmin,
@@ -72,10 +71,10 @@ type PageData = {
   activeScenarios: LaunchPlanningScenario[];
   scenariosError: string | null;
   comparison: ReturnType<typeof buildScenarioComparison>;
-  churchAttendanceLatest: {
-    snapshotDate: string;
-    attendanceCount: number;
-  } | null;
+  // L4 (#223): current_church_attendance is the single source of truth for both
+  // the forecast and the "% of the church in a group" headline. The
+  // church_attendance_snapshots time series is retained for history but is no
+  // longer read by this surface.
   participationPct: number | null;
   staffingForecast: StaffingForecast;
   staffingSourceLabel: string;
@@ -177,7 +176,6 @@ function emptyData(): PageData {
     activeScenarios: [],
     scenariosError: dbError,
     comparison: [],
-    churchAttendanceLatest: null,
     participationPct: null,
     staffingForecast: buildStaffingForecast(
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
@@ -206,7 +204,6 @@ async function loadData(): Promise<PageData> {
     assumptionsRes,
     inputsBundle,
     scenariosRes,
-    churchRes,
     pipelineRes,
     candidatesRes,
     allGroupsRes,
@@ -215,7 +212,6 @@ async function loadData(): Promise<PageData> {
     fetchLaunchPlanningAssumptions(client),
     fetchLaunchPlanningInputsForAdmin(client),
     fetchLaunchPlanningScenariosForAdmin(client),
-    fetchChurchAttendanceSnapshots(client, { limit: 1 }),
     fetchLeaderPipelineForAdmin(client),
     fetchMultiplicationCandidatesForAdmin(client),
     fetchAllGroups(client),
@@ -261,14 +257,6 @@ async function loadData(): Promise<PageData> {
   const staffingSourceLabel = currentScenario
     ? `current scenario: ${currentScenario.name}`
     : "baseline assumptions";
-
-  const latestSnapshot = churchRes.data?.[0] ?? null;
-  const churchAttendanceLatest = latestSnapshot
-    ? {
-        snapshotDate: latestSnapshot.snapshot_date,
-        attendanceCount: latestSnapshot.attendance_count,
-      }
-    : null;
 
   // --- Capacity board. Its model (rows + the "Suggested to multiply" panel) is
   // derived purely from capacity inputs + board extras, NOT the leader pipeline.
@@ -324,10 +312,13 @@ async function loadData(): Promise<PageData> {
     activeScenarios,
     scenariosError: scenariosRes.error?.message ?? null,
     comparison,
-    churchAttendanceLatest,
+    // L4 (#223): the denominator is current_church_attendance (the editable
+    // assumption), not the latest snapshot. For a church with existing
+    // snapshots, the one-time backfill set current_church_attendance to the
+    // latest snapshot count, so this percentage is unchanged at the switch.
     participationPct: participationPct(
       inputs.current_participants,
-      churchAttendanceLatest?.attendanceCount ?? null
+      assumptions.current_church_attendance
     ),
     staffingForecast,
     staffingSourceLabel,
@@ -435,10 +426,9 @@ export default async function AdminLaunchPlanningPage() {
           )}
 
           <ChurchAttendanceCard
-            latest={data.churchAttendanceLatest}
+            currentChurchAttendance={data.assumptions.current_church_attendance}
             currentParticipants={data.inputs.current_participants}
             participationPct={data.participationPct}
-            todayIso={data.todayIso}
           />
 
           <LaunchPlanningSetupWarnings

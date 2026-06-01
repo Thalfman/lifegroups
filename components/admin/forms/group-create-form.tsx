@@ -23,7 +23,15 @@ import type { MeetingFrequency } from "@/types/enums";
 
 type State = ActionResult<{ id: string }> | undefined;
 
-export function GroupCreateForm() {
+export function GroupCreateForm({
+  // G3 (#222): a new group's capacity defaults to the ministry-wide
+  // `default_group_capacity` instead of being left Unknown, so an operator
+  // only sets a per-group number when a group differs. null = no ministry
+  // default configured, in which case we leave the field blank (Unknown).
+  defaultCapacity,
+}: {
+  defaultCapacity: number | null;
+}) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateGroup,
     undefined
@@ -220,8 +228,29 @@ export function GroupCreateForm() {
             inputMode="numeric"
             autoComplete="off"
             style={fieldInputStyle}
-            placeholder="12"
+            // G3 (#222): seed with the ministry default so the new group
+            // starts with a sensible capacity rather than Unknown. The field
+            // stays mounted while collapsed, so the default submits even when
+            // the operator never opens "More details". Clear it to leave the
+            // group's capacity Unknown.
+            defaultValue={defaultCapacity ?? ""}
+            placeholder={
+              defaultCapacity != null ? String(defaultCapacity) : "Unknown"
+            }
           />
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              margin: "6px 0 0",
+              lineHeight: 1.4,
+            }}
+          >
+            {defaultCapacity != null
+              ? `Defaults to the ministry capacity of ${defaultCapacity}. Change it for a group that's different, or clear it to leave capacity Unknown.`
+              : "No ministry default set, so capacity starts Unknown. Set a number for this group, or leave it blank."}
+          </p>
         </div>
         <div>
           <label htmlFor="group-audience_category" style={fieldLabelStyle}>

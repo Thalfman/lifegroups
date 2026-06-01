@@ -94,43 +94,61 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         </Card>
       </section>
 
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Group-specific overrides"
-          title="Per-group adjustments"
-          description="Override capacity or attendance thresholds for a single group, pin a manual health label, or exclude a launch group from capacity warnings."
-        />
-        <Card>
-          <GroupMetricOverridesForm
-            groups={data.groups}
-            settingsByGroupId={settingsByGroupId}
-          />
-        </Card>
-      </section>
+      {/* S1 (#221): per-group overrides and the active-overrides list are the
+          rarely-used part of Settings, so they're demoted into one collapsed
+          disclosure. Native <details> keeps this a server component (works
+          without JS); the count in the summary tells an operator whether any
+          overrides are in effect before they expand it. */}
+      <details style={detailsStyle}>
+        <summary style={summaryStyle}>
+          Per-group overrides
+          <span style={summaryCountStyle}>
+            {overrideRows.length === 0
+              ? "none active"
+              : `${overrideRows.length} active`}
+          </span>
+        </summary>
 
-      <section style={{ display: "grid", gap: 14 }}>
-        <SectionHeader
-          eyebrow="Currently overridden"
-          title="Groups with active overrides"
-          description="Each line shows the overrides currently in effect. Clear them to fall back to the global defaults."
-        />
-        {overrideRows.length === 0 ? (
-          <Empty
-            title="No active overrides"
-            description="Every group is following the global defaults above."
-          />
-        ) : (
-          <ul style={listResetStyle}>
-            {overrideRows.map(({ group, settings }) =>
-              group ? (
-                <li key={settings.group_id} style={{ marginBottom: 12 }}>
-                  <OverrideSummaryRow group={group} settings={settings} />
-                </li>
-              ) : null
+        <div style={{ display: "grid", gap: 36, marginTop: 24 }}>
+          <section style={{ display: "grid", gap: 18 }}>
+            <SectionHeader
+              eyebrow="Group-specific overrides"
+              title="Per-group adjustments"
+              description="Override capacity or attendance thresholds for a single group, pin a manual health label, or exclude a launch group from capacity warnings."
+            />
+            <Card>
+              <GroupMetricOverridesForm
+                groups={data.groups}
+                settingsByGroupId={settingsByGroupId}
+              />
+            </Card>
+          </section>
+
+          <section style={{ display: "grid", gap: 14 }}>
+            <SectionHeader
+              eyebrow="Currently overridden"
+              title="Groups with active overrides"
+              description="Each line shows the overrides currently in effect. Clear them to fall back to the global defaults."
+            />
+            {overrideRows.length === 0 ? (
+              <Empty
+                title="No active overrides"
+                description="Every group is following the global defaults above."
+              />
+            ) : (
+              <ul style={listResetStyle}>
+                {overrideRows.map(({ group, settings }) =>
+                  group ? (
+                    <li key={settings.group_id} style={{ marginBottom: 12 }}>
+                      <OverrideSummaryRow group={group} settings={settings} />
+                    </li>
+                  ) : null
+                )}
+              </ul>
             )}
-          </ul>
-        )}
-      </section>
+          </section>
+        </div>
+      </details>
     </div>
   );
 }
@@ -293,6 +311,32 @@ function Empty({ title, description }: { title: string; description: string }) {
 }
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
+
+const detailsStyle = {
+  border: `1px solid ${P.line}`,
+  borderRadius: 12,
+  padding: "16px 20px",
+  background: P.surface,
+} as const;
+
+const summaryStyle = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 10,
+  flexWrap: "wrap" as const,
+  fontFamily: fontDisplay,
+  fontSize: 18,
+  fontWeight: 500,
+  color: P.ink,
+  cursor: "pointer",
+};
+
+const summaryCountStyle = {
+  fontFamily: fontBody,
+  fontSize: 12,
+  fontWeight: 400,
+  color: P.ink3,
+} as const;
 
 const alertStyle = {
   background: P.terraSoft,

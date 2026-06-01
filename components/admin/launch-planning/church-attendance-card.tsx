@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
-import { adminRecordChurchAttendanceSnapshot } from "@/app/(protected)/admin/launch-planning/actions";
+import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   errorTextStyle,
@@ -15,25 +15,27 @@ import type { ActionResult } from "@/lib/admin/action-result";
 type State = ActionResult<{ id: string }> | undefined;
 
 export type ChurchAttendanceCardProps = {
-  // Latest recorded church attendance, or null when none recorded yet.
-  latest: { snapshotDate: string; attendanceCount: number } | null;
+  // L4 (#223): the single source of truth for the headline denominator — the
+  // editable `current_church_attendance` assumption, not a time series.
+  currentChurchAttendance: number;
   // People currently in active life groups (the numerator).
   currentParticipants: number;
-  // current_participants / latest church attendance, rounded, or null.
+  // current_participants / current_church_attendance, rounded, or null.
   participationPct: number | null;
-  // Today (YYYY-MM-DD) for the default date input value.
-  todayIso: string;
 };
 
 export function ChurchAttendanceCard({
-  latest,
+  currentChurchAttendance,
   currentParticipants,
   participationPct,
-  todayIso,
 }: ChurchAttendanceCardProps) {
+  // L4 (#223): editing church attendance writes the single
+  // `current_church_attendance` assumption (the same key the assumptions form
+  // and forecast read). The RPC merges only submitted keys, so posting just
+  // this one field leaves every other assumption untouched.
   const [state, formAction, pending] = useActionState<State, FormData>(
-    adminRecordChurchAttendanceSnapshot,
-    undefined,
+    adminUpdateLaunchPlanningAssumptions,
+    undefined
   );
 
   return (
@@ -71,76 +73,89 @@ export function ChurchAttendanceCard({
         </h2>
       </header>
 
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
-        <span style={{ fontFamily: fontBody, fontSize: 34, fontWeight: 600, color: P.ink }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 12,
+          marginBottom: 6,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: fontBody,
+            fontSize: 34,
+            fontWeight: 600,
+            color: P.ink,
+          }}
+        >
           {participationPct == null ? "—" : `${participationPct}%`}
         </span>
         <span style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2 }}>
-          {currentParticipants} in groups
-          {latest ? ` of ${latest.attendanceCount} attending` : ""}
+          {currentParticipants} in groups of {currentChurchAttendance} attending
         </span>
       </div>
-      <p style={{ margin: "0 0 18px", fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-        {latest
-          ? `Latest church attendance recorded ${latest.snapshotDate}.`
-          : "No church attendance recorded yet. Add a count below to start tracking the percentage in a group."}
+      <p
+        style={{
+          margin: "0 0 18px",
+          fontFamily: fontBody,
+          fontSize: 12,
+          color: P.ink3,
+        }}
+      >
+        Update the current church attendance to keep this percentage — and the
+        launch forecast — accurate.
       </p>
 
-      <form action={formAction} style={{ display: "grid", gap: 12 }}>
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-        >
-          <div>
-            <label htmlFor="snapshot_date" style={fieldLabelStyle}>
-              Date
-            </label>
-            <input
-              id="snapshot_date"
-              name="snapshot_date"
-              type="date"
-              defaultValue={latest?.snapshotDate ?? todayIso}
-              style={fieldInputStyle}
-            />
-          </div>
-          <div>
-            <label htmlFor="attendance_count" style={fieldLabelStyle}>
-              Attendance count
-            </label>
-            <input
-              id="attendance_count"
-              name="attendance_count"
-              type="number"
-              min={0}
-              max={1000000}
-              inputMode="numeric"
-              defaultValue={latest?.attendanceCount ?? ""}
-              placeholder="e.g. 100"
-              style={fieldInputStyle}
-            />
-          </div>
-        </div>
+      <form
+        action={formAction}
+        className="lg-m-grid-stack"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 200px) auto",
+          gap: 12,
+          alignItems: "end",
+        }}
+      >
         <div>
-          <label htmlFor="note" style={fieldLabelStyle}>
-            Note (optional)
+          <label htmlFor="current_church_attendance" style={fieldLabelStyle}>
+            Current church attendance
           </label>
           <input
-            id="note"
-            name="note"
-            type="text"
-            maxLength={1000}
-            placeholder="e.g. Easter Sunday, estimate"
+            id="current_church_attendance"
+            name="current_church_attendance"
+            type="number"
+            min={0}
+            max={100000}
+            inputMode="numeric"
+            defaultValue={currentChurchAttendance}
             style={fieldInputStyle}
           />
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Saving…" : "Record attendance"}
+            {pending ? "Saving…" : "Save"}
           </PButton>
-          {state?.ok ? <span style={successTextStyle}>Attendance recorded.</span> : null}
+          {state?.ok ? <span style={successTextStyle}>Saved.</span> : null}
         </div>
         {state && !state.ok ? (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+          <ul
+            style={{
+              gridColumn: "1 / -1",
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gap: 6,
+            }}
+          >
             {state.errors.map((err, i) => (
               <li key={i}>
                 <p style={errorTextStyle}>{err}</p>

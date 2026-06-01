@@ -23,7 +23,9 @@ type State = ActionResult<{ id: string }> | undefined;
 function pctValue(ratio: number): string {
   const pct = ratio * 100;
   // Strip trailing zeros after the decimal: 60.0 -> 60, 62.5 -> 62.5.
-  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1).replace(/\.0$/, "");
+  return Number.isInteger(pct)
+    ? String(pct)
+    : pct.toFixed(1).replace(/\.0$/, "");
 }
 
 export function LaunchPlanningAssumptionsForm({
@@ -33,7 +35,7 @@ export function LaunchPlanningAssumptionsForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateLaunchPlanningAssumptions,
-    undefined,
+    undefined
   );
   const growthDateRef = useRef<HTMLInputElement>(null);
 
@@ -49,28 +51,12 @@ export function LaunchPlanningAssumptionsForm({
         }}
       >
         Enter your best estimates. We only count current active groups in the
-        capacity math; growth and timing below are your judgement calls. Leave
-        a field blank to keep its current value.
+        capacity math; growth and timing below are your judgement calls. Current
+        church attendance is set in the Church attendance card above. Leave a
+        field blank to keep its current value.
       </p>
 
       <div className="lg-m-grid-stack" style={formGridStyle}>
-        <div>
-          <label htmlFor="current_church_attendance" style={fieldLabelStyle}>
-            Current church attendance
-          </label>
-          <input
-            id="current_church_attendance"
-            name="current_church_attendance"
-            type="number"
-            min={0}
-            max={100000}
-            inputMode="numeric"
-            defaultValue={assumptions.current_church_attendance}
-            style={fieldInputStyle}
-          />
-          <p style={hintStyle}>Whole number of attendees today.</p>
-        </div>
-
         <div>
           <label htmlFor="expected_growth" style={fieldLabelStyle}>
             Expected growth (people)
@@ -103,7 +89,9 @@ export function LaunchPlanningAssumptionsForm({
             defaultValue={assumptions.expected_growth_date ?? ""}
             style={fieldInputStyle}
           />
-          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+          <div
+            style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}
+          >
             <button
               type="button"
               onClick={() => {
@@ -134,7 +122,10 @@ export function LaunchPlanningAssumptionsForm({
         </div>
 
         <div>
-          <label htmlFor="target_group_participation_pct" style={fieldLabelStyle}>
+          <label
+            htmlFor="target_group_participation_pct"
+            style={fieldLabelStyle}
+          >
             Target group participation %
           </label>
           <input
@@ -150,7 +141,8 @@ export function LaunchPlanningAssumptionsForm({
           />
           <p style={hintStyle}>
             Decimal 0–1. e.g. 0.6 means 60% of attendees should be in a Life
-            Group ({pctValue(assumptions.target_group_participation_pct)}% today).
+            Group ({pctValue(assumptions.target_group_participation_pct)}%
+            today).
           </p>
         </div>
 
@@ -191,7 +183,8 @@ export function LaunchPlanningAssumptionsForm({
           />
           <p style={hintStyle}>
             Decimal 0–0.95. Headroom above projected demand. e.g. 0.15 reserves
-            15% spare capacity ({pctValue(assumptions.launch_buffer_pct)}% today).
+            15% spare capacity ({pctValue(assumptions.launch_buffer_pct)}%
+            today).
           </p>
         </div>
 
@@ -247,7 +240,15 @@ export function LaunchPlanningAssumptionsForm({
       </div>
 
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>
