@@ -72,7 +72,9 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
           description="Just a name is enough to get started. You can fill in capacity, day, and leader later from Manage People."
         />
         <Card>
-          <GroupCreateForm />
+          <GroupCreateForm
+            defaultCapacity={data.metricDefaults.default_group_capacity}
+          />
         </Card>
       </section>
 

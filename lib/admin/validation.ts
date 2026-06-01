@@ -607,7 +607,6 @@ export type MetricDefaultsPayload = {
   default_group_capacity?: number | null;
   capacity_warning_threshold_pct?: number;
   capacity_full_threshold_pct?: number;
-  check_in_due_day_of_week?: number;
   missed_checkin_warning_weeks?: number;
   default_healthy_attendance_pct?: number;
   check_in_due_offset_hours?: number;
@@ -619,7 +618,6 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
   "default_group_capacity",
   "capacity_warning_threshold_pct",
   "capacity_full_threshold_pct",
-  "check_in_due_day_of_week",
   "missed_checkin_warning_weeks",
   "default_healthy_attendance_pct",
   "check_in_due_offset_hours",
@@ -674,15 +672,6 @@ export function validateMetricDefaultsPayload(
     else if (n !== undefined && (n < 1 || n > 300))
       errors.push("Capacity full % must be between 1 and 300.");
     else if (n !== undefined) value.capacity_full_threshold_pct = n;
-  }
-
-  if ("check_in_due_day_of_week" in input) {
-    const n = readOptionalInteger(input.check_in_due_day_of_week);
-    if (n === "invalid")
-      errors.push("Check-in due day must be a whole number 0-6.");
-    else if (n !== undefined && (n < 0 || n > 6))
-      errors.push("Check-in due day must be 0 (Sunday) through 6 (Saturday).");
-    else if (n !== undefined) value.check_in_due_day_of_week = n;
   }
 
   if ("missed_checkin_warning_weeks" in input) {

@@ -26,12 +26,14 @@ const SETTINGS_REVALIDATE_PATHS = [
   "/leader",
 ] as const;
 
-// Check-in cadence keys (check_in_due_day_of_week, missed_checkin_warning_weeks,
-// check_in_due_offset_hours) are intentionally absent: their Settings form
-// fields were retired (#160, check-ins are a frozen surface per ADR 0002). The
-// underlying metric_defaults columns stay put and still feed the dormant overdue
-// calc; the reset RPC continues to manage them. The form simply no longer edits
-// them, so they must not be read from the submitted FormData.
+// Check-in cadence keys (missed_checkin_warning_weeks, check_in_due_offset_hours)
+// are intentionally absent: their Settings form fields were retired (#160,
+// check-ins are a frozen surface per ADR 0002). They now appear read-only under
+// the Advanced thresholds disclosure (#221, "with their current defaults"). The
+// dead check_in_due_day_of_week field was dropped from the surface entirely (#221);
+// its metric_defaults column stays in the DB (no migration) and the reset RPC
+// still manages it. The underlying columns stay put and still feed the dormant
+// overdue calc, so none of these keys may be read from the submitted FormData.
 const METRIC_DEFAULT_FIELDS = [
   "default_group_capacity",
   "capacity_warning_threshold_pct",
