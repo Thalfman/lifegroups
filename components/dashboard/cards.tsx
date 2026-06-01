@@ -7,12 +7,17 @@ export function MetricCard({
   meta,
   accent = P.terra,
   valueColor,
+  empty = false,
 }: {
   title: string;
   value: string;
   meta: string;
   accent?: string;
   valueColor?: string;
+  // When true, the value is a labelled empty state ("No data yet") rather than
+  // a metric — render it small, muted, and italic so it reads as "nothing to
+  // show" instead of a giant cryptic em dash.
+  empty?: boolean;
 }) {
   return (
     <div
@@ -50,15 +55,29 @@ export function MetricCard({
         {title}
       </div>
       <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 54,
-          fontWeight: 500,
-          letterSpacing: -1.8,
-          lineHeight: 0.95,
-          color: valueColor ?? accent,
-          fontVariantNumeric: "tabular-nums",
-        }}
+        style={
+          empty
+            ? {
+                fontFamily: fontBody,
+                fontSize: 18,
+                fontWeight: 600,
+                lineHeight: 1.2,
+                color: P.ink3,
+                fontStyle: "italic",
+                // Keep the empty card the same height as a numeric one so a
+                // grid mixing the two doesn't jump.
+                padding: "14px 0 17px",
+              }
+            : {
+                fontFamily: fontDisplay,
+                fontSize: 54,
+                fontWeight: 500,
+                letterSpacing: -1.8,
+                lineHeight: 0.95,
+                color: valueColor ?? accent,
+                fontVariantNumeric: "tabular-nums",
+              }
+        }
       >
         {value}
       </div>

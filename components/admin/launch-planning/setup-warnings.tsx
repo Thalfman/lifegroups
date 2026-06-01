@@ -16,11 +16,17 @@ export type LaunchPlanningSetupWarningsProps = {
   };
 };
 
+type NavLink = { href: string; label: string };
+
 type Warning = {
   key: string;
   title: string;
   detail: string;
-  link?: { href: string; label: string };
+  link?: NavLink;
+  // When a signal is fixed by visiting more than one surface (e.g. "no active
+  // groups" → add People, then create Groups), list them all. Takes precedence
+  // over the single `link`.
+  links?: NavLink[];
 };
 
 export function LaunchPlanningSetupWarnings({
@@ -28,6 +34,23 @@ export function LaunchPlanningSetupWarnings({
   errors,
 }: LaunchPlanningSetupWarningsProps) {
   const items: Warning[] = [];
+
+  // First-run pointer: with no active groups there is nothing real to forecast
+  // from, so the figures above are running purely on built-in starting
+  // assumptions. Point the operator at where the real inputs come from rather
+  // than leaving them on a forecast with no groups behind it.
+  if (inputs.active_group_count === 0) {
+    items.push({
+      key: "no_groups",
+      title: "No active groups yet",
+      detail:
+        "Launch planning forecasts from your active groups and their rosters. The figures above use built-in starting assumptions until then — add people, then create your first groups to see a real capacity picture.",
+      links: [
+        { href: "/admin/people", label: "Add people" },
+        { href: "/admin/groups", label: "Create groups" },
+      ],
+    });
+  }
 
   if (inputs.unknown_capacity_group_count > 0) {
     items.push({
@@ -169,22 +192,31 @@ export function LaunchPlanningSetupWarnings({
                 }}
               >
                 {w.detail}
-                {w.link ? (
-                  <>
-                    {" "}
-                    <Link
-                      href={w.link.href}
-                      style={{
-                        color: P.ink,
-                        textDecoration: "underline",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {w.link.label}
-                    </Link>
-                    .
-                  </>
-                ) : null}
+                {(() => {
+                  const links = w.links ?? (w.link ? [w.link] : []);
+                  if (links.length === 0) return null;
+                  return (
+                    <>
+                      {" "}
+                      {links.map((l, i) => (
+                        <span key={l.href}>
+                          {i > 0 ? " · " : null}
+                          <Link
+                            href={l.href}
+                            style={{
+                              color: P.ink,
+                              textDecoration: "underline",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {l.label}
+                          </Link>
+                        </span>
+                      ))}
+                      .
+                    </>
+                  );
+                })()}
               </p>
             </li>
           ))}

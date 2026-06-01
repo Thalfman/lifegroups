@@ -37,9 +37,14 @@ function riskTone(level: LaunchPlanningRiskLevel): {
   }
 }
 
-function fmtInt(n: number): string {
-  if (!Number.isFinite(n)) return "—";
-  return String(Math.round(n));
+const EMPTY_METRIC_LABEL = "No data yet";
+
+// A non-finite metric (e.g. a ratio computed from zero groups or zero
+// attendance) renders as a labelled empty state rather than a cryptic em dash
+// — see MetricCard's `empty` prop. Finite values format as a rounded integer.
+function metricValue(n: number): { value: string; empty: boolean } {
+  if (!Number.isFinite(n)) return { value: EMPTY_METRIC_LABEL, empty: true };
+  return { value: String(Math.round(n)), empty: false };
 }
 
 export function LaunchPlanningSummaryCards({
@@ -90,13 +95,13 @@ export function LaunchPlanningSummaryCards({
           />
           <MetricCard
             title="Recommended new groups"
-            value={fmtInt(outputs.recommended_new_groups)}
+            {...metricValue(outputs.recommended_new_groups)}
             meta="To meet projected demand with buffer."
             accent={P.sage}
           />
           <MetricCard
             title="Available seats"
-            value={fmtInt(inputs.available_seats)}
+            {...metricValue(inputs.available_seats)}
             meta={availableSeatsMeta}
           />
         </div>
@@ -119,7 +124,7 @@ export function LaunchPlanningSummaryCards({
         >
           <MetricCard
             title="Active groups"
-            value={fmtInt(inputs.active_group_count)}
+            {...metricValue(inputs.active_group_count)}
             meta={
               inputs.excluded_active_group_count > 0
                 ? `${inputs.excluded_active_group_count} excluded from capacity math.`
@@ -128,23 +133,23 @@ export function LaunchPlanningSummaryCards({
           />
           <MetricCard
             title="Effective capacity"
-            value={fmtInt(inputs.effective_total_capacity)}
+            {...metricValue(inputs.effective_total_capacity)}
             meta="Sum of effective capacities."
           />
           <MetricCard
             title="Current participants"
-            value={fmtInt(inputs.current_participants)}
+            {...metricValue(inputs.current_participants)}
             meta="Active memberships in non-excluded groups."
           />
           <MetricCard
             title="Projected demand"
-            value={fmtInt(outputs.projected_group_demand)}
+            {...metricValue(outputs.projected_group_demand)}
             meta="Attendance × target participation %."
             accent={P.sage}
           />
           <MetricCard
             title="Estimated new leaders"
-            value={fmtInt(outputs.estimated_new_leaders_needed)}
+            {...metricValue(outputs.estimated_new_leaders_needed)}
             meta="New groups × leaders per new group."
             accent={P.sage}
           />
