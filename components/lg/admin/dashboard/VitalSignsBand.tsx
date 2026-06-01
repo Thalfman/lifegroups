@@ -84,9 +84,11 @@ export function VitalSignsBand({ data }: { data: AdminDashboardData }) {
           value={capacityUsedPct == null ? "—" : `${capacityUsedPct}%`}
           empty={capacityUsedPct == null}
           meta={
-            capacityUsedPct == null
-              ? "No capacity configured"
-              : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
+            !planning
+              ? "Planning data unavailable"
+              : capacityUsedPct == null
+                ? "No capacity configured"
+                : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
           }
           accent={
             capacityUsedPct != null && capacityUsedPct >= 85
