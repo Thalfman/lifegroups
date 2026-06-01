@@ -92,7 +92,10 @@ export function ChurchAttendanceCard({
           {participationPct == null ? "—" : `${participationPct}%`}
         </span>
         <span style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2 }}>
-          {currentParticipants} in groups of {currentChurchAttendance} attending
+          {currentParticipants} in groups
+          {currentChurchAttendance > 0
+            ? ` of ${currentChurchAttendance} attending`
+            : ""}
         </span>
       </div>
       <p
@@ -128,6 +131,11 @@ export function ChurchAttendanceCard({
             min={0}
             max={100000}
             inputMode="numeric"
+            // Required: this is a forecast input with no "blank = clear"
+            // meaning. A blank submit would be dropped by readLaunchPlanningForm
+            // and rejected with a misleading "Nothing to change", so block it at
+            // the browser instead with a clear native prompt.
+            required
             defaultValue={currentChurchAttendance}
             style={fieldInputStyle}
           />
