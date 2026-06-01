@@ -219,12 +219,22 @@ export const requireOverShepherd = () =>
 // so the dormant leader pages still typecheck.
 export const requireLeader = () => requireRole([] as const);
 
-// Server-action variant: instead of redirecting, returns a typed result the
-// action can surface in the UI. Page routes still use requireAdmin() for
-// the redirect behavior.
-export async function requireAdminSession(): Promise<
-  { ok: true; session: CurrentSession } | { ok: false; error: string }
-> {
+export type SessionGuardResult =
+  | { ok: true; session: CurrentSession }
+  | { ok: false; error: string };
+
+// Server-action counterpart to requireRole: instead of redirecting, returns a
+// typed result the action surfaces in the UI. Page routes still use the
+// redirecting requireRole() family. One skeleton for every tier — the
+// anonymous / profile_missing / backend_error / inactive branches are
+// identical across guards, so the named guards below differ only in the
+// admitted roles and the denial copy. `label` keeps each guard's existing
+// log identity on a transient backend_error.
+async function requireRoleSession(
+  allowed: readonly UserRole[],
+  denyMessage: string,
+  label: string
+): Promise<SessionGuardResult> {
   const session = await getCurrentSession();
   switch (session.kind) {
     case "anonymous":
@@ -232,23 +242,26 @@ export async function requireAdminSession(): Promise<
     case "profile_missing":
       return { ok: false, error: "Your account isn't set up yet." };
     case "backend_error":
-      logGuardBackendError("requireAdminSession", session.stage);
+      logGuardBackendError(label, session.stage);
       return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
     case "authenticated": {
       if (session.profile.status !== "active")
         return { ok: false, error: "Your account isn't active." };
-      if (
-        session.profile.role !== "super_admin" &&
-        session.profile.role !== "ministry_admin"
-      )
-        return {
-          ok: false,
-          error: "Only ministry admins can perform that action.",
-        };
+      if (!allowed.includes(session.profile.role))
+        return { ok: false, error: denyMessage };
       return { ok: true, session };
     }
   }
 }
+
+// Server-action variant: admits super_admin + ministry_admin. Used by default
+// in runAdminWriteAction. Page routes still use requireAdmin() for redirects.
+export const requireAdminSession = (): Promise<SessionGuardResult> =>
+  requireRoleSession(
+    ["super_admin", "ministry_admin"],
+    "Only ministry admins can perform that action.",
+    "requireAdminSession"
+  );
 
 // Server-action variant for leader workflows. Returns the actor's
 // profile id + assigned group ids so callers can run a defense-in-depth
@@ -283,61 +296,23 @@ export async function requireLeaderActor(): Promise<
   }
 }
 
-// Server-action variant for the Over-Shepherd surface (#126). Mirrors
-// requireAdminSession() but admits only an active over_shepherd, so the
-// broad-note write never accepts an admin or leader caller. The coverage
-// boundary itself is enforced in the SECURITY DEFINER RPC
-// (auth_over_shepherd_covers); this gate only confirms the login tier.
-export async function requireOverShepherdSession(): Promise<
-  { ok: true; session: CurrentSession } | { ok: false; error: string }
-> {
-  const session = await getCurrentSession();
-  switch (session.kind) {
-    case "anonymous":
-      return { ok: false, error: "You need to sign in to do that." };
-    case "profile_missing":
-      return { ok: false, error: "Your account isn't set up yet." };
-    case "backend_error":
-      logGuardBackendError("requireOverShepherdSession", session.stage);
-      return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
-    case "authenticated": {
-      if (session.profile.status !== "active")
-        return { ok: false, error: "Your account isn't active." };
-      if (session.profile.role !== "over_shepherd")
-        return {
-          ok: false,
-          error: "Only an over-shepherd can perform that action.",
-        };
-      return { ok: true, session };
-    }
-  }
-}
+// Server-action variant for the Over-Shepherd surface (#126). Admits only an
+// active over_shepherd, so the broad-note write never accepts an admin or
+// leader caller. The coverage boundary itself is enforced in the SECURITY
+// DEFINER RPC (auth_over_shepherd_covers); this gate only confirms the tier.
+export const requireOverShepherdSession = (): Promise<SessionGuardResult> =>
+  requireRoleSession(
+    ["over_shepherd"],
+    "Only an over-shepherd can perform that action.",
+    "requireOverShepherdSession"
+  );
 
-// Server-action variant for the Phase 5A.3 super-admin-only console.
-// Mirrors requireAdminSession() above but tightens the role check to
-// super_admin alone, so role-management writes never accept a
-// ministry_admin caller.
-export async function requireSuperAdminSession(): Promise<
-  { ok: true; session: CurrentSession } | { ok: false; error: string }
-> {
-  const session = await getCurrentSession();
-  switch (session.kind) {
-    case "anonymous":
-      return { ok: false, error: "You need to sign in to do that." };
-    case "profile_missing":
-      return { ok: false, error: "Your account isn't set up yet." };
-    case "backend_error":
-      logGuardBackendError("requireSuperAdminSession", session.stage);
-      return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
-    case "authenticated": {
-      if (session.profile.status !== "active")
-        return { ok: false, error: "Your account isn't active." };
-      if (session.profile.role !== "super_admin")
-        return {
-          ok: false,
-          error: "Only the super admin can perform that action.",
-        };
-      return { ok: true, session };
-    }
-  }
-}
+// Server-action variant for the Phase 5A.3 super-admin-only console. Tightens
+// the role check to super_admin alone, so role-management writes never accept
+// a ministry_admin caller.
+export const requireSuperAdminSession = (): Promise<SessionGuardResult> =>
+  requireRoleSession(
+    ["super_admin"],
+    "Only the super admin can perform that action.",
+    "requireSuperAdminSession"
+  );
