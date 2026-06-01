@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { PastoralAppShell } from "@/components/pastoral/shell";
+import { LgAppShell } from "@/components/lg/shell/LgAppShell";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { EmptyState } from "@/components/dashboard/cards";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { LogBroadNoteForm } from "@/components/over-shepherd/log-broad-note-form";
 import { requireOverShepherd } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchOverShepherdCoverageForCaller,
@@ -45,8 +45,7 @@ export default async function OverShepherdShepherdPage({
   if (coverageResult.error) notFound();
   if (!isCoveredShepherd(coverageResult.data, profileId)) notFound();
 
-  const navItems = navItemsForRole(session.profile.role);
-  const currentUser = {
+  const user = {
     name: session.profile.full_name,
     email: session.profile.email,
     role: session.profile.role,
@@ -80,68 +79,67 @@ export default async function OverShepherdShepherdPage({
   const care = careResult.data;
 
   return (
-    <PastoralAppShell
-      navItems={navItems}
-      currentUser={currentUser}
-      eyebrow="Care history"
-      title={shepherdName}
-      contentMaxWidth={820}
-      headerSlot={
-        <div style={{ marginTop: 6 }}>
+    <LgAppShell user={user}>
+      <PageHeader
+        eyebrow="Care history"
+        title={shepherdName}
+        maxWidth={820}
+        actions={
           <Link
             href="/over-shepherd"
             style={{ color: P.ink3, fontFamily: fontBody, fontSize: 13 }}
           >
             ← My Leaders
           </Link>
-        </div>
-      }
-    >
-      <div style={{ display: "grid", gap: 18 }}>
-        <section
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            fontFamily: fontBody,
-            color: P.ink,
-          }}
-        >
-          <span>Current status:</span>
-          {care ? (
-            <ShepherdCareStatusBadge status={care.current_status} />
+        }
+      />
+      <PageBody maxWidth={820}>
+        <div style={{ display: "grid", gap: 18 }}>
+          <section
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              fontFamily: fontBody,
+              color: P.ink,
+            }}
+          >
+            <span>Current status:</span>
+            {care ? (
+              <ShepherdCareStatusBadge status={care.current_status} />
+            ) : (
+              <span style={{ color: P.ink3 }}>No care record yet</span>
+            )}
+            <span style={{ color: P.ink3 }}>
+              Last contact:{" "}
+              {care?.last_contact_at
+                ? formatIsoDateOr(care.last_contact_at, "—")
+                : "Never"}
+            </span>
+          </section>
+
+          <section
+            style={{
+              border: `1px solid ${P.line}`,
+              borderRadius: 12,
+              padding: 16,
+              background: P.bg,
+            }}
+          >
+            <LogBroadNoteForm shepherdProfileId={profileId} />
+          </section>
+
+          {interactions.length === 0 ? (
+            <EmptyState
+              title="No care interactions logged yet"
+              description="Care touches with this Leader will appear here."
+            />
           ) : (
-            <span style={{ color: P.ink3 }}>No care record yet</span>
+            <InteractionTimeline interactions={interactions} />
           )}
-          <span style={{ color: P.ink3 }}>
-            Last contact:{" "}
-            {care?.last_contact_at
-              ? formatIsoDateOr(care.last_contact_at, "—")
-              : "Never"}
-          </span>
-        </section>
-
-        <section
-          style={{
-            border: `1px solid ${P.line}`,
-            borderRadius: 12,
-            padding: 16,
-            background: P.bg,
-          }}
-        >
-          <LogBroadNoteForm shepherdProfileId={profileId} />
-        </section>
-
-        {interactions.length === 0 ? (
-          <EmptyState
-            title="No care interactions logged yet"
-            description="Care touches with this Leader will appear here."
-          />
-        ) : (
-          <InteractionTimeline interactions={interactions} />
-        )}
-      </div>
-    </PastoralAppShell>
+        </div>
+      </PageBody>
+    </LgAppShell>
   );
 }

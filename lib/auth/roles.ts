@@ -184,3 +184,26 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
   ];
   return groups;
 }
+
+// Sidebar nav groups for the lg shell (LgAppShell), resolved per role so the
+// shell can dress non-admin surfaces too. Admin roles keep the exact admin-OS
+// spine (adminNavGroups, unchanged), so the admin layout is byte-identical.
+// Over-Shepherd gets its own single-destination sidebar ("My Leaders"),
+// matching its focused navItemsForRole entry. Any other (no-access) role
+// resolves to an empty sidebar — those callers never reach an lg-shell surface
+// (they redirect to /unauthorized first), so this is only a safe fallback.
+export function navGroupsForRole(role: UserRole): AdminNavGroup[] {
+  if (isAdminRole(role)) return adminNavGroups(role);
+  if (isOverShepherdRole(role)) {
+    return [
+      {
+        group: "top",
+        label: "",
+        items: [
+          { href: "/over-shepherd", label: "My Leaders", icon: "people" },
+        ],
+      },
+    ];
+  }
+  return [];
+}

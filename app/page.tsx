@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { hubTilesForRole } from "@/lib/auth/hub-tiles";
-import { PastoralAppShell } from "@/components/pastoral/shell";
+import { LgAppShell } from "@/components/lg/shell/LgAppShell";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { HomeHub } from "@/components/home/home-hub";
 import { SignInScreen } from "@/components/sign-in/sign-in-screen";
 import {
@@ -29,19 +29,22 @@ export default async function HomePage({
         const tiles = hubTilesForRole(session.profile.role);
         if (tiles.length === 0) redirect("/unauthorized");
         return (
-          <PastoralAppShell
-            navItems={navItemsForRole(session.profile.role)}
-            currentUser={{
+          <LgAppShell
+            user={{
               name: session.profile.full_name,
               email: session.profile.email,
               role: session.profile.role,
             }}
-            eyebrow="Home"
-            title={`Welcome, ${session.profile.full_name}`}
-            lede="Jump into your work."
           >
-            <HomeHub tiles={tiles} />
-          </PastoralAppShell>
+            <PageHeader
+              eyebrow="Home"
+              title={`Welcome, ${session.profile.full_name}`}
+              lede="Jump into your work."
+            />
+            <PageBody>
+              <HomeHub tiles={tiles} />
+            </PageBody>
+          </LgAppShell>
         );
       }
       redirect("/unauthorized");

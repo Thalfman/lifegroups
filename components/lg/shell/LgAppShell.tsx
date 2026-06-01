@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { adminNavGroups, type UserRole } from "@/lib/auth/roles";
+import { navGroupsForRole, type UserRole } from "@/lib/auth/roles";
 import { Sidebar } from "./Sidebar";
 import { MobileSidebarTrigger } from "./MobileSidebar";
 import { TopBar } from "./TopBar";
@@ -12,7 +12,7 @@ export function LgAppShell({
   user: { name: string; email: string | null; role: UserRole };
   children: ReactNode;
 }) {
-  const navGroups = adminNavGroups(user.role);
+  const navGroups = navGroupsForRole(user.role);
   return (
     <div
       className="lg-m-noscrollx"
