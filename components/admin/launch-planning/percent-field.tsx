@@ -53,7 +53,10 @@ export function PercentField({
         inputMode="numeric"
         min={0}
         max={maxPercent}
-        step={1}
+        // "any" (not 1) so a stored fractional ratio like 0.625 — which
+        // ratioToPercent renders as 62.5 — still passes the browser's step
+        // constraint and can be saved without being force-rounded first.
+        step="any"
         required={required}
         value={percent}
         onChange={(e) => setPercent(e.target.value)}
