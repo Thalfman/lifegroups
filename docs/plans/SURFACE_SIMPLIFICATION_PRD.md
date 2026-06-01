@@ -210,8 +210,10 @@ layer is sound, which is why Group health’s raw styling is left for a separate
 The pass is complete when each flagged surface satisfies the principle, measured by the four tests.
 
 No surface records a data series that no surface reads: church attendance is a single editable
-number, used both for the forecast and the percentage headline, with no `church_attendance_snapshots`
-table and no duplicate assumption field. No surface asks for precision a default could supply: the
+number, used both for the forecast and the percentage headline. (Per owner sign-off, the
+`church_attendance_snapshots` table and its RPC are retained for history but are no longer read by the
+forecast or headline, which read only the single `current_church_attendance` assumption value.)
+No surface asks for precision a default could supply: the
 forecast and both scenario forms present every ratio as a whole-number percentage and default the
 rest, group capacity defaults to the ministry value rather than “Unknown”, and the standing test,
 that a non-technical user can finish each surface without a glossary, holds. No surface shows
@@ -228,16 +230,17 @@ navigation, surface count, frozen schema and routes, shared primitives, and visu
 -----
 
 *Status legend:* 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a Julian or Tom
-sign-off before build. Each requirement is sized to become one GitHub issue or a small epic, and
+sign-off before build · ✅ a 🔴 gate that has since been signed off and is cleared to build (see the
+Sign-off section). Each requirement is sized to become one GitHub issue or a small epic, and
 every 🔴 item carries a recommended default so sign-off is a yes, not fresh analysis.
 
 ## L: Launch planning
 
-**L1: Adopt progressive disclosure, glance then detail. 🔴**
+**L1: Adopt progressive disclosure, glance then detail. ✅ (was 🔴; signed off 2026-06-01)**
 First load shows only the at-a-glance capacity answer and one primary action; the rest moves behind
 named tabs. Recommended default tabs: Overview, Forecast, Scenarios, and Groups and multiplication.
 Evidence: `components/admin/launch-planning/summary-cards.tsx`,
-`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). *Sign-off: confirm the four tabs.*
+`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). *Sign-off: ✅ four tabs confirmed (2026-06-01).*
 
 **L2: Name one primary action. 🟡**
 Recommended default: **Plan a launch**, creating a scenario from current inputs via
@@ -251,17 +254,36 @@ empty state, and point to People or Groups when there are no active groups. Evid
 `app/(protected)/admin/launch-planning/page.tsx` (lines 383 to 398),
 `components/admin/launch-planning/summary-cards.tsx`.
 
-**L4: Replace the church-attendance time series with one editable estimate. 🔴 Structural, migration.**
+**L4: Replace the church-attendance time series with one editable estimate. ✅ (was 🔴; signed off 2026-06-01) Structural, one-time data backfill, no schema migration.**
 Make `current_church_attendance` in `launch_planning_assumptions` the single source of truth for both
 the forecast and the percentage headline, and reduce the church-attendance card to one value with an
-edit control. Migration: drop the `church_attendance_snapshots` table and the
-`admin_record_church_attendance_snapshot` RPC, seeding the number from the latest snapshot first, then
-discarding history. **ADR 0008 intersection: none**; the table is outside the frozen `shepherd_care_*`
-surface. Evidence: `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
+edit control. **Owner sign-off (2026-06-01): single-number surface approved, but the
+`church_attendance_snapshots` table and the `admin_record_church_attendance_snapshot` RPC are KEPT and
+history is retained — they simply stop being what the forecast and headline read from.** This makes L4 a
+surface + source-of-truth change with **no schema migration and no table drop**, but it does carry one
+**one-time data backfill** (seeding an existing settings value), described next. **Preserve the existing
+denominator:** today the percentage headline divides current participants by the *latest snapshot's*
+attendance count (`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
+`decodeLaunchPlanningAssumptions` falls back to the built-in default (100) when the assumption was never
+set. **Backfill rule — key off snapshot presence, not "unset".** The assumptions row is seeded with
+`current_church_attendance: 100` on first run (`20260518190000_phase_lp1_launch_planning.sql`), so an
+"unset" value is indistinguishable from a real 100; do **not** gate the backfill on a missing key. Instead,
+at switch-over, for every church that has **at least one `church_attendance_snapshots` row**, set
+`current_church_attendance` to its latest snapshot's `attendance_count` — that count *is* the denominator
+the headline shows today, so this preserves the displayed percentage exactly. Churches with no snapshots
+keep their current assumption (the headline shows no percentage for them today regardless). **Audit the
+backfill:** writes to `launch_planning_assumptions` are audited — `admin_update_launch_planning_assumptions`
+inserts an `audit_events` row (`admin.update_launch_planning_assumptions`) in the same transaction. The
+backfill must preserve that trail: route it through that RPC (or insert the equivalent `audit_events` row in
+the same transaction), not a raw `UPDATE`. Thereafter the forecast and headline read **only**
+`current_church_attendance` (no read-time dependency on the snapshots table), keeping the
+single-source-of-truth rule intact. **ADR 0008 intersection: none**; the table is
+outside the frozen `shepherd_care_*` surface. Evidence:
+`supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
-*Sign-off: confirm the single-number model and that history can be discarded.*
+*Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept); denominator preserved via a one-time backfill.*
 
-**L5: Trim the forecast and scenario inputs and state them as percentages. 🔴 Structural at the UI boundary.**
+**L5: Trim the forecast and scenario inputs and state them as percentages. ✅ (was 🔴; signed off 2026-06-01) Structural at the UI boundary.**
 Reduce the default forecast to the two inputs that need a ministry-specific answer, current church
 attendance from L4 and target group participation shown as a percentage such as 60 percent, and default
 the rest silently: expected growth to zero, average group size to the default capacity, launch buffer to
@@ -270,7 +292,7 @@ which repeats the decimal inputs. Keep storage as a ratio so no schema migration
 the UI boundary using the existing `pctValue` helper and its inverse. Evidence:
 `components/admin/launch-planning/assumptions-form.tsx`,
 `components/admin/launch-planning/scenario-form.tsx` (the duplicate decimal inputs),
-`lib/admin/launch-planning.ts`. *Sign-off: confirm the two required inputs and the silent defaults.*
+`lib/admin/launch-planning.ts`. *Sign-off: ✅ the two required inputs and the silent defaults confirmed (2026-06-01).*
 
 ## F: Follow-ups
 
@@ -313,7 +335,7 @@ default: ask “Which weeks does it meet?” with options worded as **1st and 3r
 migration; the stored value is unchanged. Evidence: `components/admin/forms/group-create-form.tsx`,
 `components/admin/forms/group-edit-form.tsx`. *Sign-off: confirm the replacement wording.*
 
-**G3: Default group capacity instead of leaving it Unknown. 🔴**
+**G3: Default group capacity instead of leaving it Unknown. ✅ (was 🔴; signed off 2026-06-01)**
 Default a new group’s capacity to the ministry default capacity rather than “Unknown”, so an operator sets
 a per-group number only when a group differs. Recommended default: seed the capacity field and the capacity
 math from `default_group_capacity`, and reserve “Unknown” for the rare group with no sensible capacity.
@@ -321,7 +343,7 @@ This changes how untagged groups count in the capacity totals, which is why it i
 change is required; it is a default and a display change. Evidence:
 `app/(protected)/admin/groups/page.tsx` (“Capacity stays Unknown”),
 `components/admin/forms/group-create-form.tsx`, `lib/admin/metrics.ts` (`default_group_capacity`).
-*Sign-off: confirm groups default to the ministry capacity and that this feeds the capacity math.*
+*Sign-off: ✅ confirmed (2026-06-01) — groups default to the ministry capacity and this feeds the capacity math.*
 
 **G4: Collapse the create form to its essentials. 🟡**
 Show only the fields a group needs first, recommended as name and meeting day and time, and move audience,
@@ -330,13 +352,13 @@ layout change, no schema impact. Evidence: `components/admin/forms/group-create-
 
 ## S: Settings
 
-**S1: Trim Settings to what an operator changes, default the rest, remove the dead field. 🔴**
+**S1: Trim Settings to what an operator changes, default the rest, remove the dead field. ✅ (was 🔴; signed off 2026-06-01)**
 Keep care cadence, the two stale-day windows, and the default group capacity in the primary path; move the
 capacity and attendance thresholds, the check-in offset, and the missed-check-in window into an “Advanced
 thresholds” disclosure with their current defaults; demote per-group overrides and the active-overrides list
 into a collapsed section; and remove the dead `check_in_due_day_of_week` field. No migration for the trim;
 dropping the dead column is an optional follow-up. Evidence: `components/admin/settings-shell.tsx`,
-`lib/admin/metrics.ts`. *Sign-off: confirm the primary-path settings and the field removal.*
+`lib/admin/metrics.ts`. *Sign-off: ✅ primary-path settings and the field removal confirmed (2026-06-01).*
 
 ## H: Group health
 
@@ -393,8 +415,10 @@ Slice by risk, lowest first, so the early issues are pure wins and the gate land
    reversible.
 1. **G4 then G3**: collapse the Groups create form, then default capacity. G3 is sequenced after the layout
    work and is the one sign-off-gated Groups item.
-1. **L3 then L4**: make Launch planning useful on first run, then collapse church attendance. L4 carries the
-   one schema migration in this PRD.
+1. **L3 then L4**: make Launch planning useful on first run, then collapse church attendance. Per the
+   2026-06-01 sign-off, L4 retains the `church_attendance_snapshots` history and carries **no schema
+   migration and no table drop** — its only data change is a one-time backfill seeding
+   `current_church_attendance` from the latest snapshot.
 1. **L5**: trim and re-unit the forecast and scenario inputs on the single church-attendance number.
 1. **S1**: trim Settings.
 1. **L1 then L2**: the progressive-disclosure redesign and its primary action, sequenced last as the largest
@@ -416,8 +440,10 @@ primitive, it must preserve Super Admin’s current rendering and behavior. Evid
 Allowing structural change widens what counts as in scope, so the requirements were re-checked against the
 exclusions, and every item stays within them. No requirement changes the surface count or the navigation; L1
 and G4 redistribute a surface’s contents but add no destination. No requirement touches Super Admin, and the
-one realistic shared-primitive risk is named and fenced above. The only schema change, L4, is outside the
-`shepherd_care_*` freeze; L5, C1, G1, G2, G3, S1, and H1 require no migration. No requirement alters a shared
+one realistic shared-primitive risk is named and fenced above. Per the 2026-06-01 sign-off, L4 now retains
+the `church_attendance_snapshots` history, so this PRD ships **no schema migration and no table drop**; L4's
+only data change is a one-time backfill seeding `current_church_attendance` from the latest snapshot, and
+L5, C1, G1, G2, G3, S1, and H1 require no data change at all. No requirement alters a shared
 primitive’s behavior or the visual layer. The widened scope therefore reaches the simpler models the owner
 asked for without crossing any line the consolidation pass or the ADRs drew.
 
@@ -429,24 +455,27 @@ where L3’s empty-state fix reaches them. Group health renders in raw utility s
 which is a visual-layer matter and is out of scope here. Group health’s placeholder question wordings are the
 intended ADR 0007 fallback, not unfinished UI.
 
-## Sign-off needed before the 🔴 items build
+## Sign-off — ✅ resolved 2026-06-01
 
-Five items carry a recommended default and need only a yes to proceed.
+All five 🔴 items were signed off by the owner. Four were approved as recommended; L4 was approved with one
+change (history retained). Issues #221–#226 are updated and moved to `ready-for-agent`.
 
-**L1**: redesign Launch planning to show the at-a-glance answer plus one primary action, the rest in the four
+**L1 ✅**: redesign Launch planning to show the at-a-glance answer plus one primary action, the rest in the four
 tabs Overview, Forecast, Scenarios, and Groups and multiplication; the paired action under L2 is Plan a launch,
 fallback Save forecast.
 
-**L4**: make a single editable `current_church_attendance` the source of truth for the forecast and the headline,
-drop the `church_attendance_snapshots` table and its RPC, seed from the latest snapshot, and discard history.
+**L4 ✅ (changed)**: make a single editable `current_church_attendance` the source of truth for the forecast and
+the headline. **The `church_attendance_snapshots` table and its RPC are KEPT (history retained) — they are no
+longer read by the forecast/headline. No drop, no schema migration; a one-time backfill seeds
+`current_church_attendance` from the latest snapshot so existing participation percentages are preserved.**
 
-**L5**: require only current church attendance and target group participation by default, shown as percentages,
+**L5 ✅**: require only current church attendance and target group participation by default, shown as percentages,
 default the rest, and apply the same conversion to the scenario form.
 
-**G3**: default a new group’s capacity to the ministry default capacity rather than “Unknown”, and feed that
+**G3 ✅**: default a new group’s capacity to the ministry default capacity rather than “Unknown”, and feed that
 default into the capacity math.
 
-**S1**: keep care cadence and default capacity in the Settings primary path, demote the rest, and remove the dead
+**S1 ✅**: keep care cadence and default capacity in the Settings primary path, demote the rest, and remove the dead
 `check_in_due_day_of_week` field.
 
 Reversible items with owner-facing wording to confirm in the same pass, not separately gated: G1’s labels Audience,
