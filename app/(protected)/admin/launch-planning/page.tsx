@@ -44,10 +44,14 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { LaunchPlanningAssumptionsForm } from "@/components/admin/launch-planning/assumptions-form";
-import { LaunchPlanningSummaryCards } from "@/components/admin/launch-planning/summary-cards";
+import {
+  LaunchPlanningAnswerCards,
+  LaunchPlanningBreakdownCards,
+} from "@/components/admin/launch-planning/summary-cards";
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
 import { ScenariosPanel } from "@/components/admin/launch-planning/scenarios-panel";
+import { LaunchPlanningShell } from "@/components/admin/launch-planning/launch-planning-shell";
 import { ChurchAttendanceCard } from "@/components/admin/launch-planning/church-attendance-card";
 import { CapacityBoard } from "@/components/admin/capacity-board/capacity-board";
 import {
@@ -354,6 +358,163 @@ export default async function AdminLaunchPlanningPage() {
   await requireAdmin();
   const data = await loadData();
 
+  // The assumptions banner / note that sits atop the glance hero. The
+  // "Adjust forecast" affordance moved into the shell (it switches tabs), so
+  // the note here no longer carries a link.
+  const notice = data.assumptionsError ? (
+    <ErrorBanner>
+      Saved assumptions could not be loaded. Showing built-in defaults:{" "}
+      {data.assumptionsError}
+    </ErrorBanner>
+  ) : (
+    <div
+      style={{
+        margin: 0,
+        fontFamily: fontBody,
+        fontSize: 13,
+        color: P.ink2,
+        background: P.bgDeep,
+        borderRadius: 8,
+        padding: "10px 14px",
+      }}
+    >
+      {data.assumptionsAvailable
+        ? "This forecast uses your saved assumptions."
+        : "This forecast is live now on Fox Valley's built-in starting assumptions — tune it to your numbers any time."}
+    </div>
+  );
+
+  // ----- Tab panels (progressive disclosure, #225). Each is plain server
+  // markup handed to the client shell; only the active one is visible. -----
+
+  const overviewPanel = (
+    <div style={{ display: "grid", gap: 24 }}>
+      <LaunchPlanningBreakdownCards
+        inputs={data.inputs}
+        outputs={data.outputs}
+      />
+
+      {data.pipelineError ? (
+        <ErrorBanner>
+          The leader pipeline could not be loaded, so the staffing supply below
+          may understate who is ready. {data.pipelineError}
+        </ErrorBanner>
+      ) : (
+        <StaffingSupplyCard
+          forecast={data.staffingForecast}
+          inputs={data.inputs}
+          sourceLabel={data.staffingSourceLabel}
+        />
+      )}
+
+      <ChurchAttendanceCard
+        currentChurchAttendance={data.assumptions.current_church_attendance}
+        currentParticipants={data.inputs.current_participants}
+        participationPct={data.participationPct}
+      />
+
+      <LaunchPlanningSetupWarnings
+        inputs={data.inputs}
+        errors={data.inputsBundle.errors}
+      />
+    </div>
+  );
+
+  const forecastPanel = (
+    <div
+      className="lg-m-grid-stack"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+        gap: 20,
+        alignItems: "start",
+      }}
+    >
+      <section
+        id="lp-assumptions"
+        style={{
+          background: P.surface,
+          border: `1px solid ${P.line}`,
+          borderRadius: 14,
+          padding: "22px 24px",
+          scrollMarginTop: 16,
+        }}
+      >
+        <header style={{ marginBottom: 16 }}>
+          <SectionEyebrow>Forecast</SectionEyebrow>
+          <h2
+            style={{
+              margin: "4px 0 0",
+              fontFamily: fontBody,
+              fontSize: 18,
+              color: P.ink,
+              fontWeight: 600,
+            }}
+          >
+            Forecast inputs
+          </h2>
+        </header>
+        <LaunchPlanningAssumptionsForm assumptions={data.assumptions} />
+      </section>
+
+      <LaunchPlanningResultsPanel
+        assumptions={data.assumptions}
+        inputs={data.inputs}
+        outputs={data.outputs}
+      />
+    </div>
+  );
+
+  const scenariosPanel = (
+    <div style={{ display: "grid", gap: 24 }}>
+      {data.scenariosError ? (
+        <ErrorBanner>
+          Scenarios could not be loaded: {data.scenariosError}
+        </ErrorBanner>
+      ) : null}
+
+      <ScenariosPanel
+        scenarios={data.activeScenarios}
+        baseline={data.assumptions}
+        inputs={data.inputs}
+        baselineOutputs={data.outputs}
+        comparison={data.comparison}
+      />
+    </div>
+  );
+
+  const groupsPanel = (
+    <div style={{ display: "grid", gap: 24 }}>
+      {/* Capacity board (merged-in). It owns the single "Suggested to multiply"
+          panel — that panel is derived from capacity data, not the leader
+          pipeline, so it stays visible even when the pipeline read (which only
+          gates the multiplication planner below) fails. */}
+      {data.capacityError ? (
+        <ErrorBanner>
+          The capacity board could not be loaded: {data.capacityError}
+        </ErrorBanner>
+      ) : (
+        <CapacityBoard model={data.capacityModel} />
+      )}
+
+      {/* Multiplication planner (merged-in). Suggestions render in the capacity
+          section above, so they are suppressed here. */}
+      {data.multiplicationError ? (
+        <ErrorBanner>
+          The multiplication pipeline could not be loaded:{" "}
+          {data.multiplicationError}
+        </ErrorBanner>
+      ) : (
+        <MultiplicationPlanner
+          segments={data.segments}
+          availableGroups={data.availableGroups}
+          apprenticesByGroup={data.apprenticesByGroup}
+          suggestions={[]}
+        />
+      )}
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -364,162 +525,20 @@ export default async function AdminLaunchPlanningPage() {
       />
       <PageBody>
         <div style={{ display: "grid", gap: 24 }}>
-          {data.assumptionsError ? (
-            <ErrorBanner>
-              Saved assumptions could not be loaded. Showing built-in defaults:{" "}
-              {data.assumptionsError}
-            </ErrorBanner>
-          ) : null}
-
-          {!data.assumptionsError ? (
-            <div
-              style={{
-                margin: 0,
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                background: P.bgDeep,
-                borderRadius: 8,
-                padding: "10px 14px",
-              }}
-            >
-              <span>
-                {data.assumptionsAvailable
-                  ? "This forecast uses your saved assumptions."
-                  : "This forecast is live now on Fox Valley's built-in starting assumptions — tune it to your numbers any time."}
-              </span>
-              <a
-                href="#lp-assumptions"
-                style={{
-                  color: P.ink,
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Adjust forecast ↓
-              </a>
-            </div>
-          ) : null}
-
-          <LaunchPlanningSummaryCards
-            inputs={data.inputs}
-            outputs={data.outputs}
-          />
-
-          {data.pipelineError ? (
-            <ErrorBanner>
-              The leader pipeline could not be loaded, so the staffing supply
-              below may understate who is ready. {data.pipelineError}
-            </ErrorBanner>
-          ) : (
-            <StaffingSupplyCard
-              forecast={data.staffingForecast}
-              inputs={data.inputs}
-              sourceLabel={data.staffingSourceLabel}
-            />
-          )}
-
-          <ChurchAttendanceCard
-            currentChurchAttendance={data.assumptions.current_church_attendance}
-            currentParticipants={data.inputs.current_participants}
-            participationPct={data.participationPct}
-          />
-
-          <LaunchPlanningSetupWarnings
-            inputs={data.inputs}
-            errors={data.inputsBundle.errors}
-          />
-
-          <div
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-              gap: 20,
-              alignItems: "start",
-            }}
-          >
-            <section
-              id="lp-assumptions"
-              style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderRadius: 14,
-                padding: "22px 24px",
-                scrollMarginTop: 16,
-              }}
-            >
-              <header style={{ marginBottom: 16 }}>
-                <SectionEyebrow>Assumptions</SectionEyebrow>
-                <h2
-                  style={{
-                    margin: "4px 0 0",
-                    fontFamily: fontBody,
-                    fontSize: 18,
-                    color: P.ink,
-                    fontWeight: 600,
-                  }}
-                >
-                  Forecast inputs
-                </h2>
-              </header>
-              <LaunchPlanningAssumptionsForm assumptions={data.assumptions} />
-            </section>
-
-            <LaunchPlanningResultsPanel
-              assumptions={data.assumptions}
-              inputs={data.inputs}
-              outputs={data.outputs}
-            />
-          </div>
-
-          {data.scenariosError ? (
-            <ErrorBanner>
-              Scenarios could not be loaded: {data.scenariosError}
-            </ErrorBanner>
-          ) : null}
-
-          <ScenariosPanel
-            scenarios={data.activeScenarios}
+          <LaunchPlanningShell
             baseline={data.assumptions}
-            inputs={data.inputs}
-            baselineOutputs={data.outputs}
-            comparison={data.comparison}
+            notice={notice}
+            answer={
+              <LaunchPlanningAnswerCards
+                inputs={data.inputs}
+                outputs={data.outputs}
+              />
+            }
+            overview={overviewPanel}
+            forecast={forecastPanel}
+            scenarios={scenariosPanel}
+            groups={groupsPanel}
           />
-
-          {/* Capacity board (merged-in). It owns the single "Suggested to
-              multiply" panel — that panel is derived from capacity data, not the
-              leader pipeline, so it stays visible even when the pipeline read
-              (which only gates the multiplication planner below) fails. */}
-          {data.capacityError ? (
-            <ErrorBanner>
-              The capacity board could not be loaded: {data.capacityError}
-            </ErrorBanner>
-          ) : (
-            <CapacityBoard model={data.capacityModel} />
-          )}
-
-          {/* Multiplication planner (merged-in). Suggestions render in the
-              capacity section above, so they are suppressed here. */}
-          {data.multiplicationError ? (
-            <ErrorBanner>
-              The multiplication pipeline could not be loaded:{" "}
-              {data.multiplicationError}
-            </ErrorBanner>
-          ) : (
-            <MultiplicationPlanner
-              segments={data.segments}
-              availableGroups={data.availableGroups}
-              apprenticesByGroup={data.apprenticesByGroup}
-              suggestions={[]}
-            />
-          )}
 
           <nav
             aria-label="Related admin surfaces"

@@ -13,6 +13,8 @@ import {
   findCurrentScenario,
   nextSeasonAnchorIso,
   participationPct,
+  percentToRatio,
+  ratioToPercent,
   redactNotesForAudit,
   scenarioTargetDateIso,
   type LaunchPlanningAssumptions,
@@ -936,5 +938,47 @@ describe("buildStaffingForecast (the walkthrough number)", () => {
     expect(f.demand).toBe(6);
     expect(f.supply).toBe(1);
     expect(f.shortfall).toBe(5);
+  });
+});
+
+describe("L5 (#224) percent ⇄ ratio helpers", () => {
+  it("ratioToPercent renders a ratio as a whole-number percentage", () => {
+    expect(ratioToPercent(0.6)).toBe("60");
+    expect(ratioToPercent(0.15)).toBe("15");
+    expect(ratioToPercent(0)).toBe("0");
+    expect(ratioToPercent(1)).toBe("100");
+    expect(ratioToPercent(0.95)).toBe("95");
+  });
+
+  it("ratioToPercent preserves a fractional percentage so it round-trips", () => {
+    expect(ratioToPercent(0.625)).toBe("62.5");
+  });
+
+  it("percentToRatio converts a percent string back to a ratio string", () => {
+    expect(percentToRatio("60")).toBe("0.6");
+    expect(percentToRatio("15")).toBe("0.15");
+    expect(percentToRatio("95")).toBe("0.95");
+    expect(percentToRatio("100")).toBe("1");
+    expect(percentToRatio("62.5")).toBe("0.625");
+  });
+
+  it("percentToRatio keeps a blank blank (preserves leave-unchanged/required)", () => {
+    expect(percentToRatio("")).toBe("");
+    expect(percentToRatio("   ")).toBe("");
+  });
+
+  it("percentToRatio passes a non-numeric entry through for the validator to reject", () => {
+    expect(percentToRatio("abc")).toBe("abc");
+  });
+
+  it("round-trips every whole percent the old decimal step (0.01) could store", () => {
+    for (let pct = 0; pct <= 100; pct += 1) {
+      const ratio = percentToRatio(String(pct));
+      expect(ratioToPercent(Number(ratio))).toBe(String(pct));
+    }
+  });
+
+  it("defaults expected_growth to 0 so the trimmed forecast assumes no growth", () => {
+    expect(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth).toBe(0);
   });
 });

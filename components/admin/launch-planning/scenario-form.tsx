@@ -9,6 +9,7 @@ import {
   adminUpdateLaunchPlanningScenario,
 } from "@/app/(protected)/admin/launch-planning/scenario-actions";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { PercentField } from "@/components/admin/launch-planning/percent-field";
 import {
   errorTextStyle,
   fieldInputStyle,
@@ -31,13 +32,6 @@ const hintStyle = {
   margin: "4px 0 0",
   lineHeight: 1.4,
 } as const;
-
-function pctValue(ratio: number): string {
-  const pct = ratio * 100;
-  return Number.isInteger(pct)
-    ? String(pct)
-    : pct.toFixed(1).replace(/\.0$/, "");
-}
 
 // Shared assumption-field grid. Used by both create and edit forms so the
 // LP.1 baseline form and the LP.2 scenario form expose the same set of
@@ -123,30 +117,15 @@ function AssumptionFields({
           <p style={hintStyle}>Optional. Used to suggest launch timing.</p>
         </div>
 
-        <div>
-          <label
-            htmlFor={fieldId("target_group_participation_pct")}
-            style={fieldLabelStyle}
-          >
-            Target group participation %
-          </label>
-          <input
-            id={fieldId("target_group_participation_pct")}
-            name="target_group_participation_pct"
-            type="number"
-            required
-            min={0}
-            max={1}
-            step={0.01}
-            inputMode="decimal"
-            defaultValue={defaults.target_group_participation_pct}
-            style={fieldInputStyle}
-          />
-          <p style={hintStyle}>
-            Decimal 0–1 (e.g. 0.6 = 60% of attendees in a group). Currently{" "}
-            {pctValue(defaults.target_group_participation_pct)}%.
-          </p>
-        </div>
+        <PercentField
+          id={fieldId("target_group_participation_pct")}
+          name="target_group_participation_pct"
+          label="Target group participation %"
+          defaultRatio={defaults.target_group_participation_pct}
+          required
+          maxPercent={100}
+          hint="Share of attendees in a group — e.g. 60 means 60%."
+        />
 
         <div>
           <label
@@ -171,27 +150,15 @@ function AssumptionFields({
           </p>
         </div>
 
-        <div>
-          <label htmlFor={fieldId("launch_buffer_pct")} style={fieldLabelStyle}>
-            Launch buffer %
-          </label>
-          <input
-            id={fieldId("launch_buffer_pct")}
-            name="launch_buffer_pct"
-            type="number"
-            required
-            min={0}
-            max={0.95}
-            step={0.01}
-            inputMode="decimal"
-            defaultValue={defaults.launch_buffer_pct}
-            style={fieldInputStyle}
-          />
-          <p style={hintStyle}>
-            Decimal 0–0.95. Currently {pctValue(defaults.launch_buffer_pct)}%
-            spare-capacity headroom.
-          </p>
-        </div>
+        <PercentField
+          id={fieldId("launch_buffer_pct")}
+          name="launch_buffer_pct"
+          label="Launch buffer %"
+          defaultRatio={defaults.launch_buffer_pct}
+          required
+          maxPercent={95}
+          hint="Spare-capacity headroom above projected demand — e.g. 15 reserves 15%. Max 95."
+        />
 
         <div>
           <label
@@ -310,9 +277,14 @@ function AssumptionFields({
 export function CreateScenarioForm({
   defaults,
   onClose,
+  // Scopes this form's input ids so a second create form (e.g. the "Plan a
+  // launch" hero action) can render alongside the Scenarios-tab one without
+  // colliding ids / breaking label→input targeting.
+  idPrefix = "create_scenario",
 }: {
   defaults: LaunchPlanningAssumptions;
   onClose?: () => void;
+  idPrefix?: string;
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateLaunchPlanningScenario,
@@ -336,11 +308,11 @@ export function CreateScenarioForm({
 
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
-          <label htmlFor="scenario_name" style={fieldLabelStyle}>
+          <label htmlFor={`${idPrefix}__name`} style={fieldLabelStyle}>
             Scenario name
           </label>
           <input
-            id="scenario_name"
+            id={`${idPrefix}__name`}
             name="name"
             type="text"
             required
@@ -352,11 +324,11 @@ export function CreateScenarioForm({
         </div>
 
         <div>
-          <label htmlFor="scenario_description" style={fieldLabelStyle}>
+          <label htmlFor={`${idPrefix}__description`} style={fieldLabelStyle}>
             Description (optional)
           </label>
           <input
-            id="scenario_description"
+            id={`${idPrefix}__description`}
             name="description"
             type="text"
             maxLength={1000}
@@ -367,7 +339,7 @@ export function CreateScenarioForm({
         </div>
       </div>
 
-      <AssumptionFields defaults={defaults} idPrefix="create_scenario" />
+      <AssumptionFields defaults={defaults} idPrefix={idPrefix} />
 
       <label
         style={{
