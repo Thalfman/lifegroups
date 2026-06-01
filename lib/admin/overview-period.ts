@@ -5,7 +5,7 @@
 // Only the activity band is period-scoped — the vital-signs and domain cards
 // are point-in-time (current state) and ignore the grain.
 
-import { isoWeekStart } from "@/lib/shared/church-time";
+import { churchTodayIso, isoWeekStart } from "@/lib/shared/church-time";
 
 export type OverviewGrain = "all" | "year" | "quarter" | "month" | "week";
 
@@ -78,9 +78,14 @@ export function overviewPeriodRange(
   grain: OverviewGrain,
   now: Date = new Date()
 ): OverviewPeriodRange {
-  const year = now.getUTCFullYear();
-  const monthIndex = now.getUTCMonth(); // 0-based
-  const todayIso = now.toISOString().slice(0, 10);
+  // Anchor every boundary to the church-local calendar date (America/Chicago),
+  // matching isoWeekStart and the rest of the dashboard. Deriving year/month
+  // from the church-local YYYY-MM-DD string avoids the UTC-vs-church rollover
+  // window dropping/advancing a day (e.g. 02:00Z is still the previous day in
+  // Chicago).
+  const todayIso = churchTodayIso(now);
+  const year = Number(todayIso.slice(0, 4));
+  const monthIndex = Number(todayIso.slice(5, 7)) - 1; // 0-based
   const toExclusiveIso = addDaysIso(todayIso, 1);
 
   let fromIso: string | null;

@@ -65,7 +65,10 @@ export function LeaderCareOverviewCard({
             valueColor={summary.unassignedCoverage > 0 ? P.mustard : P.ink}
           />
         ) : null}
-        <StatTile label="Over-shepherds" value={summary.activeOverShepherds} />
+        <StatTile
+          label="Over-shepherds"
+          value={summary.activeOverShepherds ?? "—"}
+        />
       </StatTileGrid>
       <p
         style={{

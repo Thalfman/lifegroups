@@ -24,7 +24,8 @@ export function MiniBarRow({
   total: number;
   tone?: string;
 }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  // Clamp to 100 so a stray count > total can never overflow the track.
+  const pct = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 0;
   return (
     <div
       style={{

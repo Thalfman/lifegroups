@@ -144,11 +144,11 @@ function buildShepherdCareSummary(
   todayIso: string
 ): ShepherdCareDashboardSummary {
   // Active over-shepherds (coaches) — the list is fetched with archived rows
-  // included, so filter to active. Available even when the care directory read
-  // fails, so the coverage-capacity figure can still render.
-  const activeOverShepherds = (overShepherdsRes.data ?? []).filter(
-    (o) => o.active
-  ).length;
+  // included, so filter to active. null when that read failed, so a transient
+  // error renders as "—" rather than a misleading real "0 coverage capacity".
+  const activeOverShepherds = overShepherdsRes.error
+    ? null
+    : (overShepherdsRes.data ?? []).filter((o) => o.active).length;
   if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
     return {
       totalActiveShepherds: 0,

@@ -3,15 +3,32 @@ import { P, fontBody } from "@/lib/pastoral";
 import type { HealthSummary } from "@/lib/dashboard/types";
 import { MiniBarRow, OpenLink } from "./overview-primitives";
 
-// Group-health pulse distribution (healthy / watch / needs follow-up). This
-// data was already fetched for the landing but never rendered; the executive
-// overview surfaces it. Links to the deep Group health surface.
+// Group-health pulse distribution (healthy / watch / needs follow-up).
+//
+// The health buckets partition every active group, but the watch /
+// needs_follow_up buckets take precedence over the session-state buckets
+// (submitted / missing / did_not_meet / planned_pause), so a normally-submitted
+// healthy group lands in `submitted`, not `healthy`. We therefore total ALL
+// buckets and treat "Healthy" as everything not flagged watch/needs-follow-up —
+// otherwise a normal week (groups submitted, none flagged) would total 0 and
+// the card would falsely read "no pulse recorded".
 export function HealthDistributionCard({
   counts,
 }: {
   counts: HealthSummary["counts"];
 }) {
-  const total = counts.healthy + counts.watch + counts.needs_follow_up;
+  const total =
+    counts.submitted +
+    counts.missing +
+    counts.did_not_meet +
+    counts.planned_pause +
+    counts.needs_follow_up +
+    counts.watch +
+    counts.healthy;
+  const watch = counts.watch;
+  const needsFollowUp = counts.needs_follow_up;
+  // Every group not flagged watch/needs-follow-up reads as healthy on the pulse.
+  const healthy = total - watch - needsFollowUp;
 
   return (
     <StatusCard
@@ -28,25 +45,25 @@ export function HealthDistributionCard({
             color: P.ink3,
           }}
         >
-          No health pulse recorded yet.
+          No active groups yet.
         </p>
       ) : (
         <div>
           <MiniBarRow
             label="Healthy"
-            count={counts.healthy}
+            count={healthy}
             total={total}
             tone={P.sage}
           />
           <MiniBarRow
             label="Watch"
-            count={counts.watch}
+            count={watch}
             total={total}
             tone={P.mustard}
           />
           <MiniBarRow
             label="Needs follow-up"
-            count={counts.needs_follow_up}
+            count={needsFollowUp}
             total={total}
             tone={P.terra}
           />

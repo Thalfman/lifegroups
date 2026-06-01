@@ -16,6 +16,10 @@ function stageTone(stage: GuestPipelineStage): string {
 // Guest pipeline funnel. The breakdown was already fetched for the landing but
 // never rendered; the executive overview surfaces it as a funnel. Links to the
 // guests surface (resolves by direct URL even though it's off the nav).
+//
+// `total` is the active-pipeline headline (excludes the terminal placed /
+// not_now stages); the bars are scaled against the sum of ALL rendered stages
+// so terminal stages aren't divided by a denominator that omits them.
 export function GuestPipelineFunnelCard({
   breakdown,
   total,
@@ -23,13 +27,14 @@ export function GuestPipelineFunnelCard({
   breakdown: PipelineStageCount[];
   total: number;
 }) {
+  const barTotal = breakdown.reduce((sum, s) => sum + s.count, 0);
   return (
     <StatusCard
       eyebrow="Guests"
       title="Pipeline funnel"
       action={<OpenLink href="/admin/guests" />}
     >
-      {total === 0 ? (
+      {barTotal === 0 ? (
         <p
           style={{
             margin: 0,
@@ -47,10 +52,20 @@ export function GuestPipelineFunnelCard({
               key={s.stage}
               label={s.label}
               count={s.count}
-              total={total}
+              total={barTotal}
               tone={stageTone(s.stage)}
             />
           ))}
+          <p
+            style={{
+              margin: "10px 0 0",
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+            }}
+          >
+            {total} in active pipeline
+          </p>
         </div>
       )}
     </StatusCard>

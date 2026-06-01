@@ -57,4 +57,15 @@ describe("overviewPeriodRange", () => {
     expect(overviewPeriodRange("quarter", NOW).label).toBe("This quarter");
     expect(overviewPeriodRange("all", NOW).label).toBe("All time");
   });
+
+  it("anchors boundaries to church-local time, not UTC", () => {
+    // 2026-06-01T03:00Z is still 2026-05-31 22:00 in America/Chicago (CDT).
+    // A UTC basis would start "this month" on June 1 and drop May 31; the
+    // church-local basis keeps the window on May.
+    const lateMay = new Date("2026-06-01T03:00:00Z");
+    const month = overviewPeriodRange("month", lateMay);
+    expect(month.fromIso).toBe("2026-05-01");
+    expect(month.toExclusiveIso).toBe("2026-06-01");
+    expect(overviewPeriodRange("year", lateMay).fromIso).toBe("2026-01-01");
+  });
 });

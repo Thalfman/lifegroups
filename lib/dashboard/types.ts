@@ -181,8 +181,9 @@ export interface ShepherdCareDashboardSummary {
   unassignedCoverage: number;
   // Count of active over-shepherds (coaches) — the coverage capacity behind
   // the unassignedCoverage figure. Derived from the over-shepherds list the
-  // orchestration already fetches; surfaced for the executive overview.
-  activeOverShepherds: number;
+  // orchestration already fetches. null when that read failed, so a transient
+  // error isn't shown as a real "0 coverage capacity".
+  activeOverShepherds: number | null;
   attentionItemsTotal: number;
   coverageAvailable: boolean;
   available: boolean;
