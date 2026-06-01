@@ -14,7 +14,7 @@ import type {
   UpcomingCalendarEvent,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
-import { pipelineStageLabel } from "./labels";
+import { pipelineStageLabel, isActivePipelineStage } from "./labels";
 
 const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   new: 6,
@@ -39,7 +39,7 @@ const fallbackPipelineBreakdown: PipelineStageCount[] =
 // the fallback's count from silently drifting out of step with its own
 // breakdown or with the live read's semantics.
 const fallbackGuestPipelineCount = fallbackPipelineBreakdown
-  .filter((row) => row.stage !== "placed" && row.stage !== "not_now")
+  .filter((row) => isActivePipelineStage(row.stage))
   .reduce((sum, row) => sum + row.count, 0);
 
 const FALLBACK_WEEK = "2026-05-18";

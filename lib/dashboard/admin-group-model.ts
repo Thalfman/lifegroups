@@ -40,7 +40,7 @@ import {
   type GuestDirectoryEntry,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
-import { pipelineStageLabel } from "./labels";
+import { pipelineStageLabel, isActivePipelineStage } from "./labels";
 import { isoWeekStart } from "@/lib/shared/church-time";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import {
@@ -81,7 +81,7 @@ import type {
 
 function countPipeline(
   stages: GuestPipelineStage[],
-  all: { pipeline_stage: GuestPipelineStage }[],
+  all: { pipeline_stage: GuestPipelineStage }[]
 ): PipelineStageCount[] {
   return stages.map((stage) => ({
     stage,
@@ -95,7 +95,7 @@ function countPipeline(
 // is its primary consumer.
 export function toFollowUpItem(
   row: LeaderFollowUpRow,
-  groupsById: Map<string, GroupsRow>,
+  groupsById: Map<string, GroupsRow>
 ): FollowUpItem {
   return {
     id: row.id,
@@ -105,7 +105,7 @@ export function toFollowUpItem(
     status: row.status,
     dueDate: row.due_date,
     relatedGroupName: row.related_group_id
-      ? groupsById.get(row.related_group_id)?.name ?? null
+      ? (groupsById.get(row.related_group_id)?.name ?? null)
       : null,
   };
 }
@@ -113,7 +113,7 @@ export function toFollowUpItem(
 function resolveCapacitySource(
   group: GroupsRow,
   override: GroupMetricSettingsRow | null,
-  defaults: MetricDefaults,
+  defaults: MetricDefaults
 ): CapacitySource {
   if (override?.capacity_override != null) return "override";
   if (group.capacity != null) return "group";
@@ -192,7 +192,7 @@ export function attentionReasonLabel(reason: AttentionReason): string {
 function buildLeaderNames(
   groupId: string,
   leaders: GroupLeadersRow[],
-  profilesById: Map<string, ProfilesRow>,
+  profilesById: Map<string, ProfilesRow>
 ): string[] {
   const ranked = leaders
     .filter((l) => l.group_id === groupId)
@@ -209,20 +209,20 @@ function buildLeaderNames(
 }
 
 function determineSessionStatus(
-  session: AttendanceSessionsRow | null,
+  session: AttendanceSessionsRow | null
 ): AttendanceSessionStatus | "no_session" {
   if (!session) return "no_session";
   return session.status;
 }
 
 function isMissingForWeek(
-  status: AttendanceSessionStatus | "no_session",
+  status: AttendanceSessionStatus | "no_session"
 ): boolean {
   return status === "no_session" || status === "not_submitted";
 }
 
 function isSubmittedForWeek(
-  status: AttendanceSessionStatus | "no_session",
+  status: AttendanceSessionStatus | "no_session"
 ): boolean {
   return status === "submitted" || status === "admin_entered";
 }
@@ -251,7 +251,7 @@ function pickHealthBucket(row: DerivedGroupRow): HealthBucket {
 
 function utilizationFor(
   activeMembers: number,
-  effectiveCap: number | null,
+  effectiveCap: number | null
 ): number | null {
   if (effectiveCap == null || effectiveCap <= 0) return null;
   return Math.round((activeMembers / effectiveCap) * 1000) / 10;
@@ -260,7 +260,7 @@ function utilizationFor(
 function buildAttentionDetail(
   reason: AttentionReason,
   row: DerivedGroupRow,
-  followUpsCount: number,
+  followUpsCount: number
 ): string {
   switch (reason) {
     case "follow_up_open":
@@ -514,8 +514,7 @@ function buildAttentionItems(rows: DerivedGroupRow[]): AttentionItem[] {
     });
   }
   items.sort(
-    (a, b) =>
-      a.priority - b.priority || a.groupName.localeCompare(b.groupName),
+    (a, b) => a.priority - b.priority || a.groupName.localeCompare(b.groupName)
   );
   return items;
 }
@@ -563,7 +562,7 @@ export interface AdminGroupModel {
 // dashboard section so the summary counts can never disagree with the
 // queues they summarise.
 export function buildAdminGroupModel(
-  input: AdminGroupModelInput,
+  input: AdminGroupModelInput
 ): AdminGroupModel {
   const {
     groups,
@@ -588,7 +587,7 @@ export function buildAdminGroupModel(
   const groupsById = new Map(groups.map((g) => [g.id, g] as const));
   const profilesById = new Map(profiles.map((p) => [p.id, p] as const));
   const metricSettingsByGroup = new Map(
-    metricSettings.map((s) => [s.group_id, s] as const),
+    metricSettings.map((s) => [s.group_id, s] as const)
   );
   const sessionByGroup = new Map(sessions.map((s) => [s.group_id, s] as const));
   // Latest Health Pulse per group: keep the row with the greatest
@@ -604,7 +603,7 @@ export function buildAdminGroupModel(
   for (const m of memberships) {
     membershipsByGroup.set(
       m.group_id,
-      (membershipsByGroup.get(m.group_id) ?? 0) + 1,
+      (membershipsByGroup.get(m.group_id) ?? 0) + 1
     );
   }
   const followUpsByGroup = new Map<string, LeaderFollowUpRow[]>();
@@ -621,7 +620,7 @@ export function buildAdminGroupModel(
     const effectiveCapacityValue = computeEffectiveCapacity(
       g,
       override,
-      defaults,
+      defaults
     );
     const isCapacityUnknown = computeUnknownCapacity(g, override, defaults);
     const isExcluded = isExcludedFromCapacityMetrics(override);
@@ -652,7 +651,7 @@ export function buildAdminGroupModel(
     });
     const calendarOverride = pickCalendarOverrideForOccurrence(
       groupEventsForWeek,
-      occurrenceDate,
+      occurrenceDate
     );
     const dueResult = computeCheckInDue({
       group: {
@@ -712,11 +711,11 @@ export function buildAdminGroupModel(
   });
 
   const activeRows = derivedRows.filter(
-    (r) => r.group.lifecycle_status === "active",
+    (r) => r.group.lifecycle_status === "active"
   );
 
   const submittedCheckIns = activeRows.filter((r) =>
-    isSubmittedForWeek(r.sessionStatus),
+    isSubmittedForWeek(r.sessionStatus)
   ).length;
   // Bi-weekly off-parity groups and monthly groups aren't necessarily
   // expected to check in this specific week, so they don't count
@@ -724,13 +723,13 @@ export function buildAdminGroupModel(
   // recurrence info; the dashboard surfaces them as healthy until
   // they actually submit a check-in.
   const missingCheckIns = activeRows.filter(
-    (r) => isMissingForWeek(r.sessionStatus) && r.isScheduledThisWeek,
+    (r) => isMissingForWeek(r.sessionStatus) && r.isScheduledThisWeek
   ).length;
   const needsFollowUp = activeRows.filter(
     (r) =>
       r.effectiveHealth === "needs_follow_up" ||
       r.followUpNeeded ||
-      r.healthUpdate?.follow_up_needed === true,
+      r.healthUpdate?.follow_up_needed === true
   ).length;
 
   const capacitySummary = buildCapacitySummary(derivedRows);
@@ -739,21 +738,18 @@ export function buildAdminGroupModel(
   const attentionItems = buildAttentionItems(derivedRows);
 
   const guestPipelineBreakdown = countPipeline(GUEST_PIPELINE_STAGES, guests);
-  const guestPipelineCount = guests.filter(
-    (g) => g.pipeline_stage !== "placed" && g.pipeline_stage !== "not_now",
+  const guestPipelineCount = guests.filter((g) =>
+    isActivePipelineStage(g.pipeline_stage)
   ).length;
 
-  const followUpItems = followUps.map((row) =>
-    toFollowUpItem(row, groupsById),
-  );
+  const followUpItems = followUps.map((row) => toFollowUpItem(row, groupsById));
 
   const summary: AdminSummary = {
     activeGroupCount: activeGroupCount ?? activeRows.length,
     submittedCheckIns,
     missingCheckIns,
     needsFollowUp,
-    capacityWatch:
-      capacitySummary.counts.full + capacitySummary.counts.warning,
+    capacityWatch: capacitySummary.counts.full + capacitySummary.counts.warning,
     unknownCapacity: capacitySummary.counts.unknown,
   };
 
