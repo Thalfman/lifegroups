@@ -116,168 +116,175 @@ export function GroupCreateForm() {
       >
         {showMore ? "Fewer details" : "More details"}
       </button>
-      {showMore ? (
-        <div className="lg-m-grid-stack" style={formGridStyle}>
+      {/* Kept mounted (hidden) when collapsed so values entered under
+          More details — most importantly meeting_frequency, which would
+          otherwise default back to weekly on the server — still submit
+          with the form rather than being silently discarded. */}
+      <div
+        className="lg-m-grid-stack"
+        style={showMore ? formGridStyle : { ...formGridStyle, display: "none" }}
+      >
+        <div>
+          <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
+            Meeting frequency
+          </label>
+          <select
+            id="group-meeting_frequency"
+            name="meeting_frequency"
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
+            style={fieldSelectStyle}
+          >
+            {MEETING_FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {showParity ? (
           <div>
-            <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
-              Meeting frequency
+            <label htmlFor="group-meeting_week_parity" style={fieldLabelStyle}>
+              Which weeks does it meet?
             </label>
             <select
-              id="group-meeting_frequency"
-              name="meeting_frequency"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
+              id="group-meeting_week_parity"
+              name="meeting_week_parity"
+              defaultValue=""
               style={fieldSelectStyle}
             >
-              {MEETING_FREQUENCY_OPTIONS.map((opt) => (
+              <option value="">Choose weeks</option>
+              {MEETING_PARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
-          </div>
-          {showParity ? (
-            <div>
-              <label
-                htmlFor="group-meeting_week_parity"
-                style={fieldLabelStyle}
-              >
-                Which weeks does it meet?
-              </label>
-              <select
-                id="group-meeting_week_parity"
-                name="meeting_week_parity"
-                defaultValue=""
-                style={fieldSelectStyle}
-              >
-                <option value="">Choose weeks</option>
-                {MEETING_PARITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 12,
-                  color: P.ink3,
-                  margin: "6px 0 0",
-                  lineHeight: 1.4,
-                }}
-              >
-                For groups that meet every other week. Odd and even weeks
-                alternate through the year — pick the set this group gathers on.
-              </p>
-            </div>
-          ) : null}
-          <div>
-            <label htmlFor="group-location_area" style={fieldLabelStyle}>
-              Location area (optional)
-            </label>
-            <input
-              id="group-location_area"
-              name="location_area"
-              type="text"
-              autoComplete="off"
-              style={fieldInputStyle}
-              placeholder="Westside"
-            />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label htmlFor="group-address_optional" style={fieldLabelStyle}>
-              Address (optional)
-            </label>
-            <input
-              id="group-address_optional"
-              name="address_optional"
-              type="text"
-              autoComplete="off"
-              style={fieldInputStyle}
-              placeholder="123 Vine St."
-            />
-          </div>
-          <div>
-            <label htmlFor="group-capacity" style={fieldLabelStyle}>
-              Capacity (optional)
-            </label>
-            <input
-              id="group-capacity"
-              name="capacity"
-              type="number"
-              min={0}
-              max={1000}
-              inputMode="numeric"
-              autoComplete="off"
-              style={fieldInputStyle}
-              placeholder="12"
-            />
-          </div>
-          <div>
-            <label htmlFor="group-audience_category" style={fieldLabelStyle}>
-              Audience (optional)
-            </label>
-            <select
-              id="group-audience_category"
-              name="audience_category"
-              defaultValue=""
-              style={fieldSelectStyle}
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink3,
+                margin: "6px 0 0",
+                lineHeight: 1.4,
+              }}
             >
-              <option value="">Unset</option>
-              <option value="men">Men</option>
-              <option value="women">Women</option>
-              <option value="mixed">Mixed / couples</option>
-            </select>
+              For groups that meet every other week. Odd and even weeks
+              alternate through the year — pick the set this group gathers on.
+            </p>
           </div>
-          <div>
-            <label htmlFor="group-life_stage" style={fieldLabelStyle}>
-              Life stage (optional)
-            </label>
-            <select
-              id="group-life_stage"
-              name="life_stage"
-              defaultValue=""
-              style={fieldSelectStyle}
-            >
-              <option value="">Unset</option>
-              <option value="young_professionals">Young professionals</option>
-              <option value="young_families">Young families</option>
-              <option value="families_with_kids">
-                Families with kids/teens
-              </option>
-              <option value="families_with_adult_kids">
-                Families with adult kids
-              </option>
-              <option value="retirement">Retirement</option>
-              <option value="multi_generational">Multi-generational</option>
-              <option value="spanish_speaking">Spanish speaking</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="group-launched_on" style={fieldLabelStyle}>
-              Launched on (optional)
-            </label>
-            <input
-              id="group-launched_on"
-              name="launched_on"
-              type="date"
-              style={fieldInputStyle}
-            />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label htmlFor="group-description" style={fieldLabelStyle}>
-              Description (optional)
-            </label>
-            <textarea
-              id="group-description"
-              name="description"
-              rows={3}
-              style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
-              placeholder="Who this group is for, what makes it tick."
-            />
-          </div>
+        ) : null}
+        <div>
+          <label htmlFor="group-location_area" style={fieldLabelStyle}>
+            Location area (optional)
+          </label>
+          <input
+            id="group-location_area"
+            name="location_area"
+            type="text"
+            autoComplete="off"
+            style={fieldInputStyle}
+            placeholder="Westside"
+          />
         </div>
-      ) : null}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="group-address_optional" style={fieldLabelStyle}>
+            Address (optional)
+          </label>
+          <input
+            id="group-address_optional"
+            name="address_optional"
+            type="text"
+            autoComplete="off"
+            style={fieldInputStyle}
+            placeholder="123 Vine St."
+          />
+        </div>
+        <div>
+          <label htmlFor="group-capacity" style={fieldLabelStyle}>
+            Capacity (optional)
+          </label>
+          <input
+            id="group-capacity"
+            name="capacity"
+            // Expanded: a real number control with range checks for inline
+            // feedback. Collapsed: a plain text field so NONE of the number
+            // control's native validation (range, step/whole-number, bad
+            // input) can block submission from a non-focusable, hidden
+            // element. The server validator then surfaces any visible
+            // "Capacity must be a whole number / can't be negative / over
+            // 1000" error. inputMode stays numeric for the mobile keypad.
+            type={showMore ? "number" : "text"}
+            min={showMore ? 0 : undefined}
+            max={showMore ? 1000 : undefined}
+            inputMode="numeric"
+            autoComplete="off"
+            style={fieldInputStyle}
+            placeholder="12"
+          />
+        </div>
+        <div>
+          <label htmlFor="group-audience_category" style={fieldLabelStyle}>
+            Audience (optional)
+          </label>
+          <select
+            id="group-audience_category"
+            name="audience_category"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="men">Men</option>
+            <option value="women">Women</option>
+            <option value="mixed">Mixed / couples</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="group-life_stage" style={fieldLabelStyle}>
+            Life stage (optional)
+          </label>
+          <select
+            id="group-life_stage"
+            name="life_stage"
+            defaultValue=""
+            style={fieldSelectStyle}
+          >
+            <option value="">Unset</option>
+            <option value="young_professionals">Young professionals</option>
+            <option value="young_families">Young families</option>
+            <option value="families_with_kids">Families with kids/teens</option>
+            <option value="families_with_adult_kids">
+              Families with adult kids
+            </option>
+            <option value="retirement">Retirement</option>
+            <option value="multi_generational">Multi-generational</option>
+            <option value="spanish_speaking">Spanish speaking</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="group-launched_on" style={fieldLabelStyle}>
+            Launched on (optional)
+          </label>
+          <input
+            id="group-launched_on"
+            name="launched_on"
+            type="date"
+            style={fieldInputStyle}
+          />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="group-description" style={fieldLabelStyle}>
+            Description (optional)
+          </label>
+          <textarea
+            id="group-description"
+            name="description"
+            rows={3}
+            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            placeholder="Who this group is for, what makes it tick."
+          />
+        </div>
+      </div>
       <div>
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Creating…" : "Create group"}
