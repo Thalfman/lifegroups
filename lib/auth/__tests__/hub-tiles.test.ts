@@ -8,7 +8,6 @@ describe("hubTilesForRole", () => {
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Leader care", "/admin/shepherd-care"],
       ["Launch planning", "/admin/launch-planning"],
-      ["Multiplication", "/admin/multiplication"],
       ["Group health", "/admin/group-health"],
       ["Follow-ups", "/admin/follow-ups"],
       ["People", "/admin/people"],
@@ -22,7 +21,6 @@ describe("hubTilesForRole", () => {
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Leader care", "/admin/shepherd-care"],
       ["Launch planning", "/admin/launch-planning"],
-      ["Multiplication", "/admin/multiplication"],
       ["Group health", "/admin/group-health"],
       ["Follow-ups", "/admin/follow-ups"],
       ["People", "/admin/people"],

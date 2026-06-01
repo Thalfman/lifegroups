@@ -24,16 +24,14 @@ import {
 
 // The pipeline is the supply side of the Capacity Board (#185) and the
 // staffing forecast (#186); revalidate those surfaces so a stage advance shows
-// up everywhere it counts.
+// up everywhere it counts. The Capacity Board and Multiplication views now live
+// inside /admin/launch-planning (ADR 0010 consolidation; their old routes only
+// redirect), so launch-planning is the one surface to revalidate.
 const REVALIDATE_PATH_PIPELINE = "/admin/leader-pipeline";
-const REVALIDATE_PATH_CAPACITY = "/admin/capacity-board";
-const REVALIDATE_PATH_MULTIPLICATION = "/admin/multiplication";
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 
 const APPRENTICE_REVALIDATE = [
   REVALIDATE_PATH_PIPELINE,
-  REVALIDATE_PATH_CAPACITY,
-  REVALIDATE_PATH_MULTIPLICATION,
   REVALIDATE_PATH_LAUNCH_PLANNING,
 ] as const;
 
