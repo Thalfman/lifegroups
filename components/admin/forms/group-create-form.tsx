@@ -207,12 +207,14 @@ export function GroupCreateForm() {
           <input
             id="group-capacity"
             name="capacity"
-            type="number"
-            // Only enforce the native range while the section is expanded.
-            // The field stays mounted (display:none) when collapsed, where a
-            // non-focusable out-of-range value would block submission with no
-            // visible bubble; collapsed, we defer to the server validator,
-            // which surfaces a "Capacity can't be negative / over 1000" error.
+            // Expanded: a real number control with range checks for inline
+            // feedback. Collapsed: a plain text field so NONE of the number
+            // control's native validation (range, step/whole-number, bad
+            // input) can block submission from a non-focusable, hidden
+            // element. The server validator then surfaces any visible
+            // "Capacity must be a whole number / can't be negative / over
+            // 1000" error. inputMode stays numeric for the mobile keypad.
+            type={showMore ? "number" : "text"}
             min={showMore ? 0 : undefined}
             max={showMore ? 1000 : undefined}
             inputMode="numeric"
