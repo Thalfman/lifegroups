@@ -42,6 +42,10 @@ import {
   staleWindowDaysForTier,
   type CareCadenceWindows,
 } from "@/lib/admin/shepherd-care-cadence";
+import {
+  detectCareReasons,
+  needsAttentionFromReasons,
+} from "@/lib/admin/shepherd-care-attention";
 
 type ReadClient = AppSupabaseClient;
 
@@ -1443,36 +1447,20 @@ export function differenceInDaysIso(today: string, then: string): number {
   return Math.floor((a - b) / 86_400_000);
 }
 
+// The directory chip + filter boolean. Derived from the shared reason engine
+// so it is exactly the chip-worthy subset of the triage queue's reasons and
+// can never disagree with it (lib/admin/shepherd-care-attention.ts). The read
+// path has no follow-up feed or coverage context, so overdue_care_follow_up
+// and no_over_shepherd never arise here; needs_encouragement / inactive are
+// (deliberately) not chip reasons.
 export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
   staleDays: number = SHEPHERD_CARE_STALE_DAYS
 ): boolean {
-  if (care === null) return true;
-  // Julian Q2 (#122): the action-required care statuses (`concern`,
-  // `needs_follow_up`) raise an attention-queue reason on their own, so they
-  // must also drive the "Needs attention" count + directory filter — otherwise
-  // a shepherd marked `concern` with recent contact shows in the triage queue
-  // while the chip reads 0 and the filter hides the same row. `needs_encouragement`
-  // is a soft nudge (queue-only, lowest priority) and is deliberately excluded
-  // here; `inactive` is a lifecycle state, not an attention signal.
-  if (
-    care.current_status === "concern" ||
-    care.current_status === "needs_follow_up"
-  ) {
-    return true;
-  }
-  if (care.last_contact_at === null) return true;
-  if (
-    care.next_touchpoint_due !== null &&
-    care.next_touchpoint_due < todayIso
-  ) {
-    return true;
-  }
-  if (differenceInDaysIso(todayIso, care.last_contact_at) > staleDays) {
-    return true;
-  }
-  return false;
+  return needsAttentionFromReasons(
+    detectCareReasons(care, { todayIso, staleDays })
+  );
 }
 
 /**
