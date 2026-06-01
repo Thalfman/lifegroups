@@ -42,6 +42,7 @@ import {
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
 import {
+  applyBaselineSilentDefaults,
   buildLaunchPlanningInputs,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
@@ -197,10 +198,12 @@ function buildLaunchPlanningSnapshot(
   // decodeLaunchPlanningAssumptions(null, defaults) already folds the
   // configured metric defaults (e.g. default_group_capacity ->
   // average_group_size) into the fallback, matching what
-  // /admin/launch-planning uses. Always use the decoded value so the
-  // dashboard and the deep page agree in unseeded environments.
-  const assumptions = decodeLaunchPlanningAssumptions(
-    assumptionsRes.data ?? null,
+  // /admin/launch-planning uses. applyBaselineSilentDefaults then normalizes the
+  // baseline-only silently-defaulted inputs (growth 0, size = default capacity,
+  // buffer/leaders to defaults) EXACTLY as the deep page does (#224), so a seeded
+  // row carrying growth=20 / size=10 can't make this card contradict the page.
+  const assumptions = applyBaselineSilentDefaults(
+    decodeLaunchPlanningAssumptions(assumptionsRes.data ?? null, defaults),
     defaults
   );
   const inputs = buildLaunchPlanningInputs({

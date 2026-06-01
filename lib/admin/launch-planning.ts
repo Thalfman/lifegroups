@@ -201,16 +201,19 @@ export function decodeLaunchPlanningAssumptions(
   };
 }
 
-// L5 (#224): the baseline forecast no longer exposes controls for expected
-// growth or average group size — they're silently defaulted (growth 0, size =
-// ministry default capacity). Existing rows can still carry the stale seeded
-// values (growth 20, size 10), and the decoder prefers a stored value over the
-// default, so normalize them here for the baseline forecast: compute as if those
-// two keys were unset. Storage is untouched (no migration); scenarios keep their
-// own explicit values and are not passed through this. The fallback chain for
-// size mirrors `decodeLaunchPlanningAssumptions` (ministry default capacity, then
-// the built-in) so "size = default capacity" tracks Settings rather than freezing
-// a number.
+// L5 (#224): the baseline forecast no longer exposes controls for ANY of the
+// silently-defaulted inputs — expected growth, growth date, average group size,
+// launch buffer, and leaders per new group. Existing rows can still carry stale
+// values (the seed alone stores growth 20 / size 10, and a church may have saved
+// a custom buffer/leaders via the old form), and the decoder prefers a stored
+// value over the default, so reset every hidden field here for the baseline
+// forecast: compute as if those keys were unset. Storage is untouched (no
+// migration); scenarios keep their own explicit values and are NOT passed through
+// this. Only the two ministry-specific inputs (current church attendance, target
+// participation) and the scenario-only launch-plan fields are preserved. Size's
+// fallback chain mirrors `decodeLaunchPlanningAssumptions` (ministry default
+// capacity, then the built-in) so "size = default capacity" tracks Settings
+// rather than freezing a number.
 export function applyBaselineSilentDefaults(
   assumptions: LaunchPlanningAssumptions,
   metricDefaults?: Pick<MetricDefaults, "default_group_capacity"> | null
@@ -223,7 +226,12 @@ export function applyBaselineSilentDefaults(
   return {
     ...assumptions,
     expected_growth: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth,
+    expected_growth_date:
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth_date,
     average_group_size: defaultGroupSize,
+    launch_buffer_pct: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct,
+    leaders_per_new_group:
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group,
   };
 }
 
@@ -742,13 +750,17 @@ export function ratioToPercent(ratio: number): string {
 // (e.g. "60" → "0.6"). A blank stays blank so the form's "leave unchanged"
 // (baseline) and required (scenario) semantics are preserved, and a
 // non-numeric entry is passed through unchanged so the server validator — not
-// this helper — owns the rejection message.
+// this helper — owns the rejection message. The `/100` is rounded to 6 decimals
+// before stringifying so it can't surface a binary-float artifact
+// (`0.33299999999999996`) or scientific notation (`5e-7`) — the server
+// validator only accepts plain decimal strings, and 6 decimals (0.0001%) is far
+// finer than any ratio this UI produces.
 export function percentToRatio(percent: string): string {
   const trimmed = percent.trim();
   if (trimmed === "") return "";
   const n = Number(trimmed);
   if (!Number.isFinite(n)) return trimmed;
-  return String(n / 100);
+  return String(Number((n / 100).toFixed(6)));
 }
 
 // Julian P3 (answer 11): his planting seasons are August (primary) and

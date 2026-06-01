@@ -968,6 +968,15 @@ describe("L5 (#224) percent ⇄ ratio helpers", () => {
     expect(percentToRatio("   ")).toBe("");
   });
 
+  it("percentToRatio emits a plain decimal string the server validator accepts (no float artifact, no sci-notation)", () => {
+    // 33.3/100 in raw float is 0.33299999999999996; must round to "0.333".
+    expect(percentToRatio("33.3")).toBe("0.333");
+    // A tiny decimal must not become scientific notation like "5e-7".
+    const ratio = percentToRatio("0.00005");
+    expect(ratio).not.toMatch(/e/i);
+    expect(ratio).toMatch(/^-?\d+(\.\d+)?$/);
+  });
+
   it("percentToRatio passes a non-numeric entry through for the validator to reject", () => {
     expect(percentToRatio("abc")).toBe("abc");
   });
@@ -985,16 +994,26 @@ describe("L5 (#224) percent ⇄ ratio helpers", () => {
 });
 
 describe("applyBaselineSilentDefaults (#224)", () => {
-  it("forces growth to 0 and size to the ministry default capacity, ignoring stale seeded values", () => {
+  it("resets EVERY hidden baseline input to its default, ignoring stale stored values", () => {
     const stale = makeAssumptions({
       expected_growth: 20,
+      expected_growth_date: "2026-08-01",
       average_group_size: 10,
+      launch_buffer_pct: 0.5,
+      leaders_per_new_group: 4,
     });
     const out = applyBaselineSilentDefaults(stale, {
       default_group_capacity: 12,
     });
     expect(out.expected_growth).toBe(0);
+    expect(out.expected_growth_date).toBeNull();
     expect(out.average_group_size).toBe(12);
+    expect(out.launch_buffer_pct).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct
+    );
+    expect(out.leaders_per_new_group).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group
+    );
   });
 
   it("falls back to the built-in size when no ministry default capacity is set", () => {
@@ -1017,13 +1036,10 @@ describe("applyBaselineSilentDefaults (#224)", () => {
     );
   });
 
-  it("leaves the other forecast inputs untouched", () => {
+  it("leaves the two ministry-specific inputs and the scenario-only launch-plan fields untouched", () => {
     const stale = makeAssumptions({
       current_church_attendance: 250,
-      expected_growth: 20,
       target_group_participation_pct: 0.7,
-      launch_buffer_pct: 0.2,
-      leaders_per_new_group: 3,
       planned_launch_count: 4,
       target_launch_month: 8,
       target_launch_year: 2027,
@@ -1034,8 +1050,6 @@ describe("applyBaselineSilentDefaults (#224)", () => {
     });
     expect(out.current_church_attendance).toBe(250);
     expect(out.target_group_participation_pct).toBe(0.7);
-    expect(out.launch_buffer_pct).toBe(0.2);
-    expect(out.leaders_per_new_group).toBe(3);
     expect(out.planned_launch_count).toBe(4);
     expect(out.target_launch_month).toBe(8);
     expect(out.target_launch_year).toBe(2027);

@@ -41,6 +41,12 @@ export function PercentField({
   maxPercent?: number;
 }) {
   const [percent, setPercent] = useState<string>(ratioToPercent(defaultRatio));
+  // Until the operator actually edits the field, submit the EXACT stored ratio
+  // rather than a value round-tripped through the (display-rounded) percentage —
+  // otherwise a no-op save (e.g. editing notes) would silently rewrite a precise
+  // stored ratio like 0.6255 down to 0.625.
+  const [edited, setEdited] = useState(false);
+  const ratio = edited ? percentToRatio(percent) : String(defaultRatio);
 
   return (
     <div>
@@ -50,7 +56,9 @@ export function PercentField({
       <input
         id={id}
         type="number"
-        inputMode="numeric"
+        // "decimal" (not "numeric") so mobile shows a decimal-point key — a
+        // pre-filled fractional percent like 62.5 must remain editable.
+        inputMode="decimal"
         min={0}
         max={maxPercent}
         // "any" (not 1) so a stored fractional ratio like 0.625 — which
@@ -59,11 +67,15 @@ export function PercentField({
         step="any"
         required={required}
         value={percent}
-        onChange={(e) => setPercent(e.target.value)}
+        onChange={(e) => {
+          setPercent(e.target.value);
+          setEdited(true);
+        }}
         style={fieldInputStyle}
       />
-      {/* The ratio the server reads, mirrored from the percent box above. */}
-      <input type="hidden" name={name} value={percentToRatio(percent)} />
+      {/* The ratio the server reads: the untouched stored value, or the
+          percent box converted back once the operator edits it. */}
+      <input type="hidden" name={name} value={ratio} />
       <p style={hintStyle}>{hint}</p>
     </div>
   );

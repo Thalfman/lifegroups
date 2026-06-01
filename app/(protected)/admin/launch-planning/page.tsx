@@ -417,12 +417,6 @@ export default async function AdminLaunchPlanningPage() {
           sourceLabel={data.staffingSourceLabel}
         />
       )}
-
-      <ChurchAttendanceCard
-        currentChurchAttendance={data.assumptions.current_church_attendance}
-        currentParticipants={data.inputs.current_participants}
-        participationPct={data.participationPct}
-      />
     </div>
   );
 
@@ -438,47 +432,55 @@ export default async function AdminLaunchPlanningPage() {
   );
 
   const forecastPanel = (
-    <div
-      className="lg-m-grid-stack"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-        gap: 20,
-        alignItems: "start",
-      }}
-    >
-      <section
-        id="lp-assumptions"
+    <div style={{ display: "grid", gap: 20 }}>
+      {/* The two ministry-specific forecast inputs live together here: current
+          church attendance (this card) and target participation (the form). */}
+      <ChurchAttendanceCard
+        currentChurchAttendance={data.assumptions.current_church_attendance}
+        currentParticipants={data.inputs.current_participants}
+        participationPct={data.participationPct}
+      />
+
+      <div
+        className="lg-m-grid-stack"
         style={{
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 14,
-          padding: "22px 24px",
-          scrollMarginTop: 16,
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+          gap: 20,
+          alignItems: "start",
         }}
       >
-        <header style={{ marginBottom: 16 }}>
-          <SectionEyebrow>Forecast</SectionEyebrow>
-          <h2
-            style={{
-              margin: "4px 0 0",
-              fontFamily: fontBody,
-              fontSize: 18,
-              color: P.ink,
-              fontWeight: 600,
-            }}
-          >
-            Forecast inputs
-          </h2>
-        </header>
-        <LaunchPlanningAssumptionsForm assumptions={data.assumptions} />
-      </section>
+        <section
+          style={{
+            background: P.surface,
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
+            padding: "22px 24px",
+          }}
+        >
+          <header style={{ marginBottom: 16 }}>
+            <SectionEyebrow>Forecast</SectionEyebrow>
+            <h2
+              style={{
+                margin: "4px 0 0",
+                fontFamily: fontBody,
+                fontSize: 18,
+                color: P.ink,
+                fontWeight: 600,
+              }}
+            >
+              Forecast inputs
+            </h2>
+          </header>
+          <LaunchPlanningAssumptionsForm assumptions={data.assumptions} />
+        </section>
 
-      <LaunchPlanningResultsPanel
-        assumptions={data.assumptions}
-        inputs={data.inputs}
-        outputs={data.outputs}
-      />
+        <LaunchPlanningResultsPanel
+          assumptions={data.assumptions}
+          inputs={data.inputs}
+          outputs={data.outputs}
+        />
+      </div>
     </div>
   );
 
