@@ -265,10 +265,19 @@ surface + source-of-truth change with **no schema migration and no table drop**,
 denominator:** today the percentage headline divides current participants by the *latest snapshot's*
 attendance count (`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
 `decodeLaunchPlanningAssumptions` falls back to the built-in default (100) when the assumption was never
-set. So at switch-over, **backfill `current_church_attendance` once from the latest snapshot** for every
-church that never set it; thereafter the forecast and headline read **only** `current_church_attendance`
-(no read-time dependency on the snapshots table), preserving existing participation percentages while
-keeping the single-source-of-truth rule intact. **ADR 0008 intersection: none**; the table is
+set. **Backfill rule — key off snapshot presence, not "unset".** The assumptions row is seeded with
+`current_church_attendance: 100` on first run (`20260518190000_phase_lp1_launch_planning.sql`), so an
+"unset" value is indistinguishable from a real 100; do **not** gate the backfill on a missing key. Instead,
+at switch-over, for every church that has **at least one `church_attendance_snapshots` row**, set
+`current_church_attendance` to its latest snapshot's `attendance_count` — that count *is* the denominator
+the headline shows today, so this preserves the displayed percentage exactly. Churches with no snapshots
+keep their current assumption (the headline shows no percentage for them today regardless). **Audit the
+backfill:** writes to `launch_planning_assumptions` are audited — `admin_update_launch_planning_assumptions`
+inserts an `audit_events` row (`admin.update_launch_planning_assumptions`) in the same transaction. The
+backfill must preserve that trail: route it through that RPC (or insert the equivalent `audit_events` row in
+the same transaction), not a raw `UPDATE`. Thereafter the forecast and headline read **only**
+`current_church_attendance` (no read-time dependency on the snapshots table), keeping the
+single-source-of-truth rule intact. **ADR 0008 intersection: none**; the table is
 outside the frozen `shepherd_care_*` surface. Evidence:
 `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
