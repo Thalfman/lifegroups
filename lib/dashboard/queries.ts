@@ -502,18 +502,14 @@ export async function buildAdminDashboardData(
     // request-bound timing.
     const todayIso = currentUtcDateIso();
 
-    // Resolve metric defaults first so the shepherd-care directory fetch
-    // can bake `entry.needs_attention` against the configured
-    // stale-contact window — without this, /admin would compute the
-    // headline "Needs attention" count against the built-in 60-day
-    // default while /admin/shepherd-care uses the configured window,
-    // and the two surfaces would disagree. Mirrors the loader pattern in
-    // app/(protected)/admin/shepherd-care/page.tsx.
-    const metricDefaultsResult = await reads.fetchMetricDefaults();
-    const defaultsForRead = decodeMetricDefaults(
-      metricDefaultsResult.data ?? null
-    );
-
+    // Metric defaults feed the shepherd-care directory's `entry.needs_attention`
+    // stamp (configured stale-contact window) — without it /admin would use the
+    // built-in 60-day default while /admin/shepherd-care uses the configured
+    // window, and the two surfaces would disagree. None of the batched reads
+    // below depend on the defaults, so the defaults read joins the parallel
+    // batch instead of gating it on its own round trip; `defaultsForRead` is
+    // derived once the batch resolves and consumed by the (sequenced)
+    // directory fetch and the pure model.
     const [
       groupsResult,
       activeGroupCountResult,
@@ -532,6 +528,7 @@ export async function buildAdminDashboardData(
       leaderPipelineResult,
       multiplicationResult,
       activityResult,
+      metricDefaultsResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
       reads.fetchActiveGroupCount(),
@@ -563,7 +560,12 @@ export async function buildAdminDashboardData(
         fromIso: period.fromIso,
         toExclusiveIso: period.toExclusiveIso,
       }),
+      reads.fetchMetricDefaults(),
     ]);
+
+    const defaultsForRead = decodeMetricDefaults(
+      metricDefaultsResult.data ?? null
+    );
 
     // Build the shepherd-care directory from the SAME active-coverage set the
     // dashboard model uses, so its per-tier needs_attention stamp can't
@@ -674,44 +676,58 @@ async function buildLeaderGroupDashboard(
   group: GroupsRow,
   calendarEvents: GroupCalendarEventsRow[] = []
 ): Promise<LeaderGroupDashboard> {
+  // The leader card header is always anchored to "this calendar week" so the
+  // workflow date doesn't drift backwards on weeks where a leader hasn't
+  // submitted yet. Computed up front so the new-guests count (which only needs
+  // the group id + week) can join the first parallel batch instead of trailing
+  // it on its own round trip.
+  const currentWeekIso = isoWeekStart(new Date());
+
   const [
     sessionsResult,
     membershipsResult,
     healthUpdatesResult,
     followUpsResult,
+    newGuestsResult,
   ] = await Promise.all([
     fetchAttendanceSessions(client, { groupId: group.id, limit: 8 }),
     fetchActiveMemberships(client, { groupId: group.id }),
     fetchLatestHealthUpdates(client, { groupId: group.id }),
     fetchOpenFollowUps(client, { groupId: group.id, limit: 6 }),
+    fetchNewGuestsForGroupSince(client, group.id, currentWeekIso),
   ]);
 
   const firstError =
     sessionsResult.error ||
     membershipsResult.error ||
     healthUpdatesResult.error ||
-    followUpsResult.error;
+    followUpsResult.error ||
+    newGuestsResult.error;
   if (firstError) throw firstError;
 
   const sessions = sessionsResult.data ?? [];
   const memberships = membershipsResult.data ?? [];
   const healthUpdates = healthUpdatesResult.data ?? [];
   const followUps = followUpsResult.data ?? [];
+  const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
 
+  // Both follow-on reads depend only on the first batch's results (member ids
+  // from memberships, session ids from sessions) and not on each other, so they
+  // run in parallel rather than as two sequential round trips.
   const memberIds = memberships.map((m: GroupMembershipsRow) => m.member_id);
-  const membersResult = await fetchMembersByIds(client, memberIds);
+  const [membersResult, recordsResult] = await Promise.all([
+    fetchMembersByIds(client, memberIds),
+    sessions.length > 0
+      ? fetchAttendanceRecordsForSessions(
+          client,
+          sessions.map((s) => s.id)
+        )
+      : Promise.resolve({ data: [] as AttendanceRecordsRow[], error: null }),
+  ]);
   if (membersResult.error) throw membersResult.error;
+  if (recordsResult.error) throw recordsResult.error;
   const members = (membersResult.data ?? []) as MembersRow[];
-
-  let recordsByMember: AttendanceRecordsRow[] = [];
-  if (sessions.length > 0) {
-    const recordsResult = await fetchAttendanceRecordsForSessions(
-      client,
-      sessions.map((s) => s.id)
-    );
-    if (recordsResult.error) throw recordsResult.error;
-    recordsByMember = recordsResult.data ?? [];
-  }
+  const recordsByMember: AttendanceRecordsRow[] = recordsResult.data ?? [];
 
   const recentSessions = sessions.slice(0, 4).map((session) => {
     const recs = recordsByMember.filter((r) => r.session_id === session.id);
@@ -727,10 +743,6 @@ async function buildLeaderGroupDashboard(
   });
 
   const latestHealth = healthUpdates[0];
-  const currentWeekIso = isoWeekStart(new Date());
-  // The leader card header is always anchored to "this calendar week" so
-  // the workflow date doesn't drift backwards on weeks where a leader
-  // hasn't submitted yet.
   const latestWeekIso = currentWeekIso;
 
   const currentWeekSession =
@@ -738,14 +750,6 @@ async function buildLeaderGroupDashboard(
   const currentWeekRecords = currentWeekSession
     ? recordsByMember.filter((r) => r.session_id === currentWeekSession.id)
     : [];
-
-  const newGuestsResult = await fetchNewGuestsForGroupSince(
-    client,
-    group.id,
-    currentWeekIso
-  );
-  if (newGuestsResult.error) throw newGuestsResult.error;
-  const newGuestsThisWeek = (newGuestsResult.data ?? []).length;
 
   const followUpItems = followUps.map((row: LeaderFollowUpRow) =>
     toFollowUpItem(row, new Map([[group.id, group]]))

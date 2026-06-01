@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { MEETING_DAYS_ORDERED } from "@/components/admin/forms/meeting-schedule-options";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { mapHealthToBadge } from "@/lib/dashboard/badge-map";
-import { healthStatusLabel, lifecycleStatusLabel } from "@/lib/dashboard/labels";
+import {
+  healthStatusLabel,
+  lifecycleStatusLabel,
+} from "@/lib/dashboard/labels";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
   capacityStatus,
@@ -28,7 +32,10 @@ import type {
   GroupsRow,
   ProfilesRow,
 } from "@/types/database";
-import type { AttendanceSessionStatus, GroupLifecycleStatus } from "@/types/enums";
+import type {
+  AttendanceSessionStatus,
+  GroupLifecycleStatus,
+} from "@/types/enums";
 
 const LIFECYCLE_TONE: Record<GroupLifecycleStatus, PTone> = {
   active: "healthy",
@@ -52,17 +59,27 @@ type GroupsDirectoryProps = {
 };
 
 type LifecycleFilter = "all" | "active" | "closed";
-type HealthFilter = "all" | "healthy" | "watch" | "needs_follow_up" | "capacity_full" | "needs_leader_support" | "healthy_paused" | "restart_soon" | "overdue_restart";
+type HealthFilter =
+  | "all"
+  | "healthy"
+  | "watch"
+  | "needs_follow_up"
+  | "capacity_full"
+  | "needs_leader_support"
+  | "healthy_paused"
+  | "restart_soon"
+  | "overdue_restart";
 
 export function GroupsDirectory(props: GroupsDirectoryProps) {
   const [query, setQuery] = useState("");
-  const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilter>("active");
+  const [lifecycleFilter, setLifecycleFilter] =
+    useState<LifecycleFilter>("active");
   const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
   const [dayFilter, setDayFilter] = useState<string>("all");
 
   const profilesById = useMemo(
     () => new Map(props.profiles.map((p) => [p.id, p])),
-    [props.profiles],
+    [props.profiles]
   );
 
   const leadersByGroupId = useMemo(() => {
@@ -94,14 +111,19 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 
   const overrideByGroupId = useMemo(
     () => new Map(props.groupMetricSettings.map((s) => [s.group_id, s])),
-    [props.groupMetricSettings],
+    [props.groupMetricSettings]
   );
 
-  const trimmed = query.trim().toLowerCase();
+  // Debounce the text query so the filter + localeCompare sort over the full
+  // group list runs once typing settles, not on every keystroke. The input
+  // stays bound to `query` so it still feels instant.
+  const trimmed = useDebouncedValue(query.trim().toLowerCase(), 150);
 
   const filterFn = (g: GroupsRow): boolean => {
-    if (lifecycleFilter === "active" && g.lifecycle_status === "closed") return false;
-    if (lifecycleFilter === "closed" && g.lifecycle_status !== "closed") return false;
+    if (lifecycleFilter === "active" && g.lifecycle_status === "closed")
+      return false;
+    if (lifecycleFilter === "closed" && g.lifecycle_status !== "closed")
+      return false;
     if (healthFilter !== "all") {
       const override = overrideByGroupId.get(g.id) ?? null;
       const effective = effectiveHealthStatus(g, override);
@@ -112,16 +134,20 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       if (d !== dayFilter) return false;
     }
     if (trimmed) {
-      const hay = `${g.name} ${g.description ?? ""} ${g.location_area ?? ""}`.toLowerCase();
+      const hay =
+        `${g.name} ${g.description ?? ""} ${g.location_area ?? ""}`.toLowerCase();
       if (!hay.includes(trimmed)) return false;
     }
     return true;
   };
 
   const visible = useMemo(
-    () => props.groups.filter(filterFn).sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      props.groups
+        .filter(filterFn)
+        .sort((a, b) => a.name.localeCompare(b.name)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.groups, lifecycleFilter, healthFilter, dayFilter, trimmed],
+    [props.groups, lifecycleFilter, healthFilter, dayFilter, trimmed]
   );
 
   return (
@@ -146,7 +172,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         }}
       >
         {visible.length} group{visible.length === 1 ? "" : "s"} shown
-        {props.latestWeek ? ` · check-in week of ${formatWeek(props.latestWeek)}` : ""}
+        {props.latestWeek
+          ? ` · check-in week of ${formatWeek(props.latestWeek)}`
+          : ""}
       </div>
 
       {visible.length === 0 ? (
@@ -170,7 +198,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             <li key={g.id} style={{ marginBottom: 14 }}>
               <GroupCard
                 group={g}
-                leaders={leadersByGroupId.get(g.id) ?? []}
+                leaders={leadersByGroupId.get(g.id) ?? NO_LEADERS}
                 profilesById={profilesById}
                 activeMemberCount={activeMemberCountByGroup.get(g.id) ?? 0}
                 latestSession={sessionByGroupId.get(g.id) ?? null}
@@ -242,7 +270,9 @@ function FilterBar({
       />
       <select
         value={lifecycleFilter}
-        onChange={(e) => onLifecycleFilterChange(e.target.value as LifecycleFilter)}
+        onChange={(e) =>
+          onLifecycleFilterChange(e.target.value as LifecycleFilter)
+        }
         aria-label="Lifecycle filter"
         style={selectStyle}
       >
@@ -298,7 +328,11 @@ const selectStyle = {
 // Group card
 // ---------------------------------------------------------------------------
 
-function GroupCard({
+// Memoized so that re-renders of the directory that don't change a card's
+// props (e.g. each keystroke in the debounced search box, before the filtered
+// list settles) skip re-rendering every card. Props are referentially stable:
+// the lookup maps are memoized and the group rows come straight from props.
+const GroupCard = memo(function GroupCard({
   group,
   leaders,
   profilesById,
@@ -547,9 +581,9 @@ function GroupCard({
                   lineHeight: 1.45,
                 }}
               >
-                Archive takes the group off the active roster. The record
-                stays and you can restore it later. This is not the same as
-                cancelling your edit above.
+                Archive takes the group off the active roster. The record stays
+                and you can restore it later. This is not the same as cancelling
+                your edit above.
               </span>
             </div>
             <ArchiveGroupButton groupId={group.id} groupName={group.name} />
@@ -558,7 +592,7 @@ function GroupCard({
       ) : null}
     </article>
   );
-}
+});
 
 function Stat({
   label,
@@ -569,7 +603,8 @@ function Stat({
   value: string;
   tone?: "warn" | "watch";
 }) {
-  const color = tone === "warn" ? "#7d3621" : tone === "watch" ? "#7a5118" : P.ink;
+  const color =
+    tone === "warn" ? "#7d3621" : tone === "watch" ? "#7a5118" : P.ink;
   return (
     <div>
       <div
@@ -584,7 +619,9 @@ function Stat({
       >
         {label}
       </div>
-      <div style={{ fontFamily: fontBody, fontSize: 14, color, marginTop: 2 }}>{value}</div>
+      <div style={{ fontFamily: fontBody, fontSize: 14, color, marginTop: 2 }}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -650,8 +687,13 @@ function latestCheckinText(session: AttendanceSessionsRow | null): string {
     planned_pause: "Planned pause",
     admin_entered: "Admin entered",
   };
-  const label = map[session.status as AttendanceSessionStatus] ?? session.status;
+  const label =
+    map[session.status as AttendanceSessionStatus] ?? session.status;
   return `${label} · ${formatWeek(session.meeting_week)}`;
 }
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
+
+// Stable empty array so a leaderless group passes the same reference to the
+// memoized GroupCard across renders (a fresh `[]` would defeat React.memo).
+const NO_LEADERS: GroupLeadersRow[] = [];

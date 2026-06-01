@@ -71,31 +71,39 @@ async function loadData(todayIso: string): Promise<LoadedData> {
       error: "Database is not configured in this environment.",
     };
   }
-  // Resolve the configured per-tier stale-contact windows first so the
-  // directory read flags needs_attention against the same thresholds the
-  // dashboard later uses. A missing/failed settings read falls back to the
-  // documented 30 / 60 baseline via decodeMetricDefaults(null).
-  const metricDefaultsRes = await fetchMetricDefaults(client);
+  // Resolve the configured per-tier stale-contact windows so the directory read
+  // flags needs_attention against the same thresholds the dashboard later uses.
+  // A missing/failed settings read falls back to the documented 30 / 60 baseline
+  // via decodeMetricDefaults(null). None of these independent reads depend on
+  // `windows`, so the defaults read joins the batch instead of gating it on its
+  // own round trip; the directory (which does need the windows + the active
+  // coverage set) stays sequenced after.
+  //
+  // Build the directory from the SAME active-coverage set the dashboard uses, so
+  // its needs_attention can never disagree with the attention queue (Codex
+  // review on #138). When the assignments read fails, the set is left undefined
+  // and the directory falls back to the conservative longer (delegated) window —
+  // consistent with the dashboard, which suppresses coverage-derived signals via
+  // assignmentsAvailable=false below. The directory read receives the same
+  // todayIso the page later uses for the dashboard model so a request straddling
+  // UTC midnight can't produce a directory and a dashboard built off different
+  // calendar days.
+  const [
+    overShepherdsRes,
+    assignmentsRes,
+    recentRes,
+    followUpsRes,
+    metricDefaultsRes,
+  ] = await Promise.all([
+    fetchOverShepherdsForAdmin(client, { includeArchived: true }),
+    fetchActiveShepherdCoverageAssignmentsForAdmin(client),
+    fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
+    fetchOutstandingCareFollowUpsForAdmin(client),
+    fetchMetricDefaults(client),
+  ]);
   const windows = careCadenceWindowsFromDefaults(
     decodeMetricDefaults(metricDefaultsRes.data ?? null)
   );
-  // Fetch the coverage assignments + the other independent reads in parallel,
-  // then build the directory from the SAME active-coverage set the dashboard
-  // uses, so the directory's needs_attention can never disagree with the
-  // attention queue (Codex review on #138). When the assignments read fails,
-  // the set is left undefined and the directory falls back to the conservative
-  // longer (delegated) window — consistent with the dashboard, which suppresses
-  // coverage-derived signals via assignmentsAvailable=false below. The
-  // directory read receives the same todayIso the page later uses for the
-  // dashboard model so a request straddling UTC midnight can't produce a
-  // directory and a dashboard built off different calendar days.
-  const [overShepherdsRes, assignmentsRes, recentRes, followUpsRes] =
-    await Promise.all([
-      fetchOverShepherdsForAdmin(client, { includeArchived: true }),
-      fetchActiveShepherdCoverageAssignmentsForAdmin(client),
-      fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
-      fetchOutstandingCareFollowUpsForAdmin(client),
-    ]);
   const delegatedShepherdIds = assignmentsRes.error
     ? undefined
     : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));

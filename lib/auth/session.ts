@@ -71,17 +71,25 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "anonymous" };
 
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) return { kind: "anonymous" };
+  // getClaims() verifies the JWT locally (Web Crypto + cached JWKS) when the
+  // project uses asymmetric signing keys, so the per-request identity check
+  // avoids an auth-server round trip; it falls back to a getUser() network call
+  // under symmetric keys. The claims always come from decoding the verified
+  // JWT, so trusting `sub`/`email` here is equivalent to the old getUser() path.
+  const { data: claimsData, error: claimsError } =
+    await client.auth.getClaims();
+  if (claimsError || !claimsData?.claims?.sub) return { kind: "anonymous" };
+  const claims = claimsData.claims;
 
-  const authUser: AuthUser = { id: user.id, email: user.email ?? null };
+  const authUser: AuthUser = {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : null,
+  };
 
   const profileQuery = await client
     .from("profiles")
     .select("*")
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", authUser.id)
     .maybeSingle();
   if (profileQuery.error) {
     log.error({
