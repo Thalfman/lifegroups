@@ -16,10 +16,14 @@ export function Sidebar({
   navGroups,
   onNavigate,
   asDrawer = false,
+  homeHref = "/admin",
 }: {
   navGroups: AdminNavGroup[];
   onNavigate?: () => void;
   asDrawer?: boolean;
+  // Where the brand/wordmark links. Role-aware so an over_shepherd (who cannot
+  // reach /admin) lands on their own home instead of /unauthorized.
+  homeHref?: string;
 }) {
   const pathname = usePathname() ?? "";
 
@@ -50,7 +54,7 @@ export function Sidebar({
           gap: 10,
         }}
       >
-        <Wordmark />
+        <Wordmark href={homeHref} />
       </div>
 
       <nav

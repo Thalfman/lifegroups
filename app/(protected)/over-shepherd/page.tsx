@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { PastoralAppShell } from "@/components/pastoral/shell";
+import { LgAppShell } from "@/components/lg/shell/LgAppShell";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { EmptyState } from "@/components/dashboard/cards";
 import { MyShepherdsTable } from "@/components/over-shepherd/my-shepherds-table";
 import { requireOverShepherd } from "@/lib/auth/session";
-import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
 import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
@@ -23,35 +24,35 @@ export default async function OverShepherdPage() {
   const session = await requireOverShepherd();
   const client = await createSupabaseServerClient();
 
-  const navItems = navItemsForRole(session.profile.role);
-  const currentUser = {
+  const user = {
     name: session.profile.full_name,
     email: session.profile.email,
     role: session.profile.role,
   };
 
-  const coverageResult = await fetchOverShepherdCoverageForCaller(client);
+  const SHELL_MAX_WIDTH = 980;
+  const shell = (lede: string, body: ReactNode) => (
+    <LgAppShell user={user}>
+      <PageHeader
+        eyebrow="Over-Shepherd"
+        title="My Leaders"
+        lede={lede}
+        maxWidth={SHELL_MAX_WIDTH}
+      />
+      <PageBody maxWidth={SHELL_MAX_WIDTH}>{body}</PageBody>
+    </LgAppShell>
+  );
 
-  const shellProps = {
-    navItems,
-    currentUser,
-    eyebrow: "Over-Shepherd",
-    title: "My Leaders",
-    contentMaxWidth: 980,
-  } as const;
+  const coverageResult = await fetchOverShepherdCoverageForCaller(client);
 
   // Either backend read failing — surface one controlled empty state rather
   // than leaking a 500.
-  const unavailable = (
-    <PastoralAppShell
-      {...shellProps}
-      lede="We couldn't load your Leaders just now."
-    >
-      <EmptyState
-        title="Temporarily unavailable"
-        description="Your care list couldn't be loaded. Please refresh in a moment."
-      />
-    </PastoralAppShell>
+  const unavailable = shell(
+    "We couldn't load your Leaders just now.",
+    <EmptyState
+      title="Temporarily unavailable"
+      description="Your care list couldn't be loaded. Please refresh in a moment."
+    />
   );
 
   if (coverageResult.error) return unavailable;
@@ -89,9 +90,5 @@ export default async function OverShepherdPage() {
       ? "No Leaders are assigned to your care yet. A ministry admin will route coverage your way."
       : "The Leaders you cover, with their current care status.";
 
-  return (
-    <PastoralAppShell {...shellProps} lede={lede}>
-      <MyShepherdsTable entries={entries} />
-    </PastoralAppShell>
-  );
+  return shell(lede, <MyShepherdsTable entries={entries} />);
 }
