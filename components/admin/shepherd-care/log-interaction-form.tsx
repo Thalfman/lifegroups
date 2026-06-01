@@ -206,7 +206,12 @@ export function LogInteractionForm({
               id="sc-interaction_at"
               name="interaction_at"
               type="date"
-              required
+              // Only enforce native `required` while the section is
+              // expanded. A hidden (display:none) required control can't
+              // be focused, so the browser would block submission with no
+              // visible bubble; when collapsed we defer to the server
+              // validator, which returns a surfaced "required" error.
+              required={showMore}
               defaultValue={todayLocalIso()}
               max={todayLocalIso()}
               style={fieldInputStyle}
@@ -219,7 +224,7 @@ export function LogInteractionForm({
             <select
               id="sc-interaction_type"
               name="interaction_type"
-              required
+              required={showMore}
               defaultValue="call"
               style={fieldSelectStyle}
             >
