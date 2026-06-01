@@ -230,12 +230,13 @@ navigation, surface count, frozen schema and routes, shared primitives, and visu
 -----
 
 *Status legend:* 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a Julian or Tom
-sign-off before build. Each requirement is sized to become one GitHub issue or a small epic, and
+sign-off before build · ✅ a 🔴 gate that has since been signed off and is cleared to build (see the
+Sign-off section). Each requirement is sized to become one GitHub issue or a small epic, and
 every 🔴 item carries a recommended default so sign-off is a yes, not fresh analysis.
 
 ## L: Launch planning
 
-**L1: Adopt progressive disclosure, glance then detail. 🔴**
+**L1: Adopt progressive disclosure, glance then detail. ✅ (was 🔴; signed off 2026-06-01)**
 First load shows only the at-a-glance capacity answer and one primary action; the rest moves behind
 named tabs. Recommended default tabs: Overview, Forecast, Scenarios, and Groups and multiplication.
 Evidence: `components/admin/launch-planning/summary-cards.tsx`,
@@ -253,19 +254,26 @@ empty state, and point to People or Groups when there are no active groups. Evid
 `app/(protected)/admin/launch-planning/page.tsx` (lines 383 to 398),
 `components/admin/launch-planning/summary-cards.tsx`.
 
-**L4: Replace the church-attendance time series with one editable estimate. 🔴 Structural, no migration.**
+**L4: Replace the church-attendance time series with one editable estimate. ✅ (was 🔴; signed off 2026-06-01) Structural, no migration.**
 Make `current_church_attendance` in `launch_planning_assumptions` the single source of truth for both
 the forecast and the percentage headline, and reduce the church-attendance card to one value with an
 edit control. **Owner sign-off (2026-06-01): single-number surface approved, but the
 `church_attendance_snapshots` table and the `admin_record_church_attendance_snapshot` RPC are KEPT and
 history is retained — they simply stop being what the forecast and headline read from.** This makes L4 a
-surface + source-of-truth change with no schema migration. **ADR 0008 intersection: none**; the table is
+surface + source-of-truth change with no schema migration. **Preserve the existing denominator:** today
+the percentage headline divides current participants by the *latest snapshot's* attendance count
+(`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
+`decodeLaunchPlanningAssumptions` falls back to the built-in default (100) when the assumption was never
+set. So before making `current_church_attendance` the source of truth, seed it from the latest snapshot
+for existing churches — either a one-time data backfill or a read-time fallback to the latest snapshot
+when the assumption is unset — so existing participation percentages do not reset to the stale default.
+**ADR 0008 intersection: none**; the table is
 outside the frozen `shepherd_care_*` surface. Evidence:
 `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
 *Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept).*
 
-**L5: Trim the forecast and scenario inputs and state them as percentages. 🔴 Structural at the UI boundary.**
+**L5: Trim the forecast and scenario inputs and state them as percentages. ✅ (was 🔴; signed off 2026-06-01) Structural at the UI boundary.**
 Reduce the default forecast to the two inputs that need a ministry-specific answer, current church
 attendance from L4 and target group participation shown as a percentage such as 60 percent, and default
 the rest silently: expected growth to zero, average group size to the default capacity, launch buffer to
@@ -317,7 +325,7 @@ default: ask “Which weeks does it meet?” with options worded as **1st and 3r
 migration; the stored value is unchanged. Evidence: `components/admin/forms/group-create-form.tsx`,
 `components/admin/forms/group-edit-form.tsx`. *Sign-off: confirm the replacement wording.*
 
-**G3: Default group capacity instead of leaving it Unknown. 🔴**
+**G3: Default group capacity instead of leaving it Unknown. ✅ (was 🔴; signed off 2026-06-01)**
 Default a new group’s capacity to the ministry default capacity rather than “Unknown”, so an operator sets
 a per-group number only when a group differs. Recommended default: seed the capacity field and the capacity
 math from `default_group_capacity`, and reserve “Unknown” for the rare group with no sensible capacity.
@@ -334,7 +342,7 @@ layout change, no schema impact. Evidence: `components/admin/forms/group-create-
 
 ## S: Settings
 
-**S1: Trim Settings to what an operator changes, default the rest, remove the dead field. 🔴**
+**S1: Trim Settings to what an operator changes, default the rest, remove the dead field. ✅ (was 🔴; signed off 2026-06-01)**
 Keep care cadence, the two stale-day windows, and the default group capacity in the primary path; move the
 capacity and attendance thresholds, the check-in offset, and the missed-check-in window into an “Advanced
 thresholds” disclosure with their current defaults; demote per-group overrides and the active-overrides list
