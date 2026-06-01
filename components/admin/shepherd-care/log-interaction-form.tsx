@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminLogShepherdCareInteraction } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
@@ -64,83 +64,47 @@ export function LogInteractionForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminLogShepherdCareInteraction,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
+    if (state?.ok) {
+      formRef.current?.reset();
+      setShowMore(false);
+    }
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
-      <input type="hidden" name="shepherd_profile_id" value={shepherdProfileId} />
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
+      <input
+        type="hidden"
+        name="shepherd_profile_id"
+        value={shepherdProfileId}
+      />
       <p style={formNoteStyle}>
-        Log a care touch — date and type are required. Notes are optional
-        (max 2000 chars). Tick a box to also set a next touchpoint or change
-        the care status on this profile.
+        Log a care touch: note what happened, update the care status if it
+        changed, and set a next touchpoint if one&apos;s needed. The date and
+        type default to today and a call — open More details to change them.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
-        <div>
-          <label htmlFor="sc-interaction_at" style={fieldLabelStyle}>
-            Interaction date
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label htmlFor="sc-notes" style={fieldLabelStyle}>
+            What happened (optional, max 2000 chars) — admin-only
           </label>
-          <input
-            id="sc-interaction_at"
-            name="interaction_at"
-            type="date"
-            required
-            defaultValue={todayLocalIso()}
-            max={todayLocalIso()}
-            style={fieldInputStyle}
+          <textarea
+            id="sc-notes"
+            name="notes"
+            rows={3}
+            maxLength={2000}
+            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            placeholder="What did you talk about? What's the read?"
           />
-        </div>
-        <div>
-          <label htmlFor="sc-interaction_type" style={fieldLabelStyle}>
-            Type
-          </label>
-          <select
-            id="sc-interaction_type"
-            name="interaction_type"
-            required
-            defaultValue="call"
-            style={fieldSelectStyle}
-          >
-            {INTERACTION_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {shepherdCareInteractionTypeLabel(t)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="sc-next_touchpoint_due" style={fieldLabelStyle}>
-            Next touchpoint
-          </label>
-          <input
-            id="sc-next_touchpoint_due"
-            name="next_touchpoint_due"
-            type="date"
-            style={fieldInputStyle}
-          />
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 6,
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-            }}
-          >
-            <input
-              type="checkbox"
-              name="set_next_touchpoint_due"
-              value="true"
-            />
-            Update next touchpoint
-          </label>
         </div>
         <div>
           <label htmlFor="sc-current_status" style={fieldLabelStyle}>
@@ -173,27 +137,116 @@ export function LogInteractionForm({
             Update care status
           </label>
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="sc-notes" style={fieldLabelStyle}>
-            Notes (optional, max 2000 chars) — admin-only
-          </label>
-          <textarea
-            id="sc-notes"
-            name="notes"
-            rows={3}
-            maxLength={2000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
-            placeholder="What did you talk about? What's the read?"
-          />
-        </div>
         <div>
+          <label htmlFor="sc-next_touchpoint_due" style={fieldLabelStyle}>
+            Next touchpoint
+          </label>
+          <input
+            id="sc-next_touchpoint_due"
+            name="next_touchpoint_due"
+            type="date"
+            style={fieldInputStyle}
+          />
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 6,
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+            }}
+          >
+            <input
+              type="checkbox"
+              name="set_next_touchpoint_due"
+              value="true"
+            />
+            Set a follow-up
+          </label>
+        </div>
+        {/* Date and type carry sane defaults (today, a call) and are
+            demoted behind More details so the primary form stays the
+            three things a touch needs: what happened, status, follow-up.
+            They still submit when collapsed. */}
+        <div
+          style={{ gridColumn: "1 / -1", display: showMore ? "none" : "block" }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowMore(true)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: fontBody,
+              fontSize: 12.5,
+              color: P.ink2,
+              textDecoration: "underline",
+            }}
+          >
+            More details — date and type
+          </button>
+        </div>
+        <div
+          style={{
+            gridColumn: "1 / -1",
+            display: showMore ? "grid" : "none",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <div>
+            <label htmlFor="sc-interaction_at" style={fieldLabelStyle}>
+              Interaction date
+            </label>
+            <input
+              id="sc-interaction_at"
+              name="interaction_at"
+              type="date"
+              required
+              defaultValue={todayLocalIso()}
+              max={todayLocalIso()}
+              style={fieldInputStyle}
+            />
+          </div>
+          <div>
+            <label htmlFor="sc-interaction_type" style={fieldLabelStyle}>
+              Type
+            </label>
+            <select
+              id="sc-interaction_type"
+              name="interaction_type"
+              required
+              defaultValue="call"
+              style={fieldSelectStyle}
+            >
+              {INTERACTION_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {shepherdCareInteractionTypeLabel(t)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Log interaction"}
           </PButton>
         </div>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>
