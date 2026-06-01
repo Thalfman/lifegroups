@@ -9,6 +9,8 @@ import { HealthDistributionCard } from "./HealthDistributionCard";
 import { GuestPipelineFunnelCard } from "./GuestPipelineFunnelCard";
 import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { DrillDownStrip, type DrillDownItem } from "./DrillDownStrip";
+import { ActivityBand } from "./ActivityBand";
+import { PeriodSlicer } from "./PeriodSlicer";
 
 // Executive overview for the /admin landing. Re-skinned warm (pastoral palette)
 // so it meshes with the Leader care / Launch planning surfaces instead of
@@ -76,6 +78,22 @@ export function DashboardClient({ data }: { data: AdminDashboardData }) {
     <PageBody>
       <div style={{ display: "grid", gap: 18 }}>
         <VitalSignsBand data={data} />
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <SectionHeading>Activity</SectionHeading>
+            <PeriodSlicer current={data.activity.grain} />
+          </div>
+          <ActivityBand activity={data.activity} />
+        </div>
 
         <div
           className="lg-shell-grid-2"

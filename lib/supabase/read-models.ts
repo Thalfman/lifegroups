@@ -110,6 +110,66 @@ export async function fetchActiveGroupCount(
   return { data: count ?? 0, error: null };
 }
 
+export type OverviewActivityCounts = {
+  membersJoined: number;
+  followUpsCompleted: number;
+  careTouchpoints: number;
+};
+
+// Counts of dated activity within [fromIso, toExclusiveIso) for the executive
+// overview's period band. `fromIso` null means all-time (upper bound only). The
+// columns are date / timestamp, so an exclusive next-day upper bound includes
+// all of "today". Head-only count queries keep this cheap. Groups launched and
+// guests welcomed are derived from arrays the dashboard already fetches, so
+// they are NOT read here.
+export async function fetchOverviewActivityCounts(
+  client: ReadClient,
+  range: { fromIso: string | null; toExclusiveIso: string }
+): Promise<ReadResult<OverviewActivityCounts>> {
+  let membersQ = client
+    .from("group_memberships")
+    .select("id", { count: "exact", head: true })
+    .lt("joined_at", range.toExclusiveIso);
+  if (range.fromIso) membersQ = membersQ.gte("joined_at", range.fromIso);
+
+  let followUpsQ = client
+    .from("follow_ups")
+    .select("id", { count: "exact", head: true })
+    .not("completed_at", "is", null)
+    .lt("completed_at", range.toExclusiveIso);
+  if (range.fromIso) followUpsQ = followUpsQ.gte("completed_at", range.fromIso);
+
+  let interactionsQ = client
+    .from("shepherd_care_interactions")
+    .select("id", { count: "exact", head: true })
+    .lt("interaction_at", range.toExclusiveIso);
+  if (range.fromIso)
+    interactionsQ = interactionsQ.gte("interaction_at", range.fromIso);
+
+  const [membersRes, followUpsRes, interactionsRes] = await Promise.all([
+    membersQ,
+    followUpsQ,
+    interactionsQ,
+  ]);
+
+  const firstError =
+    membersRes.error || followUpsRes.error || interactionsRes.error;
+  if (firstError)
+    return {
+      data: null,
+      error: wrapError("fetchOverviewActivityCounts", firstError),
+    };
+
+  return {
+    data: {
+      membersJoined: membersRes.count ?? 0,
+      followUpsCompleted: followUpsRes.count ?? 0,
+      careTouchpoints: interactionsRes.count ?? 0,
+    },
+    error: null,
+  };
+}
+
 export async function fetchAttendanceSessions(
   client: ReadClient,
   options: { groupId?: string; meetingWeek?: string; limit?: number } = {}

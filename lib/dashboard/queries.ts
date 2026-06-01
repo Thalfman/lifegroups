@@ -20,6 +20,7 @@ import {
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
   fetchOverShepherdsForAdmin,
+  fetchOverviewActivityCounts,
   fetchProfilesForAdmin,
   fetchShepherdCareDirectoryForAdmin,
   type LeaderFollowUpRow,
@@ -34,6 +35,7 @@ import type {
   LeaderGroupDashboard,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
+  OverviewActivitySummary,
   ShepherdCareDashboardSummary,
 } from "./types";
 import {
@@ -52,6 +54,11 @@ import {
   participationPct,
 } from "@/lib/admin/launch-planning";
 import { LEADER_READINESS_STAGES } from "@/lib/admin/leader-pipeline";
+import {
+  overviewPeriodRange,
+  type OverviewGrain,
+  type OverviewPeriodRange,
+} from "@/lib/admin/overview-period";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
@@ -346,6 +353,38 @@ function buildMultiplicationSummary(
   };
 }
 
+// "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
+// already-fetched (gated) group/guest arrays — no extra read — while the three
+// productivity counts come from fetchOverviewActivityCounts and degrade to null
+// if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
+// lexicographic comparison against the half-open [fromIso, toExclusiveIso)
+// window is correct.
+function buildActivitySummary(
+  period: OverviewPeriodRange,
+  groups: readonly { launched_on: string | null }[],
+  guests: readonly { first_attended_date: string | null }[],
+  activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
+): OverviewActivitySummary {
+  const inRange = (iso: string | null): boolean => {
+    if (!iso) return false;
+    if (iso >= period.toExclusiveIso) return false;
+    if (period.fromIso && iso < period.fromIso) return false;
+    return true;
+  };
+  const extended = activityRes.error ? null : activityRes.data;
+  return {
+    grain: period.grain,
+    label: period.label,
+    groupsLaunched: groups.filter((g) => inRange(g.launched_on)).length,
+    guestsWelcomed: guests.filter((g) => inRange(g.first_attended_date)).length,
+    membersJoined: extended ? extended.membersJoined : null,
+    followUpsCompleted: extended ? extended.followUpsCompleted : null,
+    careTouchpoints: extended ? extended.careTouchpoints : null,
+    extendedAvailable: activityRes.error === null,
+    error: activityRes.error?.message ?? null,
+  };
+}
+
 // The reads the admin dashboard orchestration depends on, as one interface —
 // the seam between the orchestration (the error-gate, the graceful-degrade
 // branches, the pure-model wiring) and Supabase. The orchestration is a
@@ -386,6 +425,7 @@ export type AdminDashboardReads = {
   fetchMultiplicationCandidatesForAdmin: OmitClient<
     typeof fetchMultiplicationCandidatesForAdmin
   >;
+  fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -419,12 +459,14 @@ export function supabaseAdminDashboardReads(
       fetchLeaderPipelineForAdmin(client, ...a),
     fetchMultiplicationCandidatesForAdmin: (...a) =>
       fetchMultiplicationCandidatesForAdmin(client, ...a),
+    fetchOverviewActivityCounts: (...a) =>
+      fetchOverviewActivityCounts(client, ...a),
   };
 }
 
 export async function getAdminDashboardData(
   client: AppSupabaseClient | null,
-  options: { selectedWeek?: string; now?: Date } = {}
+  options: { selectedWeek?: string; now?: Date; grain?: OverviewGrain } = {}
 ): Promise<DashboardResult<AdminDashboardData>> {
   if (!client) return fallback(ADMIN_FALLBACK);
   return buildAdminDashboardData(supabaseAdminDashboardReads(client), options);
@@ -437,11 +479,14 @@ export async function getAdminDashboardData(
 // lives here and is reachable from a test through an in-memory `reads` adapter.
 export async function buildAdminDashboardData(
   reads: AdminDashboardReads,
-  options: { selectedWeek?: string; now?: Date } = {}
+  options: { selectedWeek?: string; now?: Date; grain?: OverviewGrain } = {}
 ): Promise<DashboardResult<AdminDashboardData>> {
   const now = options.now ?? new Date();
   const currentWeek = isoWeekStart(now);
   const selectedWeek = options.selectedWeek ?? currentWeek;
+  // Period for the "activity this period" band (default all-time). Only the
+  // activity rollup is period-scoped; everything else is current-state.
+  const period = overviewPeriodRange(options.grain ?? "all", now);
 
   try {
     // Phase 5A.6: batch-fetch calendar events for the selected week so
@@ -483,6 +528,7 @@ export async function buildAdminDashboardData(
       launchAssumptionsResult,
       leaderPipelineResult,
       multiplicationResult,
+      activityResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
       reads.fetchActiveGroupCount(),
@@ -510,6 +556,10 @@ export async function buildAdminDashboardData(
       // card rather than failing the page, so they stay out of firstError.
       reads.fetchLeaderPipelineForAdmin(),
       reads.fetchMultiplicationCandidatesForAdmin(),
+      reads.fetchOverviewActivityCounts({
+        fromIso: period.fromIso,
+        toExclusiveIso: period.toExclusiveIso,
+      }),
     ]);
 
     // Build the shepherd-care directory from the SAME active-coverage set the
@@ -590,6 +640,12 @@ export async function buildAdminDashboardData(
     );
     const leaderPipeline = buildLeaderPipelineSummary(leaderPipelineResult);
     const multiplication = buildMultiplicationSummary(multiplicationResult);
+    const activity = buildActivitySummary(
+      period,
+      groupsResult.data ?? [],
+      guestsResult.data ?? [],
+      activityResult
+    );
 
     const { derivedRows: _derivedRows, ...modelPayload } = model;
     return live({
@@ -598,6 +654,7 @@ export async function buildAdminDashboardData(
       launchPlanning,
       leaderPipeline,
       multiplication,
+      activity,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

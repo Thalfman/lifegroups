@@ -12,6 +12,7 @@ import type {
 } from "@/types/enums";
 import type { CapacityStatus } from "@/lib/admin/metrics";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
+import type { OverviewGrain } from "@/lib/admin/overview-period";
 
 export type DashboardSource = "live" | "fallback";
 
@@ -230,6 +231,23 @@ export interface MultiplicationDashboardSummary {
   error: string | null;
 }
 
+// "Activity this period" — the only period-scoped block on the landing, driven
+// by the week/month/quarter/year/all-time slicer. groupsLaunched + guestsWelcomed
+// are derived from arrays the dashboard already fetches (always available); the
+// remaining three come from a dedicated count read and are null when it fails
+// (extendedAvailable === false).
+export interface OverviewActivitySummary {
+  grain: OverviewGrain;
+  label: string;
+  groupsLaunched: number;
+  guestsWelcomed: number;
+  membersJoined: number | null;
+  followUpsCompleted: number | null;
+  careTouchpoints: number | null;
+  extendedAvailable: boolean;
+  error: string | null;
+}
+
 export interface AdminDashboardData {
   meetingWeek: string;
   weekLabel: string;
@@ -246,6 +264,7 @@ export interface AdminDashboardData {
   launchPlanning: LaunchPlanningDashboardSnapshot;
   leaderPipeline: LeaderPipelineDashboardSummary;
   multiplication: MultiplicationDashboardSummary;
+  activity: OverviewActivitySummary;
 }
 
 // Leader dashboard model is untouched by Phase 6.0.

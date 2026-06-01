@@ -37,6 +37,10 @@ function emptyReads(
       data: [],
       error: null,
     }),
+    fetchOverviewActivityCounts: async () => ({
+      data: { membersJoined: 0, followUpsCompleted: 0, careTouchpoints: 0 },
+      error: null,
+    }),
     ...overrides,
   };
 }
@@ -155,5 +159,49 @@ describe("buildAdminDashboardData", () => {
     if (result.source !== "live") return;
     expect(result.data.multiplication.available).toBe(false);
     expect(result.data.leaderPipeline.available).toBe(true);
+  });
+
+  it("defaults the activity band to all-time and stays available when the activity read succeeds", async () => {
+    const result = await buildAdminDashboardData(emptyReads(), { now: NOW });
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.grain).toBe("all");
+    expect(result.data.activity.label).toBe("All time");
+    expect(result.data.activity.extendedAvailable).toBe(true);
+  });
+
+  it("scopes the activity band to the requested grain", async () => {
+    const result = await buildAdminDashboardData(emptyReads(), {
+      now: NOW,
+      grain: "month",
+    });
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.grain).toBe("month");
+    expect(result.data.activity.label).toBe("This month");
+  });
+
+  it("keeps the page live but marks activity counts unavailable when that read errors", async () => {
+    // The activity counts read is outside the firstError gate: a failure leaves
+    // groupsLaunched/guestsWelcomed (derived from gated arrays) intact while the
+    // three productivity counts go null.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOverviewActivityCounts: async () => ({
+          data: null,
+          error: new Error("activity counts unavailable"),
+        }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.extendedAvailable).toBe(false);
+    expect(result.data.activity.membersJoined).toBeNull();
+    // Derived-from-gated-arrays metrics still resolve to a number.
+    expect(typeof result.data.activity.groupsLaunched).toBe("number");
   });
 });

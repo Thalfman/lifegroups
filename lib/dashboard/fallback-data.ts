@@ -7,6 +7,7 @@ import type {
   LeaderDashboardData,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
+  OverviewActivitySummary,
   PipelineStageCount,
   SetupGapRow,
   ShepherdCareDashboardSummary,
@@ -436,6 +437,20 @@ const fallbackMultiplication: MultiplicationDashboardSummary = {
   error: null,
 };
 
+// Default-grain (all-time) activity for the period band when no Supabase client
+// is configured (e.g. /admin-preview sketches).
+const fallbackActivity: OverviewActivitySummary = {
+  grain: "all",
+  label: "All time",
+  groupsLaunched: 6,
+  guestsWelcomed: 23,
+  membersJoined: 41,
+  followUpsCompleted: 18,
+  careTouchpoints: 35,
+  extendedAvailable: true,
+  error: null,
+};
+
 export const ADMIN_FALLBACK: AdminDashboardData = {
   meetingWeek: FALLBACK_WEEK,
   weekLabel: FALLBACK_WEEK_LABEL,
@@ -452,6 +467,7 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   launchPlanning: fallbackLaunchPlanning,
   leaderPipeline: fallbackLeaderPipeline,
   multiplication: fallbackMultiplication,
+  activity: fallbackActivity,
   attentionItems: fallbackAttention,
   capacitySummary: {
     full: fallbackCapacityFull,
