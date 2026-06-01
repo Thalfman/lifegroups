@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
+import { ErrorBanner } from "@/components/lg/ErrorBanner";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -91,6 +92,8 @@ type PageData = {
   // same-group apprentices (the RPC + trigger reject cross-group links).
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
   multiplicationError: string | null;
+  // Computed once in loadData; reused by the render (e.g. ChurchAttendanceCard).
+  todayIso: string;
 };
 
 const EMPTY_CAPACITY_MODEL: CapacityBoardModel = {
@@ -98,6 +101,51 @@ const EMPTY_CAPACITY_MODEL: CapacityBoardModel = {
   suggestions: [],
   segments: [],
 };
+
+type MultiplicationView = {
+  segments: SegmentGroup[];
+  availableGroups: { id: string; name: string }[];
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
+};
+
+type CandidatesData = NonNullable<
+  Awaited<ReturnType<typeof fetchMultiplicationCandidatesForAdmin>>["data"]
+>;
+type AllGroupsData = NonNullable<
+  Awaited<ReturnType<typeof fetchAllGroups>>["data"]
+>;
+type PipelineData = NonNullable<
+  Awaited<ReturnType<typeof fetchLeaderPipelineForAdmin>>["data"]
+>;
+
+// Shape the multiplication-candidate, group, and pipeline reads into the
+// planner's props. Only called once its three source reads have succeeded.
+function buildMultiplicationView(
+  candidates: CandidatesData,
+  allGroups: AllGroupsData,
+  pipeline: PipelineData,
+  todayIso: string
+): MultiplicationView {
+  const segments = buildPlannerSegments(candidates, todayIso);
+  const candidateGroupIds = new Set(
+    candidates.map((e) => e.candidate.group_id)
+  );
+  const availableGroups = allGroups
+    .filter(
+      (g) => g.lifecycle_status === "active" && !candidateGroupIds.has(g.id)
+    )
+    .map((g) => ({ id: g.id, name: g.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const apprenticesByGroup: Record<string, ApprenticeOption[]> = {};
+  for (const e of pipeline) {
+    const list = (apprenticesByGroup[e.apprentice.group_id] ??= []);
+    list.push({
+      id: e.apprentice.id,
+      label: `${e.apprentice.display_name} · ${STAGE_LABEL[e.apprentice.readiness_stage]}`,
+    });
+  }
+  return { segments, availableGroups, apprenticesByGroup };
+}
 
 function emptyData(): PageData {
   const dbError = "Database is not configured in this environment.";
@@ -143,6 +191,7 @@ function emptyData(): PageData {
     availableGroups: [],
     apprenticesByGroup: {},
     multiplicationError: dbError,
+    todayIso: new Date().toISOString().slice(0, 10),
   };
 }
 
@@ -221,18 +270,10 @@ async function loadData(): Promise<PageData> {
       }
     : null;
 
-  // --- Capacity board (built once; its suggestions also feed multiplication) ---
-  const capacityModel = buildCapacityBoardModel({
-    groups: inputsBundle.groups,
-    overrides: inputsBundle.groupMetricSettings,
-    memberships: inputsBundle.memberships,
-    metricDefaults,
-    apprentices: boardExtras.apprentices,
-    coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
-    candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
-    candidateGroupIds: boardExtras.candidateGroupIds,
-    todayIso,
-  });
+  // --- Capacity board. Its model (rows + the "Suggested to multiply" panel) is
+  // derived purely from capacity inputs + board extras, NOT the leader pipeline.
+  // Skip the build when its inputs failed — the render shows a banner instead,
+  // so building from empty data would be wasted work. ---
   const capacityError =
     inputsBundle.errors.groups ??
     inputsBundle.errors.overrides ??
@@ -240,36 +281,38 @@ async function loadData(): Promise<PageData> {
     inputsBundle.errors.metricDefaults ??
     boardExtras.error ??
     null;
+  const capacityModel = capacityError
+    ? EMPTY_CAPACITY_MODEL
+    : buildCapacityBoardModel({
+        groups: inputsBundle.groups,
+        overrides: inputsBundle.groupMetricSettings,
+        memberships: inputsBundle.memberships,
+        metricDefaults,
+        apprentices: boardExtras.apprentices,
+        coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
+        candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
+        candidateGroupIds: boardExtras.candidateGroupIds,
+        todayIso,
+      });
 
-  // --- Multiplication planner ---
-  const segments = buildPlannerSegments(candidatesRes.data ?? [], todayIso);
-  const candidateGroupIds = new Set(
-    (candidatesRes.data ?? []).map((e) => e.candidate.group_id)
-  );
-  const availableGroups = (allGroupsRes.data ?? [])
-    .filter(
-      (g) => g.lifecycle_status === "active" && !candidateGroupIds.has(g.id)
-    )
-    .map((g) => ({ id: g.id, name: g.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const apprenticesByGroup: Record<string, ApprenticeOption[]> = {};
-  for (const e of pipelineRes.data ?? []) {
-    const list = (apprenticesByGroup[e.apprentice.group_id] ??= []);
-    list.push({
-      id: e.apprentice.id,
-      label: `${e.apprentice.display_name} · ${STAGE_LABEL[e.apprentice.readiness_stage]}`,
-    });
-  }
-  // The pipeline drives apprenticesByGroup; a pipeline failure must block the
-  // planner (as the old /admin/multiplication page did). Otherwise the apprentice
-  // picker renders with no options and saving a linked candidate would submit the
-  // blank option, silently clearing leader_pipeline_id.
+  // --- Multiplication planner. The pipeline drives apprenticesByGroup; a
+  // pipeline failure must block the planner (as the old /admin/multiplication
+  // page did) so the apprentice picker can't render with no options and silently
+  // clear leader_pipeline_id on save. boardExtras is NOT in this list — it only
+  // feeds the capacity board's suggestions, which render in the capacity section. ---
   const multiplicationError =
     candidatesRes.error?.message ??
     allGroupsRes.error?.message ??
     pipelineRes.error?.message ??
-    boardExtras.error ??
     null;
+  const { segments, availableGroups, apprenticesByGroup } = multiplicationError
+    ? { segments: [], availableGroups: [], apprenticesByGroup: {} }
+    : buildMultiplicationView(
+        candidatesRes.data ?? [],
+        allGroupsRes.data ?? [],
+        pipelineRes.data ?? [],
+        todayIso
+      );
 
   return {
     assumptions,
@@ -295,27 +338,8 @@ async function loadData(): Promise<PageData> {
     availableGroups,
     apprenticesByGroup,
     multiplicationError,
+    todayIso,
   };
-}
-
-// Shared terra error banner (was repeated inline across the three former pages).
-function ErrorBanner({ children }: { children: ReactNode }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: "#7d3621",
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "10px 14px",
-      }}
-    >
-      {children}
-    </p>
-  );
 }
 
 function SectionEyebrow({ children }: { children: ReactNode }) {
@@ -395,7 +419,7 @@ export default async function AdminLaunchPlanningPage() {
             latest={data.churchAttendanceLatest}
             currentParticipants={data.inputs.current_participants}
             participationPct={data.participationPct}
-            todayIso={new Date().toISOString().slice(0, 10)}
+            todayIso={data.todayIso}
           />
 
           <LaunchPlanningSetupWarnings
@@ -458,18 +482,20 @@ export default async function AdminLaunchPlanningPage() {
             comparison={data.comparison}
           />
 
-          {/* Capacity board (merged-in). Suggestions are rendered once, in the
-              multiplication section below, so they are suppressed here. */}
+          {/* Capacity board (merged-in). It owns the single "Suggested to
+              multiply" panel — that panel is derived from capacity data, not the
+              leader pipeline, so it stays visible even when the pipeline read
+              (which only gates the multiplication planner below) fails. */}
           {data.capacityError ? (
             <ErrorBanner>
               The capacity board could not be loaded: {data.capacityError}
             </ErrorBanner>
           ) : (
-            <CapacityBoard model={{ ...data.capacityModel, suggestions: [] }} />
+            <CapacityBoard model={data.capacityModel} />
           )}
 
-          {/* Multiplication planner (merged-in). Owns the single
-              "Suggested to multiply" panel via capacityModel.suggestions. */}
+          {/* Multiplication planner (merged-in). Suggestions render in the
+              capacity section above, so they are suppressed here. */}
           {data.multiplicationError ? (
             <ErrorBanner>
               The multiplication pipeline could not be loaded:{" "}
@@ -480,7 +506,7 @@ export default async function AdminLaunchPlanningPage() {
               segments={data.segments}
               availableGroups={data.availableGroups}
               apprenticesByGroup={data.apprenticesByGroup}
-              suggestions={data.capacityModel.suggestions}
+              suggestions={[]}
             />
           )}
 
