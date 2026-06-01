@@ -122,7 +122,7 @@ export function GroupCreateForm() {
           with the form rather than being silently discarded. */}
       <div
         className="lg-m-grid-stack"
-        style={{ ...formGridStyle, display: showMore ? undefined : "none" }}
+        style={showMore ? formGridStyle : { ...formGridStyle, display: "none" }}
       >
         <div>
           <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
@@ -208,8 +208,13 @@ export function GroupCreateForm() {
             id="group-capacity"
             name="capacity"
             type="number"
-            min={0}
-            max={1000}
+            // Only enforce the native range while the section is expanded.
+            // The field stays mounted (display:none) when collapsed, where a
+            // non-focusable out-of-range value would block submission with no
+            // visible bubble; collapsed, we defer to the server validator,
+            // which surfaces a "Capacity can't be negative / over 1000" error.
+            min={showMore ? 0 : undefined}
+            max={showMore ? 1000 : undefined}
             inputMode="numeric"
             autoComplete="off"
             style={fieldInputStyle}
