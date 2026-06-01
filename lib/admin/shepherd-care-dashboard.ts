@@ -314,7 +314,8 @@ function buildAttentionQueue(
       followUpStats
     );
     if (reasons.length === 0) continue;
-    reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
+    // detectCareReasons already returns reasons sorted by REASON_PRIORITY, so
+    // the first element is the top reason — no re-sort needed here.
     const [primary, ...secondary] = reasons;
     const entryStaleDays = staleDaysForEntry(
       entry.profile.id,

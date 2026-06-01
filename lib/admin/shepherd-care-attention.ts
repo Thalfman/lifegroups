@@ -8,11 +8,13 @@
 // queue can never disagree — the hazard the dashboard code warned about in a
 // comment.
 //
-// Pure module, no I/O, no read-models import (kept acyclic): callers resolve
-// the per-tier staleness window, the overdue-follow-up flag, and the
-// no-over-shepherd flag, then hand us bare values. Keeps the `shepherd_care`
-// vocabulary per ADR-0008 even though the UI says "Leader".
+// Pure module, no I/O: callers resolve the per-tier staleness window, the
+// overdue-follow-up flag, and the no-over-shepherd flag, then hand us bare
+// values. Keeps the `shepherd_care` vocabulary per ADR-0008 even though the UI
+// says "Leader". The only import is the shared day-diff primitive from
+// read-core (which imports nothing but a type, so this stays acyclic).
 
+import { differenceInDaysIso } from "@/lib/supabase/read-core";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 
 // Only the care fields the attention predicate reads. ShepherdCareDirectorySummary
@@ -80,17 +82,9 @@ export type DetectCareReasonsContext = {
   noOverShepherd?: boolean;
 };
 
-// Whole days between two YYYY-MM-DD strings at UTC midnight. Inlined to keep
-// this module dependency-free; matches read-models.differenceInDaysIso exactly.
-function differenceInDaysIso(todayIso: string, thenIso: string): number {
-  const a = Date.parse(`${todayIso}T00:00:00Z`);
-  const b = Date.parse(`${thenIso}T00:00:00Z`);
-  if (Number.isNaN(a) || Number.isNaN(b)) return Number.POSITIVE_INFINITY;
-  return Math.floor((a - b) / 86_400_000);
-}
-
-// The one place that decides which attention reasons a care row raises. Order
-// of pushes follows REASON_PRIORITY so the first element is the top reason.
+// The one place that decides which attention reasons a care row raises. The
+// collected reasons are sorted by REASON_PRIORITY before returning, so the
+// first element is always the top reason regardless of the push order below.
 export function detectCareReasons(
   care: CareAttentionRow | null,
   ctx: DetectCareReasonsContext
@@ -122,7 +116,7 @@ export function detectCareReasons(
   if (care?.current_status === "needs_encouragement") {
     reasons.push("needs_encouragement_status");
   }
-  return reasons;
+  return reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
 }
 
 // Derive the chip/filter boolean from the reasons, so it is exactly the
