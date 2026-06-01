@@ -50,14 +50,17 @@ export type LaunchPlanningAssumptions = {
   target_launch_year: number | null;
 };
 
-// Documented baseline values. Mirrors the seed block in
+// Documented baseline values, mostly mirroring the seed block in
 // supabase/migrations/20260518190000_phase_lp1_launch_planning.sql.
-// If you change one, change the other.
 //
 // L5 (#224): the default forecast asks only for current church attendance and
 // target group participation; the rest are silently defaulted. `expected_growth`
-// defaults to 0 (assume no growth unless a scenario says otherwise) rather than
-// the optimistic 20 it started at.
+// now defaults to 0 (assume no growth unless a scenario says otherwise) rather
+// than the optimistic 20 it started at — this intentionally diverges from the
+// seed, which is left untouched (no migration). Existing rows that still carry
+// the seeded growth (20) and size (10) are normalized to these defaults for the
+// baseline forecast at read time via `applyBaselineSilentDefaults`, so no data
+// change is needed.
 export const BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS: LaunchPlanningAssumptions = {
   current_church_attendance: 100,
   expected_growth: 0,
@@ -195,6 +198,32 @@ export function decodeLaunchPlanningAssumptions(
       "target_launch_year",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_year
     ),
+  };
+}
+
+// L5 (#224): the baseline forecast no longer exposes controls for expected
+// growth or average group size — they're silently defaulted (growth 0, size =
+// ministry default capacity). Existing rows can still carry the stale seeded
+// values (growth 20, size 10), and the decoder prefers a stored value over the
+// default, so normalize them here for the baseline forecast: compute as if those
+// two keys were unset. Storage is untouched (no migration); scenarios keep their
+// own explicit values and are not passed through this. The fallback chain for
+// size mirrors `decodeLaunchPlanningAssumptions` (ministry default capacity, then
+// the built-in) so "size = default capacity" tracks Settings rather than freezing
+// a number.
+export function applyBaselineSilentDefaults(
+  assumptions: LaunchPlanningAssumptions,
+  metricDefaults?: Pick<MetricDefaults, "default_group_capacity"> | null
+): LaunchPlanningAssumptions {
+  const defaultGroupSize =
+    metricDefaults?.default_group_capacity != null &&
+    metricDefaults.default_group_capacity > 0
+      ? metricDefaults.default_group_capacity
+      : BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size;
+  return {
+    ...assumptions,
+    expected_growth: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth,
+    average_group_size: defaultGroupSize,
   };
 }
 

@@ -16,6 +16,7 @@ import {
 } from "@/lib/supabase/read-models";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+  applyBaselineSilentDefaults,
   buildLaunchPlanningInputs,
   buildScenarioComparison,
   buildStaffingForecast,
@@ -170,21 +171,24 @@ function emptyData(): PageData {
     memberships: [],
     metricDefaults: BUILT_IN_METRIC_DEFAULTS,
   });
+  // Same baseline normalization as loadData, for a consistent forecast when the
+  // DB isn't configured (#224).
+  const assumptions = applyBaselineSilentDefaults(
+    BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+    BUILT_IN_METRIC_DEFAULTS
+  );
   return {
-    assumptions: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+    assumptions,
     assumptionsAvailable: false,
     assumptionsError: dbError,
     inputsBundle,
     inputs,
-    outputs: computeLaunchPlan(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS, inputs),
+    outputs: computeLaunchPlan(assumptions, inputs),
     activeScenarios: [],
     scenariosError: dbError,
     comparison: [],
     participationPct: null,
-    staffingForecast: buildStaffingForecast(
-      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
-      []
-    ),
+    staffingForecast: buildStaffingForecast(assumptions, []),
     staffingSourceLabel: "baseline",
     pipelineError: dbError,
     capacityModel: EMPTY_CAPACITY_MODEL,
@@ -226,8 +230,15 @@ async function loadData(): Promise<PageData> {
   const todayIso = new Date().toISOString().slice(0, 10);
 
   // --- Launch planning ---
-  const assumptions = decodeLaunchPlanningAssumptions(
-    assumptionsRes.data ?? null,
+  // L5 (#224): normalize the baseline forecast's silently-defaulted inputs
+  // (growth → 0, average group size → ministry default capacity) so a stale
+  // seeded row can't keep forecasting from values the form no longer exposes.
+  // No data is written; scenarios keep their own decoded assumptions.
+  const assumptions = applyBaselineSilentDefaults(
+    decodeLaunchPlanningAssumptions(
+      assumptionsRes.data ?? null,
+      metricDefaults
+    ),
     metricDefaults
   );
   const inputs = buildLaunchPlanningInputs({

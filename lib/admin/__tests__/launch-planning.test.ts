@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+  applyBaselineSilentDefaults,
   buildLaunchPlanningInputs,
   buildScenarioComparison,
   computeLaunchPlan,
@@ -980,5 +981,64 @@ describe("L5 (#224) percent ⇄ ratio helpers", () => {
 
   it("defaults expected_growth to 0 so the trimmed forecast assumes no growth", () => {
     expect(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth).toBe(0);
+  });
+});
+
+describe("applyBaselineSilentDefaults (#224)", () => {
+  it("forces growth to 0 and size to the ministry default capacity, ignoring stale seeded values", () => {
+    const stale = makeAssumptions({
+      expected_growth: 20,
+      average_group_size: 10,
+    });
+    const out = applyBaselineSilentDefaults(stale, {
+      default_group_capacity: 12,
+    });
+    expect(out.expected_growth).toBe(0);
+    expect(out.average_group_size).toBe(12);
+  });
+
+  it("falls back to the built-in size when no ministry default capacity is set", () => {
+    const out = applyBaselineSilentDefaults(
+      makeAssumptions({ average_group_size: 10 }),
+      { default_group_capacity: null }
+    );
+    expect(out.average_group_size).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size
+    );
+  });
+
+  it("ignores a non-positive default capacity and falls back to the built-in size", () => {
+    const out = applyBaselineSilentDefaults(
+      makeAssumptions({ average_group_size: 10 }),
+      { default_group_capacity: 0 }
+    );
+    expect(out.average_group_size).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size
+    );
+  });
+
+  it("leaves the other forecast inputs untouched", () => {
+    const stale = makeAssumptions({
+      current_church_attendance: 250,
+      expected_growth: 20,
+      target_group_participation_pct: 0.7,
+      launch_buffer_pct: 0.2,
+      leaders_per_new_group: 3,
+      planned_launch_count: 4,
+      target_launch_month: 8,
+      target_launch_year: 2027,
+      notes: "keep me",
+    });
+    const out = applyBaselineSilentDefaults(stale, {
+      default_group_capacity: 12,
+    });
+    expect(out.current_church_attendance).toBe(250);
+    expect(out.target_group_participation_pct).toBe(0.7);
+    expect(out.launch_buffer_pct).toBe(0.2);
+    expect(out.leaders_per_new_group).toBe(3);
+    expect(out.planned_launch_count).toBe(4);
+    expect(out.target_launch_month).toBe(8);
+    expect(out.target_launch_year).toBe(2027);
+    expect(out.notes).toBe("keep me");
   });
 });
