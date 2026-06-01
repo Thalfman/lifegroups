@@ -1,136 +1,113 @@
-import { Card } from "@/components/lg/Card";
-import { SectionLabel } from "@/components/lg/SectionLabel";
+import type { ReactNode } from "react";
 import { PageBody } from "@/components/lg/PageHeader";
+import { P, fontSans } from "@/lib/pastoral";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
-import type { WeekOption } from "@/lib/admin/check-ins";
-import { SummaryTiles } from "./SummaryTiles";
-import { AttentionQueue } from "./AttentionQueue";
-import { CapacityBuckets } from "./CapacityBuckets";
-import { FollowUpsMini } from "./FollowUpsMini";
-// WeeklyHealthBuckets retained in the repo but no longer rendered — see the
-// ADR note where the "Weekly health" card was removed below.
-import { SetupGaps } from "./SetupGaps";
-import { WeekSelector } from "./WeekSelector";
-import { ShepherdCareTriageCard } from "./ShepherdCareTriageCard";
-import { LaunchPlanningSnapshotCard } from "./LaunchPlanningSnapshotCard";
+import { VitalSignsBand } from "./VitalSignsBand";
+import { LeaderCareOverviewCard } from "./LeaderCareOverviewCard";
+import { LaunchPlanningOverviewCard } from "./LaunchPlanningOverviewCard";
+import { HealthDistributionCard } from "./HealthDistributionCard";
+import { GuestPipelineFunnelCard } from "./GuestPipelineFunnelCard";
+import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
+import { DrillDownStrip, type DrillDownItem } from "./DrillDownStrip";
 
-// Julian admin OS landing — shepherd care + launch planning lead, with
-// weekly check-in surfaces (Attention queue, Capacity, Follow-ups,
-// Weekly health) supporting below. See
-// docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the pivot rationale.
-export function DashboardClient({
-  data,
-  weekOptions,
-}: {
-  data: AdminDashboardData;
-  weekOptions: WeekOption[];
-}) {
+// Executive overview for the /admin landing. Re-skinned warm (pastoral palette)
+// so it meshes with the Leader care / Launch planning surfaces instead of
+// clashing in near-white lg cards. Leads with point-in-time "vital signs", then
+// domain overview cards that drill into the deep pages, then a compact
+// drill-down strip that replaces the former on-page operational queues.
+// See docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the admin-OS landing rationale.
+
+function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        fontFamily: fontSans,
+        fontSize: 11,
+        textTransform: "uppercase",
+        letterSpacing: 1.8,
+        color: P.ink3,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function DashboardClient({ data }: { data: AdminDashboardData }) {
+  const setupGapTotal =
+    data.setupGaps.counts.noCapacity +
+    data.setupGaps.counts.noLeader +
+    data.setupGaps.counts.noMeetingDayTime +
+    data.setupGaps.counts.noMembers;
+  const capacityWatch =
+    data.capacitySummary.counts.full + data.capacitySummary.counts.warning;
+
+  const drillItems: DrillDownItem[] = [
+    {
+      label: "Groups need attention",
+      count: data.attentionItems.length,
+      href: "/admin/groups",
+      tone: P.terra,
+    },
+    {
+      label: "On capacity watch",
+      count: capacityWatch,
+      href: "/admin/launch-planning",
+      tone: P.mustard,
+    },
+    {
+      label: "Open follow-ups",
+      count: data.followUps.length,
+      href: "/admin/follow-ups",
+      tone: P.terra,
+      // The open follow-ups read is capped, so present it as a minimum.
+      plus: data.followUps.length >= 8,
+    },
+    {
+      label: "Setup gaps",
+      count: setupGapTotal,
+      href: "/admin/groups",
+      tone: P.mustard,
+    },
+  ];
+
   return (
     <PageBody>
       <div style={{ display: "grid", gap: 18 }}>
-        <SummaryTiles summary={data.summary} />
+        <VitalSignsBand data={data} />
 
         <div
           className="lg-shell-grid-2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.55fr 1fr",
-            gap: 18,
-          }}
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
         >
-          <ShepherdCareTriageCard summary={data.shepherdCare} />
-          <LaunchPlanningSnapshotCard snapshot={data.launchPlanning} />
+          <LeaderCareOverviewCard summary={data.shepherdCare} />
+          <LaunchPlanningOverviewCard
+            snapshot={data.launchPlanning}
+            multiplication={data.multiplication}
+          />
         </div>
 
         <div
-          className="lg-shell-grid-2"
+          className="lg-shell-grid-3"
           style={{
             display: "grid",
-            gridTemplateColumns: "1.55fr 1fr",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
             gap: 18,
           }}
         >
-          <Card>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                justifyContent: "space-between",
-                marginBottom: 14,
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    fontFamily: "var(--font-display)",
-                    fontSize: 20,
-                    fontWeight: 500,
-                    color: "var(--c-ink)",
-                  }}
-                >
-                  Groups needing attention
-                </h2>
-                <div
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: 12.5,
-                    color: "var(--c-ink3)",
-                    marginTop: 4,
-                  }}
-                >
-                  Prioritized — care + capacity signals first, weekly cadence after.
-                </div>
-              </div>
-              <WeekSelector
-                meetingWeek={data.meetingWeek}
-                weekOptions={weekOptions}
-                formAction="/admin"
-              />
-            </div>
-            <AttentionQueue
-              items={data.attentionItems}
-              meetingWeek={data.meetingWeek}
-            />
-          </Card>
-
-          <div
-            style={{
-              display: "grid",
-              gap: 18,
-              gridAutoRows: "min-content",
-            }}
-          >
-            <Card>
-              <SectionLabel hint="this week">Capacity</SectionLabel>
-              <CapacityBuckets summary={data.capacitySummary} />
-            </Card>
-            <Card>
-              <SectionLabel hint={data.followUps.length === 0 ? "all quiet" : "open"}>
-                Follow-ups
-              </SectionLabel>
-              <FollowUpsMini items={data.followUps} />
-            </Card>
-          </div>
+          <HealthDistributionCard counts={data.healthSummary.counts} />
+          <GuestPipelineFunnelCard
+            breakdown={data.guestPipelineBreakdown}
+            total={data.guestPipelineCount}
+          />
+          <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
         </div>
 
-        {/*
-          Shepherd→admin reporting loop removed per
-          docs/adr/0002-oversight-ladder-and-leader-gating.md: the "Weekly
-          health" card rendered check-in submission status (the leader health
-          pulse). With the leader surface gated, no check-ins are submitted,
-          so this card would read empty forever. It is dropped from the
-          dashboard; WeeklyHealthBuckets + buildHealthSummary stay dormant and
-          the /admin/check-ins page still resolves by direct URL.
-        */}
-        <Card>
-          <SectionLabel hint="don't ship a group with these unfilled">
-            Setup gaps
-          </SectionLabel>
-          <SetupGaps data={data.setupGaps} />
-        </Card>
+        <div style={{ display: "grid", gap: 10 }}>
+          <SectionHeading>Needs your attention</SectionHeading>
+          <DrillDownStrip items={drillItems} />
+        </div>
       </div>
     </PageBody>
   );

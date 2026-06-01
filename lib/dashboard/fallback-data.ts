@@ -5,6 +5,8 @@ import type {
   HealthGroupRow,
   LaunchPlanningDashboardSnapshot,
   LeaderDashboardData,
+  LeaderPipelineDashboardSummary,
+  MultiplicationDashboardSummary,
   PipelineStageCount,
   SetupGapRow,
   ShepherdCareDashboardSummary,
@@ -23,13 +25,12 @@ const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   not_now: 1,
 };
 
-const fallbackPipelineBreakdown: PipelineStageCount[] = GUEST_PIPELINE_STAGES.map(
-  (stage) => ({
+const fallbackPipelineBreakdown: PipelineStageCount[] =
+  GUEST_PIPELINE_STAGES.map((stage) => ({
     stage,
     label: pipelineStageLabel(stage),
     count: FALLBACK_PIPELINE_COUNTS[stage] ?? 0,
-  }),
-);
+  }));
 
 // Derive the headline count from the same breakdown using the live
 // builder's rule (lib/dashboard/queries.ts: every stage except the
@@ -65,7 +66,7 @@ const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
 ];
 
 const cap = (
-  partial: Omit<CapacityGroupRow, "warningPct" | "fullPct">,
+  partial: Omit<CapacityGroupRow, "warningPct" | "fullPct">
 ): CapacityGroupRow => ({
   warningPct: 80,
   fullPct: 100,
@@ -389,15 +390,19 @@ const fallbackShepherdCare: ShepherdCareDashboardSummary = {
   notContactedRecently: 4,
   noCareProfile: 5,
   unassignedCoverage: 6,
+  activeOverShepherds: 4,
   attentionItemsTotal: 7,
   coverageAvailable: true,
   available: true,
   error: null,
 };
 
+const FALLBACK_CHURCH_ATTENDANCE = 200;
+const FALLBACK_PARTICIPANTS = 142;
+
 const fallbackLaunchPlanning: LaunchPlanningDashboardSnapshot = {
   effectiveTotalCapacity: 168,
-  currentParticipants: 142,
+  currentParticipants: FALLBACK_PARTICIPANTS,
   projectedGroupDemand: 180,
   capacityGap: 18,
   recommendedNewGroups: 2,
@@ -406,7 +411,27 @@ const fallbackLaunchPlanning: LaunchPlanningDashboardSnapshot = {
   suggestedLaunchByDate: "2026-07-15",
   unknownCapacityGroupCount: 1,
   excludedActiveGroupCount: 1,
+  currentChurchAttendance: FALLBACK_CHURCH_ATTENDANCE,
+  // Derived from the same inputs so the fallback can't drift from its own
+  // numerator/denominator (matches participationPct rounding).
+  participationPct: Math.round(
+    (FALLBACK_PARTICIPANTS / FALLBACK_CHURCH_ATTENDANCE) * 100
+  ),
   assumptionsAvailable: true,
+  available: true,
+  error: null,
+};
+
+const fallbackLeaderPipeline: LeaderPipelineDashboardSummary = {
+  counts: { identified: 4, in_training: 3, ready_to_lead: 2, launched: 1 },
+  total: 10,
+  available: true,
+  error: null,
+};
+
+const fallbackMultiplication: MultiplicationDashboardSummary = {
+  counts: { watching: 3, planned: 2, launched: 1, deferred: 1 },
+  total: 7,
   available: true,
   error: null,
 };
@@ -425,6 +450,8 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   },
   shepherdCare: fallbackShepherdCare,
   launchPlanning: fallbackLaunchPlanning,
+  leaderPipeline: fallbackLeaderPipeline,
+  multiplication: fallbackMultiplication,
   attentionItems: fallbackAttention,
   capacitySummary: {
     full: fallbackCapacityFull,

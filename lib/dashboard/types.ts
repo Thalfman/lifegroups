@@ -7,6 +7,8 @@ import type {
   GroupHealthStatus,
   GroupLifecycleStatus,
   GuestPipelineStage,
+  LeaderReadinessStage,
+  MultiplicationCandidateStatus,
 } from "@/types/enums";
 import type { CapacityStatus } from "@/lib/admin/metrics";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
@@ -176,6 +178,10 @@ export interface ShepherdCareDashboardSummary {
   notContactedRecently: number;
   noCareProfile: number;
   unassignedCoverage: number;
+  // Count of active over-shepherds (coaches) — the coverage capacity behind
+  // the unassignedCoverage figure. Derived from the over-shepherds list the
+  // orchestration already fetches; surfaced for the executive overview.
+  activeOverShepherds: number;
   attentionItemsTotal: number;
   coverageAvailable: boolean;
   available: boolean;
@@ -193,7 +199,33 @@ export interface LaunchPlanningDashboardSnapshot {
   suggestedLaunchByDate: string | null;
   unknownCapacityGroupCount: number;
   excludedActiveGroupCount: number;
+  // "% of the church in a life group" inputs — the denominator is the
+  // editable church-attendance assumption (not the raw snapshot series), so
+  // the landing's participation figure agrees with /admin/launch-planning.
+  // `participationPct` is null when no denominator is configured.
+  currentChurchAttendance: number;
+  participationPct: number | null;
   assumptionsAvailable: boolean;
+  available: boolean;
+  error: string | null;
+}
+
+// Executive-overview rollups (Julian admin OS landing). Both are read-dependent
+// and computed in lib/dashboard/queries.ts from the same read models the deep
+// pages use (lib/admin/leader-pipeline, lib/admin/multiplication), so the
+// landing counts never drift from /admin/leader-pipeline or the multiplication
+// surface on /admin/launch-planning. Each degrades to available:false on a read
+// failure rather than zeroing.
+export interface LeaderPipelineDashboardSummary {
+  counts: Record<LeaderReadinessStage, number>;
+  total: number;
+  available: boolean;
+  error: string | null;
+}
+
+export interface MultiplicationDashboardSummary {
+  counts: Record<MultiplicationCandidateStatus, number>;
+  total: number;
   available: boolean;
   error: string | null;
 }
@@ -212,6 +244,8 @@ export interface AdminDashboardData {
   followUps: FollowUpItem[];
   shepherdCare: ShepherdCareDashboardSummary;
   launchPlanning: LaunchPlanningDashboardSnapshot;
+  leaderPipeline: LeaderPipelineDashboardSummary;
+  multiplication: MultiplicationDashboardSummary;
 }
 
 // Leader dashboard model is untouched by Phase 6.0.

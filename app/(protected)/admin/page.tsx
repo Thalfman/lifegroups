@@ -3,36 +3,24 @@ import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
-import { buildWeekOptions, validateWeekParam } from "@/lib/admin/check-ins";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { week?: string | string[] };
-
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams?: Promise<SearchParams>;
-}) {
+export default async function AdminPage() {
   await requireAdmin();
-  const params = (await searchParams) ?? {};
-  const selectedWeek = validateWeekParam(params.week);
-  const weekOptions = buildWeekOptions(new Date());
 
   const client = await createSupabaseServerClient();
-  const { data } = await getAdminDashboardData(client, {
-    selectedWeek,
-  });
+  const { data } = await getAdminDashboardData(client);
 
   return (
     <>
       <PageHeader
         eyebrow="Ministry Admin"
-        title="Leader care"
-        italic="and launch planning"
-        lede="Who needs your attention, and whether the church needs more groups soon. Weekly check-in status is below."
+        title="Ministry"
+        italic="overview"
+        lede="The state of your life groups at a glance — engagement, capacity, leader care, and what needs your attention."
       />
-      <DashboardClient data={data} weekOptions={weekOptions} />
+      <DashboardClient data={data} />
     </>
   );
 }
