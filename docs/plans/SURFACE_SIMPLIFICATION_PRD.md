@@ -254,24 +254,25 @@ empty state, and point to People or Groups when there are no active groups. Evid
 `app/(protected)/admin/launch-planning/page.tsx` (lines 383 to 398),
 `components/admin/launch-planning/summary-cards.tsx`.
 
-**L4: Replace the church-attendance time series with one editable estimate. ✅ (was 🔴; signed off 2026-06-01) Structural, no migration.**
+**L4: Replace the church-attendance time series with one editable estimate. ✅ (was 🔴; signed off 2026-06-01) Structural, one-time data backfill, no schema migration.**
 Make `current_church_attendance` in `launch_planning_assumptions` the single source of truth for both
 the forecast and the percentage headline, and reduce the church-attendance card to one value with an
 edit control. **Owner sign-off (2026-06-01): single-number surface approved, but the
 `church_attendance_snapshots` table and the `admin_record_church_attendance_snapshot` RPC are KEPT and
 history is retained — they simply stop being what the forecast and headline read from.** This makes L4 a
-surface + source-of-truth change with no schema migration. **Preserve the existing denominator:** today
-the percentage headline divides current participants by the *latest snapshot's* attendance count
-(`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
+surface + source-of-truth change with **no schema migration and no table drop**, but it does carry one
+**one-time data backfill** (seeding an existing settings value), described next. **Preserve the existing
+denominator:** today the percentage headline divides current participants by the *latest snapshot's*
+attendance count (`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
 `decodeLaunchPlanningAssumptions` falls back to the built-in default (100) when the assumption was never
-set. So before making `current_church_attendance` the source of truth, seed it from the latest snapshot
-for existing churches — either a one-time data backfill or a read-time fallback to the latest snapshot
-when the assumption is unset — so existing participation percentages do not reset to the stale default.
-**ADR 0008 intersection: none**; the table is
+set. So at switch-over, **backfill `current_church_attendance` once from the latest snapshot** for every
+church that never set it; thereafter the forecast and headline read **only** `current_church_attendance`
+(no read-time dependency on the snapshots table), preserving existing participation percentages while
+keeping the single-source-of-truth rule intact. **ADR 0008 intersection: none**; the table is
 outside the frozen `shepherd_care_*` surface. Evidence:
 `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
-*Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept).*
+*Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept); denominator preserved via a one-time backfill.*
 
 **L5: Trim the forecast and scenario inputs and state them as percentages. ✅ (was 🔴; signed off 2026-06-01) Structural at the UI boundary.**
 Reduce the default forecast to the two inputs that need a ministry-specific answer, current church
@@ -407,7 +408,8 @@ Slice by risk, lowest first, so the early issues are pure wins and the gate land
    work and is the one sign-off-gated Groups item.
 1. **L3 then L4**: make Launch planning useful on first run, then collapse church attendance. Per the
    2026-06-01 sign-off, L4 retains the `church_attendance_snapshots` history and carries **no schema
-   migration** — this PRD ships no migrations.
+   migration and no table drop** — its only data change is a one-time backfill seeding
+   `current_church_attendance` from the latest snapshot.
 1. **L5**: trim and re-unit the forecast and scenario inputs on the single church-attendance number.
 1. **S1**: trim Settings.
 1. **L1 then L2**: the progressive-disclosure redesign and its primary action, sequenced last as the largest
@@ -430,8 +432,9 @@ Allowing structural change widens what counts as in scope, so the requirements w
 exclusions, and every item stays within them. No requirement changes the surface count or the navigation; L1
 and G4 redistribute a surface’s contents but add no destination. No requirement touches Super Admin, and the
 one realistic shared-primitive risk is named and fenced above. Per the 2026-06-01 sign-off, L4 now retains
-the `church_attendance_snapshots` history, so this PRD ships no schema migration at all; L4, L5, C1, G1, G2,
-G3, S1, and H1 all require no migration. No requirement alters a shared
+the `church_attendance_snapshots` history, so this PRD ships **no schema migration and no table drop**; L4's
+only data change is a one-time backfill seeding `current_church_attendance` from the latest snapshot, and
+L5, C1, G1, G2, G3, S1, and H1 require no data change at all. No requirement alters a shared
 primitive’s behavior or the visual layer. The widened scope therefore reaches the simpler models the owner
 asked for without crossing any line the consolidation pass or the ADRs drew.
 
@@ -454,7 +457,8 @@ fallback Save forecast.
 
 **L4 ✅ (changed)**: make a single editable `current_church_attendance` the source of truth for the forecast and
 the headline. **The `church_attendance_snapshots` table and its RPC are KEPT (history retained) — they are no
-longer read by the forecast/headline. No drop, no migration.**
+longer read by the forecast/headline. No drop, no schema migration; a one-time backfill seeds
+`current_church_attendance` from the latest snapshot so existing participation percentages are preserved.**
 
 **L5 ✅**: require only current church attendance and target group participation by default, shown as percentages,
 default the rest, and apply the same conversion to the scenario form.
