@@ -380,10 +380,15 @@ export default async function AdminLaunchPlanningPage() {
             </ErrorBanner>
           ) : null}
 
-          {!data.assumptionsAvailable && !data.assumptionsError ? (
-            <p
+          {!data.assumptionsError ? (
+            <div
               style={{
                 margin: 0,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
                 fontFamily: fontBody,
                 fontSize: 13,
                 color: P.ink2,
@@ -392,9 +397,23 @@ export default async function AdminLaunchPlanningPage() {
                 padding: "10px 14px",
               }}
             >
-              No saved assumptions yet. The form below shows the built-in
-              defaults — save once to persist them.
-            </p>
+              <span>
+                {data.assumptionsAvailable
+                  ? "This forecast uses your saved assumptions."
+                  : "This forecast is live now on Fox Valley's built-in starting assumptions — tune it to your numbers any time."}
+              </span>
+              <a
+                href="#lp-assumptions"
+                style={{
+                  color: P.ink,
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Adjust forecast ↓
+              </a>
+            </div>
           ) : null}
 
           <LaunchPlanningSummaryCards
@@ -437,11 +456,13 @@ export default async function AdminLaunchPlanningPage() {
             }}
           >
             <section
+              id="lp-assumptions"
               style={{
                 background: P.surface,
                 border: `1px solid ${P.line}`,
                 borderRadius: 14,
                 padding: "22px 24px",
+                scrollMarginTop: 16,
               }}
             >
               <header style={{ marginBottom: 16 }}>
