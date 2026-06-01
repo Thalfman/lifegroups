@@ -239,7 +239,7 @@ every 🔴 item carries a recommended default so sign-off is a yes, not fresh an
 First load shows only the at-a-glance capacity answer and one primary action; the rest moves behind
 named tabs. Recommended default tabs: Overview, Forecast, Scenarios, and Groups and multiplication.
 Evidence: `components/admin/launch-planning/summary-cards.tsx`,
-`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). *Sign-off: confirm the four tabs.*
+`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). *Sign-off: ✅ four tabs confirmed (2026-06-01).*
 
 **L2: Name one primary action. 🟡**
 Recommended default: **Plan a launch**, creating a scenario from current inputs via
@@ -274,7 +274,7 @@ which repeats the decimal inputs. Keep storage as a ratio so no schema migration
 the UI boundary using the existing `pctValue` helper and its inverse. Evidence:
 `components/admin/launch-planning/assumptions-form.tsx`,
 `components/admin/launch-planning/scenario-form.tsx` (the duplicate decimal inputs),
-`lib/admin/launch-planning.ts`. *Sign-off: confirm the two required inputs and the silent defaults.*
+`lib/admin/launch-planning.ts`. *Sign-off: ✅ the two required inputs and the silent defaults confirmed (2026-06-01).*
 
 ## F: Follow-ups
 
@@ -325,7 +325,7 @@ This changes how untagged groups count in the capacity totals, which is why it i
 change is required; it is a default and a display change. Evidence:
 `app/(protected)/admin/groups/page.tsx` (“Capacity stays Unknown”),
 `components/admin/forms/group-create-form.tsx`, `lib/admin/metrics.ts` (`default_group_capacity`).
-*Sign-off: confirm groups default to the ministry capacity and that this feeds the capacity math.*
+*Sign-off: ✅ confirmed (2026-06-01) — groups default to the ministry capacity and this feeds the capacity math.*
 
 **G4: Collapse the create form to its essentials. 🟡**
 Show only the fields a group needs first, recommended as name and meeting day and time, and move audience,
@@ -340,7 +340,7 @@ capacity and attendance thresholds, the check-in offset, and the missed-check-in
 thresholds” disclosure with their current defaults; demote per-group overrides and the active-overrides list
 into a collapsed section; and remove the dead `check_in_due_day_of_week` field. No migration for the trim;
 dropping the dead column is an optional follow-up. Evidence: `components/admin/settings-shell.tsx`,
-`lib/admin/metrics.ts`. *Sign-off: confirm the primary-path settings and the field removal.*
+`lib/admin/metrics.ts`. *Sign-off: ✅ primary-path settings and the field removal confirmed (2026-06-01).*
 
 ## H: Group health
 
@@ -397,8 +397,9 @@ Slice by risk, lowest first, so the early issues are pure wins and the gate land
    reversible.
 1. **G4 then G3**: collapse the Groups create form, then default capacity. G3 is sequenced after the layout
    work and is the one sign-off-gated Groups item.
-1. **L3 then L4**: make Launch planning useful on first run, then collapse church attendance. L4 carries the
-   one schema migration in this PRD.
+1. **L3 then L4**: make Launch planning useful on first run, then collapse church attendance. Per the
+   2026-06-01 sign-off, L4 retains the `church_attendance_snapshots` history and carries **no schema
+   migration** — this PRD ships no migrations.
 1. **L5**: trim and re-unit the forecast and scenario inputs on the single church-attendance number.
 1. **S1**: trim Settings.
 1. **L1 then L2**: the progressive-disclosure redesign and its primary action, sequenced last as the largest
@@ -420,8 +421,9 @@ primitive, it must preserve Super Admin’s current rendering and behavior. Evid
 Allowing structural change widens what counts as in scope, so the requirements were re-checked against the
 exclusions, and every item stays within them. No requirement changes the surface count or the navigation; L1
 and G4 redistribute a surface’s contents but add no destination. No requirement touches Super Admin, and the
-one realistic shared-primitive risk is named and fenced above. The only schema change, L4, is outside the
-`shepherd_care_*` freeze; L5, C1, G1, G2, G3, S1, and H1 require no migration. No requirement alters a shared
+one realistic shared-primitive risk is named and fenced above. Per the 2026-06-01 sign-off, L4 now retains
+the `church_attendance_snapshots` history, so this PRD ships no schema migration at all; L4, L5, C1, G1, G2,
+G3, S1, and H1 all require no migration. No requirement alters a shared
 primitive’s behavior or the visual layer. The widened scope therefore reaches the simpler models the owner
 asked for without crossing any line the consolidation pass or the ADRs drew.
 
