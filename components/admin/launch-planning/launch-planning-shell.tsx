@@ -22,6 +22,7 @@ const TABS: { key: TabKey; label: string }[] = [
 export function LaunchPlanningShell({
   baseline,
   notice,
+  warnings,
   answer,
   overview,
   forecast,
@@ -30,6 +31,9 @@ export function LaunchPlanningShell({
 }: {
   baseline: LaunchPlanningAssumptions;
   notice: ReactNode;
+  // Forecast-confidence signals (read failures, no groups). Always shown in the
+  // hero, never tab-gated, so they can't hide under the answer (#233 review).
+  warnings: ReactNode;
   answer: ReactNode;
   overview: ReactNode;
   forecast: ReactNode;
@@ -54,6 +58,7 @@ export function LaunchPlanningShell({
       {/* Glance hero — the only forecast detail shown on first load. */}
       <section style={{ display: "grid", gap: 16 }}>
         {notice}
+        {warnings}
         {answer}
 
         <div

@@ -412,12 +412,18 @@ export default async function AdminLaunchPlanningPage() {
         currentParticipants={data.inputs.current_participants}
         participationPct={data.participationPct}
       />
-
-      <LaunchPlanningSetupWarnings
-        inputs={data.inputs}
-        errors={data.inputsBundle.errors}
-      />
     </div>
+  );
+
+  // Forecast-confidence signals (read failures, no active groups, missing
+  // capacities). These stay in the always-visible glance hero — never behind a
+  // tab — so a read failure or first-run state can't be hidden under a
+  // plausible-looking answer (#233 review). Renders nothing when all is well.
+  const warnings = (
+    <LaunchPlanningSetupWarnings
+      inputs={data.inputs}
+      errors={data.inputsBundle.errors}
+    />
   );
 
   const forecastPanel = (
@@ -528,6 +534,7 @@ export default async function AdminLaunchPlanningPage() {
           <LaunchPlanningShell
             baseline={data.assumptions}
             notice={notice}
+            warnings={warnings}
             answer={
               <LaunchPlanningAnswerCards
                 inputs={data.inputs}
