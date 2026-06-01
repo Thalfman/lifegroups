@@ -150,9 +150,6 @@ export function ChurchAttendanceCard({
           </PButton>
           <FormStatus state={state} successText="Saved." />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <FormStatus state={state} />
-        </div>
       </form>
     </section>
   );

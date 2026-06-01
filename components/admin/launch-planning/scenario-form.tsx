@@ -377,8 +377,6 @@ export function CreateScenarioForm({
         ) : null}
         <FormStatus state={state} successText="Scenario saved." />
       </div>
-
-      <FormStatus state={state} />
     </form>
   );
 }
@@ -542,8 +540,6 @@ export function EditScenarioForm({
           </PButton>
           <FormStatus state={editState} successText="Saved." />
         </div>
-
-        <FormStatus state={editState} />
       </form>
 
       <div

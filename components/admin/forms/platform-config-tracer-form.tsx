@@ -51,7 +51,6 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
         </PButton>
         <FormStatus state={state} successText="Saved." />
       </div>
-      <FormStatus state={state} />
     </form>
   );
 }

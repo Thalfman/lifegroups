@@ -197,8 +197,6 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </PButton>
         <FormStatus state={state} successText="Defaults saved." />
       </div>
-
-      <FormStatus state={state} />
     </form>
   );
 }

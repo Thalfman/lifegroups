@@ -296,8 +296,6 @@ export function GroupMetricOverridesForm({
             </PButton>
             <FormStatus state={state} successText="Overrides saved." />
           </div>
-
-          <FormStatus state={state} />
         </form>
       ) : (
         <p
