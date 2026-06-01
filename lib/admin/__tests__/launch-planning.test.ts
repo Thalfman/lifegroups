@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS,
+  applyBaselineSilentDefaults,
   buildLaunchPlanningInputs,
   buildScenarioComparison,
   computeLaunchPlan,
@@ -13,6 +14,8 @@ import {
   findCurrentScenario,
   nextSeasonAnchorIso,
   participationPct,
+  percentToRatio,
+  ratioToPercent,
   redactNotesForAudit,
   scenarioTargetDateIso,
   type LaunchPlanningAssumptions,
@@ -936,5 +939,120 @@ describe("buildStaffingForecast (the walkthrough number)", () => {
     expect(f.demand).toBe(6);
     expect(f.supply).toBe(1);
     expect(f.shortfall).toBe(5);
+  });
+});
+
+describe("L5 (#224) percent ⇄ ratio helpers", () => {
+  it("ratioToPercent renders a ratio as a whole-number percentage", () => {
+    expect(ratioToPercent(0.6)).toBe("60");
+    expect(ratioToPercent(0.15)).toBe("15");
+    expect(ratioToPercent(0)).toBe("0");
+    expect(ratioToPercent(1)).toBe("100");
+    expect(ratioToPercent(0.95)).toBe("95");
+  });
+
+  it("ratioToPercent preserves a fractional percentage so it round-trips", () => {
+    expect(ratioToPercent(0.625)).toBe("62.5");
+  });
+
+  it("percentToRatio converts a percent string back to a ratio string", () => {
+    expect(percentToRatio("60")).toBe("0.6");
+    expect(percentToRatio("15")).toBe("0.15");
+    expect(percentToRatio("95")).toBe("0.95");
+    expect(percentToRatio("100")).toBe("1");
+    expect(percentToRatio("62.5")).toBe("0.625");
+  });
+
+  it("percentToRatio keeps a blank blank (preserves leave-unchanged/required)", () => {
+    expect(percentToRatio("")).toBe("");
+    expect(percentToRatio("   ")).toBe("");
+  });
+
+  it("percentToRatio emits a plain decimal string the server validator accepts (no float artifact, no sci-notation)", () => {
+    // 33.3/100 in raw float is 0.33299999999999996; must round to "0.333".
+    expect(percentToRatio("33.3")).toBe("0.333");
+    // A tiny decimal must not become scientific notation like "5e-7".
+    const ratio = percentToRatio("0.00005");
+    expect(ratio).not.toMatch(/e/i);
+    expect(ratio).toMatch(/^-?\d+(\.\d+)?$/);
+  });
+
+  it("percentToRatio passes a non-numeric entry through for the validator to reject", () => {
+    expect(percentToRatio("abc")).toBe("abc");
+  });
+
+  it("round-trips every whole percent the old decimal step (0.01) could store", () => {
+    for (let pct = 0; pct <= 100; pct += 1) {
+      const ratio = percentToRatio(String(pct));
+      expect(ratioToPercent(Number(ratio))).toBe(String(pct));
+    }
+  });
+
+  it("defaults expected_growth to 0 so the trimmed forecast assumes no growth", () => {
+    expect(BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth).toBe(0);
+  });
+});
+
+describe("applyBaselineSilentDefaults (#224)", () => {
+  it("resets EVERY hidden baseline input to its default, ignoring stale stored values", () => {
+    const stale = makeAssumptions({
+      expected_growth: 20,
+      expected_growth_date: "2026-08-01",
+      average_group_size: 10,
+      launch_buffer_pct: 0.5,
+      leaders_per_new_group: 4,
+    });
+    const out = applyBaselineSilentDefaults(stale, {
+      default_group_capacity: 12,
+    });
+    expect(out.expected_growth).toBe(0);
+    expect(out.expected_growth_date).toBeNull();
+    expect(out.average_group_size).toBe(12);
+    expect(out.launch_buffer_pct).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct
+    );
+    expect(out.leaders_per_new_group).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group
+    );
+  });
+
+  it("falls back to the built-in size when no ministry default capacity is set", () => {
+    const out = applyBaselineSilentDefaults(
+      makeAssumptions({ average_group_size: 10 }),
+      { default_group_capacity: null }
+    );
+    expect(out.average_group_size).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size
+    );
+  });
+
+  it("ignores a non-positive default capacity and falls back to the built-in size", () => {
+    const out = applyBaselineSilentDefaults(
+      makeAssumptions({ average_group_size: 10 }),
+      { default_group_capacity: 0 }
+    );
+    expect(out.average_group_size).toBe(
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size
+    );
+  });
+
+  it("leaves the two ministry-specific inputs and the scenario-only launch-plan fields untouched", () => {
+    const stale = makeAssumptions({
+      current_church_attendance: 250,
+      target_group_participation_pct: 0.7,
+      planned_launch_count: 4,
+      target_launch_month: 8,
+      target_launch_year: 2027,
+      notes: "keep me",
+    });
+    const out = applyBaselineSilentDefaults(stale, {
+      default_group_capacity: 12,
+    });
+    expect(out.current_church_attendance).toBe(250);
+    expect(out.target_group_participation_pct).toBe(0.7);
+    expect(out.planned_launch_count).toBe(4);
+    expect(out.target_launch_month).toBe(8);
+    expect(out.target_launch_year).toBe(2027);
+    expect(out.notes).toBe("keep me");
   });
 });

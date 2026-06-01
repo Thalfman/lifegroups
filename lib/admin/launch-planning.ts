@@ -50,12 +50,20 @@ export type LaunchPlanningAssumptions = {
   target_launch_year: number | null;
 };
 
-// Documented baseline values. Mirrors the seed block in
+// Documented baseline values, mostly mirroring the seed block in
 // supabase/migrations/20260518190000_phase_lp1_launch_planning.sql.
-// If you change one, change the other.
+//
+// L5 (#224): the default forecast asks only for current church attendance and
+// target group participation; the rest are silently defaulted. `expected_growth`
+// now defaults to 0 (assume no growth unless a scenario says otherwise) rather
+// than the optimistic 20 it started at — this intentionally diverges from the
+// seed, which is left untouched (no migration). Existing rows that still carry
+// the seeded growth (20) and size (10) are normalized to these defaults for the
+// baseline forecast at read time via `applyBaselineSilentDefaults`, so no data
+// change is needed.
 export const BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS: LaunchPlanningAssumptions = {
   current_church_attendance: 100,
-  expected_growth: 20,
+  expected_growth: 0,
   expected_growth_date: null,
   target_group_participation_pct: 0.6,
   average_group_size: 10,
@@ -190,6 +198,40 @@ export function decodeLaunchPlanningAssumptions(
       "target_launch_year",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_year
     ),
+  };
+}
+
+// L5 (#224): the baseline forecast no longer exposes controls for ANY of the
+// silently-defaulted inputs — expected growth, growth date, average group size,
+// launch buffer, and leaders per new group. Existing rows can still carry stale
+// values (the seed alone stores growth 20 / size 10, and a church may have saved
+// a custom buffer/leaders via the old form), and the decoder prefers a stored
+// value over the default, so reset every hidden field here for the baseline
+// forecast: compute as if those keys were unset. Storage is untouched (no
+// migration); scenarios keep their own explicit values and are NOT passed through
+// this. Only the two ministry-specific inputs (current church attendance, target
+// participation) and the scenario-only launch-plan fields are preserved. Size's
+// fallback chain mirrors `decodeLaunchPlanningAssumptions` (ministry default
+// capacity, then the built-in) so "size = default capacity" tracks Settings
+// rather than freezing a number.
+export function applyBaselineSilentDefaults(
+  assumptions: LaunchPlanningAssumptions,
+  metricDefaults?: Pick<MetricDefaults, "default_group_capacity"> | null
+): LaunchPlanningAssumptions {
+  const defaultGroupSize =
+    metricDefaults?.default_group_capacity != null &&
+    metricDefaults.default_group_capacity > 0
+      ? metricDefaults.default_group_capacity
+      : BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size;
+  return {
+    ...assumptions,
+    expected_growth: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth,
+    expected_growth_date:
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth_date,
+    average_group_size: defaultGroupSize,
+    launch_buffer_pct: BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct,
+    leaders_per_new_group:
+      BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group,
   };
 }
 
@@ -683,6 +725,42 @@ export function participationPct(
 ): number | null {
   if (churchAttendance == null || churchAttendance <= 0) return null;
   return Math.round((currentParticipants / churchAttendance) * 100);
+}
+
+// ---------------------------------------------------------------------------
+// L5 (#224) — percent ⇄ ratio at the UI boundary
+// ---------------------------------------------------------------------------
+//
+// Storage keeps participation and launch-buffer as 0–1 ratios, so no migration
+// is required. The forecast and scenario forms show and accept whole-number
+// percentages instead of decimals; these two pure helpers do the conversion and
+// are shared by the client form fields (see components/.../percent-field.tsx).
+
+// A 0–1 ratio → the percent string shown in the input (e.g. 0.6 → "60").
+// Preserves a fractional part so a hand-set value like 0.625 round-trips as
+// 62.5 rather than truncating to 63.
+export function ratioToPercent(ratio: number): string {
+  const pct = ratio * 100;
+  return Number.isInteger(pct)
+    ? String(pct)
+    : pct.toFixed(1).replace(/\.0$/, "");
+}
+
+// The percent string from the input → the ratio string the server stores
+// (e.g. "60" → "0.6"). A blank stays blank so the form's "leave unchanged"
+// (baseline) and required (scenario) semantics are preserved, and a
+// non-numeric entry is passed through unchanged so the server validator — not
+// this helper — owns the rejection message. The `/100` is rounded to 6 decimals
+// before stringifying so it can't surface a binary-float artifact
+// (`0.33299999999999996`) or scientific notation (`5e-7`) — the server
+// validator only accepts plain decimal strings, and 6 decimals (0.0001%) is far
+// finer than any ratio this UI produces.
+export function percentToRatio(percent: string): string {
+  const trimmed = percent.trim();
+  if (trimmed === "") return "";
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) return trimmed;
+  return String(Number((n / 100).toFixed(6)));
 }
 
 // Julian P3 (answer 11): his planting seasons are August (primary) and
