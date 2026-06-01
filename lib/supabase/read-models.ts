@@ -34,6 +34,7 @@ import type {
   UserRole,
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
+import { churchDayStartUtcIso } from "@/lib/shared/church-time";
 import { pgHexToBase64 } from "@/lib/crypto/encoding";
 import {
   BUILT_IN_CARE_CADENCE_WINDOWS,
@@ -108,6 +109,75 @@ export async function fetchActiveGroupCount(
   if (error)
     return { data: null, error: wrapError("fetchActiveGroupCount", error) };
   return { data: count ?? 0, error: null };
+}
+
+export type OverviewActivityCounts = {
+  membersJoined: number;
+  followUpsCompleted: number;
+  careTouchpoints: number;
+};
+
+// Counts of dated activity within [fromIso, toExclusiveIso) for the executive
+// overview's period band. `fromIso` null means all-time (upper bound only).
+// Head-only count queries keep this cheap. Groups launched and guests welcomed
+// are derived from arrays the dashboard already fetches, so they are NOT read
+// here.
+//
+// joined_at and interaction_at are DATE columns (church-local calendar days),
+// so the YYYY-MM-DD bounds compare directly. completed_at is a timestamptz, so
+// its bounds are converted to the matching UTC instants of church-local
+// midnight — otherwise a late-evening-local completion (which Postgres reads as
+// the next UTC day) would land in the wrong period.
+export async function fetchOverviewActivityCounts(
+  client: ReadClient,
+  range: { fromIso: string | null; toExclusiveIso: string }
+): Promise<ReadResult<OverviewActivityCounts>> {
+  let membersQ = client
+    .from("group_memberships")
+    .select("id", { count: "exact", head: true })
+    .lt("joined_at", range.toExclusiveIso);
+  if (range.fromIso) membersQ = membersQ.gte("joined_at", range.fromIso);
+
+  let followUpsQ = client
+    .from("follow_ups")
+    .select("id", { count: "exact", head: true })
+    .not("completed_at", "is", null)
+    .lt("completed_at", churchDayStartUtcIso(range.toExclusiveIso));
+  if (range.fromIso)
+    followUpsQ = followUpsQ.gte(
+      "completed_at",
+      churchDayStartUtcIso(range.fromIso)
+    );
+
+  let interactionsQ = client
+    .from("shepherd_care_interactions")
+    .select("id", { count: "exact", head: true })
+    .lt("interaction_at", range.toExclusiveIso);
+  if (range.fromIso)
+    interactionsQ = interactionsQ.gte("interaction_at", range.fromIso);
+
+  const [membersRes, followUpsRes, interactionsRes] = await Promise.all([
+    membersQ,
+    followUpsQ,
+    interactionsQ,
+  ]);
+
+  const firstError =
+    membersRes.error || followUpsRes.error || interactionsRes.error;
+  if (firstError)
+    return {
+      data: null,
+      error: wrapError("fetchOverviewActivityCounts", firstError),
+    };
+
+  return {
+    data: {
+      membersJoined: membersRes.count ?? 0,
+      followUpsCompleted: followUpsRes.count ?? 0,
+      careTouchpoints: interactionsRes.count ?? 0,
+    },
+    error: null,
+  };
 }
 
 export async function fetchAttendanceSessions(

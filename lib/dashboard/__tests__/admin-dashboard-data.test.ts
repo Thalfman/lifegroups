@@ -32,6 +32,15 @@ function emptyReads(
     }),
     fetchLaunchPlanningAssumptions: async () => ({ data: null, error: null }),
     fetchShepherdCareDirectoryForAdmin: async () => ({ data: [], error: null }),
+    fetchLeaderPipelineForAdmin: async () => ({ data: [], error: null }),
+    fetchMultiplicationCandidatesForAdmin: async () => ({
+      data: [],
+      error: null,
+    }),
+    fetchOverviewActivityCounts: async () => ({
+      data: { membersJoined: 0, followUpsCompleted: 0, careTouchpoints: 0 },
+      error: null,
+    }),
     ...overrides,
   };
 }
@@ -87,5 +96,112 @@ describe("buildAdminDashboardData", () => {
     expect(result.source).toBe("live");
     if (result.source !== "live") return;
     expect(result.data.shepherdCare.available).toBe(false);
+  });
+
+  it("seeds leader-pipeline and multiplication rollups with stable, zeroed counts when their reads succeed empty", async () => {
+    const result = await buildAdminDashboardData(emptyReads(), { now: NOW });
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    // Every canonical key is present at 0 so the ladder/status cards always
+    // render the full set rather than a sparse map.
+    expect(result.data.leaderPipeline.available).toBe(true);
+    expect(result.data.leaderPipeline.total).toBe(0);
+    expect(result.data.leaderPipeline.counts).toEqual({
+      identified: 0,
+      in_training: 0,
+      ready_to_lead: 0,
+      launched: 0,
+    });
+    expect(result.data.multiplication.available).toBe(true);
+    expect(result.data.multiplication.total).toBe(0);
+    expect(result.data.multiplication.counts).toEqual({
+      watching: 0,
+      planned: 0,
+      launched: 0,
+      deferred: 0,
+    });
+  });
+
+  it("keeps the page live but marks leader-pipeline unavailable when only that read errors", async () => {
+    // Leader pipeline is outside the firstError gate: a failure degrades only
+    // its card while the rest of the dashboard stays live with zeroed counts.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchLeaderPipelineForAdmin: async () => ({
+          data: null,
+          error: new Error("pipeline unavailable"),
+        }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.leaderPipeline.available).toBe(false);
+    expect(result.data.leaderPipeline.total).toBe(0);
+    // Multiplication is independent and still available.
+    expect(result.data.multiplication.available).toBe(true);
+  });
+
+  it("keeps the page live but marks multiplication unavailable when only that read errors", async () => {
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchMultiplicationCandidatesForAdmin: async () => ({
+          data: null,
+          error: new Error("multiplication unavailable"),
+        }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.multiplication.available).toBe(false);
+    expect(result.data.leaderPipeline.available).toBe(true);
+  });
+
+  it("defaults the activity band to all-time and stays available when the activity read succeeds", async () => {
+    const result = await buildAdminDashboardData(emptyReads(), { now: NOW });
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.grain).toBe("all");
+    expect(result.data.activity.label).toBe("All time");
+    expect(result.data.activity.extendedAvailable).toBe(true);
+  });
+
+  it("scopes the activity band to the requested grain", async () => {
+    const result = await buildAdminDashboardData(emptyReads(), {
+      now: NOW,
+      grain: "month",
+    });
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.grain).toBe("month");
+    expect(result.data.activity.label).toBe("This month");
+  });
+
+  it("keeps the page live but marks activity counts unavailable when that read errors", async () => {
+    // The activity counts read is outside the firstError gate: a failure leaves
+    // groupsLaunched/guestsWelcomed (derived from gated arrays) intact while the
+    // three productivity counts go null.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOverviewActivityCounts: async () => ({
+          data: null,
+          error: new Error("activity counts unavailable"),
+        }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.activity.extendedAvailable).toBe(false);
+    expect(result.data.activity.membersJoined).toBeNull();
+    // Derived-from-gated-arrays metrics still resolve to a number.
+    expect(typeof result.data.activity.groupsLaunched).toBe("number");
   });
 });

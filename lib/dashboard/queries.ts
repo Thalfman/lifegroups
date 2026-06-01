@@ -13,11 +13,14 @@ import {
   fetchGuests,
   fetchLatestHealthUpdates,
   fetchLaunchPlanningAssumptions,
+  fetchLeaderPipelineForAdmin,
   fetchMembersByIds,
   fetchMetricDefaults,
+  fetchMultiplicationCandidatesForAdmin,
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
   fetchOverShepherdsForAdmin,
+  fetchOverviewActivityCounts,
   fetchProfilesForAdmin,
   fetchShepherdCareDirectoryForAdmin,
   type LeaderFollowUpRow,
@@ -30,6 +33,9 @@ import type {
   LeaderCurrentWeek,
   LeaderDashboardData,
   LeaderGroupDashboard,
+  LeaderPipelineDashboardSummary,
+  MultiplicationDashboardSummary,
+  OverviewActivitySummary,
   ShepherdCareDashboardSummary,
 } from "./types";
 import {
@@ -46,7 +52,14 @@ import {
   buildLaunchPlanningInputs,
   computeLaunchPlan,
   decodeLaunchPlanningAssumptions,
+  participationPct,
 } from "@/lib/admin/launch-planning";
+import { LEADER_READINESS_STAGES } from "@/lib/admin/leader-pipeline";
+import {
+  overviewPeriodRange,
+  type OverviewGrain,
+  type OverviewPeriodRange,
+} from "@/lib/admin/overview-period";
 import { ADMIN_FALLBACK, LEADER_FALLBACK } from "./fallback-data";
 // Phase 5B.0 swapped the dashboard's UTC isoWeekStart for a
 // church-timezone-aware version so the leader workflow and the
@@ -131,6 +144,12 @@ function buildShepherdCareSummary(
   windows: CareCadenceWindows,
   todayIso: string
 ): ShepherdCareDashboardSummary {
+  // Active over-shepherds (coaches) — the list is fetched with archived rows
+  // included, so filter to active. null when that read failed, so a transient
+  // error renders as "—" rather than a misleading real "0 coverage capacity".
+  const activeOverShepherds = overShepherdsRes.error
+    ? null
+    : (overShepherdsRes.data ?? []).filter((o) => o.active).length;
   if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
     return {
       totalActiveShepherds: 0,
@@ -139,6 +158,7 @@ function buildShepherdCareSummary(
       notContactedRecently: 0,
       noCareProfile: 0,
       unassignedCoverage: 0,
+      activeOverShepherds,
       attentionItemsTotal: 0,
       coverageAvailable: false,
       available: false,
@@ -168,6 +188,7 @@ function buildShepherdCareSummary(
     notContactedRecently: model.summary.notContactedRecently,
     noCareProfile: model.summary.noCareProfile,
     unassignedCoverage: model.summary.unassignedCoverage,
+    activeOverShepherds,
     attentionItemsTotal,
     coverageAvailable: model.coverageAvailable,
     available: true,
@@ -231,6 +252,14 @@ function buildLaunchPlanningSnapshot(
     suggestedLaunchByDate: outputs.suggested_launch_by_date,
     unknownCapacityGroupCount: inputs.unknown_capacity_group_count,
     excludedActiveGroupCount: inputs.excluded_active_group_count,
+    // Participation uses the editable church-attendance assumption as its
+    // denominator (via participationPct) — the same source /admin/launch-planning
+    // uses — so the landing's "% in groups" never disagrees with that page.
+    currentChurchAttendance: assumptions.current_church_attendance,
+    participationPct: participationPct(
+      inputs.current_participants,
+      assumptions.current_church_attendance
+    ),
     assumptionsAvailable,
     available: true,
     error: null,
@@ -251,9 +280,111 @@ function emptyLaunchPlanningSnapshot(
     suggestedLaunchByDate: null,
     unknownCapacityGroupCount: 0,
     excludedActiveGroupCount: 0,
+    currentChurchAttendance: 0,
+    participationPct: null,
     assumptionsAvailable: false,
     available: false,
     error: errorMessage,
+  };
+}
+
+// Leader-pipeline + multiplication rollups for the executive landing. Both are
+// read-dependent and intentionally OUTSIDE the firstError gate: a failure here
+// degrades the one card to available:false rather than failing the whole page,
+// mirroring buildShepherdCareSummary / buildLaunchPlanningSnapshot.
+function buildLeaderPipelineSummary(
+  pipelineRes: Awaited<ReturnType<typeof fetchLeaderPipelineForAdmin>>
+): LeaderPipelineDashboardSummary {
+  // Stable, drift-free keys: seed every readiness stage at 0 in canonical
+  // order so the card always renders the full ladder, then tally.
+  const counts = LEADER_READINESS_STAGES.reduce(
+    (acc, stage) => {
+      acc[stage] = 0;
+      return acc;
+    },
+    {} as LeaderPipelineDashboardSummary["counts"]
+  );
+  if (pipelineRes.error || !pipelineRes.data) {
+    return {
+      counts,
+      total: 0,
+      available: false,
+      error: pipelineRes.error?.message ?? "unavailable",
+    };
+  }
+  for (const entry of pipelineRes.data) {
+    counts[entry.apprentice.readiness_stage] += 1;
+  }
+  return {
+    counts,
+    total: pipelineRes.data.length,
+    available: true,
+    error: null,
+  };
+}
+
+function buildMultiplicationSummary(
+  multiplicationRes: Awaited<
+    ReturnType<typeof fetchMultiplicationCandidatesForAdmin>
+  >
+): MultiplicationDashboardSummary {
+  // Seed all four candidate statuses at 0 so the shape is stable; the typed
+  // literal is checked against the enum, so a new status would fail the build
+  // here rather than silently dropping from the rollup.
+  const counts: MultiplicationDashboardSummary["counts"] = {
+    watching: 0,
+    planned: 0,
+    launched: 0,
+    deferred: 0,
+  };
+  if (multiplicationRes.error || !multiplicationRes.data) {
+    return {
+      counts,
+      total: 0,
+      available: false,
+      error: multiplicationRes.error?.message ?? "unavailable",
+    };
+  }
+  for (const entry of multiplicationRes.data) {
+    counts[entry.candidate.status] += 1;
+  }
+  return {
+    counts,
+    total: multiplicationRes.data.length,
+    available: true,
+    error: null,
+  };
+}
+
+// "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
+// already-fetched (gated) group/guest arrays — no extra read — while the three
+// productivity counts come from fetchOverviewActivityCounts and degrade to null
+// if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
+// lexicographic comparison against the half-open [fromIso, toExclusiveIso)
+// window is correct.
+function buildActivitySummary(
+  period: OverviewPeriodRange,
+  groups: readonly { launched_on: string | null }[],
+  guests: readonly { first_attended_date: string | null }[],
+  activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
+): OverviewActivitySummary {
+  const inRange = (iso: string | null): boolean => {
+    if (!iso) return false;
+    if (iso >= period.toExclusiveIso) return false;
+    if (period.fromIso && iso < period.fromIso) return false;
+    return true;
+  };
+  const extended = activityRes.error ? null : activityRes.data;
+  return {
+    grain: period.grain,
+    label: period.label,
+    groupsLaunched: groups.filter((g) => inRange(g.launched_on)).length,
+    guestsWelcomed: guests.filter((g) => inRange(g.first_attended_date)).length,
+    membersJoined: extended ? extended.membersJoined : null,
+    followUpsCompleted: extended ? extended.followUpsCompleted : null,
+    careTouchpoints: extended ? extended.careTouchpoints : null,
+    extendedAvailable: activityRes.error === null,
+    error: activityRes.error?.message ?? null,
   };
 }
 
@@ -293,6 +424,11 @@ export type AdminDashboardReads = {
   fetchShepherdCareDirectoryForAdmin: OmitClient<
     typeof fetchShepherdCareDirectoryForAdmin
   >;
+  fetchLeaderPipelineForAdmin: OmitClient<typeof fetchLeaderPipelineForAdmin>;
+  fetchMultiplicationCandidatesForAdmin: OmitClient<
+    typeof fetchMultiplicationCandidatesForAdmin
+  >;
+  fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -322,12 +458,18 @@ export function supabaseAdminDashboardReads(
       fetchLaunchPlanningAssumptions(client, ...a),
     fetchShepherdCareDirectoryForAdmin: (...a) =>
       fetchShepherdCareDirectoryForAdmin(client, ...a),
+    fetchLeaderPipelineForAdmin: (...a) =>
+      fetchLeaderPipelineForAdmin(client, ...a),
+    fetchMultiplicationCandidatesForAdmin: (...a) =>
+      fetchMultiplicationCandidatesForAdmin(client, ...a),
+    fetchOverviewActivityCounts: (...a) =>
+      fetchOverviewActivityCounts(client, ...a),
   };
 }
 
 export async function getAdminDashboardData(
   client: AppSupabaseClient | null,
-  options: { selectedWeek?: string; now?: Date } = {}
+  options: { selectedWeek?: string; now?: Date; grain?: OverviewGrain } = {}
 ): Promise<DashboardResult<AdminDashboardData>> {
   if (!client) return fallback(ADMIN_FALLBACK);
   return buildAdminDashboardData(supabaseAdminDashboardReads(client), options);
@@ -340,11 +482,14 @@ export async function getAdminDashboardData(
 // lives here and is reachable from a test through an in-memory `reads` adapter.
 export async function buildAdminDashboardData(
   reads: AdminDashboardReads,
-  options: { selectedWeek?: string; now?: Date } = {}
+  options: { selectedWeek?: string; now?: Date; grain?: OverviewGrain } = {}
 ): Promise<DashboardResult<AdminDashboardData>> {
   const now = options.now ?? new Date();
   const currentWeek = isoWeekStart(now);
   const selectedWeek = options.selectedWeek ?? currentWeek;
+  // Period for the "activity this period" band (default all-time). Only the
+  // activity rollup is period-scoped; everything else is current-state.
+  const period = overviewPeriodRange(options.grain ?? "all", now);
 
   try {
     // Phase 5A.6: batch-fetch calendar events for the selected week so
@@ -384,6 +529,9 @@ export async function buildAdminDashboardData(
       overShepherdsResult,
       shepherdAssignmentsResult,
       launchAssumptionsResult,
+      leaderPipelineResult,
+      multiplicationResult,
+      activityResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
       reads.fetchActiveGroupCount(),
@@ -406,6 +554,15 @@ export async function buildAdminDashboardData(
       reads.fetchOverShepherdsForAdmin({ includeArchived: true }),
       reads.fetchActiveShepherdCoverageAssignmentsForAdmin(),
       reads.fetchLaunchPlanningAssumptions(),
+      // Executive-overview rollups (leader-pipeline supply + multiplication
+      // candidates). Like the spine reads above, failures degrade the one
+      // card rather than failing the page, so they stay out of firstError.
+      reads.fetchLeaderPipelineForAdmin(),
+      reads.fetchMultiplicationCandidatesForAdmin(),
+      reads.fetchOverviewActivityCounts({
+        fromIso: period.fromIso,
+        toExclusiveIso: period.toExclusiveIso,
+      }),
     ]);
 
     // Build the shepherd-care directory from the SAME active-coverage set the
@@ -484,12 +641,23 @@ export async function buildAdminDashboardData(
       model.derivedRows,
       defaults
     );
+    const leaderPipeline = buildLeaderPipelineSummary(leaderPipelineResult);
+    const multiplication = buildMultiplicationSummary(multiplicationResult);
+    const activity = buildActivitySummary(
+      period,
+      groupsResult.data ?? [],
+      guestsResult.data ?? [],
+      activityResult
+    );
 
     const { derivedRows: _derivedRows, ...modelPayload } = model;
     return live({
       ...modelPayload,
       shepherdCare,
       launchPlanning,
+      leaderPipeline,
+      multiplication,
+      activity,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

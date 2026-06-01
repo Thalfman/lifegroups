@@ -7,9 +7,12 @@ import type {
   GroupHealthStatus,
   GroupLifecycleStatus,
   GuestPipelineStage,
+  LeaderReadinessStage,
+  MultiplicationCandidateStatus,
 } from "@/types/enums";
 import type { CapacityStatus } from "@/lib/admin/metrics";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
+import type { OverviewGrain } from "@/lib/admin/overview-period";
 
 export type DashboardSource = "live" | "fallback";
 
@@ -176,6 +179,11 @@ export interface ShepherdCareDashboardSummary {
   notContactedRecently: number;
   noCareProfile: number;
   unassignedCoverage: number;
+  // Count of active over-shepherds (coaches) — the coverage capacity behind
+  // the unassignedCoverage figure. Derived from the over-shepherds list the
+  // orchestration already fetches. null when that read failed, so a transient
+  // error isn't shown as a real "0 coverage capacity".
+  activeOverShepherds: number | null;
   attentionItemsTotal: number;
   coverageAvailable: boolean;
   available: boolean;
@@ -193,8 +201,51 @@ export interface LaunchPlanningDashboardSnapshot {
   suggestedLaunchByDate: string | null;
   unknownCapacityGroupCount: number;
   excludedActiveGroupCount: number;
+  // "% of the church in a life group" inputs — the denominator is the
+  // editable church-attendance assumption (not the raw snapshot series), so
+  // the landing's participation figure agrees with /admin/launch-planning.
+  // `participationPct` is null when no denominator is configured.
+  currentChurchAttendance: number;
+  participationPct: number | null;
   assumptionsAvailable: boolean;
   available: boolean;
+  error: string | null;
+}
+
+// Executive-overview rollups (Julian admin OS landing). Both are read-dependent
+// and computed in lib/dashboard/queries.ts from the same read models the deep
+// pages use (lib/admin/leader-pipeline, lib/admin/multiplication), so the
+// landing counts never drift from /admin/leader-pipeline or the multiplication
+// surface on /admin/launch-planning. Each degrades to available:false on a read
+// failure rather than zeroing.
+export interface LeaderPipelineDashboardSummary {
+  counts: Record<LeaderReadinessStage, number>;
+  total: number;
+  available: boolean;
+  error: string | null;
+}
+
+export interface MultiplicationDashboardSummary {
+  counts: Record<MultiplicationCandidateStatus, number>;
+  total: number;
+  available: boolean;
+  error: string | null;
+}
+
+// "Activity this period" — the only period-scoped block on the landing, driven
+// by the week/month/quarter/year/all-time slicer. groupsLaunched + guestsWelcomed
+// are derived from arrays the dashboard already fetches (always available); the
+// remaining three come from a dedicated count read and are null when it fails
+// (extendedAvailable === false).
+export interface OverviewActivitySummary {
+  grain: OverviewGrain;
+  label: string;
+  groupsLaunched: number;
+  guestsWelcomed: number;
+  membersJoined: number | null;
+  followUpsCompleted: number | null;
+  careTouchpoints: number | null;
+  extendedAvailable: boolean;
   error: string | null;
 }
 
@@ -212,6 +263,9 @@ export interface AdminDashboardData {
   followUps: FollowUpItem[];
   shepherdCare: ShepherdCareDashboardSummary;
   launchPlanning: LaunchPlanningDashboardSnapshot;
+  leaderPipeline: LeaderPipelineDashboardSummary;
+  multiplication: MultiplicationDashboardSummary;
+  activity: OverviewActivitySummary;
 }
 
 // Leader dashboard model is untouched by Phase 6.0.
