@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveMultiplicationCandidate,
@@ -25,18 +25,18 @@ import {
 } from "@/lib/admin/capacity-board";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type {
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // Capacity & Multiplication #184: a same-group apprentice the candidate can be
 // linked to. `label` already includes the readiness stage for the picker.
@@ -103,14 +103,14 @@ function CandidateEditForm({
   c: CandidateView;
   apprenticeOptions: ApprenticeOption[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateMultiplicationCandidate,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateMultiplicationCandidate
   );
-  const [archiveState, archiveAction, archivePending] = useActionState<
-    State,
-    FormData
-  >(adminArchiveMultiplicationCandidate, undefined);
+  const {
+    state: archiveState,
+    formAction: archiveAction,
+    pending: archivePending,
+  } = useActionForm<{ id: string }>(adminArchiveMultiplicationCandidate);
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <form action={formAction} style={{ display: "grid", gap: 10 }}>
@@ -234,9 +234,7 @@ function CandidateEditForm({
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
           </PButton>
-          {state && !state.ok ? (
-            <span style={errorTextStyle}>{state.errors[0]}</span>
-          ) : null}
+          <FormStatus state={state} />
         </div>
       </form>
       <form action={archiveAction}>
@@ -244,9 +242,7 @@ function CandidateEditForm({
         <PButton type="submit" tone="ghost" size="sm" disabled={archivePending}>
           {archivePending ? "Removing…" : "Remove from pipeline"}
         </PButton>
-        {archiveState && !archiveState.ok ? (
-          <span style={errorTextStyle}>{archiveState.errors[0]}</span>
-        ) : null}
+        <FormStatus state={archiveState} />
       </form>
     </div>
   );
@@ -325,9 +321,8 @@ function AddCandidateForm({
 }: {
   availableGroups: { id: string; name: string }[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminCreateMultiplicationCandidate,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminCreateMultiplicationCandidate
   );
   if (availableGroups.length === 0) {
     return (
@@ -457,9 +452,7 @@ function AddCandidateForm({
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Adding…" : "Add to pipeline"}
         </PButton>
-        {state && !state.ok ? (
-          <span style={errorTextStyle}>{state.errors[0]}</span>
-        ) : null}
+        <FormStatus state={state} />
       </div>
     </form>
   );

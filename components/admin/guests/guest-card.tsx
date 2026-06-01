@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge } from "@/components/pastoral/atoms";
 import { adminUpdateGuestPipeline } from "@/app/(protected)/admin/guests/actions";
@@ -11,17 +11,16 @@ import {
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
 import { P, fontBody, fontDisplay, fontMono, fontSans } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 const NOTES_PREVIEW_CHARS = 140;
 
@@ -41,9 +40,8 @@ export function GuestCard({
   openFollowUpsCount: number;
 }) {
   const [editing, setEditing] = useState(false);
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateGuestPipeline,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateGuestPipeline
   );
 
   const firstAttendedGroup = guest.first_attended_group_id
@@ -63,10 +61,10 @@ export function GuestCard({
     : null;
 
   const sortedActive = [...activeGroups].sort((a, b) =>
-    a.name.localeCompare(b.name),
+    a.name.localeCompare(b.name)
   );
   const sortedOwners = [...ownerProfiles].sort((a, b) =>
-    a.full_name.localeCompare(b.full_name),
+    a.full_name.localeCompare(b.full_name)
   );
 
   return (
@@ -143,9 +141,11 @@ export function GuestCard({
           value={
             firstAttendedGroup
               ? `${firstAttendedGroup}${
-                  guest.first_attended_date ? ` · ${guest.first_attended_date}` : ""
+                  guest.first_attended_date
+                    ? ` · ${guest.first_attended_date}`
+                    : ""
                 }`
-              : guest.first_attended_date ?? "—"
+              : (guest.first_attended_date ?? "—")
           }
         />
         <DetailRow label="Assigned group" value={assignedGroup?.name ?? "—"} />
@@ -203,10 +203,7 @@ export function GuestCard({
             }}
           >
             <div>
-              <label
-                htmlFor={`stage-${guest.id}`}
-                style={fieldLabelStyle}
-              >
+              <label htmlFor={`stage-${guest.id}`} style={fieldLabelStyle}>
                 Pipeline stage
               </label>
               <select
@@ -223,10 +220,7 @@ export function GuestCard({
               </select>
             </div>
             <div>
-              <label
-                htmlFor={`group-${guest.id}`}
-                style={fieldLabelStyle}
-              >
+              <label htmlFor={`group-${guest.id}`} style={fieldLabelStyle}>
                 Assigned group
               </label>
               <input type="hidden" name="set_assigned_group_id" value="true" />
@@ -245,10 +239,7 @@ export function GuestCard({
               </select>
             </div>
             <div>
-              <label
-                htmlFor={`owner-${guest.id}`}
-                style={fieldLabelStyle}
-              >
+              <label htmlFor={`owner-${guest.id}`} style={fieldLabelStyle}>
                 Follow-up owner
               </label>
               <input type="hidden" name="set_follow_up_owner_id" value="true" />
@@ -295,18 +286,7 @@ export function GuestCard({
               Done
             </PButton>
           </div>
-          {state && !state.ok ? (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-              {state.errors.map((err, i) => (
-                <li key={i}>
-                  <p style={errorTextStyle}>{err}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {state?.ok ? (
-            <p style={successTextStyle}>Saved.</p>
-          ) : null}
+          <FormStatus state={state} successText="Saved." />
         </form>
       ) : null}
     </article>

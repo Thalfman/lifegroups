@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminInviteUser,
@@ -9,19 +9,20 @@ import {
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   successTextStyle,
 } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import { useActionForm, FormStatus } from "./action-form";
 
-type InviteUserRole = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
+type InviteUserRole =
+  | "ministry_admin"
+  | "over_shepherd"
+  | "leader"
+  | "co_leader";
 
 type GroupOption = { id: string; name: string };
-
-type State = ActionResult<InviteUserSuccess> | undefined;
 
 const ASSIGNABLE_ROLES: { value: InviteUserRole; label: string }[] = [
   { value: "ministry_admin", label: ROLE_LABELS.ministry_admin },
@@ -46,24 +47,25 @@ const AUTH_USER_LABELS: Record<InviteUserSuccess["authUserState"], string> = {
 };
 
 export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    superAdminInviteUser,
-    undefined,
-  );
+  const { state, formAction, pending, formRef } =
+    useActionForm<InviteUserSuccess>(superAdminInviteUser, {
+      resetOnSuccess: true,
+    });
   const [role, setRole] = useState<InviteUserRole>("leader");
-  const formRef = useRef<HTMLFormElement>(null);
 
+  // useActionForm resets the <form> on success; the role select is React state.
   useEffect(() => {
-    if (state?.ok) {
-      formRef.current?.reset();
-      setRole("leader");
-    }
+    if (state?.ok) setRole("leader");
   }, [state]);
 
   const groupVisible = role === "leader" || role === "co_leader";
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <div>
         <h3
           style={{
@@ -215,23 +217,7 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
         </PButton>
       </div>
 
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
 
       {state?.ok ? (
         <div style={{ display: "grid", gap: 6 }}>

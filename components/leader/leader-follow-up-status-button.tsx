@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { leaderUpdateFollowUpStatus } from "@/app/(protected)/leader/follow-up-actions";
-import type { ActionResult } from "@/lib/leader/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { FollowUpStatus } from "@/types/enums";
-import { P, fontBody } from "@/lib/pastoral";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 export function LeaderFollowUpStatusButton({
   followUpId,
@@ -16,9 +15,8 @@ export function LeaderFollowUpStatusButton({
   followUpId: string;
   status: FollowUpStatus;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    leaderUpdateFollowUpStatus,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    leaderUpdateFollowUpStatus
   );
 
   const transitions = allowedFor(status);
@@ -37,27 +35,7 @@ export function LeaderFollowUpStatusButton({
           </form>
         ))}
       </div>
-      {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 12,
-                  color: "#923220",
-                  background: P.terraSoft,
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  margin: 0,
-                }}
-              >
-                {err}
-              </p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </div>
   );
 }

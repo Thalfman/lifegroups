@@ -1,6 +1,5 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminAssignLeaderToGroup } from "@/app/(protected)/admin/people/actions";
 import {
@@ -9,10 +8,8 @@ import {
   fieldSelectStyle,
   successTextStyle,
 } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import { useActionForm } from "./action-form";
 import { P, fontBody } from "@/lib/pastoral";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 export function AssignLeaderForm({
   groupId,
@@ -21,20 +18,19 @@ export function AssignLeaderForm({
   groupId: string;
   leaderOptions: { id: string; label: string }[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminAssignLeaderToGroup,
-    undefined,
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   const noOptions = leaderOptions.length === 0;
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 10 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 10 }}
+    >
       <input type="hidden" name="group_id" value={groupId} />
       <div
         className="lg-m-grid-stack"
@@ -68,7 +64,10 @@ export function AssignLeaderForm({
           </select>
         </div>
         <div>
-          <label htmlFor={`assign-leader-role-${groupId}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`assign-leader-role-${groupId}`}
+            style={fieldLabelStyle}
+          >
             Role
           </label>
           <select
@@ -84,18 +83,41 @@ export function AssignLeaderForm({
           </select>
         </div>
         <div>
-          <PButton type="submit" tone="terra" size="sm" disabled={pending || noOptions}>
+          <PButton
+            type="submit"
+            tone="terra"
+            size="sm"
+            disabled={pending || noOptions}
+          >
             {pending ? "Assigning…" : "Assign leader"}
           </PButton>
         </div>
       </div>
       {noOptions ? (
-        <p style={{ ...fieldSelectStyle, padding: 0, border: 0, background: "none", fontFamily: fontBody, color: P.ink3, fontSize: 12 }}>
+        <p
+          style={{
+            ...fieldSelectStyle,
+            padding: 0,
+            border: 0,
+            background: "none",
+            fontFamily: fontBody,
+            color: P.ink3,
+            fontSize: 12,
+          }}
+        >
           Add a leader profile above before assigning one to this group.
         </p>
       ) : null}
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

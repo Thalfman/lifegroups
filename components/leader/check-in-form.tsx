@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PAvatar } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { leaderSubmitCheckinAndReturn } from "@/app/(protected)/leader/actions";
+import { useActionForm } from "@/components/admin/forms/action-form";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/leader/action-result";
 // Match the church-local timezone the server uses for "today" so the
 // meeting_date prefill is the leader's wall-clock day even if their
 // browser or the rendering server is in a different timezone.
@@ -27,9 +27,11 @@ type Prefill = {
   attendance: Record<string, AttendanceStatus>;
 };
 
-type State = ActionResult<{ session_id: string }> | undefined;
-
-const STATUS_OPTIONS: { value: SessionStatus; label: string; helper: string }[] = [
+const STATUS_OPTIONS: {
+  value: SessionStatus;
+  label: string;
+  helper: string;
+}[] = [
   {
     value: "submitted",
     label: "Yes — we met",
@@ -43,13 +45,18 @@ const STATUS_OPTIONS: { value: SessionStatus; label: string; helper: string }[] 
   {
     value: "planned_pause",
     label: "Planned pause",
-    helper: "Use this for a scheduled break that the admin already knows about.",
+    helper:
+      "Use this for a scheduled break that the admin already knows about.",
   },
 ];
 
 const PULSE_OPTIONS: { value: Pulse; label: string; helper: string }[] = [
   { value: "healthy", label: "Healthy", helper: "Steady, encouraged." },
-  { value: "watch", label: "Watch", helper: "Something feels off — keep an eye on it." },
+  {
+    value: "watch",
+    label: "Watch",
+    helper: "Something feels off — keep an eye on it.",
+  },
   {
     value: "needs_follow_up",
     label: "Needs follow-up",
@@ -57,7 +64,11 @@ const PULSE_OPTIONS: { value: Pulse; label: string; helper: string }[] = [
   },
 ];
 
-const ATTENDANCE_OPTIONS: { value: AttendanceStatus; label: string; full: string }[] = [
+const ATTENDANCE_OPTIONS: {
+  value: AttendanceStatus;
+  label: string;
+  full: string;
+}[] = [
   { value: "present", label: "P", full: "Present" },
   { value: "absent", label: "A", full: "Absent" },
   { value: "excused", label: "E", full: "Excused" },
@@ -110,24 +121,28 @@ export function CheckInForm({
   alreadySubmitted: boolean;
   prefill: Prefill;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    leaderSubmitCheckinAndReturn,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ session_id: string }>(
+    leaderSubmitCheckinAndReturn
   );
 
   const [status, setStatus] = useState<SessionStatus>(prefill.status);
-  const [meetingDate, setMeetingDate] = useState<string>(prefill.meetingDate ?? todayIso());
+  const [meetingDate, setMeetingDate] = useState<string>(
+    prefill.meetingDate ?? todayIso()
+  );
   const [leaderNote, setLeaderNote] = useState<string>(prefill.leaderNote);
   const [pulse, setPulse] = useState<Pulse | "">(prefill.pulse);
   const [followUp, setFollowUp] = useState<boolean>(prefill.followUpNeeded);
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>(
-    prefill.attendance,
-  );
+  const [attendance, setAttendance] = useState<
+    Record<string, AttendanceStatus>
+  >(prefill.attendance);
 
   const attendanceJson = useMemo(() => {
     const entries = Object.entries(attendance)
       .filter(([, v]) => v === "present" || v === "absent" || v === "excused")
-      .map(([member_id, attendance_status]) => ({ member_id, attendance_status }));
+      .map(([member_id, attendance_status]) => ({
+        member_id,
+        attendance_status,
+      }));
     return JSON.stringify(entries);
   }, [attendance]);
 
@@ -143,19 +158,26 @@ export function CheckInForm({
     return alreadySubmitted ? "Update check-in" : "Submit check-in";
   })();
 
-  const presentCount = Object.values(attendance).filter((v) => v === "present").length;
-  const absentCount = Object.values(attendance).filter((v) => v === "absent").length;
-  const excusedCount = Object.values(attendance).filter((v) => v === "excused").length;
+  const presentCount = Object.values(attendance).filter(
+    (v) => v === "present"
+  ).length;
+  const absentCount = Object.values(attendance).filter(
+    (v) => v === "absent"
+  ).length;
+  const excusedCount = Object.values(attendance).filter(
+    (v) => v === "excused"
+  ).length;
 
   return (
-    <form
-      action={formAction}
-      style={{ display: "grid", gap: 22 }}
-    >
+    <form action={formAction} style={{ display: "grid", gap: 22 }}>
       <input type="hidden" name="group_id" value={groupId} />
       <input type="hidden" name="meeting_week" value={meetingWeek} />
       <input type="hidden" name="status" value={status} />
-      <input type="hidden" name="follow_up_needed" value={followUp ? "true" : "false"} />
+      <input
+        type="hidden"
+        name="follow_up_needed"
+        value={followUp ? "true" : "false"}
+      />
       <input type="hidden" name="attendance" value={attendanceJson} />
 
       <section
@@ -190,7 +212,8 @@ export function CheckInForm({
             color: P.ink,
           }}
         >
-          Week of {new Date(`${meetingWeek}T00:00:00Z`).toLocaleDateString("en-US", {
+          Week of{" "}
+          {new Date(`${meetingWeek}T00:00:00Z`).toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             timeZone: "UTC",
@@ -251,10 +274,7 @@ export function CheckInForm({
         ) : null}
       </section>
 
-      <FieldSet
-        eyebrow="Step 1"
-        title="Did the group meet this week?"
-      >
+      <FieldSet eyebrow="Step 1" title="Did the group meet this week?">
         <div style={{ display: "grid", gap: 10 }}>
           {STATUS_OPTIONS.map((opt) => (
             <button
@@ -379,7 +399,9 @@ export function CheckInForm({
                         {member.fullName}
                       </span>
                     </div>
-                    <div role="group" aria-label={`Attendance for ${member.fullName}`}
+                    <div
+                      role="group"
+                      aria-label={`Attendance for ${member.fullName}`}
                       style={{ display: "flex", gap: 6 }}
                     >
                       {ATTENDANCE_OPTIONS.map((opt) => {

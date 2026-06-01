@@ -1,27 +1,25 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateFollowUp } from "@/app/(protected)/admin/follow-ups/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import {
   followUpPriorityLabel,
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 import type { FollowUpPriority, FollowUpType } from "@/types/enums";
 import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
-
-type State = ActionResult<{ id: string }> | undefined;
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 
 const TYPES: FollowUpType[] = [
   "attendance",
@@ -46,15 +44,10 @@ export function FollowUpCreateForm({
   guests: GuestDirectoryEntry[];
   assignees: ProfilesRow[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateFollowUp,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   const sortedMembers = [...members].sort((a, b) =>
     a.full_name.localeCompare(b.full_name)
@@ -238,24 +231,7 @@ export function FollowUpCreateForm({
           </PButton>
         </div>
       </div>
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Follow-up created.</p> : null}
+      <FormStatus state={state} successText="Follow-up created." />
     </form>
   );
 }

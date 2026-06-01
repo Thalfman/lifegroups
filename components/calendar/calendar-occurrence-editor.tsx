@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Fragment,
-  useActionState,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -19,26 +12,30 @@ import {
 } from "@/components/ui/dialog";
 import { PButton } from "@/components/pastoral/button";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import {
   EVENT_STATUS_OPTIONS,
   EVENT_TYPE_OPTIONS,
 } from "@/lib/calendar/payload";
 import { dateLabel, formatClock } from "@/lib/calendar/occurrences";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type { ActionResult } from "@/lib/shared/action-result";
 import type {
   GroupCalendarEventStatus,
   GroupCalendarEventType,
 } from "@/types/enums";
 
-type ActionResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
-type State = ActionResult<{ id: string }> | undefined;
-type ServerAction = (prev: State, input: FormData) => Promise<State>;
+type ServerAction = (
+  prev: ActionResult<{ id: string }> | undefined,
+  input: FormData
+) => Promise<ActionResult<{ id: string }>>;
 
 export type CalendarOccurrenceEditorActions = {
   create: ServerAction;
@@ -168,18 +165,22 @@ function EditorModal({
   const titleId = `${idRoot}-title`;
   const descriptionId = `${idRoot}-description`;
   const formRef = useRef<HTMLFormElement>(null);
-  const [status, setStatus] = useState<GroupCalendarEventStatus>(occurrence.status);
+  const [status, setStatus] = useState<GroupCalendarEventStatus>(
+    occurrence.status
+  );
 
   // Pick the action based on whether an override already exists.
   const saveAction = occurrence.overrideId ? actions.update : actions.create;
-  const [saveState, saveFormAction, savePending] = useActionState<State, FormData>(
-    saveAction,
-    undefined,
-  );
-  const [clearState, clearFormAction, clearPending] = useActionState<State, FormData>(
-    actions.archive,
-    undefined,
-  );
+  const {
+    state: saveState,
+    formAction: saveFormAction,
+    pending: savePending,
+  } = useActionForm<{ id: string }>(saveAction);
+  const {
+    state: clearState,
+    formAction: clearFormAction,
+    pending: clearPending,
+  } = useActionForm<{ id: string }>(actions.archive);
 
   // Close the modal as soon as a save or clear succeeds. Without this,
   // the next time the user opens the editor it would still show the
@@ -193,12 +194,19 @@ function EditorModal({
 
   const showEventTypeSelect = status === "scheduled";
   const lockedEventType: GroupCalendarEventType =
-    status === "off" ? "off" : status === "cancelled" ? "cancelled" : occurrence.eventType;
+    status === "off"
+      ? "off"
+      : status === "cancelled"
+        ? "cancelled"
+        : occurrence.eventType;
 
   const clockLabel = formatClock(groupMeetingTime);
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (!next ? onClose() : undefined)}
+    >
       <DialogPortal>
         <DialogOverlay
           style={{
@@ -268,7 +276,8 @@ function EditorModal({
                 lineHeight: 1.45,
               }}
             >
-              Meeting time is inherited from the group schedule. To change it, edit the group.
+              Meeting time is inherited from the group schedule. To change it,
+              edit the group.
             </p>
           </header>
 
@@ -280,7 +289,11 @@ function EditorModal({
             <input type="hidden" name="group_id" value={groupId} />
             <input type="hidden" name="event_date" value={occurrence.date} />
             {occurrence.overrideId ? (
-              <input type="hidden" name="event_id" value={occurrence.overrideId} />
+              <input
+                type="hidden"
+                name="event_id"
+                value={occurrence.overrideId}
+              />
             ) : null}
             {!showEventTypeSelect ? (
               <input type="hidden" name="event_type" value={lockedEventType} />
@@ -288,7 +301,11 @@ function EditorModal({
 
             <div
               className="lg-m-form-2up"
-              style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}
+              style={{
+                display: "grid",
+                gap: 12,
+                gridTemplateColumns: "1fr 1fr",
+              }}
             >
               <div>
                 <label htmlFor={statusId} style={fieldLabelStyle}>
@@ -298,7 +315,9 @@ function EditorModal({
                   id={statusId}
                   name="status"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as GroupCalendarEventStatus)}
+                  onChange={(e) =>
+                    setStatus(e.target.value as GroupCalendarEventStatus)
+                  }
                   style={fieldSelectStyle}
                 >
                   {EVENT_STATUS_OPTIONS.map((opt) => (
@@ -317,7 +336,8 @@ function EditorModal({
                     id={typeId}
                     name="event_type"
                     defaultValue={
-                      occurrence.eventType === "off" || occurrence.eventType === "cancelled"
+                      occurrence.eventType === "off" ||
+                      occurrence.eventType === "cancelled"
                         ? "study"
                         : occurrence.eventType
                     }
@@ -346,7 +366,9 @@ function EditorModal({
                 maxLength={200}
                 defaultValue={occurrence.title ?? ""}
                 placeholder={
-                  showEventTypeSelect ? "e.g. Week 3 of the rotation" : "Optional reason"
+                  showEventTypeSelect
+                    ? "e.g. Week 3 of the rotation"
+                    : "Optional reason"
                 }
                 className="lg-m-input"
                 style={fieldInputStyle}
@@ -364,19 +386,15 @@ function EditorModal({
                 rows={3}
                 defaultValue={occurrence.description ?? ""}
                 className="lg-m-input"
-                style={{ ...fieldInputStyle, lineHeight: 1.5, resize: "vertical" }}
+                style={{
+                  ...fieldInputStyle,
+                  lineHeight: 1.5,
+                  resize: "vertical",
+                }}
               />
             </div>
 
-            {saveState && !saveState.ok ? (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-                {saveState.errors.map((msg, idx) => (
-                  <li key={idx} style={errorTextStyle}>
-                    {msg}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            <FormStatus state={saveState} />
             {previewNotice ? (
               <p
                 style={{
@@ -408,7 +426,12 @@ function EditorModal({
                   Cancel
                 </PButton>
               </DialogClose>
-              <PButton type="submit" tone="terra" size="md" disabled={savePending}>
+              <PButton
+                type="submit"
+                tone="terra"
+                size="md"
+                disabled={savePending}
+              >
                 {savePending ? "Saving…" : "Save changes"}
               </PButton>
             </div>
@@ -420,7 +443,7 @@ function EditorModal({
               eventId={occurrence.overrideId}
               action={clearFormAction}
               pending={clearPending}
-              errors={clearState && !clearState.ok ? clearState.errors : []}
+              state={clearState}
             />
           ) : null}
         </DialogContent>
@@ -434,13 +457,13 @@ function ClearOverrideRow({
   eventId,
   action,
   pending,
-  errors,
+  state,
 }: {
   groupId: string;
   eventId: string;
   action: (formData: FormData) => void;
   pending: boolean;
-  errors: string[];
+  state: ActionResult<{ id: string }> | undefined;
 }) {
   return (
     <div
@@ -460,18 +483,14 @@ function ClearOverrideRow({
           lineHeight: 1.45,
         }}
       >
-        Reverting this date drops the override and shows the default occurrence from the group schedule again.
+        Reverting this date drops the override and shows the default occurrence
+        from the group schedule again.
       </p>
-      {errors.length > 0 ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-          {errors.map((msg, idx) => (
-            <li key={idx} style={errorTextStyle}>
-              {msg}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <form action={action} style={{ display: "flex", justifyContent: "flex-end" }}>
+      <FormStatus state={state} />
+      <form
+        action={action}
+        style={{ display: "flex", justifyContent: "flex-end" }}
+      >
         <input type="hidden" name="event_id" value={eventId} />
         <input type="hidden" name="group_id" value={groupId} />
         <PButton type="submit" tone="ghost" size="sm" disabled={pending}>

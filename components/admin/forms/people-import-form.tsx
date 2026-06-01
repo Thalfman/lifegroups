@@ -1,6 +1,5 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminBulkImportPeople,
@@ -14,17 +13,14 @@ import {
   successTextStyle,
 } from "./field-styles";
 import { P, fontBody } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<BulkImportPeopleSuccess> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.5 (#165): paste CSV with a header row (full_name, email, phone,
 // role). The pure module parses + de-dups; this form shows the created counts
 // and any per-row parse errors that were skipped.
 export function PeopleImportForm() {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    superAdminBulkImportPeople,
-    undefined
+  const { state, formAction, pending } = useActionForm<BulkImportPeopleSuccess>(
+    superAdminBulkImportPeople
   );
 
   return (
@@ -90,23 +86,7 @@ export function PeopleImportForm() {
           </ul>
         </div>
       ) : null}
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 4,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

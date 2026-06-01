@@ -1,12 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminSetProfileStatus } from "@/app/(protected)/admin/super-admin/account-actions";
-import { errorTextStyle, successTextStyle } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.3 (#163): disable / re-enable a profile. The hidden status field is
 // the flipped value.
@@ -17,9 +13,8 @@ export function ProfileStatusForm({
   profileId: string;
   currentStatus: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    superAdminSetProfileStatus,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    superAdminSetProfileStatus
   );
 
   const isActive = currentStatus === "active";
@@ -32,10 +27,7 @@ export function ProfileStatusForm({
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "Saving…" : isActive ? "Disable" : "Re-enable"}
       </PButton>
-      {state?.ok ? <span style={successTextStyle}>Saved.</span> : null}
-      {state && !state.ok ? (
-        <p style={errorTextStyle}>{state.errors.join(" ")}</p>
-      ) : null}
+      <FormStatus state={state} successText="Saved." />
     </form>
   );
 }

@@ -1,12 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminDeactivateMember } from "@/app/(protected)/admin/people/actions";
-import { errorTextStyle } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 export function DeactivateMemberButton({
   memberId,
@@ -17,9 +13,8 @@ export function DeactivateMemberButton({
   label?: string;
   fullName?: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminDeactivateMember,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminDeactivateMember
   );
 
   function confirmDeactivate(e: React.FormEvent<HTMLFormElement>) {
@@ -27,7 +22,7 @@ export function DeactivateMemberButton({
       !window.confirm(
         fullName
           ? `Deactivate ${fullName}? Their active group memberships will be closed today.`
-          : "Deactivate this member? Their active group memberships will be closed today.",
+          : "Deactivate this member? Their active group memberships will be closed today."
       )
     ) {
       e.preventDefault();
@@ -42,7 +37,7 @@ export function DeactivateMemberButton({
           {pending ? "Deactivating…" : label}
         </PButton>
       </form>
-      {state && !state.ok ? <p style={errorTextStyle}>{state.errors[0]}</p> : null}
+      <FormStatus state={state} />
     </div>
   );
 }

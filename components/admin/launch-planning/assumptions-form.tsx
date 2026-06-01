@@ -1,21 +1,20 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { nextSeasonAnchorIso } from "@/lib/admin/launch-planning";
 import { P, fontBody } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // Format a fractional ratio (0–1) as a percent string with up to 1
 // decimal place, preserving any non-zero fractional part so an existing
@@ -33,9 +32,8 @@ export function LaunchPlanningAssumptionsForm({
 }: {
   assumptions: LaunchPlanningAssumptions;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateLaunchPlanningAssumptions,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateLaunchPlanningAssumptions
   );
   const growthDateRef = useRef<HTMLInputElement>(null);
 
@@ -234,28 +232,10 @@ export function LaunchPlanningAssumptionsForm({
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save assumptions"}
         </PButton>
-        {state?.ok ? (
-          <span style={successTextStyle}>Assumptions saved.</span>
-        ) : null}
+        <FormStatus state={state} successText="Assumptions saved." />
       </div>
 
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

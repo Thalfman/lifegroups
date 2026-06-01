@@ -1,25 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminAssignShepherdCoverage,
   adminEndShepherdCoverage,
 } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import { P, fontBody } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // `defaultValue` uses the caller's LOCAL calendar day for the same
 // rationale as log-interaction-form.tsx — keep the picker on the
@@ -43,14 +41,16 @@ export function CoverageAssignmentForm({
   currentAssignmentId: string | null;
   currentOverShepherdId: string | null;
 }) {
-  const [assignState, assignAction, assignPending] = useActionState<State, FormData>(
-    adminAssignShepherdCoverage,
-    undefined,
-  );
-  const [endState, endAction, endPending] = useActionState<State, FormData>(
-    adminEndShepherdCoverage,
-    undefined,
-  );
+  const {
+    state: assignState,
+    formAction: assignAction,
+    pending: assignPending,
+  } = useActionForm<{ id: string }>(adminAssignShepherdCoverage);
+  const {
+    state: endState,
+    formAction: endAction,
+    pending: endPending,
+  } = useActionForm<{ id: string }>(adminEndShepherdCoverage);
 
   const hasActiveOverShepherds = activeOverShepherds.length > 0;
 
@@ -118,25 +118,14 @@ export function CoverageAssignmentForm({
               </PButton>
             </div>
           </div>
-          {assignState && !assignState.ok ? (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-              {assignState.errors.map((err, i) => (
-                <li key={i}>
-                  <p style={errorTextStyle}>{err}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {assignState?.ok ? (
-            <p style={successTextStyle}>Coverage assigned.</p>
-          ) : null}
+          <FormStatus state={assignState} successText="Coverage assigned." />
         </form>
       ) : !currentAssignmentId ? (
         // No active over-shepherds and no active assignment to clear —
         // surface the empty state directly.
         <p style={{ ...formNoteStyle, color: P.ink2 }}>
-          No active over-shepherds yet. Add one from the over-shepherd
-          manager before assigning coverage.
+          No active over-shepherds yet. Add one from the over-shepherd manager
+          before assigning coverage.
         </p>
       ) : (
         // No active over-shepherds, but an active assignment exists
@@ -158,7 +147,11 @@ export function CoverageAssignmentForm({
             paddingTop: 12,
           }}
         >
-          <input type="hidden" name="assignment_id" value={currentAssignmentId} />
+          <input
+            type="hidden"
+            name="assignment_id"
+            value={currentAssignmentId}
+          />
           <input
             type="hidden"
             name="shepherd_profile_id"
@@ -172,24 +165,15 @@ export function CoverageAssignmentForm({
               margin: 0,
             }}
           >
-            Or clear coverage entirely — the assignment is soft-ended and
-            stays in the audit trail.
+            Or clear coverage entirely — the assignment is soft-ended and stays
+            in the audit trail.
           </p>
           <div>
             <PButton type="submit" tone="terra" size="md" disabled={endPending}>
               {endPending ? "Clearing…" : "Clear coverage"}
             </PButton>
           </div>
-          {endState && !endState.ok ? (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-              {endState.errors.map((err, i) => (
-                <li key={i}>
-                  <p style={errorTextStyle}>{err}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {endState?.ok ? <p style={successTextStyle}>Coverage cleared.</p> : null}
+          <FormStatus state={endState} successText="Coverage cleared." />
         </form>
       ) : null}
     </div>

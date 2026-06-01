@@ -1,12 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminReopenGroup } from "@/app/(protected)/admin/groups/actions";
-import { errorTextStyle } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 // Restores a previously archived group via the existing reopen RPC. Pure
 // UI vocabulary swap from "Reopen" — the lifecycle_status enum value
@@ -18,9 +14,8 @@ export function RestoreGroupButton({
   groupId: string;
   groupName?: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminReopenGroup,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminReopenGroup
   );
 
   function confirmRestore(e: React.FormEvent<HTMLFormElement>) {
@@ -28,7 +23,7 @@ export function RestoreGroupButton({
       !window.confirm(
         groupName
           ? `Restore ${groupName}? It'll move back to the active roster.`
-          : "Restore this group? It'll move back to the active roster.",
+          : "Restore this group? It'll move back to the active roster."
       )
     ) {
       e.preventDefault();
@@ -43,7 +38,7 @@ export function RestoreGroupButton({
           {pending ? "Restoring…" : "Restore group"}
         </PButton>
       </form>
-      {state && !state.ok ? <p style={errorTextStyle}>{state.errors[0]}</p> : null}
+      <FormStatus state={state} />
     </div>
   );
 }

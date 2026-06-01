@@ -1,19 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 
 // Creates a care follow-up against an existing care profile. The care
 // profile id and the shepherd profile id are passed as hidden fields — the
@@ -25,15 +23,10 @@ export function CareFollowUpCreateForm({
   careProfileId: string;
   shepherdProfileId: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateShepherdCareFollowUp,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   return (
     <form
@@ -97,24 +90,7 @@ export function CareFollowUpCreateForm({
           </PButton>
         </div>
       </div>
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Follow-up added.</p> : null}
+      <FormStatus state={state} successText="Follow-up added." />
     </form>
   );
 }

@@ -1,18 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminUpdateProfileRole } from "@/app/(protected)/admin/super-admin/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { P, fontBody } from "@/lib/pastoral";
-import {
-  errorTextStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
-} from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import { fieldLabelStyle, fieldSelectStyle } from "./field-styles";
 import type { UserRole } from "@/types/enums";
+import { useActionForm, FormStatus } from "./action-form";
 
 // Any active profile whose current role is NOT super_admin can be the
 // target of a role change.
@@ -22,8 +16,6 @@ type AssignableProfile = {
   email: string;
   current_role: Exclude<UserRole, "super_admin">;
 };
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // Roles the super admin is allowed to assign through the UI. super_admin
 // is omitted (bootstrap procedure only); the legacy no-access role is
@@ -40,15 +32,10 @@ export function RoleChangeForm({
 }: {
   profiles: AssignableProfile[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     superAdminUpdateProfileRole,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   const noOptions = profiles.length === 0;
 
@@ -148,24 +135,7 @@ export function RoleChangeForm({
           admin via Manage People first.
         </p>
       ) : null}
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Role updated.</p> : null}
+      <FormStatus state={state} successText="Role updated." />
     </form>
   );
 }

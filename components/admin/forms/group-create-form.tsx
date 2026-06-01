@@ -1,16 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateGroup } from "@/app/(protected)/admin/groups/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "./field-styles";
 import { P, fontBody } from "@/lib/pastoral";
 import {
@@ -18,10 +16,8 @@ import {
   MEETING_FREQUENCY_OPTIONS,
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { MeetingFrequency } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 export function GroupCreateForm({
   // G3 (#222): a new group's capacity defaults to the ministry-wide
@@ -32,17 +28,17 @@ export function GroupCreateForm({
 }: {
   defaultCapacity: number | null;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
   const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
   const [showMore, setShowMore] = useState(false);
 
+  // useActionForm resets the <form> element on success; the local UI state
+  // (frequency select, expanded "More details") lives in React, so reset it too.
   useEffect(() => {
     if (state?.ok) {
-      formRef.current?.reset();
       setFrequency("weekly");
       setShowMore(false);
     }
@@ -319,24 +315,7 @@ export function GroupCreateForm({
           {pending ? "Creating…" : "Create group"}
         </PButton>
       </div>
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Group created.</p> : null}
+      <FormStatus state={state} successText="Group created." />
     </form>
   );
 }
