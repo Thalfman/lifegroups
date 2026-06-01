@@ -210,8 +210,10 @@ layer is sound, which is why Group health’s raw styling is left for a separate
 The pass is complete when each flagged surface satisfies the principle, measured by the four tests.
 
 No surface records a data series that no surface reads: church attendance is a single editable
-number, used both for the forecast and the percentage headline, with no `church_attendance_snapshots`
-table and no duplicate assumption field. No surface asks for precision a default could supply: the
+number, used both for the forecast and the percentage headline. (Per owner sign-off, the
+`church_attendance_snapshots` table and its RPC are retained for history but are no longer read by the
+forecast or headline, which read only the single `current_church_attendance` assumption value.)
+No surface asks for precision a default could supply: the
 forecast and both scenario forms present every ratio as a whole-number percentage and default the
 rest, group capacity defaults to the ministry value rather than “Unknown”, and the standing test,
 that a non-technical user can finish each surface without a glossary, holds. No surface shows
@@ -251,15 +253,17 @@ empty state, and point to People or Groups when there are no active groups. Evid
 `app/(protected)/admin/launch-planning/page.tsx` (lines 383 to 398),
 `components/admin/launch-planning/summary-cards.tsx`.
 
-**L4: Replace the church-attendance time series with one editable estimate. 🔴 Structural, migration.**
+**L4: Replace the church-attendance time series with one editable estimate. 🔴 Structural, no migration.**
 Make `current_church_attendance` in `launch_planning_assumptions` the single source of truth for both
 the forecast and the percentage headline, and reduce the church-attendance card to one value with an
-edit control. Migration: drop the `church_attendance_snapshots` table and the
-`admin_record_church_attendance_snapshot` RPC, seeding the number from the latest snapshot first, then
-discarding history. **ADR 0008 intersection: none**; the table is outside the frozen `shepherd_care_*`
-surface. Evidence: `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
+edit control. **Owner sign-off (2026-06-01): single-number surface approved, but the
+`church_attendance_snapshots` table and the `admin_record_church_attendance_snapshot` RPC are KEPT and
+history is retained — they simply stop being what the forecast and headline read from.** This makes L4 a
+surface + source-of-truth change with no schema migration. **ADR 0008 intersection: none**; the table is
+outside the frozen `shepherd_care_*` surface. Evidence:
+`supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
-*Sign-off: confirm the single-number model and that history can be discarded.*
+*Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept).*
 
 **L5: Trim the forecast and scenario inputs and state them as percentages. 🔴 Structural at the UI boundary.**
 Reduce the default forecast to the two inputs that need a ministry-specific answer, current church
@@ -429,24 +433,26 @@ where L3’s empty-state fix reaches them. Group health renders in raw utility s
 which is a visual-layer matter and is out of scope here. Group health’s placeholder question wordings are the
 intended ADR 0007 fallback, not unfinished UI.
 
-## Sign-off needed before the 🔴 items build
+## Sign-off — ✅ resolved 2026-06-01
 
-Five items carry a recommended default and need only a yes to proceed.
+All five 🔴 items were signed off by the owner. Four were approved as recommended; L4 was approved with one
+change (history retained). Issues #221–#226 are updated and moved to `ready-for-agent`.
 
-**L1**: redesign Launch planning to show the at-a-glance answer plus one primary action, the rest in the four
+**L1 ✅**: redesign Launch planning to show the at-a-glance answer plus one primary action, the rest in the four
 tabs Overview, Forecast, Scenarios, and Groups and multiplication; the paired action under L2 is Plan a launch,
 fallback Save forecast.
 
-**L4**: make a single editable `current_church_attendance` the source of truth for the forecast and the headline,
-drop the `church_attendance_snapshots` table and its RPC, seed from the latest snapshot, and discard history.
+**L4 ✅ (changed)**: make a single editable `current_church_attendance` the source of truth for the forecast and
+the headline. **The `church_attendance_snapshots` table and its RPC are KEPT (history retained) — they are no
+longer read by the forecast/headline. No drop, no migration.**
 
-**L5**: require only current church attendance and target group participation by default, shown as percentages,
+**L5 ✅**: require only current church attendance and target group participation by default, shown as percentages,
 default the rest, and apply the same conversion to the scenario form.
 
-**G3**: default a new group’s capacity to the ministry default capacity rather than “Unknown”, and feed that
+**G3 ✅**: default a new group’s capacity to the ministry default capacity rather than “Unknown”, and feed that
 default into the capacity math.
 
-**S1**: keep care cadence and default capacity in the Settings primary path, demote the rest, and remove the dead
+**S1 ✅**: keep care cadence and default capacity in the Settings primary path, demote the rest, and remove the dead
 `check_in_due_day_of_week` field.
 
 Reversible items with owner-facing wording to confirm in the same pass, not separately gated: G1’s labels Audience,
