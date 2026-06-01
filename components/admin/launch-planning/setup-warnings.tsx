@@ -38,8 +38,11 @@ export function LaunchPlanningSetupWarnings({
   // First-run pointer: with no active groups there is nothing real to forecast
   // from, so the figures above are running purely on built-in starting
   // assumptions. Point the operator at where the real inputs come from rather
-  // than leaving them on a forecast with no groups behind it.
-  if (inputs.active_group_count === 0) {
+  // than leaving them on a forecast with no groups behind it. Gate on a
+  // successful groups read — on a read failure the bundle also reports
+  // groups: [], and the error banner below already explains that; we must not
+  // present a read failure as a confident "no groups" diagnosis.
+  if (inputs.active_group_count === 0 && !errors.groups) {
     items.push({
       key: "no_groups",
       title: "No active groups yet",
