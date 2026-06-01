@@ -47,6 +47,46 @@ export function churchMonthIso(d: Date = new Date()): string {
   return churchTodayIso(d).slice(0, 7);
 }
 
+// Offset (ms) of CHURCH_TIMEZONE from UTC at `instant`, read from the zone via
+// Intl so CST/CDT are handled automatically. Positive when the zone is ahead of
+// UTC. (America/Chicago is always behind, so this is negative.)
+function churchTzOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CHURCH_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const get = (type: string): number =>
+    Number(parts.find((p) => p.type === type)?.value);
+  // en-US with hour12:false renders midnight as "24"; normalize to 0.
+  const hour = get("hour") % 24;
+  const wallAsUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    hour,
+    get("minute"),
+    get("second")
+  );
+  return wallAsUtc - instant.getTime();
+}
+
+// The UTC instant (ISO string) of 00:00 church-local time on `dateIso`
+// (YYYY-MM-DD). Use this to filter timestamptz columns by church-local calendar
+// day: a date-only bound compared to a timestamptz is read as UTC midnight,
+// which is 5-6h off the church day. Midnight always exists in America/Chicago
+// (DST transitions happen at 02:00), so the offset read at the date is exact.
+export function churchDayStartUtcIso(dateIso: string): string {
+  const naiveUtc = new Date(`${dateIso}T00:00:00Z`).getTime();
+  const offsetMs = churchTzOffsetMs(new Date(naiveUtc));
+  return new Date(naiveUtc - offsetMs).toISOString();
+}
+
 // Returns the Monday-of-ISO-week as YYYY-MM-DD for the given input.
 //
 // When passed a Date, the date is first projected into CHURCH_TIMEZONE so

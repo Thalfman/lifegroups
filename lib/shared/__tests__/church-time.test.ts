@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CHURCH_TIMEZONE,
+  churchDayStartUtcIso,
   churchMonthIso,
   churchTodayIso,
   isoWeekNumberOf,
@@ -83,5 +84,28 @@ describe("churchTodayIso / churchMonthIso", () => {
     const utcFirstButCentralLast = new Date("2026-06-01T02:00:00Z");
     expect(churchTodayIso(utcFirstButCentralLast)).toBe("2026-05-31");
     expect(churchMonthIso(utcFirstButCentralLast)).toBe("2026-05");
+  });
+});
+
+describe("churchDayStartUtcIso", () => {
+  it("maps a church-local day to its UTC midnight instant in CDT (summer)", () => {
+    // America/Chicago is UTC-5 in June, so 00:00 local = 05:00 UTC.
+    expect(churchDayStartUtcIso("2026-06-01")).toBe("2026-06-01T05:00:00.000Z");
+  });
+
+  it("maps a church-local day to its UTC midnight instant in CST (winter)", () => {
+    // UTC-6 in January, so 00:00 local = 06:00 UTC.
+    expect(churchDayStartUtcIso("2026-01-15")).toBe("2026-01-15T06:00:00.000Z");
+  });
+
+  it("round-trips with churchTodayIso for an evening-local instant", () => {
+    // A timestamp at 03:00 UTC on Jun 1 is 22:00 local on May 31, so it must
+    // fall in [start of May 31, start of Jun 1) church-local.
+    const completedAt = new Date("2026-06-01T03:00:00Z");
+    expect(churchTodayIso(completedAt)).toBe("2026-05-31");
+    const lower = churchDayStartUtcIso("2026-05-31");
+    const upper = churchDayStartUtcIso("2026-06-01");
+    expect(completedAt.toISOString() >= lower).toBe(true);
+    expect(completedAt.toISOString() < upper).toBe(true);
   });
 });

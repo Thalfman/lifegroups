@@ -41,6 +41,23 @@ export function LeaderCareOverviewCard({
       title="Care triage"
       action={<OpenLink href="/admin/shepherd-care" />}
     >
+      {summary.error ? (
+        <p
+          style={{
+            margin: "0 0 12px",
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: P.terraSoft,
+            color: P.terraTextStrong,
+            border: `1px solid ${P.terra}`,
+            fontFamily: fontBody,
+            fontSize: 12.5,
+          }}
+        >
+          Coverage data couldn’t be loaded — unassigned-coverage is hidden until
+          this clears.
+        </p>
+      ) : null}
       <StatTileGrid>
         <StatTile
           label="Needs attention"

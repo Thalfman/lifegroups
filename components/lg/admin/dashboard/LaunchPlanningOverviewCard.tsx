@@ -98,40 +98,49 @@ export function LaunchPlanningOverviewCard({
         />
       </StatTileGrid>
 
-      {multiplication.available ? (
-        <div
+      <div
+        style={{
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: `1px solid ${P.line2}`,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <span
           style={{
-            marginTop: 14,
-            paddingTop: 12,
-            borderTop: `1px solid ${P.line2}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
+            fontFamily: fontSans,
+            fontSize: 10,
+            textTransform: "uppercase",
+            letterSpacing: 1.3,
+            color: P.ink3,
+            fontWeight: 600,
           }}
         >
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: 1.3,
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
-            Multiplication
-          </span>
-          <span style={{ fontFamily: fontBody, fontSize: 12.5, color: P.ink2 }}>
-            {MULTIPLICATION_ORDER.map(
-              (s, i) =>
-                `${CANDIDATE_STATUS_LABEL[s]} ${multiplication.counts[s]}${
-                  i < MULTIPLICATION_ORDER.length - 1 ? "  ·  " : ""
-                }`
-            ).join("")}
-          </span>
-        </div>
-      ) : null}
+          Multiplication
+        </span>
+        {/* Render an explicit unavailable note rather than dropping the section,
+            so a failed read doesn't read as "no candidates". */}
+        <span
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            color: multiplication.available ? P.ink2 : P.ink3,
+            fontStyle: multiplication.available ? "normal" : "italic",
+          }}
+        >
+          {multiplication.available
+            ? MULTIPLICATION_ORDER.map(
+                (s, i) =>
+                  `${CANDIDATE_STATUS_LABEL[s]} ${multiplication.counts[s]}${
+                    i < MULTIPLICATION_ORDER.length - 1 ? "  ·  " : ""
+                  }`
+              ).join("")
+            : "Data unavailable"}
+        </span>
+      </div>
     </StatusCard>
   );
 }

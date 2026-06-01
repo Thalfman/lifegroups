@@ -34,6 +34,7 @@ import type {
   UserRole,
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
+import { churchDayStartUtcIso } from "@/lib/shared/church-time";
 import { pgHexToBase64 } from "@/lib/crypto/encoding";
 import {
   BUILT_IN_CARE_CADENCE_WINDOWS,
@@ -117,11 +118,16 @@ export type OverviewActivityCounts = {
 };
 
 // Counts of dated activity within [fromIso, toExclusiveIso) for the executive
-// overview's period band. `fromIso` null means all-time (upper bound only). The
-// columns are date / timestamp, so an exclusive next-day upper bound includes
-// all of "today". Head-only count queries keep this cheap. Groups launched and
-// guests welcomed are derived from arrays the dashboard already fetches, so
-// they are NOT read here.
+// overview's period band. `fromIso` null means all-time (upper bound only).
+// Head-only count queries keep this cheap. Groups launched and guests welcomed
+// are derived from arrays the dashboard already fetches, so they are NOT read
+// here.
+//
+// joined_at and interaction_at are DATE columns (church-local calendar days),
+// so the YYYY-MM-DD bounds compare directly. completed_at is a timestamptz, so
+// its bounds are converted to the matching UTC instants of church-local
+// midnight — otherwise a late-evening-local completion (which Postgres reads as
+// the next UTC day) would land in the wrong period.
 export async function fetchOverviewActivityCounts(
   client: ReadClient,
   range: { fromIso: string | null; toExclusiveIso: string }
@@ -136,8 +142,12 @@ export async function fetchOverviewActivityCounts(
     .from("follow_ups")
     .select("id", { count: "exact", head: true })
     .not("completed_at", "is", null)
-    .lt("completed_at", range.toExclusiveIso);
-  if (range.fromIso) followUpsQ = followUpsQ.gte("completed_at", range.fromIso);
+    .lt("completed_at", churchDayStartUtcIso(range.toExclusiveIso));
+  if (range.fromIso)
+    followUpsQ = followUpsQ.gte(
+      "completed_at",
+      churchDayStartUtcIso(range.fromIso)
+    );
 
   let interactionsQ = client
     .from("shepherd_care_interactions")
