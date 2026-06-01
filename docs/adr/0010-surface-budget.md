@@ -46,6 +46,35 @@ answers to exactly one of three jobs.
   ADR's verify-before-flip rule; flipping a frozen surface back on is not a
   "new surface" under this ADR, but adding a brand-new surface still is.
 
+## The model-clarity gate
+
+The count rule above governs whether a surface is _allowed to exist_. It does
+not govern whether the surface, once it exists, presents an intuitive model to
+the user. The Surface Simplification PRD found the app's pervasive fault is that
+surfaces expose the internal model rather than the one a ministry leader holds,
+so this gate extends the budget with that principle.
+
+**The principle.** A user-reachable surface must present an intuitive model to
+the user, not the internal one. Beyond the count rule above, a PR that adds or
+materially changes a user-reachable surface states how the surface holds to the
+principle, tested four ways:
+
+1. **One primary action, no density regression.** The surface has one obvious
+   primary action and does not regress in on-load density.
+2. **Estimate over record.** It does not record a data series that no surface
+   reads; where an editable estimate or a default would serve, it does not
+   capture an exact value or a series.
+3. **Default over precision.** It does not demand precision a sane default could
+   supply, such as a decimal coefficient a non-technical ministry user cannot
+   confidently give.
+4. **Ministry words over implementation words.** Its labels use the ministry
+   vocabulary defined in CONTEXT.md, not internal or developer vocabulary.
+
+The standing test is whether a non-technical ministry user can complete the
+surface's job without a glossary. A surface that fails a test is simplified, not
+shipped as-is — this gate is on _model clarity_, complementing the count rule's
+constraint on _surface count_; a surface must clear both.
+
 ## Consequences
 
 - Every PR that adds a user-reachable surface states, up front, which one job it

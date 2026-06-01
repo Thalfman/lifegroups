@@ -8,6 +8,7 @@ import {
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
 import { PBadge } from "@/components/pastoral/atoms";
+import { PButton } from "@/components/pastoral/button";
 import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/enums";
 import type {
@@ -68,9 +69,26 @@ const DUE_FILTERS: { value: DueFilter; label: string }[] = [
 
 type DueFilter = "all" | "overdue" | "this_week" | "no_due_date";
 
+// The surface leads with open work, so the status filter defaults to "active"
+// (everything not yet done). "all" shows every status; a single status narrows
+// to it.
+type StatusFilter = "active" | "all" | FollowUpStatus;
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "active", label: "Open items" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In progress" },
+  { value: "snoozed", label: "Snoozed" },
+  { value: "done", label: "Done" },
+  { value: "all", label: "All statuses" },
+];
+
 export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
   const { followUps, groups, members, guests, assigneeProfiles, errors } = data;
 
+  const [showCreate, setShowCreate] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [priorityFilter, setPriorityFilter] = useState<
     "all" | FollowUpPriority
   >("all");
@@ -106,6 +124,11 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
 
   const filtered = useMemo(() => {
     return followUps.filter((fu) => {
+      if (statusFilter === "active") {
+        if (fu.status === "done") return false;
+      } else if (statusFilter !== "all" && fu.status !== statusFilter) {
+        return false;
+      }
       if (priorityFilter !== "all" && fu.priority !== priorityFilter)
         return false;
       if (assigneeFilter !== "all" && fu.assigned_to !== assigneeFilter)
@@ -132,6 +155,7 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
     });
   }, [
     followUps,
+    statusFilter,
     priorityFilter,
     dueFilter,
     assigneeFilter,
@@ -151,7 +175,13 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
     for (const fu of filtered) out[fu.status].push(fu);
     for (const status of STATUS_ORDER) {
       out[status].sort((a, b) => {
-        // priority: high > normal > low; due_date asc nulls last; created_at desc
+        // due_date asc (nulls last); then priority high > normal > low; then
+        // created_at desc. Due date leads so the default view answers "what's
+        // due next" first.
+        if (a.due_date && b.due_date && a.due_date !== b.due_date)
+          return a.due_date.localeCompare(b.due_date);
+        if (a.due_date && !b.due_date) return -1;
+        if (!a.due_date && b.due_date) return 1;
         const pOrder: Record<FollowUpPriority, number> = {
           high: 0,
           normal: 1,
@@ -159,10 +189,6 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
         };
         if (a.priority !== b.priority)
           return pOrder[a.priority] - pOrder[b.priority];
-        if (a.due_date && b.due_date)
-          return a.due_date.localeCompare(b.due_date);
-        if (a.due_date) return -1;
-        if (b.due_date) return 1;
         return b.created_at.localeCompare(a.created_at);
       });
     }
@@ -206,126 +232,168 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
 
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          eyebrow="New follow-up"
-          title="Add a thread to track"
-          description="Tie it to a group, a member, or a guest. Set a priority and a due date if it helps. Assign it to someone now or leave it unassigned for the team to pick up."
-        />
-        <Card>
-          <FollowUpCreateForm
-            groups={sortedGroups}
-            members={members}
-            guests={sortedGuests}
-            assignees={sortedAssignees}
-          />
-        </Card>
-      </section>
-
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="The list"
-          title="Every follow-up, by status"
-          description="Filter by priority, due window, person, group, or guest. Open items come first."
+          eyebrow="Follow-ups"
+          title="The queue, open items first"
+          description="The status-grouped queue leads, sorted by due date. Add a follow-up or open the filters when you need them."
         />
         <div
-          className="lg-m-filterbar"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 12,
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            alignItems: "center",
           }}
         >
-          <div>
-            <label htmlFor="fu-priority" style={fieldLabelStyle}>
-              Priority
-            </label>
-            <select
-              id="fu-priority"
-              value={priorityFilter}
-              onChange={(e) =>
-                setPriorityFilter(e.target.value as "all" | FollowUpPriority)
-              }
-              style={fieldSelectStyle}
-            >
-              {PRIORITY_FILTERS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="fu-due" style={fieldLabelStyle}>
-              Due window
-            </label>
-            <select
-              id="fu-due"
-              value={dueFilter}
-              onChange={(e) => setDueFilter(e.target.value as DueFilter)}
-              style={fieldSelectStyle}
-            >
-              {DUE_FILTERS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="fu-assignee" style={fieldLabelStyle}>
-              Assignee
-            </label>
-            <select
-              id="fu-assignee"
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              style={fieldSelectStyle}
-            >
-              <option value="all">Anyone (or none)</option>
-              {sortedAssignees.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="fu-group" style={fieldLabelStyle}>
-              Related group
-            </label>
-            <select
-              id="fu-group"
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-              style={fieldSelectStyle}
-            >
-              <option value="all">Any (or none)</option>
-              {sortedGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                  {g.lifecycle_status === "closed" ? " (closed)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="fu-guest" style={fieldLabelStyle}>
-              Related guest
-            </label>
-            <select
-              id="fu-guest"
-              value={guestFilter}
-              onChange={(e) => setGuestFilter(e.target.value)}
-              style={fieldSelectStyle}
-            >
-              <option value="all">Any (or none)</option>
-              {sortedGuests.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PButton
+            type="button"
+            tone="terra"
+            size="md"
+            onClick={() => setShowCreate((v) => !v)}
+          >
+            {showCreate ? "Close" : "Add follow-up"}
+          </PButton>
+          <PButton
+            type="button"
+            tone="ghost"
+            size="md"
+            onClick={() => setShowFilters((v) => !v)}
+          >
+            {showFilters ? "Hide filters" : "Filter"}
+          </PButton>
         </div>
+
+        {showCreate ? (
+          <Card>
+            <FollowUpCreateForm
+              groups={sortedGroups}
+              members={members}
+              guests={sortedGuests}
+              assignees={sortedAssignees}
+            />
+          </Card>
+        ) : null}
+
+        {showFilters ? (
+          <div
+            className="lg-m-filterbar"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 12,
+            }}
+          >
+            <div>
+              <label htmlFor="fu-status" style={fieldLabelStyle}>
+                Status
+              </label>
+              <select
+                id="fu-status"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as StatusFilter)
+                }
+                style={fieldSelectStyle}
+              >
+                {STATUS_FILTERS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="fu-priority" style={fieldLabelStyle}>
+                Priority
+              </label>
+              <select
+                id="fu-priority"
+                value={priorityFilter}
+                onChange={(e) =>
+                  setPriorityFilter(e.target.value as "all" | FollowUpPriority)
+                }
+                style={fieldSelectStyle}
+              >
+                {PRIORITY_FILTERS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="fu-due" style={fieldLabelStyle}>
+                Due window
+              </label>
+              <select
+                id="fu-due"
+                value={dueFilter}
+                onChange={(e) => setDueFilter(e.target.value as DueFilter)}
+                style={fieldSelectStyle}
+              >
+                {DUE_FILTERS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="fu-assignee" style={fieldLabelStyle}>
+                Assignee
+              </label>
+              <select
+                id="fu-assignee"
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                style={fieldSelectStyle}
+              >
+                <option value="all">Anyone (or none)</option>
+                {sortedAssignees.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="fu-group" style={fieldLabelStyle}>
+                Related group
+              </label>
+              <select
+                id="fu-group"
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                style={fieldSelectStyle}
+              >
+                <option value="all">Any (or none)</option>
+                {sortedGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                    {g.lifecycle_status === "closed" ? " (closed)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="fu-guest" style={fieldLabelStyle}>
+                Related guest
+              </label>
+              <select
+                id="fu-guest"
+                value={guestFilter}
+                onChange={(e) => setGuestFilter(e.target.value)}
+                style={fieldSelectStyle}
+              >
+                <option value="all">Any (or none)</option>
+                {sortedGuests.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : null}
 
         {filtered.length === 0 ? (
           <div style={emptyStyle}>
@@ -351,8 +419,8 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
               }}
             >
               {followUps.length === 0
-                ? "Create the first follow-up using the form above. Tie it to a guest, member, or group — and add a note if helpful."
-                : "Adjust the filters above — or add a new follow-up at the top."}
+                ? "Use Add follow-up to create the first one. Tie it to a guest, member, or group — and add a note if helpful."
+                : "Adjust the filters — or add a new follow-up."}
             </p>
           </div>
         ) : (

@@ -137,7 +137,7 @@ describe("segmentLabel", () => {
       "Mixed / couples · Retirement"
     );
     expect(segmentLabel("men", null)).toBe("Men");
-    expect(segmentLabel(null, null)).toBe("Unsegmented");
+    expect(segmentLabel(null, null)).toBe("Not categorized");
   });
 });
 
@@ -190,12 +190,12 @@ describe("buildPlannerSegments", () => {
     expect(segment.candidates[0].successorDesignate).toBe("Tony L.");
   });
 
-  it("buckets groups with missing segmentation under Unsegmented", () => {
+  it("buckets groups with missing segmentation under Not categorized", () => {
     const segments = buildPlannerSegments(
       [entry({ id: "1", audience: null })],
       TODAY
     );
-    expect(segments[0].segment).toBe("Unsegmented");
+    expect(segments[0].segment).toBe("Not categorized");
     expect(segments[0].candidates[0].groupName).toBe("Unknown group");
   });
 });

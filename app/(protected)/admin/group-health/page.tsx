@@ -82,8 +82,8 @@ export default async function GroupHealthPage() {
       <p className="mt-1 text-sm text-gray-600">
         Group-Health Grade for {period}, recomputed live from attendance
         consistency (rolling 8-week average) and your 1–5 ratings. Saving a
-        rating or recomputing writes the current snapshot to the month&apos;s
-        history.
+        rating or saving the grade writes the current snapshot to the
+        month&apos;s history.
       </p>
 
       <table className="mt-4 w-full border-collapse text-sm">
@@ -197,7 +197,7 @@ export default async function GroupHealthPage() {
                       type="submit"
                       className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
                     >
-                      Recompute
+                      Save this month&apos;s grade
                     </button>
                   </form>
                 </td>

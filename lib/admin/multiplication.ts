@@ -139,7 +139,7 @@ export function segmentLabel(
   audience: GroupAudienceCategory | null,
   lifeStage: GroupLifeStage | null
 ): string {
-  const a = audience ? AUDIENCE_LABEL[audience] : "Unsegmented";
+  const a = audience ? AUDIENCE_LABEL[audience] : "Not categorized";
   const s = lifeStage ? LIFE_STAGE_LABEL[lifeStage] : null;
   return s ? `${a} · ${s}` : a;
 }

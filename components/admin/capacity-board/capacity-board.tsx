@@ -320,7 +320,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
         >
           <div>
             <label htmlFor="cb-segment" style={fieldLabelStyle}>
-              Segment
+              Group type
             </label>
             <select
               id="cb-segment"
@@ -328,7 +328,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
               onChange={(e) => setSegment(e.target.value)}
               style={fieldSelectStyle}
             >
-              <option value="all">All segments</option>
+              <option value="all">All group types</option>
               {model.segments.map((seg) => (
                 <option key={seg} value={seg}>
                   {seg}

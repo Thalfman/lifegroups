@@ -56,24 +56,45 @@ escapes the oversight ladder: not visible to other tiers — and, by intent,
 not to the Super Admin either.
 _Avoid_: Encrypted note, secret note.
 
+### Group concepts
+
+**Audience**:
+Who a Life Group is for, by the `audience_category` attribute — Men, Women, or
+Mixed / couples. A user-facing grouping on the capacity board and the
+multiplication planner.
+_Avoid_: Segment, gender category.
+
+**Stage of life**:
+The season a Life Group serves, by the `life_stage` attribute — young
+professionals, young families, retirement, and so on. Pairs with Audience to
+describe a group; a group with neither set reads as **Not categorized**.
+_Avoid_: Segment, age bracket, cohort.
+
+**Segment**:
+The internal umbrella term for the Audience × Stage-of-life bucket a group falls
+into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`); it is
+**not shown to users** — surfaces say Audience, Stage of life, or Group type
+instead. Treated like "Admin OS": an internal-only name.
+_Avoid_: Segment, segmented, unsegmented (as user-facing labels).
+
 ### Health concepts
 
 Three different "health" ideas live in the system and are easy to conflate.
 They answer different questions about different subjects.
 
 **Group-Health Grade**:
-A computed grade of how a Life *Group itself* is doing (Q12) — Julian's
+A computed grade of how a Life _Group itself_ is doing (Q12) — Julian's
 "grade them" concept. Distinct from how the group's Leader is doing.
 _Avoid_: Health score, group status, group health (when you mean the grade).
 
 **Leader Care Status**:
-How a *Leader* is doing from the Ministry Admin's pastoral view — an
+How a _Leader_ is doing from the Ministry Admin's pastoral view — an
 "is there an issue, and what's the next step" signal on the person, not the
 group.
 _Avoid_: Leader health, care category, group health.
 
 **Health Pulse**:
-A *Leader's own* self-reported weekly sentiment about their group. A
+A _Leader's own_ self-reported weekly sentiment about their group. A
 subjective leader-entered input — not the computed Group-Health Grade.
 _Avoid_: Group health, health status (when you mean the grade).
 

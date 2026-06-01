@@ -11,7 +11,11 @@ import {
   successTextStyle,
 } from "./field-styles";
 import { P, fontBody } from "@/lib/pastoral";
-import { MEETING_DAYS_ORDERED, MEETING_FREQUENCY_OPTIONS, MEETING_PARITY_OPTIONS } from "./meeting-schedule-options";
+import {
+  MEETING_DAYS_ORDERED,
+  MEETING_FREQUENCY_OPTIONS,
+  MEETING_PARITY_OPTIONS,
+} from "./meeting-schedule-options";
 import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupsRow } from "@/types/database";
 import type { MeetingFrequency } from "@/types/enums";
@@ -35,9 +39,11 @@ export function GroupEditForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminUpdateGroup,
-    undefined,
+    undefined
   );
-  const [frequency, setFrequency] = useState<MeetingFrequency>(group.meeting_frequency);
+  const [frequency, setFrequency] = useState<MeetingFrequency>(
+    group.meeting_frequency
+  );
 
   const showParity = frequency === "biweekly";
 
@@ -77,7 +83,10 @@ export function GroupEditForm({
           />
         </div>
         <div>
-          <label htmlFor={`edit-meeting_day-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-meeting_day-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Meeting day
           </label>
           <select
@@ -95,7 +104,10 @@ export function GroupEditForm({
           </select>
         </div>
         <div>
-          <label htmlFor={`edit-meeting_time-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-meeting_time-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Meeting time
           </label>
           <input
@@ -107,7 +119,10 @@ export function GroupEditForm({
           />
         </div>
         <div>
-          <label htmlFor={`edit-meeting_frequency-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-meeting_frequency-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Meeting frequency
           </label>
           <select
@@ -130,7 +145,7 @@ export function GroupEditForm({
               htmlFor={`edit-meeting_week_parity-${group.id}`}
               style={fieldLabelStyle}
             >
-              Bi-weekly parity
+              Which weeks does it meet?
             </label>
             <select
               id={`edit-meeting_week_parity-${group.id}`}
@@ -138,7 +153,7 @@ export function GroupEditForm({
               defaultValue={group.meeting_week_parity ?? ""}
               style={fieldSelectStyle}
             >
-              <option value="">Choose week parity</option>
+              <option value="">Choose weeks</option>
               {MEETING_PARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -154,13 +169,16 @@ export function GroupEditForm({
                 lineHeight: 1.4,
               }}
             >
-              Used for bi-weekly groups only. Odd/even is based on the
-              calendar week number.
+              For groups that meet every other week. Odd and even weeks
+              alternate through the year — pick the set this group gathers on.
             </p>
           </div>
         ) : null}
         <div>
-          <label htmlFor={`edit-location_area-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-location_area-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Location area
           </label>
           <input
@@ -173,7 +191,10 @@ export function GroupEditForm({
           />
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor={`edit-address_optional-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-address_optional-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Address
           </label>
           <input
@@ -201,7 +222,10 @@ export function GroupEditForm({
           />
         </div>
         <div>
-          <label htmlFor={`edit-audience_category-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-audience_category-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Audience
           </label>
           <select
@@ -217,7 +241,10 @@ export function GroupEditForm({
           </select>
         </div>
         <div>
-          <label htmlFor={`edit-life_stage-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-life_stage-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Life stage
           </label>
           <select
@@ -230,14 +257,19 @@ export function GroupEditForm({
             <option value="young_professionals">Young professionals</option>
             <option value="young_families">Young families</option>
             <option value="families_with_kids">Families with kids/teens</option>
-            <option value="families_with_adult_kids">Families with adult kids</option>
+            <option value="families_with_adult_kids">
+              Families with adult kids
+            </option>
             <option value="retirement">Retirement</option>
             <option value="multi_generational">Multi-generational</option>
             <option value="spanish_speaking">Spanish speaking</option>
           </select>
         </div>
         <div>
-          <label htmlFor={`edit-launched_on-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-launched_on-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Launched on
           </label>
           <input
@@ -249,7 +281,10 @@ export function GroupEditForm({
           />
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor={`edit-description-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-description-${group.id}`}
+            style={fieldLabelStyle}
+          >
             Description
           </label>
           <textarea
@@ -290,7 +325,15 @@ export function GroupEditForm({
       </div>
 
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>
@@ -298,9 +341,7 @@ export function GroupEditForm({
           ))}
         </ul>
       ) : null}
-      {state?.ok ? (
-        <p style={successTextStyle}>Group updated.</p>
-      ) : null}
+      {state?.ok ? <p style={successTextStyle}>Group updated.</p> : null}
     </form>
   );
 }

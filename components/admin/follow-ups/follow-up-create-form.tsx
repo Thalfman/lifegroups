@@ -17,15 +17,8 @@ import {
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
 import type { ActionResult } from "@/lib/admin/action-result";
-import type {
-  GroupsRow,
-  MembersRow,
-  ProfilesRow,
-} from "@/types/database";
-import type {
-  FollowUpPriority,
-  FollowUpType,
-} from "@/types/enums";
+import type { GroupsRow, MembersRow, ProfilesRow } from "@/types/database";
+import type { FollowUpPriority, FollowUpType } from "@/types/enums";
 import type { GuestDirectoryEntry } from "@/lib/supabase/read-models";
 
 type State = ActionResult<{ id: string }> | undefined;
@@ -55,7 +48,7 @@ export function FollowUpCreateForm({
 }) {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateFollowUp,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -64,14 +57,18 @@ export function FollowUpCreateForm({
   }, [state]);
 
   const sortedMembers = [...members].sort((a, b) =>
-    a.full_name.localeCompare(b.full_name),
+    a.full_name.localeCompare(b.full_name)
   );
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <p style={formNoteStyle}>
-        Title and type are required. Relate it to whichever entity makes sense
-        — group, member, guest — and assign someone if you want them to own it.
+        Title and type are required. Relate it to whichever entity makes sense —
+        group, member, guest — and assign someone if you want them to own it.
         Notes are optional and capped at 1000 characters each.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
@@ -223,7 +220,8 @@ export function FollowUpCreateForm({
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label htmlFor="fu-admin_private_note" style={fieldLabelStyle}>
-            Admin-private note (optional, max 1000 chars) — leaders never see this
+            Admin-private note (optional, max 1000 chars) — leaders never see
+            this
           </label>
           <textarea
             id="fu-admin_private_note"
@@ -236,12 +234,20 @@ export function FollowUpCreateForm({
         </div>
         <div>
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Saving…" : "Create follow-up"}
+            {pending ? "Saving…" : "Add follow-up"}
           </PButton>
         </div>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

@@ -26,25 +26,32 @@ type State = ActionResult<{ id: string }> | undefined;
 export function GroupCreateForm() {
   const [state, formAction, pending] = useActionState<State, FormData>(
     adminCreateGroup,
-    undefined,
+    undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
   const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setFrequency("weekly");
+      setShowMore(false);
     }
   }, [state]);
 
   const showParity = frequency === "biweekly";
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <p style={formNoteStyle}>
-        Create a new Life Group. The name is required &mdash; everything else can
-        be filled in later as the group settles into a rhythm.
+        Create a new Life Group. Start with the name and when it meets &mdash;
+        everything else can be filled in under More details, now or later as the
+        group settles into a rhythm.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
@@ -91,6 +98,32 @@ export function GroupCreateForm() {
             style={fieldInputStyle}
           />
         </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowMore((v) => !v)}
+        style={{
+          justifySelf: "start",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: P.ink2,
+          textDecoration: "underline",
+        }}
+      >
+        {showMore ? "Fewer details" : "More details"}
+      </button>
+      {/* Kept mounted (hidden) when collapsed so values entered under
+          More details — most importantly meeting_frequency, which would
+          otherwise default back to weekly on the server — still submit
+          with the form rather than being silently discarded. */}
+      <div
+        className="lg-m-grid-stack"
+        style={showMore ? formGridStyle : { ...formGridStyle, display: "none" }}
+      >
         <div>
           <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
             Meeting frequency
@@ -112,7 +145,7 @@ export function GroupCreateForm() {
         {showParity ? (
           <div>
             <label htmlFor="group-meeting_week_parity" style={fieldLabelStyle}>
-              Bi-weekly parity
+              Which weeks does it meet?
             </label>
             <select
               id="group-meeting_week_parity"
@@ -120,7 +153,7 @@ export function GroupCreateForm() {
               defaultValue=""
               style={fieldSelectStyle}
             >
-              <option value="">Choose week parity</option>
+              <option value="">Choose weeks</option>
               {MEETING_PARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -136,8 +169,8 @@ export function GroupCreateForm() {
                 lineHeight: 1.4,
               }}
             >
-              Used for bi-weekly groups only. Odd/even is based on the
-              calendar week number.
+              For groups that meet every other week. Odd and even weeks
+              alternate through the year — pick the set this group gathers on.
             </p>
           </div>
         ) : null}
@@ -174,9 +207,16 @@ export function GroupCreateForm() {
           <input
             id="group-capacity"
             name="capacity"
-            type="number"
-            min={0}
-            max={1000}
+            // Expanded: a real number control with range checks for inline
+            // feedback. Collapsed: a plain text field so NONE of the number
+            // control's native validation (range, step/whole-number, bad
+            // input) can block submission from a non-focusable, hidden
+            // element. The server validator then surfaces any visible
+            // "Capacity must be a whole number / can't be negative / over
+            // 1000" error. inputMode stays numeric for the mobile keypad.
+            type={showMore ? "number" : "text"}
+            min={showMore ? 0 : undefined}
+            max={showMore ? 1000 : undefined}
             inputMode="numeric"
             autoComplete="off"
             style={fieldInputStyle}
@@ -213,7 +253,9 @@ export function GroupCreateForm() {
             <option value="young_professionals">Young professionals</option>
             <option value="young_families">Young families</option>
             <option value="families_with_kids">Families with kids/teens</option>
-            <option value="families_with_adult_kids">Families with adult kids</option>
+            <option value="families_with_adult_kids">
+              Families with adult kids
+            </option>
             <option value="retirement">Retirement</option>
             <option value="multi_generational">Multi-generational</option>
             <option value="spanish_speaking">Spanish speaking</option>
@@ -242,14 +284,22 @@ export function GroupCreateForm() {
             placeholder="Who this group is for, what makes it tick."
           />
         </div>
-        <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Creating…" : "Create group"}
-          </PButton>
-        </div>
+      </div>
+      <div>
+        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          {pending ? "Creating…" : "Create group"}
+        </PButton>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 6,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

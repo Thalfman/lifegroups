@@ -251,14 +251,18 @@ export default async function AdminShepherdCarePage({
           />
           {view === "dashboard" ? (
             <>
+              {/* Lead with the daily decision — who needs attention — so the
+                  queue is what loads. The summary cards and the rest of the
+                  dashboard follow it; the full directory stays behind the
+                  Directory view toggle above (#218 / family C). */}
+              <CareAttentionQueue
+                items={dashboard.attentionQueue}
+                totalCount={totalAttention}
+              />
               <ShepherdCareDashboardSummaryCards
                 summary={dashboard.summary}
                 coverageAvailable={dashboard.coverageAvailable}
                 followUpsAvailable={dashboard.followUpsAvailable}
-              />
-              <CareAttentionQueue
-                items={dashboard.attentionQueue}
-                totalCount={totalAttention}
               />
               <div
                 className="lg-m-grid-stack"
