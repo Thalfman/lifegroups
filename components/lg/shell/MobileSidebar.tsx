@@ -16,8 +16,10 @@ import type { AdminNavGroup } from "@/lib/auth/roles";
 
 export function MobileSidebarTrigger({
   navGroups,
+  homeHref = "/admin",
 }: {
   navGroups: AdminNavGroup[];
+  homeHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -98,6 +100,7 @@ export function MobileSidebarTrigger({
             navGroups={navGroups}
             onNavigate={() => setOpen(false)}
             asDrawer
+            homeHref={homeHref}
           />
         </DialogContent>
       </DialogPortal>
