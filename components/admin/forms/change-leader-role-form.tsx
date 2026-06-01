@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { P, fontBody } from "@/lib/pastoral";
@@ -10,9 +10,7 @@ import {
   fieldSelectStyle,
   successTextStyle,
 } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm } from "./action-form";
 
 export function ChangeLeaderRoleForm({
   profileId,
@@ -23,21 +21,18 @@ export function ChangeLeaderRoleForm({
   profileName: string;
   currentRole: "leader" | "co_leader";
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminChangeLeaderRole,
-    undefined,
+    { resetOnSuccess: true }
   );
   const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state?.ok) {
-      formRef.current?.reset();
-      setOpen(false);
-    }
+    if (state?.ok) setOpen(false);
   }, [state]);
 
-  const otherRole: "leader" | "co_leader" = currentRole === "leader" ? "co_leader" : "leader";
+  const otherRole: "leader" | "co_leader" =
+    currentRole === "leader" ? "co_leader" : "leader";
 
   if (!open) {
     return (
@@ -75,7 +70,9 @@ export function ChangeLeaderRoleForm({
       }}
     >
       <input type="hidden" name="profile_id" value={profileId} />
-      <p style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2, margin: 0 }}>
+      <p
+        style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2, margin: 0 }}
+      >
         Swap {profileName}&rsquo;s role between leader and co-leader. Group
         assignments stay as they are.
       </p>
@@ -109,7 +106,15 @@ export function ChangeLeaderRoleForm({
         </PButton>
       </div>
       {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 4,
+          }}
+        >
           {state.errors.map((err, i) => (
             <li key={i}>
               <p style={errorTextStyle}>{err}</p>

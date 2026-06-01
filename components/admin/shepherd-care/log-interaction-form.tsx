@@ -1,29 +1,28 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminLogShepherdCareInteraction } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import {
   shepherdCareInteractionTypeLabel,
   shepherdCareStatusLabel,
 } from "@/lib/dashboard/labels";
 import { P, fontBody } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type {
   ShepherdCareInteractionType,
   ShepherdCareStatus,
 } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 const INTERACTION_TYPES: ShepherdCareInteractionType[] = [
   "call",
@@ -62,18 +61,15 @@ export function LogInteractionForm({
 }: {
   shepherdProfileId: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminLogShepherdCareInteraction,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
   const [showMore, setShowMore] = useState(false);
 
+  // useActionForm resets the <form> on success; collapse "More details" too.
   useEffect(() => {
-    if (state?.ok) {
-      formRef.current?.reset();
-      setShowMore(false);
-    }
+    if (state?.ok) setShowMore(false);
   }, [state]);
 
   return (
@@ -242,24 +238,7 @@ export function LogInteractionForm({
           </PButton>
         </div>
       </div>
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Interaction logged.</p> : null}
+      <FormStatus state={state} successText="Interaction logged." />
     </form>
   );
 }

@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
-import { errorTextStyle } from "@/components/admin/forms/field-styles";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
+import type { ActionResult } from "@/lib/shared/action-result";
 
-type ActionResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
-type State = ActionResult<{ id: string }> | undefined;
-type ServerAction = (prev: State, input: FormData) => Promise<State>;
+type ServerAction = (
+  prev: ActionResult<{ id: string }> | undefined,
+  input: FormData
+) => Promise<ActionResult<{ id: string }>>;
 
 // Single Restore button used on the archived tab. The archived tab is
 // the only surface where archived rows are visible; restoring them
@@ -22,10 +26,7 @@ export function ArchivedRestoreButton({
   groupId: string;
   action: ServerAction;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    action,
-    undefined,
-  );
+  const { state, formAction, pending } = useActionForm<{ id: string }>(action);
   return (
     <form
       action={formAction}
@@ -41,11 +42,7 @@ export function ArchivedRestoreButton({
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "Restoring…" : "Restore override"}
       </PButton>
-      {state && !state.ok ? (
-        <p style={{ ...errorTextStyle, maxWidth: 220, fontSize: 12 }}>
-          {state.errors[0]}
-        </p>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

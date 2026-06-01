@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetGroupCapacityTarget } from "@/app/(protected)/admin/launch-planning/actions";
 import {
@@ -13,15 +13,15 @@ import {
 import { STAGE_LABEL } from "@/lib/admin/leader-pipeline";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { CapacityStatus } from "@/lib/admin/metrics";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // Status → swatch colour. Full reads "action implied" (terra); Open by choice
 // is intentional (sage); Filling is the warning band; Room is calm.
@@ -78,9 +78,8 @@ function ReadyToMultiplyBadge() {
 }
 
 function TargetEditor({ row }: { row: CapacityBoardRow }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminSetGroupCapacityTarget,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminSetGroupCapacityTarget
   );
   return (
     <form
@@ -101,11 +100,7 @@ function TargetEditor({ row }: { row: CapacityBoardRow }) {
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "…" : "Set"}
       </PButton>
-      {state && !state.ok ? (
-        <span style={{ ...errorTextStyle, padding: "2px 6px" }}>
-          {state.errors[0]}
-        </span>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

@@ -1,17 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminAssignCoverage } from "@/app/(protected)/admin/super-admin/coverage-actions";
-import {
-  errorTextStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
-} from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { fieldLabelStyle, fieldSelectStyle } from "./field-styles";
+import { useActionForm, FormStatus } from "./action-form";
 
 type OverShepherd = { id: string; full_name: string };
 type Leader = { profile_id: string; full_name: string };
@@ -24,15 +16,10 @@ export function CoverageAssignForm({
   overShepherds: OverShepherd[];
   leaders: Leader[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     superAdminAssignCoverage,
-    undefined
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   const noOptions = overShepherds.length === 0 || leaders.length === 0;
 
@@ -102,12 +89,7 @@ export function CoverageAssignForm({
       >
         {pending ? "Saving…" : "Assign"}
       </PButton>
-      {state?.ok ? (
-        <span style={successTextStyle}>Coverage assigned.</span>
-      ) : null}
-      {state && !state.ok ? (
-        <p style={errorTextStyle}>{state.errors.join(" ")}</p>
-      ) : null}
+      <FormStatus state={state} successText="Coverage assigned." />
     </form>
   );
 }

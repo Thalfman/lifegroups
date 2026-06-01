@@ -1,14 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateFollowUpStatus } from "@/app/(protected)/admin/follow-ups/actions";
-import { errorTextStyle, successTextStyle } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { AdminFollowUpEntry } from "@/lib/supabase/read-models";
 import type { FollowUpStatus } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 type Action = {
   status: FollowUpStatus;
@@ -21,9 +20,8 @@ export function FollowUpStatusControls({
 }: {
   followUp: Pick<AdminFollowUpEntry, "id" | "status">;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateFollowUpStatus,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateFollowUpStatus
   );
 
   const actions = transitionsFor(followUp.status);
@@ -38,22 +36,18 @@ export function FollowUpStatusControls({
           <form key={action.status} action={formAction}>
             <input type="hidden" name="follow_up_id" value={followUp.id} />
             <input type="hidden" name="status" value={action.status} />
-            <PButton type="submit" tone={action.tone} size="sm" disabled={pending}>
+            <PButton
+              type="submit"
+              tone={action.tone}
+              size="sm"
+              disabled={pending}
+            >
               {pending ? "Saving…" : action.label}
             </PButton>
           </form>
         ))}
       </div>
-      {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Updated.</p> : null}
+      <FormStatus state={state} successText="Updated." />
     </div>
   );
 }

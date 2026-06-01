@@ -1,18 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 
 export type ChurchAttendanceCardProps = {
   // L4 (#223): the single source of truth for the headline denominator — the
@@ -33,9 +31,8 @@ export function ChurchAttendanceCard({
   // `current_church_attendance` assumption (the same key the assumptions form
   // and forecast read). The RPC merges only submitted keys, so posting just
   // this one field leaves every other assumption untouched.
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateLaunchPlanningAssumptions,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateLaunchPlanningAssumptions
   );
 
   return (
@@ -151,26 +148,8 @@ export function ChurchAttendanceCard({
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Save"}
           </PButton>
-          {state?.ok ? <span style={successTextStyle}>Saved.</span> : null}
+          <FormStatus state={state} successText="Saved." />
         </div>
-        {state && !state.ok ? (
-          <ul
-            style={{
-              gridColumn: "1 / -1",
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gap: 6,
-            }}
-          >
-            {state.errors.map((err, i) => (
-              <li key={i}>
-                <p style={errorTextStyle}>{err}</p>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </form>
     </section>
   );

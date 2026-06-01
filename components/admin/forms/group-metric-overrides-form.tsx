@@ -1,22 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpsertGroupMetricSettings } from "@/app/(protected)/admin/settings/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
-  successTextStyle,
 } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupHealthStatus } from "@/types/enums";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 const HEALTH_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "none", label: "No manual override" },
@@ -37,9 +33,8 @@ export function GroupMetricOverridesForm({
   groups: GroupsRow[];
   settingsByGroupId: Map<string, GroupMetricSettingsRow>;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpsertGroupMetricSettings,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpsertGroupMetricSettings
   );
 
   const sortedGroups = useMemo(
@@ -47,17 +42,11 @@ export function GroupMetricOverridesForm({
     [groups]
   );
 
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-
   // After a successful submit Next revalidates the page; we want the form
   // to stay focused on the same group with the freshly-saved values, so
   // we keep `selectedGroupId` as-is. If the operator wants to clear, they
   // can re-select the placeholder.
-  useEffect(() => {
-    if (state?.ok) {
-      // nothing to do -- revalidation rebuilds the data prop
-    }
-  }, [state]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
 
   const selected = selectedGroupId
     ? (sortedGroups.find((g) => g.id === selectedGroupId) ?? null)
@@ -305,28 +294,8 @@ export function GroupMetricOverridesForm({
             <PButton type="submit" tone="terra" size="md" disabled={pending}>
               {pending ? "Saving…" : "Save overrides"}
             </PButton>
-            {state?.ok ? (
-              <span style={successTextStyle}>Overrides saved.</span>
-            ) : null}
+            <FormStatus state={state} successText="Overrides saved." />
           </div>
-
-          {state && !state.ok ? (
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: 0,
-                display: "grid",
-                gap: 6,
-              }}
-            >
-              {state.errors.map((err, i) => (
-                <li key={i}>
-                  <p style={errorTextStyle}>{err}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </form>
       ) : (
         <p

@@ -16,7 +16,10 @@ const TABLES = ["shepherd_care_private_notes", "shepherd_care_note_key_slots"];
 // The ONLY runtime source allowed to name these tables:
 //  - the creator-scoped read models (the single PostgREST read entrypoint), and
 //  - the hand-rolled Database types.
-const ALLOWLIST = new Set(["lib/supabase/read-models.ts", "types/database.ts"]);
+const ALLOWLIST = new Set([
+  "lib/supabase/shepherd-care-reads.ts",
+  "types/database.ts",
+]);
 
 function walk(dir: string, acc: string[]): string[] {
   let entries: string[];
@@ -75,11 +78,11 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     ).toEqual([]);
   });
 
-  it("the only PostgREST .from() reads of the tables live in read-models.ts", () => {
+  it("the only PostgREST .from() reads of the tables live in shepherd-care-reads.ts", () => {
     const fromOffenders: string[] = [];
     for (const file of sourceFiles) {
       const relPath = rel(file);
-      if (relPath === "lib/supabase/read-models.ts") continue;
+      if (relPath === "lib/supabase/shepherd-care-reads.ts") continue;
       const content = readFileSync(file, "utf8");
       for (const t of TABLES) {
         if (
@@ -96,9 +99,9 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
     ).toEqual([]);
   });
 
-  it("EVERY private-note read in read-models.ts is scoped by created_by_profile_id", () => {
+  it("EVERY private-note read in shepherd-care-reads.ts is scoped by created_by_profile_id", () => {
     const readModels = readFileSync(
-      `${REPO_ROOT}lib/supabase/read-models.ts`,
+      `${REPO_ROOT}lib/supabase/shepherd-care-reads.ts`,
       "utf8"
     );
     // Every read filters on the creator (belt-and-braces with RLS).
@@ -124,7 +127,7 @@ describe("SC.4 no-leak — private-note tables are referenced only by the creato
       }
       expect(
         occurrences,
-        `read-models must read ${t} at least once`
+        `shepherd-care-reads must read ${t} at least once`
       ).toBeGreaterThan(0);
     }
   });
@@ -162,7 +165,7 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
     "fetchPrivateNoteKeySlotsForCreator",
   ];
   const SYMBOL_ALLOWLIST = new Set([
-    "lib/supabase/read-models.ts", // where they are defined
+    "lib/supabase/shepherd-care-reads.ts", // where they are defined
     "app/(protected)/admin/shepherd-care/[profileId]/page.tsx", // the only consumer
   ]);
 

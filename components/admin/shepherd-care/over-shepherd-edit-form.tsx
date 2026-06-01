@@ -1,43 +1,36 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateOverShepherd } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import { P, fontBody } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { OverShepherdsRow } from "@/types/database";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 export function OverShepherdEditForm({
   overShepherd,
 }: {
   overShepherd: OverShepherdsRow;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateOverShepherd,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateOverShepherd
   );
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 12 }}>
-      <input
-        type="hidden"
-        name="over_shepherd_id"
-        value={overShepherd.id}
-      />
+      <input type="hidden" name="over_shepherd_id" value={overShepherd.id} />
       <p style={formNoteStyle}>
-        Update the over-shepherd record. Deactivating archives them
-        softly — they remain in the audit trail and historic coverage
-        assignments. Reactivate any time.
+        Update the over-shepherd record. Deactivating archives them softly —
+        they remain in the audit trail and historic coverage assignments.
+        Reactivate any time.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
@@ -117,16 +110,7 @@ export function OverShepherdEditForm({
           </PButton>
         </div>
       </div>
-      {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Over-shepherd saved.</p> : null}
+      <FormStatus state={state} successText="Over-shepherd saved." />
     </form>
   );
 }

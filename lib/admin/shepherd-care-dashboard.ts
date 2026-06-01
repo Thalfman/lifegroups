@@ -1,5 +1,4 @@
 import {
-  computeNeedsAttention,
   differenceInDaysIso,
   type ActiveShepherdCoverageAssignmentSummary,
   type CareFollowUpDashboardRow,
@@ -14,6 +13,16 @@ import {
   staleWindowDaysForTier,
   type CareCadenceWindows,
 } from "@/lib/admin/shepherd-care-cadence";
+import {
+  detectCareReasons,
+  REASON_PRIORITY,
+  type CareAttentionReason,
+} from "@/lib/admin/shepherd-care-attention";
+
+// Re-exported from the shared attention engine so existing importers (and the
+// __test__ surface below) keep their path.
+export { REASON_PRIORITY };
+export type { CareAttentionReason };
 import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
 
 // Resolve the per-tier staleness window (in days) for one shepherd. When
@@ -31,34 +40,6 @@ function staleDaysForEntry(
     : "delegated";
   return staleWindowDaysForTier(tier, windows);
 }
-
-export type CareAttentionReason =
-  | "overdue_touchpoint"
-  | "overdue_care_follow_up"
-  | "concern_status"
-  | "needs_follow_up_status"
-  | "no_contact_yet"
-  | "stale_last_contact"
-  | "no_over_shepherd"
-  | "needs_encouragement_status";
-
-// Priority order: lower number = higher priority. Matches the SC.3 spec.
-// overdue_care_follow_up ("what I owe this person, now past due") sits just
-// below an overdue touchpoint and above the softer status/staleness signals.
-// The status-derived reasons rank by Julian's severity ladder: `concern`
-// (most severe) above `needs_follow_up`, with `needs_encouragement` as the
-// softest nudge at the bottom. `inactive` is a lifecycle state, not a
-// severity, so it does not raise an attention reason.
-const REASON_PRIORITY: Record<CareAttentionReason, number> = {
-  overdue_touchpoint: 1,
-  overdue_care_follow_up: 2,
-  concern_status: 3,
-  needs_follow_up_status: 4,
-  no_contact_yet: 5,
-  stale_last_contact: 6,
-  no_over_shepherd: 7,
-  needs_encouragement_status: 8,
-};
 
 // Per-shepherd care follow-up rollup the dashboard derives from the
 // outstanding-follow-up feed. outstanding = open + in_progress + overdue.
@@ -287,6 +268,11 @@ function detailForReason(
   }
 }
 
+// Resolve this surface's coverage/follow-up context, then defer to the shared
+// attention engine so the dashboard queue and the directory chip/filter are
+// computed from one definition. no_over_shepherd is suppressed when coverage
+// data is unavailable — an empty assignments map is not "no coach assigned"
+// and we shouldn't infer that during a transient read failure.
 function detectReasons(
   entry: ShepherdCareDirectoryEntry,
   assignedShepherdIds: Set<string>,
@@ -295,42 +281,18 @@ function detectReasons(
   windows: CareCadenceWindows,
   followUpStats: Map<string, CareFollowUpShepherdStats>
 ): CareAttentionReason[] {
-  const reasons: CareAttentionReason[] = [];
-  const care = entry.care;
-  const staleDays = staleDaysForEntry(
-    entry.profile.id,
-    assignedShepherdIds,
-    coverageAvailable,
-    windows
-  );
-
-  if (care?.next_touchpoint_due && care.next_touchpoint_due < todayIso) {
-    reasons.push("overdue_touchpoint");
-  }
-  if ((followUpStats.get(entry.profile.id)?.overdue ?? 0) > 0) {
-    reasons.push("overdue_care_follow_up");
-  }
-  if (care?.current_status === "concern") {
-    reasons.push("concern_status");
-  }
-  if (care?.current_status === "needs_follow_up") {
-    reasons.push("needs_follow_up_status");
-  }
-  if (care === null || care.last_contact_at === null) {
-    reasons.push("no_contact_yet");
-  } else if (differenceInDaysIso(todayIso, care.last_contact_at) > staleDays) {
-    reasons.push("stale_last_contact");
-  }
-  // Suppress no_over_shepherd entirely when coverage data is unavailable —
-  // an empty assignments map is not the same as "no coach assigned" and we
-  // shouldn't infer that during a transient read failure.
-  if (coverageAvailable && !assignedShepherdIds.has(entry.profile.id)) {
-    reasons.push("no_over_shepherd");
-  }
-  if (care?.current_status === "needs_encouragement") {
-    reasons.push("needs_encouragement_status");
-  }
-  return reasons;
+  return detectCareReasons(entry.care, {
+    todayIso,
+    staleDays: staleDaysForEntry(
+      entry.profile.id,
+      assignedShepherdIds,
+      coverageAvailable,
+      windows
+    ),
+    hasOverdueFollowUp: (followUpStats.get(entry.profile.id)?.overdue ?? 0) > 0,
+    noOverShepherd:
+      coverageAvailable && !assignedShepherdIds.has(entry.profile.id),
+  });
 }
 
 function buildAttentionQueue(
@@ -352,7 +314,8 @@ function buildAttentionQueue(
       followUpStats
     );
     if (reasons.length === 0) continue;
-    reasons.sort((a, b) => REASON_PRIORITY[a] - REASON_PRIORITY[b]);
+    // detectCareReasons already returns reasons sorted by REASON_PRIORITY, so
+    // the first element is the top reason — no re-sort needed here.
     const [primary, ...secondary] = reasons;
     const entryStaleDays = staleDaysForEntry(
       entry.profile.id,

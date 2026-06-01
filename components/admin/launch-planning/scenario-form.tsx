@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminArchiveLaunchPlanningScenario,
@@ -11,19 +11,18 @@ import {
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type {
   LaunchPlanningAssumptions,
   LaunchPlanningScenario,
 } from "@/lib/admin/launch-planning";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 const hintStyle = {
   fontFamily: fontBody,
@@ -286,9 +285,8 @@ export function CreateScenarioForm({
   onClose?: () => void;
   idPrefix?: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminCreateLaunchPlanningScenario,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminCreateLaunchPlanningScenario
   );
 
   return (
@@ -377,28 +375,8 @@ export function CreateScenarioForm({
             Cancel
           </PButton>
         ) : null}
-        {state?.ok ? (
-          <span style={successTextStyle}>Scenario saved.</span>
-        ) : null}
+        <FormStatus state={state} successText="Scenario saved." />
       </div>
-
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </form>
   );
 }
@@ -408,18 +386,21 @@ export function EditScenarioForm({
 }: {
   scenario: LaunchPlanningScenario;
 }) {
-  const [editState, editAction, editPending] = useActionState<State, FormData>(
-    adminUpdateLaunchPlanningScenario,
-    undefined
-  );
-  const [archiveState, archiveAction, archivePending] = useActionState<
-    State,
-    FormData
-  >(adminArchiveLaunchPlanningScenario, undefined);
-  const [setCurrentState, setCurrentAction, setCurrentPending] = useActionState<
-    State,
-    FormData
-  >(adminSetCurrentLaunchPlanningScenario, undefined);
+  const {
+    state: editState,
+    formAction: editAction,
+    pending: editPending,
+  } = useActionForm<{ id: string }>(adminUpdateLaunchPlanningScenario);
+  const {
+    state: archiveState,
+    formAction: archiveAction,
+    pending: archivePending,
+  } = useActionForm<{ id: string }>(adminArchiveLaunchPlanningScenario);
+  const {
+    state: setCurrentState,
+    formAction: setCurrentAction,
+    pending: setCurrentPending,
+  } = useActionForm<{ id: string }>(adminSetCurrentLaunchPlanningScenario);
 
   // Local mirror so the "Mark as current" checkbox reflects the row state.
   // The is_current value can change underneath us when another scenario is
@@ -557,26 +538,8 @@ export function EditScenarioForm({
           <PButton type="submit" tone="terra" size="md" disabled={editPending}>
             {editPending ? "Saving…" : "Save scenario"}
           </PButton>
-          {editState?.ok ? <span style={successTextStyle}>Saved.</span> : null}
+          <FormStatus state={editState} successText="Saved." />
         </div>
-
-        {editState && !editState.ok ? (
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gap: 6,
-            }}
-          >
-            {editState.errors.map((err, i) => (
-              <li key={i}>
-                <p style={errorTextStyle}>{err}</p>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </form>
 
       <div
@@ -602,12 +565,7 @@ export function EditScenarioForm({
             </PButton>
           </form>
         ) : null}
-        {setCurrentState?.ok ? (
-          <span style={successTextStyle}>Marked current.</span>
-        ) : null}
-        {setCurrentState && !setCurrentState.ok ? (
-          <p style={errorTextStyle}>{setCurrentState.errors.join(" ")}</p>
-        ) : null}
+        <FormStatus state={setCurrentState} successText="Marked current." />
 
         <form action={archiveAction}>
           <input type="hidden" name="scenario_id" value={scenario.id} />
@@ -620,12 +578,7 @@ export function EditScenarioForm({
             {archivePending ? "Archiving…" : "Archive scenario"}
           </PButton>
         </form>
-        {archiveState?.ok ? (
-          <span style={successTextStyle}>Archived.</span>
-        ) : null}
-        {archiveState && !archiveState.ok ? (
-          <p style={errorTextStyle}>{archiveState.errors.join(" ")}</p>
-        ) : null}
+        <FormStatus state={archiveState} successText="Archived." />
       </div>
     </div>
   );

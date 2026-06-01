@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminAdvanceApprenticeStage,
@@ -17,15 +17,15 @@ import {
 } from "@/lib/admin/leader-pipeline";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
 } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { LeaderReadinessStage } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 function StageBadge({ stage }: { stage: LeaderReadinessStage }) {
   const ready = stage === "ready_to_lead";
@@ -48,14 +48,14 @@ function StageBadge({ stage }: { stage: LeaderReadinessStage }) {
 }
 
 function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateApprentice,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateApprentice
   );
-  const [archiveState, archiveAction, archivePending] = useActionState<
-    State,
-    FormData
-  >(adminArchiveApprentice, undefined);
+  const {
+    state: archiveState,
+    formAction: archiveAction,
+    pending: archivePending,
+  } = useActionForm<{ id: string }>(adminArchiveApprentice);
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <form action={formAction} style={{ display: "grid", gap: 10 }}>
@@ -117,9 +117,7 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
           </PButton>
-          {state && !state.ok ? (
-            <span style={errorTextStyle}>{state.errors[0]}</span>
-          ) : null}
+          <FormStatus state={state} />
         </div>
       </form>
       <form action={archiveAction}>
@@ -127,18 +125,15 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
         <PButton type="submit" tone="ghost" size="sm" disabled={archivePending}>
           {archivePending ? "Removing…" : "Remove apprentice"}
         </PButton>
-        {archiveState && !archiveState.ok ? (
-          <span style={errorTextStyle}>{archiveState.errors[0]}</span>
-        ) : null}
+        <FormStatus state={archiveState} />
       </form>
     </div>
   );
 }
 
 function AdvanceStageButton({ a }: { a: ApprenticeView }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminAdvanceApprenticeStage,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminAdvanceApprenticeStage
   );
   const next = nextStage(a.stage);
   if (!next) return null;
@@ -149,11 +144,7 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
       <PButton type="submit" tone="solid" size="sm" disabled={pending}>
         {pending ? "…" : `Advance to ${STAGE_LABEL[next]}`}
       </PButton>
-      {state && !state.ok ? (
-        <span style={{ ...errorTextStyle, marginLeft: 8 }}>
-          {state.errors[0]}
-        </span>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -213,9 +204,8 @@ function AddApprenticeForm({
 }: {
   availableGroups: { id: string; name: string }[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminCreateApprentice,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminCreateApprentice
   );
   if (availableGroups.length === 0) {
     return (
@@ -315,9 +305,7 @@ function AddApprenticeForm({
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Adding…" : "Add apprentice"}
         </PButton>
-        {state && !state.ok ? (
-          <span style={errorTextStyle}>{state.errors[0]}</span>
-        ) : null}
+        <FormStatus state={state} />
       </div>
     </form>
   );

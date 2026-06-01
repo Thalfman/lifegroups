@@ -1,23 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateGuest } from "@/app/(protected)/admin/guests/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
   formGridStyle,
   formNoteStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 export function GuestCreateForm({
   activeGroups,
@@ -28,28 +26,27 @@ export function GuestCreateForm({
   historicalGroups: GroupsRow[];
   ownerProfiles: ProfilesRow[];
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
+  const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGuest,
-    undefined,
+    { resetOnSuccess: true }
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
-  }, [state]);
 
   const sortedActive = [...activeGroups].sort((a, b) =>
-    a.name.localeCompare(b.name),
+    a.name.localeCompare(b.name)
   );
   const sortedHistorical = [...historicalGroups].sort((a, b) =>
-    a.name.localeCompare(b.name),
+    a.name.localeCompare(b.name)
   );
   const sortedOwners = [...ownerProfiles].sort((a, b) =>
-    a.full_name.localeCompare(b.full_name),
+    a.full_name.localeCompare(b.full_name)
   );
 
   return (
-    <form ref={formRef} action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={formAction}
+      style={{ display: "grid", gap: 12 }}
+    >
       <p style={formNoteStyle}>
         Only the full name is required. Everything else is optional and can be
         filled in as the conversation unfolds.
@@ -113,7 +110,10 @@ export function GuestCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="guest-first_attended_group_id" style={fieldLabelStyle}>
+          <label
+            htmlFor="guest-first_attended_group_id"
+            style={fieldLabelStyle}
+          >
             First attended group (optional)
           </label>
           <select
@@ -197,16 +197,7 @@ export function GuestCreateForm({
           </PButton>
         </div>
       </div>
-      {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Guest added.</p> : null}
+      <FormStatus state={state} successText="Guest added." />
     </form>
   );
 }

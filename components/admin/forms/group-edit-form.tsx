@@ -1,14 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
-  successTextStyle,
 } from "./field-styles";
 import { P, fontBody } from "@/lib/pastoral";
 import {
@@ -16,11 +14,9 @@ import {
   MEETING_FREQUENCY_OPTIONS,
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { GroupsRow } from "@/types/database";
 import type { MeetingFrequency } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 function isoTimeForInput(value: string | null): string {
   if (!value) return "";
@@ -37,9 +33,8 @@ export function GroupEditForm({
   group: GroupsRow;
   onClose?: () => void;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateGroup,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateGroup
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>(
     group.meeting_frequency
@@ -324,24 +319,7 @@ export function GroupEditForm({
         ) : null}
       </div>
 
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state?.ok ? <p style={successTextStyle}>Group updated.</p> : null}
+      <FormStatus state={state} successText="Group updated." />
     </form>
   );
 }

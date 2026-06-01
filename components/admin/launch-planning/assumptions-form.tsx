@@ -1,21 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateLaunchPlanningAssumptions } from "@/app/(protected)/admin/launch-planning/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import { PercentField } from "@/components/admin/launch-planning/percent-field";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
-  successTextStyle,
 } from "@/components/admin/forms/field-styles";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import { ratioToPercent } from "@/lib/admin/launch-planning";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 // L5 (#224): the default forecast asks only for the two inputs that need a
 // ministry-specific answer — current church attendance (set in the Church
@@ -27,9 +25,8 @@ export function LaunchPlanningAssumptionsForm({
 }: {
   assumptions: LaunchPlanningAssumptions;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateLaunchPlanningAssumptions,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateLaunchPlanningAssumptions
   );
 
   return (
@@ -92,28 +89,8 @@ export function LaunchPlanningAssumptionsForm({
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save forecast"}
         </PButton>
-        {state?.ok ? (
-          <span style={successTextStyle}>Forecast saved.</span>
-        ) : null}
+        <FormStatus state={state} successText="Forecast saved." />
       </div>
-
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </form>
   );
 }

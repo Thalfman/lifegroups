@@ -1,18 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminEndCoverage } from "@/app/(protected)/admin/super-admin/coverage-actions";
-import { errorTextStyle } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.4 (#164): end an active coverage assignment.
 export function CoverageEndForm({ assignmentId }: { assignmentId: string }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    superAdminEndCoverage,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    superAdminEndCoverage
   );
 
   return (
@@ -21,9 +16,7 @@ export function CoverageEndForm({ assignmentId }: { assignmentId: string }) {
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "Ending…" : "End"}
       </PButton>
-      {state && !state.ok ? (
-        <p style={errorTextStyle}>{state.errors.join(" ")}</p>
-      ) : null}
+      <FormStatus state={state} />
     </form>
   );
 }

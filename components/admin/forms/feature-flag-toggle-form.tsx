@@ -1,12 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { superAdminSetFeatureFlag } from "@/app/(protected)/admin/super-admin/feature-flag-actions";
-import { errorTextStyle, successTextStyle } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.2 (#161): toggle a single feature flag. The hidden `enabled` field
 // is the flipped value, so the server action only ever sets `enabled` (never
@@ -18,9 +14,8 @@ export function FeatureFlagToggleForm({
   flagKey: string;
   enabled: boolean;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    superAdminSetFeatureFlag,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    superAdminSetFeatureFlag
   );
 
   return (
@@ -30,10 +25,7 @@ export function FeatureFlagToggleForm({
       <PButton type="submit" tone="terra" size="sm" disabled={pending}>
         {pending ? "Saving…" : enabled ? "Turn off" : "Turn on"}
       </PButton>
-      {state?.ok ? <span style={successTextStyle}>Saved.</span> : null}
-      {state && !state.ok ? (
-        <p style={errorTextStyle}>{state.errors.join(" ")}</p>
-      ) : null}
+      <FormStatus state={state} successText="Saved." />
     </form>
   );
 }

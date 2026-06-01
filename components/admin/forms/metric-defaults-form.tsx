@@ -1,25 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateMetricDefaults } from "@/app/(protected)/admin/settings/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import {
-  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
-  successTextStyle,
 } from "./field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
 import type { MetricDefaults } from "@/lib/admin/metrics";
-
-type State = ActionResult<{ id: string }> | undefined;
+import { useActionForm, FormStatus } from "./action-form";
 
 export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateMetricDefaults,
-    undefined
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateMetricDefaults
   );
 
   return (
@@ -201,28 +195,8 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save defaults"}
         </PButton>
-        {state?.ok ? (
-          <span style={successTextStyle}>Defaults saved.</span>
-        ) : null}
+        <FormStatus state={state} successText="Defaults saved." />
       </div>
-
-      {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </form>
   );
 }

@@ -1,11 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
 import { leaderQuickMarkDidNotMeet } from "@/app/(protected)/leader/actions";
+import { useActionForm } from "@/components/admin/forms/action-form";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
-import type { ActionResult } from "@/lib/leader/action-result";
-
-type State = ActionResult<{ session_id: string }> | undefined;
 
 export function LeaderQuickDidNotMeet({
   groupId,
@@ -14,15 +11,14 @@ export function LeaderQuickDidNotMeet({
   groupId: string;
   groupName: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    leaderQuickMarkDidNotMeet,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ session_id: string }>(
+    leaderQuickMarkDidNotMeet
   );
 
   function confirm(e: React.FormEvent<HTMLFormElement>) {
     if (
       !window.confirm(
-        `Record that ${groupName} didn't meet this week? You can update this later if anything changes.`,
+        `Record that ${groupName} didn't meet this week? You can update this later if anything changes.`
       )
     ) {
       e.preventDefault();
@@ -70,7 +66,7 @@ export function LeaderQuickDidNotMeet({
             borderRadius: 8,
           }}
         >
-          {state.errors[0]}
+          {state.errors.join(" ")}
         </p>
       ) : null}
     </div>

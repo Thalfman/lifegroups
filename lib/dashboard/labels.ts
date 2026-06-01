@@ -82,6 +82,14 @@ export function pipelineStageLabel(stage: GuestPipelineStage): string {
   return pipelineLabels[stage] ?? stage;
 }
 
+// A guest is "in the pipeline" until it reaches a terminal stage: `placed`
+// (landed in a group) or `not_now` (declined for now). The single definition
+// of the headline-count rule, shared by the live read (admin-group-model) and
+// the fallback data so the two can't silently drift apart.
+export function isActivePipelineStage(stage: GuestPipelineStage): boolean {
+  return stage !== "placed" && stage !== "not_now";
+}
+
 export function followUpTypeLabel(type: FollowUpType): string {
   return followUpTypeLabels[type] ?? type;
 }

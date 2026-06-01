@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateShepherdCareFollowUpStatus } from "@/app/(protected)/admin/shepherd-care/actions";
-import { errorTextStyle } from "@/components/admin/forms/field-styles";
-import type { ActionResult } from "@/lib/admin/action-result";
+import {
+  useActionForm,
+  FormStatus,
+} from "@/components/admin/forms/action-form";
 import type { ShepherdCareFollowUpStatus } from "@/types/enums";
-
-type State = ActionResult<{ id: string }> | undefined;
 
 type Transition = {
   status: ShepherdCareFollowUpStatus;
@@ -46,9 +45,8 @@ export function CareFollowUpStatusControls({
   status: ShepherdCareFollowUpStatus;
   shepherdProfileId: string;
 }) {
-  const [state, formAction, pending] = useActionState<State, FormData>(
-    adminUpdateShepherdCareFollowUpStatus,
-    undefined,
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateShepherdCareFollowUpStatus
   );
 
   const transitions = transitionsFor(status);
@@ -60,22 +58,18 @@ export function CareFollowUpStatusControls({
           <form key={t.status} action={formAction}>
             <input type="hidden" name="follow_up_id" value={followUpId} />
             <input type="hidden" name="status" value={t.status} />
-            <input type="hidden" name="shepherd_profile_id" value={shepherdProfileId} />
+            <input
+              type="hidden"
+              name="shepherd_profile_id"
+              value={shepherdProfileId}
+            />
             <PButton type="submit" tone={t.tone} size="sm" disabled={pending}>
               {pending ? "Saving…" : t.label}
             </PButton>
           </form>
         ))}
       </div>
-      {state && !state.ok ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-          {state.errors.map((err, i) => (
-            <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <FormStatus state={state} />
     </div>
   );
 }
