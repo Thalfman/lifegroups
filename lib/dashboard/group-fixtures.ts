@@ -8,7 +8,6 @@
 
 import type {
   AttendanceSessionsRow,
-  GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
   GroupMetricSettingsRow,
@@ -17,7 +16,10 @@ import type {
 } from "@/types/database";
 import type { LeaderFollowUpRow } from "@/lib/supabase/read-models";
 
-const STAMP = "2024-01-01T00:00:00Z";
+// Shared fixed timestamp for demo/test rows. Exported so the demo seed
+// (lib/dashboard/demo-seed.ts) stamps its app_settings rows from the same
+// anchor the row builders use, rather than redefining the constant.
+export const STAMP = "2024-01-01T00:00:00Z";
 
 export function group(overrides: Partial<GroupsRow> = {}): GroupsRow {
   return {
@@ -145,22 +147,6 @@ export function session(
     admin_note: null,
     created_at: STAMP,
     updated_at: STAMP,
-    ...overrides,
-  };
-}
-
-export function healthUpdate(
-  overrides: Partial<GroupHealthUpdatesRow> & { group_id: string }
-): GroupHealthUpdatesRow {
-  return {
-    id: `${overrides.group_id}-health`,
-    submitted_by: null,
-    update_week: "2026-05-18",
-    pulse: "healthy",
-    follow_up_needed: false,
-    leader_note: null,
-    admin_note: null,
-    created_at: STAMP,
     ...overrides,
   };
 }

@@ -26,6 +26,7 @@ import {
 import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
 import { decodeMetricDefaults, type MetricDefaults } from "@/lib/admin/metrics";
 import {
+  STAMP,
   followUp,
   group,
   leader,
@@ -35,6 +36,7 @@ import {
   settings,
 } from "./group-fixtures";
 import type {
+  AdminSummary,
   AttentionItem,
   CapacitySummary,
   HealthSummary,
@@ -59,8 +61,6 @@ import type {
 // each use) rather than a shared mutable Date.
 export const DEMO_SELECTED_WEEK = "2026-05-18";
 export const DEMO_NOW_ISO = "2026-05-18T12:00:00Z";
-
-const STAMP = "2024-01-01T00:00:00Z";
 
 // The demo deliberately leaves `default_group_capacity` unset so a group with no
 // per-group capacity (Bridge Builders) reads as genuinely "unknown" rather than
@@ -276,6 +276,13 @@ export function demoAdminModelInput(
 export const DEMO_ADMIN_MODEL = buildAdminGroupModel(
   demoAdminModelInput(DEMO_METRIC_DEFAULTS)
 );
+
+// The headline vital-signs counts, derived from the same model so they can't
+// contradict the capacity / health / setup boards on the landing (a count tile
+// reading "4 missing" above a health board listing 1 was the old hand-built
+// drift). activeGroupCount comes from the active seed rows (the input passes
+// null, so the assembler counts them).
+export const DEMO_SUMMARY: AdminSummary = DEMO_ADMIN_MODEL.summary;
 
 export const DEMO_CAPACITY_SUMMARY: CapacitySummary =
   DEMO_ADMIN_MODEL.capacitySummary;

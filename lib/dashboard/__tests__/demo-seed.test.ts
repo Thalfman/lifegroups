@@ -172,6 +172,30 @@ describe("demo seed → launch snapshot", () => {
   });
 });
 
+describe("demo seed → vital-signs summary", () => {
+  it("derives the headline counts so they can't contradict the boards below", () => {
+    const s = ADMIN_FALLBACK.summary;
+    // 8 active groups (the launching_soon pre-launch group is excluded);
+    // 4 submitted, 1 missing (Bridge Builders), 1 needs-follow-up (South
+    // Campus Women) — all consistent with the health/capacity boards.
+    expect(s).toEqual({
+      activeGroupCount: 8,
+      submittedCheckIns: 4,
+      missingCheckIns: 1,
+      needsFollowUp: 1,
+      capacityWatch: 3,
+      unknownCapacity: 1,
+    });
+  });
+
+  it("keeps the capacity tiles in step with the capacity board counts", () => {
+    const s = ADMIN_FALLBACK.summary;
+    const c = ADMIN_FALLBACK.capacitySummary.counts;
+    expect(s.capacityWatch).toBe(c.full + c.warning);
+    expect(s.unknownCapacity).toBe(c.unknown);
+  });
+});
+
 describe("demo seed responds to shared rule changes", () => {
   it("reflects a shared capacity-rule change without editing the fallback module", () => {
     // Lower the warning threshold to 40%: groups previously "ok" now read

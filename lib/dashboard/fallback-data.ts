@@ -16,6 +16,7 @@ import {
   DEMO_HEALTH_SUMMARY,
   DEMO_LAUNCH_PLANNING,
   DEMO_SETUP_GAPS,
+  DEMO_SUMMARY,
 } from "./demo-seed";
 
 const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
@@ -114,14 +115,9 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   meetingWeek: FALLBACK_WEEK,
   weekLabel: FALLBACK_WEEK_LABEL,
   isCurrentWeek: true,
-  summary: {
-    activeGroupCount: 18,
-    submittedCheckIns: 14,
-    missingCheckIns: 4,
-    needsFollowUp: 2,
-    capacityWatch: 3,
-    unknownCapacity: 1,
-  },
+  // Derived from the demo seed so the vital-signs tiles can't contradict the
+  // capacity / health / setup boards below them (all derive from one model).
+  summary: DEMO_SUMMARY,
   shepherdCare: fallbackShepherdCare,
   // The launch snapshot, the attention queue, the capacity board, the health
   // buckets and the setup-gap lists are all derived by the live assembler (and
@@ -152,12 +148,12 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
     },
     {
       id: "fallback-fu-2",
-      title: "Confirm Westside Families restart date",
+      title: "Confirm Hillside Couples restart date",
       type: "pause",
       priority: "normal",
       status: "open",
       dueDate: null,
-      relatedGroupName: "Westside Families",
+      relatedGroupName: "Hillside Couples",
     },
     {
       id: "fallback-fu-3",
