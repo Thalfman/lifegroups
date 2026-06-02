@@ -234,6 +234,16 @@ describe("consolidate-select-rls migration — per table", () => {
         );
       });
 
+      it("drops the consolidated policy before creating it (re-runnable)", () => {
+        // Postgres has no `create policy if not exists`, so the migration must
+        // drop-if-exists the NEW name first or a re-apply errors with 42710.
+        const dropNew = `drop policy if exists ${create} on public.${table}`;
+        expect(norm()).toContain(dropNew);
+        expect(norm().indexOf(dropNew)).toBeLessThan(
+          norm().indexOf(`create policy ${create} on public.${table}`)
+        );
+      });
+
       it("OR's every original tier into the consolidated predicate", () => {
         for (const tier of tiers) {
           expect(norm()).toContain(tier);
@@ -244,9 +254,11 @@ describe("consolidate-select-rls migration — per table", () => {
 });
 
 describe("consolidate-select-rls migration — whole file", () => {
-  it("consolidates all 15 flagged tables (15 creates, 32 drops)", () => {
+  it("consolidates all 15 flagged tables (15 creates, 47 drops)", () => {
+    // 32 old per-tier policies + 15 new consolidated names (each dropped-if-
+    // exists before its create so the migration stays re-runnable).
     expect((lower().match(/create policy /g) ?? []).length).toBe(15);
-    expect((lower().match(/drop policy if exists /g) ?? []).length).toBe(32);
+    expect((lower().match(/drop policy if exists /g) ?? []).length).toBe(47);
   });
 
   it("adds the two real FK-join covering indexes", () => {

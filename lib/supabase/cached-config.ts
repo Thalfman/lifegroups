@@ -24,10 +24,19 @@ const METRIC_DEFAULTS_REVALIDATE_SECONDS = 300;
 // function -- and the client -- are never touched. Because the row is identical
 // for every authenticated caller, whichever request fills the cache yields the
 // same value for all. unstable_cache is a DATA cache and still applies inside
-// `dynamic = "force-dynamic"` routes (it is independent of full-route caching),
-// and nothing inside the cached function calls cookies()/headers(), so it does
-// not trigger a dynamic bailout. A failed read is re-thrown so a transient
-// error is never cached; we map it back to the ReadResult shape callers handle.
+// `dynamic = "force-dynamic"` routes (it is independent of full-route caching).
+//
+// Dynamic-bailout note: the cached PostgREST read DOES reach the request cookie
+// store -- supabase-js resolves the access token via getSession() at query time.
+// It does not trigger a bailout because the `client` is built by the CALLER,
+// outside this cache scope, where createSupabaseServerClient already `await`ed
+// cookies() once and captured the resolved store (lib/supabase/server.ts). Next
+// guards the cookies()/headers() ENTRY POINTS, not reads of an already-resolved
+// store, so no dynamic API is entered inside the cache. Invariant this relies
+// on: callers must pass a fully-constructed client (every call site does). If a
+// future @supabase/ssr re-invokes cookies() lazily per request, this would need
+// revisiting. A failed read is re-thrown so a transient error is never cached;
+// we map it back to the ReadResult shape callers handle.
 //
 // Per-user / RLS-divergent reads are deliberately NOT cached this way. The two
 // admin-only config reads (platform_config, group_metric_settings) stay on the

@@ -29,7 +29,12 @@
 --
 -- Also adds the two real unindexed-FK join columns the advisor flagged that
 -- post-date the last FK-index migration (leader_pipeline.member_id,
--- multiplication_candidates.leader_pipeline_id). Idempotent throughout.
+-- multiplication_candidates.leader_pipeline_id).
+--
+-- Re-runnable: every drop uses `if exists`, the indexes use `if not exists`,
+-- and -- because Postgres has no IF-NOT-EXISTS form for policy creation -- each
+-- new consolidated policy is itself dropped-if-exists immediately before it is
+-- (re)created, so a re-apply replaces rather than erroring on 42710.
 
 -- ===========================================================================
 -- Group / roster tables: admin-or-staff OR leader-scope [OR self/peer]
@@ -38,6 +43,7 @@
 -- groups: admin/staff read all; a leader reads groups they lead.
 drop policy if exists groups_admin_staff_read on public.groups;
 drop policy if exists groups_leader_read on public.groups;
+drop policy if exists groups_read on public.groups;
 create policy groups_read on public.groups
   for select to authenticated
   using (
@@ -48,6 +54,7 @@ create policy groups_read on public.groups
 -- group_memberships: admin/staff read all; a leader reads their groups' rows.
 drop policy if exists group_memberships_admin_staff_read on public.group_memberships;
 drop policy if exists group_memberships_leader_read on public.group_memberships;
+drop policy if exists group_memberships_read on public.group_memberships;
 create policy group_memberships_read on public.group_memberships
   for select to authenticated
   using (
@@ -58,6 +65,7 @@ create policy group_memberships_read on public.group_memberships
 -- attendance_sessions: admin/staff read all; a leader reads their groups' rows.
 drop policy if exists attendance_sessions_admin_staff_read on public.attendance_sessions;
 drop policy if exists attendance_sessions_leader_read on public.attendance_sessions;
+drop policy if exists attendance_sessions_read on public.attendance_sessions;
 create policy attendance_sessions_read on public.attendance_sessions
   for select to authenticated
   using (
@@ -69,6 +77,7 @@ create policy attendance_sessions_read on public.attendance_sessions
 -- session belongs to a group they lead.
 drop policy if exists attendance_records_admin_staff_read on public.attendance_records;
 drop policy if exists attendance_records_leader_read on public.attendance_records;
+drop policy if exists attendance_records_read on public.attendance_records;
 create policy attendance_records_read on public.attendance_records
   for select to authenticated
   using (
@@ -84,6 +93,7 @@ create policy attendance_records_read on public.attendance_records
 -- group_health_updates: admin/staff read all; a leader reads their groups' rows.
 drop policy if exists group_health_updates_admin_staff_read on public.group_health_updates;
 drop policy if exists group_health_updates_leader_read on public.group_health_updates;
+drop policy if exists group_health_updates_read on public.group_health_updates;
 create policy group_health_updates_read on public.group_health_updates
   for select to authenticated
   using (
@@ -94,6 +104,7 @@ create policy group_health_updates_read on public.group_health_updates
 -- group_calendar_events: admin/staff read all; a leader reads their groups' rows.
 drop policy if exists group_calendar_events_admin_staff_read on public.group_calendar_events;
 drop policy if exists group_calendar_events_leader_read on public.group_calendar_events;
+drop policy if exists group_calendar_events_read on public.group_calendar_events;
 create policy group_calendar_events_read on public.group_calendar_events
   for select to authenticated
   using (
@@ -104,6 +115,7 @@ create policy group_calendar_events_read on public.group_calendar_events
 -- group_status_history: admin/staff read all; a leader reads their groups' rows.
 drop policy if exists group_status_history_admin_staff_read on public.group_status_history;
 drop policy if exists group_status_history_leader_read on public.group_status_history;
+drop policy if exists group_status_history_read on public.group_status_history;
 create policy group_status_history_read on public.group_status_history
   for select to authenticated
   using (
@@ -116,6 +128,7 @@ create policy group_status_history_read on public.group_status_history
 drop policy if exists group_leaders_admin_staff_read on public.group_leaders;
 drop policy if exists group_leaders_peer_read on public.group_leaders;
 drop policy if exists group_leaders_self_read on public.group_leaders;
+drop policy if exists group_leaders_read on public.group_leaders;
 create policy group_leaders_read on public.group_leaders
   for select to authenticated
   using (
@@ -128,6 +141,7 @@ create policy group_leaders_read on public.group_leaders
 -- (first-attended or assigned).
 drop policy if exists guests_admin_staff_read on public.guests;
 drop policy if exists guests_leader_read on public.guests;
+drop policy if exists guests_read on public.guests;
 create policy guests_read on public.guests
   for select to authenticated
   using (
@@ -142,6 +156,7 @@ create policy guests_read on public.guests
 -- membership in a group they lead.
 drop policy if exists members_admin_staff_read on public.members;
 drop policy if exists members_leader_read on public.members;
+drop policy if exists members_read on public.members;
 create policy members_read on public.members
   for select to authenticated
   using (
@@ -159,6 +174,7 @@ create policy members_read on public.members
 -- lead or any assigned to them.
 drop policy if exists follow_ups_admin_staff_read on public.follow_ups;
 drop policy if exists follow_ups_leader_read on public.follow_ups;
+drop policy if exists follow_ups_read on public.follow_ups;
 create policy follow_ups_read on public.follow_ups
   for select to authenticated
   using (
@@ -174,6 +190,7 @@ create policy follow_ups_read on public.follow_ups
 drop policy if exists profiles_admin_staff_read on public.profiles;
 drop policy if exists profiles_self_read on public.profiles;
 drop policy if exists profiles_over_shepherd_read on public.profiles;
+drop policy if exists profiles_read on public.profiles;
 create policy profiles_read on public.profiles
   for select to authenticated
   using (
@@ -190,6 +207,7 @@ create policy profiles_read on public.profiles
 -- of the Shepherds they actively cover.
 drop policy if exists shepherd_care_profiles_admin_select on public.shepherd_care_profiles;
 drop policy if exists shepherd_care_profiles_over_shepherd_select on public.shepherd_care_profiles;
+drop policy if exists shepherd_care_profiles_select on public.shepherd_care_profiles;
 create policy shepherd_care_profiles_select on public.shepherd_care_profiles
   for select to authenticated
   using (
@@ -203,6 +221,7 @@ create policy shepherd_care_profiles_select on public.shepherd_care_profiles
 -- is resolved once by the set-returning helper.
 drop policy if exists shepherd_care_interactions_admin_select on public.shepherd_care_interactions;
 drop policy if exists shepherd_care_interactions_over_shepherd_select on public.shepherd_care_interactions;
+drop policy if exists shepherd_care_interactions_select on public.shepherd_care_interactions;
 create policy shepherd_care_interactions_select on public.shepherd_care_interactions
   for select to authenticated
   using (
@@ -221,6 +240,7 @@ create policy shepherd_care_interactions_select on public.shepherd_care_interact
 -- their OWN active assignments.
 drop policy if exists shepherd_coverage_assignments_admin_select on public.shepherd_coverage_assignments;
 drop policy if exists shepherd_coverage_assignments_over_shepherd_select on public.shepherd_coverage_assignments;
+drop policy if exists shepherd_coverage_assignments_select on public.shepherd_coverage_assignments;
 create policy shepherd_coverage_assignments_select on public.shepherd_coverage_assignments
   for select to authenticated
   using (
