@@ -208,13 +208,18 @@ async function loadData(): Promise<PageData> {
   // Run the independent fetches in parallel so TTFB tracks the slowest rather
   // than their sum. The three former surfaces shared inputs, the capacity
   // extras, and the leader pipeline, so each is fetched once here.
+  //
+  // The full groups list is NOT fetched separately: fetchLaunchPlanningInputs
+  // ForAdmin already reads `groups` (as inputsBundle.groups), so a standalone
+  // fetchAllGroups here would issue a second, identical `select * from groups`
+  // round-trip on every render of this (the heaviest) surface. The
+  // multiplication view reuses inputsBundle.groups instead.
   const [
     assumptionsRes,
     inputsBundle,
     scenariosRes,
     pipelineRes,
     candidatesRes,
-    allGroupsRes,
     boardExtras,
   ] = await Promise.all([
     fetchLaunchPlanningAssumptions(client),
@@ -222,7 +227,6 @@ async function loadData(): Promise<PageData> {
     fetchLaunchPlanningScenariosForAdmin(client),
     fetchLeaderPipelineForAdmin(client),
     fetchMultiplicationCandidatesForAdmin(client),
-    fetchAllGroups(client),
     fetchCapacityBoardExtras(client),
   ]);
 
@@ -305,14 +309,14 @@ async function loadData(): Promise<PageData> {
   // feeds the capacity board's suggestions, which render in the capacity section. ---
   const multiplicationError =
     candidatesRes.error?.message ??
-    allGroupsRes.error?.message ??
+    inputsBundle.errors.groups ??
     pipelineRes.error?.message ??
     null;
   const { segments, availableGroups, apprenticesByGroup } = multiplicationError
     ? { segments: [], availableGroups: [], apprenticesByGroup: {} }
     : buildMultiplicationView(
         candidatesRes.data ?? [],
-        allGroupsRes.data ?? [],
+        inputsBundle.groups,
         pipelineRes.data ?? [],
         todayIso
       );
