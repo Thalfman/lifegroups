@@ -1,4 +1,5 @@
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { FROZEN_SURFACE_EXPLAINER } from "@/lib/admin/frozen-surface-copy";
 
 // The explicit "frozen" signal for ADR-0002 surfaces gated behind a default-off
 // feature flag (#191 / ADR 0009). Rendered in place of the live surface when
@@ -61,10 +62,7 @@ export function FrozenSurfaceNotice({
             margin: 0,
           }}
         >
-          This surface is deferred per ADR 0002 and is turned off by default. A
-          Super Admin can re-enable it from the Super Admin Console once its
-          routes and access policies have been re-verified (ADR 0009). It is
-          intentionally frozen, not broken.
+          {FROZEN_SURFACE_EXPLAINER}
         </p>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { StatusCard } from "@/components/dashboard/cards";
 import { P, fontBody } from "@/lib/pastoral";
 import type { GuestPipelineStage } from "@/types/enums";
 import type { PipelineStageCount } from "@/lib/dashboard/types";
-import { MiniBarRow, OpenLink } from "./overview-primitives";
+import { FrozenStatusCard, MiniBarRow, OpenLink } from "./overview-primitives";
 
 // Tone the funnel so the destination stages read as "good" and the parked
 // stage reads muted; everything in-flight is terra.
@@ -36,28 +36,7 @@ export function GuestPipelineFunnelCard({
   live: boolean;
 }) {
   if (!live) {
-    return (
-      <StatusCard
-        eyebrow="Guests"
-        title="Pipeline funnel"
-        action={<span style={{ color: P.ink3 }}>Deferred</span>}
-      >
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-            lineHeight: 1.5,
-          }}
-        >
-          The guest pipeline is deferred and turned off by default (ADR 0002). A
-          Super Admin can re-enable it from the Super Admin Console once its
-          routes and access policies have been re-verified (ADR 0009). It is
-          intentionally frozen, not broken.
-        </p>
-      </StatusCard>
-    );
+    return <FrozenStatusCard eyebrow="Guests" title="Pipeline funnel" />;
   }
 
   const barTotal = breakdown.reduce((sum, s) => sum + s.count, 0);

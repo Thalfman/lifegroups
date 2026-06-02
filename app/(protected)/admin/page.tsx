@@ -21,12 +21,14 @@ export default async function AdminPage({
   const grain = resolveOverviewGrain(params.period);
 
   const client = await createSupabaseServerClient();
-  const { data } = await getAdminDashboardData(client, { grain });
-
   // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
-  // here so the dashboard never presents Guests as an active workflow unless it
-  // has been re-enabled-and-verified (#256).
-  const guestsLive = await isFrozenSurfaceLive("guests");
+  // alongside the dashboard read — not after it — so the dashboard never
+  // presents Guests as an active workflow unless it has been re-enabled-and-
+  // verified (#256), without adding a serial round trip to this hot page.
+  const [{ data }, guestsLive] = await Promise.all([
+    getAdminDashboardData(client, { grain }),
+    isFrozenSurfaceLive("guests"),
+  ]);
 
   return (
     <>

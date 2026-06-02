@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
+import { StatusCard } from "@/components/dashboard/cards";
+import { FROZEN_SURFACE_EXPLAINER } from "@/lib/admin/frozen-surface-copy";
 
 // Shared building blocks for the warm executive overview on /admin. They reuse
 // the pastoral palette (lib/pastoral.ts) so the landing meshes with the Leader
@@ -161,6 +163,41 @@ export function OpenLink({
     >
       {label} →
     </Link>
+  );
+}
+
+// A dashboard card for an ADR-0002 frozen surface (#256). The route-level pair
+// (frozenSurfaceGate + FrozenSurfaceNotice) signals the freeze *after* the user
+// navigates; this is its dashboard-card analogue, so an overview card for a
+// frozen surface never presents it as an active workflow — no Open link, no
+// live data, a muted "Deferred" affordance and the shared explainer instead.
+// Keep the eyebrow/title identical to the live card so the freeze reads as the
+// same surface deliberately deferred, not a different (broken) one.
+export function FrozenStatusCard({
+  eyebrow,
+  title,
+}: {
+  eyebrow: ReactNode;
+  title: string;
+}) {
+  return (
+    <StatusCard
+      eyebrow={eyebrow}
+      title={title}
+      action={<span style={{ color: P.ink3 }}>Deferred</span>}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: P.ink3,
+          lineHeight: 1.5,
+        }}
+      >
+        {FROZEN_SURFACE_EXPLAINER}
+      </p>
+    </StatusCard>
   );
 }
 
