@@ -1,0 +1,220 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  assertAuditContentFree,
+  assertExcludesSuperAdmin,
+  assertExecuteLockdown,
+  assertPairedAuditInsert,
+  assertSecurityDefiner,
+  auditEventInserts,
+  functionBody,
+  loadMigration,
+  migrationFromSql,
+} from "./migration-safety";
+
+// Direct coverage for the migration-safety assertion vocabulary itself: each
+// named assertion passes on SQL that upholds the invariant and throws on SQL
+// that breaks it. The assertions call vitest `expect` internally, so a broken
+// invariant surfaces as a thrown assertion error.
+
+// A self-contained, minimal migration that upholds every named invariant, with
+// the whitespace quirks the real GRANT blocks use (aligned padding, multi-line
+// arg lists) so the regex-based assertions are exercised against them.
+const SAFE_SQL = `
+create or replace function public.admin_do_thing(
+  p_target uuid,
+  p_label text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not (public.auth_role() = 'ministry_admin'::public.user_role) then
+    raise exception 'forbidden';
+  end if;
+  insert into public.audit_events (actor_profile_id, action, metadata)
+  values (public.auth_profile_id(), 'admin.do_thing', jsonb_build_object('has_body', true));
+  return;
+end;
+$$;
+
+revoke all     on function public.admin_do_thing(uuid, text) from public;
+revoke all     on function public.admin_do_thing(uuid, text) from anon;
+revoke all     on function public.admin_do_thing(uuid, text) from authenticated;
+grant  execute on function public.admin_do_thing(uuid, text) to authenticated;
+`;
+
+const safe = migrationFromSql(SAFE_SQL, "safe.sql");
+
+describe("migration-safety — loaders", () => {
+  it("migrationFromSql lowercases and records the file name", () => {
+    const sql = migrationFromSql("SELECT 1;", "Mixed.sql");
+    expect(sql.raw).toBe("SELECT 1;");
+    expect(sql.lower).toBe("select 1;");
+    expect(sql.fileName).toBe("Mixed.sql");
+  });
+
+  it("loadMigration reads a real migration off disk", () => {
+    const sql = loadMigration(
+      "20260531020000_phase_sac3_account_management.sql"
+    );
+    expect(sql.fileName).toBe(
+      "20260531020000_phase_sac3_account_management.sql"
+    );
+    expect(sql.lower).toContain("super_admin_set_profile_status");
+    expect(sql.lower).toBe(sql.raw.toLowerCase());
+  });
+
+  it("loadMigration throws for a missing migration", () => {
+    expect(() => loadMigration("does-not-exist.sql")).toThrow();
+  });
+});
+
+describe("migration-safety — functionBody", () => {
+  it("slices the body from the header to the closing $$;", () => {
+    const body = functionBody(safe, "admin_do_thing");
+    expect(body).toContain("security definer");
+    expect(body).toContain("'admin.do_thing'");
+    expect(body).not.toContain("revoke all"); // stops at $$;
+  });
+
+  it("fails when the function is not defined", () => {
+    expect(() => functionBody(safe, "admin_missing")).toThrow();
+  });
+});
+
+describe("migration-safety — assertSecurityDefiner", () => {
+  it("passes for a SECURITY DEFINER fn with a pinned search_path", () => {
+    expect(() => assertSecurityDefiner(safe, "admin_do_thing")).not.toThrow();
+  });
+
+  it("fails when SECURITY DEFINER is missing", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "set search_path = public, pg_temp as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+  });
+
+  it("fails when search_path is not pinned", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+  });
+});
+
+describe("migration-safety — assertPairedAuditInsert", () => {
+  it("passes and matches the recorded action label", () => {
+    expect(() =>
+      assertPairedAuditInsert(safe, "admin_do_thing", "'admin.do_thing'")
+    ).not.toThrow();
+  });
+
+  it("fails when the body writes no audit_events row", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql security definer\n" +
+        "as $$ begin return; end; $$;"
+    );
+    expect(() => assertPairedAuditInsert(sql, "x")).toThrow();
+  });
+
+  it("fails when the action label is absent from the body", () => {
+    expect(() =>
+      assertPairedAuditInsert(safe, "admin_do_thing", "'admin.other'")
+    ).toThrow();
+  });
+});
+
+describe("migration-safety — assertExecuteLockdown", () => {
+  it("passes for revoke-from-all + grant-to-authenticated, whitespace and all", () => {
+    expect(() => assertExecuteLockdown(safe, "admin_do_thing")).not.toThrow();
+  });
+
+  it("handles a multi-line argument list in the GRANT block", () => {
+    const sql = migrationFromSql(`
+revoke all on function public.f(
+  a uuid,
+  b text
+) from public;
+revoke all on function public.f(a uuid, b text) from anon;
+revoke all on function public.f(a uuid, b text) from authenticated;
+grant execute on function public.f(
+  a uuid,
+  b text
+) to authenticated;
+`);
+    expect(() => assertExecuteLockdown(sql, "f")).not.toThrow();
+  });
+
+  it("fails when a revoke is missing", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public;\n" +
+        "revoke all on function public.f() from authenticated;\n" +
+        "grant execute on function public.f() to authenticated;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow(); // no revoke from anon
+  });
+
+  it("fails when EXECUTE is granted to a broader role than authenticated", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public;\n" +
+        "revoke all on function public.f() from anon;\n" +
+        "revoke all on function public.f() from authenticated;\n" +
+        "grant execute on function public.f() to public;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow();
+  });
+});
+
+describe("migration-safety — assertExcludesSuperAdmin", () => {
+  it("passes when auth_is_admin() is never used", () => {
+    expect(() => assertExcludesSuperAdmin(safe)).not.toThrow();
+  });
+
+  it("fails when auth_is_admin() appears (it admits super_admin)", () => {
+    const sql = migrationFromSql(
+      "create policy p on public.t using (public.auth_is_admin());"
+    );
+    expect(() => assertExcludesSuperAdmin(sql)).toThrow();
+  });
+});
+
+describe("migration-safety — assertAuditContentFree", () => {
+  it("auditEventInserts returns one block per audit insert", () => {
+    expect(auditEventInserts(safe)).toHaveLength(1);
+    expect(auditEventInserts(migrationFromSql("select 1;"))).toHaveLength(0);
+  });
+
+  it("passes when required tokens are present and forbidden ones absent", () => {
+    expect(() =>
+      assertAuditContentFree(safe, {
+        forbidden: ["ciphertext", "wrapped_dek"],
+        required: ["has_body"],
+      })
+    ).not.toThrow();
+  });
+
+  it("fails when a forbidden token leaks into the audit row", () => {
+    expect(() =>
+      assertAuditContentFree(safe, { forbidden: ["has_body"] })
+    ).toThrow();
+  });
+
+  it("fails when a required token is missing", () => {
+    expect(() =>
+      assertAuditContentFree(safe, {
+        forbidden: [],
+        required: ["recovery_code"],
+      })
+    ).toThrow();
+  });
+
+  it("fails when there is no audit row at all", () => {
+    const sql = migrationFromSql("select 1;");
+    expect(() => assertAuditContentFree(sql, { forbidden: ["x"] })).toThrow();
+  });
+});
