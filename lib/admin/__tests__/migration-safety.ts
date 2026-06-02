@@ -151,12 +151,15 @@ export function assertPairedAuditInsert(
 }
 
 const REVOKED_ROLES = ["public", "anon", "authenticated"] as const;
+const FORBIDDEN_GRANTEES = ["public", "anon"] as const;
 
 /**
  * EXECUTE on a function is revoked from public / anon / authenticated and then
  * granted only to authenticated — the "deny by default, allow authenticated"
  * lockdown every admin RPC ships. Whitespace-tolerant, so the suites need not
- * track the migrations' GRANT-block column alignment.
+ * track the migrations' GRANT-block column alignment. Also rejects a stray
+ * broader grant (`grant execute ... to public/anon`) that would re-open the
+ * RPC even when the authenticated grant is present.
  */
 export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
   const signature = fnSignature(fnName);
@@ -172,6 +175,16 @@ export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
       `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+authenticated`
     )
   );
+  for (const role of FORBIDDEN_GRANTEES) {
+    expect(
+      sql.lower,
+      `${fnName} must not grant EXECUTE to ${role}`
+    ).not.toMatch(
+      new RegExp(
+        `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+${role}`
+      )
+    );
+  }
 }
 
 /**

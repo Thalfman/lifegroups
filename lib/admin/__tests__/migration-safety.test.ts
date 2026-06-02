@@ -195,6 +195,17 @@ grant execute on function public.f(
     );
     expect(() => assertExecuteLockdown(sql, "f")).toThrow();
   });
+
+  it("rejects a stray broader grant even when the authenticated grant is present", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public;\n" +
+        "revoke all on function public.f() from anon;\n" +
+        "revoke all on function public.f() from authenticated;\n" +
+        "grant execute on function public.f() to authenticated;\n" +
+        "grant execute on function public.f() to public;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow();
+  });
 });
 
 describe("migration-safety — assertExcludesSuperAdmin", () => {
