@@ -14,39 +14,40 @@ live below traces to it; everything else has been archived.
 
 ## The North Star and its sources (`julian-inputs/`)
 
-| Doc | What it is |
-|---|---|
-| [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md) | ⭐ Julian's Q1–Q12, verbatim. The source of truth. |
-| [`julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md) | The blank care spreadsheet (Q1). |
-| [`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Julian's multiplication Google Doc (Q11/Q12). |
-| [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md) | How his inputs map to decisions. |
+| Doc                                                                                              | What it is                                         |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)               | ⭐ Julian's Q1–Q12, verbatim. The source of truth. |
+| [`julian-inputs/MIN_CARE_LIST_TEMPLATE.md`](./julian-inputs/MIN_CARE_LIST_TEMPLATE.md)           | The blank care spreadsheet (Q1).                   |
+| [`julian-inputs/LG_MULTIPLICATION_PLAN_2026.md`](./julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) | Julian's multiplication Google Doc (Q11/Q12).      |
+| [`julian-inputs/FEEDBACK_MAP.md`](./julian-inputs/FEEDBACK_MAP.md)                               | How his inputs map to decisions.                   |
 
 ## The 1:1 mapping
 
-| Doc | What it is |
-|---|---|
-| [`PRD.md`](./PRD.md) | 📌 **THE PRD** — requirements per question, with shipped/blocked status. |
-| [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md) | 🏛️ **THE ADR** — architecture decisions per question. |
+| Doc                                                                                                | What it is                                                               |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`PRD.md`](./PRD.md)                                                                               | 📌 **THE PRD** — requirements per question, with shipped/blocked status. |
+| [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md) | 🏛️ **THE ADR** — architecture decisions per question.                    |
 
 ## Referenced plans (linked from the conversation)
 
-| Doc | What it is |
-|---|---|
-| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md) | Shepherd-care detail (Q1–Q8). |
-| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md) | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007). |
-| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md) | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the planner spec below. |
-| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md) | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). **Superseded** by the capacity PRD above. |
+| Doc                                                                                      | What it is                                                                                                                    |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md)           | Shepherd-care detail (Q1–Q8).                                                                                                 |
+| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)     | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007).                                                 |
+| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md) | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the planner spec below.      |
+| [`plans/ADMIN_INTERACTION_MODEL_PRD.md`](./plans/ADMIN_INTERACTION_MODEL_PRD.md)         | Admin interaction model for progressive disclosure, density reduction, and accessible list-to-detail editing across `/admin`. |
+| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md)                   | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). **Superseded** by the capacity PRD above.       |
 
 ## Engineering reference
 
-| Doc | What it is |
-|---|---|
-| [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md) | Stack, routes, auth, RLS, read/write paths. |
-| [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model. |
-| [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md) | Hosting, env vars, Edge Function setup. |
-| [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints. |
-| [`adr/`](./adr/) | Architecture Decision Records (0001–0007). |
-| [`agents/`](./agents/) | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
+| Doc                                                                    | What it is                                                          |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md)       | Stack, routes, auth, RLS, read/write paths.                         |
+| [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model.                                          |
+| [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md)           | Hosting, env vars, Edge Function setup.                             |
+| [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints.                           |
+| [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0007).                          |
+| [`agents/`](./agents/)                                                 | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
 
 ## Archived
 
