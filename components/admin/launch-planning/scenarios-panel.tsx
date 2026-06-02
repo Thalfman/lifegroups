@@ -1,12 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
-import {
-  CreateScenarioForm,
-  EditScenarioForm,
-} from "@/components/admin/launch-planning/scenario-form";
+
+// Both scenario forms are only mounted behind a click (create / select-to-edit)
+// and never render on the server, so keep their code out of this route's First
+// Load JS — load it on demand. ssr:false is safe: they are client-only.
+const CreateScenarioForm = dynamic(
+  () =>
+    import("@/components/admin/launch-planning/scenario-form").then(
+      (m) => m.CreateScenarioForm
+    ),
+  { ssr: false }
+);
+const EditScenarioForm = dynamic(
+  () =>
+    import("@/components/admin/launch-planning/scenario-form").then(
+      (m) => m.EditScenarioForm
+    ),
+  { ssr: false }
+);
 import type {
   LaunchPlanningAssumptions,
   LaunchPlanningInputs,
@@ -16,7 +31,10 @@ import type {
   LaunchPlanningScenarioComparisonEntry,
 } from "@/lib/admin/launch-planning";
 
-function riskTone(level: LaunchPlanningRiskLevel): { label: string; accent: string } {
+function riskTone(level: LaunchPlanningRiskLevel): {
+  label: string;
+  accent: string;
+} {
   switch (level) {
     case "ok":
       return { label: "OK", accent: P.sage };
@@ -82,7 +100,7 @@ export function ScenariosPanel({
   });
 
   const selected = selectedId
-    ? scenarios.find((s) => s.id === selectedId) ?? null
+    ? (scenarios.find((s) => s.id === selectedId) ?? null)
     : null;
 
   const hasScenarios = scenarios.length > 0;
@@ -131,9 +149,9 @@ export function ScenariosPanel({
               lineHeight: 1.55,
             }}
           >
-            No saved scenarios yet. The baseline assumptions above are still
-            the source of truth — create Conservative / Expected / Stretch
-            here to compare alternatives.
+            No saved scenarios yet. The baseline assumptions above are still the
+            source of truth — create Conservative / Expected / Stretch here to
+            compare alternatives.
           </p>
         ) : null}
 
@@ -188,7 +206,7 @@ export function ScenariosPanel({
 }
 
 function byScenarioId(
-  comparison: LaunchPlanningScenarioComparisonEntry[],
+  comparison: LaunchPlanningScenarioComparisonEntry[]
 ): Map<string, LaunchPlanningScenarioComparisonEntry> {
   const map = new Map<string, LaunchPlanningScenarioComparisonEntry>();
   for (const entry of comparison) map.set(entry.scenario.id, entry);
