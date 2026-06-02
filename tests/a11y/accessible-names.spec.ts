@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Issue 257 — Admin Interaction Model req 4: repeated/interactive controls
 // must carry record or section context in their accessible names, and we
@@ -10,8 +11,6 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 //
 // Reused by every later surface-migration slice: add the surface to the
 // harness, and these invariants cover it automatically.
-
-const HARNESS = "/a11y-harness";
 
 // Bare, context-free accessible names that are NOT allowed on any interactive
 // control inside a repeated admin surface. A control reading only "Edit" or
@@ -54,16 +53,6 @@ function expectAllUnique(names: string[], label: string): void {
     new Set(names).size,
     `${label} must be unique, got: ${names.join(" | ")}`
   ).toBe(names.length);
-}
-
-async function gotoHarness(page: Page): Promise<void> {
-  const response = await page.goto(HARNESS, { waitUntil: "networkidle" });
-  // Guard against the env gate being off — otherwise the spec would silently
-  // pass against a 404 with no controls to check.
-  expect(response?.status(), "harness route must be enabled").toBe(200);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "accessible-name harness"
-  );
 }
 
 test.describe("admin accessible names carry record context", () => {
@@ -147,32 +136,10 @@ test.describe("admin accessible names carry record context", () => {
     }
   });
 
-  // color-contrast is a palette-level concern owned by neither this slice nor
-  // this PRD: a "visual rebrand / palette overhaul" is an explicit Non-Goal of
-  // the Admin Interaction Model PRD. The cream/terra palette trips axe on muted
-  // meta text (P.ink3) and the terra button at ~4.25:1. We surface it as a
-  // non-blocking warning so it stays visible, but it does not gate this
-  // accessible-names work. Every other critical/serious rule does gate.
-  const NON_BLOCKING_RULES = new Set(["color-contrast"]);
-
+  // The axe gate (and its color-contrast palette carve-out, a PRD Non-Goal)
+  // lives in ./harness so this suite and the Settings suite stay in lockstep.
   test("axe finds no critical or serious violations", async ({ page }) => {
     const results = await new AxeBuilder({ page }).analyze();
-    const seriousOrWorse = results.violations.filter(
-      (v) => v.impact === "critical" || v.impact === "serious"
-    );
-    for (const v of seriousOrWorse.filter((v) =>
-      NON_BLOCKING_RULES.has(v.id)
-    )) {
-      console.warn(
-        `[a11y][known palette issue] ${v.id} (${v.impact}): ${v.nodes.length} node(s) — tracked outside this PRD (palette is a Non-Goal)`
-      );
-    }
-    const blocking = seriousOrWorse.filter(
-      (v) => !NON_BLOCKING_RULES.has(v.id)
-    );
-    const summary = blocking.map(
-      (v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s)`
-    );
-    expect(summary, summary.join("\n")).toEqual([]);
+    expectNoBlockingAxeViolations(results);
   });
 });
