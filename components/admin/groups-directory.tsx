@@ -350,6 +350,15 @@ const GroupCard = memo(function GroupCard({
   defaults: MetricDefaults;
 }) {
   const isClosed = group.lifecycle_status === "closed";
+  // Repeated row actions (Edit / Calendar) name their group, but group names
+  // are not unique in the data model. Append a stable, human-meaningful
+  // discriminator — meeting area, else meeting day — so two groups that share
+  // a name stay distinguishable to screen-reader users (issue 257 review).
+  const groupContext =
+    group.location_area?.trim() || group.meeting_day?.trim() || null;
+  const groupLabel = groupContext
+    ? `${group.name} (${groupContext})`
+    : group.name;
   // The edit panel owns the entire card body while open. We lift this state
   // out of the form so the card header can drop the Archive chip while
   // editing — Archive sitting next to Cancel was the main "Close = cancel?"
@@ -453,6 +462,7 @@ const GroupCard = memo(function GroupCard({
           >
             <Link
               href={`/admin/groups/${group.id}/calendar`}
+              aria-label={`Open ${groupLabel} calendar`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -474,6 +484,7 @@ const GroupCard = memo(function GroupCard({
                 type="button"
                 tone="terra"
                 size="sm"
+                aria-label={`Edit ${groupLabel}`}
                 onClick={() => setEditing(true)}
               >
                 Edit

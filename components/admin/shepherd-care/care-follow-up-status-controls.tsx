@@ -38,10 +38,14 @@ function transitionsFor(status: ShepherdCareFollowUpStatus): Transition[] {
 
 export function CareFollowUpStatusControls({
   followUpId,
+  followUpTitle,
+  followUpDueDate,
   status,
   shepherdProfileId,
 }: {
   followUpId: string;
+  followUpTitle: string;
+  followUpDueDate: string | null;
   status: ShepherdCareFollowUpStatus;
   shepherdProfileId: string;
 }) {
@@ -63,7 +67,15 @@ export function CareFollowUpStatusControls({
               name="shepherd_profile_id"
               value={shepherdProfileId}
             />
-            <PButton type="submit" tone={t.tone} size="sm" disabled={pending}>
+            <PButton
+              type="submit"
+              tone={t.tone}
+              size="sm"
+              disabled={pending}
+              aria-label={`${t.label} follow-up: ${followUpTitle}${
+                followUpDueDate ? ` (due ${followUpDueDate})` : ""
+              }`}
+            >
               {pending ? "Saving…" : t.label}
             </PButton>
           </form>

@@ -18,7 +18,7 @@ type Action = {
 export function FollowUpStatusControls({
   followUp,
 }: {
-  followUp: Pick<AdminFollowUpEntry, "id" | "status">;
+  followUp: Pick<AdminFollowUpEntry, "id" | "status" | "title" | "due_date">;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateFollowUpStatus
@@ -41,6 +41,9 @@ export function FollowUpStatusControls({
               tone={action.tone}
               size="sm"
               disabled={pending}
+              aria-label={`${action.label} follow-up: ${followUp.title}${
+                followUp.due_date ? ` (due ${followUp.due_date})` : ""
+              }`}
             >
               {pending ? "Saving…" : action.label}
             </PButton>
