@@ -12,10 +12,13 @@ import {
   fetchAllGroups,
   fetchAttendanceSessions,
   fetchLatestMeetingWeek,
-  fetchMetricDefaults,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
-import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +62,7 @@ async function loadData(): Promise<GroupManagementData> {
     }),
     fetchActiveMemberships(client),
     fetchLatestMeetingWeek(client),
-    fetchMetricDefaults(client),
+    fetchMetricDefaultsCached(client),
     fetchAllGroupMetricSettings(client),
   ]);
 

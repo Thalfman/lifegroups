@@ -15,7 +15,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchMetricDefaults,
   fetchOutstandingCareFollowUpsForAdmin,
   fetchOverShepherdsForAdmin,
   fetchRecentShepherdCareInteractionsForAdmin,
@@ -26,6 +25,7 @@ import {
   type ShepherdCareDirectoryEntry,
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
@@ -99,7 +99,7 @@ async function loadData(todayIso: string): Promise<LoadedData> {
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
     fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 10 }),
     fetchOutstandingCareFollowUpsForAdmin(client),
-    fetchMetricDefaults(client),
+    fetchMetricDefaultsCached(client),
   ]);
   const windows = careCadenceWindowsFromDefaults(
     decodeMetricDefaults(metricDefaultsRes.data ?? null)

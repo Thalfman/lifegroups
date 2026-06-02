@@ -8,7 +8,7 @@ import { requireOverShepherd } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchOverShepherdCoverageForCaller } from "@/lib/over-shepherd/coverage";
 import { fetchOverShepherdCareDirectory } from "@/lib/over-shepherd/read-models";
-import { fetchMetricDefaults } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
@@ -71,7 +71,9 @@ export default async function OverShepherdPage() {
   // needs_attention agrees with the admin surfaces (#123). Every covered
   // Shepherd is delegated by definition, so only the delegated window matters;
   // a missing/failed settings read falls back to the documented baseline.
-  const metricDefaultsRes = client ? await fetchMetricDefaults(client) : null;
+  const metricDefaultsRes = client
+    ? await fetchMetricDefaultsCached(client)
+    : null;
   const windows = careCadenceWindowsFromDefaults(
     decodeMetricDefaults(metricDefaultsRes?.data ?? null)
   );

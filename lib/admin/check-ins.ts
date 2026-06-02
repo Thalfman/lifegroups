@@ -24,9 +24,9 @@ import {
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
-  fetchMetricDefaults,
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { CHURCH_TIMEZONE, isoWeekStart } from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
@@ -201,14 +201,17 @@ const EMPTY_DETAIL_ERRORS: CheckInDetailErrors = {
 // the current week so a tampered URL never crashes the page.
 export function validateWeekParam(
   raw: string | string[] | undefined,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): string {
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (!value || typeof value !== "string" || !ISO_DATE_RE.test(value)) {
     return isoWeekStart(now);
   }
   const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
     return isoWeekStart(now);
   }
   // Reject values that aren't already Mondays so the URL stays
@@ -226,7 +229,7 @@ const WEEK_LABEL_FMT = new Intl.DateTimeFormat("en-US", {
 
 export function buildWeekOptions(
   now: Date = new Date(),
-  count: number = WEEK_OPTIONS_DEFAULT_COUNT,
+  count: number = WEEK_OPTIONS_DEFAULT_COUNT
 ): WeekOption[] {
   const currentMonday = isoWeekStart(now);
   const anchor = new Date(`${currentMonday}T00:00:00Z`);
@@ -239,7 +242,9 @@ export function buildWeekOptions(
     const formatted = WEEK_LABEL_FMT.format(d);
     options.push({
       value,
-      label: isCurrent ? `Week of ${formatted} (this week)` : `Week of ${formatted}`,
+      label: isCurrent
+        ? `Week of ${formatted} (this week)`
+        : `Week of ${formatted}`,
       isCurrent,
     });
   }
@@ -248,7 +253,7 @@ export function buildWeekOptions(
 
 export function truncatePreview(
   note: string | null,
-  max: number = LEADER_NOTE_PREVIEW_MAX,
+  max: number = LEADER_NOTE_PREVIEW_MAX
 ): string | null {
   if (!note) return null;
   const trimmed = note.trim();
@@ -320,8 +325,12 @@ export function lifecycleStatusLabel(status: GroupLifecycleStatus): string {
   }
 }
 
-function isLeaderPulse(value: GroupHealthStatus | null | undefined): value is LeaderPulseDisplay {
-  return value === "healthy" || value === "watch" || value === "needs_follow_up";
+function isLeaderPulse(
+  value: GroupHealthStatus | null | undefined
+): value is LeaderPulseDisplay {
+  return (
+    value === "healthy" || value === "watch" || value === "needs_follow_up"
+  );
 }
 
 function addDaysIsoForWeek(iso: string, days: number): string {
@@ -331,7 +340,7 @@ function addDaysIsoForWeek(iso: string, days: number): string {
 }
 
 function deriveSessionStatus(
-  session: AttendanceSessionsRow | null,
+  session: AttendanceSessionsRow | null
 ): SessionReviewStatus {
   if (!session) return "missing";
   switch (session.status) {
@@ -367,7 +376,7 @@ function profileNameMap(profiles: ProfilesRow[]): Map<string, string> {
 
 function leaderNamesByGroup(
   leaders: GroupLeadersRow[],
-  names: Map<string, string>,
+  names: Map<string, string>
 ): Map<string, string[]> {
   const m = new Map<string, string[]>();
   for (const row of leaders) {
@@ -390,9 +399,13 @@ function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
   // to meet this week. Off-parity bi-weekly groups stay in the body of
   // the list.
   const aMissing =
-    a.sessionStatus === "missing" && a.isActive && a.isScheduledThisWeek ? 0 : 1;
+    a.sessionStatus === "missing" && a.isActive && a.isScheduledThisWeek
+      ? 0
+      : 1;
   const bMissing =
-    b.sessionStatus === "missing" && b.isActive && b.isScheduledThisWeek ? 0 : 1;
+    b.sessionStatus === "missing" && b.isActive && b.isScheduledThisWeek
+      ? 0
+      : 1;
   if (aMissing !== bMissing) return aMissing - bMissing;
   const aFollowUp = a.followUpNeeded ? 0 : 1;
   const bFollowUp = b.followUpNeeded ? 0 : 1;
@@ -403,7 +416,7 @@ function compareReviewRows(a: GroupReviewRow, b: GroupReviewRow): number {
 export async function fetchAdminWeeklyCheckInReview(
   client: ReadClient,
   meetingWeek: string,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): Promise<WeeklyReviewData> {
   const weekEnd = addDaysIsoForWeek(meetingWeek, 6);
 
@@ -427,7 +440,7 @@ export async function fetchAdminWeeklyCheckInReview(
     fetchProfilesForAdmin(client),
     fetchAttendanceSessions(client, { meetingWeek }),
     fetchLatestHealthUpdates(client, { updateWeek: meetingWeek }),
-    fetchMetricDefaults(client),
+    fetchMetricDefaultsCached(client),
     fetchAllGroupMetricSettings(client),
     fetchGroupCalendarEvents(client, {
       fromDate: meetingWeek,
@@ -457,7 +470,7 @@ export async function fetchAdminWeeklyCheckInReview(
     null;
 
   const groups = (groupsResult.data ?? []).filter(
-    (g) => g.lifecycle_status !== "closed",
+    (g) => g.lifecycle_status !== "closed"
   );
   const leaders = leadersResult.data ?? [];
   const profiles = profilesResult.data ?? [];
@@ -465,11 +478,14 @@ export async function fetchAdminWeeklyCheckInReview(
   const healthUpdates = healthResult.data ?? [];
   const metricSettings = metricSettingsResult.data ?? [];
   const calendarEventsByGroup = buildCalendarEventsByGroup(
-    calendarEventsResult.data ?? [],
+    calendarEventsResult.data ?? []
   );
 
   const sessionIds = sessions.map((s) => s.id);
-  const recordsResult = await fetchAttendanceRecordsForSessions(client, sessionIds);
+  const recordsResult = await fetchAttendanceRecordsForSessions(
+    client,
+    sessionIds
+  );
   errors.records = recordsResult.error?.message ?? null;
   const records = recordsResult.data ?? [];
 
@@ -490,7 +506,7 @@ export async function fetchAdminWeeklyCheckInReview(
   }
 
   const metricSettingsByGroup = new Map<string, GroupMetricSettingsRow>(
-    metricSettings.map((s) => [s.group_id, s]),
+    metricSettings.map((s) => [s.group_id, s])
   );
   const defaults = metricDefaultsResult.error
     ? BUILT_IN_METRIC_DEFAULTS
@@ -499,13 +515,17 @@ export async function fetchAdminWeeklyCheckInReview(
   const rows: GroupReviewRow[] = groups.map((g) => {
     const session = sessionByGroup.get(g.id) ?? null;
     const sessionStatus = deriveSessionStatus(session);
-    const sessionRecords = session ? recordsBySession.get(session.id) ?? [] : [];
+    const sessionRecords = session
+      ? (recordsBySession.get(session.id) ?? [])
+      : [];
     const showCounts =
       sessionStatus === "submitted" || sessionStatus === "admin_entered";
     const attendance = showCounts ? countAttendance(sessionRecords) : null;
     const health = healthByGroup.get(g.id) ?? null;
     const submitterName =
-      session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
+      session && session.submitted_by
+        ? (profileNames.get(session.submitted_by) ?? null)
+        : null;
     const occurrenceDate = expectedMeetingDateForWeek(meetingWeek, {
       meetingDay: g.meeting_day,
       meetingFrequency: g.meeting_frequency,
@@ -513,7 +533,7 @@ export async function fetchAdminWeeklyCheckInReview(
     });
     const calendarOverride = pickCalendarOverrideForOccurrence(
       calendarEventsByGroup.get(g.id) ?? [],
-      occurrenceDate,
+      occurrenceDate
     );
     const dueResult = computeCheckInDue({
       group: {
@@ -600,7 +620,7 @@ export async function fetchAdminWeeklyCheckInReview(
 export async function fetchAdminCheckInDetail(
   client: ReadClient,
   groupId: string,
-  meetingWeek: string,
+  meetingWeek: string
 ): Promise<CheckInDetailData> {
   const [
     groupResult,
@@ -627,7 +647,9 @@ export async function fetchAdminCheckInDetail(
   errors.memberships = membershipsResult.error?.message ?? null;
 
   const group = (groupResult.data ?? [])[0] ?? null;
-  const leaders = (leadersResult.data ?? []).filter((l) => l.group_id === groupId);
+  const leaders = (leadersResult.data ?? []).filter(
+    (l) => l.group_id === groupId
+  );
   const profiles = profilesResult.data ?? [];
   const session = (sessionsResult.data ?? [])[0] ?? null;
   const health = (healthResult.data ?? [])[0] ?? null;
@@ -640,7 +662,9 @@ export async function fetchAdminCheckInDetail(
     .sort((a, b) => a.localeCompare(b));
 
   const submittedByName =
-    session && session.submitted_by ? profileNames.get(session.submitted_by) ?? null : null;
+    session && session.submitted_by
+      ? (profileNames.get(session.submitted_by) ?? null)
+      : null;
 
   // Pull active members for the roster. The roster always renders, so
   // the admin sees who would be marked when a leader submits.
@@ -649,12 +673,16 @@ export async function fetchAdminCheckInDetail(
   errors.members = membersResult.error?.message ?? null;
   const memberRows = (membersResult.data ?? [])
     .filter((m: MembersRow) => m.status === "active")
-    .sort((a: MembersRow, b: MembersRow) => a.full_name.localeCompare(b.full_name));
+    .sort((a: MembersRow, b: MembersRow) =>
+      a.full_name.localeCompare(b.full_name)
+    );
 
   // Pull attendance records if a session exists.
   let records: AttendanceRecordsRow[] = [];
   if (session) {
-    const recordsResult = await fetchAttendanceRecordsForSessions(client, [session.id]);
+    const recordsResult = await fetchAttendanceRecordsForSessions(client, [
+      session.id,
+    ]);
     errors.records = recordsResult.error?.message ?? null;
     records = recordsResult.data ?? [];
   }
