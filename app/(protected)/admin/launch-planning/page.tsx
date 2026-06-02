@@ -51,14 +51,16 @@ import {
 } from "@/components/admin/launch-planning/summary-cards";
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
-import { ScenariosPanel } from "@/components/admin/launch-planning/scenarios-panel";
 import { LaunchPlanningShell } from "@/components/admin/launch-planning/launch-planning-shell";
 import { ChurchAttendanceCard } from "@/components/admin/launch-planning/church-attendance-card";
-import { CapacityBoard } from "@/components/admin/capacity-board/capacity-board";
+// The three heaviest panels are loaded lazily (ssr:false) — they live behind
+// closed tabs, so deferring their code keeps it off this route's First Load JS.
 import {
+  CapacityBoard,
   MultiplicationPlanner,
-  type ApprenticeOption,
-} from "@/components/admin/multiplication/multiplication-planner";
+  ScenariosPanel,
+} from "@/components/admin/launch-planning/lazy-panels";
+import type { ApprenticeOption } from "@/components/admin/multiplication/multiplication-planner";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
