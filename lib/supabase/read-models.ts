@@ -572,6 +572,24 @@ export async function fetchPlatformConfig(
   return { data, error: null };
 }
 
+// Admin-readable feature-flag state (#256). Unlike fetchPlatformConfig, this
+// reads through the SECURITY DEFINER admin_read_feature_flags() RPC, which
+// returns ONLY the feature_flags sub-object and admits both super_admin and
+// ministry_admin (auth_is_admin()). It exists so a frozen-surface gate resolves
+// identically for both admin roles — a ministry_admin can't read platform_config
+// directly, so the table read would always fail closed for them. The verify-
+// before-flip rule still lives in lib/admin/feature-flags; this only fetches the
+// stored flag map (decode it with decodeFeatureFlags). A null return means the
+// RPC errored; callers decode null to "all flags off".
+export async function fetchAdminFeatureFlags(
+  client: ReadClient
+): Promise<ReadResult<unknown>> {
+  const { data, error } = await client.rpc("admin_read_feature_flags" as never);
+  if (error)
+    return { data: null, error: wrapError("fetchAdminFeatureFlags", error) };
+  return { data: data ?? null, error: null };
+}
+
 // Returns the single `group_health_rubric` row from `app_settings`, holding the
 // admin-tuned Group-Health weights / cut-lines / attendance window (#129). No
 // row yet means the rubric has never been tuned; callers decode `null` to the
