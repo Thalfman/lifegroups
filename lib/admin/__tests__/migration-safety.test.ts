@@ -142,6 +142,26 @@ describe("migration-safety — assertSecurityDefiner", () => {
       assertSecurityDefiner(sql, "x", { searchPath: "public" })
     ).not.toThrow();
   });
+
+  it("does not let a `public` expectation prefix-match a broader pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public, pg_temp as $$ begin end; $$;"
+    );
+    // A function pinning the broader `public, pg_temp` must NOT satisfy a
+    // `public`-only expectation, or an unintended extra schema slips through.
+    expect(() =>
+      assertSecurityDefiner(sql, "x", { searchPath: "public" })
+    ).toThrow();
+  });
+
+  it("tolerates a missing space after the comma in the search_path pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public,pg_temp as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).not.toThrow();
+  });
 });
 
 describe("migration-safety — assertRoleGate", () => {

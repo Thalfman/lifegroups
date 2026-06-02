@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
+  assertExecuteLockdown,
   assertPairedAuditInsert,
   assertSecurityDefiner,
   functionBody,
@@ -75,6 +76,12 @@ describe("candidate ⇄ apprentice link migration — same-group enforcement", (
       assertSecurityDefiner(sql, name);
       assertPairedAuditInsert(sql, name);
       expect(functionBody(sql, name)).toContain("'has_apprentice_link'");
+    }
+  });
+
+  it("locks EXECUTE on both RPCs down to authenticated only", () => {
+    for (const name of RPCS) {
+      assertExecuteLockdown(sql, name);
     }
   });
 });

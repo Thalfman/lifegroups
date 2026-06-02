@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
+  assertExecuteLockdown,
   assertPairedAuditInsert,
   assertSecurityDefiner,
   functionBody,
@@ -111,5 +112,11 @@ describe("multiplication successor/meeting-time migration — audited write path
     expect(sql.lower).not.toMatch(
       /delete\s+from\s+public\.multiplication_candidates/
     );
+  });
+
+  it("locks EXECUTE on both RPCs down to authenticated only", () => {
+    for (const fn of RPCS) {
+      assertExecuteLockdown(sql, fn);
+    }
   });
 });

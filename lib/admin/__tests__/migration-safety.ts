@@ -118,8 +118,18 @@ export function assertSecurityDefiner(
   expect(body, `${fnName} should be SECURITY DEFINER`).toContain(
     "security definer"
   );
-  expect(body, `${fnName} should pin search_path to ${searchPath}`).toContain(
-    `set search_path = ${searchPath.toLowerCase()}`
+  // Anchor the pin's end so a shorter expected value cannot prefix-match a
+  // broader pin — `{ searchPath: "public" }` must NOT pass a `public, pg_temp`
+  // (or `public, evil_schema`) body, or an unintended extra schema would defeat
+  // the injection-safe pin. The trailing `(?![\w,])` rejects a continued list;
+  // `,\s*` tolerates the optional space the migrations put after each comma.
+  const pin = searchPath
+    .toLowerCase()
+    .split(",")
+    .map((part) => escapeRegExp(part.trim()))
+    .join(",\\s*");
+  expect(body, `${fnName} should pin search_path to ${searchPath}`).toMatch(
+    new RegExp(`set search_path = ${pin}(?![\\w,])`)
   );
 }
 
