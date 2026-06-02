@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "../Icon";
 import { Wordmark } from "./Wordmark";
 import { Verse } from "./Verse";
+import { NavLinkStatus } from "./NavLinkStatus";
 import type { AdminNavGroup } from "@/lib/auth/roles";
 
 function isActiveHref(currentPath: string, href: string): boolean {
@@ -109,6 +110,7 @@ export function Sidebar({
                       color={active ? "var(--c-sageDeep)" : "var(--c-ink3)"}
                     />
                     {item.label}
+                    <NavLinkStatus />
                   </Link>
                 );
               })}
