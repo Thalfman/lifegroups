@@ -1,6 +1,6 @@
 # ADR 0005: Validation stays centralized, not co-located with each write
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 0012](./0012-cluster-validators-behind-a-barrel.md)
 **Date:** 2026-05-30
 
 ## Context
@@ -26,7 +26,7 @@ co-locate per-write validators with their action files.
   groups actions. Co-location would force either duplication or a tangle of
   cross-`actions.ts` imports.
 - **It cuts against the grain of ADR-0001.** The whole point of
-  `runAdminWriteAction` is that an action supplies only *pure data* — a
+  `runAdminWriteAction` is that an action supplies only _pure data_ — a
   validator and field-extractors — to a runner that owns the control flow.
   The validator's natural home is the pure-functions module, not the
   `"use server"` action file.
