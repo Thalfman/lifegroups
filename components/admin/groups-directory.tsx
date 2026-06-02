@@ -453,6 +453,7 @@ const GroupCard = memo(function GroupCard({
           >
             <Link
               href={`/admin/groups/${group.id}/calendar`}
+              aria-label={`Open ${group.name} calendar`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -474,6 +475,7 @@ const GroupCard = memo(function GroupCard({
                 type="button"
                 tone="terra"
                 size="sm"
+                aria-label={`Edit ${group.name}`}
                 onClick={() => setEditing(true)}
               >
                 Edit

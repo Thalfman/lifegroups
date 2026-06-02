@@ -46,7 +46,7 @@ export function AdminMasterCalendarList({
       byDate.set(o.date, bucket);
     }
     return Array.from(byDate.entries()).sort((a, b) =>
-      a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0,
+      a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0
     );
   }, [occurrences, fromIso, toIso]);
 
@@ -98,9 +98,21 @@ export function AdminMasterCalendarList({
           >
             {dateLabel(date)}
           </h3>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gap: 8,
+            }}
+          >
             {dayOccurrences.map((o) => (
-              <OccurrenceCard key={`${o.groupId}|${o.date}`} occurrence={o} onSelect={onSelect} />
+              <OccurrenceCard
+                key={`${o.groupId}|${o.date}`}
+                occurrence={o}
+                onSelect={onSelect}
+              />
             ))}
           </ul>
         </section>
@@ -169,7 +181,9 @@ function OccurrenceCard({
           }}
         >
           {occurrence.status !== "scheduled" ? (
-            <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
+            <PBadge tone={tone}>
+              {friendlyEventStatusLabel(occurrence.status)}
+            </PBadge>
           ) : (
             <PBadge tone="healthy">{typeLabel}</PBadge>
           )}
@@ -183,6 +197,7 @@ function OccurrenceCard({
       </button>
       <Link
         href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
+        aria-label={`Open ${occurrence.groupName} calendar`}
         style={{
           fontFamily: fontSans,
           fontSize: 11,

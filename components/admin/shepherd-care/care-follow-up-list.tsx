@@ -65,19 +65,35 @@ const emptyStyle: CSSProperties = {
 
 function statusBadgeTone(
   status: ShepherdCareFollowUpsRow["status"],
-  overdue: boolean,
+  overdue: boolean
 ): CSSProperties {
   if (overdue) {
-    return { background: P.terraSoft, color: "#923220", border: "1px solid #e4b9a8" };
+    return {
+      background: P.terraSoft,
+      color: "#923220",
+      border: "1px solid #e4b9a8",
+    };
   }
   switch (status) {
     case "done":
-      return { background: P.sageSoft, color: "#3e4f29", border: `1px solid ${P.line}` };
+      return {
+        background: P.sageSoft,
+        color: "#3e4f29",
+        border: `1px solid ${P.line}`,
+      };
     case "in_progress":
-      return { background: P.mustardSoft, color: P.mustardTextStrong, border: "1px solid #efdfa3" };
+      return {
+        background: P.mustardSoft,
+        color: P.mustardTextStrong,
+        border: "1px solid #efdfa3",
+      };
     case "open":
     default:
-      return { background: P.bgDeep, color: P.ink2, border: `1px solid ${P.line}` };
+      return {
+        background: P.bgDeep,
+        color: P.ink2,
+        border: `1px solid ${P.line}`,
+      };
   }
 }
 
@@ -102,14 +118,25 @@ export function CareFollowUpList({
           <div key={row.id} role="listitem" style={itemStyle}>
             <p style={titleStyle}>{row.title}</p>
             <div style={metaRowStyle}>
-              <span style={{ ...badgeBase, ...statusBadgeTone(row.status, overdue) }}>
-                {overdue ? "Overdue" : shepherdCareFollowUpStatusLabel(row.status)}
+              <span
+                style={{
+                  ...badgeBase,
+                  ...statusBadgeTone(row.status, overdue),
+                }}
+              >
+                {overdue
+                  ? "Overdue"
+                  : shepherdCareFollowUpStatusLabel(row.status)}
               </span>
               <span style={dueStyle}>
-                {row.due_date ? `Due ${formatIsoDate(row.due_date)}` : "No due date"}
+                {row.due_date
+                  ? `Due ${formatIsoDate(row.due_date)}`
+                  : "No due date"}
               </span>
               {row.status === "done" && row.completed_at ? (
-                <span style={{ ...dueStyle, color: P.ink3, fontStyle: "italic" }}>
+                <span
+                  style={{ ...dueStyle, color: P.ink3, fontStyle: "italic" }}
+                >
                   Done {formatIsoDate(row.completed_at.slice(0, 10))}
                 </span>
               ) : null}
@@ -118,6 +145,7 @@ export function CareFollowUpList({
             <div style={{ marginTop: 10 }}>
               <CareFollowUpStatusControls
                 followUpId={row.id}
+                followUpTitle={row.title}
                 status={row.status}
                 shepherdProfileId={shepherdProfileId}
               />
