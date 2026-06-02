@@ -96,6 +96,17 @@ language plpgsql security definer as $$ begin perform 'foo_marker'; end; $$;
     expect(body).toContain("foo_marker");
     expect(body).not.toContain("extended_marker"); // grabbed the right function
   });
+
+  it("anchors on CREATE so a preceding DROP of the same name is not the target", () => {
+    const sql = migrationFromSql(`
+drop function if exists public.admin_thing(uuid);
+create or replace function public.admin_thing(p uuid) returns void
+language plpgsql security definer as $$ begin perform 'real_body'; end; $$;
+`);
+    const body = functionBody(sql, "admin_thing");
+    expect(body).toContain("real_body");
+    expect(body).not.toContain("drop function");
+  });
 });
 
 describe("migration-safety — assertSecurityDefiner", () => {
@@ -223,6 +234,27 @@ grant execute on function public.f(
         "revoke all on function public.f() from public;\n" +
         "revoke all on function public.f() from anon;\n" +
         "revoke all on function public.f() from authenticated;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow();
+  });
+
+  it("rejects an extra grantee alongside authenticated (to authenticated, service_role)", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public;\n" +
+        "revoke all on function public.f() from anon;\n" +
+        "revoke all on function public.f() from authenticated;\n" +
+        "grant execute on function public.f() to authenticated, service_role;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow();
+  });
+
+  it("rejects a separate grant to another role even with the authenticated grant present", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public;\n" +
+        "revoke all on function public.f() from anon;\n" +
+        "revoke all on function public.f() from authenticated;\n" +
+        "grant execute on function public.f() to authenticated;\n" +
+        "grant execute on function public.f() to service_role;"
     );
     expect(() => assertExecuteLockdown(sql, "f")).toThrow();
   });

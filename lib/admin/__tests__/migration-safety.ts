@@ -17,9 +17,8 @@ import { expect } from "vitest";
 //
 // Known limits of the substring approach (none hit by current migrations, but
 // worth knowing before reusing): function bodies are sliced on a tight `$$;`
-// closer; EXECUTE-lockdown signatures must be paren-free (no typmods like
-// `numeric(10,2)`); and the CREATE is assumed to precede any GRANT/REVOKE of
-// the same function name.
+// closer, and EXECUTE-lockdown signatures must be paren-free (no typmods like
+// `numeric(10,2)`).
 
 const MIGRATIONS_DIR = fileURLToPath(
   new URL("../../../supabase/migrations", import.meta.url)
@@ -51,14 +50,20 @@ export function loadMigration(fileName: string): MigrationSql {
 }
 
 /**
- * The lowercased body of the function `public.<name>`, sliced from the first
- * `function public.<name>(` occurrence (its definition — the CREATE precedes
- * any GRANT/REVOKE) to the `$$;` that closes it. Fails the test if the function
- * is not defined. The trailing `(` anchors the match so a name that is a prefix
- * of another function (e.g. `foo` vs `foo_v2`) does not collide.
+ * The lowercased body of the function `public.<name>`, sliced from its
+ * `create [or replace] function public.<name>(` header to the `$$;` that closes
+ * it. Anchoring on the CREATE (not just any `function public.<name>`) means a
+ * preceding `drop function ...` or a GRANT/REVOKE referencing the name is not
+ * mistaken for the definition. The trailing `(` keeps a name that is a prefix
+ * of another function (e.g. `foo` vs `foo_v2`) from colliding. Fails the test
+ * if the function is not defined.
  */
 export function functionBody(sql: MigrationSql, fnName: string): string {
-  const start = sql.lower.indexOf(`function public.${fnName}(`);
+  const start = sql.lower.search(
+    new RegExp(
+      `create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.${escapeRegExp(fnName)}\\s*\\(`
+    )
+  );
   expect(
     start,
     `${fnName} should be defined in ${sql.fileName}`
@@ -156,10 +161,11 @@ const REVOKED_ROLES = ["public", "anon", "authenticated"] as const;
  * EXECUTE on a function is revoked from public / anon / authenticated and then
  * granted only to authenticated — the "deny by default, allow authenticated"
  * lockdown every admin RPC ships. Whitespace-tolerant, so the suites need not
- * track the migrations' GRANT-block column alignment. Three traps are guarded:
- * the grant must come AFTER the revoke from authenticated (a grant that
- * precedes its revoke leaves the RPC un-executable), and no EXECUTE grant may
- * name public/anon anywhere in its (possibly comma-separated) grantee list.
+ * track the migrations' GRANT-block column alignment. Two further traps are
+ * guarded: every EXECUTE grant must name *exactly* `authenticated` (no
+ * comma-listed extras like `authenticated, public` and no other role such as
+ * `service_role`), and the grant must come AFTER the revoke from authenticated
+ * (a grant that precedes its revoke leaves the RPC un-executable).
  */
 export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
   const signature = fnSignature(fnName);
@@ -171,34 +177,40 @@ export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
     );
   }
 
-  const grantRe = new RegExp(
-    `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+authenticated`
-  );
-  expect(sql.lower, `${fnName} should grant EXECUTE to authenticated`).toMatch(
-    grantRe
-  );
+  // Collect every `grant execute ... to <grantees>;` for this function and
+  // require each grantee list to be exactly `authenticated`. The `[^;]*` stays
+  // within one statement (stops at its terminating `;`), so a comma-listed or
+  // additional role is caught by the exact-equality check below.
+  const grants = [
+    ...sql.lower.matchAll(
+      new RegExp(
+        `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+([^;]*);`,
+        "g"
+      )
+    ),
+  ];
+  expect(
+    grants.length,
+    `${fnName} should grant EXECUTE to authenticated`
+  ).toBeGreaterThan(0);
+  for (const grant of grants) {
+    expect(
+      grant[1].replace(/\s+/g, " ").trim(),
+      `${fnName} EXECUTE must be granted only to authenticated`
+    ).toBe("authenticated");
+  }
 
   // The grant must follow the revoke from authenticated; otherwise the revoke
   // wins and the RPC ends up un-executable to authenticated users.
-  const revokeAuthRe = new RegExp(
-    `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+authenticated`
-  );
-  expect(
-    sql.lower.search(grantRe),
-    `${fnName} should grant EXECUTE only after revoking it from authenticated`
-  ).toBeGreaterThan(sql.lower.search(revokeAuthRe));
-
-  // No EXECUTE grant may include public/anon in its grantee list — which may be
-  // comma-separated, e.g. `to authenticated, public`. `[^;]*` stays within the
-  // single grant statement (stops at its terminating `;`).
-  expect(
-    sql.lower,
-    `${fnName} must not grant EXECUTE to public or anon`
-  ).not.toMatch(
+  const revokeAuthIdx = sql.lower.search(
     new RegExp(
-      `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+[^;]*\\b(?:public|anon)\\b`
+      `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+authenticated`
     )
   );
+  expect(
+    grants[0].index ?? -1,
+    `${fnName} should grant EXECUTE only after revoking it from authenticated`
+  ).toBeGreaterThan(revokeAuthIdx);
 }
 
 /**
