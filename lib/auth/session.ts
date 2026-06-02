@@ -71,6 +71,12 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "anonymous" };
 
+  // This is the authorization gate for every protected route, so it must catch
+  // a revoked/deleted Auth user immediately. getUser() validates the access
+  // token against the Auth server on each request; a locally-verified JWT
+  // (getClaims) would keep admitting requireAdmin()/requireLeader() callers
+  // until the token expires (see PR #236 review). Cookie rotation in middleware
+  // uses the cheaper getClaims() since it performs no authorization.
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -81,7 +87,7 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const profileQuery = await client
     .from("profiles")
     .select("*")
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", authUser.id)
     .maybeSingle();
   if (profileQuery.error) {
     log.error({

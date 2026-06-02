@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
@@ -38,11 +39,13 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
-  const trimmed = query.trim().toLowerCase();
+  // Debounce the text query so the two list filters run once typing settles,
+  // not on every keystroke. The input stays bound to `query` for instant feedback.
+  const trimmed = useDebouncedValue(query.trim().toLowerCase(), 150);
 
   const groupsById = useMemo(
     () => new Map(props.groups.map((g) => [g.id, g])),
-    [props.groups],
+    [props.groups]
   );
 
   const profileGroupMap = useMemo(() => {
@@ -91,13 +94,13 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const visibleProfiles = useMemo(
     () => props.profiles.filter(filterProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.profiles, statusFilter, trimmed],
+    [props.profiles, statusFilter, trimmed]
   );
 
   const visibleMembers = useMemo(
     () => props.members.filter(filterMember),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.members, statusFilter, trimmed],
+    [props.members, statusFilter, trimmed]
   );
 
   const showLogin = typeFilter !== "member";
@@ -147,7 +150,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
             <ProfileRow
               key={p.id}
               profile={p}
-              assignedGroups={profileGroupMap.get(p.id) ?? []}
+              assignedGroups={profileGroupMap.get(p.id) ?? NO_GROUPS}
               isSelf={p.id === props.currentActorProfileId}
             />
           ))}
@@ -174,7 +177,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
             <MemberRow
               key={m.id}
               member={m}
-              assignedGroups={memberGroupMap.get(m.id) ?? []}
+              assignedGroups={memberGroupMap.get(m.id) ?? NO_GROUPS}
             />
           ))}
         </DirectorySection>
@@ -383,7 +386,11 @@ function DirectorySection({
 // Rows
 // ---------------------------------------------------------------------------
 
-function ProfileRow({
+// Memoized so unrelated directory re-renders (e.g. debounced-search keystrokes
+// before the filtered list settles, or toggling the other section's type
+// filter) don't re-render every row. Props are referentially stable: rows come
+// from props and the group lists from memoized maps (empty → NO_GROUPS).
+const ProfileRow = memo(function ProfileRow({
   profile,
   assignedGroups,
   isSelf,
@@ -392,7 +399,8 @@ function ProfileRow({
   assignedGroups: GroupsRow[];
   isSelf: boolean;
 }) {
-  const isLeaderType = profile.role === "leader" || profile.role === "co_leader";
+  const isLeaderType =
+    profile.role === "leader" || profile.role === "co_leader";
   return (
     <li style={rowStyle}>
       <div style={{ minWidth: 0 }}>
@@ -415,7 +423,9 @@ function ProfileRow({
             {profile.full_name}
           </div>
           <PBadge tone={profile.status === "active" ? "healthy" : "pause"}>
-            {profile.status === "active" ? ROLE_LABELS[profile.role] : "Inactive"}
+            {profile.status === "active"
+              ? ROLE_LABELS[profile.role]
+              : "Inactive"}
           </PBadge>
         </div>
         <div
@@ -431,10 +441,14 @@ function ProfileRow({
           }}
         >
           <span>{profile.email}</span>
-          {profile.phone ? <span style={{ color: P.ink3 }}>· {profile.phone}</span> : null}
+          {profile.phone ? (
+            <span style={{ color: P.ink3 }}>· {profile.phone}</span>
+          ) : null}
         </div>
         {assignedGroups.length > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}
+          >
             {assignedGroups.map((g) => (
               <PBadge key={g.id} tone="neutral">
                 {g.name}
@@ -483,9 +497,9 @@ function ProfileRow({
       </div>
     </li>
   );
-}
+});
 
-function MemberRow({
+const MemberRow = memo(function MemberRow({
   member,
   assignedGroups,
 }: {
@@ -530,7 +544,9 @@ function MemberRow({
           }}
         >
           <span>{member.email ?? "—"}</span>
-          {member.phone ? <span style={{ color: P.ink3 }}>· {member.phone}</span> : null}
+          {member.phone ? (
+            <span style={{ color: P.ink3 }}>· {member.phone}</span>
+          ) : null}
           {!member.email && !member.phone ? (
             <span style={{ color: P.ink3, fontStyle: "italic" }}>
               no contact details
@@ -538,7 +554,9 @@ function MemberRow({
           ) : null}
         </div>
         {assignedGroups.length > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}
+          >
             {assignedGroups.map((g) => (
               <PBadge key={g.id} tone="neutral">
                 {g.name}
@@ -548,17 +566,24 @@ function MemberRow({
         ) : null}
       </div>
       {member.status === "active" ? (
-        <DeactivateMemberButton memberId={member.id} fullName={member.full_name} />
+        <DeactivateMemberButton
+          memberId={member.id}
+          fullName={member.full_name}
+        />
       ) : null}
     </li>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // Shared styles
 // ---------------------------------------------------------------------------
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
+
+// Stable empty array so people with no assigned groups pass the same reference
+// to the memoized rows across renders (a fresh `[]` would defeat React.memo).
+const NO_GROUPS: GroupsRow[] = [];
 
 const rowStyle = {
   padding: "14px 18px",
