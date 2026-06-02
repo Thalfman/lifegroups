@@ -63,6 +63,6 @@ describe("bulk-import created_count fix migration", () => {
   });
 
   it("locks function EXECUTE down to authenticated only", () => {
-    assertExecuteLockdown(sql, "super_admin_bulk_import_people");
+    assertExecuteLockdown(sql, "super_admin_bulk_import_people", "jsonb");
   });
 });

@@ -329,6 +329,29 @@ grant execute on function public.f(
     );
     expect(() => assertExecuteLockdown(sql, "f")).toThrow();
   });
+
+  it("pins a specific overload when an argList is given", () => {
+    // The `(jsonb)` overload is locked down; a different `()` overload is not.
+    const sql = migrationFromSql(
+      "revoke all on function public.f(jsonb) from public;\n" +
+        "revoke all on function public.f(jsonb) from anon;\n" +
+        "revoke all on function public.f(jsonb) from authenticated;\n" +
+        "grant execute on function public.f(jsonb) to authenticated;\n" +
+        "grant execute on function public.f() to public;"
+    );
+    // Pinned to (jsonb): only the jsonb statements are considered → passes.
+    expect(() => assertExecuteLockdown(sql, "f", "jsonb")).not.toThrow();
+    // Pinned to the bare () overload: it is granted to public, not locked down.
+    expect(() => assertExecuteLockdown(sql, "f", "")).toThrow();
+    // Whitespace inside the parens is tolerated on the pinned signature.
+    const padded = migrationFromSql(
+      "revoke all on function public.f( jsonb ) from public;\n" +
+        "revoke all on function public.f( jsonb ) from anon;\n" +
+        "revoke all on function public.f( jsonb ) from authenticated;\n" +
+        "grant execute on function public.f( jsonb ) to authenticated;"
+    );
+    expect(() => assertExecuteLockdown(padded, "f", "jsonb")).not.toThrow();
+  });
 });
 
 describe("migration-safety — assertExcludesSuperAdmin", () => {

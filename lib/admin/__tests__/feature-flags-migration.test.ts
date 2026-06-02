@@ -64,6 +64,6 @@ describe("SAC.2 migration — audited super-admin platform-config write", () => 
   });
 
   it("locks function EXECUTE down to authenticated only", () => {
-    assertExecuteLockdown(sql, "super_admin_set_platform_config");
+    assertExecuteLockdown(sql, "super_admin_set_platform_config", "jsonb");
   });
 });

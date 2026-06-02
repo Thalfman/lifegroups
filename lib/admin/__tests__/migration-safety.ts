@@ -95,10 +95,22 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Function name + arg list. The signatures hold no nested parens, so `[^)]*`
-// safely spans the multi-line arg lists the GRANT block sometimes wraps across.
-function fnSignature(fnName: string): string {
-  return `public\\.${escapeRegExp(fnName)}\\s*\\([^)]*\\)`;
+// Function name + arg list. With no `argList`, `[^)]*` spans any arg list (the
+// signatures hold no nested parens, so it safely covers the multi-line lists the
+// GRANT block sometimes wraps across). Pass `argList` (the comma-separated arg
+// types, e.g. `"jsonb"` or `"uuid, integer"`) to pin a specific overload —
+// whitespace around the commas and inside the parens is tolerated.
+function fnSignature(fnName: string, argList?: string): string {
+  const name = `public\\.${escapeRegExp(fnName)}`;
+  if (argList === undefined) {
+    return `${name}\\s*\\([^)]*\\)`;
+  }
+  const args = argList
+    .toLowerCase()
+    .split(",")
+    .map((arg) => escapeRegExp(arg.trim()))
+    .join("\\s*,\\s*");
+  return `${name}\\s*\\(\\s*${args}\\s*\\)`;
 }
 
 /**
@@ -189,9 +201,17 @@ const REVOKED_ROLES = ["public", "anon", "authenticated"] as const;
  * other role such as `service_role`), and the grant must come AFTER the revoke
  * from authenticated (a grant that precedes its revoke leaves the RPC
  * un-executable).
+ *
+ * Pass `argList` (the comma-separated arg types, e.g. `"jsonb"`) to pin a
+ * specific overload, so the lockdown is asserted for exactly the RPC the app
+ * calls and not for some other same-named overload.
  */
-export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
-  const signature = fnSignature(fnName);
+export function assertExecuteLockdown(
+  sql: MigrationSql,
+  fnName: string,
+  argList?: string
+): void {
+  const signature = fnSignature(fnName, argList);
 
   // Collect every `revoke all on function <fn>(...) from <grantees>;` for this
   // function and union the grantees. The `[^;]*` stays within one statement, so

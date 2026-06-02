@@ -52,6 +52,6 @@ describe("SAC.5 migration — super_admin_bulk_import_people", () => {
   });
 
   it("locks function EXECUTE down to authenticated only", () => {
-    assertExecuteLockdown(sql, "super_admin_bulk_import_people");
+    assertExecuteLockdown(sql, "super_admin_bulk_import_people", "jsonb");
   });
 });
