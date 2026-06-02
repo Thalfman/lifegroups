@@ -155,6 +155,28 @@ describe("migration-safety — assertSecurityDefiner", () => {
     ).toThrow();
   });
 
+  it("rejects an extra schema even when whitespace pads the comma", () => {
+    // Postgres allows whitespace around comma-separated search_path entries, so
+    // `public , pg_temp` is still a broader pin than `public`.
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public , pg_temp as $$ begin end; $$;"
+    );
+    expect(() =>
+      assertSecurityDefiner(sql, "x", { searchPath: "public" })
+    ).toThrow();
+    // The default expectation tolerates the same padding (it IS public + pg_temp).
+    expect(() => assertSecurityDefiner(sql, "x")).not.toThrow();
+  });
+
+  it("rejects a third schema appended to the default pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public, pg_temp, attacker as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+  });
+
   it("tolerates a missing space after the comma in the search_path pin", () => {
     const sql = migrationFromSql(
       "create or replace function public.x() returns void language plpgsql\n" +

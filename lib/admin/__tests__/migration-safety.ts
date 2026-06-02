@@ -118,18 +118,19 @@ export function assertSecurityDefiner(
   expect(body, `${fnName} should be SECURITY DEFINER`).toContain(
     "security definer"
   );
-  // Anchor the pin's end so a shorter expected value cannot prefix-match a
-  // broader pin — `{ searchPath: "public" }` must NOT pass a `public, pg_temp`
-  // (or `public, evil_schema`) body, or an unintended extra schema would defeat
-  // the injection-safe pin. The trailing `(?![\w,])` rejects a continued list;
-  // `,\s*` tolerates the optional space the migrations put after each comma.
+  // Match the pin as the COMPLETE search_path value, not a prefix: a shorter
+  // expected value must not accept a broader pin, or an unintended extra schema
+  // slips into a SECURITY DEFINER function's path. `\s*,\s*` between schemas
+  // tolerates whitespace either side of the comma (Postgres allows it), and the
+  // trailing `(?!\s*,)(?!\w)` ends the match at the last schema — rejecting a
+  // continued list (`public , pg_temp`) and a longer schema name (`publicx`).
   const pin = searchPath
     .toLowerCase()
     .split(",")
     .map((part) => escapeRegExp(part.trim()))
-    .join(",\\s*");
+    .join("\\s*,\\s*");
   expect(body, `${fnName} should pin search_path to ${searchPath}`).toMatch(
-    new RegExp(`set search_path = ${pin}(?![\\w,])`)
+    new RegExp(`set search_path = ${pin}(?!\\s*,)(?!\\w)`)
   );
 }
 
