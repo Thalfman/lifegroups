@@ -39,18 +39,20 @@ export default async function LeaderPage({
   const params = (await searchParams) ?? {};
   const savedNoticeVisible = params.checkin === "saved";
   const client = await createSupabaseServerClient();
-  const { data } = await getLeaderDashboardData(client, {
-    assignedGroupIds: session.assignedGroupIds,
-  });
-
+  // The dashboard read and the follow-ups read are independent (the
+  // follow-ups load only needs the profile id + assigned group ids, both
+  // already in hand), so they run in one parallel batch instead of two
+  // sequential round trips.
+  //
   // Phase 5C.0: load follow-ups visible to this leader. We deliberately
   // call fetchFollowUpsForLeader with the leader-safe column list so
   // admin_private_note never reaches the page, even via SSR.
-  const leaderFollowUps = await loadLeaderFollowUps(
-    client,
-    session.profile.id,
-    session.assignedGroupIds,
-  );
+  const [{ data }, leaderFollowUps] = await Promise.all([
+    getLeaderDashboardData(client, {
+      assignedGroupIds: session.assignedGroupIds,
+    }),
+    loadLeaderFollowUps(client, session.profile.id, session.assignedGroupIds),
+  ]);
 
   const groupCount = data.groups.length;
   const lede =
@@ -112,7 +114,9 @@ export default async function LeaderPage({
             >
               Saved
             </span>
-            <span>Your check-in is in the record. Thanks for keeping it fresh.</span>
+            <span>
+              Your check-in is in the record. Thanks for keeping it fresh.
+            </span>
           </div>
         ) : null}
 
@@ -124,7 +128,10 @@ export default async function LeaderPage({
         ) : (
           <div style={{ display: "grid", gap: 18 }}>
             {data.groups.map((dashboard) => (
-              <LeaderGroupCard key={dashboard.group.groupId} dashboard={dashboard} />
+              <LeaderGroupCard
+                key={dashboard.group.groupId}
+                dashboard={dashboard}
+              />
             ))}
           </div>
         )}
@@ -140,7 +147,7 @@ export default async function LeaderPage({
 async function loadLeaderFollowUps(
   client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   profileId: string,
-  assignedGroupIds: readonly string[],
+  assignedGroupIds: readonly string[]
 ): Promise<LeaderFollowUpItem[]> {
   if (!client) return [];
   const followUpsResult = await fetchFollowUpsForLeader(client, {
@@ -155,15 +162,15 @@ async function loadLeaderFollowUps(
     new Set(
       rows
         .map((r) => r.related_group_id)
-        .filter((id): id is string => Boolean(id)),
-    ),
+        .filter((id): id is string => Boolean(id))
+    )
   );
   const guestIds = Array.from(
     new Set(
       rows
         .map((r) => r.related_guest_id)
-        .filter((id): id is string => Boolean(id)),
-    ),
+        .filter((id): id is string => Boolean(id))
+    )
   );
 
   const [groupsResult, guestNamesResult] = await Promise.all([
@@ -178,7 +185,7 @@ async function loadLeaderFollowUps(
         }),
   ]);
   const groupsById = new Map(
-    (groupsResult.data ?? []).map((g) => [g.id, g.name] as const),
+    (groupsResult.data ?? []).map((g) => [g.id, g.name] as const)
   );
   const guestsById = guestNamesResult.data ?? new Map<string, string>();
 
@@ -191,11 +198,11 @@ async function loadLeaderFollowUps(
     dueDate: row.due_date,
     relatedGroupId: row.related_group_id,
     relatedGroupName: row.related_group_id
-      ? groupsById.get(row.related_group_id) ?? null
+      ? (groupsById.get(row.related_group_id) ?? null)
       : null,
     relatedGuestId: row.related_guest_id,
     relatedGuestName: row.related_guest_id
-      ? guestsById.get(row.related_guest_id) ?? null
+      ? (guestsById.get(row.related_guest_id) ?? null)
       : null,
     leaderVisibleNote: row.leader_visible_note,
   }));
