@@ -2,7 +2,7 @@ import { StatusCard } from "@/components/dashboard/cards";
 import { P, fontBody } from "@/lib/pastoral";
 import type { GuestPipelineStage } from "@/types/enums";
 import type { PipelineStageCount } from "@/lib/dashboard/types";
-import { MiniBarRow, OpenLink } from "./overview-primitives";
+import { FrozenStatusCard, MiniBarRow, OpenLink } from "./overview-primitives";
 
 // Tone the funnel so the destination stages read as "good" and the parked
 // stage reads muted; everything in-flight is terra.
@@ -20,13 +20,25 @@ function stageTone(stage: GuestPipelineStage): string {
 // `total` is the active-pipeline headline (excludes the terminal placed /
 // not_now stages); the bars are scaled against the sum of ALL rendered stages
 // so terminal stages aren't divided by a denominator that omits them.
+//
+// `live` reflects the `guests` frozen-surface flag (ADR 0002 / 0009). The guest
+// pipeline is frozen by default, so unless it's been re-enabled-and-verified
+// this card must NOT present Guests as an active workflow: it drops the Open
+// link and the live funnel and instead reads as deliberately deferred (#256),
+// signalling the freeze *before* the user navigates rather than after.
 export function GuestPipelineFunnelCard({
   breakdown,
   total,
+  live,
 }: {
   breakdown: PipelineStageCount[];
   total: number;
+  live: boolean;
 }) {
+  if (!live) {
+    return <FrozenStatusCard eyebrow="Guests" title="Pipeline funnel" />;
+  }
+
   const barTotal = breakdown.reduce((sum, s) => sum + s.count, 0);
   return (
     <StatusCard

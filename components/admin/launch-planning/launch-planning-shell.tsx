@@ -53,10 +53,10 @@ export function LaunchPlanningShell({
   scenarios: ReactNode;
   groups: ReactNode;
 }) {
-  // No tab is open on first load, so the glance hero (the at-a-glance answer +
-  // the one primary action) is all that shows — the rest is opened on demand
-  // (#225, AC: "first load shows only the at-a-glance answer and one action").
-  const [active, setActive] = useState<TabKey | null>(null);
+  // Overview is open on first load: the glance hero sits above, and the Overview
+  // panel's capacity breakdown shows by default — no "pick a section" dead end
+  // (#256, AC: "loads with the Overview tab selected and its content visible").
+  const [active, setActive] = useState<TabKey>("overview");
   const [planning, setPlanning] = useState(false);
 
   const panels: Record<TabKey, ReactNode> = {
@@ -166,20 +166,6 @@ export function LaunchPlanningShell({
           </button>
         ))}
       </div>
-
-      {active === null ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-          }}
-        >
-          Pick a section above for the full capacity breakdown, forecast inputs,
-          scenarios, and groups.
-        </p>
-      ) : null}
 
       {TABS.map((tab) => (
         <div

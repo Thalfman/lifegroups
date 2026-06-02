@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
+import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,14 @@ export default async function AdminPage({
   const grain = resolveOverviewGrain(params.period);
 
   const client = await createSupabaseServerClient();
-  const { data } = await getAdminDashboardData(client, { grain });
+  // The guest pipeline is frozen by default (ADR 0002 / 0009). Resolve the flag
+  // alongside the dashboard read — not after it — so the dashboard never
+  // presents Guests as an active workflow unless it has been re-enabled-and-
+  // verified (#256), without adding a serial round trip to this hot page.
+  const [{ data }, guestsLive] = await Promise.all([
+    getAdminDashboardData(client, { grain }),
+    isFrozenSurfaceLive("guests"),
+  ]);
 
   return (
     <>
@@ -30,7 +38,7 @@ export default async function AdminPage({
         italic="overview"
         lede="The state of your life groups at a glance — engagement, capacity, leader care, and what needs your attention."
       />
-      <DashboardClient data={data} />
+      <DashboardClient data={data} guestsLive={guestsLive} />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   BUILT_IN_APP_CONFIG,
   decodeAppConfig,
+  decodeFeatureFlags,
 } from "@/lib/admin/app-config-decode";
 
 describe("decodeAppConfig", () => {
@@ -66,5 +67,47 @@ describe("decodeAppConfig", () => {
       featureFlags: {},
       editableCopy: {},
     });
+  });
+});
+
+// decodeFeatureFlags decodes the bare feature_flags map (what the admin-readable
+// admin_read_feature_flags RPC returns, #256) the same way decodeAppConfig
+// decodes the sub-object out of the full row — one decoder, no drift.
+describe("decodeFeatureFlags", () => {
+  it("returns an empty map for non-object input", () => {
+    expect(decodeFeatureFlags(null)).toEqual({});
+    expect(decodeFeatureFlags(undefined)).toEqual({});
+    expect(decodeFeatureFlags("nope")).toEqual({});
+    expect(decodeFeatureFlags([1, 2, 3])).toEqual({});
+  });
+
+  it("reads enabled/verified as booleans, defaulting missing to false", () => {
+    expect(
+      decodeFeatureFlags({
+        guests: { enabled: true, verified: true },
+        check_ins: { enabled: true },
+        leader_surface: {},
+      })
+    ).toEqual({
+      guests: { enabled: true, verified: true },
+      check_ins: { enabled: true, verified: false },
+      leader_surface: { enabled: false, verified: false },
+    });
+  });
+
+  it("skips malformed entries so a bad stored value can't crash resolution", () => {
+    expect(
+      decodeFeatureFlags({
+        guests: { enabled: true, verified: true },
+        broken: "not-an-object",
+      })
+    ).toEqual({ guests: { enabled: true, verified: true } });
+  });
+
+  it("agrees with decodeAppConfig's featureFlags decode for the same data", () => {
+    const flags = { guests: { enabled: true, verified: false } };
+    expect(decodeFeatureFlags(flags)).toEqual(
+      decodeAppConfig({ setting_value: { feature_flags: flags } }).featureFlags
+    );
   });
 });

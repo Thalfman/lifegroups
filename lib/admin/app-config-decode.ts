@@ -51,14 +51,13 @@ const CONSOLE_TRACER_NOTE_KEY = "console_tracer_note";
 const FEATURE_FLAGS_KEY = "feature_flags";
 const EDITABLE_COPY_KEY = "editable_copy";
 
-// Decode the feature_flags sub-object into FeatureFlagsConfig. Each entry must be
-// an object; `enabled` and `verified` are read as booleans (missing -> false).
+// Decode a raw feature_flags map into FeatureFlagsConfig. Each entry must be an
+// object; `enabled` and `verified` are read as booleans (missing -> false).
 // Malformed entries are skipped so a bad stored value can't crash resolution.
-function readFeatureFlags(
-  source: Record<string, unknown> | null
-): FeatureFlagsConfig {
-  if (!source) return {};
-  const raw = source[FEATURE_FLAGS_KEY];
+// Exported so the admin-readable flag RPC path (which returns just this
+// sub-object, not the whole platform_config row) decodes it the same way the
+// full-config decode does — one decoder, no drift.
+export function decodeFeatureFlags(raw: unknown): FeatureFlagsConfig {
   if (!isRecord(raw)) return {};
   const out: FeatureFlagsConfig = {};
   for (const [key, value] of Object.entries(raw)) {
@@ -69,6 +68,14 @@ function readFeatureFlags(
     };
   }
   return out;
+}
+
+// Decode the feature_flags sub-object out of the parent platform_config value.
+function readFeatureFlags(
+  source: Record<string, unknown> | null
+): FeatureFlagsConfig {
+  if (!source) return {};
+  return decodeFeatureFlags(source[FEATURE_FLAGS_KEY]);
 }
 
 // Decode the editable_copy sub-object into EditableCopyConfig: a flat map of
