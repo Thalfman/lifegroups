@@ -1,7 +1,14 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import { beforeAll, describe, expect, it } from "vitest";
+
+import {
+  assertAuditContentFree,
+  assertExecuteLockdown,
+  assertPairedAuditInsert,
+  assertSecurityDefiner,
+  functionBody,
+  loadMigration,
+  type MigrationSql,
+} from "./migration-safety";
 
 // Static boundary assertions over the group-health ratings migration (#128),
 // which adds the admin-entered spiritual-growth + relayed group-question write
@@ -10,86 +17,74 @@ import { beforeAll, describe, expect, it } from "vitest";
 // these assertions are the CI-runnable guard for the security-critical
 // invariants: write only via a SECURITY DEFINER RPC guarded on auth_is_admin(),
 // a paired audit_events row in the same function body, and the leader-reported
-// provenance flag forced server-side. Mirrors group-health-migration.test.ts.
+// provenance flag forced server-side. The security-critical invariants compose
+// the shared migration-safety vocabulary (see ./migration-safety.ts).
 
-const MIGRATION_PATH = fileURLToPath(
-  new URL(
-    "../../../supabase/migrations/20260530020000_phase_gh2_group_health_ratings.sql",
-    import.meta.url,
-  ),
-);
-
-let sql = "";
-const lower = () => sql.toLowerCase();
+let sql: MigrationSql;
 
 beforeAll(() => {
-  sql = readFileSync(MIGRATION_PATH, "utf8");
+  sql = loadMigration("20260530020000_phase_gh2_group_health_ratings.sql");
 });
 
 describe("group-health ratings migration — audited SECURITY DEFINER write path", () => {
   it("defines the ratings RPC as SECURITY DEFINER with a pinned search_path", () => {
-    expect(lower()).toContain(
-      "create or replace function public.admin_set_group_health_ratings",
-    );
-    const fn = lower().slice(lower().indexOf("admin_set_group_health_ratings"));
-    expect(fn).toContain("security definer");
-    expect(fn).toContain("set search_path = public, pg_temp");
+    assertSecurityDefiner(sql, "admin_set_group_health_ratings");
   });
 
   it("guards the write on auth_is_admin() and resolves the actor server-side", () => {
-    const fn = lower().slice(lower().indexOf("admin_set_group_health_ratings"));
-    expect(fn).toContain("if not public.auth_is_admin() then");
-    expect(fn).toContain("v_actor := public.auth_profile_id();");
+    const body = functionBody(sql, "admin_set_group_health_ratings");
+    expect(body).toContain("if not public.auth_is_admin() then");
+    expect(body).toContain("v_actor := public.auth_profile_id();");
   });
 
   it("rejects out-of-range 1–5 ratings", () => {
-    const fn = lower().slice(lower().indexOf("admin_set_group_health_ratings"));
-    expect(fn).toContain("p_spiritual_growth_score");
-    expect(fn).toContain("p_group_question_score");
-    expect(fn).toContain("'invalid_input'");
+    const body = functionBody(sql, "admin_set_group_health_ratings");
+    expect(body).toContain("p_spiritual_growth_score");
+    expect(body).toContain("p_group_question_score");
+    expect(body).toContain("'invalid_input'");
   });
 
   it("forces the leader-reported provenance flag from the score's presence", () => {
     // The group question is always leader-reported, admin-entered; the flag is
     // derived server-side (true exactly when a score is present), never trusted
     // from the caller, so it can't be mistaken for the admin's own assessment.
-    const fn = lower().slice(lower().indexOf("admin_set_group_health_ratings"));
-    expect(fn).toContain(
-      "group_question_leader_reported = (p_group_question_score is not null)",
+    const body = functionBody(sql, "admin_set_group_health_ratings");
+    expect(body).toContain(
+      "group_question_leader_reported = (p_group_question_score is not null)"
     );
   });
 
   it("writes a paired audit_events row with a before/after snapshot", () => {
-    const fn = lower().slice(lower().indexOf("admin_set_group_health_ratings"));
-    expect(fn).toContain("insert into public.audit_events");
-    expect(fn).toContain("'admin.set_group_health_ratings'");
-    expect(fn).toContain("'group_health_assessments'");
-    expect(fn).toContain("'before'");
-    expect(fn).toContain("'after'");
+    assertPairedAuditInsert(
+      sql,
+      "admin_set_group_health_ratings",
+      "'admin.set_group_health_ratings'"
+    );
+    const body = functionBody(sql, "admin_set_group_health_ratings");
+    expect(body).toContain("'group_health_assessments'");
+    expect(body).toContain("'before'");
+    expect(body).toContain("'after'");
   });
 
   it("includes the overwritten attendance snapshot in the audit trail", () => {
     // The RPC also refreshes attendance from the live recompute, so the audit
     // must carry attendance evidence or the change has no before/after record.
-    const audit = lower().slice(lower().indexOf("insert into public.audit_events"));
-    expect(audit).toContain("'attendance_pct'");
-    expect(audit).toContain("'attendance_weeks_counted'");
+    assertAuditContentFree(sql, {
+      forbidden: [],
+      required: ["'attendance_pct'", "'attendance_weeks_counted'"],
+    });
   });
 
   it("redacts the spiritual-growth note body from audit metadata", () => {
     // Note body stays confined to group_health_assessments; audit logs only a
     // presence flag (has_notes convention), never the pastoral text.
-    const audit = lower().slice(lower().indexOf("insert into public.audit_events"));
-    expect(audit).toContain("'has_spiritual_growth_note'");
-    expect(audit).not.toContain("'spiritual_growth_note',");
+    assertAuditContentFree(sql, {
+      forbidden: ["'spiritual_growth_note',"],
+      required: ["'has_spiritual_growth_note'"],
+    });
   });
 
   it("locks function EXECUTE down to authenticated only", () => {
-    expect(lower()).toContain(
-      "revoke all on function public.admin_set_group_health_ratings",
-    );
-    expect(lower()).toContain(
-      "grant execute on function public.admin_set_group_health_ratings",
-    );
+    assertExecuteLockdown(sql, "admin_set_group_health_ratings");
   });
 });

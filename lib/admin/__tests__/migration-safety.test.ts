@@ -129,6 +129,61 @@ describe("migration-safety — assertSecurityDefiner", () => {
     );
     expect(() => assertSecurityDefiner(sql, "x")).toThrow();
   });
+
+  it("accepts a non-default search_path pin via options (e.g. public only)", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public as $$ begin end; $$;"
+    );
+    // The default pin (public, pg_temp) is not satisfied...
+    expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+    // ...but the explicit single-schema pin is.
+    expect(() =>
+      assertSecurityDefiner(sql, "x", { searchPath: "public" })
+    ).not.toThrow();
+  });
+
+  it("does not let a `public` expectation prefix-match a broader pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public, pg_temp as $$ begin end; $$;"
+    );
+    // A function pinning the broader `public, pg_temp` must NOT satisfy a
+    // `public`-only expectation, or an unintended extra schema slips through.
+    expect(() =>
+      assertSecurityDefiner(sql, "x", { searchPath: "public" })
+    ).toThrow();
+  });
+
+  it("rejects an extra schema even when whitespace pads the comma", () => {
+    // Postgres allows whitespace around comma-separated search_path entries, so
+    // `public , pg_temp` is still a broader pin than `public`.
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public , pg_temp as $$ begin end; $$;"
+    );
+    expect(() =>
+      assertSecurityDefiner(sql, "x", { searchPath: "public" })
+    ).toThrow();
+    // The default expectation tolerates the same padding (it IS public + pg_temp).
+    expect(() => assertSecurityDefiner(sql, "x")).not.toThrow();
+  });
+
+  it("rejects a third schema appended to the default pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public, pg_temp, attacker as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+  });
+
+  it("tolerates a missing space after the comma in the search_path pin", () => {
+    const sql = migrationFromSql(
+      "create or replace function public.x() returns void language plpgsql\n" +
+        "security definer set search_path = public,pg_temp as $$ begin end; $$;"
+    );
+    expect(() => assertSecurityDefiner(sql, "x")).not.toThrow();
+  });
 });
 
 describe("migration-safety — assertRoleGate", () => {
@@ -197,6 +252,22 @@ grant execute on function public.f(
     expect(() => assertExecuteLockdown(sql, "f")).toThrow(); // no revoke from anon
   });
 
+  it("accepts a combined revoke (from public, anon, authenticated)", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f(\n  a uuid\n) from public, anon, authenticated;\n" +
+        "grant execute on function public.f(a uuid) to authenticated;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).not.toThrow();
+  });
+
+  it("fails when a combined revoke omits a role (from public, anon only)", () => {
+    const sql = migrationFromSql(
+      "revoke all on function public.f() from public, anon;\n" +
+        "grant execute on function public.f() to authenticated;"
+    );
+    expect(() => assertExecuteLockdown(sql, "f")).toThrow(); // authenticated never revoked
+  });
+
   it("fails when EXECUTE is granted to a broader role than authenticated", () => {
     const sql = migrationFromSql(
       "revoke all on function public.f() from public;\n" +
@@ -257,6 +328,29 @@ grant execute on function public.f(
         "grant execute on function public.f() to service_role;"
     );
     expect(() => assertExecuteLockdown(sql, "f")).toThrow();
+  });
+
+  it("pins a specific overload when an argList is given", () => {
+    // The `(jsonb)` overload is locked down; a different `()` overload is not.
+    const sql = migrationFromSql(
+      "revoke all on function public.f(jsonb) from public;\n" +
+        "revoke all on function public.f(jsonb) from anon;\n" +
+        "revoke all on function public.f(jsonb) from authenticated;\n" +
+        "grant execute on function public.f(jsonb) to authenticated;\n" +
+        "grant execute on function public.f() to public;"
+    );
+    // Pinned to (jsonb): only the jsonb statements are considered → passes.
+    expect(() => assertExecuteLockdown(sql, "f", "jsonb")).not.toThrow();
+    // Pinned to the bare () overload: it is granted to public, not locked down.
+    expect(() => assertExecuteLockdown(sql, "f", "")).toThrow();
+    // Whitespace inside the parens is tolerated on the pinned signature.
+    const padded = migrationFromSql(
+      "revoke all on function public.f( jsonb ) from public;\n" +
+        "revoke all on function public.f( jsonb ) from anon;\n" +
+        "revoke all on function public.f( jsonb ) from authenticated;\n" +
+        "grant execute on function public.f( jsonb ) to authenticated;"
+    );
+    expect(() => assertExecuteLockdown(padded, "f", "jsonb")).not.toThrow();
   });
 });
 
