@@ -17,6 +17,8 @@ import {
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
 } from "@/lib/admin/rpc";
+import { revalidateTag } from "next/cache";
+import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
 
 // Settings writes fan out to every surface that reads thresholds.
 const SETTINGS_REVALIDATE_PATHS = [
@@ -141,7 +143,15 @@ export async function adminUpdateMetricDefaults(
   prev: ActionResult<{ id: string }> | undefined,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(UPDATE_METRIC_DEFAULTS_SPEC, prev, input);
+  const result = await runAdminWriteAction(
+    UPDATE_METRIC_DEFAULTS_SPEC,
+    prev,
+    input
+  );
+  // metric_defaults is cached cross-request (lib/supabase/cached-config.ts);
+  // bust the tag so the saved values are reflected on the next read.
+  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  return result;
 }
 
 // ----- adminUpsertGroupMetricSettings -------------------------------------
@@ -199,5 +209,12 @@ export async function adminResetMetricDefaults(
   prev: ActionResult<{ id: string }> | undefined,
   _input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(RESET_METRIC_DEFAULTS_SPEC, prev, undefined);
+  const result = await runAdminWriteAction(
+    RESET_METRIC_DEFAULTS_SPEC,
+    prev,
+    undefined
+  );
+  // Resetting rewrites metric_defaults; bust the cache tag (see above).
+  if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
+  return result;
 }

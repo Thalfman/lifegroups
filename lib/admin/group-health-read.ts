@@ -2,7 +2,10 @@ import "server-only";
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { GroupHealthLetter } from "@/types/enums";
-import type { AttendanceWeekTally, GroupHealthRubricConfig } from "@/lib/admin/group-health";
+import type {
+  AttendanceWeekTally,
+  GroupHealthRubricConfig,
+} from "@/lib/admin/group-health";
 import {
   attendanceConsistency,
   computeGrade,
@@ -16,9 +19,9 @@ import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupHealthRubricSetting,
-  fetchMetricDefaults,
   type ReadResult,
 } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 
 // Read side for the group-health tracer (#127). Admin-only data; these run
 // behind the admin layout guard and the table's admin-only RLS. Reads go
@@ -54,18 +57,29 @@ export function currentPeriodMonthIso(now: Date = new Date()): string {
 // rather than silently falling back, so a transient error can't quietly grade on
 // the wrong rubric.
 export async function fetchGroupHealthRubric(
-  client: AppSupabaseClient,
+  client: AppSupabaseClient
 ): Promise<ReadResult<GroupHealthRubricConfig>> {
   const rubricRes = await fetchGroupHealthRubricSetting(client);
-  if (rubricRes.error) return { data: null, error: wrapError("fetchGroupHealthRubric", rubricRes.error) };
+  if (rubricRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubric", rubricRes.error),
+    };
 
-  const defaultsRes = await fetchMetricDefaults(client);
-  if (defaultsRes.error) return { data: null, error: wrapError("fetchGroupHealthRubric", defaultsRes.error) };
+  const defaultsRes = await fetchMetricDefaultsCached(client);
+  if (defaultsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthRubric", defaultsRes.error),
+    };
 
   const tuned = decodeGroupHealthRubric(rubricRes.data?.setting_value ?? null);
   const metricDefaults = decodeMetricDefaults(defaultsRes.data);
   return {
-    data: { ...tuned, healthy_attendance_pct: metricDefaults.default_healthy_attendance_pct },
+    data: {
+      ...tuned,
+      healthy_attendance_pct: metricDefaults.default_healthy_attendance_pct,
+    },
     error: null,
   };
 }
@@ -77,14 +91,17 @@ export async function fetchGroupHealthRubric(
 export async function fetchGroupAttendanceWeeks(
   client: AppSupabaseClient,
   groupId: string,
-  limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
+  limitWeeks: number = BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
 ): Promise<ReadResult<AttendanceWeekTally[]>> {
   const sessionsRes = await fetchAttendanceSessions(client, {
     groupId,
     limit: limitWeeks,
   });
   if (sessionsRes.error) {
-    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsRes.error) };
+    return {
+      data: null,
+      error: wrapError("fetchGroupAttendanceWeeks/sessions", sessionsRes.error),
+    };
   }
   const sessions = sessionsRes.data;
   if (sessions.length === 0) return { data: [], error: null };
@@ -99,9 +116,14 @@ export async function fetchGroupAttendanceWeeks(
     });
   }
 
-  const recordsRes = await fetchAttendanceRecordsForSessions(client, [...byId.keys()]);
+  const recordsRes = await fetchAttendanceRecordsForSessions(client, [
+    ...byId.keys(),
+  ]);
   if (recordsRes.error) {
-    return { data: null, error: wrapError("fetchGroupAttendanceWeeks/records", recordsRes.error) };
+    return {
+      data: null,
+      error: wrapError("fetchGroupAttendanceWeeks/records", recordsRes.error),
+    };
   }
 
   for (const record of recordsRes.data) {
@@ -161,7 +183,7 @@ export type GroupHealthRatings = {
 export async function fetchGroupHealthRatings(
   client: AppSupabaseClient,
   groupId: string,
-  periodMonthIso: string = currentPeriodMonthIso(),
+  periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthRatings>> {
   const { data, error } = await (client as AppSupabaseClient)
     .from("group_health_assessments" as never)
@@ -183,7 +205,6 @@ export async function fetchGroupHealthRatings(
   };
 }
 
-
 // Overview for the admin surface: every active group with its current-month
 // grade, recomputed live from the configured rubric. On a per-group attendance
 // read error we fall back to the last persisted assessment and flag it stale.
@@ -193,7 +214,7 @@ export async function fetchGroupHealthRatings(
 // callUuidRpc uses for admin RPCs.
 export async function listGroupHealthOverview(
   client: AppSupabaseClient,
-  periodMonthIso: string = currentPeriodMonthIso(),
+  periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupHealthOverviewRow[]>> {
   const groupsRes = await fetchAllGroups(client);
   if (groupsRes.error) return { data: null, error: groupsRes.error };
@@ -205,14 +226,19 @@ export async function listGroupHealthOverview(
   if (rubricRes.error) return { data: null, error: rubricRes.error };
   const rubric = rubricRes.data;
 
-  const { data: assessments, error: assessmentsError } = await (client as AppSupabaseClient)
+  const { data: assessments, error: assessmentsError } = await (
+    client as AppSupabaseClient
+  )
     .from("group_health_assessments" as never)
     .select(ASSESSMENT_COLUMNS as never)
     .eq("period_month" as never, periodMonthIso as never)
     .returns<PersistedAssessment[]>();
 
   if (assessmentsError) {
-    return { data: null, error: wrapError("listGroupHealthOverview/assessments", assessmentsError) };
+    return {
+      data: null,
+      error: wrapError("listGroupHealthOverview/assessments", assessmentsError),
+    };
   }
 
   const persisted = new Map<string, PersistedAssessment>();
@@ -225,8 +251,12 @@ export async function listGroupHealthOverview(
   // a time — the overview otherwise blocks on 2*N sequential queries.
   const weeksByGroup = await Promise.all(
     groups.map((group) =>
-      fetchGroupAttendanceWeeks(client, group.id, rubric.attendance_window_weeks),
-    ),
+      fetchGroupAttendanceWeeks(
+        client,
+        group.id,
+        rubric.attendance_window_weeks
+      )
+    )
   );
 
   const rows: GroupHealthOverviewRow[] = [];
@@ -246,7 +276,8 @@ export async function listGroupHealthOverview(
         spiritual_growth_score: prior?.spiritual_growth_score ?? null,
         spiritual_growth_note: prior?.spiritual_growth_note ?? null,
         group_question_score: prior?.group_question_score ?? null,
-        group_question_leader_reported: prior?.group_question_leader_reported ?? false,
+        group_question_leader_reported:
+          prior?.group_question_leader_reported ?? false,
         computed_letter: prior?.computed_letter ?? null,
         stale: prior !== undefined,
         unassessed: prior === undefined,
@@ -262,8 +293,11 @@ export async function listGroupHealthOverview(
       group_question_score: prior?.group_question_score ?? null,
     };
     const grade = computeGrade(
-      dimensionScoresFromInputs({ attendance_pct: attendance.rolling_pct, ...ratings }),
-      rubric,
+      dimensionScoresFromInputs({
+        attendance_pct: attendance.rolling_pct,
+        ...ratings,
+      }),
+      rubric
     );
     rows.push({
       group_id: group.id,
@@ -273,7 +307,8 @@ export async function listGroupHealthOverview(
       spiritual_growth_score: prior?.spiritual_growth_score ?? null,
       spiritual_growth_note: prior?.spiritual_growth_note ?? null,
       group_question_score: prior?.group_question_score ?? null,
-      group_question_leader_reported: prior?.group_question_leader_reported ?? false,
+      group_question_leader_reported:
+        prior?.group_question_leader_reported ?? false,
       computed_letter: grade.letter,
       unassessed:
         attendance.rolling_pct === null &&

@@ -25,6 +25,7 @@ import {
   fetchShepherdCareDirectoryForAdmin,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   AdminDashboardData,
@@ -437,7 +438,7 @@ export function supabaseAdminDashboardReads(
   client: AppSupabaseClient
 ): AdminDashboardReads {
   return {
-    fetchMetricDefaults: (...a) => fetchMetricDefaults(client, ...a),
+    fetchMetricDefaults: (...a) => fetchMetricDefaultsCached(client, ...a),
     fetchAllGroups: (...a) => fetchAllGroups(client, ...a),
     fetchActiveGroupCount: (...a) => fetchActiveGroupCount(client, ...a),
     fetchGuests: (...a) => fetchGuests(client, ...a),

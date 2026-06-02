@@ -14,8 +14,8 @@ import {
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
-  fetchMetricDefaults,
 } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { isoWeekStart } from "@/lib/shared/church-time";
 import {
   BUILT_IN_METRIC_DEFAULTS,
@@ -90,7 +90,7 @@ export default async function CheckInPage({
     fetchActiveMemberships(client, { groupId }),
     fetchAttendanceSessions(client, { groupId, meetingWeek }),
     fetchLatestHealthUpdates(client, { groupId }),
-    fetchMetricDefaults(client),
+    fetchMetricDefaultsCached(client),
     fetchGroupCalendarEvents(client, {
       groupId,
       fromDate: meetingWeek,
@@ -124,10 +124,13 @@ export default async function CheckInPage({
     .filter((m) => m.status === "active")
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
-  const existingSession = ((sessionResult.data ?? []) as AttendanceSessionsRow[])[0] ?? null;
+  const existingSession =
+    ((sessionResult.data ?? []) as AttendanceSessionsRow[])[0] ?? null;
   const attendanceMap: Record<string, "present" | "absent" | "excused"> = {};
   if (existingSession) {
-    const recordsResult = await fetchAttendanceRecordsForSessions(client, [existingSession.id]);
+    const recordsResult = await fetchAttendanceRecordsForSessions(client, [
+      existingSession.id,
+    ]);
     if (recordsResult.error) throw recordsResult.error;
     // Filter prefilled attendance to members still on the active roster.
     // Historical attendance_records are intentionally never deleted, so a
@@ -145,7 +148,7 @@ export default async function CheckInPage({
 
   const existingHealth =
     ((healthResult.data ?? []) as GroupHealthUpdatesRow[]).find(
-      (h) => h.update_week === meetingWeek,
+      (h) => h.update_week === meetingWeek
     ) ?? null;
 
   // Phase 5A.5: due-date is computed from the group's meeting day/time +
@@ -175,7 +178,7 @@ export default async function CheckInPage({
       status: e.status,
       archived_at: e.archived_at,
     })),
-    occurrenceDate,
+    occurrenceDate
   );
   const dueResult = computeCheckInDue({
     group: {
@@ -200,17 +203,17 @@ export default async function CheckInPage({
   const prefill: CheckInPrefill = existingSession
     ? {
         status:
-          existingSession.status === "submitted"
-            || existingSession.status === "did_not_meet"
-            || existingSession.status === "planned_pause"
+          existingSession.status === "submitted" ||
+          existingSession.status === "did_not_meet" ||
+          existingSession.status === "planned_pause"
             ? existingSession.status
             : "submitted",
         meetingDate: existingSession.meeting_date,
         leaderNote: existingSession.leader_note ?? "",
         pulse:
-          existingHealth?.pulse === "healthy"
-            || existingHealth?.pulse === "watch"
-            || existingHealth?.pulse === "needs_follow_up"
+          existingHealth?.pulse === "healthy" ||
+          existingHealth?.pulse === "watch" ||
+          existingHealth?.pulse === "needs_follow_up"
             ? existingHealth.pulse
             : "",
         followUpNeeded: existingHealth?.follow_up_needed ?? false,

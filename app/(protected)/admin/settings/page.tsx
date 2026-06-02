@@ -1,13 +1,19 @@
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
-import { SettingsShell, type SettingsShellData } from "@/components/admin/settings-shell";
+import {
+  SettingsShell,
+  type SettingsShellData,
+} from "@/components/admin/settings-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchAllGroupMetricSettings,
   fetchAllGroups,
-  fetchMetricDefaults,
 } from "@/lib/supabase/read-models";
-import { BUILT_IN_METRIC_DEFAULTS, decodeMetricDefaults } from "@/lib/admin/metrics";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  decodeMetricDefaults,
+} from "@/lib/admin/metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +34,7 @@ async function loadData(): Promise<SettingsShellData> {
   if (!client) return EMPTY_DATA;
 
   const [defaultsResult, groupsResult, settingsResult] = await Promise.all([
-    fetchMetricDefaults(client),
+    fetchMetricDefaultsCached(client),
     fetchAllGroups(client),
     fetchAllGroupMetricSettings(client),
   ]);
