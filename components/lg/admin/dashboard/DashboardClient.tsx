@@ -36,7 +36,13 @@ function SectionHeading({ children }: { children: ReactNode }) {
   );
 }
 
-export function DashboardClient({ data }: { data: AdminDashboardData }) {
+export function DashboardClient({
+  data,
+  guestsLive,
+}: {
+  data: AdminDashboardData;
+  guestsLive: boolean;
+}) {
   const setupGapTotal =
     data.setupGaps.counts.noCapacity +
     data.setupGaps.counts.noLeader +
@@ -118,6 +124,7 @@ export function DashboardClient({ data }: { data: AdminDashboardData }) {
           <GuestPipelineFunnelCard
             breakdown={data.guestPipelineBreakdown}
             total={data.guestPipelineCount}
+            live={guestsLive}
           />
           <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
         </div>
