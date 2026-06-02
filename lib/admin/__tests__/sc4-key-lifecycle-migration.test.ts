@@ -4,6 +4,7 @@ import {
   assertAuditContentFree,
   assertExcludesSuperAdmin,
   assertExecuteLockdown,
+  assertRoleGate,
   assertSecurityDefiner,
   functionBody,
   loadMigration,
@@ -33,7 +34,7 @@ describe("SC.4 key-lifecycle — RPCs are SECURITY DEFINER and ministry_admin-on
   it("defines all three lifecycle RPCs with a pinned search_path and the role gate", () => {
     for (const fn of FNS) {
       assertSecurityDefiner(sql, fn);
-      expect(functionBody(sql, fn)).toContain("auth_role() = 'ministry_admin'");
+      assertRoleGate(sql, fn, "ministry_admin");
     }
   });
 

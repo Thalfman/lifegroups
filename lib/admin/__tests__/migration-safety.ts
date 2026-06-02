@@ -14,6 +14,12 @@ import { expect } from "vitest";
 //
 // This is deliberately substring-based: real RLS enforcement lives in an
 // env-gated DB-backed suite, and AST parsing is a separate, larger question.
+//
+// Known limits of the substring approach (none hit by current migrations, but
+// worth knowing before reusing): function bodies are sliced on a tight `$$;`
+// closer; EXECUTE-lockdown signatures must be paren-free (no typmods like
+// `numeric(10,2)`); and the CREATE is assumed to precede any GRANT/REVOKE of
+// the same function name.
 
 const MIGRATIONS_DIR = fileURLToPath(
   new URL("../../../supabase/migrations", import.meta.url)
@@ -45,12 +51,14 @@ export function loadMigration(fileName: string): MigrationSql {
 }
 
 /**
- * The lowercased body of `create [or replace] function public.<name>(...)`,
- * sliced from the function header to the `$$;` that closes it. Fails the test
- * if the function is not defined.
+ * The lowercased body of the function `public.<name>`, sliced from the first
+ * `function public.<name>(` occurrence (its definition — the CREATE precedes
+ * any GRANT/REVOKE) to the `$$;` that closes it. Fails the test if the function
+ * is not defined. The trailing `(` anchors the match so a name that is a prefix
+ * of another function (e.g. `foo` vs `foo_v2`) does not collide.
  */
 export function functionBody(sql: MigrationSql, fnName: string): string {
-  const start = sql.lower.indexOf(`function public.${fnName}`);
+  const start = sql.lower.indexOf(`function public.${fnName}(`);
   expect(
     start,
     `${fnName} should be defined in ${sql.fileName}`
@@ -103,9 +111,28 @@ export function assertSecurityDefiner(sql: MigrationSql, fnName: string): void {
 }
 
 /**
+ * A function gates execution on a specific role via `auth_role() = '<role>'`
+ * inside its body — e.g. the ministry_admin-only RPCs. Negative gates such as
+ * `auth_role() <> 'super_admin'` are a different invariant (require, don't
+ * exclude) and stay asserted inline in the suite that needs them.
+ */
+export function assertRoleGate(
+  sql: MigrationSql,
+  fnName: string,
+  role: string
+): void {
+  expect(
+    functionBody(sql, fnName),
+    `${fnName} should gate on auth_role() = '${role}'`
+  ).toContain(`auth_role() = '${role.toLowerCase()}'`);
+}
+
+/**
  * A function writes a paired `audit_events` row inside its own body — the same
  * transaction as the mutation. Pass `action` to also assert the recorded action
- * label (e.g. `'super_admin.set_profile_status'`).
+ * label as it appears in the SQL: pass the quoted literal
+ * (`"'super_admin.set_profile_status'"`) so the surrounding quotes pin it to the
+ * recorded value rather than matching an arbitrary substring.
  */
 export function assertPairedAuditInsert(
   sql: MigrationSql,

@@ -4,6 +4,7 @@ import {
   assertAuditContentFree,
   assertExcludesSuperAdmin,
   assertExecuteLockdown,
+  assertRoleGate,
   assertSecurityDefiner,
   functionBody,
   loadMigration,
@@ -110,7 +111,7 @@ describe("SC.4 migration — write RPCs are SECURITY DEFINER and actor-scoped", 
   it("defines the enroll and upsert RPCs as SECURITY DEFINER with a pinned search_path", () => {
     for (const fn of WRITE_RPCS) {
       assertSecurityDefiner(sql, fn);
-      expect(functionBody(sql, fn)).toContain("auth_role() = 'ministry_admin'");
+      assertRoleGate(sql, fn, "ministry_admin");
     }
   });
 

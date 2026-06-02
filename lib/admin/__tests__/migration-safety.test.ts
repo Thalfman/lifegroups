@@ -5,6 +5,7 @@ import {
   assertExcludesSuperAdmin,
   assertExecuteLockdown,
   assertPairedAuditInsert,
+  assertRoleGate,
   assertSecurityDefiner,
   auditEventInserts,
   functionBody,
@@ -83,6 +84,18 @@ describe("migration-safety — functionBody", () => {
   it("fails when the function is not defined", () => {
     expect(() => functionBody(safe, "admin_missing")).toThrow();
   });
+
+  it("anchors on the '(' so a name that is a prefix of another does not collide", () => {
+    const sql = migrationFromSql(`
+create or replace function public.admin_foo_extended(p uuid) returns void
+language plpgsql security definer as $$ begin perform 'extended_marker'; end; $$;
+create or replace function public.admin_foo(p uuid) returns void
+language plpgsql security definer as $$ begin perform 'foo_marker'; end; $$;
+`);
+    const body = functionBody(sql, "admin_foo");
+    expect(body).toContain("foo_marker");
+    expect(body).not.toContain("extended_marker"); // grabbed the right function
+  });
 });
 
 describe("migration-safety — assertSecurityDefiner", () => {
@@ -104,6 +117,20 @@ describe("migration-safety — assertSecurityDefiner", () => {
         "security definer as $$ begin end; $$;"
     );
     expect(() => assertSecurityDefiner(sql, "x")).toThrow();
+  });
+});
+
+describe("migration-safety — assertRoleGate", () => {
+  it("passes when the body gates on auth_role() = '<role>'", () => {
+    expect(() =>
+      assertRoleGate(safe, "admin_do_thing", "ministry_admin")
+    ).not.toThrow();
+  });
+
+  it("fails when the body gates on a different role", () => {
+    expect(() =>
+      assertRoleGate(safe, "admin_do_thing", "super_admin")
+    ).toThrow();
   });
 });
 
