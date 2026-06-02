@@ -151,15 +151,15 @@ export function assertPairedAuditInsert(
 }
 
 const REVOKED_ROLES = ["public", "anon", "authenticated"] as const;
-const FORBIDDEN_GRANTEES = ["public", "anon"] as const;
 
 /**
  * EXECUTE on a function is revoked from public / anon / authenticated and then
  * granted only to authenticated — the "deny by default, allow authenticated"
  * lockdown every admin RPC ships. Whitespace-tolerant, so the suites need not
- * track the migrations' GRANT-block column alignment. Also rejects a stray
- * broader grant (`grant execute ... to public/anon`) that would re-open the
- * RPC even when the authenticated grant is present.
+ * track the migrations' GRANT-block column alignment. Three traps are guarded:
+ * the grant must come AFTER the revoke from authenticated (a grant that
+ * precedes its revoke leaves the RPC un-executable), and no EXECUTE grant may
+ * name public/anon anywhere in its (possibly comma-separated) grantee list.
  */
 export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
   const signature = fnSignature(fnName);
@@ -170,21 +170,35 @@ export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
       )
     );
   }
+
+  const grantRe = new RegExp(
+    `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+authenticated`
+  );
   expect(sql.lower, `${fnName} should grant EXECUTE to authenticated`).toMatch(
+    grantRe
+  );
+
+  // The grant must follow the revoke from authenticated; otherwise the revoke
+  // wins and the RPC ends up un-executable to authenticated users.
+  const revokeAuthRe = new RegExp(
+    `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+authenticated`
+  );
+  expect(
+    sql.lower.search(grantRe),
+    `${fnName} should grant EXECUTE only after revoking it from authenticated`
+  ).toBeGreaterThan(sql.lower.search(revokeAuthRe));
+
+  // No EXECUTE grant may include public/anon in its grantee list — which may be
+  // comma-separated, e.g. `to authenticated, public`. `[^;]*` stays within the
+  // single grant statement (stops at its terminating `;`).
+  expect(
+    sql.lower,
+    `${fnName} must not grant EXECUTE to public or anon`
+  ).not.toMatch(
     new RegExp(
-      `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+authenticated`
+      `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+[^;]*\\b(?:public|anon)\\b`
     )
   );
-  for (const role of FORBIDDEN_GRANTEES) {
-    expect(
-      sql.lower,
-      `${fnName} must not grant EXECUTE to ${role}`
-    ).not.toMatch(
-      new RegExp(
-        `grant\\s+execute\\s+on\\s+function\\s+${signature}\\s+to\\s+${role}`
-      )
-    );
-  }
 }
 
 /**
