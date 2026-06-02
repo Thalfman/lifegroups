@@ -27,6 +27,7 @@ import {
   DEMO_SELECTED_WEEK,
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
+import { group } from "@/lib/dashboard/group-fixtures";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
 
@@ -60,12 +61,25 @@ function occurrence(
 }
 
 const OCCURRENCES: MasterOccurrence[] = [
+  // Anderson is a weekly group: the SAME group recurs on multiple dates in the
+  // month, so its calendar links must be disambiguated by date, not collide.
   occurrence("Anderson", "grp-anderson", "2026-05-19"),
+  occurrence("Anderson", "grp-anderson", "2026-05-26"),
   occurrence("Bryant", "grp-bryant", "2026-05-19"),
   occurrence("Carter", "grp-carter", "2026-05-26"),
 ];
 
+// Two active groups that share a display name (group names are not unique in
+// the data model). Their row actions must stay distinguishable via the
+// meeting-area discriminator.
+const COLLISION_GROUPS = [
+  group({ id: "grp-ya-north", name: "Young Adults", location_area: "North" }),
+  group({ id: "grp-ya-south", name: "Young Adults", location_area: "South" }),
+];
+
 const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
+  // Two follow-ups with the SAME title and status: titles are not unique, so
+  // the due date must keep their action buttons distinguishable.
   {
     id: "care-fu-1",
     care_profile_id: "care-1",
@@ -81,9 +95,9 @@ const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
   {
     id: "care-fu-2",
     care_profile_id: "care-1",
-    title: "Schedule Bryant visit",
+    title: "Call Anderson about apprentice",
     due_date: "2026-05-29",
-    status: "in_progress",
+    status: "open",
     notes: null,
     created_by_profile_id: "admin-1",
     created_at: STAMP,
@@ -92,12 +106,25 @@ const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
   },
 ];
 
+// fu-1 and fu-2 share title + status; the due date disambiguates them.
 const FOLLOW_UPS = [
-  { id: "fu-1", status: "open" as const, title: "Check in with Anderson" },
+  {
+    id: "fu-1",
+    status: "open" as const,
+    title: "Check in with Anderson",
+    due_date: "2026-05-20",
+  },
   {
     id: "fu-2",
+    status: "open" as const,
+    title: "Check in with Anderson",
+    due_date: "2026-05-27",
+  },
+  {
+    id: "fu-3",
     status: "in_progress" as const,
     title: "Confirm Bryant launch",
+    due_date: null,
   },
 ];
 
@@ -137,6 +164,22 @@ export function A11yHarnessClient() {
           latestWeek={DEMO_SELECTED_WEEK}
           metricDefaults={DEMO_METRIC_DEFAULTS}
           groupMetricSettings={DEMO_METRIC_SETTINGS}
+        />
+      </Surface>
+
+      <Surface
+        id="groups-directory-collisions"
+        heading="Groups directory (same-name collision)"
+      >
+        <GroupsDirectory
+          groups={COLLISION_GROUPS}
+          groupLeaders={[]}
+          profiles={[]}
+          memberships={[]}
+          latestSessions={[]}
+          latestWeek={null}
+          metricDefaults={DEMO_METRIC_DEFAULTS}
+          groupMetricSettings={[]}
         />
       </Surface>
 

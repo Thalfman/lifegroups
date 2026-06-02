@@ -146,6 +146,7 @@ export function CareFollowUpList({
               <CareFollowUpStatusControls
                 followUpId={row.id}
                 followUpTitle={row.title}
+                followUpDueDate={row.due_date}
                 status={row.status}
                 shepherdProfileId={shepherdProfileId}
               />

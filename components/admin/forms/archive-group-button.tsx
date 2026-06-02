@@ -35,7 +35,13 @@ export function ArchiveGroupButton({
     <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
       <form action={formAction} onSubmit={confirmArchive}>
         <input type="hidden" name="group_id" value={groupId} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="ghost"
+          size="sm"
+          disabled={pending}
+          aria-label={groupName ? `Archive ${groupName}` : undefined}
+        >
           {pending ? "Archiving…" : "Archive group"}
         </PButton>
       </form>

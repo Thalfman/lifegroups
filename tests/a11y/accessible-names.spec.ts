@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 // Issue 257 — Admin Interaction Model req 4: repeated/interactive controls
 // must carry record or section context in their accessible names, and we
@@ -33,6 +33,27 @@ const FORBIDDEN_GENERIC_NAMES = [
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Accessible names of a set of controls, approximated by aria-label (every
+// control under test sets one) falling back to trimmed text content.
+async function accessibleNames(controls: Locator): Promise<string[]> {
+  return controls.evaluateAll((els) =>
+    els.map((el) =>
+      (el.getAttribute("aria-label") ?? el.textContent ?? "").trim()
+    )
+  );
+}
+
+function expectAllUnique(names: string[], label: string): void {
+  expect(
+    names.length,
+    `${label}: expected at least 2 controls`
+  ).toBeGreaterThan(1);
+  expect(
+    new Set(names).size,
+    `${label} must be unique, got: ${names.join(" | ")}`
+  ).toBe(names.length);
 }
 
 async function gotoHarness(page: Page): Promise<void> {
@@ -71,22 +92,50 @@ test.describe("admin accessible names carry record context", () => {
       surface.getByRole("button", { name: /^Edit .+/ }).first()
     ).toBeVisible();
     await expect(
-      surface.getByRole("link", { name: /^Open .+ calendar$/i }).first()
+      surface.getByRole("link", { name: /^Open .+ calendar/i }).first()
     ).toBeVisible();
   });
 
-  test("master calendar list links name their group", async ({ page }) => {
-    const surface = page.locator('[data-a11y-surface="master-calendar-list"]');
-    const links = surface.getByRole("link", { name: /^Open .+ calendar$/i });
-    await expect(links.first()).toBeVisible();
-    // Sibling occurrences must be distinguishable, not all "Open group calendar".
-    expect(await links.count()).toBeGreaterThan(1);
-    const names = await links.evaluateAll((els) =>
-      els.map((el) => el.getAttribute("aria-label"))
+  // The hard cases the data model allows: a weekly group recurring on several
+  // dates, two groups sharing a name, two follow-ups sharing a title+status.
+  // A bare record name is not enough — each repeated action must stay unique.
+  test("repeated actions stay unique even when records collide", async ({
+    page,
+  }) => {
+    // Two active groups both named "Young Adults" — Edit + Calendar must differ.
+    const collisions = page.locator(
+      '[data-a11y-surface="groups-directory-collisions"]'
     );
-    expect(new Set(names).size, "calendar links must be unique").toBe(
-      names.length
+    expectAllUnique(
+      await accessibleNames(collisions.getByRole("button", { name: /^Edit / })),
+      "same-name group Edit buttons"
     );
+    expectAllUnique(
+      await accessibleNames(
+        collisions.getByRole("link", { name: /^Open .+ calendar/i })
+      ),
+      "same-name group Calendar links"
+    );
+
+    // A weekly group recurs on multiple dates — its calendar links must differ.
+    const calendar = page.locator('[data-a11y-surface="master-calendar-list"]');
+    expectAllUnique(
+      await accessibleNames(
+        calendar.getByRole("link", { name: /^Open .+ calendar/i })
+      ),
+      "weekly group calendar links"
+    );
+
+    // Same-title/status follow-ups — action buttons disambiguated by due date.
+    for (const id of ["follow-up-status", "care-follow-ups"]) {
+      const surface = page.locator(`[data-a11y-surface="${id}"]`);
+      expectAllUnique(
+        await accessibleNames(
+          surface.getByRole("button", { name: /follow-up: /i })
+        ),
+        `${id} action buttons`
+      );
+    }
   });
 
   test("follow-up status actions name their follow-up", async ({ page }) => {

@@ -197,7 +197,7 @@ function OccurrenceCard({
       </button>
       <Link
         href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
-        aria-label={`Open ${occurrence.groupName} calendar`}
+        aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
         style={{
           fontFamily: fontSans,
           fontSize: 11,
