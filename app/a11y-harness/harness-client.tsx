@@ -18,6 +18,10 @@ import { AdminMasterCalendarList } from "@/components/admin/admin-master-calenda
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import {
+  SettingsShell,
+  type SettingsShellData,
+} from "@/components/admin/settings-shell";
+import {
   DEMO_GROUPS,
   DEMO_LEADERS,
   DEMO_MEMBERSHIPS,
@@ -128,6 +132,19 @@ const FOLLOW_UPS = [
   },
 ];
 
+// Settings is req 5 (semantics / grouping / progressive disclosure / labels).
+// Unlike the req-4 surfaces above it has no repeated-action collisions to prove;
+// it's here so the axe + label-association checks run against the real Settings
+// component tree (defaults form, the Advanced-thresholds disclosure, and the
+// per-group overrides disclosure with its active-override rows).
+const SETTINGS_DATA: SettingsShellData = {
+  defaults: DEMO_METRIC_DEFAULTS,
+  defaultsSource: "live",
+  groups: DEMO_GROUPS,
+  groupMetricSettings: DEMO_METRIC_SETTINGS,
+  errors: { defaults: null, groups: null, overrides: null },
+};
+
 function Surface({
   id,
   heading,
@@ -211,6 +228,13 @@ export function A11yHarnessClient() {
           shepherdProfileId="care-1"
           todayIso="2026-05-18"
         />
+      </Surface>
+
+      <Surface
+        id="settings"
+        heading="Settings (defaults, thresholds, overrides)"
+      >
+        <SettingsShell data={SETTINGS_DATA} />
       </Surface>
     </main>
   );
