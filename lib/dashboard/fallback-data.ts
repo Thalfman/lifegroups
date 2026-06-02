@@ -1,7 +1,6 @@
 import type {
   AdminDashboardData,
   AttentionItem,
-  CapacityGroupRow,
   HealthGroupRow,
   LaunchPlanningDashboardSnapshot,
   LeaderDashboardData,
@@ -15,6 +14,7 @@ import type {
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
+import { DEMO_CAPACITY_SUMMARY } from "./demo-seed";
 
 const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   new: 6,
@@ -64,113 +64,6 @@ const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
     status: "scheduled",
     startTime: "19:00",
   },
-];
-
-const cap = (
-  partial: Omit<CapacityGroupRow, "warningPct" | "fullPct">
-): CapacityGroupRow => ({
-  warningPct: 80,
-  fullPct: 100,
-  ...partial,
-});
-
-const fallbackCapacityFull: CapacityGroupRow[] = [
-  cap({
-    groupId: "fb-cap-full-1",
-    name: "South Campus Women",
-    activeMembers: 14,
-    effectiveCapacity: 14,
-    capacitySource: "group",
-    utilizationPct: 100,
-    status: "full",
-    hasManualHealthOverride: false,
-    healthStatus: "capacity_full",
-    excluded: false,
-  }),
-];
-
-const fallbackCapacityWarning: CapacityGroupRow[] = [
-  cap({
-    groupId: "fb-cap-warn-1",
-    name: "Downtown Professionals",
-    activeMembers: 10,
-    effectiveCapacity: 12,
-    capacitySource: "group",
-    utilizationPct: 83.3,
-    status: "warning",
-    hasManualHealthOverride: false,
-    healthStatus: "watch",
-    excluded: false,
-  }),
-  cap({
-    groupId: "fb-cap-warn-2",
-    name: "Northside Young Adults",
-    activeMembers: 10,
-    effectiveCapacity: 12,
-    capacitySource: "override",
-    utilizationPct: 83.3,
-    status: "warning",
-    hasManualHealthOverride: false,
-    healthStatus: "healthy",
-    excluded: false,
-  }),
-];
-
-const fallbackCapacityOk: CapacityGroupRow[] = [
-  cap({
-    groupId: "fb-cap-ok-1",
-    name: "Eastside Community",
-    activeMembers: 7,
-    effectiveCapacity: 12,
-    capacitySource: "group",
-    utilizationPct: 58.3,
-    status: "ok",
-    hasManualHealthOverride: false,
-    healthStatus: "healthy",
-    excluded: false,
-  }),
-  cap({
-    groupId: "fb-cap-ok-2",
-    name: "Hillside Couples",
-    activeMembers: 5,
-    effectiveCapacity: 10,
-    capacitySource: "default",
-    utilizationPct: 50,
-    status: "ok",
-    hasManualHealthOverride: false,
-    healthStatus: "healthy",
-    excluded: false,
-  }),
-];
-
-const fallbackCapacityUnknown: CapacityGroupRow[] = [
-  cap({
-    groupId: "fb-cap-unknown-1",
-    name: "Bridge Builders",
-    activeMembers: 4,
-    effectiveCapacity: null,
-    capacitySource: "unknown",
-    utilizationPct: null,
-    status: "unknown",
-    hasManualHealthOverride: false,
-    healthStatus: "healthy",
-    excluded: false,
-  }),
-];
-
-const fallbackCapacityExcluded: CapacityGroupRow[] = [
-  cap({
-    groupId: "fb-cap-excluded-1",
-    name: "Leadership Cohort",
-    activeMembers: 18,
-    effectiveCapacity: 8,
-    capacitySource: "override",
-    utilizationPct: 225,
-    status: "excluded",
-    hasManualHealthOverride: true,
-    healthStatus: "healthy",
-    excluded: true,
-  }),
 ];
 
 const healthSubmitted: HealthGroupRow[] = [
@@ -469,20 +362,10 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   multiplication: fallbackMultiplication,
   activity: fallbackActivity,
   attentionItems: fallbackAttention,
-  capacitySummary: {
-    full: fallbackCapacityFull,
-    warning: fallbackCapacityWarning,
-    ok: fallbackCapacityOk,
-    unknown: fallbackCapacityUnknown,
-    excluded: fallbackCapacityExcluded,
-    counts: {
-      full: fallbackCapacityFull.length,
-      warning: fallbackCapacityWarning.length,
-      ok: fallbackCapacityOk.length,
-      unknown: fallbackCapacityUnknown.length,
-      excluded: fallbackCapacityExcluded.length,
-    },
-  },
+  // Derived by the live assembler from the demo seed (lib/dashboard/demo-seed.ts)
+  // rather than hand-built, so the demo capacity rows can't diverge from the
+  // live capacity rules. See docs/adr/0011-group-row-assembly-stays-per-surface.md.
+  capacitySummary: DEMO_CAPACITY_SUMMARY,
   healthSummary: {
     submitted: healthSubmitted,
     missing: healthMissing,

@@ -3,6 +3,15 @@ import {
   buildAdminDashboardData,
   type AdminDashboardReads,
 } from "@/lib/dashboard/queries";
+import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
+import {
+  DEMO_CAPACITY_GROUPS,
+  DEMO_CAPACITY_MEMBERSHIPS,
+  DEMO_CAPACITY_METRIC_SETTINGS,
+  DEMO_METRIC_DEFAULTS_ROW,
+  DEMO_NOW,
+  DEMO_SELECTED_WEEK,
+} from "@/lib/dashboard/demo-seed";
 
 // A successful, empty read for every dashboard dependency. Each test overrides
 // only the read it cares about, so the admin dashboard orchestration — the
@@ -181,6 +190,48 @@ describe("buildAdminDashboardData", () => {
     if (result.source !== "live") return;
     expect(result.data.activity.grain).toBe("month");
     expect(result.data.activity.label).toBe("This month");
+  });
+
+  it("derives the demo capacity rows from the demo seed over the in-memory reads adapter", async () => {
+    // ADR-0011 follow-on: the demo capacity rows the fallback ships must be the
+    // live assembler's output for the demo seed, not a hand-built second source
+    // of truth. Feed the seed through the SAME in-memory reads adapter seam the
+    // production /admin path uses and assert the capacity summary the
+    // orchestration derives equals the one ADMIN_FALLBACK carries.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchAllGroups: async () => ({
+          data: DEMO_CAPACITY_GROUPS,
+          error: null,
+        }),
+        fetchActiveMemberships: async () => ({
+          data: DEMO_CAPACITY_MEMBERSHIPS,
+          error: null,
+        }),
+        fetchAllGroupMetricSettings: async () => ({
+          data: DEMO_CAPACITY_METRIC_SETTINGS,
+          error: null,
+        }),
+        fetchMetricDefaults: async () => ({
+          data: DEMO_METRIC_DEFAULTS_ROW,
+          error: null,
+        }),
+      }),
+      { now: DEMO_NOW, selectedWeek: DEMO_SELECTED_WEEK }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.capacitySummary).toEqual(ADMIN_FALLBACK.capacitySummary);
+    // The seed still exercises every capacity bucket, so the demo board stays
+    // representative after the cutover.
+    expect(result.data.capacitySummary.counts).toEqual({
+      full: 1,
+      warning: 2,
+      ok: 2,
+      unknown: 1,
+      excluded: 1,
+    });
   });
 
   it("keeps the page live but marks activity counts unavailable when that read errors", async () => {
