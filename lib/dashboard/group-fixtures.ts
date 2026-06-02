@@ -7,12 +7,19 @@
 // place — the demo can't drift from the shape the tests pin.
 
 import type {
+  AttendanceSessionsRow,
+  GroupLeadersRow,
   GroupMembershipsRow,
   GroupMetricSettingsRow,
   GroupsRow,
+  ProfilesRow,
 } from "@/types/database";
+import type { LeaderFollowUpRow } from "@/lib/supabase/read-models";
 
-const STAMP = "2024-01-01T00:00:00Z";
+// Shared fixed timestamp for demo/test rows. Exported so the demo seed
+// (lib/dashboard/demo-seed.ts) stamps its app_settings rows from the same
+// anchor the row builders use, rather than redefining the constant.
+export const STAMP = "2024-01-01T00:00:00Z";
 
 export function group(overrides: Partial<GroupsRow> = {}): GroupsRow {
   return {
@@ -85,6 +92,82 @@ export function settings(
     allow_over_capacity: false,
     created_at: STAMP,
     updated_at: STAMP,
+    ...overrides,
+  };
+}
+
+// A profile the assembler can resolve a leader name from. The assembler only
+// reads `id` + `full_name`; the rest are defaulted so a new ProfilesRow column
+// lands here once.
+export function profile(
+  overrides: Partial<ProfilesRow> & { id: string; full_name: string }
+): ProfilesRow {
+  return {
+    auth_user_id: null,
+    email: `${overrides.id}@example.test`,
+    phone: null,
+    role: "leader",
+    status: "active",
+    created_at: STAMP,
+    updated_at: STAMP,
+    ...overrides,
+  };
+}
+
+export function leader(
+  overrides: Partial<GroupLeadersRow> & {
+    group_id: string;
+    profile_id: string;
+  }
+): GroupLeadersRow {
+  return {
+    id: `${overrides.group_id}-${overrides.profile_id}`,
+    role: "leader",
+    assigned_at: "2024-01-01",
+    active: true,
+    created_at: STAMP,
+    ...overrides,
+  };
+}
+
+// One attendance session for a group/week. The assembler keys sessions by
+// group_id and only reads `status`, so the week/date fields are defaulted to
+// the demo anchor week.
+export function session(
+  overrides: Partial<AttendanceSessionsRow> & { group_id: string }
+): AttendanceSessionsRow {
+  return {
+    id: `${overrides.group_id}-session`,
+    meeting_week: "2026-05-18",
+    meeting_date: null,
+    status: "submitted",
+    submitted_by: null,
+    submitted_at: null,
+    leader_note: null,
+    admin_note: null,
+    created_at: STAMP,
+    updated_at: STAMP,
+    ...overrides,
+  };
+}
+
+export function followUp(
+  overrides: Partial<LeaderFollowUpRow> & { id: string }
+): LeaderFollowUpRow {
+  return {
+    type: "care",
+    title: "Follow up",
+    related_group_id: null,
+    related_member_id: null,
+    related_guest_id: null,
+    assigned_to: null,
+    priority: "normal",
+    due_date: null,
+    status: "open",
+    leader_visible_note: null,
+    created_at: STAMP,
+    updated_at: STAMP,
+    completed_at: null,
     ...overrides,
   };
 }

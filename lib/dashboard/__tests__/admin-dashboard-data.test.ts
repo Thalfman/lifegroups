@@ -5,12 +5,17 @@ import {
 } from "@/lib/dashboard/queries";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import {
-  DEMO_CAPACITY_GROUPS,
-  DEMO_CAPACITY_MEMBERSHIPS,
-  DEMO_CAPACITY_METRIC_SETTINGS,
+  DEMO_FOLLOW_UPS,
+  DEMO_GROUPS,
+  DEMO_LAUNCH_ASSUMPTIONS_ROW,
+  DEMO_LEADERS,
+  DEMO_MEMBERSHIPS,
   DEMO_METRIC_DEFAULTS_ROW,
+  DEMO_METRIC_SETTINGS,
   DEMO_NOW_ISO,
+  DEMO_PROFILES,
   DEMO_SELECTED_WEEK,
+  DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
 
 // A successful, empty read for every dashboard dependency. Each test overrides
@@ -192,24 +197,40 @@ describe("buildAdminDashboardData", () => {
     expect(result.data.activity.label).toBe("This month");
   });
 
-  it("derives the demo capacity rows from the demo seed over the in-memory reads adapter", async () => {
-    // ADR-0011 follow-on: the demo capacity rows the fallback ships must be the
-    // live assembler's output for the demo seed, not a hand-built second source
-    // of truth. Feed the seed through the SAME in-memory reads adapter seam the
-    // production /admin path uses and assert the capacity summary the
-    // orchestration derives equals the one ADMIN_FALLBACK carries.
+  it("derives the whole demo dashboard from the demo seed over the in-memory reads adapter", async () => {
+    // ADR-0011 follow-on: every assembler-shaped piece of the demo dashboard
+    // the fallback ships must be the live assembler's output for the demo seed,
+    // not a hand-built second source of truth. Feed the full seed through the
+    // SAME in-memory reads adapter seam the production /admin path uses and
+    // assert every derived shape the orchestration produces equals the one
+    // ADMIN_FALLBACK carries — capacity, health, attention, setup gaps, and the
+    // launch snapshot (which derives through the shared spine builder).
     const result = await buildAdminDashboardData(
       emptyReads({
-        fetchAllGroups: async () => ({
-          data: DEMO_CAPACITY_GROUPS,
-          error: null,
-        }),
+        fetchAllGroups: async () => ({ data: DEMO_GROUPS, error: null }),
         fetchActiveMemberships: async () => ({
-          data: DEMO_CAPACITY_MEMBERSHIPS,
+          data: DEMO_MEMBERSHIPS,
           error: null,
         }),
         fetchAllGroupMetricSettings: async () => ({
-          data: DEMO_CAPACITY_METRIC_SETTINGS,
+          data: DEMO_METRIC_SETTINGS,
+          error: null,
+        }),
+        fetchAllGroupLeaders: async () => ({ data: DEMO_LEADERS, error: null }),
+        fetchProfilesForAdmin: async () => ({
+          data: DEMO_PROFILES,
+          error: null,
+        }),
+        fetchAttendanceSessions: async () => ({
+          data: DEMO_SESSIONS,
+          error: null,
+        }),
+        fetchOpenFollowUps: async () => ({
+          data: DEMO_FOLLOW_UPS,
+          error: null,
+        }),
+        fetchLaunchPlanningAssumptions: async () => ({
+          data: DEMO_LAUNCH_ASSUMPTIONS_ROW,
           error: null,
         }),
         fetchMetricDefaults: async () => ({
@@ -223,12 +244,16 @@ describe("buildAdminDashboardData", () => {
     expect(result.source).toBe("live");
     if (result.source !== "live") return;
     expect(result.data.capacitySummary).toEqual(ADMIN_FALLBACK.capacitySummary);
+    expect(result.data.healthSummary).toEqual(ADMIN_FALLBACK.healthSummary);
+    expect(result.data.attentionItems).toEqual(ADMIN_FALLBACK.attentionItems);
+    expect(result.data.setupGaps).toEqual(ADMIN_FALLBACK.setupGaps);
+    expect(result.data.launchPlanning).toEqual(ADMIN_FALLBACK.launchPlanning);
     // The seed still exercises every capacity bucket, so the demo board stays
     // representative after the cutover.
     expect(result.data.capacitySummary.counts).toEqual({
       full: 1,
       warning: 2,
-      ok: 2,
+      ok: 3,
       unknown: 1,
       excluded: 1,
     });

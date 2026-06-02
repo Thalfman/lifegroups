@@ -1,20 +1,23 @@
 import type {
   AdminDashboardData,
-  AttentionItem,
-  HealthGroupRow,
-  LaunchPlanningDashboardSnapshot,
   LeaderDashboardData,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
   OverviewActivitySummary,
   PipelineStageCount,
-  SetupGapRow,
   ShepherdCareDashboardSummary,
   UpcomingCalendarEvent,
 } from "./types";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
-import { DEMO_CAPACITY_SUMMARY } from "./demo-seed";
+import {
+  DEMO_ATTENTION_ITEMS,
+  DEMO_CAPACITY_SUMMARY,
+  DEMO_HEALTH_SUMMARY,
+  DEMO_LAUNCH_PLANNING,
+  DEMO_SETUP_GAPS,
+  DEMO_SUMMARY,
+} from "./demo-seed";
 
 const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   new: 6,
@@ -66,217 +69,6 @@ const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
   },
 ];
 
-const healthSubmitted: HealthGroupRow[] = [
-  {
-    groupId: "fb-cap-ok-1",
-    name: "Eastside Community",
-    sessionStatus: "submitted",
-    healthStatus: "healthy",
-    followUpNeeded: false,
-    leaderNames: ["Jonah Reyes"],
-  },
-  {
-    groupId: "fb-cap-warn-2",
-    name: "Northside Young Adults",
-    sessionStatus: "submitted",
-    healthStatus: "healthy",
-    followUpNeeded: false,
-    leaderNames: ["Avery Lewis", "Sam Park"],
-  },
-];
-
-const healthMissing: HealthGroupRow[] = [
-  {
-    groupId: "fb-miss-1",
-    name: "Westside Families",
-    sessionStatus: "no_session",
-    healthStatus: "healthy",
-    followUpNeeded: false,
-    leaderNames: ["Maria Lopez"],
-  },
-];
-
-const healthDidNotMeet: HealthGroupRow[] = [
-  {
-    groupId: "fb-dnm-1",
-    name: "Riverside Singles",
-    sessionStatus: "did_not_meet",
-    healthStatus: "healthy",
-    followUpNeeded: false,
-    leaderNames: ["Daniel Park"],
-  },
-];
-
-const healthPlannedPause: HealthGroupRow[] = [
-  {
-    groupId: "fb-pp-1",
-    name: "Sunset Seniors",
-    sessionStatus: "planned_pause",
-    healthStatus: "healthy_paused",
-    followUpNeeded: false,
-    leaderNames: ["Linda Chen"],
-  },
-];
-
-const healthNeedsFollowUp: HealthGroupRow[] = [
-  {
-    groupId: "fb-cap-full-1",
-    name: "South Campus Women",
-    sessionStatus: "submitted",
-    healthStatus: "needs_follow_up",
-    followUpNeeded: true,
-    leaderNames: ["Priya Mehta"],
-  },
-];
-
-const healthWatch: HealthGroupRow[] = [
-  {
-    groupId: "fb-cap-warn-1",
-    name: "Downtown Professionals",
-    sessionStatus: "submitted",
-    healthStatus: "watch",
-    followUpNeeded: false,
-    leaderNames: ["Noah Bennett"],
-  },
-];
-
-const healthHealthy: HealthGroupRow[] = [
-  {
-    groupId: "fb-cap-ok-2",
-    name: "Hillside Couples",
-    sessionStatus: "submitted",
-    healthStatus: "healthy",
-    followUpNeeded: false,
-    leaderNames: ["Grace Tan", "Eli Robinson"],
-  },
-];
-
-const setupNoCapacity: SetupGapRow[] = [
-  {
-    groupId: "fb-cap-unknown-1",
-    name: "Bridge Builders",
-    gaps: ["capacity"],
-    hasExclusion: false,
-    isCapacityUnknown: true,
-  },
-];
-
-const setupNoLeader: SetupGapRow[] = [
-  {
-    groupId: "fb-no-leader-1",
-    name: "Pending Launch Group",
-    gaps: ["leader", "meeting_day_time", "members"],
-    hasExclusion: false,
-    isCapacityUnknown: false,
-  },
-];
-
-const setupNoMeetingDayTime: SetupGapRow[] = [
-  {
-    groupId: "fb-no-leader-1",
-    name: "Pending Launch Group",
-    gaps: ["leader", "meeting_day_time", "members"],
-    hasExclusion: false,
-    isCapacityUnknown: false,
-  },
-];
-
-const setupNoMembers: SetupGapRow[] = [
-  {
-    groupId: "fb-no-leader-1",
-    name: "Pending Launch Group",
-    gaps: ["leader", "meeting_day_time", "members"],
-    hasExclusion: false,
-    isCapacityUnknown: false,
-  },
-];
-
-const fallbackAttention: AttentionItem[] = [
-  {
-    groupId: "fb-cap-full-1",
-    groupName: "South Campus Women",
-    reason: "follow_up_open",
-    secondaryReasons: ["capacity_full", "health_needs_follow_up"],
-    detail: "1 open follow-up",
-    priority: 10,
-    lifecycleStatus: "active",
-    leaderNames: ["Priya Mehta"],
-    meetingDay: "Wednesday",
-    meetingTime: "19:00",
-    effectiveCapacity: 14,
-    activeMemberCount: 14,
-    sessionStatus: "submitted",
-    excludedFromCapacity: false,
-    dueLabel: null,
-    dueRelative: null,
-    isOverdue: false,
-  },
-  {
-    groupId: "fb-cap-warn-1",
-    groupName: "Downtown Professionals",
-    reason: "capacity_warning",
-    secondaryReasons: ["health_watch"],
-    detail: "10 / 12 active members",
-    priority: 40,
-    lifecycleStatus: "active",
-    leaderNames: ["Noah Bennett"],
-    meetingDay: "Thursday",
-    meetingTime: "18:30",
-    effectiveCapacity: 12,
-    activeMemberCount: 10,
-    sessionStatus: "submitted",
-    excludedFromCapacity: false,
-    dueLabel: null,
-    dueRelative: null,
-    isOverdue: false,
-  },
-  // The Shepherd→admin reporting loop was removed per
-  // docs/adr/0002-oversight-ladder-and-leader-gating.md: collectReasonsFor no
-  // longer surfaces missing_check_in for live data (with the leader surface
-  // gated, no check-ins are submitted), so the fallback must not seed a
-  // "Missing check-in" attention card either — otherwise a degraded dashboard
-  // (unconfigured client / query error) re-surfaces the exact signal the ADR
-  // retired. The missing_check_in enum value, label and priority stay dormant.
-  {
-    groupId: "fb-cap-unknown-1",
-    groupName: "Bridge Builders",
-    reason: "capacity_unknown",
-    secondaryReasons: [],
-    detail: "No capacity configured (override, group, or default)",
-    priority: 70,
-    lifecycleStatus: "active",
-    leaderNames: ["Jordan Kim"],
-    meetingDay: "Monday",
-    meetingTime: "19:00",
-    effectiveCapacity: null,
-    activeMemberCount: 4,
-    sessionStatus: "submitted",
-    excludedFromCapacity: false,
-    dueLabel: null,
-    dueRelative: null,
-    isOverdue: false,
-  },
-  {
-    groupId: "fb-no-leader-1",
-    groupName: "Pending Launch Group",
-    reason: "no_leader",
-    secondaryReasons: ["no_members", "missing_meeting_day_time"],
-    detail: "No active leader assigned",
-    priority: 80,
-    lifecycleStatus: "launching_soon",
-    leaderNames: [],
-    meetingDay: null,
-    meetingTime: null,
-    effectiveCapacity: null,
-    activeMemberCount: 0,
-    sessionStatus: "no_session",
-    excludedFromCapacity: false,
-    dueLabel: null,
-    dueRelative: null,
-    isOverdue: false,
-  },
-];
-
 const fallbackShepherdCare: ShepherdCareDashboardSummary = {
   totalActiveShepherds: 24,
   needsAttention: 3,
@@ -287,31 +79,6 @@ const fallbackShepherdCare: ShepherdCareDashboardSummary = {
   activeOverShepherds: 4,
   attentionItemsTotal: 7,
   coverageAvailable: true,
-  available: true,
-  error: null,
-};
-
-const FALLBACK_CHURCH_ATTENDANCE = 200;
-const FALLBACK_PARTICIPANTS = 142;
-
-const fallbackLaunchPlanning: LaunchPlanningDashboardSnapshot = {
-  effectiveTotalCapacity: 168,
-  currentParticipants: FALLBACK_PARTICIPANTS,
-  projectedGroupDemand: 180,
-  capacityGap: 18,
-  recommendedNewGroups: 2,
-  estimatedNewLeadersNeeded: 4,
-  riskLevel: "watch",
-  suggestedLaunchByDate: "2026-07-15",
-  unknownCapacityGroupCount: 1,
-  excludedActiveGroupCount: 1,
-  currentChurchAttendance: FALLBACK_CHURCH_ATTENDANCE,
-  // Derived from the same inputs so the fallback can't drift from its own
-  // numerator/denominator (matches participationPct rounding).
-  participationPct: Math.round(
-    (FALLBACK_PARTICIPANTS / FALLBACK_CHURCH_ATTENDANCE) * 100
-  ),
-  assumptionsAvailable: true,
   available: true,
   error: null,
 };
@@ -348,54 +115,25 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   meetingWeek: FALLBACK_WEEK,
   weekLabel: FALLBACK_WEEK_LABEL,
   isCurrentWeek: true,
-  summary: {
-    activeGroupCount: 18,
-    submittedCheckIns: 14,
-    missingCheckIns: 4,
-    needsFollowUp: 2,
-    capacityWatch: 3,
-    unknownCapacity: 1,
-  },
+  // Derived from the demo seed so the vital-signs tiles can't contradict the
+  // capacity / health / setup boards below them (all derive from one model).
+  summary: DEMO_SUMMARY,
   shepherdCare: fallbackShepherdCare,
-  launchPlanning: fallbackLaunchPlanning,
+  // The launch snapshot, the attention queue, the capacity board, the health
+  // buckets and the setup-gap lists are all derived by the live assembler (and
+  // the shared launch-snapshot builder) from the demo seed in
+  // lib/dashboard/demo-seed.ts, rather than hand-built — so the demo can't
+  // diverge from the live derivation rules. The whole assembler-shaped portion
+  // of the demo dashboard now has one source of truth.
+  // See docs/adr/0011-group-row-assembly-stays-per-surface.md.
+  launchPlanning: DEMO_LAUNCH_PLANNING,
   leaderPipeline: fallbackLeaderPipeline,
   multiplication: fallbackMultiplication,
   activity: fallbackActivity,
-  attentionItems: fallbackAttention,
-  // Derived by the live assembler from the demo seed (lib/dashboard/demo-seed.ts)
-  // rather than hand-built, so the demo capacity rows can't diverge from the
-  // live capacity rules. See docs/adr/0011-group-row-assembly-stays-per-surface.md.
+  attentionItems: DEMO_ATTENTION_ITEMS,
   capacitySummary: DEMO_CAPACITY_SUMMARY,
-  healthSummary: {
-    submitted: healthSubmitted,
-    missing: healthMissing,
-    didNotMeet: healthDidNotMeet,
-    plannedPause: healthPlannedPause,
-    needsFollowUp: healthNeedsFollowUp,
-    watch: healthWatch,
-    healthy: healthHealthy,
-    counts: {
-      submitted: healthSubmitted.length,
-      missing: healthMissing.length,
-      did_not_meet: healthDidNotMeet.length,
-      planned_pause: healthPlannedPause.length,
-      needs_follow_up: healthNeedsFollowUp.length,
-      watch: healthWatch.length,
-      healthy: healthHealthy.length,
-    },
-  },
-  setupGaps: {
-    noCapacity: setupNoCapacity,
-    noLeader: setupNoLeader,
-    noMeetingDayTime: setupNoMeetingDayTime,
-    noMembers: setupNoMembers,
-    counts: {
-      noCapacity: setupNoCapacity.length,
-      noLeader: setupNoLeader.length,
-      noMeetingDayTime: setupNoMeetingDayTime.length,
-      noMembers: setupNoMembers.length,
-    },
-  },
+  healthSummary: DEMO_HEALTH_SUMMARY,
+  setupGaps: DEMO_SETUP_GAPS,
   guestPipelineCount: fallbackGuestPipelineCount,
   guestPipelineBreakdown: fallbackPipelineBreakdown,
   followUps: [
@@ -410,12 +148,12 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
     },
     {
       id: "fallback-fu-2",
-      title: "Confirm Westside Families restart date",
+      title: "Confirm Hillside Couples restart date",
       type: "pause",
       priority: "normal",
       status: "open",
       dueDate: null,
-      relatedGroupName: "Westside Families",
+      relatedGroupName: "Hillside Couples",
     },
     {
       id: "fallback-fu-3",
