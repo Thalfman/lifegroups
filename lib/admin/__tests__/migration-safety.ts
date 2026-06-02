@@ -102,16 +102,24 @@ function fnSignature(fnName: string): string {
 }
 
 /**
- * A function runs as SECURITY DEFINER with the injection-safe pinned
- * search_path (`public, pg_temp`).
+ * A function runs as SECURITY DEFINER with an injection-safe pinned
+ * search_path. The pin defaults to `public, pg_temp` — the form every admin
+ * write RPC ships — but `options.searchPath` overrides it for the rare helper
+ * that pins a different value (e.g. the over_shepherd coverage read helper pins
+ * `public`). Pass the value exactly as it appears after `set search_path = `.
  */
-export function assertSecurityDefiner(sql: MigrationSql, fnName: string): void {
+export function assertSecurityDefiner(
+  sql: MigrationSql,
+  fnName: string,
+  options: { searchPath?: string } = {}
+): void {
+  const { searchPath = "public, pg_temp" } = options;
   const body = functionBody(sql, fnName);
   expect(body, `${fnName} should be SECURITY DEFINER`).toContain(
     "security definer"
   );
-  expect(body, `${fnName} should pin search_path to public, pg_temp`).toContain(
-    "set search_path = public, pg_temp"
+  expect(body, `${fnName} should pin search_path to ${searchPath}`).toContain(
+    `set search_path = ${searchPath.toLowerCase()}`
   );
 }
 
@@ -161,20 +169,39 @@ const REVOKED_ROLES = ["public", "anon", "authenticated"] as const;
  * EXECUTE on a function is revoked from public / anon / authenticated and then
  * granted only to authenticated — the "deny by default, allow authenticated"
  * lockdown every admin RPC ships. Whitespace-tolerant, so the suites need not
- * track the migrations' GRANT-block column alignment. Two further traps are
- * guarded: every EXECUTE grant must name *exactly* `authenticated` (no
- * comma-listed extras like `authenticated, public` and no other role such as
- * `service_role`), and the grant must come AFTER the revoke from authenticated
- * (a grant that precedes its revoke leaves the RPC un-executable).
+ * track the migrations' GRANT-block column alignment. Both revoke styles the
+ * migrations use are accepted: one role per statement (`... from public; ...
+ * from anon; ... from authenticated;`) and the combined list (`... from public,
+ * anon, authenticated;`) — revoking from more roles never weakens the lockdown.
+ * Two further traps are guarded: every EXECUTE grant must name *exactly*
+ * `authenticated` (no comma-listed extras like `authenticated, public` and no
+ * other role such as `service_role`), and the grant must come AFTER the revoke
+ * from authenticated (a grant that precedes its revoke leaves the RPC
+ * un-executable).
  */
 export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
   const signature = fnSignature(fnName);
-  for (const role of REVOKED_ROLES) {
-    expect(sql.lower, `${fnName} should revoke EXECUTE from ${role}`).toMatch(
+
+  // Collect every `revoke all on function <fn>(...) from <grantees>;` for this
+  // function and union the grantees. The `[^;]*` stays within one statement, so
+  // a combined `from public, anon, authenticated` lands as one match whose list
+  // we split — and the per-role presence check below is style-agnostic.
+  const revokes = [
+    ...sql.lower.matchAll(
       new RegExp(
-        `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+${role}`
+        `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+([^;]*);`,
+        "g"
       )
-    );
+    ),
+  ];
+  const revokeGrantees = (match: RegExpMatchArray): string[] =>
+    match[1].split(",").map((role) => role.replace(/\s+/g, " ").trim());
+  const revokedRoles = new Set(revokes.flatMap(revokeGrantees));
+  for (const role of REVOKED_ROLES) {
+    expect(
+      revokedRoles.has(role),
+      `${fnName} should revoke EXECUTE from ${role}`
+    ).toBe(true);
   }
 
   // Collect every `grant execute ... to <grantees>;` for this function and
@@ -202,15 +229,13 @@ export function assertExecuteLockdown(sql: MigrationSql, fnName: string): void {
 
   // The grant must follow the revoke from authenticated; otherwise the revoke
   // wins and the RPC ends up un-executable to authenticated users.
-  const revokeAuthIdx = sql.lower.search(
-    new RegExp(
-      `revoke\\s+all\\s+on\\s+function\\s+${signature}\\s+from\\s+authenticated`
-    )
+  const revokeFromAuth = revokes.find((match) =>
+    revokeGrantees(match).includes("authenticated")
   );
   expect(
     grants[0].index ?? -1,
     `${fnName} should grant EXECUTE only after revoking it from authenticated`
-  ).toBeGreaterThan(revokeAuthIdx);
+  ).toBeGreaterThan(revokeFromAuth?.index ?? -1);
 }
 
 /**

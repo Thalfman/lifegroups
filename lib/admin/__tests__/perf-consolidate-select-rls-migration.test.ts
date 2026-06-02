@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import { beforeAll, describe, expect, it } from "vitest";
+
+import { loadMigration, type MigrationSql } from "./migration-safety";
 
 // Static boundary assertions over the migration that consolidates the duplicate
 // permissive SELECT policies the advisor flagged (multiple_permissive_policies).
@@ -9,24 +8,21 @@ import { beforeAll, describe, expect, it } from "vitest";
 // manually per supabase/dev/README.md), so these assertions are the CI-runnable
 // regression guard that, per table, the per-tier SELECT policies are dropped and
 // replaced by ONE consolidated policy whose USING OR's the same tiers -- with the
-// prior InitPlan optimizations preserved verbatim. Mirrors the other
-// *-migration.test.ts guards.
+// prior InitPlan optimizations preserved verbatim. This is a pure RLS-policy
+// consolidation (no functions, no audit, no EXECUTE lockdown), so it carries
+// none of the admin-RPC invariants; it shares only the loader from the
+// migration-safety vocabulary (see ./migration-safety.ts).
 
-const MIGRATION_PATH = fileURLToPath(
-  new URL(
-    "../../../supabase/migrations/20260602020000_perf_consolidate_select_rls_policies.sql",
-    import.meta.url
-  )
-);
-
-let sql = "";
-const lower = () => sql.toLowerCase();
+let sql: MigrationSql;
+const lower = () => sql.lower;
 // Whitespace-insensitive view so multi-line policy bodies can be matched as one
 // normalized string.
 const norm = () => lower().replace(/\s+/g, " ");
 
 beforeAll(() => {
-  sql = readFileSync(MIGRATION_PATH, "utf8");
+  sql = loadMigration(
+    "20260602020000_perf_consolidate_select_rls_policies.sql"
+  );
 });
 
 // table -> { drops: old policy names removed, create: consolidated name,

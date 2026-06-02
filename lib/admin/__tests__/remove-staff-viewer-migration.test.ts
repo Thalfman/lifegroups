@@ -1,47 +1,54 @@
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { beforeAll, describe, expect, it } from "vitest";
+
+import {
+  assertAuditContentFree,
+  loadMigration,
+  type MigrationSql,
+} from "./migration-safety";
 
 // Migration-content assertions for Concept Reconciliation §B (#190): retire the
 // deprecated staff_viewer role. No live DB in unit tests, so — mirroring the
 // other *-migration.test.ts files — we assert the migration SQL contains the
-// load-bearing clauses.
-const MIGRATION_PATH = join(
-  process.cwd(),
-  "supabase/migrations/20260531140000_remove_staff_viewer_role.sql"
-);
-const sql = readFileSync(MIGRATION_PATH, "utf8");
+// load-bearing clauses, composing the shared migration-safety vocabulary for
+// the audit invariant (see ./migration-safety.ts).
+let sql: MigrationSql;
+
+beforeAll(() => {
+  sql = loadMigration("20260531140000_remove_staff_viewer_role.sql");
+});
 
 describe("remove staff_viewer migration (#190)", () => {
   it("is wrapped in a transaction", () => {
-    expect(sql).toMatch(/begin;/i);
-    expect(sql).toMatch(/commit;/i);
+    expect(sql.raw).toMatch(/begin;/i);
+    expect(sql.raw).toMatch(/commit;/i);
   });
 
   it("reassigns any existing staff_viewer rows to a no-access disabled state", () => {
-    expect(sql).toMatch(
+    expect(sql.raw).toMatch(
       /update public\.profiles[\s\S]*set role = 'leader', status = 'inactive'/i
     );
-    expect(sql).toMatch(/where role = 'staff_viewer'/i);
+    expect(sql.raw).toMatch(/where role = 'staff_viewer'/i);
   });
 
   it("audits each reassignment before mutating", () => {
-    expect(sql).toMatch(/insert into public\.audit_events/i);
-    expect(sql).toMatch(/system\.migration\.remove_staff_viewer/);
+    assertAuditContentFree(sql, {
+      forbidden: [],
+      required: ["system.migration.remove_staff_viewer"],
+    });
   });
 
   it("neutralises auth_is_staff_viewer so the value can never resolve to access", () => {
-    expect(sql).toMatch(
+    expect(sql.raw).toMatch(
       /create or replace function public\.auth_is_staff_viewer\(\)[\s\S]*select false;/i
     );
   });
 
   it("drops staff_viewer from the admin-or-staff read tier", () => {
-    expect(sql).toMatch(
+    expect(sql.raw).toMatch(
       /create or replace function public\.auth_is_admin_or_staff\(\)[\s\S]*'super_admin','ministry_admin'\), false\)/i
     );
     // and the recreated body no longer lists staff_viewer
-    expect(sql).not.toMatch(
+    expect(sql.raw).not.toMatch(
       /auth_is_admin_or_staff[\s\S]*'super_admin','ministry_admin','staff_viewer'/i
     );
   });
@@ -51,7 +58,7 @@ describe("remove staff_viewer migration (#190)", () => {
     // dropping auth_role() (whose return type the RLS policy graph depends on).
     // Strip comment lines first so the assertion checks executable SQL, not the
     // explanatory prose (which discusses the rejected cascade approach).
-    const executable = sql
+    const executable = sql.raw
       .split("\n")
       .filter((line) => !line.trim().startsWith("--"))
       .join("\n");
