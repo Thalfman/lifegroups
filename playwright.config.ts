@@ -13,6 +13,12 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 // In CI we build once and serve the production output; locally `next dev` is
 // faster to iterate against. Override with A11Y_WEBSERVER if needed.
+//
+// IMPORTANT: keep `next build` INSIDE this command. NEXT_PUBLIC_A11Y_HARNESS
+// is inlined at build time and the harness page's notFound() gate resolves
+// statically, so the route is only a real 200 when the build sees
+// webServer.env. Splitting the build into a separate step that lacks the env
+// bakes /a11y-harness as a static 404 and every test fails the 200 guard.
 const webServerCommand =
   process.env.A11Y_WEBSERVER ??
   (process.env.CI
