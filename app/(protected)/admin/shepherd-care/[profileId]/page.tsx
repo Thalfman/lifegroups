@@ -90,7 +90,34 @@ async function loadDetail(
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "db_unavailable" };
 
-  const profile = await fetchAdminShepherdProfileById(client, profileId);
+  // Fire the profile lookup together with the five reads that depend only on
+  // profileId (or the calling admin) — none of them need the profile row, so
+  // gating them behind the profile fetch only added a round-trip on the common
+  // valid-profile path. Validation still runs first against the resolved
+  // profile below; on an invalid id the extra reads are harmless RLS-scoped
+  // results that are simply discarded. Private-note key slots are per-creator
+  // (not per care profile), so they load here too.
+  const [
+    profile,
+    careResult,
+    overShepherdsRes,
+    coverageRes,
+    genericCountRes,
+    keySlotsRes,
+  ] = await Promise.all([
+    fetchAdminShepherdProfileById(client, profileId),
+    fetchShepherdCareProfileByShepherdId(client, profileId),
+    fetchOverShepherdsForAdmin(client, { includeArchived: false }),
+    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
+    fetchGenericFollowUpCountForAssignee(client, profileId),
+    canReadPrivateNotes
+      ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
+      : Promise.resolve({
+          data: [] as PrivateNoteKeySlot[],
+          error: null as Error | null,
+        }),
+  ]);
+
   if (profile.error) {
     return {
       kind: "ok",
@@ -115,27 +142,6 @@ async function loadDetail(
     return { kind: "not_found" };
   }
   if (profile.data.status !== "active") return { kind: "not_found" };
-
-  // Private-note key slots are per-creator (not per care profile), so they load
-  // alongside the care profile. RLS scopes them to the calling admin.
-  const [
-    careResult,
-    overShepherdsRes,
-    coverageRes,
-    genericCountRes,
-    keySlotsRes,
-  ] = await Promise.all([
-    fetchShepherdCareProfileByShepherdId(client, profileId),
-    fetchOverShepherdsForAdmin(client, { includeArchived: false }),
-    fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
-    fetchGenericFollowUpCountForAssignee(client, profileId),
-    canReadPrivateNotes
-      ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
-      : Promise.resolve({
-          data: [] as PrivateNoteKeySlot[],
-          error: null as Error | null,
-        }),
-  ]);
   if (careResult.error) {
     return {
       kind: "ok",
