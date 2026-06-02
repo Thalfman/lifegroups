@@ -1,4 +1,9 @@
+// Barrel for the admin write-validation contracts (see ADR-0012). Validators
+// stay centralized and shared, clustered by domain; callers import them from
+// "@/lib/admin/validation" unchanged.
 export type { ValidationResult } from "./shared";
+// isRecord / normalizeUuid are re-exported for tests and Phase 5A.1 callers that
+// need canonical comparisons.
 export { isRecord, normalizeUuid } from "./shared";
 export * from "./groups";
 export * from "./people";

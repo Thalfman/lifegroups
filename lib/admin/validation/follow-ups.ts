@@ -208,6 +208,3 @@ export function validateLeaderUpdateFollowUpStatusPayload(
     },
   };
 }
-
-// Re-exported for tests and Phase 5A.1 callers that need canonical comparisons.
-export { normalizeUuid };

@@ -1,3 +1,5 @@
+// Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
+
 export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; errors: string[] };
