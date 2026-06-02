@@ -90,19 +90,7 @@ type ClientState = {
 function makeClient(state: ClientState) {
   return {
     auth: {
-      // Mirrors getCurrentSession, which now resolves identity via
-      // getClaims() (local JWT verification) instead of getUser(). The stub
-      // maps the fixture user onto the decoded-claims shape ({ sub, email }).
-      getClaims: async () => ({
-        data: state.user
-          ? {
-              claims: { sub: state.user.id, email: state.user.email },
-              header: {},
-              signature: new Uint8Array(),
-            }
-          : null,
-        error: null,
-      }),
+      getUser: async () => ({ data: { user: state.user }, error: null }),
     },
     from(table: string) {
       const builder = {

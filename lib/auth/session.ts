@@ -71,20 +71,18 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   const client = await createSupabaseServerClient();
   if (!client) return { kind: "anonymous" };
 
-  // getClaims() verifies the JWT locally (Web Crypto + cached JWKS) when the
-  // project uses asymmetric signing keys, so the per-request identity check
-  // avoids an auth-server round trip; it falls back to a getUser() network call
-  // under symmetric keys. The claims always come from decoding the verified
-  // JWT, so trusting `sub`/`email` here is equivalent to the old getUser() path.
-  const { data: claimsData, error: claimsError } =
-    await client.auth.getClaims();
-  if (claimsError || !claimsData?.claims?.sub) return { kind: "anonymous" };
-  const claims = claimsData.claims;
+  // This is the authorization gate for every protected route, so it must catch
+  // a revoked/deleted Auth user immediately. getUser() validates the access
+  // token against the Auth server on each request; a locally-verified JWT
+  // (getClaims) would keep admitting requireAdmin()/requireLeader() callers
+  // until the token expires (see PR #236 review). Cookie rotation in middleware
+  // uses the cheaper getClaims() since it performs no authorization.
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return { kind: "anonymous" };
 
-  const authUser: AuthUser = {
-    id: claims.sub,
-    email: typeof claims.email === "string" ? claims.email : null,
-  };
+  const authUser: AuthUser = { id: user.id, email: user.email ?? null };
 
   const profileQuery = await client
     .from("profiles")

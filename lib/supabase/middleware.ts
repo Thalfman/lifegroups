@@ -27,7 +27,11 @@ export async function updateSupabaseSession(
   // asymmetric signing keys (the default for new projects), avoiding an
   // auth-server round trip on every request; it transparently falls back to a
   // getUser() network call when symmetric keys are in use, so it is never
-  // slower than getUser().
+  // slower than getUser(). This is safe here because middleware performs no
+  // authorization — it only refreshes the session. The actual auth gate
+  // (getCurrentSession in lib/auth/session.ts) still uses getUser() so a
+  // revoked/deleted Auth user is rejected on the next request, not at token
+  // expiry.
   await supabase.auth.getClaims();
   return response;
 }
