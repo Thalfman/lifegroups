@@ -1,10 +1,23 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
-import { CreateScenarioForm } from "@/components/admin/launch-planning/scenario-form";
 import type { LaunchPlanningAssumptions } from "@/lib/admin/launch-planning";
+
+// The scenario form is only mounted after the "Plan a launch" button is
+// clicked — it is never part of the initial render — so its (sizable) code
+// has no business in this route's First Load JS. Defer it to a chunk that
+// loads on first open. ssr:false is safe precisely because it never renders
+// on the server.
+const CreateScenarioForm = dynamic(
+  () =>
+    import("@/components/admin/launch-planning/scenario-form").then(
+      (m) => m.CreateScenarioForm
+    ),
+  { ssr: false }
+);
 
 type TabKey = "overview" | "forecast" | "scenarios" | "groups";
 
