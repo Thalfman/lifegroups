@@ -334,40 +334,53 @@ export type AdminDashboardReads = {
   fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
 };
 
+// Curry the live client across a map of read-model fetchers, producing the
+// reads-seam adapter. Each fetcher takes the client as its first argument; the
+// returned method has that argument already applied, so adding a read is one
+// shorthand entry below rather than a hand-written forwarder line.
+function bindClientToReads<
+  T extends Record<
+    string,
+    (client: AppSupabaseClient, ...args: never[]) => unknown
+  >,
+>(
+  client: AppSupabaseClient,
+  fetchers: T
+): { [K in keyof T]: OmitClient<T[K]> } {
+  return Object.fromEntries(
+    Object.entries(fetchers).map(([key, fetcher]) => [
+      key,
+      (...args: never[]) => fetcher(client, ...args),
+    ])
+  ) as { [K in keyof T]: OmitClient<T[K]> };
+}
+
 // The production adapter at the reads seam: binds the live Supabase client to
 // every read-model fetcher.
 export function supabaseAdminDashboardReads(
   client: AppSupabaseClient
 ): AdminDashboardReads {
-  return {
-    fetchMetricDefaults: (...a) => fetchMetricDefaultsCached(client, ...a),
-    fetchAllGroups: (...a) => fetchAllGroups(client, ...a),
-    fetchActiveGroupCount: (...a) => fetchActiveGroupCount(client, ...a),
-    fetchGuests: (...a) => fetchGuests(client, ...a),
-    fetchOpenFollowUps: (...a) => fetchOpenFollowUps(client, ...a),
-    fetchActiveMemberships: (...a) => fetchActiveMemberships(client, ...a),
-    fetchLatestHealthUpdates: (...a) => fetchLatestHealthUpdates(client, ...a),
-    fetchAttendanceSessions: (...a) => fetchAttendanceSessions(client, ...a),
-    fetchAllGroupLeaders: (...a) => fetchAllGroupLeaders(client, ...a),
-    fetchProfilesForAdmin: (...a) => fetchProfilesForAdmin(client, ...a),
-    fetchAllGroupMetricSettings: (...a) =>
-      fetchAllGroupMetricSettings(client, ...a),
-    fetchGroupCalendarEvents: (...a) => fetchGroupCalendarEvents(client, ...a),
-    fetchOverShepherdsForAdmin: (...a) =>
-      fetchOverShepherdsForAdmin(client, ...a),
-    fetchActiveShepherdCoverageAssignmentsForAdmin: (...a) =>
-      fetchActiveShepherdCoverageAssignmentsForAdmin(client, ...a),
-    fetchLaunchPlanningAssumptions: (...a) =>
-      fetchLaunchPlanningAssumptions(client, ...a),
-    fetchShepherdCareDirectoryForAdmin: (...a) =>
-      fetchShepherdCareDirectoryForAdmin(client, ...a),
-    fetchLeaderPipelineForAdmin: (...a) =>
-      fetchLeaderPipelineForAdmin(client, ...a),
-    fetchMultiplicationCandidatesForAdmin: (...a) =>
-      fetchMultiplicationCandidatesForAdmin(client, ...a),
-    fetchOverviewActivityCounts: (...a) =>
-      fetchOverviewActivityCounts(client, ...a),
-  };
+  return bindClientToReads(client, {
+    fetchMetricDefaults: fetchMetricDefaultsCached,
+    fetchAllGroups,
+    fetchActiveGroupCount,
+    fetchGuests,
+    fetchOpenFollowUps,
+    fetchActiveMemberships,
+    fetchLatestHealthUpdates,
+    fetchAttendanceSessions,
+    fetchAllGroupLeaders,
+    fetchProfilesForAdmin,
+    fetchAllGroupMetricSettings,
+    fetchGroupCalendarEvents,
+    fetchOverShepherdsForAdmin,
+    fetchActiveShepherdCoverageAssignmentsForAdmin,
+    fetchLaunchPlanningAssumptions,
+    fetchShepherdCareDirectoryForAdmin,
+    fetchLeaderPipelineForAdmin,
+    fetchMultiplicationCandidatesForAdmin,
+    fetchOverviewActivityCounts,
+  });
 }
 
 export async function getAdminDashboardData(
