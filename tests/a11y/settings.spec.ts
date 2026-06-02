@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Issue 258 — Admin Interaction Model req 5: Settings semantics, grouping &
 // progressive disclosure. This suite proves the acceptance criteria against the
@@ -15,21 +16,7 @@ import { expect, test, type Page } from "@playwright/test";
 // label, but "visible label" (a <label> with text the eye can read, tied to the
 // control) is what req 5 asks for, so we assert the association explicitly.
 
-const HARNESS = "/a11y-harness";
 const SETTINGS = '[data-a11y-surface="settings"]';
-
-// Palette contrast is a Non-Goal of this PRD (cream/terra trips axe at ~4.25:1
-// on muted meta text and the terra button); the sibling accessible-names suite
-// documents the same carve-out. Every other critical/serious rule gates.
-const NON_BLOCKING_RULES = new Set(["color-contrast"]);
-
-async function gotoHarness(page: Page): Promise<void> {
-  const response = await page.goto(HARNESS, { waitUntil: "networkidle" });
-  expect(response?.status(), "harness route must be enabled").toBe(200);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "accessible-name harness"
-  );
-}
 
 // A control is properly labelled when an associated <label> carries visible
 // text — either a `label[for=id]` or a wrapping <label> (checkboxes use the
@@ -166,22 +153,6 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     await expect(page.locator(`${SETTINGS} #capacity_override`)).toBeVisible();
 
     const results = await new AxeBuilder({ page }).include(SETTINGS).analyze();
-    const seriousOrWorse = results.violations.filter(
-      (v) => v.impact === "critical" || v.impact === "serious"
-    );
-    for (const v of seriousOrWorse.filter((v) =>
-      NON_BLOCKING_RULES.has(v.id)
-    )) {
-      console.warn(
-        `[a11y][known palette issue] ${v.id} (${v.impact}): ${v.nodes.length} node(s) — palette is a PRD Non-Goal`
-      );
-    }
-    const blocking = seriousOrWorse.filter(
-      (v) => !NON_BLOCKING_RULES.has(v.id)
-    );
-    const summary = blocking.map(
-      (v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s)`
-    );
-    expect(summary, summary.join("\n")).toEqual([]);
+    expectNoBlockingAxeViolations(results);
   });
 });
