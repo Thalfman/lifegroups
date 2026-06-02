@@ -7,14 +7,12 @@ import {
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import { isoWeekStart, isoWeekNumberOf } from "@/lib/shared/church-time";
+import { group, memberships, settings } from "@/lib/dashboard/group-fixtures";
 import type {
   AttendanceSessionsRow,
   GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
-  GroupMembershipsRow,
-  GroupMetricSettingsRow,
-  GroupsRow,
   ProfilesRow,
 } from "@/types/database";
 import type {
@@ -44,64 +42,11 @@ const DEFAULTS = decodeMetricDefaults(null);
 const SELECTED_WEEK = "2026-05-18";
 const NOW = new Date("2026-05-30T12:00:00Z");
 
-function group(overrides: Partial<GroupsRow> = {}): GroupsRow {
-  return {
-    id: "group-a",
-    name: "Group A",
-    description: null,
-    meeting_day: "Tuesday",
-    meeting_time: "19:00",
-    meeting_frequency: "weekly",
-    meeting_week_parity: null,
-    location_area: null,
-    address_optional: null,
-    capacity: 12,
-    lifecycle_status: "active",
-    health_status: "healthy",
-    audience_category: null,
-    life_stage: null,
-    launched_on: null,
-    pause_reason: null,
-    pause_start_date: null,
-    expected_return_date: null,
-    restart_reminder_date: null,
-    admin_notes: null,
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    closed_at: null,
-    ...overrides,
-  };
-}
-
-function membership(
-  overrides: Partial<GroupMembershipsRow> = {},
-): GroupMembershipsRow {
-  return {
-    id: "m-1",
-    group_id: "group-a",
-    member_id: "member-1",
-    role: "member",
-    status: "active",
-    joined_at: "2024-01-01",
-    ended_at: null,
-    created_at: "2024-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-// n active memberships for a group — the model counts rows per group_id,
-// it never looks at the member behind each row.
-function memberships(groupId: string, n: number): GroupMembershipsRow[] {
-  return Array.from({ length: n }, (_, i) =>
-    membership({ id: `${groupId}-m${i}`, group_id: groupId, member_id: `mem-${i}` }),
-  );
-}
-
 function session(
   overrides: Partial<AttendanceSessionsRow> & {
     group_id: string;
     status: AttendanceSessionStatus;
-  },
+  }
 ): AttendanceSessionsRow {
   return {
     id: `s-${overrides.group_id}`,
@@ -118,7 +63,7 @@ function session(
 }
 
 function health(
-  overrides: Partial<GroupHealthUpdatesRow> & { group_id: string },
+  overrides: Partial<GroupHealthUpdatesRow> & { group_id: string }
 ): GroupHealthUpdatesRow {
   return {
     id: `h-${overrides.group_id}-${overrides.update_week ?? "w"}`,
@@ -134,7 +79,7 @@ function health(
 }
 
 function leader(
-  overrides: Partial<GroupLeadersRow> & { group_id: string; profile_id: string },
+  overrides: Partial<GroupLeadersRow> & { group_id: string; profile_id: string }
 ): GroupLeadersRow {
   return {
     id: `l-${overrides.profile_id}`,
@@ -149,7 +94,7 @@ function leader(
 function profile(
   id: string,
   full_name: string,
-  overrides: Partial<ProfilesRow> = {},
+  overrides: Partial<ProfilesRow> = {}
 ): ProfilesRow {
   return {
     id,
@@ -165,30 +110,12 @@ function profile(
   };
 }
 
-function settings(
-  overrides: Partial<GroupMetricSettingsRow> & { group_id: string },
-): GroupMetricSettingsRow {
-  return {
-    capacity_override: null,
-    capacity_warning_threshold_pct_override: null,
-    healthy_attendance_pct_override: null,
-    manual_health_status_override: null,
-    exclude_from_capacity_metrics: false,
-    admin_metric_notes: null,
-    check_in_due_offset_hours_override: null,
-    allow_over_capacity: false,
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
 function calendarEvent(
   overrides: Partial<GroupCalendarEventsRow> & {
     group_id: string;
     event_date: string;
     status: GroupCalendarEventStatus;
-  },
+  }
 ): GroupCalendarEventsRow {
   return {
     id: `c-${overrides.group_id}-${overrides.event_date}`,
@@ -208,7 +135,7 @@ function calendarEvent(
 
 function guest(
   pipeline_stage: GuestPipelineStage,
-  id = `guest-${pipeline_stage}`,
+  id = `guest-${pipeline_stage}`
 ): GuestDirectoryEntry {
   return {
     id,
@@ -226,7 +153,7 @@ function guest(
 }
 
 function followUp(
-  overrides: Partial<LeaderFollowUpRow> & { related_group_id: string },
+  overrides: Partial<LeaderFollowUpRow> & { related_group_id: string }
 ): LeaderFollowUpRow {
   return {
     id: `fu-${overrides.related_group_id}`,
@@ -247,7 +174,7 @@ function followUp(
 }
 
 function buildModel(
-  input: Partial<AdminGroupModelInput> = {},
+  input: Partial<AdminGroupModelInput> = {}
 ): AdminGroupModel {
   return buildAdminGroupModel({
     groups: [],
@@ -328,7 +255,7 @@ describe("buildAdminGroupModel — off-parity / scheduling gate", () => {
       "weekly",
     ]);
     expect(model.healthSummary.healthy.map((r) => r.groupId)).toContain(
-      "offparity",
+      "offparity"
     );
   });
 
@@ -387,29 +314,39 @@ describe("buildAdminGroupModel — manual health override precedence", () => {
       "g",
     ]);
     expect(model.summary.needsFollowUp).toBe(1);
-    expect(
-      model.attentionItems.find((i) => i.groupId === "g")?.reason,
-    ).toBe("health_needs_follow_up");
+    expect(model.attentionItems.find((i) => i.groupId === "g")?.reason).toBe(
+      "health_needs_follow_up"
+    );
   });
 });
 
 describe("buildAdminGroupModel — needsFollowUp triple condition", () => {
   it("counts groups flagged via effective health OR a follow-up Pulse, but not healthy ones", () => {
-    const viaHealth = group({ id: "via-health", health_status: "needs_follow_up" });
+    const viaHealth = group({
+      id: "via-health",
+      health_status: "needs_follow_up",
+    });
     const viaPulse = group({ id: "via-pulse", health_status: "healthy" });
     const healthy = group({ id: "healthy", health_status: "healthy" });
     const model = buildModel({
       groups: [viaHealth, viaPulse, healthy],
       healthUpdates: [
-        health({ group_id: "via-pulse", pulse: "healthy", follow_up_needed: true }),
-        health({ group_id: "healthy", pulse: "healthy", follow_up_needed: false }),
+        health({
+          group_id: "via-pulse",
+          pulse: "healthy",
+          follow_up_needed: true,
+        }),
+        health({
+          group_id: "healthy",
+          pulse: "healthy",
+          follow_up_needed: false,
+        }),
       ],
     });
     expect(model.summary.needsFollowUp).toBe(2);
-    expect(model.healthSummary.needsFollowUp.map((r) => r.groupId).sort()).toEqual([
-      "via-health",
-      "via-pulse",
-    ]);
+    expect(
+      model.healthSummary.needsFollowUp.map((r) => r.groupId).sort()
+    ).toEqual(["via-health", "via-pulse"]);
   });
 });
 
@@ -575,7 +512,7 @@ describe("buildAdminGroupModel — follow-ups, guests, and attention queue", () 
     });
     expect(model.guestPipelineCount).toBe(3);
     const byStage = Object.fromEntries(
-      model.guestPipelineBreakdown.map((s) => [s.stage, s.count]),
+      model.guestPipelineBreakdown.map((s) => [s.stage, s.count])
     );
     expect(byStage.new).toBe(1);
     expect(byStage.placed).toBe(1);
@@ -638,7 +575,7 @@ describe("buildAdminGroupModel — meta and aggregate counts", () => {
     // Health buckets skip closed groups too.
     const totalHealth = Object.values(model.healthSummary.counts).reduce(
       (a, b) => a + b,
-      0,
+      0
     );
     expect(totalHealth).toBe(0);
   });

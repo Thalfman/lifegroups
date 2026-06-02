@@ -16,8 +16,12 @@
 //
 // See docs/adr/0011-group-row-assembly-stays-per-surface.md.
 
-import { buildAdminGroupModel } from "./admin-group-model";
-import { decodeMetricDefaults } from "@/lib/admin/metrics";
+import {
+  buildAdminGroupModel,
+  type AdminGroupModelInput,
+} from "./admin-group-model";
+import { decodeMetricDefaults, type MetricDefaults } from "@/lib/admin/metrics";
+import { group, memberships, settings } from "./group-fixtures";
 import type { CapacitySummary } from "./types";
 import type {
   AppSettingsRow,
@@ -28,73 +32,12 @@ import type {
 
 // A fixed anchor so the demo capacity rows are deterministic. The capacity
 // summary is current-state (not week-scoped), so neither value changes the
-// derived rows — but the assembler requires both.
+// derived rows — but the assembler requires both. DEMO_NOW is kept as an ISO
+// instant (parsed fresh at each use) rather than a shared mutable Date.
 export const DEMO_SELECTED_WEEK = "2026-05-18";
-export const DEMO_NOW = new Date("2026-05-18T12:00:00Z");
+export const DEMO_NOW_ISO = "2026-05-18T12:00:00Z";
 
 const STAMP = "2024-01-01T00:00:00Z";
-
-function demoGroup(
-  overrides: Partial<GroupsRow> & { id: string; name: string }
-): GroupsRow {
-  return {
-    description: null,
-    meeting_day: "Tuesday",
-    meeting_time: "19:00",
-    meeting_frequency: "weekly",
-    meeting_week_parity: null,
-    location_area: null,
-    address_optional: null,
-    capacity: null,
-    lifecycle_status: "active",
-    health_status: "healthy",
-    audience_category: null,
-    life_stage: null,
-    launched_on: null,
-    pause_reason: null,
-    pause_start_date: null,
-    expected_return_date: null,
-    restart_reminder_date: null,
-    admin_notes: null,
-    created_at: STAMP,
-    updated_at: STAMP,
-    closed_at: null,
-    ...overrides,
-  };
-}
-
-// n active memberships for a group — the assembler counts rows per group_id, it
-// never looks at the member behind each row.
-function demoMemberships(groupId: string, n: number): GroupMembershipsRow[] {
-  return Array.from({ length: n }, (_, i) => ({
-    id: `${groupId}-m${i}`,
-    group_id: groupId,
-    member_id: `${groupId}-mem-${i}`,
-    role: "member",
-    status: "active",
-    joined_at: "2024-01-01",
-    ended_at: null,
-    created_at: STAMP,
-  }));
-}
-
-function demoSettings(
-  overrides: Partial<GroupMetricSettingsRow> & { group_id: string }
-): GroupMetricSettingsRow {
-  return {
-    capacity_override: null,
-    capacity_warning_threshold_pct_override: null,
-    healthy_attendance_pct_override: null,
-    manual_health_status_override: null,
-    exclude_from_capacity_metrics: false,
-    admin_metric_notes: null,
-    check_in_due_offset_hours_override: null,
-    allow_over_capacity: false,
-    created_at: STAMP,
-    updated_at: STAMP,
-    ...overrides,
-  };
-}
 
 // The demo deliberately leaves `default_group_capacity` unset so a group with no
 // per-group capacity (Bridge Builders) reads as genuinely "unknown" rather than
@@ -113,45 +56,46 @@ export const DEMO_METRIC_DEFAULTS = decodeMetricDefaults(
 );
 
 // One seed group per capacity state the demo showcases: at capacity, near
-// capacity (per-group + override-sourced), comfortably under (per-group +
-// default-sourced thresholds), no capacity configured, and excluded.
+// capacity (per-group capacity + an override-sourced capacity), comfortably
+// under, no capacity configured (→ unknown), and excluded. Every row is graded
+// against the shared metric thresholds, not any value set in this module.
 export const DEMO_CAPACITY_GROUPS: GroupsRow[] = [
-  demoGroup({
+  group({
     id: "fb-cap-full-1",
     name: "South Campus Women",
     capacity: 14,
     health_status: "capacity_full",
   }),
-  demoGroup({
+  group({
     id: "fb-cap-warn-1",
     name: "Downtown Professionals",
     capacity: 12,
     health_status: "watch",
   }),
   // Capacity comes from a per-group override (see DEMO_CAPACITY_METRIC_SETTINGS).
-  demoGroup({
+  group({
     id: "fb-cap-warn-2",
     name: "Northside Young Adults",
     capacity: null,
   }),
-  demoGroup({
+  group({
     id: "fb-cap-ok-1",
     name: "Eastside Community",
     capacity: 12,
   }),
-  demoGroup({
+  group({
     id: "fb-cap-ok-2",
     name: "Hillside Couples",
     capacity: 10,
   }),
   // No per-group capacity and no configured default → "unknown".
-  demoGroup({
+  group({
     id: "fb-cap-unknown-1",
     name: "Bridge Builders",
     capacity: null,
   }),
   // Excluded from capacity metrics via its override row.
-  demoGroup({
+  group({
     id: "fb-cap-excluded-1",
     name: "Leadership Cohort",
     capacity: null,
@@ -159,41 +103,52 @@ export const DEMO_CAPACITY_GROUPS: GroupsRow[] = [
 ];
 
 export const DEMO_CAPACITY_MEMBERSHIPS: GroupMembershipsRow[] = [
-  ...demoMemberships("fb-cap-full-1", 14),
-  ...demoMemberships("fb-cap-warn-1", 10),
-  ...demoMemberships("fb-cap-warn-2", 10),
-  ...demoMemberships("fb-cap-ok-1", 7),
-  ...demoMemberships("fb-cap-ok-2", 5),
-  ...demoMemberships("fb-cap-unknown-1", 4),
-  ...demoMemberships("fb-cap-excluded-1", 18),
+  ...memberships("fb-cap-full-1", 14),
+  ...memberships("fb-cap-warn-1", 10),
+  ...memberships("fb-cap-warn-2", 10),
+  ...memberships("fb-cap-ok-1", 7),
+  ...memberships("fb-cap-ok-2", 5),
+  ...memberships("fb-cap-unknown-1", 4),
+  ...memberships("fb-cap-excluded-1", 18),
 ];
 
 export const DEMO_CAPACITY_METRIC_SETTINGS: GroupMetricSettingsRow[] = [
-  demoSettings({ group_id: "fb-cap-warn-2", capacity_override: 12 }),
-  demoSettings({
+  settings({ group_id: "fb-cap-warn-2", capacity_override: 12 }),
+  settings({
     group_id: "fb-cap-excluded-1",
     capacity_override: 8,
     exclude_from_capacity_metrics: true,
   }),
 ];
 
+// The assembler input for the demo capacity seed, parameterised by the metric
+// defaults so the fallback and the seed tests build it exactly one way. The
+// week / now are required by the assembler but don't affect the capacity rows.
+export function demoCapacityModelInput(
+  defaults: MetricDefaults
+): AdminGroupModelInput {
+  return {
+    groups: DEMO_CAPACITY_GROUPS,
+    memberships: DEMO_CAPACITY_MEMBERSHIPS,
+    sessions: [],
+    healthUpdates: [],
+    leaders: [],
+    profiles: [],
+    metricSettings: DEMO_CAPACITY_METRIC_SETTINGS,
+    calendarEvents: [],
+    guests: [],
+    followUps: [],
+    defaults,
+    selectedWeek: DEMO_SELECTED_WEEK,
+    now: new Date(DEMO_NOW_ISO),
+    activeGroupCount: null,
+  };
+}
+
 // The demo capacity summary, derived once by the live assembler from the seed
-// above. This is the single source of truth the fallback ships; the test in
-// lib/dashboard/__tests__ pins it against the same seed routed through the
+// above — the single source of truth the fallback ships. The tests in
+// lib/dashboard/__tests__ pin it against the same seed routed through the
 // in-memory reads adapter.
-export const DEMO_CAPACITY_SUMMARY: CapacitySummary = buildAdminGroupModel({
-  groups: DEMO_CAPACITY_GROUPS,
-  memberships: DEMO_CAPACITY_MEMBERSHIPS,
-  sessions: [],
-  healthUpdates: [],
-  leaders: [],
-  profiles: [],
-  metricSettings: DEMO_CAPACITY_METRIC_SETTINGS,
-  calendarEvents: [],
-  guests: [],
-  followUps: [],
-  defaults: DEMO_METRIC_DEFAULTS,
-  selectedWeek: DEMO_SELECTED_WEEK,
-  now: DEMO_NOW,
-  activeGroupCount: null,
-}).capacitySummary;
+export const DEMO_CAPACITY_SUMMARY: CapacitySummary = buildAdminGroupModel(
+  demoCapacityModelInput(DEMO_METRIC_DEFAULTS)
+).capacitySummary;

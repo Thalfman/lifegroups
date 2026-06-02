@@ -1,55 +1,38 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildAdminGroupModel,
-  type AdminGroupModelInput,
-} from "@/lib/dashboard/admin-group-model";
+import { buildAdminGroupModel } from "@/lib/dashboard/admin-group-model";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import {
-  DEMO_CAPACITY_GROUPS,
-  DEMO_CAPACITY_MEMBERSHIPS,
-  DEMO_CAPACITY_METRIC_SETTINGS,
   DEMO_METRIC_DEFAULTS,
-  DEMO_NOW,
-  DEMO_SELECTED_WEEK,
+  demoCapacityModelInput,
 } from "@/lib/dashboard/demo-seed";
 
 // ADR-0011 follow-on: the demo capacity rows are no longer hand-built. They are
 // the live assembler's output for the demo seed, so the demo and the live
 // dashboard derive the capacity-row shape and rules from one place.
 
-const BASE: Omit<AdminGroupModelInput, "defaults"> = {
-  groups: DEMO_CAPACITY_GROUPS,
-  memberships: DEMO_CAPACITY_MEMBERSHIPS,
-  sessions: [],
-  healthUpdates: [],
-  leaders: [],
-  profiles: [],
-  metricSettings: DEMO_CAPACITY_METRIC_SETTINGS,
-  calendarEvents: [],
-  guests: [],
-  followUps: [],
-  selectedWeek: DEMO_SELECTED_WEEK,
-  now: DEMO_NOW,
-  activeGroupCount: null,
-};
-
 describe("demo capacity seed", () => {
-  it("ships exactly the live assembler's capacity summary for the demo seed", () => {
-    const model = buildAdminGroupModel({
-      ...BASE,
-      defaults: DEMO_METRIC_DEFAULTS,
-    });
-    // One source of truth: the fallback carries the assembler's output verbatim.
-    expect(ADMIN_FALLBACK.capacitySummary).toEqual(model.capacitySummary);
+  it("buckets each demo group into the capacity state it models", () => {
+    // Independently pin the assembler's bucketing + sort for the demo seed, so a
+    // regression in the shared capacity rules surfaces as a group moving here.
+    const cs = ADMIN_FALLBACK.capacitySummary;
+    expect(cs.full.map((r) => r.groupId)).toEqual(["fb-cap-full-1"]);
+    expect(cs.warning.map((r) => r.groupId)).toEqual([
+      "fb-cap-warn-1",
+      "fb-cap-warn-2",
+    ]);
+    expect(cs.ok.map((r) => r.groupId)).toEqual(["fb-cap-ok-1", "fb-cap-ok-2"]);
+    expect(cs.unknown.map((r) => r.groupId)).toEqual(["fb-cap-unknown-1"]);
+    expect(cs.excluded.map((r) => r.groupId)).toEqual(["fb-cap-excluded-1"]);
   });
 
   it("carries no hand-set thresholds — every row's warning/full pct is the shared default", () => {
+    const cs = ADMIN_FALLBACK.capacitySummary;
     const rows = [
-      ...ADMIN_FALLBACK.capacitySummary.full,
-      ...ADMIN_FALLBACK.capacitySummary.warning,
-      ...ADMIN_FALLBACK.capacitySummary.ok,
-      ...ADMIN_FALLBACK.capacitySummary.unknown,
-      ...ADMIN_FALLBACK.capacitySummary.excluded,
+      ...cs.full,
+      ...cs.warning,
+      ...cs.ok,
+      ...cs.unknown,
+      ...cs.excluded,
     ];
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
@@ -70,7 +53,7 @@ describe("demo capacity seed", () => {
       ...DEMO_METRIC_DEFAULTS,
       capacity_warning_threshold_pct: 40,
     };
-    const model = buildAdminGroupModel({ ...BASE, defaults: strict });
+    const model = buildAdminGroupModel(demoCapacityModelInput(strict));
     const warningIds = model.capacitySummary.warning.map((r) => r.groupId);
     // Hillside Couples (5/10 = 50%) and Eastside Community (7/12 ≈ 58%) cross
     // the lowered 40% line that the default 80% left them under.

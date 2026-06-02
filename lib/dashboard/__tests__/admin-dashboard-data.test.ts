@@ -9,7 +9,7 @@ import {
   DEMO_CAPACITY_MEMBERSHIPS,
   DEMO_CAPACITY_METRIC_SETTINGS,
   DEMO_METRIC_DEFAULTS_ROW,
-  DEMO_NOW,
+  DEMO_NOW_ISO,
   DEMO_SELECTED_WEEK,
 } from "@/lib/dashboard/demo-seed";
 
@@ -217,7 +217,7 @@ describe("buildAdminDashboardData", () => {
           error: null,
         }),
       }),
-      { now: DEMO_NOW, selectedWeek: DEMO_SELECTED_WEEK }
+      { now: new Date(DEMO_NOW_ISO), selectedWeek: DEMO_SELECTED_WEEK }
     );
 
     expect(result.source).toBe("live");
