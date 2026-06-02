@@ -44,7 +44,6 @@ import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
-import { LaunchPlanningAssumptionsForm } from "@/components/admin/launch-planning/assumptions-form";
 import {
   LaunchPlanningAnswerCards,
   LaunchPlanningBreakdownCards,
@@ -52,11 +51,12 @@ import {
 import { LaunchPlanningResultsPanel } from "@/components/admin/launch-planning/results-panel";
 import { LaunchPlanningSetupWarnings } from "@/components/admin/launch-planning/setup-warnings";
 import { LaunchPlanningShell } from "@/components/admin/launch-planning/launch-planning-shell";
-import { ChurchAttendanceCard } from "@/components/admin/launch-planning/church-attendance-card";
-// The three heaviest panels are loaded lazily (ssr:false) — they live behind
-// closed tabs, so deferring their code keeps it off this route's First Load JS.
+// All of these live behind closed tabs on first load, so they are loaded
+// lazily (ssr:false) to keep their code off this route's First Load JS.
 import {
   CapacityBoard,
+  ChurchAttendanceCard,
+  LaunchPlanningAssumptionsForm,
   MultiplicationPlanner,
   ScenariosPanel,
 } from "@/components/admin/launch-planning/lazy-panels";

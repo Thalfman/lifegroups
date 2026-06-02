@@ -63,3 +63,20 @@ export const ScenariosPanel = dynamic(
     ),
   { ssr: false, loading: () => <PanelSkeleton label="scenarios" /> }
 );
+
+// Forecast-tab client components (also behind a closed tab on first load).
+export const LaunchPlanningAssumptionsForm = dynamic(
+  () =>
+    import("@/components/admin/launch-planning/assumptions-form").then(
+      (m) => m.LaunchPlanningAssumptionsForm
+    ),
+  { ssr: false, loading: () => <PanelSkeleton label="forecast inputs" /> }
+);
+
+export const ChurchAttendanceCard = dynamic(
+  () =>
+    import("@/components/admin/launch-planning/church-attendance-card").then(
+      (m) => m.ChurchAttendanceCard
+    ),
+  { ssr: false, loading: () => <PanelSkeleton label="church attendance" /> }
+);
