@@ -1,13 +1,7 @@
 import Image from "next/image";
 import { LoginForm } from "@/app/login/login-form";
 
-export function SignInScreen({
-  next,
-  resetOk,
-}: {
-  next: string | null;
-  resetOk: boolean;
-}) {
+export function SignInScreen() {
   return (
     <main
       style={{
@@ -100,7 +94,7 @@ export function SignInScreen({
             boxShadow: "var(--c-shadow)",
           }}
         >
-          <LoginForm next={next} resetOk={resetOk} />
+          <LoginForm />
         </div>
 
         <aside

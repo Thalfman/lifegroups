@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
 import { loginAction, type LoginFormState } from "./actions";
+import { isSafeNextPath } from "./next-path";
 
 const INITIAL_STATE: LoginFormState = {};
 
@@ -40,15 +41,28 @@ const bareInputStyle: React.CSSProperties = {
   padding: 0,
 };
 
-export function LoginForm({
-  next,
-  resetOk = false,
-}: {
-  next: string | null;
-  resetOk?: boolean;
-}) {
-  const [state, formAction, pending] = useActionState(loginAction, INITIAL_STATE);
+export function LoginForm() {
+  const [state, formAction, pending] = useActionState(
+    loginAction,
+    INITIAL_STATE
+  );
   const [showPassword, setShowPassword] = useState(false);
+  // Read the sign-in search params on the client so this page can be statically
+  // generated and CDN-served (no per-request server render). Using
+  // window.location.search rather than next/navigation's useSearchParams()
+  // avoids forcing a Suspense boundary / dynamic deopt, so the form markup still
+  // ships in the prerendered HTML. The `next` allow-list is shared with the
+  // server action via isSafeNextPath, keeping one source of truth for the
+  // open-redirect guard.
+  const [next, setNext] = useState<string | null>(null);
+  const [resetOk, setResetOk] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextValue = params.get("next");
+    setNext(nextValue && isSafeNextPath(nextValue) ? nextValue : null);
+    setResetOk(params.get("reset") === "ok");
+  }, []);
 
   return (
     <form

@@ -4,19 +4,10 @@ import { hubTilesForRole } from "@/lib/auth/hub-tiles";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { HomeHub } from "@/components/home/home-hub";
-import { SignInScreen } from "@/components/sign-in/sign-in-screen";
-import {
-  parseSignInSearchParams,
-  type SignInSearchParams,
-} from "./login/next-path";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: SignInSearchParams;
-}) {
+export default async function HomePage() {
   const session = await getCurrentSession();
   switch (session.kind) {
     case "authenticated":
@@ -53,10 +44,10 @@ export default async function HomePage({
     case "backend_error":
       redirect("/unauthorized?reason=unavailable");
     case "anonymous":
-      // fall through to render the sign-in screen below
-      break;
+      // Anonymous visitors are normally served the static /login document via a
+      // middleware rewrite (the URL stays at "/"), so this branch is only a
+      // fallback for requests that bypass middleware (e.g. no Supabase env). It
+      // routes to the same statically-generated sign-in page.
+      redirect("/login");
   }
-
-  const { next, resetOk } = await parseSignInSearchParams(searchParams);
-  return <SignInScreen next={next} resetOk={resetOk} />;
 }

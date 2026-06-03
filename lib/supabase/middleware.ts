@@ -32,6 +32,20 @@ export async function updateSupabaseSession(
   // (getCurrentSession in lib/auth/session.ts) still uses getUser() so a
   // revoked/deleted Auth user is rejected on the next request, not at token
   // expiry.
-  await supabase.auth.getClaims();
+  const { data: claimsData } = await supabase.auth.getClaims();
+
+  // Serve the statically-generated /login document for anonymous visitors
+  // landing on the bare domain. A rewrite (not a redirect) keeps the address
+  // bar at "/" while the response is the CDN-cached static page, so the most
+  // common public entry point never invokes the dynamic "/" server render
+  // (cold start + session lookup). Authenticated requests fall through to the
+  // dynamic Home Hub unchanged. getClaims() above is a local JWT verification,
+  // so this gate adds no network round trip.
+  if (!claimsData?.claims && request.nextUrl.pathname === "/") {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.rewrite(loginUrl, { request });
+  }
+
   return response;
 }

@@ -1,13 +1,9 @@
 import { SignInScreen } from "@/components/sign-in/sign-in-screen";
-import { parseSignInSearchParams, type SignInSearchParams } from "./next-path";
 
-export const dynamic = "force-dynamic";
-
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: SignInSearchParams;
-}) {
-  const { next, resetOk } = await parseSignInSearchParams(searchParams);
-  return <SignInScreen next={next} resetOk={resetOk} />;
+// Statically generated and CDN-served: the sign-in screen has no per-request
+// server data. The `next` / `reset` search params are read client-side inside
+// LoginForm, so this route renders no serverless function on a cold visit —
+// near-instant TTFB for the public landing/sign-in path.
+export default function LoginPage() {
+  return <SignInScreen />;
 }
