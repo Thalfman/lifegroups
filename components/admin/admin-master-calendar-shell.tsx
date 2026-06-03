@@ -30,7 +30,11 @@ import type {
 type ViewMode = "month" | "list";
 
 type CalendarViewSnapshot = {
-  viewMode: ViewMode;
+  // null = the user never explicitly toggled the view, so the persisted state
+  // carries no opinion and the responsive default (below) decides on restore.
+  // Persisting the auto-selected mobile "list" as if it were a choice would
+  // wrongly override the desktop month default on a later visit (#263).
+  viewMode: ViewMode | null;
   groupFilter: string[];
   typeFilter: GroupCalendarEventType[];
   statusFilter: GroupCalendarEventStatus[];
@@ -42,14 +46,15 @@ const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
 
 // Validate a restored calendar view against its current shape. We check
-// structure (and the closed `viewMode` set), not membership: a stale group or
-// leader id simply matches nothing and the existing empty state offers a reset,
-// which is friendlier than silently dropping the whole saved view (#263).
+// structure (and the closed `viewMode` set, plus null for "no explicit
+// choice"), not membership: a stale group or leader id simply matches nothing
+// and the existing empty state offers a reset, which is friendlier than
+// silently dropping the whole saved view (#263).
 function isCalendarViewSnapshot(value: unknown): value is CalendarViewSnapshot {
   if (value === null || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    (v.viewMode === "month" || v.viewMode === "list") &&
+    (v.viewMode === "month" || v.viewMode === "list" || v.viewMode === null) &&
     isStringArray(v.groupFilter) &&
     isStringArray(v.typeFilter) &&
     isStringArray(v.statusFilter) &&
@@ -111,7 +116,10 @@ export function AdminMasterCalendarShell({
     surface: "calendar",
     scopeId: viewerId,
     snapshot: {
-      viewMode,
+      // Only persist the view as a real preference once the user has toggled
+      // it; otherwise leave it null so a return visit re-runs the responsive
+      // default instead of inheriting an auto-selected mobile "list".
+      viewMode: userToggledRef.current ? viewMode : null,
       groupFilter,
       typeFilter,
       statusFilter,
@@ -119,8 +127,12 @@ export function AdminMasterCalendarShell({
       leaderFilter,
     },
     restore: (saved) => {
-      userToggledRef.current = true;
-      setViewMode(saved.viewMode);
+      // A null saved view means "no explicit choice" — leave userToggledRef
+      // false so the responsive default (and resize listener) still apply.
+      if (saved.viewMode !== null) {
+        userToggledRef.current = true;
+        setViewMode(saved.viewMode);
+      }
       setGroupFilter(saved.groupFilter);
       setTypeFilter(saved.typeFilter);
       setStatusFilter(saved.statusFilter);

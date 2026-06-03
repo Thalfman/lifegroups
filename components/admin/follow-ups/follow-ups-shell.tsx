@@ -155,8 +155,30 @@ export function AdminFollowUpsShell({
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [guestFilter, setGuestFilter] = useState<string>("all");
 
+  const groupsById = useMemo(
+    () => new Map(groups.map((g) => [g.id, g] as const)),
+    [groups]
+  );
+  const membersById = useMemo(
+    () => new Map(members.map((m) => [m.id, m] as const)),
+    [members]
+  );
+  const guestsById = useMemo(
+    () => new Map(guests.map((g) => [g.id, g] as const)),
+    [guests]
+  );
+  const profilesById = useMemo(
+    () => new Map(assigneeProfiles.map((p) => [p.id, p] as const)),
+    [assigneeProfiles]
+  );
+
   // Saved views & filters (PRD req 12, #263): remember the panel-open state and
-  // every filter selection per admin across reloads and return visits.
+  // every filter selection per admin across reloads and return visits. The
+  // assignee/group/guest filters are free-form ids, so a saved id whose record
+  // later left the loaded option lists (deactivated assignee, removed group or
+  // guest) is coerced back to "all" on restore — otherwise the queue would
+  // filter by an unselectable value and read as empty with no chip to clear,
+  // especially when showFilters was also restored collapsed.
   usePersistedViewState({
     surface: "follow-ups",
     scopeId: viewerId,
@@ -174,29 +196,24 @@ export function AdminFollowUpsShell({
       setStatusFilter(saved.statusFilter);
       setPriorityFilter(saved.priorityFilter);
       setDueFilter(saved.dueFilter);
-      setAssigneeFilter(saved.assigneeFilter);
-      setGroupFilter(saved.groupFilter);
-      setGuestFilter(saved.guestFilter);
+      setAssigneeFilter(
+        saved.assigneeFilter === "all" || profilesById.has(saved.assigneeFilter)
+          ? saved.assigneeFilter
+          : "all"
+      );
+      setGroupFilter(
+        saved.groupFilter === "all" || groupsById.has(saved.groupFilter)
+          ? saved.groupFilter
+          : "all"
+      );
+      setGuestFilter(
+        saved.guestFilter === "all" || guestsById.has(saved.guestFilter)
+          ? saved.guestFilter
+          : "all"
+      );
     },
     validate: isFollowUpsViewSnapshot,
   });
-
-  const groupsById = useMemo(
-    () => new Map(groups.map((g) => [g.id, g] as const)),
-    [groups]
-  );
-  const membersById = useMemo(
-    () => new Map(members.map((m) => [m.id, m] as const)),
-    [members]
-  );
-  const guestsById = useMemo(
-    () => new Map(guests.map((g) => [g.id, g] as const)),
-    [guests]
-  );
-  const profilesById = useMemo(
-    () => new Map(assigneeProfiles.map((p) => [p.id, p] as const)),
-    [assigneeProfiles]
-  );
 
   const { today, inSevenDays } = useMemo(() => {
     const t = new Date();
