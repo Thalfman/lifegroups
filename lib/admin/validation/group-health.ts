@@ -2,6 +2,7 @@ import { isUuid } from "@/lib/shared/uuid";
 import type { ValidationResult } from "./shared";
 import {
   isRecord,
+  readBooleanFlag,
   readOptionalString,
   normalizeUuid,
   readOptionalInteger,
@@ -18,6 +19,9 @@ export type GroupHealthRatingsPayload = {
   spiritual_growth_score: number | null;
   spiritual_growth_note: string | null;
   group_question_score: number | null;
+  // Admin IM 05 (#265): the open follow-up flag, toggled by the drawer
+  // checkbox and persisted on the same save as the ratings.
+  needs_follow_up: boolean;
 };
 
 export function validateGroupHealthRatingsPayload(
@@ -61,9 +65,22 @@ export function validateGroupHealthRatingsPayload(
     note = noteRaw ?? null;
   }
 
+  // The drawer always posts the follow-up flag's state (present in the payload),
+  // so a submit always asserts a definite needs_follow_up value — including
+  // clearing a flag on a group with no ratings. `needsFollowUpPresent` marks
+  // that real-form case; a bare object without the key is the legacy no-op.
+  const needsFollowUpPresent = "needs_follow_up" in input;
+  const needsFollowUp = readBooleanFlag(input.needs_follow_up);
+
   // Reject an all-empty submit: it would wipe both ratings + the note and write
-  // an audit row for a no-op. Clearing one rating while the other stands is fine.
-  if (spiritualScore === null && questionScore === null && note === null) {
+  // an audit row for a no-op. Clearing one rating while the other stands is
+  // fine, and a follow-up toggle is itself content worth persisting.
+  if (
+    spiritualScore === null &&
+    questionScore === null &&
+    note === null &&
+    !needsFollowUpPresent
+  ) {
     errors.push("Enter at least one rating or a note.");
   }
 
@@ -76,6 +93,7 @@ export function validateGroupHealthRatingsPayload(
       spiritual_growth_score: spiritualScore,
       spiritual_growth_note: note,
       group_question_score: questionScore,
+      needs_follow_up: needsFollowUp,
     },
   };
 }

@@ -220,6 +220,24 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
       advanced.insideDetails,
       "advanced thresholds live inside the disclosure"
     ).toBe(true);
+
+    // Admin IM 05 (#265): the two Group-health triage thresholds share their own
+    // grouping container, also inside the Advanced thresholds disclosure.
+    const groupHealth = await sharedGridGroup(page, [
+      "group_health_watch_grade",
+      "group_health_attendance_decline_margin_pct",
+    ]);
+    expect(groupHealth.allFound, "group-health threshold fields render").toBe(
+      true
+    );
+    expect(
+      groupHealth.sameGroup,
+      "group-health threshold fields share one group"
+    ).toBe(true);
+    expect(
+      groupHealth.insideDetails,
+      "group-health thresholds live inside the disclosure"
+    ).toBe(true);
   });
 
   test("axe finds no critical or serious violations on settings", async ({

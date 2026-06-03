@@ -159,6 +159,10 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     last_saved_at: "2026-05-26T12:00:00Z",
     stale: false,
     unassessed: false,
+    // Clean control: a B grade, not declining, no open flag — so it is absent
+    // from the Watch and Needs-follow-up filters.
+    needs_follow_up: false,
+    attendance_declining: false,
   },
   {
     group_id: "grp-bryant",
@@ -169,11 +173,15 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     spiritual_growth_note: null,
     group_question_score: null,
     group_question_leader_reported: false,
-    computed_letter: "C",
+    computed_letter: "B",
     last_check_in_week: "2026-05-18",
     last_saved_at: "2026-05-19T12:00:00Z",
     stale: false,
     unassessed: false,
+    // A B grade (above the Watch threshold) but declining attendance — exercises
+    // the Watch filter's decline leg. Not flagged for follow-up.
+    needs_follow_up: false,
+    attendance_declining: true,
   },
   {
     group_id: "grp-carter",
@@ -189,6 +197,8 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     last_saved_at: null,
     stale: false,
     unassessed: true,
+    needs_follow_up: false,
+    attendance_declining: false,
   },
   {
     // Stale fallback: the live attendance read failed, so we show the last
@@ -206,6 +216,10 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     last_saved_at: "2026-05-10T12:00:00Z",
     stale: true,
     unassessed: false,
+    // A C grade (at the Watch threshold) with an open follow-up flag — the one
+    // group on both the Watch and Needs-follow-up filters.
+    needs_follow_up: true,
+    attendance_declining: false,
   },
 ];
 
@@ -308,6 +322,7 @@ export function A11yHarnessClient() {
           period="2026-05-01"
           spiritualGrowthLabel="Spiritual growth (1–5)"
           groupQuestionLabel="Group engagement — leader-reported (1–5)"
+          watchGrade="C"
         />
       </Surface>
 

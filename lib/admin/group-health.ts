@@ -90,7 +90,7 @@ function weekAttendancePct(week: AttendanceWeekTally): number | null {
 
 export function attendanceConsistency(
   weeks: AttendanceWeekTally[],
-  config: GroupHealthRubricConfig = BUILT_IN_GROUP_HEALTH_RUBRIC,
+  config: GroupHealthRubricConfig = BUILT_IN_GROUP_HEALTH_RUBRIC
 ): AttendanceConsistency {
   // Most-recent weeks first, then take the window. Sorting here means callers
   // can hand us rows in any order.
@@ -112,6 +112,78 @@ export function attendanceConsistency(
     weeks_counted: pcts.length,
     meets_threshold: rollingPct >= config.healthy_attendance_pct,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Attendance trend (Admin IM 05 / #265): the directional two-window comparison
+// deferred from the step-04 shell. "Declining" compares the recent half-window
+// average against the prior half-window average within the same attendance
+// window, so the Watch filter has an honest trend input.
+// ---------------------------------------------------------------------------
+
+export type AttendanceTrend = {
+  // Average attendance % over the most-recent half-window, or null when that
+  // window has no fully-rated weeks.
+  recent_pct: number | null;
+  // Average over the half-window immediately before it, or null.
+  prior_pct: number | null;
+  // recent is below prior by at least the decline margin. Insufficient data
+  // (either window not fully recorded) is honestly reported as not declining.
+  declining: boolean;
+};
+
+// Compare the most-recent `halfWindowWeeks` weeks' average attendance against
+// the prior `halfWindowWeeks` weeks'. Declining when the recent average is lower
+// than the prior by ≥ marginPct. Both windows must be fully recorded (each has
+// halfWindowWeeks weeks with rated records) or we report not-declining rather
+// than inventing a trend from a partial window.
+export function attendanceTrend(
+  weeks: AttendanceWeekTally[],
+  marginPct: number,
+  halfWindowWeeks = 4
+): AttendanceTrend {
+  // Most-recent first, so slice(0, n) is the recent window and the next slice
+  // is the prior one.
+  const ordered = [...weeks].sort((a, b) =>
+    a.meeting_week < b.meeting_week ? 1 : -1
+  );
+  const recent = ordered.slice(0, halfWindowWeeks);
+  const prior = ordered.slice(halfWindowWeeks, halfWindowWeeks * 2);
+
+  const average = (window: AttendanceWeekTally[]): number | null => {
+    const pcts = window
+      .map(weekAttendancePct)
+      .filter((pct): pct is number => pct !== null);
+    // Require a full window of rated weeks; a partial window is "insufficient
+    // data", not a trend.
+    if (pcts.length < halfWindowWeeks) return null;
+    return pcts.reduce((sum, pct) => sum + pct, 0) / pcts.length;
+  };
+
+  const recentPct = average(recent);
+  const priorPct = average(prior);
+  const declining =
+    recentPct !== null &&
+    priorPct !== null &&
+    priorPct - recentPct >= marginPct;
+
+  return { recent_pct: recentPct, prior_pct: priorPct, declining };
+}
+
+// Grade ladder ordering (A best → D worst), shared by the Watch filter's
+// "at or below the threshold" test. A is index 0, D index 3, so a higher index
+// is a worse grade.
+const GRADE_LADDER: GroupHealthLetter[] = ["A", "B", "C", "D"];
+
+// True when `letter` is at or below `threshold` on the A–D ladder — i.e. the
+// same grade or a worse one. The director's Watch leg: a group graded at or
+// below the watch threshold (default C → C and D) lands on Watch.
+export function gradeAtOrBelow(
+  letter: GroupHealthLetter | null,
+  threshold: GroupHealthLetter
+): boolean {
+  if (letter === null) return false;
+  return GRADE_LADDER.indexOf(letter) >= GRADE_LADDER.indexOf(threshold);
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +234,7 @@ export type GroupHealthDimensionInputs = {
 // away. The single place attendance-vs-rating scales are reconciled, shared by
 // the live read overview and the recompute write path.
 export function dimensionScoresFromInputs(
-  inputs: GroupHealthDimensionInputs,
+  inputs: GroupHealthDimensionInputs
 ): GroupHealthDimensionScores {
   const scores: GroupHealthDimensionScores = {};
   if (inputs.attendance_pct !== null) scores.attendance = inputs.attendance_pct;
@@ -175,7 +247,10 @@ export function dimensionScoresFromInputs(
   return scores;
 }
 
-function letterFor(numeric: number, cutLines: GroupHealthCutLines): GroupHealthLetter {
+function letterFor(
+  numeric: number,
+  cutLines: GroupHealthCutLines
+): GroupHealthLetter {
   if (numeric >= cutLines.a) return "A";
   if (numeric >= cutLines.b) return "B";
   if (numeric >= cutLines.c) return "C";
@@ -184,7 +259,7 @@ function letterFor(numeric: number, cutLines: GroupHealthCutLines): GroupHealthL
 
 export function computeGrade(
   scores: GroupHealthDimensionScores,
-  config: GroupHealthRubricConfig = BUILT_IN_GROUP_HEALTH_RUBRIC,
+  config: GroupHealthRubricConfig = BUILT_IN_GROUP_HEALTH_RUBRIC
 ): ComputedGrade {
   // Pair each present dimension with its weight; a dimension with no score for
   // the period is dropped and its weight excluded, so the remaining weights
@@ -192,13 +267,22 @@ export function computeGrade(
   // alone, #128/#129 fill in the other two).
   const present: Array<{ score: number; weight: number }> = [];
   if (scores.attendance !== undefined) {
-    present.push({ score: scores.attendance, weight: config.weights.attendance });
+    present.push({
+      score: scores.attendance,
+      weight: config.weights.attendance,
+    });
   }
   if (scores.spiritual_growth !== undefined) {
-    present.push({ score: scores.spiritual_growth, weight: config.weights.spiritual_growth });
+    present.push({
+      score: scores.spiritual_growth,
+      weight: config.weights.spiritual_growth,
+    });
   }
   if (scores.group_question !== undefined) {
-    present.push({ score: scores.group_question, weight: config.weights.group_question });
+    present.push({
+      score: scores.group_question,
+      weight: config.weights.group_question,
+    });
   }
 
   const totalWeight = present.reduce((sum, d) => sum + d.weight, 0);
@@ -206,7 +290,8 @@ export function computeGrade(
     return { numeric: null, letter: null };
   }
 
-  const numeric = present.reduce((sum, d) => sum + d.score * d.weight, 0) / totalWeight;
+  const numeric =
+    present.reduce((sum, d) => sum + d.score * d.weight, 0) / totalWeight;
   return { numeric, letter: letterFor(numeric, config.cut_lines) };
 }
 
@@ -231,12 +316,12 @@ export function decodeGroupHealthRubric(raw: unknown): GroupHealthRubricConfig {
     attendance_window_weeks: readNumber(
       source,
       "attendance_window_weeks",
-      BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks,
+      BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
     ),
     healthy_attendance_pct: readNumber(
       source,
       "healthy_attendance_pct",
-      BUILT_IN_GROUP_HEALTH_RUBRIC.healthy_attendance_pct,
+      BUILT_IN_GROUP_HEALTH_RUBRIC.healthy_attendance_pct
     ),
     weights: decodeWeights(source.weights),
     cut_lines: decodeCutLines(source.cut_lines),
@@ -249,12 +334,20 @@ function decodeWeights(raw: unknown): GroupHealthDimensionWeights {
   if (!source) return { ...def };
   const tuned = {
     attendance: readNumber(source, "attendance", def.attendance),
-    spiritual_growth: readNumber(source, "spiritual_growth", def.spiritual_growth),
+    spiritual_growth: readNumber(
+      source,
+      "spiritual_growth",
+      def.spiritual_growth
+    ),
     group_question: readNumber(source, "group_question", def.group_question),
   };
   // Every weight must be non-negative and at least one positive, or computeGrade
   // has no usable total and grades to null. Reject the set wholesale otherwise.
-  const values = [tuned.attendance, tuned.spiritual_growth, tuned.group_question];
+  const values = [
+    tuned.attendance,
+    tuned.spiritual_growth,
+    tuned.group_question,
+  ];
   if (values.some((w) => w < 0) || values.reduce((s, w) => s + w, 0) <= 0) {
     return { ...def };
   }
@@ -283,7 +376,7 @@ function decodeCutLines(raw: unknown): GroupHealthCutLines {
 function readNumber(
   source: Record<string, unknown>,
   key: string,
-  fallback: number,
+  fallback: number
 ): number {
   const value = source[key];
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;

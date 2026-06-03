@@ -8,6 +8,7 @@ import type {
 } from "@/lib/admin/group-health";
 import {
   attendanceConsistency,
+  attendanceTrend,
   computeGrade,
   decodeGroupHealthRubric,
   dimensionScoresFromInputs,
@@ -163,6 +164,14 @@ export type GroupHealthOverviewRow = {
   stale: boolean;
   // True when there is neither a live grade nor a persisted row yet.
   unassessed: boolean;
+  // Admin IM 05 (#265): the director's open follow-up flag on the latest
+  // assessment — the "Needs follow-up" triage filter. False until set.
+  needs_follow_up: boolean;
+  // Admin IM 05 (#265): attendance is declining when the recent 4-week average
+  // is below the prior 4-week average by ≥ the director's decline margin. One
+  // honest input to the Watch filter; false on insufficient data or a stale
+  // read (no fresh window to compare).
+  attendance_declining: boolean;
 };
 
 type PersistedAssessment = {
@@ -174,13 +183,14 @@ type PersistedAssessment = {
   group_question_score: number | null;
   group_question_leader_reported: boolean;
   computed_letter: GroupHealthLetter | null;
+  needs_follow_up: boolean;
   updated_at: string | null;
 };
 
 const ASSESSMENT_COLUMNS =
   "group_id, attendance_pct, attendance_weeks_counted, spiritual_growth_score, " +
   "spiritual_growth_note, group_question_score, group_question_leader_reported, " +
-  "computed_letter, updated_at";
+  "computed_letter, needs_follow_up, updated_at";
 
 // The two admin-entered 1–5 ratings (and the spiritual-growth note) for a
 // group's month, or nulls when no assessment row exists yet. The write action
@@ -236,6 +246,22 @@ export async function listGroupHealthOverview(
   const rubricRes = await fetchGroupHealthRubric(client);
   if (rubricRes.error) return { data: null, error: rubricRes.error };
   const rubric = rubricRes.data;
+
+  // The attendance-decline margin (Admin IM 05 / #265) is a director-tuned
+  // metric default, sourced here rather than hard-coded. A read failure
+  // propagates rather than silently grading the trend on a wrong margin.
+  const defaultsRes = await fetchMetricDefaultsCached(client);
+  if (defaultsRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "listGroupHealthOverview/metricDefaults",
+        defaultsRes.error
+      ),
+    };
+  const declineMargin = decodeMetricDefaults(
+    defaultsRes.data
+  ).group_health_attendance_decline_margin_pct;
 
   const { data: assessments, error: assessmentsError } = await (
     client as AppSupabaseClient
@@ -296,11 +322,16 @@ export async function listGroupHealthOverview(
         last_saved_at: prior?.updated_at ?? null,
         stale: prior !== undefined,
         unassessed: prior === undefined,
+        needs_follow_up: prior?.needs_follow_up ?? false,
+        // No fresh attendance window on a failed read, so we can't honestly
+        // claim a trend.
+        attendance_declining: false,
       });
       continue;
     }
 
     const attendance = attendanceConsistency(weeksRes.data, rubric);
+    const trend = attendanceTrend(weeksRes.data, declineMargin);
     // Latest recorded attendance week = the group's last check-in. Weeks are
     // ISO YYYY-MM-DD, which sorts lexically, so the max string is the newest.
     const lastCheckInWeek =
@@ -342,6 +373,8 @@ export async function listGroupHealthOverview(
         ratings.group_question_score === null &&
         !persisted.has(group.id),
       stale: false,
+      needs_follow_up: prior?.needs_follow_up ?? false,
+      attendance_declining: trend.declining,
     });
   }
 

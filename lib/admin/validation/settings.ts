@@ -54,6 +54,8 @@ export type MetricDefaultsPayload = {
   check_in_due_offset_hours?: number;
   shepherd_care_stale_days_direct?: number;
   shepherd_care_stale_days_delegated?: number;
+  group_health_watch_grade?: string;
+  group_health_attendance_decline_margin_pct?: number;
 };
 
 const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
@@ -65,6 +67,15 @@ const METRIC_DEFAULT_KEYS: ReadonlySet<string> = new Set([
   "check_in_due_offset_hours",
   "shepherd_care_stale_days_direct",
   "shepherd_care_stale_days_delegated",
+  "group_health_watch_grade",
+  "group_health_attendance_decline_margin_pct",
+]);
+
+const GROUP_HEALTH_WATCH_GRADES: ReadonlySet<string> = new Set([
+  "A",
+  "B",
+  "C",
+  "D",
 ]);
 
 export function validateMetricDefaultsPayload(
@@ -165,6 +176,29 @@ export function validateMetricDefaultsPayload(
     else if (n !== undefined && (n < 7 || n > 365))
       errors.push("Delegated stale-contact days must be between 7 and 365.");
     else if (n !== undefined) value.shepherd_care_stale_days_delegated = n;
+  }
+
+  // Admin IM 05 (#265): the Watch grade threshold is an A–D letter; the
+  // attendance decline margin is an integer 0..100 points.
+  if ("group_health_watch_grade" in input) {
+    const raw = input.group_health_watch_grade;
+    if (typeof raw === "string" && GROUP_HEALTH_WATCH_GRADES.has(raw)) {
+      value.group_health_watch_grade = raw;
+    } else {
+      errors.push("Watch grade threshold must be one of A, B, C, or D.");
+    }
+  }
+
+  if ("group_health_attendance_decline_margin_pct" in input) {
+    const n = readOptionalInteger(
+      input.group_health_attendance_decline_margin_pct
+    );
+    if (n === "invalid")
+      errors.push("Attendance decline margin must be a whole number.");
+    else if (n !== undefined && (n < 0 || n > 100))
+      errors.push("Attendance decline margin must be between 0 and 100.");
+    else if (n !== undefined)
+      value.group_health_attendance_decline_margin_pct = n;
   }
 
   // Cross-field: full % must be >= warning % when both present (or fall

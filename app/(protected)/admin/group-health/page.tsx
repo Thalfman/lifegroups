@@ -6,6 +6,8 @@ import {
 } from "@/lib/admin/group-health-read";
 import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
 import { fetchPlatformConfig } from "@/lib/supabase/read-models";
+import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
 import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
@@ -40,11 +42,17 @@ export default async function GroupHealthPage() {
   // ministry_admin this read returns null and decodeAppConfig yields {} — which
   // makes resolveCopy fall back to the documented placeholders. That graceful
   // fallback is the intended behaviour, not an error.
-  const [overview, platformConfig] = await Promise.all([
+  const [overview, platformConfig, metricDefaults] = await Promise.all([
     listGroupHealthOverview(client, period),
     fetchPlatformConfig(client),
+    fetchMetricDefaultsCached(client),
   ]);
   const editableCopy = decodeAppConfig(platformConfig.data).editableCopy;
+  // The director's Watch grade threshold, sourced from Settings (#265). A read
+  // failure falls back to the documented default rather than failing the page.
+  const watchGrade = decodeMetricDefaults(
+    metricDefaults.error ? null : metricDefaults.data
+  ).group_health_watch_grade;
   const spiritualGrowthLabel = resolveCopy(
     editableCopy,
     GROUP_HEALTH_COPY_KEYS.spiritualGrowth
@@ -96,6 +104,7 @@ export default async function GroupHealthPage() {
           period={period}
           spiritualGrowthLabel={spiritualGrowthLabel}
           groupQuestionLabel={groupQuestionLabel}
+          watchGrade={watchGrade}
         />
       </PageBody>
     </>

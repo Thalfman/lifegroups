@@ -43,6 +43,8 @@ const METRIC_DEFAULT_FIELDS = [
   "default_healthy_attendance_pct",
   "shepherd_care_stale_days_direct",
   "shepherd_care_stale_days_delegated",
+  "group_health_watch_grade",
+  "group_health_attendance_decline_margin_pct",
 ] as const;
 
 const GROUP_METRIC_FIELDS = [
