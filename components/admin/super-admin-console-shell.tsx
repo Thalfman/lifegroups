@@ -18,6 +18,9 @@ import { PasswordResetForm } from "@/components/admin/forms/password-reset-form"
 import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-form";
 import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
+import { CleanSlateCard } from "@/components/admin/clean-slate-card";
+import { AuditResetCard } from "@/components/admin/audit-reset-card";
+import type { CleanSlateImpact } from "@/lib/supabase/maintenance-reads";
 import {
   SystemStatusChecklist,
   type ChecklistRow,
@@ -84,6 +87,9 @@ export type SuperAdminConsoleData = {
   // console's config tracer. Decodes to built-in defaults when unreadable.
   appConfig: AppConfig;
   auditEvents: AuditEventsRow[];
+  // PRD-SAC6 Danger Zone impact previews. Null when the read failed / no client.
+  cleanSlateImpact: CleanSlateImpact | null;
+  auditEventCount: number | null;
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
   groupsById: Map<string, GroupsRow>;
@@ -463,7 +469,32 @@ export function SuperAdminConsoleShell({
           title="Bulk import people"
           description="Paste CSV to create leader profiles and member records in one audited batch. Parsing + de-duplication happen before any write; skipped rows are reported back."
         >
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
+            {/* A correctly-shaped empty template the operator can fill in and
+                paste straight back (#289). Plain anchor, not a Link, so the
+                browser follows the attachment download. */}
+            <div>
+              <a
+                href="/admin/super-admin/people-import-template"
+                download
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  fontFamily: fontSans,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: P.ink,
+                  background: "transparent",
+                  border: `1px solid ${P.line}`,
+                  textDecoration: "none",
+                }}
+              >
+                Download CSV template
+              </a>
+            </div>
             <PeopleImportForm />
           </div>
         </CommandSection>
@@ -628,32 +659,11 @@ export function SuperAdminConsoleShell({
           id="danger-zone"
           eyebrow="Danger Zone"
           title="Guarded permanent actions"
-          description="Permanent purge tools are intentionally absent in this phase. Future actions require server-side impact summaries, type-to-confirm, and audit rows."
+          description="Each action below shows a server-loaded impact summary and is gated behind a type-to-confirm phrase, with a paired audit row. Both are reversible (a snapshot / archive is captured before the purge); raw SQL, schema editing, and auth bypass remain unavailable."
           accent={{ label: "Guarded", tone: "blocked" }}
         >
-          <div
-            style={{
-              ...cardStyle,
-              background: P.terraSoft,
-              borderColor: P.terra,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <StatusBadge label="Blocked" tone="blocked" />
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.terraTextStrong,
-                lineHeight: 1.55,
-                margin: 0,
-              }}
-            >
-              No purge action, broad delete, raw SQL, schema editor, or auth
-              bypass is available from this command center shell.
-            </p>
-          </div>
+          <CleanSlateCard impact={data.cleanSlateImpact} />
+          <AuditResetCard auditEventCount={data.auditEventCount} />
         </CommandSection>
       </div>
     </div>

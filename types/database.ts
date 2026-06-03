@@ -183,6 +183,35 @@ export interface AppSettingsRow {
   updated_at: Timestamp;
 }
 
+// PRD-SAC6 (#290): backup of purged audit rows. Mirrors AuditEventsRow plus the
+// time the row was archived. Super-admin-only SELECT RLS; all writes flow
+// through the super_admin_reset_audit_logs SECURITY DEFINER RPC.
+export interface AuditEventsArchiveRow {
+  id: UUID;
+  actor_profile_id: UUID | null;
+  action: string;
+  entity_type: string;
+  entity_id: UUID | null;
+  metadata: Record<string, unknown>;
+  created_at: Timestamp;
+  archived_at: Timestamp;
+}
+
+// PRD-SAC6 (#288): single in-DB snapshot store for the Clean Slate history
+// wipe. Super-admin-only SELECT RLS; all writes flow through the
+// super_admin_clean_slate_wipe SECURITY DEFINER RPC.
+export interface CleanSlateSnapshotsRow {
+  id: UUID;
+  created_by: UUID | null;
+  created_at: Timestamp;
+  kind: string;
+  payload: Record<string, unknown>;
+  row_counts: Record<string, number>;
+  total_rows: number;
+  restored_at: Timestamp | null;
+  restored_by: UUID | null;
+}
+
 // Phase SAC.1 (#159): Super-Admin-only platform config (feature flags + editable
 // copy). Mirrors the AppSettingsRow keyed-row shape but lives in its own table
 // with Super-Admin-only RLS, so the Ministry Admin can never read it.
@@ -482,6 +511,26 @@ export interface Database {
         Row: AppSettingsRow;
         Insert: InsertOf<AppSettingsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<AppSettingsRow>;
+        Relationships: [];
+      };
+      audit_events_archive: {
+        Row: AuditEventsArchiveRow;
+        Insert: InsertOf<AuditEventsArchiveRow, "metadata" | "archived_at">;
+        Update: Partial<AuditEventsArchiveRow>;
+        Relationships: [];
+      };
+      clean_slate_snapshots: {
+        Row: CleanSlateSnapshotsRow;
+        Insert: InsertOf<
+          CleanSlateSnapshotsRow,
+          | "id"
+          | "created_at"
+          | "row_counts"
+          | "total_rows"
+          | "restored_at"
+          | "restored_by"
+        >;
+        Update: Partial<CleanSlateSnapshotsRow>;
         Relationships: [];
       };
       platform_config: {

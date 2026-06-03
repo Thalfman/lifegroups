@@ -167,6 +167,24 @@ export function rpcSuperAdminBulkImportPeople(
   return callUuidRpc(client, "super_admin_bulk_import_people", args);
 }
 
+// PRD-SAC6 (#288) Clean Slate history wipe. Takes no arguments; the RPC
+// snapshots + deletes the history tables and writes the paired audit row in one
+// transaction, returning the snapshot id (the action reads counts back from the
+// snapshot row by id — not through this uuid channel).
+export function rpcSuperAdminCleanSlateWipe(
+  client: AppSupabaseClient
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_clean_slate_wipe", {});
+}
+
+// PRD-SAC6 (#290) standalone audit-log reset (archive-then-purge). Returns the
+// id of the single fresh audit row the purge writes.
+export function rpcSuperAdminResetAuditLogs(
+  client: AppSupabaseClient
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_audit_logs", {});
+}
+
 // Phase 5A.4 admin settings + leader-role-swap RPCs.
 
 export function rpcAdminUpdateMetricDefaults(

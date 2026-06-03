@@ -24,6 +24,10 @@ import {
   fetchCurrentCoverageAssignments,
 } from "@/lib/supabase/super-admin-console-reads";
 import {
+  fetchCleanSlateImpact,
+  fetchAuditEventCount,
+} from "@/lib/supabase/maintenance-reads";
+import {
   BUILT_IN_APP_CONFIG,
   decodeAppConfig,
 } from "@/lib/admin/app-config-decode";
@@ -206,6 +210,8 @@ function buildNoClientData(): SuperAdminConsoleData {
     coverageLeaders: [],
     appConfig: BUILT_IN_APP_CONFIG,
     auditEvents: [],
+    cleanSlateImpact: null,
+    auditEventCount: null,
     profilesById: new Map(),
     membersById: new Map(),
     groupsById: new Map(),
@@ -250,6 +256,8 @@ async function loadData(
     overShepherds,
     coverageLeaders,
     coverageAssignments,
+    cleanSlateResult,
+    auditCountResult,
   ] = await Promise.all([
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllGroups(client),
@@ -263,6 +271,8 @@ async function loadData(
     fetchActiveOverShepherds(client),
     fetchCoverageAssignableLeaders(client),
     fetchCurrentCoverageAssignments(client),
+    fetchCleanSlateImpact(client),
+    fetchAuditEventCount(client),
   ]);
 
   const profiles = profilesResult.data ?? [];
@@ -315,6 +325,8 @@ async function loadData(
     coverageLeaders,
     appConfig: decodeAppConfig(platformConfigResult.data),
     auditEvents: auditEvents as AuditEventsRow[],
+    cleanSlateImpact: cleanSlateResult.data,
+    auditEventCount: auditCountResult.data,
     profilesById,
     membersById,
     groupsById,
