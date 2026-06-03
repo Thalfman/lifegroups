@@ -27,6 +27,8 @@ Replace the current broad navigation with this simplified structure:
 
 Super Admin is intentionally out of scope.
 
+> Boundary note: "Out of scope" means unchanged, not removed. The existing Super Admin Console and its nav entry (`/admin/super-admin`, added only for `role === "super_admin"` in `adminNavGroups`, per ADR 0002) must stay exactly as-is. This six-item structure describes the normal-admin navigation and does not replace or hide the Super Admin entry for super-admin users.
+
 ---
 
 # 2. Navigation Mapping
@@ -80,6 +82,10 @@ Generic action labels like `Open ->` make the page less clear.
 | This Week | Upcoming meetings, due follow-ups, launch milestones | `View planning` |
 | Ministry Snapshot | Active groups, people in groups, capacity, group health summary | `View groups` |
 | Recent Activity | Recent care notes, completed follow-ups, group updates | `View activity` |
+
+> Notes on Recent Activity:
+> - There is no separate Activity page (no `/admin/activity` route exists). `View activity` should scroll to or expand Home's own Recent Activity section, or link to the relevant item's surface (group, follow-up). It is not a link to a new top-level area.
+> - Recent Activity may show only metadata, links, and counts (for example "care logged for X", "follow-up completed"). It must not render private-note, admin-summary, or interaction-note bodies — those stay on the guarded `/admin/shepherd-care` surface and never leave it.
 
 ## Better Dashboard Action Labels
 
@@ -411,6 +417,8 @@ Reason:
 
 `Apprentices` is simpler, more human, and fits inside People.
 
+> Integration note: Surfacing apprentices under People is a navigation/entry-point change only. The leader-pipeline data must remain wired into the Planning workspace's capacity and multiplication flow (see `docs/plans/CAPACITY_AND_MULTIPLICATION_PRD.md`; the `/admin/launch-planning` page uses the pipeline as staffing supply). Planning must still answer whether upcoming launches have enough ready leaders — moving the People-facing view must not sever that staffing/supply integration.
+
 ## Person Row/Card Structure
 
 Each person row should show:
@@ -445,6 +453,8 @@ Inside a person detail page, use these tabs:
 | Access | Login and role details, shown only to users with permission. |
 
 > Boundary note: The `Access` tab applies only to app-login (auth-backed) profiles. Members are non-login participant records and never sign in, so member detail pages must not show an `Access` tab or offer any account or role-management affordances. Keep this restriction even though the `Person Detail` layout is shared across the People area.
+
+> Boundary note: The `Care` tab is for leader / co-leader profiles. The care model is per-leader (one care row/status per leader, per `docs/PRD.md`), and members are separate participant records. Make the `Care` tab conditional on leader/co-leader profiles, or define a distinct member-care model first — do not show leader shepherd-care history on member detail pages, which would either expand shepherd-care scope to members or produce empty/broken member care pages.
 
 ---
 
