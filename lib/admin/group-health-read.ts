@@ -21,6 +21,7 @@ import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupHealthRubricSetting,
+  fetchGroupsByIds,
   type ReadResult,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
@@ -340,85 +341,206 @@ export async function listGroupHealthOverview(
 
   const rows: GroupHealthOverviewRow[] = [];
   for (const [i, group] of groups.entries()) {
-    const weeksRes = weeksByGroup[i];
-    const prior = persisted.get(group.id);
-
-    if (weeksRes.error) {
-      // Don't fail the whole page for one group's read; show last-known-good.
-      // Only flag stale when there is actually a prior row to fall back to — a
-      // group with no persisted assessment has nothing "last saved" to show.
-      rows.push({
-        group_id: group.id,
-        group_name: group.name,
-        attendance_pct: prior?.attendance_pct ?? null,
-        attendance_weeks_counted: prior?.attendance_weeks_counted ?? 0,
-        spiritual_growth_score: prior?.spiritual_growth_score ?? null,
-        spiritual_growth_note: prior?.spiritual_growth_note ?? null,
-        group_question_score: prior?.group_question_score ?? null,
-        group_question_leader_reported:
-          prior?.group_question_leader_reported ?? false,
-        computed_letter: prior?.computed_letter ?? null,
-        // The live attendance read failed, so we have no fresh check-in week to
-        // show; don't guess one.
-        last_check_in_week: null,
-        last_saved_at: prior?.updated_at ?? null,
-        stale: prior !== undefined,
-        unassessed: prior === undefined,
-        needs_follow_up: latestFollowUp.get(group.id) ?? false,
-        // No fresh attendance window on a failed read, so we can't honestly
-        // claim a trend.
-        attendance_declining: false,
-      });
-      continue;
-    }
-
-    const attendance = attendanceConsistency(weeksRes.data, rubric);
-    const trend = attendanceTrend(weeksRes.data, declineMargin);
-    // Latest recorded attendance week = the group's last check-in. Weeks are
-    // ISO YYYY-MM-DD, which sorts lexically, so the max string is the newest.
-    const lastCheckInWeek =
-      weeksRes.data.length === 0
-        ? null
-        : weeksRes.data.reduce(
-            (latest, w) => (w.meeting_week > latest ? w.meeting_week : latest),
-            weeksRes.data[0].meeting_week
-          );
-    // Recompute live: the rolling attendance dimension plus whatever 1–5
-    // ratings the admin has already entered for the month.
-    const ratings = {
-      spiritual_growth_score: prior?.spiritual_growth_score ?? null,
-      group_question_score: prior?.group_question_score ?? null,
-    };
-    const grade = computeGrade(
-      dimensionScoresFromInputs({
-        attendance_pct: attendance.rolling_pct,
-        ...ratings,
-      }),
-      rubric
+    rows.push(
+      buildOverviewRow({
+        group,
+        weeksRes: weeksByGroup[i],
+        prior: persisted.get(group.id),
+        needsFollowUp: latestFollowUp.get(group.id) ?? false,
+        rubric,
+        declineMargin,
+      })
     );
-    rows.push({
+  }
+
+  return { data: rows, error: null };
+}
+
+// Assemble one group's overview row from its attendance read + persisted
+// assessment. Pure given its inputs — the single source for the row shape so
+// the bulk overview and the single-group read (getGroupHealthOverviewForGroup)
+// can never disagree about how a row is graded.
+function buildOverviewRow(args: {
+  group: { id: string; name: string };
+  weeksRes: ReadResult<AttendanceWeekTally[]>;
+  prior: PersistedAssessment | undefined;
+  needsFollowUp: boolean;
+  rubric: GroupHealthRubricConfig;
+  declineMargin: number;
+}): GroupHealthOverviewRow {
+  const { group, weeksRes, prior, needsFollowUp, rubric, declineMargin } = args;
+
+  if (weeksRes.error) {
+    // Don't fail the whole page for one group's read; show last-known-good.
+    // Only flag stale when there is actually a prior row to fall back to — a
+    // group with no persisted assessment has nothing "last saved" to show.
+    return {
       group_id: group.id,
       group_name: group.name,
-      attendance_pct: attendance.rolling_pct,
-      attendance_weeks_counted: attendance.weeks_counted,
+      attendance_pct: prior?.attendance_pct ?? null,
+      attendance_weeks_counted: prior?.attendance_weeks_counted ?? 0,
       spiritual_growth_score: prior?.spiritual_growth_score ?? null,
       spiritual_growth_note: prior?.spiritual_growth_note ?? null,
       group_question_score: prior?.group_question_score ?? null,
       group_question_leader_reported:
         prior?.group_question_leader_reported ?? false,
-      computed_letter: grade.letter,
-      last_check_in_week: lastCheckInWeek,
+      computed_letter: prior?.computed_letter ?? null,
+      // The live attendance read failed, so we have no fresh check-in week to
+      // show; don't guess one.
+      last_check_in_week: null,
       last_saved_at: prior?.updated_at ?? null,
-      unassessed:
-        attendance.rolling_pct === null &&
-        ratings.spiritual_growth_score === null &&
-        ratings.group_question_score === null &&
-        !persisted.has(group.id),
-      stale: false,
-      needs_follow_up: latestFollowUp.get(group.id) ?? false,
-      attendance_declining: trend.declining,
-    });
+      stale: prior !== undefined,
+      unassessed: prior === undefined,
+      needs_follow_up: needsFollowUp,
+      // No fresh attendance window on a failed read, so we can't honestly
+      // claim a trend.
+      attendance_declining: false,
+    };
   }
 
-  return { data: rows, error: null };
+  const attendance = attendanceConsistency(weeksRes.data, rubric);
+  const trend = attendanceTrend(weeksRes.data, declineMargin);
+  // Latest recorded attendance week = the group's last check-in. Weeks are
+  // ISO YYYY-MM-DD, which sorts lexically, so the max string is the newest.
+  const lastCheckInWeek =
+    weeksRes.data.length === 0
+      ? null
+      : weeksRes.data.reduce(
+          (latest, w) => (w.meeting_week > latest ? w.meeting_week : latest),
+          weeksRes.data[0].meeting_week
+        );
+  // Recompute live: the rolling attendance dimension plus whatever 1–5
+  // ratings the admin has already entered for the month.
+  const ratings = {
+    spiritual_growth_score: prior?.spiritual_growth_score ?? null,
+    group_question_score: prior?.group_question_score ?? null,
+  };
+  const grade = computeGrade(
+    dimensionScoresFromInputs({
+      attendance_pct: attendance.rolling_pct,
+      ...ratings,
+    }),
+    rubric
+  );
+  return {
+    group_id: group.id,
+    group_name: group.name,
+    attendance_pct: attendance.rolling_pct,
+    attendance_weeks_counted: attendance.weeks_counted,
+    spiritual_growth_score: prior?.spiritual_growth_score ?? null,
+    spiritual_growth_note: prior?.spiritual_growth_note ?? null,
+    group_question_score: prior?.group_question_score ?? null,
+    group_question_leader_reported:
+      prior?.group_question_leader_reported ?? false,
+    computed_letter: grade.letter,
+    last_check_in_week: lastCheckInWeek,
+    last_saved_at: prior?.updated_at ?? null,
+    unassessed:
+      attendance.rolling_pct === null &&
+      ratings.spiritual_growth_score === null &&
+      ratings.group_question_score === null &&
+      prior === undefined,
+    stale: false,
+    needs_follow_up: needsFollowUp,
+    attendance_declining: trend.declining,
+  };
+}
+
+// Single-group health overview for the group detail route (#308). Runs the
+// SAME grade computation as listGroupHealthOverview but does O(1) work: it reads
+// only this group, its assessment, its latest follow-up flag, and its own
+// attendance window — instead of fetching every active group and fanning out an
+// attendance read per group just to keep one row. The bulk overview keeps using
+// the list path; this is the targeted variant for a single record.
+export async function getGroupHealthOverviewForGroup(
+  client: AppSupabaseClient,
+  groupId: string,
+  periodMonthIso: string = currentPeriodMonthIso()
+): Promise<ReadResult<GroupHealthOverviewRow | null>> {
+  const groupRes = await fetchGroupsByIds(client, [groupId]);
+  if (groupRes.error)
+    return {
+      data: null,
+      error: wrapError("getGroupHealthOverviewForGroup/group", groupRes.error),
+    };
+  const group = (groupRes.data ?? [])[0];
+  // Match the bulk overview's scope: closed groups are not assessed.
+  if (!group || group.lifecycle_status === "closed")
+    return { data: null, error: null };
+
+  const rubricRes = await fetchGroupHealthRubric(client);
+  if (rubricRes.error) return { data: null, error: rubricRes.error };
+  const rubric = rubricRes.data;
+
+  const defaultsRes = await fetchMetricDefaultsCached(client);
+  if (defaultsRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "getGroupHealthOverviewForGroup/metricDefaults",
+        defaultsRes.error
+      ),
+    };
+  const declineMargin = decodeMetricDefaults(
+    defaultsRes.data
+  ).group_health_attendance_decline_margin_pct;
+
+  // The persisted assessment for this group + period (the ratings + last-saved
+  // audit row), scoped to the one group instead of the whole month.
+  const { data: assessment, error: assessmentError } = await (
+    client as AppSupabaseClient
+  )
+    .from("group_health_assessments" as never)
+    .select(ASSESSMENT_COLUMNS as never)
+    .eq("group_id" as never, groupId as never)
+    .eq("period_month" as never, periodMonthIso as never)
+    .maybeSingle<PersistedAssessment>();
+  if (assessmentError)
+    return {
+      data: null,
+      error: wrapError(
+        "getGroupHealthOverviewForGroup/assessment",
+        assessmentError
+      ),
+    };
+
+  // The cross-month "needs follow-up" flag for just this group (its latest
+  // assessment of any month), via the same view the bulk read uses.
+  const { data: followUpRow, error: followUpError } = await (
+    client as AppSupabaseClient
+  )
+    .from("group_health_latest_follow_up" as never)
+    .select("group_id, needs_follow_up" as never)
+    .eq("group_id" as never, groupId as never)
+    .maybeSingle<LatestFollowUpRow>();
+  if (followUpError)
+    return {
+      data: null,
+      error: wrapError(
+        "getGroupHealthOverviewForGroup/followUp",
+        followUpError
+      ),
+    };
+
+  const weeksToFetch = Math.max(
+    rubric.attendance_window_weeks,
+    ATTENDANCE_TREND_WINDOW_WEEKS
+  );
+  const weeksRes = await fetchGroupAttendanceWeeks(
+    client,
+    groupId,
+    weeksToFetch
+  );
+
+  return {
+    data: buildOverviewRow({
+      group,
+      weeksRes,
+      prior: assessment ?? undefined,
+      needsFollowUp: followUpRow?.needs_follow_up ?? false,
+      rubric,
+      declineMargin,
+    }),
+    error: null,
+  };
 }

@@ -112,12 +112,14 @@ test.describe("groups directory editing surface", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  test("closing returns to the prior filter state", async ({ page }) => {
+  test("closing returns to the prior list view state", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    const dayFilter = surface.getByLabel("Meeting day filter");
+    const search = surface.getByLabel("Search groups");
 
-    // Filter to Thursday: only Downtown Professionals remains.
-    await dayFilter.selectOption("Thursday");
+    // Narrow the list to Downtown via search (the list-filtering control that
+    // replaced the per-attribute selects when filters became the five tabs):
+    // only Downtown Professionals remains, Eastside is filtered out.
+    await search.fill("Downtown");
     await expect(
       surface.getByRole("button", { name: EDIT_DOWNTOWN })
     ).toBeVisible();
@@ -125,14 +127,34 @@ test.describe("groups directory editing surface", () => {
       surface.getByRole("button", { name: EDIT_EASTSIDE })
     ).toHaveCount(0);
 
-    // Open and close the drawer; the filter must survive the round trip.
+    // Open and close the drawer; the narrowed view must survive the round trip
+    // (the drawer is portaled out of the list, so the list never reflows).
     await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
     await page.keyboard.press("Escape");
 
-    await expect(dayFilter).toHaveValue("Thursday");
+    await expect(search).toHaveValue("Downtown");
     await expect(
       surface.getByRole("button", { name: EDIT_EASTSIDE })
     ).toHaveCount(0);
+  });
+
+  test("the five list tabs are present and switchable", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    for (const name of [
+      "All Groups",
+      "Needs Setup",
+      "Needs Health Check",
+      "Needs Attention",
+      "Archived",
+    ]) {
+      await expect(surface.getByRole("tab", { name })).toBeVisible();
+    }
+    // Switching to Archived selects it (no active groups appear there in the
+    // demo data, so it shows the empty state rather than the active cards).
+    await surface.getByRole("tab", { name: "Archived" }).click();
+    await expect(
+      surface.getByRole("tab", { name: "Archived" })
+    ).toHaveAttribute("aria-selected", "true");
   });
 
   test("New group opens the create drawer and returns focus on close", async ({

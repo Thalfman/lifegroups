@@ -78,6 +78,98 @@ export function healthStatusLabel(status: GroupHealthStatus): string {
   return healthLabels[status] ?? status;
 }
 
+// ---------------------------------------------------------------------------
+// Four independent group-status categories (issue #300)
+// ---------------------------------------------------------------------------
+//
+// The Groups surface shows a group's standing as FOUR separate, independent
+// labels — never a combined chip like "Active Healthy". Each category answers a
+// different question and has its own closed display vocabulary. These are
+// *display* categories layered over the data-model enums, deliberately coarser:
+//   * Lifecycle — is the group running? (folds the seven lifecycle_status enum
+//     values down to Active / Paused / Archived.)
+//   * Setup     — is the group configured enough to operate?
+//   * Health    — the Group-Health Grade (Q12 computed grade), NOT Leader Care
+//     Status or Health Pulse (CONTEXT.md). Coarsened to the operator's
+//     "anything to look at?" read.
+//   * Capacity  — how full is it?
+
+// Lifecycle: the running state, collapsed to the three the operator scans for.
+export type GroupLifecycleCategory = "active" | "paused" | "archived";
+
+const lifecycleCategoryLabels: Record<GroupLifecycleCategory, string> = {
+  active: "Active",
+  paused: "Paused",
+  archived: "Archived",
+};
+
+export function lifecycleCategory(
+  status: GroupLifecycleStatus
+): GroupLifecycleCategory {
+  if (status === "closed") return "archived";
+  if (status === "planned_pause" || status === "seasonal_break")
+    return "paused";
+  return "active";
+}
+
+export function lifecycleCategoryLabel(
+  category: GroupLifecycleCategory
+): string {
+  return lifecycleCategoryLabels[category];
+}
+
+// Setup: is the group configured enough to run? `needs_leader` and
+// `missing_meeting` are the two specific gaps worth surfacing on their own; any
+// other gap reads as the generic `needs_setup`.
+export type GroupSetupCategory =
+  | "complete"
+  | "needs_setup"
+  | "needs_leader"
+  | "missing_meeting";
+
+const setupCategoryLabels: Record<GroupSetupCategory, string> = {
+  complete: "Setup complete",
+  needs_setup: "Needs setup",
+  needs_leader: "Needs leader",
+  missing_meeting: "Missing meeting details",
+};
+
+export function setupCategoryLabel(category: GroupSetupCategory): string {
+  return setupCategoryLabels[category];
+}
+
+// Health: the Group-Health Grade read, coarsened to the three states the
+// operator triages by. "Needs attention" = graded at or below the director's
+// Watch threshold; "No current concerns" = graded above it; "Not assessed" =
+// no grade yet. This is the Group-Health Grade, not care status / health pulse.
+export type GroupHealthCategory =
+  | "not_assessed"
+  | "no_concerns"
+  | "needs_attention";
+
+const healthCategoryLabels: Record<GroupHealthCategory, string> = {
+  not_assessed: "Not assessed",
+  no_concerns: "No current concerns",
+  needs_attention: "Needs attention",
+};
+
+export function healthCategoryLabel(category: GroupHealthCategory): string {
+  return healthCategoryLabels[category];
+}
+
+// Capacity: how full the group is, in the operator's words.
+export type GroupCapacityCategory = "open" | "near_full" | "full";
+
+const capacityCategoryLabels: Record<GroupCapacityCategory, string> = {
+  open: "Open",
+  near_full: "Near full",
+  full: "Full",
+};
+
+export function capacityCategoryLabel(category: GroupCapacityCategory): string {
+  return capacityCategoryLabels[category];
+}
+
 export function pipelineStageLabel(stage: GuestPipelineStage): string {
   return pipelineLabels[stage] ?? stage;
 }

@@ -7,14 +7,29 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
 import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
+import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
-import { MEETING_DAYS_ORDERED } from "@/components/admin/forms/meeting-schedule-options";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
-import { mapHealthToBadge } from "@/lib/dashboard/badge-map";
 import {
-  healthStatusLabel,
-  lifecycleStatusLabel,
+  capacityCategory,
+  healthCategory,
+  matchesListTab,
+  setupCategory,
+  type GroupListTab,
+  type GroupTriageSignals,
+} from "@/lib/dashboard/group-status";
+import type { GroupHealthSignals } from "@/components/admin/group-management-shell";
+import {
+  capacityCategoryLabel,
+  healthCategoryLabel,
+  lifecycleCategory,
+  lifecycleCategoryLabel,
+  setupCategoryLabel,
+  type GroupCapacityCategory,
+  type GroupHealthCategory,
+  type GroupLifecycleCategory,
+  type GroupSetupCategory,
 } from "@/lib/dashboard/labels";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
@@ -22,11 +37,11 @@ import {
   effectiveCapacity,
   effectiveCapacityFullPct,
   effectiveCapacityWarningPct,
-  effectiveHealthStatus,
   isExcludedFromCapacityMetrics,
   unknownCapacity,
   type MetricDefaults,
 } from "@/lib/admin/metrics";
+import type { GroupHealthLetter } from "@/types/enums";
 import type {
   AttendanceSessionsRow,
   GroupLeadersRow,
@@ -35,19 +50,33 @@ import type {
   GroupsRow,
   ProfilesRow,
 } from "@/types/database";
-import type {
-  AttendanceSessionStatus,
-  GroupLifecycleStatus,
-} from "@/types/enums";
+import type { AttendanceSessionStatus } from "@/types/enums";
 
-const LIFECYCLE_TONE: Record<GroupLifecycleStatus, PTone> = {
+// Each of the four independent status categories carries its own badge tone.
+// They are shown as four separate chips — never combined into one (issue #300).
+const LIFECYCLE_TONE: Record<GroupLifecycleCategory, PTone> = {
   active: "healthy",
-  planned_pause: "pause",
-  seasonal_break: "pause",
-  launching_soon: "watch",
+  paused: "pause",
+  archived: "neutral",
+};
+
+const SETUP_TONE: Record<GroupSetupCategory, PTone> = {
+  complete: "healthy",
+  needs_setup: "watch",
   needs_leader: "followup",
-  at_risk: "followup",
-  closed: "neutral",
+  missing_meeting: "watch",
+};
+
+const HEALTH_TONE: Record<GroupHealthCategory, PTone> = {
+  not_assessed: "neutral",
+  no_concerns: "healthy",
+  needs_attention: "followup",
+};
+
+const CAPACITY_TONE: Record<GroupCapacityCategory, PTone> = {
+  open: "neutral",
+  near_full: "watch",
+  full: "followup",
 };
 
 type GroupsDirectoryProps = {
@@ -59,33 +88,54 @@ type GroupsDirectoryProps = {
   latestWeek: string | null;
   metricDefaults: MetricDefaults;
   groupMetricSettings: GroupMetricSettingsRow[];
+  // Group-Health Grade (Q12 computed letter) per group id; absent/null = not
+  // assessed. The Health zone reflects this grade, not the health_status enum.
+  healthGradesByGroupId: Record<string, GroupHealthLetter | null>;
+  // Per-group triage signals beyond the grade letter (missing required ratings,
+  // open follow-up, leader-care concern) — drives Needs Health Check + Needs
+  // Attention per plan §4. Absent = no concern.
+  healthSignalsByGroupId: Record<string, GroupHealthSignals>;
+  // Director-tuned Watch threshold from Settings — a group graded at or below
+  // it reads as "Needs attention".
+  watchGrade: GroupHealthLetter;
 };
 
-type LifecycleFilter = "all" | "active" | "closed";
-type HealthFilter =
-  | "all"
-  | "healthy"
-  | "watch"
-  | "needs_follow_up"
-  | "capacity_full"
-  | "needs_leader_support"
-  | "healthy_paused"
-  | "restart_soon"
-  | "overdue_restart";
+// The five list tabs (issue #300). "all" lists every active group; "archived"
+// lists closed groups; the three middle tabs are derived attention buckets.
+// The tab keys + membership rules live in lib/dashboard/group-status so the spec
+// (plan §4) is locked in by tests; the component only renders them.
+type ListTab = GroupListTab;
+
+const TABS: { key: ListTab; label: string }[] = [
+  { key: "all", label: "All Groups" },
+  { key: "needs_setup", label: "Needs Setup" },
+  { key: "needs_health_check", label: "Needs Health Check" },
+  { key: "needs_attention", label: "Needs Attention" },
+  { key: "archived", label: "Archived" },
+];
+
+// The four independent status categories for one group, derived from already-
+// assembled inputs (ADR 0011: per-surface assembly, reusing shared rules only).
+type GroupStatus = {
+  lifecycle: GroupLifecycleCategory;
+  setup: GroupSetupCategory;
+  health: GroupHealthCategory;
+  capacity: GroupCapacityCategory;
+  // The triage signals the four categories don't carry; default to no-concern
+  // when the group has no health-overview row or side-read entry.
+  signals: GroupTriageSignals;
+};
 
 // The one record being edited or created in the shared EditingSurface drawer
 // (#266). Editing no longer expands inline beneath a card; both flows open the
-// drawer, out of the list, so the list never reflows and its filter + scroll
+// drawer, out of the list, so the list never reflows and its tab + scroll
 // state survive the round trip.
 type GroupEditorState = { mode: "create" } | { mode: "edit"; group: GroupsRow };
 
 export function GroupsDirectory(props: GroupsDirectoryProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [lifecycleFilter, setLifecycleFilter] =
-    useState<LifecycleFilter>("active");
-  const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
-  const [dayFilter, setDayFilter] = useState<string>("all");
+  const [tab, setTab] = useState<ListTab>("all");
 
   // Which record the drawer is editing/creating, plus two flags the open form
   // reports back: `dirtyRef` (edits pending → warn before discarding) and
@@ -169,41 +219,86 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     [props.groupMetricSettings]
   );
 
+  // Derive the four independent status categories per group once. The capacity
+  // leg reuses the shared capacityStatus rule (ADR 0011) rather than re-rolling
+  // the threshold math here.
+  const statusByGroupId = useMemo(() => {
+    const m = new Map<string, GroupStatus>();
+    for (const g of props.groups) {
+      const override = overrideByGroupId.get(g.id) ?? null;
+      const cap = effectiveCapacity(g, override, props.metricDefaults);
+      const status = capacityStatus({
+        activeMemberCount: activeMemberCountByGroup.get(g.id) ?? 0,
+        effectiveCapacity: cap,
+        warningPct: effectiveCapacityWarningPct(override, props.metricDefaults),
+        fullPct: effectiveCapacityFullPct(props.metricDefaults),
+        excluded: isExcludedFromCapacityMetrics(override),
+        allowOverCapacity: Boolean(override?.allow_over_capacity),
+      });
+      const signals = props.healthSignalsByGroupId[g.id];
+      m.set(g.id, {
+        lifecycle: lifecycleCategory(g.lifecycle_status),
+        setup: setupCategory({
+          hasLeader: (leadersByGroupId.get(g.id) ?? NO_LEADERS).length > 0,
+          meetingDay: g.meeting_day,
+          meetingTime: g.meeting_time,
+          // Same defaults → per-group override capacity the card + capacity zone
+          // resolve; null = no zone, which keeps the group in Needs Setup.
+          effectiveCapacity: cap,
+        }),
+        health: healthCategory(
+          props.healthGradesByGroupId[g.id] ?? null,
+          props.watchGrade
+        ),
+        capacity: capacityCategory(status),
+        signals: signals ?? NO_SIGNALS,
+      });
+    }
+    return m;
+  }, [
+    props.groups,
+    props.metricDefaults,
+    props.healthGradesByGroupId,
+    props.healthSignalsByGroupId,
+    props.watchGrade,
+    overrideByGroupId,
+    activeMemberCountByGroup,
+    leadersByGroupId,
+  ]);
+
   // Debounce the text query so the filter + localeCompare sort over the full
   // group list runs once typing settles, not on every keystroke. The input
   // stays bound to `query` so it still feels instant.
   const trimmed = useDebouncedValue(query.trim().toLowerCase(), 150);
 
-  const filterFn = (g: GroupsRow): boolean => {
-    if (lifecycleFilter === "active" && g.lifecycle_status === "closed")
-      return false;
-    if (lifecycleFilter === "closed" && g.lifecycle_status !== "closed")
-      return false;
-    if (healthFilter !== "all") {
-      const override = overrideByGroupId.get(g.id) ?? null;
-      const effective = effectiveHealthStatus(g, override);
-      if (effective !== healthFilter) return false;
-    }
-    if (dayFilter !== "all") {
-      const d = g.meeting_day?.trim() ?? "";
-      if (d !== dayFilter) return false;
-    }
-    if (trimmed) {
-      const hay =
-        `${g.name} ${g.description ?? ""} ${g.location_area ?? ""}`.toLowerCase();
-      if (!hay.includes(trimmed)) return false;
-    }
-    return true;
-  };
+  const matchesTab = useCallback(
+    (g: GroupsRow): boolean => {
+      const s = statusByGroupId.get(g.id);
+      if (!s) return false;
+      // Membership rules live in the pure matchesListTab (plan §4), shared with
+      // the focused tests so the spec can't drift from the rendered tabs.
+      return matchesListTab(tab, s);
+    },
+    [tab, statusByGroupId]
+  );
 
   const visible = useMemo(
     () =>
       props.groups
-        .filter(filterFn)
+        .filter((g) => {
+          if (!matchesTab(g)) return false;
+          if (trimmed) {
+            const hay =
+              `${g.name} ${g.description ?? ""} ${g.location_area ?? ""}`.toLowerCase();
+            if (!hay.includes(trimmed)) return false;
+          }
+          return true;
+        })
         .sort((a, b) => a.name.localeCompare(b.name)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.groups, lifecycleFilter, healthFilter, dayFilter, trimmed]
+    [props.groups, matchesTab, trimmed]
   );
+
+  const isArchivedTab = tab === "archived";
 
   return (
     <section style={{ display: "grid", gap: 18 }}>
@@ -213,16 +308,40 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         </PButton>
       </div>
 
-      <FilterBar
-        query={query}
-        lifecycleFilter={lifecycleFilter}
-        healthFilter={healthFilter}
-        dayFilter={dayFilter}
-        onQueryChange={setQuery}
-        onLifecycleFilterChange={setLifecycleFilter}
-        onHealthFilterChange={setHealthFilter}
-        onDayFilterChange={setDayFilter}
-      />
+      <TabBar tab={tab} onTabChange={setTab} />
+
+      <div
+        className="lg-m-filterbar"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(220px, 1fr)",
+          gap: 12,
+          alignItems: "center",
+          background: P.surface,
+          border: `1px solid ${P.line}`,
+          borderRadius: 10,
+          padding: "12px 14px",
+        }}
+      >
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, description, location…"
+          aria-label="Search groups"
+          className="lg-m-input"
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: `1px solid ${P.line}`,
+            background: P.bg,
+            fontFamily: fontBody,
+            fontSize: 14,
+            color: P.ink,
+            outline: "none",
+          }}
+        />
+      </div>
 
       <div
         style={{
@@ -251,7 +370,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             color: P.ink2,
           }}
         >
-          No groups match the current filters.
+          {isArchivedTab
+            ? "No archived groups."
+            : "No groups match the current tab."}
         </div>
       ) : (
         <ul style={listResetStyle}>
@@ -259,6 +380,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             <li key={g.id} style={{ marginBottom: 14 }}>
               <GroupCard
                 group={g}
+                status={statusByGroupId.get(g.id)!}
                 leaders={leadersByGroupId.get(g.id) ?? NO_LEADERS}
                 profilesById={profilesById}
                 activeMemberCount={activeMemberCountByGroup.get(g.id) ?? 0}
@@ -284,6 +406,52 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         onSaved={handleSaved}
       />
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tab bar
+// ---------------------------------------------------------------------------
+
+function TabBar({
+  tab,
+  onTabChange,
+}: {
+  tab: ListTab;
+  onTabChange: (t: ListTab) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Group list view"
+      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+    >
+      {TABS.map((t) => {
+        const active = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onTabChange(t.key)}
+            style={{
+              padding: "7px 14px",
+              borderRadius: 999,
+              border: `1px solid ${active ? P.ink : P.line}`,
+              background: active ? P.ink : "transparent",
+              color: active ? P.surface : P.ink2,
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -411,126 +579,20 @@ function ArchiveSection({
 }
 
 // ---------------------------------------------------------------------------
-// Filter bar
+// Group card — six labelled zones (issue #300)
 // ---------------------------------------------------------------------------
 
-function FilterBar({
-  query,
-  lifecycleFilter,
-  healthFilter,
-  dayFilter,
-  onQueryChange,
-  onLifecycleFilterChange,
-  onHealthFilterChange,
-  onDayFilterChange,
-}: {
-  query: string;
-  lifecycleFilter: LifecycleFilter;
-  healthFilter: HealthFilter;
-  dayFilter: string;
-  onQueryChange: (v: string) => void;
-  onLifecycleFilterChange: (v: LifecycleFilter) => void;
-  onHealthFilterChange: (v: HealthFilter) => void;
-  onDayFilterChange: (v: string) => void;
-}) {
-  return (
-    <div
-      className="lg-m-filterbar"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(220px, 1fr) repeat(3, auto)",
-        gap: 12,
-        alignItems: "center",
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-      }}
-    >
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="Search by name, description, location…"
-        aria-label="Search groups"
-        className="lg-m-input"
-        style={{
-          padding: "10px 12px",
-          borderRadius: 8,
-          border: `1px solid ${P.line}`,
-          background: P.bg,
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink,
-          outline: "none",
-        }}
-      />
-      <select
-        value={lifecycleFilter}
-        onChange={(e) =>
-          onLifecycleFilterChange(e.target.value as LifecycleFilter)
-        }
-        aria-label="Lifecycle filter"
-        style={selectStyle}
-      >
-        <option value="active">Active</option>
-        <option value="closed">Archived</option>
-        <option value="all">All lifecycle</option>
-      </select>
-      <select
-        value={healthFilter}
-        onChange={(e) => onHealthFilterChange(e.target.value as HealthFilter)}
-        aria-label="Health filter"
-        style={selectStyle}
-      >
-        <option value="all">All health</option>
-        <option value="healthy">Healthy</option>
-        <option value="watch">Watch</option>
-        <option value="needs_follow_up">Needs follow-up</option>
-        <option value="capacity_full">Capacity full</option>
-        <option value="needs_leader_support">Needs leader support</option>
-        <option value="healthy_paused">Healthy (paused)</option>
-        <option value="restart_soon">Restart soon</option>
-        <option value="overdue_restart">Overdue restart</option>
-      </select>
-      <select
-        value={dayFilter}
-        onChange={(e) => onDayFilterChange(e.target.value)}
-        aria-label="Meeting day filter"
-        style={selectStyle}
-      >
-        <option value="all">Any day</option>
-        {MEETING_DAYS_ORDERED.map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-const selectStyle = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: `1px solid ${P.line}`,
-  background: P.bg,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink,
-  outline: "none",
-} as const;
-
-// ---------------------------------------------------------------------------
-// Group card
-// ---------------------------------------------------------------------------
-
-// Memoized so that re-renders of the directory that don't change a card's
-// props (e.g. each keystroke in the debounced search box, before the filtered
-// list settles) skip re-rendering every card. Props are referentially stable:
-// the lookup maps are memoized and the group rows come straight from props.
+// Zones: Header (name + lifecycle), Setup (leader + setup completeness),
+// Health (Group-Health Grade), Capacity (size vs capacity), Meeting (day/time/
+// location), Actions (View group). The four status categories show as four
+// separate chips, never a combined one.
+//
+// Memoized so re-renders that don't change a card's props (e.g. each keystroke
+// in the debounced search) skip re-rendering every card. Props are referentially
+// stable: the lookup maps are memoized and the rows come straight from props.
 const GroupCard = memo(function GroupCard({
   group,
+  status,
   leaders,
   profilesById,
   activeMemberCount,
@@ -540,6 +602,7 @@ const GroupCard = memo(function GroupCard({
   onEdit,
 }: {
   group: GroupsRow;
+  status: GroupStatus;
   leaders: GroupLeadersRow[];
   profilesById: Map<string, ProfilesRow>;
   activeMemberCount: number;
@@ -550,33 +613,33 @@ const GroupCard = memo(function GroupCard({
   // stays a read-only row — editing no longer happens inline.
   onEdit: (group: GroupsRow) => void;
 }) {
-  const isClosed = group.lifecycle_status === "closed";
-  // Repeated row actions (Edit / Calendar) name their group, but group names
-  // are not unique in the data model. Append a stable, human-meaningful
-  // discriminator — meeting area, else meeting day — so two groups that share
-  // a name stay distinguishable to screen-reader users (issue 257 review).
+  const isArchived = status.lifecycle === "archived";
+  // Repeated row actions (View / Edit / Calendar / Restore) name their group,
+  // but group names are not unique in the data model. Append a stable,
+  // human-meaningful discriminator — meeting area, else meeting day — so two
+  // groups that share a name stay distinguishable to screen-reader users.
   const groupContext =
     group.location_area?.trim() || group.meeting_day?.trim() || null;
   const groupLabel = groupContext
     ? `${group.name} (${groupContext})`
     : group.name;
-  const effectiveHealth = effectiveHealthStatus(group, override);
+
   const cap = effectiveCapacity(group, override, defaults);
   const isCapacityUnknown = unknownCapacity(group, override, defaults);
   const excluded = isExcludedFromCapacityMetrics(override);
-  const status = capacityStatus({
-    activeMemberCount,
-    effectiveCapacity: cap,
-    warningPct: effectiveCapacityWarningPct(override, defaults),
-    fullPct: effectiveCapacityFullPct(defaults),
-    excluded,
-    allowOverCapacity: Boolean(override?.allow_over_capacity),
-  });
 
-  const lifecycleTone = LIFECYCLE_TONE[group.lifecycle_status];
-  const lifecycleLabel = lifecycleStatusLabel(group.lifecycle_status);
-  const healthBadge = mapHealthToBadge(effectiveHealth);
-  const healthLabel = healthStatusLabel(effectiveHealth);
+  const leaderText =
+    leaders.length === 0
+      ? "Unassigned"
+      : leaders
+          .map((l) => {
+            const profile = profilesById.get(l.profile_id);
+            if (!profile) return "(unknown)";
+            return `${profile.full_name} · ${
+              l.role === "co_leader" ? "Co" : "Lead"
+            }`;
+          })
+          .join(" · ");
 
   return (
     <article
@@ -587,9 +650,11 @@ const GroupCard = memo(function GroupCard({
         padding: "18px 22px",
         display: "grid",
         gap: 14,
-        opacity: isClosed ? 0.7 : 1,
+        opacity: isArchived ? 0.7 : 1,
       }}
     >
+      {/* Zone 1 — Header: name + lifecycle (only). The other three categories
+          live in their own zones below, so the header never combines them. */}
       <header
         style={{
           display: "grid",
@@ -619,27 +684,12 @@ const GroupCard = memo(function GroupCard({
             >
               {group.name}
             </h3>
-            <PBadge tone={lifecycleTone}>{lifecycleLabel}</PBadge>
-            <PBadge tone={healthBadge.tone}>
-              {override?.manual_health_status_override
-                ? `${healthLabel} (manual)`
-                : healthLabel}
+            <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
+              {lifecycleCategoryLabel(status.lifecycle)}
             </PBadge>
-            {excluded ? (
-              <PBadge tone="followup">Excluded from capacity</PBadge>
-            ) : null}
-          </div>
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink3,
-              marginTop: 4,
-            }}
-          >
-            {metaLine(group)}
           </div>
         </div>
+        {/* Zone 6 — Actions */}
         <div
           style={{
             display: "flex",
@@ -650,35 +700,34 @@ const GroupCard = memo(function GroupCard({
           }}
         >
           <Link
-            href={`/admin/groups/${group.id}/calendar`}
-            aria-label={`Open ${groupLabel} calendar`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "6px 12px",
-              borderRadius: 8,
-              background: P.surface,
-              border: `1px solid ${P.line}`,
-              color: P.ink,
-              fontFamily: fontBody,
-              fontSize: 13,
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
+            href={`/admin/groups/${group.id}`}
+            aria-label={`View ${groupLabel}`}
+            style={primaryLinkStyle}
           >
-            Calendar
+            View group
           </Link>
-          {!isClosed ? (
-            <PButton
-              type="button"
-              tone="terra"
-              size="sm"
-              aria-label={`Edit ${groupLabel}`}
-              onClick={() => onEdit(group)}
-            >
-              Edit
-            </PButton>
-          ) : null}
+          {isArchived ? (
+            <RestoreGroupButton groupId={group.id} groupName={group.name} />
+          ) : (
+            <>
+              <Link
+                href={`/admin/groups/${group.id}/calendar`}
+                aria-label={`Open ${groupLabel} calendar`}
+                style={secondaryLinkStyle}
+              >
+                Calendar
+              </Link>
+              <PButton
+                type="button"
+                tone="terra"
+                size="sm"
+                aria-label={`Edit ${groupLabel}`}
+                onClick={() => onEdit(group)}
+              >
+                Edit
+              </PButton>
+            </>
+          )}
         </div>
       </header>
 
@@ -686,44 +735,44 @@ const GroupCard = memo(function GroupCard({
         className="lg-m-grid-stack"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 14,
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
         }}
       >
-        <Stat
-          label="Leaders"
-          value={
-            leaders.length === 0
-              ? "Unassigned"
-              : leaders
-                  .map((l) => {
-                    const profile = profilesById.get(l.profile_id);
-                    if (!profile) return "(unknown)";
-                    return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
-                  })
-                  .join(" · ")
-          }
-        />
-        <Stat
-          label="Active members"
-          value={`${activeMemberCount}${
-            isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
-          }`}
-          tone={
-            status === "full"
-              ? "warn"
-              : status === "warning"
-                ? "watch"
-                : undefined
-          }
-        />
-        <Stat
-          label="Latest check-in"
-          value={latestCheckinText(latestSession)}
-        />
+        {/* Zone 2 — Setup: leader + setup completeness */}
+        <Zone label="Setup">
+          <PBadge tone={SETUP_TONE[status.setup]}>
+            {setupCategoryLabel(status.setup)}
+          </PBadge>
+          <ZoneText>{leaderText}</ZoneText>
+        </Zone>
+
+        {/* Zone 3 — Health: the Group-Health Grade (Q12), not care status */}
+        <Zone label="Health">
+          <PBadge tone={HEALTH_TONE[status.health]}>
+            {healthCategoryLabel(status.health)}
+          </PBadge>
+        </Zone>
+
+        {/* Zone 4 — Capacity: size vs capacity */}
+        <Zone label="Capacity">
+          <PBadge tone={CAPACITY_TONE[status.capacity]}>
+            {capacityCategoryLabel(status.capacity)}
+          </PBadge>
+          <ZoneText>
+            {excluded
+              ? "Excluded from capacity"
+              : `${activeMemberCount}${
+                  isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
+                } members`}
+          </ZoneText>
+        </Zone>
+
+        {/* Zone 5 — Meeting: day/time/location */}
+        <Zone label="Meeting">
+          <ZoneText>{metaLine(group)}</ZoneText>
+          <ZoneText muted>{latestCheckinText(latestSession)}</ZoneText>
+        </Zone>
       </div>
 
       {group.description ? (
@@ -743,19 +792,15 @@ const GroupCard = memo(function GroupCard({
   );
 });
 
-function Stat({
+function Zone({
   label,
-  value,
-  tone,
+  children,
 }: {
   label: string;
-  value: string;
-  tone?: "warn" | "watch";
+  children: React.ReactNode;
 }) {
-  const color =
-    tone === "warn" ? "#7d3621" : tone === "watch" ? "#7a5118" : P.ink;
   return (
-    <div>
+    <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
       <div
         style={{
           fontFamily: fontSans,
@@ -768,12 +813,59 @@ function Stat({
       >
         {label}
       </div>
-      <div style={{ fontFamily: fontBody, fontSize: 14, color, marginTop: 2 }}>
-        {value}
-      </div>
+      {children}
     </div>
   );
 }
+
+function ZoneText({
+  children,
+  muted = false,
+}: {
+  children: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: fontBody,
+        fontSize: 13,
+        color: muted ? P.ink3 : P.ink2,
+        lineHeight: 1.4,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+const primaryLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "6px 12px",
+  borderRadius: 8,
+  background: P.ink,
+  border: `1px solid ${P.ink}`,
+  color: P.surface,
+  fontFamily: fontBody,
+  fontSize: 13,
+  textDecoration: "none",
+  fontWeight: 500,
+};
+
+const secondaryLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "6px 12px",
+  borderRadius: 8,
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  color: P.ink,
+  fontFamily: fontBody,
+  fontSize: 13,
+  textDecoration: "none",
+  fontWeight: 500,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -828,7 +920,7 @@ function formatWeek(iso: string): string {
 }
 
 function latestCheckinText(session: AttendanceSessionsRow | null): string {
-  if (!session) return "Not submitted";
+  if (!session) return "No check-in on record";
   const map: Record<AttendanceSessionStatus, string> = {
     submitted: "Submitted",
     not_submitted: "Missing",
@@ -838,7 +930,7 @@ function latestCheckinText(session: AttendanceSessionsRow | null): string {
   };
   const label =
     map[session.status as AttendanceSessionStatus] ?? session.status;
-  return `${label} · ${formatWeek(session.meeting_week)}`;
+  return `Latest check-in: ${label} · ${formatWeek(session.meeting_week)}`;
 }
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
@@ -846,3 +938,11 @@ const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 // Stable empty array so a leaderless group passes the same reference to the
 // memoized GroupCard across renders (a fresh `[]` would defeat React.memo).
 const NO_LEADERS: GroupLeadersRow[] = [];
+
+// Stable "no concern" signals for groups with no health-overview row or side-
+// read entry (e.g. a group not yet graded). Frozen so it's a shared reference.
+const NO_SIGNALS: GroupTriageSignals = Object.freeze({
+  missingRequiredRatings: false,
+  hasOpenFollowUp: false,
+  hasCareConcern: false,
+});

@@ -1,8 +1,7 @@
-import { SectionHeader } from "@/components/layout/shell";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
-import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { P, fontBody } from "@/lib/pastoral";
 import type { MetricDefaults } from "@/lib/admin/metrics";
+import type { GroupHealthLetter } from "@/types/enums";
 import type {
   AttendanceSessionsRow,
   GroupLeadersRow,
@@ -11,6 +10,22 @@ import type {
   GroupsRow,
   ProfilesRow,
 } from "@/types/database";
+
+// Per-group triage signals that the four status labels alone don't carry. All
+// default to "no concern" when absent, so a group the overview never returned
+// (or a failed side read) never spuriously lands in a triage tab.
+export type GroupHealthSignals = {
+  // One or more required ratings (spiritual-growth / group-question) are not yet
+  // recorded for the current period — distinct from "not assessed", because a
+  // group can have an attendance-derived grade letter while still missing these.
+  missingRequiredRatings: boolean;
+  // The group has at least one open / in-progress generic follow-up, or the
+  // director's group-health "needs follow-up" flag is set.
+  hasOpenFollowUp: boolean;
+  // A leader / co-leader of this group has an open shepherd-care concern
+  // (per-leader care model, PRD). Members are never counted.
+  hasCareConcern: boolean;
+};
 
 export type GroupManagementData = {
   groups: GroupsRow[];
@@ -21,6 +36,15 @@ export type GroupManagementData = {
   latestWeek: string | null;
   metricDefaults: MetricDefaults;
   groupMetricSettings: GroupMetricSettingsRow[];
+  // The Group-Health Grade (Q12 computed letter) per group id, for the Health
+  // zone. Absent / null = not assessed. Keyed by group id; closed groups are
+  // simply absent (the overview reads active groups only).
+  healthGradesByGroupId: Record<string, GroupHealthLetter | null>;
+  // Per-group triage signals beyond the grade letter, projected from the same
+  // group-health overview the Health zone uses, plus the group's open follow-up
+  // and leader-care concern reads. These drive the Needs Health Check (missing
+  // required ratings) and Needs Attention (union of concerns) tabs per plan §4.
+  healthSignalsByGroupId: Record<string, GroupHealthSignals>;
   errors: {
     groups: string | null;
     leaders: string | null;
@@ -28,21 +52,22 @@ export type GroupManagementData = {
     memberships: string | null;
     sessions: string | null;
     settings: string | null;
+    // The Group-Health overview read. When it fails the grade/​signal maps are
+    // empty, so every group would otherwise read as "Not assessed" with no
+    // warning — surface the failure rather than silently misclassifying.
+    health: string | null;
   };
 };
 
 export function GroupManagementShell({ data }: { data: GroupManagementData }) {
-  const closedGroups = data.groups
-    .filter((g) => g.lifecycle_status === "closed")
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   const anyError =
     data.errors.groups ||
     data.errors.leaders ||
     data.errors.profiles ||
     data.errors.memberships ||
     data.errors.sessions ||
-    data.errors.settings;
+    data.errors.settings ||
+    data.errors.health;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>
@@ -53,9 +78,11 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         </div>
       ) : null}
 
-      {/* Creating a group now opens the shared editing drawer from the
-          directory's "New group" control (#266), so the list page no longer
-          renders a full inline create form beneath it. */}
+      {/* Groups is the single source of truth for setup, health, capacity, and
+          lifecycle (#300). The directory hosts the five list tabs (including
+          Archived), the four independent status labels, and the six-zone cards;
+          creating opens the shared editing drawer from its "New group" control
+          (#266). */}
       <GroupsDirectory
         groups={data.groups}
         groupLeaders={data.groupLeaders}
@@ -65,76 +92,13 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         latestWeek={data.latestWeek}
         metricDefaults={data.metricDefaults}
         groupMetricSettings={data.groupMetricSettings}
+        healthGradesByGroupId={data.healthGradesByGroupId}
+        healthSignalsByGroupId={data.healthSignalsByGroupId}
+        watchGrade={data.metricDefaults.group_health_watch_grade}
       />
-
-      {closedGroups.length > 0 ? (
-        <section style={{ display: "grid", gap: 18 }}>
-          <SectionHeader
-            eyebrow="Archived groups"
-            title="The archive"
-            description="These groups are off the active roster but everything's preserved. Restore one to bring it back."
-          />
-          <ul style={listResetStyle}>
-            {closedGroups.map((group) => (
-              <li key={group.id} style={{ marginBottom: 14 }}>
-                <ClosedGroupCard group={group} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   );
 }
-
-function ClosedGroupCard({ group }: { group: GroupsRow }) {
-  return (
-    <article
-      className="lg-m-grid-stack"
-      style={{
-        background: P.surface,
-        border: `1px dashed ${P.line}`,
-        borderRadius: 12,
-        padding: "14px 18px",
-        display: "grid",
-        gridTemplateColumns: "1fr auto",
-        gap: 12,
-        alignItems: "center",
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 16,
-            color: P.ink2,
-            fontWeight: 500,
-            fontStyle: "italic",
-          }}
-        >
-          {group.name}
-        </div>
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            color: P.ink3,
-            letterSpacing: 0.4,
-            textTransform: "uppercase",
-            marginTop: 4,
-          }}
-        >
-          {group.closed_at
-            ? `Archived ${new Date(group.closed_at).toLocaleDateString()}`
-            : "Archived"}
-        </div>
-      </div>
-      <RestoreGroupButton groupId={group.id} groupName={group.name} />
-    </article>
-  );
-}
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 const alertStyle = {
   background: P.terraSoft,
