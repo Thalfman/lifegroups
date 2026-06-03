@@ -49,6 +49,20 @@ export type CleanSlateLatestSnapshot = {
   rowCounts: Record<string, number>;
 };
 
+// Coerce a jsonb row_counts value (Record<string, number-ish>) into a clean
+// Record<string, number>, dropping non-finite entries. Shared by the snapshot
+// read here and the wipe/revert success summaries in clean-slate-actions.ts so
+// the card and the action agree on counts.
+export function coerceRowCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n)) out[k] = n;
+  }
+  return out;
+}
+
 export async function fetchLatestCleanSlateSnapshot(
   client: ReadClient
 ): Promise<ReadResult<CleanSlateLatestSnapshot | null>> {
@@ -72,20 +86,12 @@ export async function fetchLatestCleanSlateSnapshot(
   if (!data) return { data: null, error: null };
 
   const total = Number(data.total_rows);
-  const rawCounts = data.row_counts;
-  const rowCounts: Record<string, number> = {};
-  if (rawCounts && typeof rawCounts === "object" && !Array.isArray(rawCounts)) {
-    for (const [k, v] of Object.entries(rawCounts as Record<string, unknown>)) {
-      const n = typeof v === "number" ? v : Number(v);
-      if (Number.isFinite(n)) rowCounts[k] = n;
-    }
-  }
   return {
     data: {
       id: String(data.id),
       createdAt: String(data.created_at),
       totalRows: Number.isFinite(total) ? total : 0,
-      rowCounts,
+      rowCounts: coerceRowCounts(data.row_counts),
     },
     error: null,
   };

@@ -22,7 +22,10 @@ import {
   type CleanSlateRevertSuccess,
   type CleanSlateImportSuccess,
 } from "@/lib/admin/danger-zone";
-import { CLEAN_SLATE_TABLES } from "@/lib/supabase/maintenance-reads";
+import {
+  CLEAN_SLATE_TABLES,
+  coerceRowCounts,
+} from "@/lib/supabase/maintenance-reads";
 import type { CleanSlateSnapshotsRow } from "@/types/database";
 
 const REVALIDATE_PATH = "/admin/super-admin";
@@ -39,14 +42,25 @@ function readForm(input: unknown): Record<string, unknown> {
   return {};
 }
 
-function coerceCounts(value: unknown): Record<string, number> {
-  if (!isRecord(value)) return {};
-  const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(value)) {
-    const n = typeof v === "number" ? v : Number(v);
-    if (Number.isFinite(n)) out[k] = n;
-  }
-  return out;
+// Read the per-table counts back from a snapshot row by id (RLS-gated SELECT) —
+// never through the uuid return channel. Shared by the wipe + revert success
+// summaries.
+async function readSnapshotCounts(
+  client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  snapshotId: string
+): Promise<{ totalRows: number; rowCounts: Record<string, number> }> {
+  if (!client) return { totalRows: 0, rowCounts: {} };
+  const { data: snapshot } = await client
+    .from("clean_slate_snapshots")
+    .select("total_rows, row_counts")
+    .eq("id", snapshotId)
+    .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows" | "row_counts">>();
+  if (!snapshot) return { totalRows: 0, rowCounts: {} };
+  const total = Number(snapshot.total_rows);
+  return {
+    totalRows: Number.isFinite(total) ? total : 0,
+    rowCounts: coerceRowCounts(snapshot.row_counts),
+  };
 }
 
 // PRD-SAC6 Feature 1 (#288): history-only Clean Slate wipe. Gate super_admin,
@@ -78,42 +92,11 @@ export async function superAdminCleanSlateWipe(
   }
 
   // Read the per-table counts back from the snapshot the RPC just wrote.
-  let totalRows = 0;
-  let rowCounts: Record<string, number> = {};
-  const { data: snapshot } = await client
-    .from("clean_slate_snapshots")
-    .select("total_rows, row_counts")
-    .eq("id", snapshotId)
-    .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows" | "row_counts">>();
-  if (snapshot) {
-    const total = Number(snapshot.total_rows);
-    if (Number.isFinite(total)) totalRows = total;
-    rowCounts = coerceCounts(snapshot.row_counts);
-  }
+  const { totalRows, rowCounts } = await readSnapshotCounts(client, snapshotId);
 
   revalidatePath(REVALIDATE_PATH);
   revalidatePath("/admin");
   return actionOk({ snapshotId, totalRows, rowCounts });
-}
-
-// Read the per-table counts back from a snapshot row by id (RLS-gated SELECT) —
-// the same trust-boundary read the wipe success summary uses.
-async function readSnapshotCounts(
-  client: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-  snapshotId: string
-): Promise<{ totalRows: number; rowCounts: Record<string, number> }> {
-  if (!client) return { totalRows: 0, rowCounts: {} };
-  const { data: snapshot } = await client
-    .from("clean_slate_snapshots")
-    .select("total_rows, row_counts")
-    .eq("id", snapshotId)
-    .maybeSingle<Pick<CleanSlateSnapshotsRow, "total_rows" | "row_counts">>();
-  if (!snapshot) return { totalRows: 0, rowCounts: {} };
-  const total = Number(snapshot.total_rows);
-  return {
-    totalRows: Number.isFinite(total) ? total : 0,
-    rowCounts: coerceCounts(snapshot.row_counts),
-  };
 }
 
 // PRD-SAC6 Feature 1 (#293): in-DB Clean Slate revert. Gate super_admin,

@@ -6,7 +6,7 @@
 // stays disabled until the exact phrase is typed, and the phrase is re-checked
 // server-side in the action.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton, pButtonStyle } from "@/components/pastoral/button";
 import {
   superAdminCleanSlateWipe,
@@ -239,13 +239,28 @@ function CleanSlateRecovery({
   snapshot: CleanSlateLatestSnapshot | null;
 }) {
   const revert = useActionForm<CleanSlateRevertSuccess>(
-    superAdminCleanSlateRevert
+    superAdminCleanSlateRevert,
+    { resetOnSuccess: true }
   );
   const importForm = useActionForm<CleanSlateImportSuccess>(
-    superAdminCleanSlateImport
+    superAdminCleanSlateImport,
+    { resetOnSuccess: true }
   );
   const [revertConfirm, setRevertConfirm] = useState("");
   const [importConfirm, setImportConfirm] = useState("");
+
+  // resetOnSuccess clears the uncontrolled file input via formRef; the
+  // controlled confirm fields must be cleared by hand. Clearing both after a
+  // successful restore stops an accidental immediate resubmit (which would hit
+  // target_not_empty and read like a fresh failure).
+  const revertOk = revert.state?.ok;
+  const importOk = importForm.state?.ok;
+  useEffect(() => {
+    if (revertOk) setRevertConfirm("");
+  }, [revertOk]);
+  useEffect(() => {
+    if (importOk) setImportConfirm("");
+  }, [importOk]);
 
   const revertMatches =
     revertConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
@@ -284,8 +299,8 @@ function CleanSlateRecovery({
       >
         Restore the most recent snapshot back into the database. Restoring needs
         an empty target — clear history first if rows have been added since.
-        Export the snapshot to a file to keep a copy after it&rsquo;s restored,
-        or import a previously exported file.
+        Export the snapshot to a file first if you want to keep a copy before
+        restoring, or import a previously exported file.
       </p>
 
       {/* Latest snapshot summary. */}
@@ -342,7 +357,11 @@ function CleanSlateRecovery({
       )}
 
       {/* Revert + Export row. */}
-      <form action={revert.formAction} style={{ display: "grid", gap: 10 }}>
+      <form
+        ref={revert.formRef}
+        action={revert.formAction}
+        style={{ display: "grid", gap: 10 }}
+      >
         <div>
           <label htmlFor="clean-slate-revert-confirm" style={fieldLabelStyle}>
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
@@ -395,7 +414,11 @@ function CleanSlateRecovery({
       </form>
 
       {/* Import-from-file. */}
-      <form action={importForm.formAction} style={{ display: "grid", gap: 10 }}>
+      <form
+        ref={importForm.formRef}
+        action={importForm.formAction}
+        style={{ display: "grid", gap: 10 }}
+      >
         <div>
           <label htmlFor="clean-slate-import-file" style={fieldLabelStyle}>
             Import a snapshot file

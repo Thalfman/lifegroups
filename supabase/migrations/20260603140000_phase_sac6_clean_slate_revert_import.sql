@@ -179,7 +179,6 @@ declare
   v_audit_id uuid := gen_random_uuid();
   v_key text;
   v_counts jsonb := '{}'::jsonb;
-  v_total bigint := 0;
   -- The tables an import must carry, in any order (validation is order-free).
   v_keys text[] := array[
     'attendance_records', 'attendance_sessions', 'follow_ups', 'guests',
@@ -204,22 +203,24 @@ begin
     raise exception 'unsupported_snapshot_version';
   end if;
 
-  -- Every expected key must be a JSON array; tally counts for the audit row.
+  -- Every expected key must be a JSON array; tally per-table counts for the
+  -- audit row (the bare {table: n} map the wipe + revert audit rows also use).
   foreach v_key in array v_keys loop
     if jsonb_typeof(p_payload->v_key) is distinct from 'array' then
       raise exception 'malformed_snapshot';
     end if;
     v_counts := v_counts || jsonb_build_object(v_key, jsonb_array_length(p_payload->v_key));
-    v_total := v_total + jsonb_array_length(p_payload->v_key);
   end loop;
 
   perform public.super_admin_clean_slate_restore_payload(p_payload);
 
+  -- A file import has no clean_slate_snapshots row, so entity_id is null (the
+  -- wipe/revert rows point entity_id at the real snapshot id). Metadata is the
+  -- same bare per-table counts map those rows write.
   insert into public.audit_events
     (actor_profile_id, action, entity_type, entity_id, metadata)
   values
-    (v_actor, 'super_admin.clean_slate_import', 'clean_slate_snapshots', v_audit_id,
-     jsonb_build_object('row_counts', v_counts, 'total_rows', v_total));
+    (v_actor, 'super_admin.clean_slate_import', 'clean_slate_snapshots', null, v_counts);
 
   return v_audit_id;
 end;
