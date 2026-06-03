@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
+import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
+import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { MEETING_DAYS_ORDERED } from "@/components/admin/forms/meeting-schedule-options";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
@@ -70,12 +73,64 @@ type HealthFilter =
   | "restart_soon"
   | "overdue_restart";
 
+// The one record being edited or created in the shared EditingSurface drawer
+// (#266). Editing no longer expands inline beneath a card; both flows open the
+// drawer, out of the list, so the list never reflows and its filter + scroll
+// state survive the round trip.
+type GroupEditorState = { mode: "create" } | { mode: "edit"; group: GroupsRow };
+
 export function GroupsDirectory(props: GroupsDirectoryProps) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [lifecycleFilter, setLifecycleFilter] =
     useState<LifecycleFilter>("active");
   const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
   const [dayFilter, setDayFilter] = useState<string>("all");
+
+  // Which record the drawer is editing/creating, plus two flags the open form
+  // reports back: `dirtyRef` (edits pending → warn before discarding) and
+  // `submittingRef` (a write in flight → block dismissal until it resolves).
+  // Refs, not state, so neither typing nor an in-flight save re-renders the
+  // list behind the drawer.
+  const [editor, setEditor] = useState<GroupEditorState | null>(null);
+  const dirtyRef = useRef(false);
+  const submittingRef = useRef(false);
+
+  const openCreate = useCallback(() => {
+    dirtyRef.current = false;
+    setEditor({ mode: "create" });
+  }, []);
+  const openEdit = useCallback((group: GroupsRow) => {
+    dirtyRef.current = false;
+    setEditor({ mode: "edit", group });
+  }, []);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
+  const reportPending = useCallback((pending: boolean) => {
+    submittingRef.current = pending;
+  }, []);
+  const requestClose = useCallback(() => {
+    // A save/create/archive is in flight: ignore every dismissal route
+    // (Escape, overlay, ×, Cancel) so we don't unmount the form mid-write and
+    // drop the close+refresh — it auto-closes via onSaved when the write lands.
+    if (submittingRef.current) return;
+    // Generic wording: the same close path serves both the edit and create
+    // flows, and during create there is no group to name yet.
+    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
+      return;
+    }
+    dirtyRef.current = false;
+    setEditor(null);
+  }, []);
+  // Close after a successful save / create / archive and refresh so the list
+  // reflects the change immediately (the server action revalidates too).
+  const handleSaved = useCallback(() => {
+    dirtyRef.current = false;
+    submittingRef.current = false;
+    setEditor(null);
+    router.refresh();
+  }, [router]);
 
   const profilesById = useMemo(
     () => new Map(props.profiles.map((p) => [p.id, p])),
@@ -152,6 +207,12 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 
   return (
     <section style={{ display: "grid", gap: 18 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <PButton type="button" tone="terra" size="sm" onClick={openCreate}>
+          New group
+        </PButton>
+      </div>
+
       <FilterBar
         query={query}
         lifecycleFilter={lifecycleFilter}
@@ -204,12 +265,148 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
                 latestSession={sessionByGroupId.get(g.id) ?? null}
                 override={overrideByGroupId.get(g.id) ?? null}
                 defaults={props.metricDefaults}
+                onEdit={openEdit}
               />
             </li>
           ))}
         </ul>
       )}
+
+      {/* One always-mounted drawer (open toggled) so Radix owns the focus trap
+          and focus restore, matching the Group health reference (#259). It
+          serves both flows — edit one group, or create a new one. */}
+      <GroupEditorDrawer
+        editor={editor}
+        defaultCapacity={props.metricDefaults.default_group_capacity}
+        onDirty={markDirty}
+        onPendingChange={reportPending}
+        onRequestClose={requestClose}
+        onSaved={handleSaved}
+      />
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Editing drawer (the propagated Editing Pattern, #266)
+// ---------------------------------------------------------------------------
+
+function GroupEditorDrawer({
+  editor,
+  defaultCapacity,
+  onDirty,
+  onPendingChange,
+  onRequestClose,
+  onSaved,
+}: {
+  editor: GroupEditorState | null;
+  defaultCapacity: number | null;
+  onDirty: () => void;
+  onPendingChange: (pending: boolean) => void;
+  onRequestClose: () => void;
+  onSaved: () => void;
+}) {
+  const group = editor?.mode === "edit" ? editor.group : null;
+
+  return (
+    <EditingSurface
+      open={editor !== null}
+      onRequestClose={onRequestClose}
+      eyebrow={group ? "Edit group" : "New group"}
+      title={group ? group.name : "Start a Life Group"}
+      description={
+        group
+          ? "Update this group's details. Saving affects only this group."
+          : "Just a name is enough to get started — capacity, day, and leader can be filled in now or later."
+      }
+      closeLabel={group ? `Close ${group.name} editor` : "Close new group form"}
+    >
+      {editor?.mode === "edit" ? (
+        // Keyed per group so the fields + action state reset when a different
+        // group is opened, while the Dialog itself stays mounted.
+        <div style={{ display: "grid", gap: 18 }} key={editor.group.id}>
+          <GroupEditForm
+            group={editor.group}
+            onCancel={onRequestClose}
+            onDirty={onDirty}
+            onPendingChange={onPendingChange}
+            onSaved={onSaved}
+          />
+          <ArchiveSection
+            group={editor.group}
+            onArchived={onSaved}
+            onPendingChange={onPendingChange}
+          />
+        </div>
+      ) : editor?.mode === "create" ? (
+        <GroupCreateForm
+          defaultCapacity={defaultCapacity}
+          onCancel={onRequestClose}
+          onDirty={onDirty}
+          onPendingChange={onPendingChange}
+          onSaved={onSaved}
+        />
+      ) : null}
+    </EditingSurface>
+  );
+}
+
+// Archiving lives with editing but is deliberately set apart: it takes the
+// group off the active roster (a lifecycle move), which is not the same as
+// cancelling the edit above — the old inline panel conflated the two.
+function ArchiveSection({
+  group,
+  onArchived,
+  onPendingChange,
+}: {
+  group: GroupsRow;
+  onArchived: () => void;
+  onPendingChange: (pending: boolean) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+        padding: "12px 16px",
+        borderRadius: 10,
+        border: `1px solid ${P.line}`,
+        background: P.surface,
+      }}
+    >
+      <div style={{ display: "grid", gap: 4 }}>
+        <span
+          style={{
+            fontFamily: fontSans,
+            fontSize: 10,
+            letterSpacing: 1.6,
+            textTransform: "uppercase",
+            color: P.ink3,
+            fontWeight: 600,
+          }}
+        >
+          Lifecycle &middot; separate from edit
+        </span>
+        <span
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            lineHeight: 1.45,
+          }}
+        >
+          Archive takes the group off the active roster. The record stays and
+          you can restore it later. This is not the same as cancelling your edit
+          above.
+        </span>
+      </div>
+      <ArchiveGroupButton
+        groupId={group.id}
+        groupName={group.name}
+        onArchived={onArchived}
+        onPendingChange={onPendingChange}
+      />
+    </div>
   );
 }
 
@@ -340,6 +537,7 @@ const GroupCard = memo(function GroupCard({
   latestSession,
   override,
   defaults,
+  onEdit,
 }: {
   group: GroupsRow;
   leaders: GroupLeadersRow[];
@@ -348,6 +546,9 @@ const GroupCard = memo(function GroupCard({
   latestSession: AttendanceSessionsRow | null;
   override: GroupMetricSettingsRow | null;
   defaults: MetricDefaults;
+  // Opens the shared editing drawer for this group (#266). The card itself
+  // stays a read-only row — editing no longer happens inline.
+  onEdit: (group: GroupsRow) => void;
 }) {
   const isClosed = group.lifecycle_status === "closed";
   // Repeated row actions (Edit / Calendar) name their group, but group names
@@ -359,11 +560,6 @@ const GroupCard = memo(function GroupCard({
   const groupLabel = groupContext
     ? `${group.name} (${groupContext})`
     : group.name;
-  // The edit panel owns the entire card body while open. We lift this state
-  // out of the form so the card header can drop the Archive chip while
-  // editing — Archive sitting next to Cancel was the main "Close = cancel?"
-  // confusion in the previous UX.
-  const [editing, setEditing] = useState(false);
   const effectiveHealth = effectiveHealthStatus(group, override);
   const cap = effectiveCapacity(group, override, defaults);
   const isCapacityUnknown = unknownCapacity(group, override, defaults);
@@ -385,14 +581,13 @@ const GroupCard = memo(function GroupCard({
   return (
     <article
       style={{
-        background: editing ? P.bg : P.surface,
-        border: `1px solid ${editing ? P.terra : P.line}`,
+        background: P.surface,
+        border: `1px solid ${P.line}`,
         borderRadius: 12,
         padding: "18px 22px",
         display: "grid",
         gap: 14,
         opacity: isClosed ? 0.7 : 1,
-        transition: "background 120ms ease, border-color 120ms ease",
       }}
     >
       <header
@@ -433,11 +628,6 @@ const GroupCard = memo(function GroupCard({
             {excluded ? (
               <PBadge tone="followup">Excluded from capacity</PBadge>
             ) : null}
-            {editing ? (
-              <PBadge tone="watch" outline>
-                Editing
-              </PBadge>
-            ) : null}
           </div>
           <div
             style={{
@@ -450,156 +640,104 @@ const GroupCard = memo(function GroupCard({
             {metaLine(group)}
           </div>
         </div>
-        {!editing ? (
-          <div
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Link
+            href={`/admin/groups/${group.id}/calendar`}
+            aria-label={`Open ${groupLabel} calendar`}
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Link
-              href={`/admin/groups/${group.id}/calendar`}
-              aria-label={`Open ${groupLabel} calendar`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "6px 12px",
-                borderRadius: 8,
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                color: P.ink,
-                fontFamily: fontBody,
-                fontSize: 13,
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Calendar
-            </Link>
-            {!isClosed ? (
-              <PButton
-                type="button"
-                tone="terra"
-                size="sm"
-                aria-label={`Edit ${groupLabel}`}
-                onClick={() => setEditing(true)}
-              >
-                Edit
-              </PButton>
-            ) : null}
-          </div>
-        ) : null}
-      </header>
-
-      {!editing ? (
-        <>
-          <div
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-              gap: 14,
+              padding: "6px 12px",
+              borderRadius: 8,
+              background: P.surface,
+              border: `1px solid ${P.line}`,
+              color: P.ink,
               fontFamily: fontBody,
               fontSize: 13,
-              color: P.ink2,
+              textDecoration: "none",
+              fontWeight: 500,
             }}
           >
-            <Stat
-              label="Leaders"
-              value={
-                leaders.length === 0
-                  ? "Unassigned"
-                  : leaders
-                      .map((l) => {
-                        const profile = profilesById.get(l.profile_id);
-                        if (!profile) return "(unknown)";
-                        return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
-                      })
-                      .join(" · ")
-              }
-            />
-            <Stat
-              label="Active members"
-              value={`${activeMemberCount}${
-                isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
-              }`}
-              tone={
-                status === "full"
-                  ? "warn"
-                  : status === "warning"
-                    ? "watch"
-                    : undefined
-              }
-            />
-            <Stat
-              label="Latest check-in"
-              value={latestCheckinText(latestSession)}
-            />
-          </div>
-
-          {group.description ? (
-            <p
-              style={{
-                margin: 0,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                lineHeight: 1.5,
-              }}
+            Calendar
+          </Link>
+          {!isClosed ? (
+            <PButton
+              type="button"
+              tone="terra"
+              size="sm"
+              aria-label={`Edit ${groupLabel}`}
+              onClick={() => onEdit(group)}
             >
-              {group.description}
-            </p>
+              Edit
+            </PButton>
           ) : null}
-        </>
-      ) : null}
-
-      {editing ? (
-        <div style={{ display: "grid", gap: 18 }}>
-          <GroupEditForm group={group} onClose={() => setEditing(false)} />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              gap: 14,
-              alignItems: "center",
-              padding: "12px 16px",
-              borderRadius: 10,
-              border: `1px solid ${P.line}`,
-              background: P.surface,
-            }}
-          >
-            <div style={{ display: "grid", gap: 4 }}>
-              <span
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 10,
-                  letterSpacing: 1.6,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 600,
-                }}
-              >
-                Lifecycle &middot; separate from edit
-              </span>
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  lineHeight: 1.45,
-                }}
-              >
-                Archive takes the group off the active roster. The record stays
-                and you can restore it later. This is not the same as cancelling
-                your edit above.
-              </span>
-            </div>
-            <ArchiveGroupButton groupId={group.id} groupName={group.name} />
-          </div>
         </div>
+      </header>
+
+      <div
+        className="lg-m-grid-stack"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 14,
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+        }}
+      >
+        <Stat
+          label="Leaders"
+          value={
+            leaders.length === 0
+              ? "Unassigned"
+              : leaders
+                  .map((l) => {
+                    const profile = profilesById.get(l.profile_id);
+                    if (!profile) return "(unknown)";
+                    return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
+                  })
+                  .join(" · ")
+          }
+        />
+        <Stat
+          label="Active members"
+          value={`${activeMemberCount}${
+            isCapacityUnknown ? " / Unknown" : ` / ${cap ?? "—"}`
+          }`}
+          tone={
+            status === "full"
+              ? "warn"
+              : status === "warning"
+                ? "watch"
+                : undefined
+          }
+        />
+        <Stat
+          label="Latest check-in"
+          value={latestCheckinText(latestSession)}
+        />
+      </div>
+
+      {group.description ? (
+        <p
+          style={{
+            margin: 0,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            lineHeight: 1.5,
+          }}
+        >
+          {group.description}
+        </p>
       ) : null}
     </article>
   );

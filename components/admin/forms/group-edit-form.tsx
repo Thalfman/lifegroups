@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
 import {
@@ -28,10 +28,22 @@ function isoTimeForInput(value: string | null): string {
 
 export function GroupEditForm({
   group,
-  onClose,
+  // The form always lives inside the EditingSurface drawer (#266), which
+  // supplies the chrome, so it reports save/dirty/pending back to the drawer
+  // rather than framing itself: `onSaved` lets the drawer close + refresh,
+  // `onDirty` lets it warn before discarding unsaved edits, `onCancel` renders
+  // a Cancel control that dismisses it, and `onPendingChange` lets it block
+  // dismissal while the save is in flight.
+  onCancel,
+  onSaved,
+  onDirty,
+  onPendingChange,
 }: {
   group: GroupsRow;
-  onClose?: () => void;
+  onCancel?: () => void;
+  onSaved?: () => void;
+  onDirty?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
@@ -40,19 +52,25 @@ export function GroupEditForm({
     group.meeting_frequency
   );
 
+  // Notify the drawer once the update lands so it can close and refresh the
+  // list. `onSaved` is memoized by the caller, so this fires once per save.
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+  }, [state, onSaved]);
+
+  // Mirror the in-flight state up so the drawer can keep itself open until the
+  // write resolves (otherwise dismissing mid-save would drop the refresh).
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   const showParity = frequency === "biweekly";
 
   return (
     <form
       action={formAction}
-      style={{
-        display: "grid",
-        gap: 12,
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "16px 18px",
-      }}
+      onChange={onDirty}
+      style={{ display: "grid", gap: 12 }}
     >
       <input type="hidden" name="group_id" value={group.id} />
       <div
@@ -306,13 +324,13 @@ export function GroupEditForm({
         <PButton type="submit" tone="terra" size="sm" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
         </PButton>
-        {onClose ? (
+        {onCancel ? (
           <PButton
             type="button"
             tone="ghost"
             size="sm"
             disabled={pending}
-            onClick={onClose}
+            onClick={onCancel}
           >
             Cancel
           </PButton>

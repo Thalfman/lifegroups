@@ -1,6 +1,5 @@
 import { SectionHeader } from "@/components/layout/shell";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
-import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type { MetricDefaults } from "@/lib/admin/metrics";
@@ -54,6 +53,9 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         </div>
       ) : null}
 
+      {/* Creating a group now opens the shared editing drawer from the
+          directory's "New group" control (#266), so the list page no longer
+          renders a full inline create form beneath it. */}
       <GroupsDirectory
         groups={data.groups}
         groupLeaders={data.groupLeaders}
@@ -64,19 +66,6 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         metricDefaults={data.metricDefaults}
         groupMetricSettings={data.groupMetricSettings}
       />
-
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="New group"
-          title="Start a Life Group"
-          description="Just a name is enough to get started. You can fill in capacity, day, and leader later from Manage People."
-        />
-        <Card>
-          <GroupCreateForm
-            defaultCapacity={data.metricDefaults.default_group_capacity}
-          />
-        </Card>
-      </section>
 
       {closedGroups.length > 0 ? (
         <section style={{ display: "grid", gap: 18 }}>
@@ -142,22 +131,6 @@ function ClosedGroupCard({ group }: { group: GroupsRow }) {
       </div>
       <RestoreGroupButton groupId={group.id} groupName={group.name} />
     </article>
-  );
-}
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </div>
   );
 }
 
