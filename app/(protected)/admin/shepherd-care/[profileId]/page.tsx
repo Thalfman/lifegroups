@@ -7,6 +7,7 @@ import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-foll
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
+import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -14,6 +15,7 @@ import {
   fetchActiveShepherdCoverageAssignmentByShepherdId,
   fetchAdminShepherdProfileById,
   fetchGenericFollowUpCountForAssignee,
+  fetchLedGroupSummariesForProfile,
   fetchOverShepherdsForAdmin,
   fetchPrivateNoteKeySlotsForCreator,
   fetchShepherdCareFollowUpsForProfile,
@@ -21,6 +23,7 @@ import {
   fetchShepherdCarePrivateNoteCiphertextForCreator,
   fetchShepherdCareProfileByShepherdId,
   type ActiveShepherdCoverageAssignmentSummary,
+  type LedGroupSummary,
   type OverShepherdListRow,
   type PrivateNoteCiphertext,
   type PrivateNoteKeySlot,
@@ -76,6 +79,7 @@ async function loadDetail(
       interactions: ShepherdCareInteractionsRow[];
       followUps: ShepherdCareFollowUpsRow[];
       genericFollowUpCount: number;
+      ledGroups: LedGroupSummary[];
       activeOverShepherds: OverShepherdListRow[];
       coverage: ActiveShepherdCoverageAssignmentSummary | null;
       privateNote: PrivateNoteCiphertext | null;
@@ -101,6 +105,7 @@ async function loadDetail(
     overShepherdsRes,
     coverageRes,
     genericCountRes,
+    ledGroupsRes,
     keySlotsRes,
   ] = await Promise.all([
     fetchAdminShepherdProfileById(client, profileId),
@@ -108,6 +113,7 @@ async function loadDetail(
     fetchOverShepherdsForAdmin(client, { includeArchived: false }),
     fetchActiveShepherdCoverageAssignmentByShepherdId(client, profileId),
     fetchGenericFollowUpCountForAssignee(client, profileId),
+    fetchLedGroupSummariesForProfile(client, profileId),
     canReadPrivateNotes
       ? fetchPrivateNoteKeySlotsForCreator(client, creatorProfileId)
       : Promise.resolve({
@@ -125,6 +131,7 @@ async function loadDetail(
       interactions: [],
       followUps: [],
       genericFollowUpCount: 0,
+      ledGroups: [],
       activeOverShepherds: [],
       coverage: null,
       privateNote: null,
@@ -149,6 +156,7 @@ async function loadDetail(
       interactions: [],
       followUps: [],
       genericFollowUpCount: genericCountRes.data ?? 0,
+      ledGroups: ledGroupsRes.data ?? [],
       activeOverShepherds: overShepherdsRes.data ?? [],
       coverage: null,
       privateNote: null,
@@ -194,6 +202,7 @@ async function loadDetail(
     interactions,
     followUps,
     genericFollowUpCount: genericCountRes.data ?? 0,
+    ledGroups: ledGroupsRes.data ?? [],
     activeOverShepherds: overShepherdsRes.data ?? [],
     coverage: coverageRes.data ?? null,
     privateNote,
@@ -203,6 +212,7 @@ async function loadDetail(
       overShepherdsRes.error?.message ??
       coverageRes.error?.message ??
       genericCountRes.error?.message ??
+      ledGroupsRes.error?.message ??
       keySlotsRes.error?.message ??
       null,
   };
@@ -210,8 +220,10 @@ async function loadDetail(
 
 export default async function AdminShepherdCareDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ profileId: string }>;
+  searchParams?: Promise<{ tab?: string | string[] }>;
 }) {
   const session = await requireAdmin();
   // requireAdmin redirects every non-authenticated case, so this is always the
@@ -257,6 +269,222 @@ export default async function AdminShepherdCareDetailPage({
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
   const today = currentUtcDateIso();
 
+  const tabRaw = (await searchParams)?.tab;
+  const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
+
+  const assignedGroupLabel =
+    detail.ledGroups.length > 0
+      ? detail.ledGroups.map((g) => g.name).join(", ")
+      : "No group assigned";
+
+  // Overview — leader summary, assigned group, care status, next action, plus
+  // coverage and the care-action forms.
+  const overviewPanel = (
+    <div style={{ display: "grid", gap: 20 }}>
+      <section style={cardStyle} aria-label="Care summary">
+        <div
+          className="lg-m-grid-stack"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 18,
+          }}
+        >
+          <div>
+            <span style={labelStyle}>Role</span>
+            <div style={valueStyle}>{roleLabel}</div>
+          </div>
+          <div>
+            <span style={labelStyle}>Assigned group</span>
+            <div style={valueStyle}>{assignedGroupLabel}</div>
+          </div>
+          <div>
+            <span style={labelStyle}>Current status</span>
+            <div style={valueStyle}>
+              {detail.care ? (
+                <ShepherdCareStatusBadge status={detail.care.current_status} />
+              ) : (
+                <span style={{ color: P.ink3 }}>Not set</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <span style={labelStyle}>Last contact</span>
+            <div style={valueStyle}>
+              {formatIsoDateOr(detail.care?.last_contact_at ?? null, "Never")}
+            </div>
+          </div>
+          <div>
+            <span style={labelStyle}>Next touchpoint</span>
+            <div style={valueStyle}>
+              {formatIsoDateOr(detail.care?.next_touchpoint_due ?? null)}
+            </div>
+          </div>
+        </div>
+        {detail.care?.admin_summary ? (
+          <div style={{ marginTop: 16 }}>
+            <span style={labelStyle}>Admin summary</span>
+            <p style={{ ...valueStyle, margin: 0, whiteSpace: "pre-wrap" }}>
+              {detail.care.admin_summary}
+            </p>
+          </div>
+        ) : null}
+      </section>
+
+      <section style={cardStyle} aria-label="Over-shepherd coverage">
+        <h2 style={sectionHeadingStyle}>Coverage</h2>
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            margin: "0 0 12px",
+          }}
+        >
+          {detail.coverage
+            ? `Currently covered by ${detail.coverage.over_shepherd.full_name}.`
+            : "No over-shepherd assigned yet."}
+        </p>
+        <CoverageAssignmentForm
+          shepherdProfileId={profileId}
+          activeOverShepherds={detail.activeOverShepherds}
+          currentAssignmentId={detail.coverage?.id ?? null}
+          currentOverShepherdId={detail.coverage?.over_shepherd_id ?? null}
+        />
+      </section>
+
+      <section style={cardStyle} aria-label="Care actions">
+        <h2 style={sectionHeadingStyle}>Care actions</h2>
+        <CareActions
+          shepherdProfileId={profileId}
+          current={detail.care}
+          leaderName={detail.profileFullName}
+        />
+      </section>
+    </div>
+  );
+
+  const contactHistoryPanel = (
+    <section style={cardStyle} aria-label="Interaction history">
+      <h2 style={sectionHeadingStyle}>Contact history</h2>
+      <InteractionTimeline interactions={detail.interactions} />
+    </section>
+  );
+
+  const followUpsPanel = (
+    <section style={cardStyle} aria-label="Care follow-ups">
+      <h2 style={sectionHeadingStyle}>Care follow-ups</h2>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: "0 0 12px",
+        }}
+      >
+        Open and completed tasks for this leader. Overdue items show first.
+        {detail.genericFollowUpCount > 0
+          ? ` They're also assigned to ${detail.genericFollowUpCount} open general follow-up${detail.genericFollowUpCount === 1 ? "" : "s"}.`
+          : ""}
+      </p>
+      {detail.care ? (
+        <CareFollowUpsSection
+          careProfileId={detail.care.id}
+          shepherdProfileId={profileId}
+          followUps={detail.followUps}
+          todayIso={today}
+          leaderName={detail.profileFullName}
+        />
+      ) : (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink3,
+            margin: 0,
+            fontStyle: "italic",
+          }}
+        >
+          Log an interaction or set the care profile first to start adding
+          follow-ups.
+        </p>
+      )}
+    </section>
+  );
+
+  // Notes — ministry_admin-only private pastoral notes. Built (and the tab
+  // offered) ONLY for ministry_admin so the private-note boundary (ADR 0002)
+  // stays intact; over-shepherd / leader surfaces never get this tab.
+  const notesPanel =
+    detail.care && actorRole === "ministry_admin" ? (
+      <PrivateNotesSection
+        careProfileId={detail.care.id}
+        creatorProfileId={creatorProfileId}
+        shepherdProfileId={profileId}
+        initialNote={detail.privateNote}
+        initialSlots={detail.privateNoteKeySlots}
+      />
+    ) : null;
+
+  const groupPanel = (
+    <section style={cardStyle} aria-label="Group">
+      <h2 style={sectionHeadingStyle}>Group</h2>
+      {detail.ledGroups.length > 0 ? (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          {detail.ledGroups.map((g) => (
+            <li key={g.id}>
+              <Link
+                href={`/admin/groups/${g.id}`}
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 14,
+                  color: P.ink,
+                  textDecoration: "underline",
+                }}
+              >
+                {g.name} →
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink3,
+            margin: 0,
+            fontStyle: "italic",
+          }}
+        >
+          This leader isn&rsquo;t assigned to an active group.
+        </p>
+      )}
+    </section>
+  );
+
+  const tabs = [
+    { key: "overview", label: "Overview", panel: overviewPanel },
+    {
+      key: "contact-history",
+      label: "Contact History",
+      panel: contactHistoryPanel,
+    },
+    { key: "follow-ups", label: "Follow-ups", panel: followUpsPanel },
+    ...(notesPanel
+      ? [{ key: "notes", label: "Notes", panel: notesPanel }]
+      : []),
+    { key: "group", label: "Group", panel: groupPanel },
+  ];
+
   return (
     <>
       <PageHeader
@@ -268,7 +496,7 @@ export default async function AdminShepherdCareDetailPage({
         <div style={{ display: "grid", gap: 20 }}>
           <div>
             <Link
-              href="/admin/shepherd-care"
+              href="/admin/care"
               style={{
                 fontFamily: fontBody,
                 color: P.ink2,
@@ -276,7 +504,7 @@ export default async function AdminShepherdCareDetailPage({
                 textDecoration: "underline",
               }}
             >
-              ← Back to directory
+              ← Back to Care
             </Link>
           </div>
           {detail.error ? (
@@ -294,190 +522,17 @@ export default async function AdminShepherdCareDetailPage({
             </p>
           ) : null}
 
-          <section style={cardStyle} aria-label="Care summary">
-            <div
-              className="lg-m-grid-stack"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 18,
-              }}
-            >
-              <div>
-                <span style={labelStyle}>Role</span>
-                <div style={valueStyle}>{roleLabel}</div>
-              </div>
-              <div>
-                <span style={labelStyle}>Current status</span>
-                <div style={valueStyle}>
-                  {detail.care ? (
-                    <ShepherdCareStatusBadge
-                      status={detail.care.current_status}
-                    />
-                  ) : (
-                    <span style={{ color: P.ink3 }}>Not set</span>
-                  )}
-                </div>
-              </div>
-              <div>
-                <span style={labelStyle}>Last contact</span>
-                <div style={valueStyle}>
-                  {formatIsoDateOr(
-                    detail.care?.last_contact_at ?? null,
-                    "Never"
-                  )}
-                </div>
-              </div>
-              <div>
-                <span style={labelStyle}>Next touchpoint</span>
-                <div style={valueStyle}>
-                  {formatIsoDateOr(detail.care?.next_touchpoint_due ?? null)}
-                </div>
-              </div>
-            </div>
-            {detail.care?.admin_summary ? (
-              <div style={{ marginTop: 16 }}>
-                <span style={labelStyle}>Admin summary</span>
-                <p
-                  style={{
-                    ...valueStyle,
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {detail.care.admin_summary}
-                </p>
-              </div>
-            ) : null}
-          </section>
-
-          {detail.care && actorRole === "ministry_admin" ? (
-            <PrivateNotesSection
-              careProfileId={detail.care.id}
-              creatorProfileId={creatorProfileId}
-              shepherdProfileId={profileId}
-              initialNote={detail.privateNote}
-              initialSlots={detail.privateNoteKeySlots}
-            />
-          ) : null}
-
-          <section style={cardStyle} aria-label="Over-shepherd coverage">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 6px",
-                color: P.ink,
-              }}
-            >
-              Coverage
-            </h2>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                margin: "0 0 12px",
-              }}
-            >
-              {detail.coverage
-                ? `Currently covered by ${detail.coverage.over_shepherd.full_name}.`
-                : "No over-shepherd assigned yet."}
-            </p>
-            <CoverageAssignmentForm
-              shepherdProfileId={profileId}
-              activeOverShepherds={detail.activeOverShepherds}
-              currentAssignmentId={detail.coverage?.id ?? null}
-              currentOverShepherdId={detail.coverage?.over_shepherd_id ?? null}
-            />
-          </section>
-
-          <section style={cardStyle} aria-label="Care actions">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Care actions
-            </h2>
-            <CareActions
-              shepherdProfileId={profileId}
-              current={detail.care}
-              leaderName={detail.profileFullName}
-            />
-          </section>
-
-          <section style={cardStyle} aria-label="Care follow-ups">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 6px",
-                color: P.ink,
-              }}
-            >
-              Care follow-ups
-            </h2>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                margin: "0 0 12px",
-              }}
-            >
-              The concrete next steps you owe this leader. Overdue items show
-              first.
-              {detail.genericFollowUpCount > 0
-                ? ` They're also assigned to ${detail.genericFollowUpCount} open general follow-up${detail.genericFollowUpCount === 1 ? "" : "s"}.`
-                : ""}
-            </p>
-            {detail.care ? (
-              <CareFollowUpsSection
-                careProfileId={detail.care.id}
-                shepherdProfileId={profileId}
-                followUps={detail.followUps}
-                todayIso={today}
-                leaderName={detail.profileFullName}
-              />
-            ) : (
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink3,
-                  margin: 0,
-                  fontStyle: "italic",
-                }}
-              >
-                Log an interaction or set the care profile first to start adding
-                follow-ups.
-              </p>
-            )}
-          </section>
-
-          <section style={cardStyle} aria-label="Interaction history">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Interaction history
-            </h2>
-            <InteractionTimeline interactions={detail.interactions} />
-          </section>
+          <LeaderDetailTabs tabs={tabs} initialKey={tabParam} />
         </div>
       </PageBody>
     </>
   );
 }
+
+const sectionHeadingStyle = {
+  fontFamily: fontSans,
+  fontSize: 14,
+  letterSpacing: 0.6,
+  margin: "0 0 12px",
+  color: P.ink,
+} as const;

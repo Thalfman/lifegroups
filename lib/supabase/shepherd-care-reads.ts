@@ -455,6 +455,96 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
   return { data: (data ?? []) as CareFollowUpDashboardRow[], error: null };
 }
 
+// A leader's active group(s), for the leader-detail Group tab + Overview's
+// "assigned group" line (#301). Name + id only; the detail page links into the
+// group's own surface for the rest.
+export type LedGroupSummary = { id: string; name: string };
+
+/**
+ * The active groups a leader / co-leader leads, resolved from their active
+ * group_leaders rows. Two cheap scoped reads (assignments, then names) rather
+ * than a relational embed, to keep the projection explicit. Returns [] when the
+ * leader leads nothing.
+ */
+export async function fetchLedGroupSummariesForProfile(
+  client: ReadClient,
+  profileId: string
+): Promise<ReadResult<LedGroupSummary[]>> {
+  const assignments = await client
+    .from("group_leaders")
+    .select("group_id")
+    .eq("profile_id", profileId)
+    .eq("active", true);
+  if (assignments.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLedGroupSummariesForProfile/assignments",
+        assignments.error
+      ),
+    };
+  }
+  const groupIds = Array.from(
+    new Set(
+      ((assignments.data ?? []) as { group_id: string }[]).map(
+        (r) => r.group_id
+      )
+    )
+  );
+  if (groupIds.length === 0) return { data: [], error: null };
+
+  const groups = await client
+    .from("groups")
+    .select("id, name")
+    .in("id", groupIds)
+    .order("name", { ascending: true });
+  if (groups.error) {
+    return {
+      data: null,
+      error: wrapError("fetchLedGroupSummariesForProfile/groups", groups.error),
+    };
+  }
+  return { data: (groups.data ?? []) as LedGroupSummary[], error: null };
+}
+
+// Minimal cross-profile projection for the Care area's Completed tab (#301).
+// Like CareFollowUpDashboardRow it EXCLUDES title / notes bodies — the
+// Completed list shows who, when, and a "View follow-up" link into the
+// per-leader detail page for the task content; it never ships note bodies to
+// the aggregate surface.
+export type CareFollowUpCompletedRow = {
+  care_profile_id: string;
+  status: ShepherdCareFollowUpsRow["status"];
+  due_date: string | null;
+  completed_at: string | null;
+};
+
+/**
+ * Admin-only feed of recently COMPLETED (done) care follow-ups across all
+ * profiles, used by the Care area's Completed tab (#301). Ordered by
+ * completion recency and capped, since the tab only shows the recent tail.
+ * Note bodies are never projected.
+ */
+export async function fetchRecentlyCompletedCareFollowUpsForAdmin(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<CareFollowUpCompletedRow[]>> {
+  const limit = options.limit ?? 50;
+  const { data, error } = await client
+    .from("shepherd_care_follow_ups")
+    .select("care_profile_id, status, due_date, completed_at")
+    .eq("status", "done")
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .range(0, Math.max(0, limit - 1));
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchRecentlyCompletedCareFollowUpsForAdmin", error),
+    };
+  }
+  return { data: (data ?? []) as CareFollowUpCompletedRow[], error: null };
+}
+
 /**
  * Count of OUTSTANDING generic `follow_ups` (open + in_progress) assigned to
  * a profile. Powers the one-way cross-link glance on the care detail page
