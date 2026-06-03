@@ -8,7 +8,7 @@ import { LaunchPlanningOverviewCard } from "./LaunchPlanningOverviewCard";
 import { HealthDistributionCard } from "./HealthDistributionCard";
 import { GuestPipelineFunnelCard } from "./GuestPipelineFunnelCard";
 import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
-import { DrillDownStrip, type DrillDownItem } from "./DrillDownStrip";
+import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ActivityBand } from "./ActivityBand";
 import { PeriodSlicer } from "./PeriodSlicer";
 
@@ -43,43 +43,6 @@ export function DashboardClient({
   data: AdminDashboardData;
   guestsLive: boolean;
 }) {
-  const setupGapTotal =
-    data.setupGaps.counts.noCapacity +
-    data.setupGaps.counts.noLeader +
-    data.setupGaps.counts.noMeetingDayTime +
-    data.setupGaps.counts.noMembers;
-  const capacityWatch =
-    data.capacitySummary.counts.full + data.capacitySummary.counts.warning;
-
-  const drillItems: DrillDownItem[] = [
-    {
-      label: "Groups need attention",
-      count: data.attentionItems.length,
-      href: "/admin/groups",
-      tone: P.terra,
-    },
-    {
-      label: "On capacity watch",
-      count: capacityWatch,
-      href: "/admin/launch-planning",
-      tone: P.mustard,
-    },
-    {
-      label: "Open follow-ups",
-      count: data.followUps.length,
-      href: "/admin/follow-ups",
-      tone: P.terra,
-      // The open follow-ups read is capped, so present it as a minimum.
-      plus: data.followUps.length >= 8,
-    },
-    {
-      label: "Setup gaps",
-      count: setupGapTotal,
-      href: "/admin/groups",
-      tone: P.mustard,
-    },
-  ];
-
   return (
     <PageBody>
       <div style={{ display: "grid", gap: 18 }}>
@@ -131,7 +94,7 @@ export function DashboardClient({
 
         <div style={{ display: "grid", gap: 10 }}>
           <SectionHeading>Needs your attention</SectionHeading>
-          <DrillDownStrip items={drillItems} />
+          <NeedsAttentionArea data={data} />
         </div>
       </div>
     </PageBody>
