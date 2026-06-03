@@ -149,6 +149,15 @@ export type GroupHealthOverviewRow = {
   group_question_score: number | null;
   group_question_leader_reported: boolean;
   computed_letter: GroupHealthLetter | null;
+  // Most recent recorded attendance week (ISO YYYY-MM-DD) for the group — the
+  // triage table's "last check-in" column, derived from the attendance the
+  // grade already reads (a director-approved source, not invented). Null when
+  // the group has no attendance on record or the live read fell back to stale.
+  last_check_in_week: string | null;
+  // When the month's assessment was last persisted (group_health_assessments.
+  // updated_at), or null when nothing has been saved yet — the "last saved"
+  // column. A live recompute on read does not move this; only a save does.
+  last_saved_at: string | null;
   // True when the live attendance read failed and we fell back to the last
   // persisted assessment (so the surface can flag it rather than mislead).
   stale: boolean;
@@ -165,11 +174,13 @@ type PersistedAssessment = {
   group_question_score: number | null;
   group_question_leader_reported: boolean;
   computed_letter: GroupHealthLetter | null;
+  updated_at: string | null;
 };
 
 const ASSESSMENT_COLUMNS =
   "group_id, attendance_pct, attendance_weeks_counted, spiritual_growth_score, " +
-  "spiritual_growth_note, group_question_score, group_question_leader_reported, computed_letter";
+  "spiritual_growth_note, group_question_score, group_question_leader_reported, " +
+  "computed_letter, updated_at";
 
 // The two admin-entered 1–5 ratings (and the spiritual-growth note) for a
 // group's month, or nulls when no assessment row exists yet. The write action
@@ -279,6 +290,10 @@ export async function listGroupHealthOverview(
         group_question_leader_reported:
           prior?.group_question_leader_reported ?? false,
         computed_letter: prior?.computed_letter ?? null,
+        // The live attendance read failed, so we have no fresh check-in week to
+        // show; don't guess one.
+        last_check_in_week: null,
+        last_saved_at: prior?.updated_at ?? null,
         stale: prior !== undefined,
         unassessed: prior === undefined,
       });
@@ -286,6 +301,15 @@ export async function listGroupHealthOverview(
     }
 
     const attendance = attendanceConsistency(weeksRes.data, rubric);
+    // Latest recorded attendance week = the group's last check-in. Weeks are
+    // ISO YYYY-MM-DD, which sorts lexically, so the max string is the newest.
+    const lastCheckInWeek =
+      weeksRes.data.length === 0
+        ? null
+        : weeksRes.data.reduce(
+            (latest, w) => (w.meeting_week > latest ? w.meeting_week : latest),
+            weeksRes.data[0].meeting_week
+          );
     // Recompute live: the rolling attendance dimension plus whatever 1–5
     // ratings the admin has already entered for the month.
     const ratings = {
@@ -310,6 +334,8 @@ export async function listGroupHealthOverview(
       group_question_leader_reported:
         prior?.group_question_leader_reported ?? false,
       computed_letter: grade.letter,
+      last_check_in_week: lastCheckInWeek,
+      last_saved_at: prior?.updated_at ?? null,
       unassessed:
         attendance.rolling_pct === null &&
         ratings.spiritual_growth_score === null &&

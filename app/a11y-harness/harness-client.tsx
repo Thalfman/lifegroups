@@ -21,6 +21,8 @@ import {
   SettingsShell,
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
+import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
+import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
   DEMO_GROUPS,
   DEMO_LEADERS,
@@ -137,6 +139,59 @@ const FOLLOW_UPS = [
 // it's here so the axe + label-association checks run against the real Settings
 // component tree (defaults form, the Advanced-thresholds disclosure, and the
 // per-group overrides disclosure with its active-override rows).
+// Group health triage surface (#259, Admin Interaction Model req 2). Proves the
+// list carries record context (Open {group} health editor), renders no per-row
+// save buttons, and that the EditingSurface drawer satisfies the focus/keyboard
+// checklist. Rows cover the triage states: fully rated, needs-rating, not
+// assessed, and a stale fallback.
+const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
+  {
+    group_id: "grp-anderson",
+    group_name: "Anderson",
+    attendance_pct: 82,
+    attendance_weeks_counted: 8,
+    spiritual_growth_score: 4,
+    spiritual_growth_note: "Strong apprentice pipeline.",
+    group_question_score: 4,
+    group_question_leader_reported: true,
+    computed_letter: "B",
+    last_check_in_week: "2026-05-25",
+    last_saved_at: "2026-05-26T12:00:00Z",
+    stale: false,
+    unassessed: false,
+  },
+  {
+    group_id: "grp-bryant",
+    group_name: "Bryant",
+    attendance_pct: 61,
+    attendance_weeks_counted: 6,
+    spiritual_growth_score: 3,
+    spiritual_growth_note: null,
+    group_question_score: null,
+    group_question_leader_reported: false,
+    computed_letter: "C",
+    last_check_in_week: "2026-05-18",
+    last_saved_at: "2026-05-19T12:00:00Z",
+    stale: false,
+    unassessed: false,
+  },
+  {
+    group_id: "grp-carter",
+    group_name: "Carter",
+    attendance_pct: null,
+    attendance_weeks_counted: 0,
+    spiritual_growth_score: null,
+    spiritual_growth_note: null,
+    group_question_score: null,
+    group_question_leader_reported: false,
+    computed_letter: null,
+    last_check_in_week: null,
+    last_saved_at: null,
+    stale: false,
+    unassessed: true,
+  },
+];
+
 const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,
   defaultsSource: "live",
@@ -227,6 +282,15 @@ export function A11yHarnessClient() {
           followUps={CARE_FOLLOW_UPS}
           shepherdProfileId="care-1"
           todayIso="2026-05-18"
+        />
+      </Surface>
+
+      <Surface id="group-health" heading="Group health (triage)">
+        <GroupHealthTriage
+          rows={GROUP_HEALTH_ROWS}
+          period="2026-05-01"
+          spiritualGrowthLabel="Spiritual growth (1–5)"
+          groupQuestionLabel="Group engagement — leader-reported (1–5)"
         />
       </Surface>
 

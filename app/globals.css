@@ -380,6 +380,18 @@
     width: 100% !important;
     align-self: stretch !important;
   }
+  /* Editing Pattern: the desktop right-side drawer becomes a full-screen sheet
+     on phones, so the whole edit flow is reachable (Admin Interaction Model
+     PRD req 1, mobile = full-screen sheet). */
+  .lg-m-editing-surface {
+    top: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    border-left: none !important;
+  }
 }
 
 /* Desktop: hide the mobile trigger button */

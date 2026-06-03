@@ -1,3 +1,4 @@
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   currentPeriodMonthIso,
@@ -7,26 +8,26 @@ import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
 import { fetchPlatformConfig } from "@/lib/supabase/read-models";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
 import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
-import {
-  recomputeGroupHealthFormAction,
-  setGroupHealthRatingsFormAction,
-} from "./actions";
+import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 
-// #127 tracer surface, extended for #128: the attendance-consistency dimension,
-// the two admin-entered 1–5 ratings (spiritual growth + relayed group
-// question), and the current Group-Health Grade for each active group,
-// recomputed live on read for the current month. Admin-only (admin layout guard
-// + table RLS). The override lands in #129.
+// Group health triage workflow (#259, Admin Interaction Model PRD req 2 — the
+// Editing Pattern reference implementation). The repeated per-row form-table is
+// gone: this is a review/triage table, and editing one group at a time happens
+// in the shared EditingSurface drawer (GroupHealthTriage). The grade still
+// recomputes live on read for the current month; placeholder labels stay as-is
+// (ADR-0007). The final filter logic (director thresholds) is gated to step 05.
 export default async function GroupHealthPage() {
   const client = await createSupabaseServerClient();
   if (!client) {
     return (
-      <main className="p-6">
-        <h1 className="text-xl font-semibold">Group health</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          The database isn&apos;t configured, so grades can&apos;t be loaded.
-        </p>
-      </main>
+      <>
+        <PageHeader eyebrow="Ministry Admin" title="Group health" />
+        <PageBody>
+          <p style={{ fontFamily: "var(--font-body)", color: "var(--c-ink2)" }}>
+            The database isn&apos;t configured, so grades can&apos;t be loaded.
+          </p>
+        </PageBody>
+      </>
     );
   }
 
@@ -51,12 +52,14 @@ export default async function GroupHealthPage() {
 
   if (overview.error) {
     return (
-      <main className="p-6">
-        <h1 className="text-xl font-semibold">Group health</h1>
-        <p className="mt-2 text-sm text-red-700">
-          Couldn&apos;t load group-health grades. Refresh to try again.
-        </p>
-      </main>
+      <>
+        <PageHeader eyebrow="Ministry Admin" title="Group health" />
+        <PageBody>
+          <p style={{ fontFamily: "var(--font-body)", color: "#923220" }}>
+            Couldn&apos;t load group-health grades. Refresh to try again.
+          </p>
+        </PageBody>
+      </>
     );
   }
 
@@ -77,135 +80,20 @@ export default async function GroupHealthPage() {
   const rows = board.ranked.map((g) => rowsById.get(g.group_id)!);
 
   return (
-    <main className="p-6">
-      <h1 className="text-xl font-semibold">Group health</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Group-Health Grade for {period}, recomputed live from attendance
-        consistency (rolling 8-week average) and your 1–5 ratings. Saving a
-        rating or saving the grade writes the current snapshot to the
-        month&apos;s history.
-      </p>
-
-      <table className="mt-4 w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2 pr-4">Group</th>
-            <th className="py-2 pr-4">Attendance (8-wk avg)</th>
-            <th className="py-2 pr-4">Spiritual growth</th>
-            <th className="py-2 pr-4">Group question</th>
-            <th className="py-2 pr-4">Grade</th>
-            <th className="py-2 pr-4" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td className="py-3 text-gray-600" colSpan={6}>
-                No active groups to assess yet.
-              </td>
-            </tr>
-          ) : (
-            rows.map((row) => (
-              <tr key={row.group_id} className="border-b align-top">
-                <td className="py-2 pr-4 font-medium">{row.group_name}</td>
-                <td className="py-2 pr-4">
-                  {row.attendance_pct === null
-                    ? "—"
-                    : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
-                  {row.stale ? (
-                    <span className="ml-2 text-xs text-amber-700">
-                      last saved
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-2 pr-4">
-                  {row.spiritual_growth_score ?? "—"}
-                  {row.spiritual_growth_note ? (
-                    <p className="mt-0.5 max-w-[16rem] text-xs text-gray-500">
-                      {row.spiritual_growth_note}
-                    </p>
-                  ) : null}
-                </td>
-                <td className="py-2 pr-4">
-                  {row.group_question_score ?? "—"}
-                  {row.group_question_score !== null &&
-                  row.group_question_leader_reported ? (
-                    <span className="ml-1 text-xs text-gray-500">
-                      (leader-reported)
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-2 pr-4">
-                  {row.computed_letter ??
-                    (row.unassessed ? "Not assessed" : "—")}
-                </td>
-                <td className="py-2 pr-4">
-                  <form
-                    action={setGroupHealthRatingsFormAction}
-                    className="flex flex-wrap items-end gap-2"
-                  >
-                    <input type="hidden" name="group_id" value={row.group_id} />
-                    <label className="flex flex-col text-xs text-gray-600">
-                      <span className="sr-only">{spiritualGrowthLabel}</span>
-                      Growth
-                      <input
-                        type="number"
-                        name="spiritual_growth_score"
-                        min={1}
-                        max={5}
-                        defaultValue={row.spiritual_growth_score ?? ""}
-                        aria-label={spiritualGrowthLabel}
-                        className="w-14 rounded border px-1 py-0.5"
-                      />
-                    </label>
-                    <label className="flex flex-col text-xs text-gray-600">
-                      <span className="sr-only">{groupQuestionLabel}</span>
-                      Question
-                      <input
-                        type="number"
-                        name="group_question_score"
-                        min={1}
-                        max={5}
-                        defaultValue={row.group_question_score ?? ""}
-                        aria-label={groupQuestionLabel}
-                        className="w-14 rounded border px-1 py-0.5"
-                      />
-                    </label>
-                    <label className="flex flex-col text-xs text-gray-600">
-                      Note
-                      <input
-                        type="text"
-                        name="spiritual_growth_note"
-                        defaultValue={row.spiritual_growth_note ?? ""}
-                        maxLength={2000}
-                        className="w-40 rounded border px-1 py-0.5"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                    >
-                      Save
-                    </button>
-                  </form>
-                  <form
-                    action={recomputeGroupHealthFormAction}
-                    className="mt-1"
-                  >
-                    <input type="hidden" name="group_id" value={row.group_id} />
-                    <button
-                      type="submit"
-                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                    >
-                      Save this month&apos;s grade
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </main>
+    <>
+      <PageHeader
+        eyebrow="Ministry Admin"
+        title="Group health"
+        lede={`Group-Health Grade for ${period}, recomputed live from attendance consistency (rolling 8-week average) and your 1–5 ratings. Open a group to edit its ratings; saving writes the month's snapshot.`}
+      />
+      <PageBody>
+        <GroupHealthTriage
+          rows={rows}
+          period={period}
+          spiritualGrowthLabel={spiritualGrowthLabel}
+          groupQuestionLabel={groupQuestionLabel}
+        />
+      </PageBody>
+    </>
   );
 }
