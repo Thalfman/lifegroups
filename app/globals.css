@@ -147,6 +147,27 @@
     grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
     gap: 24px;
   }
+
+  /* Super Admin Console collapsible sections (#261). Native <details> so the
+     disclosure works without JS; a small client controller adds anchor
+     expand + scroll + focus on top. */
+  .lg-sac-summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .lg-sac-summary::-webkit-details-marker {
+    display: none;
+  }
+  .lg-sac-chevron {
+    transition: transform 120ms ease;
+  }
+  details[open] > .lg-sac-summary .lg-sac-chevron {
+    transform: rotate(90deg);
+  }
+  .lg-sac-summary:focus-visible {
+    outline: 2px solid #b85a3c;
+    outline-offset: 2px;
+  }
 }
 
 /* ---------------------------------------------------------------------------

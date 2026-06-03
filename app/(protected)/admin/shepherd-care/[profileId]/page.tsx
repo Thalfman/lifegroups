@@ -2,12 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
+import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
-import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
-import { UpdateCareProfileForm } from "@/components/admin/shepherd-care/update-care-profile-form";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -394,7 +393,7 @@ export default async function AdminShepherdCareDetailPage({
             />
           </section>
 
-          <section style={cardStyle} aria-label="Log interaction">
+          <section style={cardStyle} aria-label="Care actions">
             <h2
               style={{
                 fontFamily: fontSans,
@@ -404,26 +403,12 @@ export default async function AdminShepherdCareDetailPage({
                 color: P.ink,
               }}
             >
-              Log interaction
+              Care actions
             </h2>
-            <LogInteractionForm shepherdProfileId={profileId} />
-          </section>
-
-          <section style={cardStyle} aria-label="Update care profile">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Update care profile
-            </h2>
-            <UpdateCareProfileForm
+            <CareActions
               shepherdProfileId={profileId}
               current={detail.care}
+              leaderName={detail.profileFullName}
             />
           </section>
 

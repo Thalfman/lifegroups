@@ -25,11 +25,15 @@ import {
   type PeopleManagementData,
 } from "@/components/admin/people-management-shell";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
+import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import {
   SettingsShell,
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
+import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
+import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
+import { P } from "@/lib/pastoral";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
   DEMO_GROUPS,
@@ -491,6 +495,19 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Leader care actions, redesigned as plain separate choices (#272,
+          Admin Interaction Model req 10). Each choice opens a focused Editing
+          Pattern drawer doing one thing; the buttons carry distinct,
+          non-generic names and the drawer's Close control carries leader
+          context. */}
+      <Surface id="care-actions" heading="Leader care actions (redesigned)">
+        <CareActions
+          shepherdProfileId="00000000-0000-4000-8000-000000000001"
+          current={null}
+          leaderName="Anderson Lee"
+        />
+      </Surface>
+
       <Surface id="group-health" heading="Group health (triage)">
         <GroupHealthTriage
           rows={GROUP_HEALTH_ROWS}
@@ -506,6 +523,50 @@ export function A11yHarnessClient() {
         heading="Settings (defaults, thresholds, overrides)"
       >
         <SettingsShell data={SETTINGS_DATA} />
+      </Surface>
+
+      {/* Super Admin Console collapsible sections (#261, Admin Interaction
+          Model req 9). Proves the operational sections are native <details>
+          collapsed by default with working anchors: following a section link
+          expands the target section and moves focus to its <summary> heading.
+          A high-risk section carries an accent so it reads as visually
+          separated from routine controls. The anchor controller is the same
+          one the real console mounts. */}
+      <Surface id="super-admin-sections" heading="Super Admin Console sections">
+        <SuperAdminSectionAnchors />
+        <nav aria-label="Super admin sections (harness)">
+          <a href="#harness-access">Access</a>
+          {" · "}
+          <a href="#harness-danger-zone">Danger Zone</a>
+        </nav>
+        <SuperAdminCollapsibleSection id="harness-access" label="Access">
+          <p>Role workflow and profile oversight.</p>
+        </SuperAdminCollapsibleSection>
+        <SuperAdminCollapsibleSection
+          id="harness-danger-zone"
+          label="Danger Zone"
+          accent={{
+            border: P.terra,
+            color: P.terraTextStrong,
+            badge: (
+              <span
+                style={{
+                  border: `1px solid ${P.terra}`,
+                  borderRadius: 999,
+                  color: P.terraTextStrong,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "4px 8px",
+                  textTransform: "uppercase",
+                }}
+              >
+                Guarded
+              </span>
+            ),
+          }}
+        >
+          <p>Guarded permanent actions.</p>
+        </SuperAdminCollapsibleSection>
       </Surface>
     </main>
   );
