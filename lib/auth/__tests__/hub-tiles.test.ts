@@ -3,29 +3,29 @@ import { hubTilesForRole } from "@/lib/auth/hub-tiles";
 import type { UserRole } from "@/types/enums";
 
 describe("hubTilesForRole", () => {
-  it("gives ministry_admin the full admin-OS tile set in order, with the corrected Leader care label over the unchanged shepherd-care route", () => {
+  // Six-area spine (ADR 0013): the Home Hub launcher mirrors the six areas in
+  // the same order as the sidebar and bottom nav.
+  it("gives ministry_admin one tile per area in the six-area order", () => {
     const tiles = hubTilesForRole("ministry_admin");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
-      ["Leader care", "/admin/shepherd-care"],
-      ["Launch planning", "/admin/launch-planning"],
-      // Group health folded into Groups (#300): no separate tile.
-      ["Follow-ups", "/admin/follow-ups"],
-      ["People", "/admin/people"],
+      ["Home", "/admin"],
       ["Groups", "/admin/groups"],
-      ["Calendar", "/admin/calendar"],
+      ["Care", "/admin/care"],
+      ["People", "/admin/people"],
+      ["Planning", "/admin/planning"],
+      ["Settings", "/admin/settings"],
     ]);
   });
 
-  it("gives super_admin the admin-OS set plus a Super Admin Console tile last", () => {
+  it("gives super_admin the six area tiles plus a Super Admin Console tile last", () => {
     const tiles = hubTilesForRole("super_admin");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
-      ["Leader care", "/admin/shepherd-care"],
-      ["Launch planning", "/admin/launch-planning"],
-      // Group health folded into Groups (#300): no separate tile.
-      ["Follow-ups", "/admin/follow-ups"],
-      ["People", "/admin/people"],
+      ["Home", "/admin"],
       ["Groups", "/admin/groups"],
-      ["Calendar", "/admin/calendar"],
+      ["Care", "/admin/care"],
+      ["People", "/admin/people"],
+      ["Planning", "/admin/planning"],
+      ["Settings", "/admin/settings"],
       ["Super Admin Console", "/admin/super-admin"],
     ]);
   });

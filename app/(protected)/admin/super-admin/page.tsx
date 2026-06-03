@@ -26,6 +26,7 @@ import {
 import {
   fetchCleanSlateImpact,
   fetchAuditEventCount,
+  fetchLatestCleanSlateSnapshot,
 } from "@/lib/supabase/maintenance-reads";
 import {
   BUILT_IN_APP_CONFIG,
@@ -211,6 +212,7 @@ function buildNoClientData(): SuperAdminConsoleData {
     appConfig: BUILT_IN_APP_CONFIG,
     auditEvents: [],
     cleanSlateImpact: null,
+    latestCleanSlateSnapshot: null,
     auditEventCount: null,
     profilesById: new Map(),
     membersById: new Map(),
@@ -258,6 +260,7 @@ async function loadData(
     coverageAssignments,
     cleanSlateResult,
     auditCountResult,
+    latestSnapshotResult,
   ] = await Promise.all([
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllGroups(client),
@@ -273,6 +276,7 @@ async function loadData(
     fetchCurrentCoverageAssignments(client),
     fetchCleanSlateImpact(client),
     fetchAuditEventCount(client),
+    fetchLatestCleanSlateSnapshot(client),
   ]);
 
   const profiles = profilesResult.data ?? [];
@@ -326,6 +330,7 @@ async function loadData(
     appConfig: decodeAppConfig(platformConfigResult.data),
     auditEvents: auditEvents as AuditEventsRow[],
     cleanSlateImpact: cleanSlateResult.data,
+    latestCleanSlateSnapshot: latestSnapshotResult.data,
     auditEventCount: auditCountResult.data,
     profilesById,
     membersById,

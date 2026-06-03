@@ -5,6 +5,16 @@ import { P, fontSans } from "@/lib/pastoral";
 export type PButtonTone = "ghost" | "solid" | "terra";
 export type PButtonSize = "sm" | "md";
 
+// Exported so a raw `<a download>` link (which can't be a Next <Link> or a
+// <button>) can be styled exactly like a PButton — e.g. the Clean Slate Export
+// download anchor (#294).
+export function pButtonStyle(
+  tone: PButtonTone = "ghost",
+  size: PButtonSize = "md"
+): CSSProperties {
+  return styleFor(tone, size);
+}
+
 function styleFor(tone: PButtonTone, size: PButtonSize): CSSProperties {
   const padding = size === "sm" ? "8px 14px" : "10px 18px";
   const fontSize = size === "sm" ? 12 : 13;

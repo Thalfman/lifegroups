@@ -11,6 +11,7 @@
 // (super-admin) session, so RLS still applies.
 
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import type { CleanSlateSnapshotsRow } from "@/types/database";
 
 // The history tables Clean Slate clears, in display order (parents first reads
 // naturally for a human). This is for the read-only impact preview only — it is
@@ -35,6 +36,66 @@ export type CleanSlateImpact = {
   counts: Record<CleanSlateTable, number>;
   total: number;
 };
+
+// PRD-SAC6 (#293/#294): the latest un-restored snapshot, surfaced on the card so
+// the operator can see what a revert/export would act on and so the Revert
+// control + Export link can target a concrete id. The store holds at most one
+// snapshot, and a revert stamps restored_at, so "latest un-restored" is the
+// single recoverable one (null once it's been restored or never captured).
+export type CleanSlateLatestSnapshot = {
+  id: string;
+  createdAt: string;
+  totalRows: number;
+  rowCounts: Record<string, number>;
+};
+
+// Coerce a jsonb row_counts value (Record<string, number-ish>) into a clean
+// Record<string, number>, dropping non-finite entries. Shared by the snapshot
+// read here and the wipe/revert success summaries in clean-slate-actions.ts so
+// the card and the action agree on counts.
+export function coerceRowCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isFinite(n)) out[k] = n;
+  }
+  return out;
+}
+
+export async function fetchLatestCleanSlateSnapshot(
+  client: ReadClient
+): Promise<ReadResult<CleanSlateLatestSnapshot | null>> {
+  const { data, error } = await client
+    .from("clean_slate_snapshots")
+    .select("id, created_at, total_rows, row_counts")
+    .is("restored_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<
+      Pick<
+        CleanSlateSnapshotsRow,
+        "id" | "created_at" | "total_rows" | "row_counts"
+      >
+    >();
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchLatestCleanSlateSnapshot", error),
+    };
+  if (!data) return { data: null, error: null };
+
+  const total = Number(data.total_rows);
+  return {
+    data: {
+      id: String(data.id),
+      createdAt: String(data.created_at),
+      totalRows: Number.isFinite(total) ? total : 0,
+      rowCounts: coerceRowCounts(data.row_counts),
+    },
+    error: null,
+  };
+}
 
 async function countTable(
   client: ReadClient,
