@@ -338,6 +338,8 @@ Inside a leader care profile, use these tabs:
 | Notes | Longer pastoral/admin notes. |
 | Group | Link and summary for the leader’s group. |
 
+> Boundary note: The `Notes` tab is ministry-admin / private-note-only. It must not surface private pastoral notes on over-shepherd or leader-facing care surfaces (for example `/over-shepherd/[profileId]`). Over-shepherds can never read private notes per `docs/adr/0002-oversight-ladder-and-leader-gating.md`. This consolidation is a UI layout change only and must preserve that existing boundary.
+
 ---
 
 # 6. People
@@ -441,6 +443,8 @@ Inside a person detail page, use these tabs:
 | Care | Related care history and follow-ups. |
 | Activity | Recent group/admin activity. |
 | Access | Login and role details, shown only to users with permission. |
+
+> Boundary note: The `Access` tab applies only to app-login (auth-backed) profiles. Members are non-login participant records and never sign in, so member detail pages must not show an `Access` tab or offer any account or role-management affordances. Keep this restriction even though the `Person Detail` layout is shared across the People area.
 
 ---
 
@@ -552,6 +556,8 @@ Use these tabs:
 | Thresholds | Care stale days, capacity warnings, health thresholds. |
 | Notifications | Reminder/email preferences, if present later. |
 | Imports | Import tools, only if normal admins need them. |
+
+> Boundary note: Bulk people import is currently a security-critical write path gated by `requireSuperAdminSession()` in the Super Admin Console. This `Imports` tab is a navigation/discoverability idea only and must not move imports out from behind Super Admin. Imports remain super-admin-only unless a separate, explicit authorization decision changes that boundary.
 
 ---
 
