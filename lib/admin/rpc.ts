@@ -177,6 +177,26 @@ export function rpcSuperAdminCleanSlateWipe(
   return callUuidRpc(client, "super_admin_clean_slate_wipe", {});
 }
 
+// PRD-SAC6 (#293) Clean Slate in-DB revert. Restores the snapshot payload
+// (explicit id, else the latest un-restored snapshot) and returns the restored
+// snapshot id; the action reads counts back from the snapshot row by id.
+export function rpcSuperAdminCleanSlateRevert(
+  client: AppSupabaseClient,
+  args: { p_snapshot_id: string | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_clean_slate_revert", args);
+}
+
+// PRD-SAC6 (#294) Clean Slate import from a JSON export. The payload is the
+// parsed export file; the RPC does authoritative validation + restore and
+// returns the paired audit row id.
+export function rpcSuperAdminCleanSlateImport(
+  client: AppSupabaseClient,
+  args: { p_payload: Record<string, unknown> }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_clean_slate_import", args);
+}
+
 // PRD-SAC6 (#290) standalone audit-log reset (archive-then-purge). Returns the
 // id of the single fresh audit row the purge writes.
 export function rpcSuperAdminResetAuditLogs(

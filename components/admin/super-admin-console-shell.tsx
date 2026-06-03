@@ -20,7 +20,10 @@ import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import { CleanSlateCard } from "@/components/admin/clean-slate-card";
 import { AuditResetCard } from "@/components/admin/audit-reset-card";
-import type { CleanSlateImpact } from "@/lib/supabase/maintenance-reads";
+import type {
+  CleanSlateImpact,
+  CleanSlateLatestSnapshot,
+} from "@/lib/supabase/maintenance-reads";
 import {
   SystemStatusChecklist,
   type ChecklistRow,
@@ -89,6 +92,9 @@ export type SuperAdminConsoleData = {
   auditEvents: AuditEventsRow[];
   // PRD-SAC6 Danger Zone impact previews. Null when the read failed / no client.
   cleanSlateImpact: CleanSlateImpact | null;
+  // PRD-SAC6 (#293/#294): the latest un-restored snapshot for the revert/export
+  // controls. Null when none is recoverable / the read failed.
+  latestCleanSlateSnapshot: CleanSlateLatestSnapshot | null;
   auditEventCount: number | null;
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
@@ -662,7 +668,10 @@ export function SuperAdminConsoleShell({
           description="Each action below shows a server-loaded impact summary and is gated behind a type-to-confirm phrase, with a paired audit row. Both are reversible (a snapshot / archive is captured before the purge); raw SQL, schema editing, and auth bypass remain unavailable."
           accent={{ label: "Guarded", tone: "blocked" }}
         >
-          <CleanSlateCard impact={data.cleanSlateImpact} />
+          <CleanSlateCard
+            impact={data.cleanSlateImpact}
+            snapshot={data.latestCleanSlateSnapshot}
+          />
           <AuditResetCard auditEventCount={data.auditEventCount} />
         </CommandSection>
       </div>
