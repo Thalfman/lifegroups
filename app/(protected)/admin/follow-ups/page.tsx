@@ -68,7 +68,7 @@ async function loadData(): Promise<AdminFollowUpsData> {
 }
 
 export default async function AdminFollowUpsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
   const data = await loadData();
 
   return (
@@ -79,7 +79,7 @@ export default async function AdminFollowUpsPage() {
         lede="The admin oversight queue. Open follow-ups tied to a group, member, or guest — leader-care notes live in Leader care, not here. Mark in progress when you start. Mark done when it lands."
       />
       <PageBody>
-        <AdminFollowUpsShell data={data} />
+        <AdminFollowUpsShell data={data} viewerId={session.profile.id} />
       </PageBody>
     </>
   );

@@ -38,6 +38,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { PButton } from "@/components/pastoral/button";
+import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { dateLabel } from "@/lib/calendar/occurrences";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
@@ -62,6 +63,15 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "watch", label: "Watch" },
   { key: "needs_follow_up", label: "Needs follow-up" },
 ];
+
+const FILTER_KEYS = new Set<string>(FILTERS.map((f) => f.key));
+
+// Saved filter restore (#263): accept only a string that is still one of the
+// defined triage filters, so a renamed/removed filter from an older build
+// falls back to "all" instead of leaving the table on a dead selection.
+function isFilterKey(value: unknown): value is FilterKey {
+  return typeof value === "string" && FILTER_KEYS.has(value);
+}
 
 // A required rating is missing when its 1–5 score is null.
 function missingRatings(
@@ -136,6 +146,7 @@ export function GroupHealthTriage({
   spiritualGrowthLabel,
   groupQuestionLabel,
   watchGrade,
+  viewerId,
 }: {
   rows: GroupHealthOverviewRow[];
   period: string;
@@ -143,9 +154,21 @@ export function GroupHealthTriage({
   groupQuestionLabel: string;
   // The director's Watch grade threshold, sourced from Settings (#265).
   watchGrade: GroupHealthLetter;
+  // Signed-in profile id, used only to scope this admin's saved filter (#263).
+  viewerId?: string | null;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+
+  // Saved views & filters (PRD req 12, #263): remember the chosen triage
+  // filter per admin across reloads and return visits.
+  usePersistedViewState({
+    surface: "group-health",
+    scopeId: viewerId,
+    snapshot: filter,
+    restore: setFilter,
+    validate: isFilterKey,
+  });
   // Unsaved-edit flag, written by the open editor's form and read on close so
   // we can warn before discarding. A ref (not state) because only the close
   // handlers read it, and we don't want edits to re-render the list.

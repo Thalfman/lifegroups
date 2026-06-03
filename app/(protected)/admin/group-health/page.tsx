@@ -1,4 +1,5 @@
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   currentPeriodMonthIso,
@@ -19,6 +20,9 @@ import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 // recomputes live on read for the current month; placeholder labels stay as-is
 // (ADR-0007). The final filter logic (director thresholds) is gated to step 05.
 export default async function GroupHealthPage() {
+  // Cached guard (the admin layout already ran it); we read it here only to
+  // scope the per-user saved filter (#263).
+  const session = await requireAdmin();
   const client = await createSupabaseServerClient();
   if (!client) {
     return (
@@ -105,6 +109,7 @@ export default async function GroupHealthPage() {
           spiritualGrowthLabel={spiritualGrowthLabel}
           groupQuestionLabel={groupQuestionLabel}
           watchGrade={watchGrade}
+          viewerId={session.profile.id}
         />
       </PageBody>
     </>

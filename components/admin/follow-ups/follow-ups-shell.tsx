@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { SectionHeader } from "@/components/layout/shell";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
@@ -85,7 +86,55 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All statuses" },
 ];
 
-export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
+// Saved views & filters (PRD req 12, #263): the persisted shape for this
+// surface. Group/guest/assignee filters are free-form ids ("all" or a uuid),
+// so they validate as plain strings — a stale id simply matches nothing and
+// the list shows its empty state, the same as a no-match live filter.
+type FollowUpsViewSnapshot = {
+  showFilters: boolean;
+  statusFilter: StatusFilter;
+  priorityFilter: "all" | FollowUpPriority;
+  dueFilter: DueFilter;
+  assigneeFilter: string;
+  groupFilter: string;
+  guestFilter: string;
+};
+
+const STATUS_FILTER_VALUES = new Set<string>(
+  STATUS_FILTERS.map((f) => f.value)
+);
+const PRIORITY_FILTER_VALUES = new Set<string>(
+  PRIORITY_FILTERS.map((f) => f.value)
+);
+const DUE_FILTER_VALUES = new Set<string>(DUE_FILTERS.map((f) => f.value));
+
+function isFollowUpsViewSnapshot(
+  value: unknown
+): value is FollowUpsViewSnapshot {
+  if (value === null || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.showFilters === "boolean" &&
+    typeof v.statusFilter === "string" &&
+    STATUS_FILTER_VALUES.has(v.statusFilter) &&
+    typeof v.priorityFilter === "string" &&
+    PRIORITY_FILTER_VALUES.has(v.priorityFilter) &&
+    typeof v.dueFilter === "string" &&
+    DUE_FILTER_VALUES.has(v.dueFilter) &&
+    typeof v.assigneeFilter === "string" &&
+    typeof v.groupFilter === "string" &&
+    typeof v.guestFilter === "string"
+  );
+}
+
+export function AdminFollowUpsShell({
+  data,
+  viewerId,
+}: {
+  data: AdminFollowUpsData;
+  // Signed-in profile id, used only to scope this admin's saved filters (#263).
+  viewerId?: string | null;
+}) {
   const { followUps, groups, members, guests, assigneeProfiles, errors } = data;
 
   // Follow-up creation moved into the shared Editing Pattern drawer (#267):
@@ -105,6 +154,32 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [guestFilter, setGuestFilter] = useState<string>("all");
+
+  // Saved views & filters (PRD req 12, #263): remember the panel-open state and
+  // every filter selection per admin across reloads and return visits.
+  usePersistedViewState({
+    surface: "follow-ups",
+    scopeId: viewerId,
+    snapshot: {
+      showFilters,
+      statusFilter,
+      priorityFilter,
+      dueFilter,
+      assigneeFilter,
+      groupFilter,
+      guestFilter,
+    },
+    restore: (saved) => {
+      setShowFilters(saved.showFilters);
+      setStatusFilter(saved.statusFilter);
+      setPriorityFilter(saved.priorityFilter);
+      setDueFilter(saved.dueFilter);
+      setAssigneeFilter(saved.assigneeFilter);
+      setGroupFilter(saved.groupFilter);
+      setGuestFilter(saved.guestFilter);
+    },
+    validate: isFollowUpsViewSnapshot,
+  });
 
   const groupsById = useMemo(
     () => new Map(groups.map((g) => [g.id, g] as const)),
