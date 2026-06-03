@@ -44,7 +44,17 @@ export async function updateSupabaseSession(
   if (!claimsData?.claims && request.nextUrl.pathname === "/") {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    return NextResponse.rewrite(loginUrl, { request });
+    const rewriteResponse = NextResponse.rewrite(loginUrl, { request });
+    // Carry over any cookies the Supabase client wrote during getClaims()
+    // above — e.g. clearing stale/invalid session cookies on a failed refresh.
+    // Returning a fresh rewrite response would otherwise drop those Set-Cookie
+    // headers, leaving the bad cookies in place so every root visit keeps
+    // re-paying the refresh/validation cost. (For a clean anonymous request
+    // there are no cookies to copy, so this is a no-op on the common path.)
+    response.cookies.getAll().forEach((cookie) => {
+      rewriteResponse.cookies.set(cookie);
+    });
+    return rewriteResponse;
   }
 
   return response;
