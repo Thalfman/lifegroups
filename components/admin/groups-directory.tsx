@@ -106,10 +106,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     dirtyRef.current = true;
   }, []);
   const requestClose = useCallback(() => {
-    if (
-      dirtyRef.current &&
-      !window.confirm("Discard your unsaved changes to this group?")
-    ) {
+    // Generic wording: the same close path serves both the edit and create
+    // flows, and during create there is no group to name yet.
+    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
       return;
     }
     dirtyRef.current = false;
@@ -315,8 +314,7 @@ function GroupEditorDrawer({
         <div style={{ display: "grid", gap: 18 }} key={editor.group.id}>
           <GroupEditForm
             group={editor.group}
-            bare
-            onClose={onRequestClose}
+            onCancel={onRequestClose}
             onDirty={onDirty}
             onSaved={onSaved}
           />

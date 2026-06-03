@@ -28,18 +28,17 @@ function isoTimeForInput(value: string | null): string {
 
 export function GroupEditForm({
   group,
-  onClose,
-  // When rendered inside the EditingSurface drawer (#266) the drawer supplies
-  // the chrome, so drop the form's own card framing and report save/dirty back
-  // to the drawer: `onSaved` lets it close + refresh, `onDirty` lets it warn
-  // before discarding unsaved edits.
-  bare = false,
+  // The form always lives inside the EditingSurface drawer (#266), which
+  // supplies the chrome, so it reports save/dirty back to the drawer rather
+  // than framing itself: `onSaved` lets the drawer close + refresh, `onDirty`
+  // lets it warn before discarding unsaved edits, and `onCancel` renders a
+  // Cancel control that dismisses it.
+  onCancel,
   onSaved,
   onDirty,
 }: {
   group: GroupsRow;
-  onClose?: () => void;
-  bare?: boolean;
+  onCancel?: () => void;
   onSaved?: () => void;
   onDirty?: () => void;
 }) {
@@ -62,18 +61,7 @@ export function GroupEditForm({
     <form
       action={formAction}
       onChange={onDirty}
-      style={
-        bare
-          ? { display: "grid", gap: 12 }
-          : {
-              display: "grid",
-              gap: 12,
-              background: P.bg,
-              border: `1px solid ${P.line}`,
-              borderRadius: 10,
-              padding: "16px 18px",
-            }
-      }
+      style={{ display: "grid", gap: 12 }}
     >
       <input type="hidden" name="group_id" value={group.id} />
       <div
@@ -327,13 +315,13 @@ export function GroupEditForm({
         <PButton type="submit" tone="terra" size="sm" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
         </PButton>
-        {onClose ? (
+        {onCancel ? (
           <PButton
             type="button"
             tone="ghost"
             size="sm"
             disabled={pending}
-            onClick={onClose}
+            onClick={onCancel}
           >
             Cancel
           </PButton>
