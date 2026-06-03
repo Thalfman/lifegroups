@@ -58,20 +58,38 @@ function Row({ label, detail }: { label: string; detail: string }) {
   );
 }
 
-export function ThisWeekCard({ data }: { data: AdminDashboardData }) {
-  const dueThisWeek = data.followUps.filter((f) => isDueThisWeek(f.dueDate));
+export function ThisWeekCard({
+  data,
+  degraded,
+}: {
+  data: AdminDashboardData;
+  // The dashboard read degraded to demo fallback; suppress the week-ahead data
+  // so its counts and dates are never mistaken for live work — matching how
+  // NeedsAttentionArea / buildNeedsAttentionItems treat degraded (contribute
+  // nothing).
+  degraded?: boolean;
+}) {
+  // Accurate, UNtruncated count of OPEN follow-ups due this week (data layer
+  // counts every match, not just the first capped rows the card can see).
+  const dueThisWeekCount = data.dueFollowUpsThisWeekCount;
   const lp = data.launchPlanning;
-  const launchDate = lp.available ? lp.suggestedLaunchByDate : null;
+  // Only treat the suggested-launch milestone as week-ahead work when it
+  // actually falls inside the same horizon a due follow-up would; a launch date
+  // weeks/months out is long-range planning, not this week.
+  const launchDate =
+    lp.available && isDueThisWeek(lp.suggestedLaunchByDate)
+      ? lp.suggestedLaunchByDate
+      : null;
 
   const rows: { label: string; detail: string }[] = [];
 
-  if (dueThisWeek.length > 0) {
+  if (dueThisWeekCount > 0) {
     rows.push({
       label: "Follow-ups due",
       detail:
-        dueThisWeek.length === 1
+        dueThisWeekCount === 1
           ? "1 due in the next 7 days"
-          : `${dueThisWeek.length} due in the next 7 days`,
+          : `${dueThisWeekCount} due in the next 7 days`,
     });
   }
 
@@ -95,7 +113,18 @@ export function ThisWeekCard({ data }: { data: AdminDashboardData }) {
       title="The week ahead"
       action={<OpenLink href="/admin/launch-planning" label="View planning" />}
     >
-      {rows.length === 0 ? (
+      {degraded ? (
+        <p
+          style={{
+            margin: 0,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink3,
+          }}
+        >
+          The week ahead is unavailable right now.
+        </p>
+      ) : rows.length === 0 ? (
         <p
           style={{
             margin: 0,

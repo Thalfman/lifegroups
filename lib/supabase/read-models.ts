@@ -306,6 +306,37 @@ export async function fetchOpenFollowUps(
   return { data: data ?? [], error: null };
 }
 
+/**
+ * Accurate, UNtruncated count of OPEN follow-ups due within the "this week"
+ * window — anything with a `due_date` on or before `dueOnOrBeforeIso`
+ * (inclusive of today and anything already overdue), matching the
+ * `isDueThisWeek` horizon the Home "This week" card renders.
+ *
+ * The card itself can only see the first `limit` rows of {@link fetchOpenFollowUps}
+ * (ordered by priority then due_date), so a lower-priority item due this week can
+ * fall outside that cap and be undercounted. This is a `head:true` exact count —
+ * it reads no rows, just the total — so the card can show a faithful figure
+ * without lifting the row cap. Open == `status in ('open','in_progress')`, the
+ * same predicate `fetchOpenFollowUps` uses.
+ */
+export async function fetchOpenFollowUpsDueCount(
+  client: ReadClient,
+  options: { dueOnOrBeforeIso: string }
+): Promise<ReadResult<number>> {
+  const { count, error } = await client
+    .from("follow_ups")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["open", "in_progress"])
+    .not("due_date", "is", null)
+    .lte("due_date", options.dueOnOrBeforeIso);
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchOpenFollowUpsDueCount", error),
+    };
+  return { data: count ?? 0, error: null };
+}
+
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
   options: { groupId?: string; updateWeek?: string } = {}

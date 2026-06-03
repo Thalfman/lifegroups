@@ -174,6 +174,11 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
       relatedGroupName: "South Campus Women",
     },
   ],
+  // The demo follow-ups above all have no due date, so none fall in the
+  // "this week" window — 0 keeps the demo card consistent with that list.
+  // (When the dashboard read actually failed the card is rendered degraded
+  // and suppresses this entirely; this value is for the no-client demo.)
+  dueFollowUpsThisWeekCount: 0,
 };
 
 export const LEADER_FALLBACK: LeaderDashboardData = {

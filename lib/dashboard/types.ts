@@ -261,6 +261,12 @@ export interface AdminDashboardData {
   guestPipelineCount: number;
   guestPipelineBreakdown: PipelineStageCount[];
   followUps: FollowUpItem[];
+  // Accurate, UNtruncated count of OPEN follow-ups due within the "this week"
+  // horizon (on or before today + 7 days, inclusive of overdue). `followUps`
+  // above is capped (priority/due ordered, limited rows) so the Home "This week"
+  // card filters it for previews; this count is the faithful total the card
+  // reports so a low-priority item due this week is never dropped from the cap.
+  dueFollowUpsThisWeekCount: number;
   shepherdCare: ShepherdCareDashboardSummary;
   launchPlanning: LaunchPlanningDashboardSnapshot;
   leaderPipeline: LeaderPipelineDashboardSummary;

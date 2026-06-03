@@ -86,7 +86,7 @@ export function DashboardClient({
           <SectionHeading>
             <span id="home-this-week">This week</span>
           </SectionHeading>
-          <ThisWeekCard data={data} />
+          <ThisWeekCard data={data} degraded={degraded} />
         </section>
 
         {/* 3 — Ministry snapshot. Point-in-time vital signs + domain overview

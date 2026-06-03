@@ -19,6 +19,7 @@ import {
   fetchMultiplicationCandidatesForAdmin,
   fetchNewGuestsForGroupSince,
   fetchOpenFollowUps,
+  fetchOpenFollowUpsDueCount,
   fetchOverShepherdsForAdmin,
   fetchOverviewActivityCounts,
   fetchProfilesForAdmin,
@@ -310,6 +311,7 @@ export type AdminDashboardReads = {
   fetchActiveGroupCount: OmitClient<typeof fetchActiveGroupCount>;
   fetchGuests: OmitClient<typeof fetchGuests>;
   fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
+  fetchOpenFollowUpsDueCount: OmitClient<typeof fetchOpenFollowUpsDueCount>;
   fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
   fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
@@ -366,6 +368,7 @@ export function supabaseAdminDashboardReads(
     fetchActiveGroupCount,
     fetchGuests,
     fetchOpenFollowUps,
+    fetchOpenFollowUpsDueCount,
     fetchActiveMemberships,
     fetchLatestHealthUpdates,
     fetchAttendanceSessions,
@@ -417,6 +420,10 @@ export async function buildAdminDashboardData(
     // calendar day for needs_attention math and the dashboard for any
     // request-bound timing.
     const todayIso = currentUtcDateIso();
+    // The "this week" horizon the Home card renders: today + 7 days, inclusive
+    // of overdue. Computed here so the UNtruncated due-count read below matches
+    // the card's `isDueThisWeek` window exactly.
+    const dueThisWeekOnOrBeforeIso = addDaysIsoForWeek(todayIso, 7);
 
     // Metric defaults feed the shepherd-care directory's `entry.needs_attention`
     // stamp (configured stale-contact window) — without it /admin would use the
@@ -431,6 +438,7 @@ export async function buildAdminDashboardData(
       activeGroupCountResult,
       guestsResult,
       followUpsResult,
+      dueFollowUpsThisWeekCountResult,
       membershipsResult,
       healthUpdatesResult,
       sessionsResult,
@@ -450,6 +458,9 @@ export async function buildAdminDashboardData(
       reads.fetchActiveGroupCount(),
       reads.fetchGuests(),
       reads.fetchOpenFollowUps({ limit: 8 }),
+      reads.fetchOpenFollowUpsDueCount({
+        dueOnOrBeforeIso: dueThisWeekOnOrBeforeIso,
+      }),
       reads.fetchActiveMemberships(),
       reads.fetchLatestHealthUpdates({ updateWeek: selectedWeek }),
       reads.fetchAttendanceSessions({ meetingWeek: selectedWeek }),
@@ -508,6 +519,7 @@ export async function buildAdminDashboardData(
       activeGroupCountResult.error ||
       guestsResult.error ||
       followUpsResult.error ||
+      dueFollowUpsThisWeekCountResult.error ||
       membershipsResult.error ||
       healthUpdatesResult.error ||
       sessionsResult.error ||
@@ -571,6 +583,7 @@ export async function buildAdminDashboardData(
     const { derivedRows: _derivedRows, ...modelPayload } = model;
     return live({
       ...modelPayload,
+      dueFollowUpsThisWeekCount: dueFollowUpsThisWeekCountResult.data ?? 0,
       shepherdCare,
       launchPlanning,
       leaderPipeline,

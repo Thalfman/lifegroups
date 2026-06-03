@@ -32,6 +32,7 @@ function emptyReads(
     fetchActiveGroupCount: async () => ({ data: 0, error: null }),
     fetchGuests: async () => ({ data: [], error: null }),
     fetchOpenFollowUps: async () => ({ data: [], error: null }),
+    fetchOpenFollowUpsDueCount: async () => ({ data: 0, error: null }),
     fetchActiveMemberships: async () => ({ data: [], error: null }),
     fetchLatestHealthUpdates: async () => ({ data: [], error: null }),
     fetchAttendanceSessions: async () => ({ data: [], error: null }),
@@ -72,6 +73,42 @@ describe("buildAdminDashboardData", () => {
     expect(result.data.shepherdCare.available).toBe(true);
     expect(result.data.shepherdCare.totalActiveShepherds).toBe(0);
     expect(result.data.launchPlanning.available).toBe(true);
+  });
+
+  it("surfaces the UNtruncated due-this-week follow-up count from its own count read", async () => {
+    // The card can only see the first capped rows of fetchOpenFollowUps, so the
+    // accurate count comes from a dedicated head:true count read; the dashboard
+    // must pass it straight through, never re-deriving it from the capped rows.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOpenFollowUps: async () => ({ data: [], error: null }),
+        fetchOpenFollowUpsDueCount: async () => ({ data: 12, error: null }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(result.data.dueFollowUpsThisWeekCount).toBe(12);
+  });
+
+  it("degrades to the fallback when the due-this-week count read errors", async () => {
+    // The count read is part of the firstError gate: it backs the Home "This
+    // week" card's headline figure, so a failure degrades the page rather than
+    // showing a silently-zeroed count.
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOpenFollowUpsDueCount: async () => ({
+          data: null,
+          error: new Error("due count read failed"),
+        }),
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("fallback");
+    if (result.source !== "fallback") return;
+    expect(result.error).toContain("due count read failed");
   });
 
   it("degrades to the fallback when a gated read errors", async () => {
