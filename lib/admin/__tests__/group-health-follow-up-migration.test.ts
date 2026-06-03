@@ -136,6 +136,17 @@ describe("group-health follow-up migration — recompute carries the flag forwar
     );
   });
 
+  it("audits the flag's before/after, using the actually-persisted value", () => {
+    const body = functionBody(sql, "admin_upsert_group_health_assessment");
+    // The final persisted flag (carry on insert, preserved on conflict) is read
+    // back via RETURNING and recorded as the after-state, with needs_follow_up
+    // in both before and after snapshots.
+    expect(body).toContain(
+      "returning id, needs_follow_up into v_id, v_final_follow_up"
+    );
+    expect(body).toContain("'needs_follow_up', v_final_follow_up");
+  });
+
   it("keeps the recompute RPC audited, definer, and locked down", () => {
     assertSecurityDefiner(sql, "admin_upsert_group_health_assessment");
     assertPairedAuditInsert(

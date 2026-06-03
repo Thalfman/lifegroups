@@ -565,6 +565,7 @@ declare
   v_period date;
   v_weeks integer;
   v_carry_follow_up boolean;
+  v_final_follow_up boolean;
   v_before jsonb;
   v_id uuid;
 begin
@@ -612,10 +613,12 @@ begin
    limit 1;
   v_carry_follow_up := coalesce(v_carry_follow_up, false);
 
-  -- Snapshot the prior row (if any) for the audit before/after pair.
+  -- Snapshot the prior row (if any) for the audit before/after pair, including
+  -- the follow-up flag so a carried-forward value is visible in the trail.
   select jsonb_build_object(
            'attendance_pct', attendance_pct,
            'attendance_weeks_counted', attendance_weeks_counted,
+           'needs_follow_up', needs_follow_up,
            'computed_numeric', computed_numeric,
            'computed_letter', computed_letter
          )
@@ -638,7 +641,9 @@ begin
          computed_numeric         = excluded.computed_numeric,
          computed_letter          = excluded.computed_letter,
          updated_by               = v_actor
-  returning id into v_id;
+  -- The actual persisted flag: v_carry_follow_up on insert, the preserved
+  -- existing value on the conflict path. Audited as the after-state below.
+  returning id, needs_follow_up into v_id, v_final_follow_up;
 
   insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
   values (
@@ -651,6 +656,7 @@ begin
       'after', jsonb_build_object(
         'attendance_pct', p_attendance_pct,
         'attendance_weeks_counted', v_weeks,
+        'needs_follow_up', v_final_follow_up,
         'computed_numeric', p_computed_numeric,
         'computed_letter', p_computed_letter
       ),

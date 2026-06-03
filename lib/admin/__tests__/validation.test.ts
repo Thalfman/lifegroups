@@ -411,6 +411,20 @@ describe("validateGroupHealthRatingsPayload", () => {
     }
   });
 
+  it("allows clearing a carried flag: empty save, box unchecked, prior flag set", () => {
+    // A group on the filter only via a carried prior-month flag. Unchecking to
+    // close the action posts empty + needs_follow_up false, but the prior flag
+    // makes it a real change (writes the current-month needs_follow_up=false
+    // row that supersedes the carried flag), so it must not be rejected.
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      needs_follow_up: undefined,
+      prior_needs_follow_up: "true",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.needs_follow_up).toBe(false);
+  });
+
   it("still rejects a bare object with no ratings, note, or follow-up flag", () => {
     const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
     expect(r.ok).toBe(false);

@@ -143,6 +143,10 @@ const RATINGS_SPEC: AdminWriteActionSpec<
     // unchecked), so the validator can tell a real drawer save — which may be
     // clearing the flag — from a legacy no-op object.
     "needs_follow_up",
+    // The displayed (possibly carried) flag, so unchecking it on a group with
+    // no current-month ratings still saves (clears the carried flag) instead of
+    // being rejected as an empty no-op.
+    "prior_needs_follow_up",
   ],
   validate: validateGroupHealthRatingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),

@@ -473,6 +473,15 @@ function GroupHealthEditorBody({
             aria-label={`Flag ${row.group_name} as needing follow-up`}
             style={{ marginTop: 3 }}
           />
+          {/* The currently-displayed flag (which may be carried from a prior
+              month), so an empty "uncheck to close the action" save isn't
+              rejected as a no-op — it must be able to write the current-month
+              needs_follow_up=false row that supersedes the carried flag. */}
+          <input
+            type="hidden"
+            name="prior_needs_follow_up"
+            value={row.needs_follow_up ? "true" : "false"}
+          />
           <span>
             Needs follow-up
             <span
