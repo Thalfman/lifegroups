@@ -66,12 +66,47 @@ describe("defaultLandingPathForRole", () => {
   });
 });
 
+// Six-area spine (ADR 0013): Home / Groups / Care / People / Planning /
+// Settings, as a flat list on every nav surface. Super Admin is appended only
+// for super_admin and is not one of the six (ADR 0002).
+const SIX_AREAS = [
+  "/admin",
+  "/admin/groups",
+  "/admin/care",
+  "/admin/people",
+  "/admin/planning",
+  "/admin/settings",
+];
+
 describe("navItemsForRole", () => {
-  it("includes the super-admin link only for super_admin", () => {
-    const superHrefs = navItemsForRole("super_admin").map((i) => i.href);
-    const ministryHrefs = navItemsForRole("ministry_admin").map((i) => i.href);
-    expect(superHrefs).toContain("/admin/super-admin");
-    expect(ministryHrefs).not.toContain("/admin/super-admin");
+  it("gives admin roles the six areas as a flat list (Home → /admin)", () => {
+    const items = navItemsForRole("ministry_admin");
+    expect(items.map((i) => i.href)).toEqual(SIX_AREAS);
+    expect(items.map((i) => i.label)).toEqual([
+      "Home",
+      "Groups",
+      "Care",
+      "People",
+      "Planning",
+      "Settings",
+    ]);
+  });
+
+  it("appends the super-admin entry only for super_admin", () => {
+    const superItems = navItemsForRole("super_admin");
+    expect(superItems.map((i) => i.href)).toEqual([
+      ...SIX_AREAS,
+      "/admin/super-admin",
+    ]);
+    expect(navItemsForRole("ministry_admin").map((i) => i.href)).not.toContain(
+      "/admin/super-admin"
+    );
+  });
+
+  it("points Care and Planning at the new landing shells", () => {
+    const hrefs = navItemsForRole("ministry_admin").map((i) => i.href);
+    expect(hrefs).toContain("/admin/care");
+    expect(hrefs).toContain("/admin/planning");
   });
 
   // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
@@ -89,118 +124,71 @@ describe("navItemsForRole", () => {
     }
   });
 
-  // Dead Shepherd→admin reporting loop removed per
-  // docs/adr/0002-oversight-ladder-and-leader-gating.md.
-  it("drops /admin/check-ins from the flat nav for admin roles", () => {
-    for (const role of ["super_admin", "ministry_admin"] as const) {
-      expect(navItemsForRole(role).map((i) => i.href)).not.toContain(
-        "/admin/check-ins"
-      );
-    }
-  });
-
   it("gives over_shepherd the home + my-shepherds items only", () => {
     const hrefs = navItemsForRole("over_shepherd").map((i) => i.href);
     expect(hrefs).toEqual(["/", "/over-shepherd"]);
     // Over-Shepherd gets none of the admin nav surface.
     expect(hrefs).not.toContain("/admin");
   });
-
-  // Capacity board and Multiplication were folded into Launch planning
-  // (ADR 0010 surface-budget consolidation); they no longer appear in the nav.
-  it("no longer surfaces /admin/capacity-board or /admin/multiplication", () => {
-    for (const role of ["super_admin", "ministry_admin"] as const) {
-      const hrefs = navItemsForRole(role).map((i) => i.href);
-      expect(hrefs).not.toContain("/admin/capacity-board");
-      expect(hrefs).not.toContain("/admin/multiplication");
-      expect(hrefs).toContain("/admin/launch-planning");
-    }
-  });
 });
 
 describe("adminNavGroups", () => {
-  it("includes the super-admin item in the system group for super_admin", () => {
-    const groups = adminNavGroups("super_admin");
-    const system = groups.find((g) => g.group === "system");
-    expect(system).toBeDefined();
-    expect(system!.items.map((i) => i.href)).toContain("/admin/super-admin");
+  it("renders the six areas as a single flat group with no section header", () => {
+    const groups = adminNavGroups("ministry_admin");
+    // Flat list: one group, empty label so the Sidebar renders no header.
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.label).toBe("");
+    expect(groups[0]!.items.map((i) => i.href)).toEqual(SIX_AREAS);
+    expect(groups[0]!.items.map((i) => i.label)).toEqual([
+      "Home",
+      "Groups",
+      "Care",
+      "People",
+      "Planning",
+      "Settings",
+    ]);
   });
 
-  it("omits the super-admin item for ministry_admin", () => {
-    const groups = adminNavGroups("ministry_admin");
-    const system = groups.find((g) => g.group === "system");
-    expect(system).toBeDefined();
-    expect(system!.items.map((i) => i.href)).not.toContain(
-      "/admin/super-admin"
+  it("appends the super-admin item only for super_admin", () => {
+    const superHrefs = adminNavGroups("super_admin")
+      .flatMap((g) => g.items)
+      .map((i) => i.href);
+    expect(superHrefs).toEqual([...SIX_AREAS, "/admin/super-admin"]);
+    const ministryHrefs = adminNavGroups("ministry_admin")
+      .flatMap((g) => g.items)
+      .map((i) => i.href);
+    expect(ministryHrefs).not.toContain("/admin/super-admin");
+  });
+
+  it("points Care and Planning at the new landing shells", () => {
+    const items = adminNavGroups("ministry_admin").flatMap((g) => g.items);
+    expect(items.find((i) => i.label === "Care")!.href).toBe("/admin/care");
+    expect(items.find((i) => i.label === "Planning")!.href).toBe(
+      "/admin/planning"
     );
   });
 
-  // #146: the Group-Health surface ships dimension-complete (ADR 0007) but was
-  // only reachable by direct URL; expose it in the admin nav. adminNavGroups
-  // renders only behind the admin layout guard, so the entry is admin-only for
-  // free — consistent with every other admin nav item.
-  it("exposes a Group-Health entry pointing at /admin/group-health for both admin roles", () => {
+  // Frozen routes stay reachable by direct URL (ADR 0008/0009): the six-area
+  // spine drops them from the top-level nav but never renames them. They are
+  // intentionally absent from the flat nav now (hosted under areas in later
+  // slices), so assert they are not surfaced as their own top-level entries.
+  it("no longer surfaces the consolidated routes as their own nav entries", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
-      const item = adminNavGroups(role)
+      const hrefs = adminNavGroups(role)
         .flatMap((g) => g.items)
-        .find((i) => i.href === "/admin/group-health");
-      expect(item).toBeDefined();
-      expect(item!.label).toBe("Group health");
+        .map((i) => i.href);
+      for (const gone of [
+        "/admin/shepherd-care",
+        "/admin/follow-ups",
+        "/admin/launch-planning",
+        "/admin/calendar",
+        "/admin/group-health",
+        "/admin/leader-pipeline",
+        "/admin/check-ins",
+        "/admin/guests",
+      ]) {
+        expect(hrefs).not.toContain(gone);
+      }
     }
-  });
-
-  // Julian admin OS pivot (2026-05): the "shepherd" group leads
-  // operational manage now, and is labeled "Ministry Admin" in the UI
-  // ("Admin OS" remains the internal name). See
-  // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
-  it("returns the same four group keys regardless of role", () => {
-    const expected = ["top", "shepherd", "manage", "system"];
-    for (const role of ALL_ROLES) {
-      expect(adminNavGroups(role).map((g) => g.group)).toEqual(expected);
-    }
-  });
-
-  it("leads the shepherd group with leader care + launch planning, then leader pipeline", () => {
-    const groups = adminNavGroups("ministry_admin");
-    const shepherd = groups.find((g) => g.group === "shepherd");
-    expect(shepherd).toBeDefined();
-    expect(shepherd!.label).toBe("Ministry Admin");
-    // Capacity board and Multiplication folded into Launch planning (ADR 0010).
-    expect(shepherd!.items.map((i) => i.href)).toEqual([
-      "/admin/shepherd-care",
-      "/admin/launch-planning",
-      "/admin/leader-pipeline",
-      "/admin/follow-ups",
-      "/admin/group-health",
-    ]);
-  });
-
-  it("drops /admin/guests from nav for both admin roles", () => {
-    for (const role of ["super_admin", "ministry_admin"] as const) {
-      const allHrefs = adminNavGroups(role).flatMap((g) =>
-        g.items.map((i) => i.href)
-      );
-      expect(allHrefs).not.toContain("/admin/guests");
-    }
-  });
-
-  // Dead Shepherd→admin reporting loop removed per
-  // docs/adr/0002-oversight-ladder-and-leader-gating.md.
-  it("drops /admin/check-ins from the grouped nav for both admin roles", () => {
-    for (const role of ["super_admin", "ministry_admin"] as const) {
-      const allHrefs = adminNavGroups(role).flatMap((g) =>
-        g.items.map((i) => i.href)
-      );
-      expect(allHrefs).not.toContain("/admin/check-ins");
-    }
-    // the manage group keeps people / groups / calendar only
-    const manage = adminNavGroups("ministry_admin").find(
-      (g) => g.group === "manage"
-    );
-    expect(manage!.items.map((i) => i.href)).toEqual([
-      "/admin/people",
-      "/admin/groups",
-      "/admin/calendar",
-    ]);
   });
 });
