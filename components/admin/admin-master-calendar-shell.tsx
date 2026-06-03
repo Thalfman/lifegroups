@@ -9,10 +9,7 @@ import {
 import { AdminMasterCalendarList } from "./admin-master-calendar-list";
 import { AdminMasterCalendarDrawer } from "./admin-master-calendar-drawer";
 import { AdminCalendarLegend } from "./admin-calendar-legend";
-import {
-  WEEKDAY_HEADERS,
-  monthBounds,
-} from "@/lib/calendar/occurrences";
+import { WEEKDAY_HEADERS, monthBounds } from "@/lib/calendar/occurrences";
 import {
   EVENT_STATUS_OPTIONS,
   EVENT_TYPE_OPTIONS,
@@ -53,6 +50,14 @@ export function AdminMasterCalendarShell({
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const userToggledRef = useRef(false);
 
+  // Default-view decision (Calendar polish, PRD req 11, #262): Month stays the
+  // desktop default; List remains the mobile default (auto-selected below) and
+  // is one tap away via the toggle. Rationale: the master calendar's value is
+  // the at-a-glance month grid spanning every group; List is better for dense
+  // days and narrow screens, where it is already chosen automatically. We did
+  // not switch admin work to default to List (Open Question 2 — director mobile
+  // usage — is non-blocking; revisit if the director works primarily on phone).
+
   // Hydration-safe mobile default: stay on "month" through SSR and the
   // first client render, then flip to "list" only if the viewport
   // matches AND the user hasn't manually picked a view yet.
@@ -78,7 +83,7 @@ export function AdminMasterCalendarShell({
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<GroupCalendarEventType[]>([]);
   const [statusFilter, setStatusFilter] = useState<GroupCalendarEventStatus[]>(
-    [],
+    []
   );
   const [dayFilter, setDayFilter] = useState<number[]>([]); // 0=Sun..6=Sat
   // Leader filter keyed on profile_id so two profiles with the same
@@ -94,19 +99,32 @@ export function AdminMasterCalendarShell({
 
   const filtered = useMemo(() => {
     return occurrences.filter((o) => {
-      if (groupFilter.length > 0 && !groupFilter.includes(o.groupId)) return false;
-      if (typeFilter.length > 0 && !typeFilter.includes(o.eventType)) return false;
-      if (statusFilter.length > 0 && !statusFilter.includes(o.status)) return false;
-      if (dayFilter.length > 0 && !dayFilter.includes(o.weekdayIndex)) return false;
+      if (groupFilter.length > 0 && !groupFilter.includes(o.groupId))
+        return false;
+      if (typeFilter.length > 0 && !typeFilter.includes(o.eventType))
+        return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(o.status))
+        return false;
+      if (dayFilter.length > 0 && !dayFilter.includes(o.weekdayIndex))
+        return false;
       if (leaderFilter && !o.leaders.some((l) => l.profileId === leaderFilter))
         return false;
       return true;
     });
-  }, [occurrences, groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter]);
+  }, [
+    occurrences,
+    groupFilter,
+    typeFilter,
+    statusFilter,
+    dayFilter,
+    leaderFilter,
+  ]);
 
   const selected = useMemo(() => {
     if (!selectedKey) return null;
-    return filtered.find((o) => `${o.groupId}|${o.date}` === selectedKey) ?? null;
+    return (
+      filtered.find((o) => `${o.groupId}|${o.date}` === selectedKey) ?? null
+    );
   }, [filtered, selectedKey]);
 
   const hasActiveFilters =
@@ -315,8 +333,74 @@ function FilterBar({
 }) {
   const groupOptions = useMemo(
     () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
-    [groups],
+    [groups]
   );
+
+  // Flatten every active selection into removable chips. Order mirrors the
+  // field grid (group → type → status → day → leader) so the chip row reads
+  // as a compact summary of the controls below it.
+  const activeChips = useMemo<ActiveChip[]>(() => {
+    const chips: ActiveChip[] = [];
+    const groupLabels = new Map(groupOptions.map((o) => [o.value, o.label]));
+    const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
+    const statusLabels = new Map(
+      EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
+    );
+
+    for (const id of groupFilter) {
+      chips.push({
+        key: `group:${id}`,
+        label: groupLabels.get(id) ?? "Group",
+        onRemove: () => setGroupFilter(groupFilter.filter((v) => v !== id)),
+      });
+    }
+    for (const t of typeFilter) {
+      chips.push({
+        key: `type:${t}`,
+        label: typeLabels.get(t) ?? friendlyEventTypeLabel(t),
+        onRemove: () => setTypeFilter(typeFilter.filter((v) => v !== t)),
+      });
+    }
+    for (const s of statusFilter) {
+      chips.push({
+        key: `status:${s}`,
+        label: statusLabels.get(s) ?? s,
+        onRemove: () => setStatusFilter(statusFilter.filter((v) => v !== s)),
+      });
+    }
+    for (const d of dayFilter) {
+      chips.push({
+        key: `day:${d}`,
+        label: WEEKDAY_HEADERS[d] ?? `Day ${d}`,
+        onRemove: () => setDayFilter(dayFilter.filter((v) => v !== d)),
+      });
+    }
+    if (leaderFilter) {
+      const name =
+        leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
+        "Leader";
+      chips.push({
+        key: `leader:${leaderFilter}`,
+        label: name,
+        onRemove: () => setLeaderFilter(""),
+      });
+    }
+    return chips;
+  }, [
+    groupOptions,
+    groupFilter,
+    setGroupFilter,
+    typeFilter,
+    setTypeFilter,
+    statusFilter,
+    setStatusFilter,
+    dayFilter,
+    setDayFilter,
+    leaderFilter,
+    setLeaderFilter,
+    leaderOptions,
+  ]);
+
   // Show the {n}/{m} hint only when filters are active AND there's
   // something left to show. When filteredCount === 0 the EmptyState
   // carries the message; doubling up reads as noise.
@@ -391,6 +475,7 @@ function FilterBar({
           <ViewToggle viewMode={viewMode} onChange={onChangeView} />
         </div>
       </div>
+      <ActiveFilterChips chips={activeChips} />
       <div
         className="lg-m-master-calendar-filters"
         style={{
@@ -437,6 +522,69 @@ function FilterBar({
         />
       </div>
     </section>
+  );
+}
+
+type ActiveChip = { key: string; label: string; onRemove: () => void };
+
+// Compact, removable chips summarising every active filter selection
+// (Calendar polish, PRD req 11, #262). Each chip drops a single selection;
+// the FilterBar's "Reset filters" still clears everything at once. Keeping the
+// active set visible (and individually removable) means the admin never has to
+// re-open a collapsed field to remember — or undo — one choice.
+function ActiveFilterChips({ chips }: { chips: ActiveChip[] }) {
+  if (chips.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+        alignItems: "center",
+      }}
+    >
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontFamily: fontBody,
+            fontSize: 11.5,
+            color: P.terra,
+            background: P.terraSoft,
+            border: `1px solid ${P.terra}`,
+            borderRadius: 999,
+            padding: "2px 4px 2px 10px",
+          }}
+        >
+          {chip.label}
+          <button
+            type="button"
+            onClick={chip.onRemove}
+            aria-label={`Remove filter: ${chip.label}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 16,
+              height: 16,
+              borderRadius: 999,
+              border: "none",
+              background: "transparent",
+              color: P.terra,
+              fontSize: 13,
+              lineHeight: 1,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -505,6 +653,14 @@ function GroupsDetailsField({
           </span>
         </div>
       </summary>
+      <div style={{ paddingTop: 8 }}>
+        <BulkActions
+          label="groups"
+          all={options.map((o) => o.value)}
+          value={value}
+          onChange={onChange}
+        />
+      </div>
       <div
         style={{
           display: "flex",
@@ -554,6 +710,63 @@ function GroupsDetailsField({
   );
 }
 
+// Compact "Select all / Clear all" pair for a multi-select filter field
+// (Calendar polish, PRD req 11, #262). Each button disables itself once it
+// would be a no-op (all already chosen / nothing chosen) so the affordance
+// also doubles as a hint at the field's current state.
+function BulkActions<V>({
+  label,
+  all,
+  value,
+  onChange,
+}: {
+  label: string;
+  all: V[];
+  value: V[];
+  onChange: (next: V[]) => void;
+}) {
+  const allSelected = all.length > 0 && value.length === all.length;
+  const noneSelected = value.length === 0;
+  const btnStyle = (disabled: boolean): React.CSSProperties => ({
+    fontFamily: fontSans,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    color: disabled ? P.ink3 : P.terra,
+    background: "transparent",
+    border: "none",
+    padding: "2px 4px",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.45 : 1,
+  });
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <button
+        type="button"
+        onClick={() => onChange([...all])}
+        disabled={allSelected}
+        aria-label={`Select all ${label}`}
+        style={btnStyle(allSelected)}
+      >
+        Select all
+      </button>
+      <span aria-hidden style={{ color: P.line, fontSize: 10 }}>
+        ·
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange([])}
+        disabled={noneSelected}
+        aria-label={`Clear all ${label}`}
+        style={btnStyle(noneSelected)}
+      >
+        Clear all
+      </button>
+    </div>
+  );
+}
+
 function MultiCheckboxField<V extends string | number>({
   label,
   options,
@@ -589,6 +802,12 @@ function MultiCheckboxField<V extends string | number>({
       >
         {label}
       </legend>
+      <BulkActions
+        label={label}
+        all={options.map((o) => o.value)}
+        value={value}
+        onChange={onChange}
+      />
       <div
         style={{
           display: "flex",
@@ -676,6 +895,7 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
         style={{
           fontFamily: fontBody,
           fontSize: 13,
