@@ -29,18 +29,21 @@ function isoTimeForInput(value: string | null): string {
 export function GroupEditForm({
   group,
   // The form always lives inside the EditingSurface drawer (#266), which
-  // supplies the chrome, so it reports save/dirty back to the drawer rather
-  // than framing itself: `onSaved` lets the drawer close + refresh, `onDirty`
-  // lets it warn before discarding unsaved edits, and `onCancel` renders a
-  // Cancel control that dismisses it.
+  // supplies the chrome, so it reports save/dirty/pending back to the drawer
+  // rather than framing itself: `onSaved` lets the drawer close + refresh,
+  // `onDirty` lets it warn before discarding unsaved edits, `onCancel` renders
+  // a Cancel control that dismisses it, and `onPendingChange` lets it block
+  // dismissal while the save is in flight.
   onCancel,
   onSaved,
   onDirty,
+  onPendingChange,
 }: {
   group: GroupsRow;
   onCancel?: () => void;
   onSaved?: () => void;
   onDirty?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
@@ -54,6 +57,12 @@ export function GroupEditForm({
   useEffect(() => {
     if (state?.ok) onSaved?.();
   }, [state, onSaved]);
+
+  // Mirror the in-flight state up so the drawer can keep itself open until the
+  // write resolves (otherwise dismissing mid-save would drop the refresh).
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   const showParity = frequency === "biweekly";
 

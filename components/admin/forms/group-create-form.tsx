@@ -27,16 +27,19 @@ export function GroupCreateForm({
   defaultCapacity,
   // Supplied when rendered inside the EditingSurface drawer (#266): `onSaved`
   // closes + refreshes once the group is created, `onDirty` lets the drawer
-  // warn before discarding entered values, and `onCancel` renders a Cancel
-  // control beside Create.
+  // warn before discarding entered values, `onCancel` renders a Cancel control
+  // beside Create, and `onPendingChange` lets the drawer block dismissal while
+  // the create is in flight.
   onSaved,
   onDirty,
   onCancel,
+  onPendingChange,
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
   onDirty?: () => void;
   onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -55,6 +58,12 @@ export function GroupCreateForm({
     setShowMore(false);
     onSaved?.();
   }, [state, onSaved]);
+
+  // Mirror the in-flight state up so the drawer keeps itself open until the
+  // create resolves rather than being dismissed mid-write.
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   const showParity = frequency === "biweekly";
 

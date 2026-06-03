@@ -87,12 +87,14 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const [healthFilter, setHealthFilter] = useState<HealthFilter>("all");
   const [dayFilter, setDayFilter] = useState<string>("all");
 
-  // Which record the drawer is editing/creating, plus an unsaved-edit flag the
-  // open form sets on change and the close handlers read so they can warn before
-  // discarding. A ref (not state) so typing in the drawer never re-renders the
-  // list behind it.
+  // Which record the drawer is editing/creating, plus two flags the open form
+  // reports back: `dirtyRef` (edits pending → warn before discarding) and
+  // `submittingRef` (a write in flight → block dismissal until it resolves).
+  // Refs, not state, so neither typing nor an in-flight save re-renders the
+  // list behind the drawer.
   const [editor, setEditor] = useState<GroupEditorState | null>(null);
   const dirtyRef = useRef(false);
+  const submittingRef = useRef(false);
 
   const openCreate = useCallback(() => {
     dirtyRef.current = false;
@@ -105,7 +107,14 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
   }, []);
+  const reportPending = useCallback((pending: boolean) => {
+    submittingRef.current = pending;
+  }, []);
   const requestClose = useCallback(() => {
+    // A save/create/archive is in flight: ignore every dismissal route
+    // (Escape, overlay, ×, Cancel) so we don't unmount the form mid-write and
+    // drop the close+refresh — it auto-closes via onSaved when the write lands.
+    if (submittingRef.current) return;
     // Generic wording: the same close path serves both the edit and create
     // flows, and during create there is no group to name yet.
     if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
@@ -118,6 +127,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // reflects the change immediately (the server action revalidates too).
   const handleSaved = useCallback(() => {
     dirtyRef.current = false;
+    submittingRef.current = false;
     setEditor(null);
     router.refresh();
   }, [router]);
@@ -269,6 +279,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         editor={editor}
         defaultCapacity={props.metricDefaults.default_group_capacity}
         onDirty={markDirty}
+        onPendingChange={reportPending}
         onRequestClose={requestClose}
         onSaved={handleSaved}
       />
@@ -284,12 +295,14 @@ function GroupEditorDrawer({
   editor,
   defaultCapacity,
   onDirty,
+  onPendingChange,
   onRequestClose,
   onSaved,
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
   onDirty: () => void;
+  onPendingChange: (pending: boolean) => void;
   onRequestClose: () => void;
   onSaved: () => void;
 }) {
@@ -316,15 +329,21 @@ function GroupEditorDrawer({
             group={editor.group}
             onCancel={onRequestClose}
             onDirty={onDirty}
+            onPendingChange={onPendingChange}
             onSaved={onSaved}
           />
-          <ArchiveSection group={editor.group} onArchived={onSaved} />
+          <ArchiveSection
+            group={editor.group}
+            onArchived={onSaved}
+            onPendingChange={onPendingChange}
+          />
         </div>
       ) : editor?.mode === "create" ? (
         <GroupCreateForm
           defaultCapacity={defaultCapacity}
           onCancel={onRequestClose}
           onDirty={onDirty}
+          onPendingChange={onPendingChange}
           onSaved={onSaved}
         />
       ) : null}
@@ -338,9 +357,11 @@ function GroupEditorDrawer({
 function ArchiveSection({
   group,
   onArchived,
+  onPendingChange,
 }: {
   group: GroupsRow;
   onArchived: () => void;
+  onPendingChange: (pending: boolean) => void;
 }) {
   return (
     <div
@@ -383,6 +404,7 @@ function ArchiveSection({
         groupId={group.id}
         groupName={group.name}
         onArchived={onArchived}
+        onPendingChange={onPendingChange}
       />
     </div>
   );

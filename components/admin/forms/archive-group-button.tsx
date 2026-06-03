@@ -13,12 +13,15 @@ export function ArchiveGroupButton({
   groupId,
   groupName,
   // Inside the editing drawer (#266) the group leaves the active roster on
-  // archive, so let the drawer close + refresh once the close lands.
+  // archive, so let the drawer close + refresh once the close lands, and keep
+  // it open while the archive is in flight.
   onArchived,
+  onPendingChange,
 }: {
   groupId: string;
   groupName?: string;
   onArchived?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminCloseGroup
@@ -27,6 +30,10 @@ export function ArchiveGroupButton({
   useEffect(() => {
     if (state?.ok) onArchived?.();
   }, [state, onArchived]);
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   function confirmArchive(e: React.FormEvent<HTMLFormElement>) {
     if (
