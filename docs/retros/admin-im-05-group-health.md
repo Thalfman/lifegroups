@@ -31,6 +31,15 @@ per-row save buttons, editing one group at a time in the EditingSurface drawer.
   keys on the flag's **value** (not its presence — the action runner always lifts
   `needs_follow_up` into the payload): setting the flag is content worth saving,
   while a save with no ratings, no note, and the box unchecked is still rejected.
+- **The flag carries across months.** The "Needs follow-up" filter reads each
+  group's _latest_ assessment of any month (`listGroupHealthOverview`), so an
+  open flag persists past a month boundary until cleared (director "latest
+  assessment" / the drawer's "until the action is closed"). Both write paths keep
+  this honest: the drawer checkbox defaults to the carried value and the recompute
+  RPC (`admin_upsert_group_health_assessment`) inherits the latest flag when it
+  creates a new month's row, so "Save grade only" can't silently reset it. (The
+  cross-month read currently scans assessment rows newest-first and takes the
+  first per group; a `distinct on` RPC is the optimization if history grows.)
 
 ## Director-tuned thresholds sourced from Settings (not hard-coded)
 

@@ -26,7 +26,7 @@ alter table public.group_health_assessments
   add column if not exists needs_follow_up boolean not null default false;
 
 comment on column public.group_health_assessments.needs_follow_up is
-  'Admin IM 05 (#265): the director''s open follow-up flag for the month''s assessment. Drives the "Needs follow-up" triage filter. Set/cleared via admin_set_group_health_ratings.';
+  'Admin IM 05 (#265): the director''s open follow-up flag for the month''s assessment. Drives the "Needs follow-up" triage filter, which reads each group''s latest assessment so an open flag carries across months. Set/cleared via admin_set_group_health_ratings; carried into a new month''s row by admin_upsert_group_health_assessment.';
 
 -- ---------------------------------------------------------------------------
 -- 2. Recreate admin_set_group_health_ratings with the needs_follow_up input.
@@ -533,3 +533,143 @@ grant  execute on function public.admin_reset_metric_defaults() to authenticated
 
 comment on function public.admin_reset_metric_defaults() is
   'Admin IM 05 (#265) admin write: restores app_settings.metric_defaults to the documented baseline (now including group_health_watch_grade C / group_health_attendance_decline_margin_pct 10). Does NOT touch group_metric_settings overrides. Writes a paired audit_events row.';
+
+-- ---------------------------------------------------------------------------
+-- 6. Carry the needs_follow_up flag across months on recompute.
+--
+-- The "Save grade only" path (admin_upsert_group_health_assessment, #127) does
+-- not take a follow-up input. With the flag now carrying across months (the
+-- overview reads each group's latest assessment), a recompute that *creates*
+-- the current month's row must inherit the latest prior flag — otherwise the
+-- new row's column default (false) would silently clear a carried-open flag.
+-- On conflict (the current-month row already exists) the flag is left untouched,
+-- exactly as before. Signature unchanged, so create-or-replace keeps the grants.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.admin_upsert_group_health_assessment(
+  p_group_id                 uuid,
+  p_period_month             date,
+  p_attendance_pct           numeric,
+  p_attendance_weeks_counted integer,
+  p_computed_numeric         numeric,
+  p_computed_letter          text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_actor uuid;
+  v_group_exists boolean;
+  v_period date;
+  v_weeks integer;
+  v_carry_follow_up boolean;
+  v_before jsonb;
+  v_id uuid;
+begin
+  if not public.auth_is_admin() then
+    raise exception 'insufficient_privilege';
+  end if;
+  v_actor := public.auth_profile_id();
+  if v_actor is null then
+    raise exception 'insufficient_privilege';
+  end if;
+
+  if p_period_month is null then
+    raise exception 'invalid_input';
+  end if;
+  -- Normalize to the first of the month so callers can pass any day in it.
+  v_period := date_trunc('month', p_period_month)::date;
+
+  if p_attendance_pct is not null and (p_attendance_pct < 0 or p_attendance_pct > 100) then
+    raise exception 'invalid_input';
+  end if;
+  if p_computed_numeric is not null and (p_computed_numeric < 0 or p_computed_numeric > 100) then
+    raise exception 'invalid_input';
+  end if;
+  if p_computed_letter is not null and p_computed_letter not in ('A','B','C','D') then
+    raise exception 'invalid_input';
+  end if;
+  v_weeks := coalesce(p_attendance_weeks_counted, 0);
+  if v_weeks < 0 then
+    raise exception 'invalid_input';
+  end if;
+
+  select true into v_group_exists from public.groups where id = p_group_id for update;
+  if v_group_exists is null then
+    raise exception 'missing_group';
+  end if;
+
+  -- The group's latest assessment flag (any month) — carried into a freshly
+  -- inserted current-month row. Ignored on the conflict path, which preserves
+  -- the existing row's flag.
+  select needs_follow_up
+    into v_carry_follow_up
+    from public.group_health_assessments
+   where group_id = p_group_id
+   order by period_month desc
+   limit 1;
+  v_carry_follow_up := coalesce(v_carry_follow_up, false);
+
+  -- Snapshot the prior row (if any) for the audit before/after pair.
+  select jsonb_build_object(
+           'attendance_pct', attendance_pct,
+           'attendance_weeks_counted', attendance_weeks_counted,
+           'computed_numeric', computed_numeric,
+           'computed_letter', computed_letter
+         )
+    into v_before
+    from public.group_health_assessments
+   where group_id = p_group_id and period_month = v_period
+   for update;
+
+  insert into public.group_health_assessments (
+    group_id, period_month, attendance_pct, attendance_weeks_counted,
+    needs_follow_up, computed_numeric, computed_letter, created_by, updated_by
+  )
+  values (
+    p_group_id, v_period, p_attendance_pct, v_weeks,
+    v_carry_follow_up, p_computed_numeric, p_computed_letter, v_actor, v_actor
+  )
+  on conflict (group_id, period_month) do update
+     set attendance_pct           = excluded.attendance_pct,
+         attendance_weeks_counted = excluded.attendance_weeks_counted,
+         computed_numeric         = excluded.computed_numeric,
+         computed_letter          = excluded.computed_letter,
+         updated_by               = v_actor
+  returning id into v_id;
+
+  insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
+  values (
+    v_actor,
+    'admin.upsert_group_health_assessment',
+    'group_health_assessments',
+    v_id,
+    jsonb_build_object(
+      'before', v_before,
+      'after', jsonb_build_object(
+        'attendance_pct', p_attendance_pct,
+        'attendance_weeks_counted', v_weeks,
+        'computed_numeric', p_computed_numeric,
+        'computed_letter', p_computed_letter
+      ),
+      'group_id', p_group_id,
+      'period_month', v_period
+    )
+  );
+
+  return v_id;
+end;
+$$;
+
+revoke all on function public.admin_upsert_group_health_assessment(
+  uuid, date, numeric, integer, numeric, text
+) from public, anon, authenticated;
+grant execute on function public.admin_upsert_group_health_assessment(
+  uuid, date, numeric, integer, numeric, text
+) to authenticated;
+
+comment on function public.admin_upsert_group_health_assessment(
+  uuid, date, numeric, integer, numeric, text
+) is 'Group-Health Grade (#127/#265) admin write: upserts a group''s monthly attendance dimension + computed A-D grade, carrying the latest needs_follow_up flag into a newly created current-month row. Writes a paired audit_events row.';

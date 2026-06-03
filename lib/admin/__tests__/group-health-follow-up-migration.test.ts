@@ -119,3 +119,34 @@ describe("group-health follow-up migration — director thresholds in metric_def
     assertExecuteLockdown(sql, "admin_reset_metric_defaults");
   });
 });
+
+describe("group-health follow-up migration — recompute carries the flag forward", () => {
+  it("recreates the recompute RPC inheriting the latest needs_follow_up on insert", () => {
+    const body = functionBody(sql, "admin_upsert_group_health_assessment");
+    // Reads the group's most recent assessment flag (any month)...
+    expect(body).toContain("select needs_follow_up");
+    expect(body).toContain("order by period_month desc");
+    // ...and inserts it, so a freshly created current-month row doesn't drop a
+    // carried-open flag back to the column default.
+    expect(body).toContain(
+      "v_carry_follow_up := coalesce(v_carry_follow_up, false)"
+    );
+    expect(body).toContain(
+      "needs_follow_up, computed_numeric, computed_letter"
+    );
+  });
+
+  it("keeps the recompute RPC audited, definer, and locked down", () => {
+    assertSecurityDefiner(sql, "admin_upsert_group_health_assessment");
+    assertPairedAuditInsert(
+      sql,
+      "admin_upsert_group_health_assessment",
+      "'admin.upsert_group_health_assessment'"
+    );
+    assertExecuteLockdown(
+      sql,
+      "admin_upsert_group_health_assessment",
+      "uuid, date, numeric, integer, numeric, text"
+    );
+  });
+});

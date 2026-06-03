@@ -165,8 +165,10 @@ export type GroupHealthOverviewRow = {
   stale: boolean;
   // True when there is neither a live grade nor a persisted row yet.
   unassessed: boolean;
-  // Admin IM 05 (#265): the director's open follow-up flag on the latest
-  // assessment — the "Needs follow-up" triage filter. False until set.
+  // Admin IM 05 (#265): the director's open follow-up flag from the group's
+  // latest assessment of any month — the "Needs follow-up" triage filter. It
+  // carries across month boundaries until cleared, so it is not necessarily the
+  // current period's value. False until set.
   needs_follow_up: boolean;
   // Admin IM 05 (#265): attendance is declining when the recent 4-week average
   // is below the prior 4-week average by ≥ the director's decline margin. One
@@ -192,6 +194,14 @@ const ASSESSMENT_COLUMNS =
   "group_id, attendance_pct, attendance_weeks_counted, spiritual_growth_score, " +
   "spiritual_growth_note, group_question_score, group_question_leader_reported, " +
   "computed_letter, needs_follow_up, updated_at";
+
+// Minimal shape for the cross-month follow-up lookup: the flag plus the month
+// it belongs to, so we can pick each group's most recent assessment.
+type LatestFollowUpRow = {
+  group_id: string;
+  period_month: string;
+  needs_follow_up: boolean;
+};
 
 // The two admin-entered 1–5 ratings (and the spiritual-growth note) for a
 // group's month, or nulls when no assessment row exists yet. The write action
@@ -284,6 +294,20 @@ export async function listGroupHealthOverview(
     persisted.set(row.group_id, row);
   }
 
+  // The "Needs follow-up" flag carries across months: an open flag persists past
+  // a month boundary until an admin clears it (#265, director "latest
+  // assessment" / drawer "until the action is closed"). So the flag reflects the
+  // most recent assessment of any month — not just the current period — read
+  // newest-first so the first row seen per group is its latest. A current-month
+  // row, being the max period_month, naturally supersedes (its unchecked box
+  // clears a prior flag). Independent of the attendance fan-out, so run them
+  // concurrently.
+  const latestFollowUpPromise = (client as AppSupabaseClient)
+    .from("group_health_assessments" as never)
+    .select("group_id, period_month, needs_follow_up" as never)
+    .order("period_month" as never, { ascending: false } as never)
+    .returns<LatestFollowUpRow[]>();
+
   // Each group's attendance read is independent (2 round-trips: sessions then
   // records), so fan them out concurrently rather than serializing one group at
   // a time — the overview otherwise blocks on 2*N sequential queries. Fetch at
@@ -299,6 +323,22 @@ export async function listGroupHealthOverview(
       fetchGroupAttendanceWeeks(client, group.id, weeksToFetch)
     )
   );
+
+  const { data: followUpRows, error: followUpError } =
+    await latestFollowUpPromise;
+  if (followUpError) {
+    return {
+      data: null,
+      error: wrapError("listGroupHealthOverview/followUp", followUpError),
+    };
+  }
+  // First row per group (rows arrive newest-first) is its latest assessment.
+  const latestFollowUp = new Map<string, boolean>();
+  for (const row of followUpRows ?? []) {
+    if (!latestFollowUp.has(row.group_id)) {
+      latestFollowUp.set(row.group_id, row.needs_follow_up);
+    }
+  }
 
   const rows: GroupHealthOverviewRow[] = [];
   for (const [i, group] of groups.entries()) {
@@ -326,7 +366,7 @@ export async function listGroupHealthOverview(
         last_saved_at: prior?.updated_at ?? null,
         stale: prior !== undefined,
         unassessed: prior === undefined,
-        needs_follow_up: prior?.needs_follow_up ?? false,
+        needs_follow_up: latestFollowUp.get(group.id) ?? false,
         // No fresh attendance window on a failed read, so we can't honestly
         // claim a trend.
         attendance_declining: false,
@@ -377,7 +417,7 @@ export async function listGroupHealthOverview(
         ratings.group_question_score === null &&
         !persisted.has(group.id),
       stale: false,
-      needs_follow_up: prior?.needs_follow_up ?? false,
+      needs_follow_up: latestFollowUp.get(group.id) ?? false,
       attendance_declining: trend.declining,
     });
   }
