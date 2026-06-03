@@ -112,6 +112,30 @@ describe("buildNeedsAttentionItems", () => {
     const care = buildNeedsAttentionItems(d).find(
       (i) => i.key === "care_attention"
     );
-    expect(care?.href).toBe("/admin/shepherd-care?filter=needs_attention");
+    expect(care?.href).toBe(
+      "/admin/shepherd-care?view=directory&filter=needs_attention"
+    );
+  });
+
+  it("opens the care tile in the filtered directory, not the scan dashboard", () => {
+    // An absent `view` resolves to the dashboard, where the needs_attention
+    // filter is ignored — so the tile must carry view=directory to land where
+    // the admin can act.
+    const d = allClearData();
+    d.shepherdCare.needsAttention = 3;
+    const care = buildNeedsAttentionItems(d).find(
+      (i) => i.key === "care_attention"
+    );
+    expect(care?.href).toContain("view=directory");
+    expect(care?.href).toContain("filter=needs_attention");
+  });
+
+  it("contributes nothing when the dashboard read degraded to fallback", () => {
+    // ADMIN_FALLBACK is a populated demo seed, so without the degraded gate it
+    // would surface several live-looking actions; a degraded read must show no
+    // imperative counts (req 7).
+    const d = baseData();
+    expect(buildNeedsAttentionItems(d).length).toBeGreaterThan(0);
+    expect(buildNeedsAttentionItems(d, { degraded: true })).toEqual([]);
   });
 });

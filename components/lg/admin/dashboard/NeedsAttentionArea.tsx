@@ -98,8 +98,16 @@ function AllClear({ children }: { children: string }) {
   );
 }
 
-export function NeedsAttentionArea({ data }: { data: AdminDashboardData }) {
-  const items = buildNeedsAttentionItems(data);
+export function NeedsAttentionArea({
+  data,
+  degraded,
+}: {
+  data: AdminDashboardData;
+  // The dashboard read degraded to demo fallback; suppress the area so its
+  // counts and links are never mistaken for live work to do.
+  degraded?: boolean;
+}) {
+  const items = buildNeedsAttentionItems(data, { degraded });
 
   if (items.length === 0) {
     return <AllClear>Nothing needs your attention right now.</AllClear>;

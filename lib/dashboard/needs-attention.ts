@@ -1,4 +1,5 @@
 import type { AdminDashboardData } from "@/lib/dashboard/types";
+import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
 
 // Dashboard "Needs attention" area derivation (Admin Interaction Model PRD
 // req 7, #260). Kept as a pure function in lib/ — apart from the rendering in
@@ -31,9 +32,17 @@ export type NeedsAttentionTone = "primary" | "warning";
 //     construction — they are never surfaced here as imperative action links.
 //   - A read that degraded (e.g. the leader-care summary) contributes 0 rather
 //     than a misleading count, so a transient error never shows as work to do.
+//   - When the whole dashboard read degraded (`degraded`), every count here is
+//     demo fallback data (ADMIN_FALLBACK), not a live figure — so the area
+//     contributes nothing rather than fabricate imperative actions from the
+//     demo seed. (The deliberate no-client demo preview is *not* degraded and
+//     still showcases its items.)
 export function buildNeedsAttentionItems(
-  data: AdminDashboardData
+  data: AdminDashboardData,
+  options: { degraded?: boolean } = {}
 ): NeedsAttentionItem[] {
+  if (options.degraded) return [];
+
   const gaps = data.setupGaps.counts;
   const health = data.healthSummary.counts;
   const care = data.shepherdCare;
@@ -55,7 +64,12 @@ export function buildNeedsAttentionItems(
       key: "care_attention",
       label: "Leaders needing care attention",
       count: care.available ? care.needsAttention : 0,
-      href: "/admin/shepherd-care?filter=needs_attention",
+      // The directory applies the needs_attention filter only in its directory
+      // view; an absent `view` resolves to the (unfiltered) dashboard. Use the
+      // shared triage-link builder so the tile lands on the *filtered directory*
+      // (`view=directory&filter=needs_attention`), where the admin can act,
+      // rather than bouncing back to the scan dashboard.
+      href: buildShepherdCareTriageLink({ kind: "needs_attention" }),
       tone: "primary",
     },
     {

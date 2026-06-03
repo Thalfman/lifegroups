@@ -25,10 +25,16 @@ export default async function AdminPage({
   // alongside the dashboard read — not after it — so the dashboard never
   // presents Guests as an active workflow unless it has been re-enabled-and-
   // verified (#256), without adding a serial round trip to this hot page.
-  const [{ data }, guestsLive] = await Promise.all([
+  const [dashboard, guestsLive] = await Promise.all([
     getAdminDashboardData(client, { grain }),
     isFrozenSurfaceLive("guests"),
   ]);
+  const { data } = dashboard;
+  // A degraded read returns demo fallback data carrying an error; the deliberate
+  // no-client demo preview is `fallback` without an error and is not degraded.
+  // The Needs-attention area suppresses itself when degraded so it never
+  // presents demo counts as live work to do (req 7).
+  const degraded = dashboard.source === "fallback" && dashboard.error != null;
 
   return (
     <>
@@ -38,7 +44,11 @@ export default async function AdminPage({
         italic="overview"
         lede="The state of your life groups at a glance — engagement, capacity, leader care, and what needs your attention."
       />
-      <DashboardClient data={data} guestsLive={guestsLive} />
+      <DashboardClient
+        data={data}
+        guestsLive={guestsLive}
+        degraded={degraded}
+      />
     </>
   );
 }

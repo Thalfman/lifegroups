@@ -39,9 +39,12 @@ function SectionHeading({ children }: { children: ReactNode }) {
 export function DashboardClient({
   data,
   guestsLive,
+  degraded,
 }: {
   data: AdminDashboardData;
   guestsLive: boolean;
+  // True when the dashboard read failed and `data` is demo fallback.
+  degraded?: boolean;
 }) {
   return (
     <PageBody>
@@ -94,7 +97,7 @@ export function DashboardClient({
 
         <div style={{ display: "grid", gap: 10 }}>
           <SectionHeading>Needs your attention</SectionHeading>
-          <NeedsAttentionArea data={data} />
+          <NeedsAttentionArea data={data} degraded={degraded} />
         </div>
       </div>
     </PageBody>
