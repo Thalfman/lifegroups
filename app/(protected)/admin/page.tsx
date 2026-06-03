@@ -40,9 +40,8 @@ export default async function AdminPage({
     <>
       <PageHeader
         eyebrow="Ministry Admin"
-        title="Ministry"
-        italic="overview"
-        lede="The state of your life groups at a glance — engagement, capacity, leader care, and what needs your attention."
+        title="Home"
+        lede="What needs your attention first — then the week ahead, the ministry snapshot, and recent activity."
       />
       <DashboardClient
         data={data}

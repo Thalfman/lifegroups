@@ -16,7 +16,9 @@ export function LeaderCareOverviewCard({
       <StatusCard
         eyebrow="Leader care"
         title="Care triage"
-        action={<OpenLink href="/admin/shepherd-care" />}
+        action={
+          <OpenLink href="/admin/shepherd-care" label="Contact leaders" />
+        }
       >
         <EmptyState
           title="Care data unavailable"
@@ -39,7 +41,7 @@ export function LeaderCareOverviewCard({
     <StatusCard
       eyebrow="Leader care"
       title="Care triage"
-      action={<OpenLink href="/admin/shepherd-care" />}
+      action={<OpenLink href="/admin/shepherd-care" label="Contact leaders" />}
     >
       {summary.error ? (
         <p

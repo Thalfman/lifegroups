@@ -261,6 +261,19 @@ export interface AdminDashboardData {
   guestPipelineCount: number;
   guestPipelineBreakdown: PipelineStageCount[];
   followUps: FollowUpItem[];
+  // Accurate, UNtruncated count of OPEN follow-ups due within the "this week"
+  // horizon (on or before today + 7 days, inclusive of overdue). `followUps`
+  // above is capped (priority/due ordered, limited rows) so the Home "This week"
+  // card filters it for previews; this count is the faithful total the card
+  // reports so a low-priority item due this week is never dropped from the cap.
+  dueFollowUpsThisWeekCount: number;
+  // The single church-local "week ahead" horizon (today + 7 days, YYYY-MM-DD)
+  // both the due-follow-up count above and the Home "This week" card's launch
+  // milestone gate are measured against. Computed once in the data layer from
+  // the same church-local `today` so the card can't drift onto a parallel UTC
+  // horizon: a launch date one day past this bound never appears under "This
+  // week" while the follow-up window says otherwise.
+  weekAheadCutoffIso: string;
   shepherdCare: ShepherdCareDashboardSummary;
   launchPlanning: LaunchPlanningDashboardSnapshot;
   leaderPipeline: LeaderPipelineDashboardSummary;
