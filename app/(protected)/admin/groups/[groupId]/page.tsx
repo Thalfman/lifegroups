@@ -23,6 +23,7 @@ import {
   fetchAllGroupLeaders,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
+  fetchGroupMetricSettings,
   fetchGroupsByIds,
   fetchMembersByIds,
   fetchOpenFollowUps,
@@ -55,6 +56,7 @@ import {
   effectiveCapacity,
   effectiveCapacityFullPct,
   effectiveCapacityWarningPct,
+  isExcludedFromCapacityMetrics,
 } from "@/lib/admin/metrics";
 import type { GroupsRow } from "@/types/database";
 import type { AttendanceSessionStatus, GroupHealthLetter } from "@/types/enums";
@@ -197,15 +199,20 @@ async function OverviewTab({
   const client = await createSupabaseServerClient();
   if (!client) return null;
 
-  const [leadersRes, membershipsRes, defaultsRes, healthRes] =
+  const [leadersRes, membershipsRes, defaultsRes, healthRes, overrideRes] =
     await Promise.all([
       fetchAllGroupLeaders(client, { activeOnly: true }),
       fetchActiveMemberships(client, { groupId }),
       fetchMetricDefaultsCached(client),
       listGroupHealthOverview(client, currentPeriodMonthIso()),
+      // Per-group metric overrides — resolved the SAME way the Groups list and
+      // Settings do (defaults → per-group override precedence, ADR 0011) so the
+      // detail capacity zone can't disagree with the list card for this group.
+      fetchGroupMetricSettings(client, groupId),
     ]);
 
   const defaults = decodeMetricDefaults(defaultsRes.data ?? null);
+  const override = overrideRes.data ?? null;
   const hasLeader = (leadersRes.data ?? []).some(
     (l) => l.group_id === groupId && l.active
   );
@@ -216,10 +223,11 @@ async function OverviewTab({
 
   const status = capacityStatus({
     activeMemberCount: memberCount,
-    effectiveCapacity: effectiveCapacity(group, null, defaults),
-    warningPct: effectiveCapacityWarningPct(null, defaults),
+    effectiveCapacity: effectiveCapacity(group, override, defaults),
+    warningPct: effectiveCapacityWarningPct(override, defaults),
     fullPct: effectiveCapacityFullPct(defaults),
-    excluded: false,
+    excluded: isExcludedFromCapacityMetrics(override),
+    allowOverCapacity: Boolean(override?.allow_over_capacity),
   });
 
   const lifecycle = lifecycleCategory(group.lifecycle_status);
