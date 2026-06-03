@@ -25,8 +25,18 @@ export function GroupCreateForm({
   // only sets a per-group number when a group differs. null = no ministry
   // default configured, in which case we leave the field blank (Unknown).
   defaultCapacity,
+  // Supplied when rendered inside the EditingSurface drawer (#266): `onSaved`
+  // closes + refreshes once the group is created, `onDirty` lets the drawer
+  // warn before discarding entered values, and `onCancel` renders a Cancel
+  // control beside Create.
+  onSaved,
+  onDirty,
+  onCancel,
 }: {
   defaultCapacity: number | null;
+  onSaved?: () => void;
+  onDirty?: () => void;
+  onCancel?: () => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -37,12 +47,14 @@ export function GroupCreateForm({
 
   // useActionForm resets the <form> element on success; the local UI state
   // (frequency select, expanded "More details") lives in React, so reset it too.
+  // In the drawer, `onSaved` then closes it — the form unmounts, so the reset
+  // above is moot there but harmless.
   useEffect(() => {
-    if (state?.ok) {
-      setFrequency("weekly");
-      setShowMore(false);
-    }
-  }, [state]);
+    if (!state?.ok) return;
+    setFrequency("weekly");
+    setShowMore(false);
+    onSaved?.();
+  }, [state, onSaved]);
 
   const showParity = frequency === "biweekly";
 
@@ -50,6 +62,7 @@ export function GroupCreateForm({
     <form
       ref={formRef}
       action={formAction}
+      onChange={onDirty}
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
@@ -310,10 +323,21 @@ export function GroupCreateForm({
           />
         </div>
       </div>
-      <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Creating…" : "Create group"}
         </PButton>
+        {onCancel ? (
+          <PButton
+            type="button"
+            tone="ghost"
+            size="md"
+            disabled={pending}
+            onClick={onCancel}
+          >
+            Cancel
+          </PButton>
+        ) : null}
       </div>
       <FormStatus state={state} successText="Group created." />
     </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
 import {
@@ -29,9 +29,19 @@ function isoTimeForInput(value: string | null): string {
 export function GroupEditForm({
   group,
   onClose,
+  // When rendered inside the EditingSurface drawer (#266) the drawer supplies
+  // the chrome, so drop the form's own card framing and report save/dirty back
+  // to the drawer: `onSaved` lets it close + refresh, `onDirty` lets it warn
+  // before discarding unsaved edits.
+  bare = false,
+  onSaved,
+  onDirty,
 }: {
   group: GroupsRow;
   onClose?: () => void;
+  bare?: boolean;
+  onSaved?: () => void;
+  onDirty?: () => void;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
@@ -40,19 +50,30 @@ export function GroupEditForm({
     group.meeting_frequency
   );
 
+  // Notify the drawer once the update lands so it can close and refresh the
+  // list. `onSaved` is memoized by the caller, so this fires once per save.
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+  }, [state, onSaved]);
+
   const showParity = frequency === "biweekly";
 
   return (
     <form
       action={formAction}
-      style={{
-        display: "grid",
-        gap: 12,
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "16px 18px",
-      }}
+      onChange={onDirty}
+      style={
+        bare
+          ? { display: "grid", gap: 12 }
+          : {
+              display: "grid",
+              gap: 12,
+              background: P.bg,
+              border: `1px solid ${P.line}`,
+              borderRadius: 10,
+              padding: "16px 18px",
+            }
+      }
     >
       <input type="hidden" name="group_id" value={group.id} />
       <div
