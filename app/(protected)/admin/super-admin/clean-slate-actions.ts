@@ -119,12 +119,19 @@ export async function superAdminCleanSlateRevert(
     ]);
   }
 
-  // The card submits the displayed snapshot id; bind the RPC to it. A malformed
-  // / absent id falls back to null (latest un-restored), which the RPC resolves.
+  // The card binds the revert to the snapshot it displayed via a hidden field.
+  // Require a valid id and pass exactly that — never fall back to "latest
+  // un-restored", or a stale/tampered submission with no id would silently
+  // switch target-selection mode and restore a different snapshot than the
+  // operator confirmed. A stale id whose snapshot is gone fails in the RPC with
+  // missing_snapshot, which is the intended outcome.
   const submittedId =
-    typeof raw.snapshotId === "string" && isUuid(raw.snapshotId)
-      ? raw.snapshotId
-      : null;
+    typeof raw.snapshotId === "string" ? raw.snapshotId.trim() : "";
+  if (!isUuid(submittedId)) {
+    return actionFail([
+      "Couldn't tell which snapshot to restore. Refresh the page and try again.",
+    ]);
+  }
 
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);

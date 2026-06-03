@@ -50,17 +50,25 @@ begin
   -- conflicts with the ROW EXCLUSIVE that INSERT/UPDATE/DELETE take) while still
   -- allowing plain SELECTs, and our own inserts below proceed (a transaction
   -- never conflicts with its own locks). Table locks are held to transaction end.
+  --
+  -- Order matters: tables are locked parent → child, the same order the history
+  -- writers acquire row locks (admin_submit_leader_checkin inserts the
+  -- attendance_session before the attendance_record; guest/follow-up writes touch
+  -- the guest before the follow_up). Acquiring in that shared order means a
+  -- restore and a concurrent writer queue on the first contended table instead of
+  -- each holding what the other needs — no lock-order-reversal deadlock. This
+  -- list mirrors the parent → child insert order below.
   lock table
-    public.attendance_records,
-    public.attendance_sessions,
-    public.follow_ups,
-    public.guests,
-    public.group_health_updates,
-    public.group_health_assessments,
-    public.group_status_history,
-    public.church_attendance_snapshots,
+    public.shepherd_care_interactions,
     public.shepherd_care_follow_ups,
-    public.shepherd_care_interactions
+    public.church_attendance_snapshots,
+    public.group_status_history,
+    public.group_health_assessments,
+    public.group_health_updates,
+    public.guests,
+    public.follow_ups,
+    public.attendance_sessions,
+    public.attendance_records
   in exclusive mode;
 
   if exists (select 1 from public.attendance_records)
@@ -238,11 +246,13 @@ begin
 
   -- A file import has no clean_slate_snapshots row, so entity_id is null (the
   -- wipe/revert rows point entity_id at the real snapshot id). Metadata is the
-  -- same bare per-table counts map those rows write.
+  -- same bare per-table counts map those rows write. The audit row's id is set
+  -- explicitly to v_audit_id so the value this RPC returns identifies the row it
+  -- just wrote (the uuid return-channel contract).
   insert into public.audit_events
-    (actor_profile_id, action, entity_type, entity_id, metadata)
+    (id, actor_profile_id, action, entity_type, entity_id, metadata)
   values
-    (v_actor, 'super_admin.clean_slate_import', 'clean_slate_snapshots', null, v_counts);
+    (v_audit_id, v_actor, 'super_admin.clean_slate_import', 'clean_slate_snapshots', null, v_counts);
 
   return v_audit_id;
 end;

@@ -37,6 +37,20 @@ describe("SAC6 revert/import — shared restore body", () => {
     expect(lock).toBeLessThan(guard);
   });
 
+  it("locks parent before child (sessions before records, guests before follow_ups) to match writer order", () => {
+    const body = functionBody(sql, "super_admin_clean_slate_restore_payload");
+    const lockBlock = body.slice(
+      body.indexOf("lock table"),
+      body.indexOf("in exclusive mode")
+    );
+    expect(lockBlock.indexOf("public.attendance_sessions")).toBeLessThan(
+      lockBlock.indexOf("public.attendance_records")
+    );
+    expect(lockBlock.indexOf("public.guests")).toBeLessThan(
+      lockBlock.indexOf("public.follow_ups")
+    );
+  });
+
   it("guards target_not_empty before inserting anything", () => {
     const body = functionBody(sql, "super_admin_clean_slate_restore_payload");
     expect(body).toContain("raise exception 'target_not_empty'");
