@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildNeedsAttentionItems } from "@/lib/dashboard/needs-attention";
+import {
+  buildNeedsAttentionItems,
+  buildTopNextActions,
+} from "@/lib/dashboard/needs-attention";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 
@@ -137,5 +140,76 @@ describe("buildNeedsAttentionItems", () => {
     const d = baseData();
     expect(buildNeedsAttentionItems(d).length).toBeGreaterThan(0);
     expect(buildNeedsAttentionItems(d, { degraded: true })).toEqual([]);
+  });
+});
+
+// Ranked "Top next actions" queue (Admin Interaction Model PRD req 8, #271).
+// Pins the director-confirmed fixed ordering and the imperative phrasing.
+describe("buildTopNextActions", () => {
+  it("orders across categories by the fixed director priority, not by count", () => {
+    // Counts deliberately invert the priority: many overdue health checks,
+    // a single unassigned group. Rank must still put leaders first.
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 1;
+    d.setupGaps.counts.noCapacity = 1; // a setup gap
+    d.healthSummary.counts.missing = 20;
+    d.shepherdCare.needsAttention = 3;
+    d.followUps = baseData().followUps;
+
+    const keys = buildTopNextActions(d).map((a) => a.key);
+    expect(keys).toEqual([
+      "no_leader",
+      "setup_gaps",
+      "care_attention",
+      "health",
+      "follow_ups",
+    ]);
+  });
+
+  it("phrases each action as an imperative with the live count folded in", () => {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 16;
+    const [leaders] = buildTopNextActions(d);
+    expect(leaders.action).toBe("Assign leaders to 16 groups");
+  });
+
+  it("uses the singular for a count of one", () => {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 1;
+    expect(buildTopNextActions(d)[0].action).toBe("Assign a leader to 1 group");
+  });
+
+  it("renders the capped follow-ups read as N+ in the imperative", () => {
+    const d = allClearData();
+    d.followUps = Array.from({ length: 8 }, (_, i) => ({
+      id: `f${i}`,
+      title: `Follow-up ${i}`,
+      type: "care" as const,
+      priority: "normal" as const,
+      status: "open" as const,
+      dueDate: null,
+      relatedGroupName: null,
+    }));
+    const followUps = buildTopNextActions(d).find(
+      (a) => a.key === "follow_ups"
+    );
+    expect(followUps?.action).toBe("Resolve 8+ open follow-ups");
+  });
+
+  it("drops zero-count categories rather than padding the queue", () => {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 2;
+    const actions = buildTopNextActions(d);
+    expect(actions.map((a) => a.key)).toEqual(["no_leader"]);
+  });
+
+  it("returns an empty queue (the consolidated all-clear) when nothing is left", () => {
+    expect(buildTopNextActions(allClearData())).toEqual([]);
+  });
+
+  it("contributes nothing when the dashboard read degraded to fallback", () => {
+    const d = baseData();
+    expect(buildTopNextActions(d).length).toBeGreaterThan(0);
+    expect(buildTopNextActions(d, { degraded: true })).toEqual([]);
   });
 });

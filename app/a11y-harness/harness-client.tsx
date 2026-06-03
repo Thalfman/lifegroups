@@ -15,6 +15,7 @@
 import { useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { AdminMasterCalendarList } from "@/components/admin/admin-master-calendar-list";
+import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
 import {
   AdminFollowUpsShell,
@@ -46,7 +47,11 @@ import {
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
 import { group } from "@/lib/dashboard/group-fixtures";
-import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import type {
+  MasterCalendarGroupSummary,
+  MasterCalendarLeader,
+  MasterOccurrence,
+} from "@/lib/admin/master-calendar";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
 
 const STAMP = "2026-05-18T12:00:00Z";
@@ -85,6 +90,28 @@ const OCCURRENCES: MasterOccurrence[] = [
   occurrence("Anderson", "grp-anderson", "2026-05-26"),
   occurrence("Bryant", "grp-bryant", "2026-05-19"),
   occurrence("Carter", "grp-carter", "2026-05-26"),
+];
+
+// Group + leader fixtures for the master-calendar filter shell (#262). Distinct
+// names so the filter chips and the leader select render readable labels.
+const CALENDAR_GROUPS: MasterCalendarGroupSummary[] = [
+  "grp-anderson",
+  "grp-bryant",
+  "grp-carter",
+].map((groupId) => ({
+  groupId,
+  groupName: groupId.replace("grp-", "").replace(/^./, (c) => c.toUpperCase()),
+  lifecycleStatus: "active",
+  meetingDay: "Tuesday",
+  meetingTime: "19:00",
+  meetingFrequency: "weekly",
+  meetingWeekParity: null,
+  leaders: [{ profileId: `${groupId}-l`, name: "Pat Lee" }],
+}));
+
+const CALENDAR_LEADERS: MasterCalendarLeader[] = [
+  { profileId: "grp-anderson-l", name: "Pat Lee" },
+  { profileId: "grp-bryant-l", name: "Sam Rivers" },
 ];
 
 // Two active groups that share a display name (group names are not unique in
@@ -438,6 +465,21 @@ export function A11yHarnessClient() {
           anchorDate={null}
           onAnchorConsumed={() => {}}
           onSelect={setSelected}
+        />
+      </Surface>
+
+      {/* Master calendar filter shell (#262, Admin Interaction Model req 11).
+          Mounts the real FilterBar so axe runs against the polish controls:
+          the per-field Select all / Clear all pairs and the removable active-
+          filter chips, each of which must carry a discernible accessible name
+          ("Select all Status", "Remove filter: Anderson"). */}
+      <Surface id="master-calendar-filters" heading="Master calendar (filters)">
+        <AdminMasterCalendarShell
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={OCCURRENCES}
+          groups={CALENDAR_GROUPS}
+          leaderOptions={CALENDAR_LEADERS}
         />
       </Surface>
 

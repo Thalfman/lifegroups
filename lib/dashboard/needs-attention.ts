@@ -99,3 +99,77 @@ export function buildNeedsAttentionItems(
 
   return candidates.filter((c) => c.count > 0);
 }
+
+// Ranked "Top next actions" queue (Admin Interaction Model PRD req 8, #271).
+//
+// Layers a single ranked, imperative list on top of the minimal Needs-attention
+// area (#260). It reuses every derivation rule from buildNeedsAttentionItems
+// (count > 0 only, frozen workflows excluded, degraded → nothing, the capped
+// follow-ups "N+") and adds two things the P1 queue owns:
+//   1. a FIXED cross-category priority order, and
+//   2. imperative "do this next" phrasing with the live count folded in.
+//
+// Director sign-off (#271, Open Question 1, confirmed 2026-06-03):
+//   - Order is most-foundational → least: leaders → setup → care/health →
+//     follow-ups. A group with no leader blocks everything downstream; setup
+//     gaps block it from meeting; then care/health; then follow-ups.
+//   - The order is FIXED regardless of counts — "Assign leaders" outranks
+//     "health checks" even when there is 1 unassigned group vs 20 overdue
+//     checks. Counts drive the phrasing and the per-row number, not the rank.
+//   - Zero-count categories drop out (identical to #260) — the queue holds
+//     actions, not per-category reassurance rows. An empty queue is the single
+//     consolidated "all clear" state, owned by the renderer.
+export type TopNextAction = NeedsAttentionItem & {
+  // The concern phrased as an imperative action with the live count folded in,
+  // e.g. "Assign leaders to 16 groups", "Resolve 8 setup gaps".
+  action: string;
+};
+
+// Fixed category rank (lower = more urgent). Care sits with health per the
+// sign-off rationale ("then care/health"). Any key absent here sorts last.
+const TOP_ACTION_RANK: Record<string, number> = {
+  no_leader: 0,
+  setup_gaps: 1,
+  care_attention: 2,
+  health: 3,
+  follow_ups: 4,
+};
+
+function plural(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
+}
+
+function imperativeAction(item: NeedsAttentionItem): string {
+  const n = item.count;
+  switch (item.key) {
+    case "no_leader":
+      return `Assign ${plural(n, "a leader", "leaders")} to ${n} ${plural(n, "group", "groups")}`;
+    case "setup_gaps":
+      // count sums noCapacity + noMeetingDayTime + noMembers, so it is a count
+      // of gaps (one group can contribute several), not a count of groups.
+      return `Resolve ${n} setup ${plural(n, "gap", "gaps")}`;
+    case "care_attention":
+      return `Reach out to ${n} ${plural(n, "leader", "leaders")} needing care`;
+    case "health":
+      // count = missing + needs_follow_up; "missing" checks were never done, so
+      // they are not "overdue" — mirror the #260 "overdue or missing" wording.
+      return `Review ${n} overdue or missing health ${plural(n, "check", "checks")}`;
+    case "follow_ups":
+      return `Resolve ${n}${item.plus ? "+" : ""} open ${plural(n, "follow-up", "follow-ups")}`;
+    default:
+      return `${item.label}: ${n}${item.plus ? "+" : ""}`;
+  }
+}
+
+export function buildTopNextActions(
+  data: AdminDashboardData,
+  options: { degraded?: boolean } = {}
+): TopNextAction[] {
+  return buildNeedsAttentionItems(data, options)
+    .map((item) => ({ ...item, action: imperativeAction(item) }))
+    .sort(
+      (a, b) =>
+        (TOP_ACTION_RANK[a.key] ?? Number.MAX_SAFE_INTEGER) -
+        (TOP_ACTION_RANK[b.key] ?? Number.MAX_SAFE_INTEGER)
+    );
+}

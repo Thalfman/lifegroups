@@ -96,7 +96,7 @@ export function DashboardClient({
         </div>
 
         <div style={{ display: "grid", gap: 10 }}>
-          <SectionHeading>Needs your attention</SectionHeading>
+          <SectionHeading>Top next actions</SectionHeading>
           <NeedsAttentionArea data={data} degraded={degraded} />
         </div>
       </div>
