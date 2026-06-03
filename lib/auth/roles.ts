@@ -136,9 +136,8 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
       // User-facing label is "Ministry Admin" (#177); "Admin OS" stays the
       // internal name for this spine in comments/docs.
       label: "Ministry Admin",
-      // Group health (#146) joins the Admin OS spine as an oversight surface:
-      // it ships dimension-complete with ADR 0007 placeholder labels and was
-      // previously reachable only by direct URL.
+      // Group health was folded into Groups (#300) and is no longer a separate
+      // spine entry — see the note where it used to sit, below.
       items: [
         { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
         // Launch planning absorbs the former Capacity board and Multiplication
@@ -155,7 +154,12 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
           icon: "people",
         },
         { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
-        { href: "/admin/group-health", label: "Group health", icon: "sprout" },
+        // Group health is no longer its own nav entry (#300): Groups is the
+        // single source of truth for group setup, health, capacity, and
+        // lifecycle. The /admin/group-health route survives (ADR 0008/0009) and
+        // is reached from inside Groups (the Needs Health Check list tab and
+        // each group's Health detail tab), so direct URLs / bookmarks still
+        // resolve.
       ],
     },
     {

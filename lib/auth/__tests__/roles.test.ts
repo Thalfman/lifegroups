@@ -135,17 +135,16 @@ describe("adminNavGroups", () => {
     );
   });
 
-  // #146: the Group-Health surface ships dimension-complete (ADR 0007) but was
-  // only reachable by direct URL; expose it in the admin nav. adminNavGroups
-  // renders only behind the admin layout guard, so the entry is admin-only for
-  // free — consistent with every other admin nav item.
-  it("exposes a Group-Health entry pointing at /admin/group-health for both admin roles", () => {
+  // #300: Group health was folded into Groups — Groups is now the single source
+  // of truth for group setup, health, capacity, and lifecycle. There is no
+  // separate Group Health nav entry; the /admin/group-health route survives
+  // (ADR 0008/0009) and is reached from inside Groups.
+  it("exposes no separate Group-Health nav entry for either admin role", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       const item = adminNavGroups(role)
         .flatMap((g) => g.items)
         .find((i) => i.href === "/admin/group-health");
-      expect(item).toBeDefined();
-      expect(item!.label).toBe("Group health");
+      expect(item).toBeUndefined();
     }
   });
 
@@ -171,7 +170,7 @@ describe("adminNavGroups", () => {
       "/admin/launch-planning",
       "/admin/leader-pipeline",
       "/admin/follow-ups",
-      "/admin/group-health",
+      // Group health folded into Groups (#300): no separate spine entry.
     ]);
   });
 

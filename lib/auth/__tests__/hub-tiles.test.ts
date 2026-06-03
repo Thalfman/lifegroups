@@ -8,7 +8,7 @@ describe("hubTilesForRole", () => {
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Leader care", "/admin/shepherd-care"],
       ["Launch planning", "/admin/launch-planning"],
-      ["Group health", "/admin/group-health"],
+      // Group health folded into Groups (#300): no separate tile.
       ["Follow-ups", "/admin/follow-ups"],
       ["People", "/admin/people"],
       ["Groups", "/admin/groups"],
@@ -21,7 +21,7 @@ describe("hubTilesForRole", () => {
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Leader care", "/admin/shepherd-care"],
       ["Launch planning", "/admin/launch-planning"],
-      ["Group health", "/admin/group-health"],
+      // Group health folded into Groups (#300): no separate tile.
       ["Follow-ups", "/admin/follow-ups"],
       ["People", "/admin/people"],
       ["Groups", "/admin/groups"],

@@ -17,7 +17,9 @@ const ADMIN_TILES: readonly HubTile[] = [
   // surfaces (ADR 0010 surface-budget consolidation); both old routes redirect
   // here, so they no longer get their own hub tile.
   { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
-  { href: "/admin/group-health", label: "Group health", icon: "sprout" },
+  // Group health folded into Groups (#300): no separate Group Health tile. The
+  // /admin/group-health route survives (ADR 0008/0009), reached from inside
+  // Groups.
   { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
   { href: "/admin/people", label: "People", icon: "people" },
   { href: "/admin/groups", label: "Groups", icon: "groups" },

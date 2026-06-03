@@ -438,6 +438,8 @@ export function A11yHarnessClient() {
           latestWeek={DEMO_SELECTED_WEEK}
           metricDefaults={DEMO_METRIC_DEFAULTS}
           groupMetricSettings={DEMO_METRIC_SETTINGS}
+          healthGradesByGroupId={{}}
+          watchGrade={DEMO_METRIC_DEFAULTS.group_health_watch_grade}
         />
       </Surface>
 
@@ -454,6 +456,8 @@ export function A11yHarnessClient() {
           latestWeek={null}
           metricDefaults={DEMO_METRIC_DEFAULTS}
           groupMetricSettings={[]}
+          healthGradesByGroupId={{}}
+          watchGrade={DEMO_METRIC_DEFAULTS.group_health_watch_grade}
         />
       </Surface>
 
