@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
+import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
+import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import {
@@ -254,28 +256,50 @@ function MetricRow({
   );
 }
 
+// Operational sections collapse into the shared native-<details> primitive
+// (#261): collapsed by default so the super admin isn't scrolling one long
+// page, expandable on click or via an anchor. `accent` marks a high-risk
+// section (Danger Zone, Test tools) so it reads as visually separated from
+// routine controls. The optional `title` renders the rich section header
+// inside; sections that bring their own header (Audit) omit it.
 function CommandSection({
   id,
   eyebrow,
   title,
   description,
   children,
+  accent,
+  defaultOpen = false,
 }: {
   id: string;
   eyebrow: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: ReactNode;
+  accent?: { label: string; tone: StatusTone };
+  defaultOpen?: boolean;
 }) {
+  const accentStyle = accent ? STATUS_STYLE[accent.tone] : null;
   return (
-    <section id={id} style={{ display: "grid", gap: 18, scrollMarginTop: 20 }}>
-      <SectionHeader
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
-      />
+    <SuperAdminCollapsibleSection
+      id={id}
+      label={eyebrow}
+      defaultOpen={defaultOpen}
+      accent={
+        accent && accentStyle
+          ? {
+              border: accentStyle.border,
+              color: accentStyle.color,
+              badge: <StatusBadge label={accent.label} tone={accent.tone} />,
+            }
+          : undefined
+      }
+    >
+      {title ? (
+        <SectionHeader title={title} description={description ?? ""} />
+      ) : null}
       {children}
-    </section>
+    </SuperAdminCollapsibleSection>
   );
 }
 
@@ -360,14 +384,16 @@ export function SuperAdminConsoleShell({
 
   return (
     <div className="lg-super-admin-command-layout">
+      <SuperAdminSectionAnchors />
       <SectionRail />
 
-      <div style={{ display: "grid", gap: 36, minWidth: 0 }}>
+      <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
         {errorCount > 0 ? <ErrorBanner /> : null}
 
         <CommandSection
           id="overview"
           eyebrow="Overview"
+          defaultOpen
           title="Launch readiness at a glance"
           description="Current owner controls organized around readiness, access, diagnostics, test tooling, audit visibility, and guarded maintenance."
         >
@@ -551,11 +577,12 @@ export function SuperAdminConsoleShell({
           eyebrow="Test tools"
           title="Controlled testing tools"
           description="The current test account tooling remains intact and isolated from normal app authorization."
+          accent={{ label: "Isolated", tone: "warning" }}
         >
           {testAccountsPanel}
         </CommandSection>
 
-        <div id="audit" style={{ scrollMarginTop: 20 }}>
+        <CommandSection id="audit" eyebrow="Audit">
           <AuditTrailSection
             events={data.auditEvents}
             profilesById={data.profilesById}
@@ -563,7 +590,7 @@ export function SuperAdminConsoleShell({
             groupsById={data.groupsById}
             error={data.errors.audit}
           />
-        </div>
+        </CommandSection>
 
         <CommandSection
           id="maintenance"
@@ -595,6 +622,7 @@ export function SuperAdminConsoleShell({
           eyebrow="Danger Zone"
           title="Guarded permanent actions"
           description="Permanent purge tools are intentionally absent in this phase. Future actions require server-side impact summaries, type-to-confirm, and audit rows."
+          accent={{ label: "Guarded", tone: "blocked" }}
         >
           <div
             style={{
