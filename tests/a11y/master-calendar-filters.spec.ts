@@ -49,22 +49,48 @@ test.describe("master calendar filter affordances (#262)", () => {
 
     // No active filters → no chips yet.
     await expect(
-      surface.getByRole("button", { name: /^Remove filter: / })
+      surface.getByRole("button", { name: /^Remove .+ filter: / })
     ).toHaveCount(0);
 
     // Select every meeting day → one chip per weekday (7).
     await surface
       .getByRole("button", { name: "Select all Meeting day" })
       .click();
-    const chips = surface.getByRole("button", { name: /^Remove filter: / });
+    const chips = surface.getByRole("button", { name: /^Remove .+ filter: / });
     await expect(chips).toHaveCount(7);
 
-    // Removing one chip drops exactly that one selection.
-    await surface.getByRole("button", { name: "Remove filter: Sun" }).click();
+    // Removing one chip drops exactly that one selection. The chip name carries
+    // its filter category ("Day") so values that share a label across fields
+    // (e.g. type vs status "Cancelled") stay distinguishable.
+    await surface
+      .getByRole("button", { name: "Remove Day filter: Sun" })
+      .click();
     await expect(chips).toHaveCount(6);
     await expect(
-      surface.getByRole("button", { name: "Remove filter: Sun" })
+      surface.getByRole("button", { name: "Remove Day filter: Sun" })
     ).toHaveCount(0);
+  });
+
+  test("chips from different fields stay distinguishable when labels collide", async ({
+    page,
+  }) => {
+    const surface = page.locator(
+      '[data-a11y-surface="master-calendar-filters"]'
+    );
+    // "Cancelled" is exposed in BOTH the gathering-type and status filters.
+    await surface
+      .getByRole("button", { name: "Select all Gathering type" })
+      .click();
+    await surface.getByRole("button", { name: "Select all Status" }).click();
+
+    // Two "Cancelled" chips exist, but their accessible names differ by field,
+    // so each resolves to exactly one control (no strict-mode ambiguity).
+    await expect(
+      surface.getByRole("button", { name: "Remove Type filter: Cancelled" })
+    ).toHaveCount(1);
+    await expect(
+      surface.getByRole("button", { name: "Remove Status filter: Cancelled" })
+    ).toHaveCount(1);
   });
 
   test("Clear all empties a field's chips", async ({ page }) => {
@@ -73,12 +99,12 @@ test.describe("master calendar filter affordances (#262)", () => {
     );
     await surface.getByRole("button", { name: "Select all Status" }).click();
     await expect(
-      surface.getByRole("button", { name: /^Remove filter: / })
+      surface.getByRole("button", { name: /^Remove .+ filter: / })
     ).not.toHaveCount(0);
 
     await surface.getByRole("button", { name: "Clear all Status" }).click();
     await expect(
-      surface.getByRole("button", { name: /^Remove filter: / })
+      surface.getByRole("button", { name: /^Remove .+ filter: / })
     ).toHaveCount(0);
   });
 });

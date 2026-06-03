@@ -350,6 +350,7 @@ function FilterBar({
     for (const id of groupFilter) {
       chips.push({
         key: `group:${id}`,
+        category: "Group",
         label: groupLabels.get(id) ?? "Group",
         onRemove: () => setGroupFilter(groupFilter.filter((v) => v !== id)),
       });
@@ -357,6 +358,7 @@ function FilterBar({
     for (const t of typeFilter) {
       chips.push({
         key: `type:${t}`,
+        category: "Type",
         label: typeLabels.get(t) ?? friendlyEventTypeLabel(t),
         onRemove: () => setTypeFilter(typeFilter.filter((v) => v !== t)),
       });
@@ -364,6 +366,7 @@ function FilterBar({
     for (const s of statusFilter) {
       chips.push({
         key: `status:${s}`,
+        category: "Status",
         label: statusLabels.get(s) ?? s,
         onRemove: () => setStatusFilter(statusFilter.filter((v) => v !== s)),
       });
@@ -371,6 +374,7 @@ function FilterBar({
     for (const d of dayFilter) {
       chips.push({
         key: `day:${d}`,
+        category: "Day",
         label: WEEKDAY_HEADERS[d] ?? `Day ${d}`,
         onRemove: () => setDayFilter(dayFilter.filter((v) => v !== d)),
       });
@@ -381,6 +385,7 @@ function FilterBar({
         "Leader";
       chips.push({
         key: `leader:${leaderFilter}`,
+        category: "Leader",
         label: name,
         onRemove: () => setLeaderFilter(""),
       });
@@ -525,7 +530,19 @@ function FilterBar({
   );
 }
 
-type ActiveChip = { key: string; label: string; onRemove: () => void };
+// A chip carries its filter `category` (the field it came from) so two values
+// that share a label across fields stay distinguishable. The master calendar
+// deliberately exposes "OFF" and "Cancelled" in BOTH the gathering-type and
+// status filters, so a value-only chip ("Remove filter: Cancelled") collides
+// between fields — both visually and in its accessible name. Folding the
+// category in keeps each chip's name unique (the repeated-control-context
+// invariant this surface enforces).
+type ActiveChip = {
+  key: string;
+  category: string;
+  label: string;
+  onRemove: () => void;
+};
 
 // Compact, removable chips summarising every active filter selection
 // (Calendar polish, PRD req 11, #262). Each chip drops a single selection;
@@ -559,11 +576,23 @@ function ActiveFilterChips({ chips }: { chips: ActiveChip[] }) {
             padding: "2px 4px 2px 10px",
           }}
         >
+          <span
+            style={{
+              fontFamily: fontSans,
+              fontSize: 9,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              fontWeight: 700,
+              opacity: 0.75,
+            }}
+          >
+            {chip.category}
+          </span>
           {chip.label}
           <button
             type="button"
             onClick={chip.onRemove}
-            aria-label={`Remove filter: ${chip.label}`}
+            aria-label={`Remove ${chip.category} filter: ${chip.label}`}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -725,7 +754,10 @@ function BulkActions<V>({
   value: V[];
   onChange: (next: V[]) => void;
 }) {
-  const allSelected = all.length > 0 && value.length === all.length;
+  // Membership, not length-equality: a stale value in `value` (e.g. a group id
+  // retained after the groups prop shrank) could match `all.length` while a
+  // currently-listed option stays unchecked, wrongly disabling "Select all".
+  const allSelected = all.length > 0 && all.every((v) => value.includes(v));
   const noneSelected = value.length === 0;
   const btnStyle = (disabled: boolean): React.CSSProperties => ({
     fontFamily: fontSans,

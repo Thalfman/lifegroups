@@ -121,7 +121,7 @@ export function buildNeedsAttentionItems(
 //     consolidated "all clear" state, owned by the renderer.
 export type TopNextAction = NeedsAttentionItem & {
   // The concern phrased as an imperative action with the live count folded in,
-  // e.g. "Assign leaders to 16 groups", "Set meeting day and time for 8 groups".
+  // e.g. "Assign leaders to 16 groups", "Resolve 8 setup gaps".
   action: string;
 };
 
@@ -145,11 +145,15 @@ function imperativeAction(item: NeedsAttentionItem): string {
     case "no_leader":
       return `Assign ${plural(n, "a leader", "leaders")} to ${n} ${plural(n, "group", "groups")}`;
     case "setup_gaps":
-      return `Finish setup for ${n} ${plural(n, "group", "groups")}`;
+      // count sums noCapacity + noMeetingDayTime + noMembers, so it is a count
+      // of gaps (one group can contribute several), not a count of groups.
+      return `Resolve ${n} setup ${plural(n, "gap", "gaps")}`;
     case "care_attention":
       return `Reach out to ${n} ${plural(n, "leader", "leaders")} needing care`;
     case "health":
-      return `Catch up on ${n} overdue health ${plural(n, "check", "checks")}`;
+      // count = missing + needs_follow_up; "missing" checks were never done, so
+      // they are not "overdue" — mirror the #260 "overdue or missing" wording.
+      return `Review ${n} overdue or missing health ${plural(n, "check", "checks")}`;
     case "follow_ups":
       return `Resolve ${n}${item.plus ? "+" : ""} open ${plural(n, "follow-up", "follow-ups")}`;
     default:
