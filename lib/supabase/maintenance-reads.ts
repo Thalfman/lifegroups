@@ -13,7 +13,9 @@
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // The history tables Clean Slate clears, in display order (parents first reads
-// naturally for a human; the wipe order itself is enforced in the RPC).
+// naturally for a human). This is for the read-only impact preview only — it is
+// NOT a deletion order. The FK-safe children → parents wipe order lives solely
+// in the super_admin_clean_slate_wipe RPC; never drive a DELETE loop from this.
 export const CLEAN_SLATE_TABLES = [
   "attendance_sessions",
   "attendance_records",

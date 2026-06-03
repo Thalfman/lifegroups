@@ -183,6 +183,20 @@ export interface AppSettingsRow {
   updated_at: Timestamp;
 }
 
+// PRD-SAC6 (#290): backup of purged audit rows. Mirrors AuditEventsRow plus the
+// time the row was archived. Super-admin-only SELECT RLS; all writes flow
+// through the super_admin_reset_audit_logs SECURITY DEFINER RPC.
+export interface AuditEventsArchiveRow {
+  id: UUID;
+  actor_profile_id: UUID | null;
+  action: string;
+  entity_type: string;
+  entity_id: UUID | null;
+  metadata: Record<string, unknown>;
+  created_at: Timestamp;
+  archived_at: Timestamp;
+}
+
 // PRD-SAC6 (#288): single in-DB snapshot store for the Clean Slate history
 // wipe. Super-admin-only SELECT RLS; all writes flow through the
 // super_admin_clean_slate_wipe SECURITY DEFINER RPC.
@@ -497,6 +511,12 @@ export interface Database {
         Row: AppSettingsRow;
         Insert: InsertOf<AppSettingsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<AppSettingsRow>;
+        Relationships: [];
+      };
+      audit_events_archive: {
+        Row: AuditEventsArchiveRow;
+        Insert: InsertOf<AuditEventsArchiveRow, "metadata" | "archived_at">;
+        Update: Partial<AuditEventsArchiveRow>;
         Relationships: [];
       };
       clean_slate_snapshots: {
