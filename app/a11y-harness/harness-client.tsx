@@ -352,6 +352,10 @@ const SETTINGS_DATA: SettingsShellData = {
   defaultsSource: "live",
   groups: DEMO_GROUPS,
   groupMetricSettings: DEMO_METRIC_SETTINGS,
+  // Issue #304: render the super_admin variant so the General tab's pastoral
+  // editable-copy editor is in the tree for the a11y scan.
+  isSuperAdmin: true,
+  editableCopy: {},
   errors: { defaults: null, groups: null, overrides: null },
 };
 

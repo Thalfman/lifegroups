@@ -240,6 +240,74 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toBe(true);
   });
 
+  test("presents the General / Thresholds / Notifications / Imports tabs (issue 304)", async ({
+    page,
+  }) => {
+    const tabs = page.locator(`${SETTINGS} [role="tab"]`);
+    await expect(tabs).toHaveText([
+      "General",
+      "Thresholds",
+      "Notifications",
+      "Imports",
+    ]);
+    // Thresholds is the default selected tab — its metric defaults are the most
+    // touched controls, so the surface lands on them.
+    await expect(
+      page.locator(`${SETTINGS} [role="tab"]`, { hasText: "Thresholds" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(
+      page.locator(`${SETTINGS} #shepherd_care_stale_days_direct`)
+    ).toBeVisible();
+  });
+
+  test("Notifications tab shows an honest empty state, not fabricated controls (issue 304)", async ({
+    page,
+  }) => {
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Notifications" })
+      .click();
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+    await expect(panel).toContainText("No notification settings yet");
+    // No editable inputs are fabricated on this empty tab.
+    expect(
+      await panel
+        .locator('input:not([type="hidden"]), select, textarea')
+        .count()
+    ).toBe(0);
+  });
+
+  test("Imports tab is a deep-link only — no bulk-import write controls (issue 304)", async ({
+    page,
+  }) => {
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Imports" })
+      .click();
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+    // The tab surfaces the capability and links into the Super Admin Console;
+    // it does NOT render a file/upload control or any import write form.
+    await expect(
+      panel.locator('a[href^="/admin/super-admin"]').first()
+    ).toBeVisible();
+    expect(await panel.locator('input[type="file"]').count()).toBe(0);
+    expect(await panel.locator("form").count()).toBe(0);
+  });
+
+  test("tabs are keyboard navigable with arrow keys (issue 304)", async ({
+    page,
+  }) => {
+    const thresholds = page.locator(`${SETTINGS} [role="tab"]`, {
+      hasText: "Thresholds",
+    });
+    await thresholds.focus();
+    await page.keyboard.press("ArrowRight");
+    // Arrow-right moves selection to the next tab (Notifications) and focuses it.
+    const notifications = page.locator(`${SETTINGS} [role="tab"]`, {
+      hasText: "Notifications",
+    });
+    await expect(notifications).toHaveAttribute("aria-selected", "true");
+    await expect(notifications).toBeFocused();
+  });
+
   test("axe finds no critical or serious violations on settings", async ({
     page,
   }) => {

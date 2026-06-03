@@ -11,9 +11,14 @@ import { useActionForm, FormStatus } from "./action-form";
 export function EditableCopyForm({
   copyKey,
   currentValue,
+  inputId,
 }: {
   copyKey: string;
   currentValue: string;
+  // Optional id so a caller-rendered <label htmlFor> can associate with the
+  // text input (Settings General tab, #304). When absent the field is unchanged
+  // for existing callers (the Super Admin Console renders its own label text).
+  inputId?: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     superAdminSetCopy
@@ -29,6 +34,7 @@ export function EditableCopyForm({
     >
       <input type="hidden" name="key" value={copyKey} />
       <input
+        id={inputId}
         type="text"
         name="value"
         defaultValue={currentValue}
