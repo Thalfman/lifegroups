@@ -44,7 +44,7 @@ export function GuestPipelineFunnelCard({
     <StatusCard
       eyebrow="Guests"
       title="Pipeline funnel"
-      action={<OpenLink href="/admin/guests" />}
+      action={<OpenLink href="/admin/guests" label="Review guest pipeline" />}
     >
       {barTotal === 0 ? (
         <p
