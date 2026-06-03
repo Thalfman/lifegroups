@@ -679,3 +679,31 @@ grant execute on function public.admin_upsert_group_health_assessment(
 comment on function public.admin_upsert_group_health_assessment(
   uuid, date, numeric, integer, numeric, text
 ) is 'Group-Health Grade (#127/#265) admin write: upserts a group''s monthly attendance dimension + computed A-D grade, carrying the latest needs_follow_up flag into a newly created current-month row. Writes a paired audit_events row.';
+
+-- ---------------------------------------------------------------------------
+-- 7. Bounded "latest follow-up flag per group" read.
+--
+-- The "Needs follow-up" filter needs each group's latest assessment flag across
+-- all months. Doing that as an unbounded newest-first select in the app can be
+-- truncated by PostgREST's row cap once assessment history grows, which would
+-- default a missing group to false and silently drop an old-but-still-open flag.
+-- This view returns exactly one row per group (its latest assessment via
+-- distinct on), so the read is bounded to the group count regardless of history
+-- depth. security_invoker = true keeps the base table's admin-only RLS in force
+-- for the querying user (no SECURITY DEFINER bypass).
+-- ---------------------------------------------------------------------------
+
+create or replace view public.group_health_latest_follow_up
+  with (security_invoker = true) as
+  select distinct on (gha.group_id)
+         gha.group_id,
+         gha.needs_follow_up
+    from public.group_health_assessments gha
+   order by gha.group_id, gha.period_month desc;
+
+revoke all    on public.group_health_latest_follow_up from public;
+revoke all    on public.group_health_latest_follow_up from anon;
+grant  select on public.group_health_latest_follow_up to authenticated;
+
+comment on view public.group_health_latest_follow_up is
+  'Admin IM 05 (#265): one row per group = its latest assessment''s needs_follow_up. Bounds the cross-month "Needs follow-up" read to the group count instead of an unbounded history scan that PostgREST''s row cap could truncate. security_invoker, so group_health_assessments'' admin-only RLS applies to the caller.';

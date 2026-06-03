@@ -195,11 +195,10 @@ const ASSESSMENT_COLUMNS =
   "spiritual_growth_note, group_question_score, group_question_leader_reported, " +
   "computed_letter, needs_follow_up, updated_at";
 
-// Minimal shape for the cross-month follow-up lookup: the flag plus the month
-// it belongs to, so we can pick each group's most recent assessment.
+// One row per group from the group_health_latest_follow_up view: the group's
+// latest assessment flag, carried across months.
 type LatestFollowUpRow = {
   group_id: string;
-  period_month: string;
   needs_follow_up: boolean;
 };
 
@@ -297,15 +296,16 @@ export async function listGroupHealthOverview(
   // The "Needs follow-up" flag carries across months: an open flag persists past
   // a month boundary until an admin clears it (#265, director "latest
   // assessment" / drawer "until the action is closed"). So the flag reflects the
-  // most recent assessment of any month — not just the current period — read
-  // newest-first so the first row seen per group is its latest. A current-month
-  // row, being the max period_month, naturally supersedes (its unchecked box
-  // clears a prior flag). Independent of the attendance fan-out, so run them
-  // concurrently.
+  // most recent assessment of any month — not just the current period. The
+  // group_health_latest_follow_up view returns exactly one row per group (its
+  // latest assessment, via distinct on), so this read is bounded to the group
+  // count and can't be truncated by PostgREST's row cap as history grows. A
+  // current-month row, being the max period_month, naturally supersedes (its
+  // unchecked box clears a prior flag). Independent of the attendance fan-out,
+  // so run them concurrently.
   const latestFollowUpPromise = (client as AppSupabaseClient)
-    .from("group_health_assessments" as never)
-    .select("group_id, period_month, needs_follow_up" as never)
-    .order("period_month" as never, { ascending: false } as never)
+    .from("group_health_latest_follow_up" as never)
+    .select("group_id, needs_follow_up" as never)
     .returns<LatestFollowUpRow[]>();
 
   // Each group's attendance read is independent (2 round-trips: sessions then
@@ -332,12 +332,10 @@ export async function listGroupHealthOverview(
       error: wrapError("listGroupHealthOverview/followUp", followUpError),
     };
   }
-  // First row per group (rows arrive newest-first) is its latest assessment.
+  // The view yields one row per group already, so map it straight through.
   const latestFollowUp = new Map<string, boolean>();
   for (const row of followUpRows ?? []) {
-    if (!latestFollowUp.has(row.group_id)) {
-      latestFollowUp.set(row.group_id, row.needs_follow_up);
-    }
+    latestFollowUp.set(row.group_id, row.needs_follow_up);
   }
 
   const rows: GroupHealthOverviewRow[] = [];

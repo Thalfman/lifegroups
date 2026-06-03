@@ -160,4 +160,22 @@ describe("group-health follow-up migration — recompute carries the flag forwar
       "uuid, date, numeric, integer, numeric, text"
     );
   });
+
+  it("bounds the cross-month flag read with a per-group distinct-on view", () => {
+    // One row per group (distinct on), so PostgREST's row cap can't truncate the
+    // history scan and drop an old-but-open flag. security_invoker keeps the base
+    // table's admin-only RLS in force; anon is revoked, authenticated may select.
+    expect(sql.lower).toContain(
+      "create or replace view public.group_health_latest_follow_up"
+    );
+    expect(sql.lower).toContain("security_invoker = true");
+    expect(sql.lower).toContain("select distinct on (gha.group_id)");
+    expect(sql.lower).toContain("order by gha.group_id, gha.period_month desc");
+    expect(sql.lower).toContain(
+      "revoke all    on public.group_health_latest_follow_up from anon"
+    );
+    expect(sql.lower).toContain(
+      "grant  select on public.group_health_latest_follow_up to authenticated"
+    );
+  });
 });

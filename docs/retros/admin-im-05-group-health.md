@@ -37,9 +37,11 @@ per-row save buttons, editing one group at a time in the EditingSurface drawer.
   assessment" / the drawer's "until the action is closed"). Both write paths keep
   this honest: the drawer checkbox defaults to the carried value and the recompute
   RPC (`admin_upsert_group_health_assessment`) inherits the latest flag when it
-  creates a new month's row, so "Save grade only" can't silently reset it. (The
-  cross-month read currently scans assessment rows newest-first and takes the
-  first per group; a `distinct on` RPC is the optimization if history grows.)
+  creates a new month's row, so "Save grade only" can't silently reset it. The
+  cross-month read goes through a `group_health_latest_follow_up` view
+  (`distinct on (group_id) … order by period_month desc`, `security_invoker`),
+  so it returns one row per group and stays bounded as history grows rather than
+  risking truncation by PostgREST's row cap.
 
 ## Director-tuned thresholds sourced from Settings (not hard-coded)
 
