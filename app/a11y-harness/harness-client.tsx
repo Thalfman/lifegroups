@@ -16,6 +16,10 @@ import { useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { AdminMasterCalendarList } from "@/components/admin/admin-master-calendar-list";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
+import {
+  AdminFollowUpsShell,
+  type AdminFollowUpsData,
+} from "@/components/admin/follow-ups/follow-ups-shell";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import {
   SettingsShell,
@@ -133,6 +137,91 @@ const FOLLOW_UPS = [
     due_date: null,
   },
 ];
+
+// Admin Follow-ups surface (#267, Admin Interaction Model req 1). Proves the
+// validated Editing Pattern propagated to Follow-up creation: the queue renders
+// no full inline create form, "Add follow-up" opens the shared EditingSurface
+// drawer (focus moves in, Escape / Close close it, focus returns), and the
+// queue's filter state survives the round trip. A small deterministic queue so
+// the surface renders rows rather than the empty state.
+const FOLLOW_UPS_ADMIN_DATA: AdminFollowUpsData = {
+  followUps: [
+    {
+      id: "afu-1",
+      type: "guest",
+      title: "Reach out to Skyler about placement",
+      related_group_id: null,
+      related_member_id: null,
+      related_guest_id: "guest-skyler",
+      assigned_to: "admin-1",
+      priority: "high",
+      due_date: "2026-05-20",
+      status: "open",
+      leader_visible_note: null,
+      admin_private_note: null,
+      created_at: STAMP,
+    },
+    {
+      id: "afu-2",
+      type: "leader",
+      title: "Confirm Anderson apprentice plan",
+      related_group_id: DEMO_GROUPS[0]?.id ?? null,
+      related_member_id: null,
+      related_guest_id: null,
+      assigned_to: null,
+      priority: "normal",
+      due_date: null,
+      status: "in_progress",
+      leader_visible_note: null,
+      admin_private_note: null,
+      created_at: STAMP,
+    },
+  ],
+  groups: DEMO_GROUPS,
+  members: [
+    {
+      id: "mem-1",
+      full_name: "Jordan Avery",
+      email: null,
+      phone: null,
+      household_name: null,
+      status: "active",
+      care_sensitivity_flag: false,
+      created_at: STAMP,
+      updated_at: STAMP,
+    },
+  ],
+  guests: [
+    {
+      id: "guest-skyler",
+      full_name: "Skyler Monroe",
+      email: null,
+      phone: null,
+      first_attended_group_id: null,
+      first_attended_date: null,
+      pipeline_stage: "new",
+      assigned_group_id: null,
+      follow_up_owner_id: null,
+      notes: null,
+      created_at: STAMP,
+    },
+  ],
+  assigneeProfiles: DEMO_PROFILES,
+  errors: {
+    followUps: null,
+    groups: null,
+    members: null,
+    guests: null,
+    profiles: null,
+  },
+};
+
+// First-run state: an empty queue. Used to prove the "No follow-ups yet" empty
+// state is replaced (not left stale) while the create drawer is open (#267).
+const FOLLOW_UPS_EMPTY_DATA: AdminFollowUpsData = {
+  ...FOLLOW_UPS_ADMIN_DATA,
+  followUps: [],
+};
 
 // Settings is req 5 (semantics / grouping / progressive disclosure / labels).
 // Unlike the req-4 surfaces above it has no repeated-action collisions to prove;
@@ -306,6 +395,14 @@ export function A11yHarnessClient() {
             </div>
           ))}
         </div>
+      </Surface>
+
+      <Surface id="follow-ups" heading="Follow-ups (admin queue)">
+        <AdminFollowUpsShell data={FOLLOW_UPS_ADMIN_DATA} />
+      </Surface>
+
+      <Surface id="follow-ups-empty" heading="Follow-ups (empty queue)">
+        <AdminFollowUpsShell data={FOLLOW_UPS_EMPTY_DATA} />
       </Surface>
 
       <Surface id="care-follow-ups" heading="Shepherd care follow-ups">

@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SectionHeader } from "@/components/layout/shell";
+import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
   followUpPriorityLabel,
@@ -85,8 +87,49 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 
 export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
   const { followUps, groups, members, guests, assigneeProfiles, errors } = data;
+  const router = useRouter();
 
-  const [showCreate, setShowCreate] = useState(false);
+  // Follow-up creation moved into the shared Editing Pattern drawer (#267):
+  // it opens out of the list flow rather than expanding an inline Card, so the
+  // status-grouped queue never reflows and its filter + scroll state survive
+  // the round trip. `dirtyRef` (typed-into form → warn before discarding) and
+  // `submittingRef` (a create in flight → block dismissal) are refs, not state,
+  // so neither typing nor an in-flight save re-renders the queue behind the
+  // drawer.
+  const [createOpen, setCreateOpen] = useState(false);
+  const dirtyRef = useRef(false);
+  const submittingRef = useRef(false);
+
+  const openCreate = useCallback(() => {
+    dirtyRef.current = false;
+    setCreateOpen(true);
+  }, []);
+  const markDirty = useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
+  const reportPending = useCallback((pending: boolean) => {
+    submittingRef.current = pending;
+  }, []);
+  const requestClose = useCallback(() => {
+    // A create is in flight: ignore every dismissal route (Escape, overlay, ×,
+    // Cancel) so we don't unmount the form mid-write — it auto-closes via
+    // onSaved when the write lands.
+    if (submittingRef.current) return;
+    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
+      return;
+    }
+    dirtyRef.current = false;
+    setCreateOpen(false);
+  }, []);
+  const handleSaved = useCallback(() => {
+    dirtyRef.current = false;
+    submittingRef.current = false;
+    setCreateOpen(false);
+    // Refresh so the new follow-up appears in the queue immediately (the server
+    // action revalidates too).
+    router.refresh();
+  }, [router]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [priorityFilter, setPriorityFilter] = useState<
@@ -244,13 +287,8 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
             alignItems: "center",
           }}
         >
-          <PButton
-            type="button"
-            tone="terra"
-            size="md"
-            onClick={() => setShowCreate((v) => !v)}
-          >
-            {showCreate ? "Close" : "Add follow-up"}
+          <PButton type="button" tone="terra" size="md" onClick={openCreate}>
+            Add follow-up
           </PButton>
           <PButton
             type="button"
@@ -261,17 +299,6 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
             {showFilters ? "Hide filters" : "Filter"}
           </PButton>
         </div>
-
-        {showCreate ? (
-          <Card>
-            <FollowUpCreateForm
-              groups={sortedGroups}
-              members={members}
-              guests={sortedGuests}
-              assignees={sortedAssignees}
-            />
-          </Card>
-        ) : null}
 
         {showFilters ? (
           <div
@@ -302,11 +329,11 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
               </select>
             </div>
             <div>
-              <label htmlFor="fu-priority" style={fieldLabelStyle}>
+              <label htmlFor="fu-filter-priority" style={fieldLabelStyle}>
                 Priority
               </label>
               <select
-                id="fu-priority"
+                id="fu-filter-priority"
                 value={priorityFilter}
                 onChange={(e) =>
                   setPriorityFilter(e.target.value as "all" | FollowUpPriority)
@@ -406,7 +433,12 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
               }}
             >
               {followUps.length === 0
-                ? "No follow-ups yet"
+                ? // While the create drawer is open the "No follow-ups yet"
+                  // prompt is redundant (the form is already open), so it is
+                  // replaced with a quieter in-progress note (#267).
+                  createOpen
+                  ? "Creating your first follow-up…"
+                  : "No follow-ups yet"
                 : "No follow-ups match these filters"}
             </div>
             <p
@@ -419,7 +451,9 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
               }}
             >
               {followUps.length === 0
-                ? "Use Add follow-up to create the first one. Tie it to a guest, member, or group — and add a note if helpful."
+                ? createOpen
+                  ? "Fill in the details in the panel and save to create it."
+                  : "Use Add follow-up to create the first one. Tie it to a guest, member, or group — and add a note if helpful."
                 : "Adjust the filters — or add a new follow-up."}
             </p>
           </div>
@@ -497,6 +531,29 @@ export function AdminFollowUpsShell({ data }: { data: AdminFollowUpsData }) {
           </div>
         )}
       </section>
+
+      {/* One always-mounted drawer (open toggled) so Radix owns the focus trap
+          and focus restore, matching the Groups create flow (#266). Creation
+          opens here, out of the list flow, so the queue never reflows. */}
+      <EditingSurface
+        open={createOpen}
+        onRequestClose={requestClose}
+        eyebrow="New follow-up"
+        title="Add a follow-up"
+        description="Tie it to a guest, member, or group, and assign someone if you want them to own it. Saving adds it to the queue."
+        closeLabel="Close new follow-up form"
+      >
+        <FollowUpCreateForm
+          groups={sortedGroups}
+          members={members}
+          guests={sortedGuests}
+          assignees={sortedAssignees}
+          onCancel={requestClose}
+          onDirty={markDirty}
+          onPendingChange={reportPending}
+          onSaved={handleSaved}
+        />
+      </EditingSurface>
     </div>
   );
 }
@@ -675,22 +732,6 @@ const labelInlineStyle = {
   fontWeight: 600,
   fontStyle: "normal",
 } as const;
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
