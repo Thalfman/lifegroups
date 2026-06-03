@@ -45,21 +45,31 @@ type Recomputed = {
 async function recomputeGrade(
   client: AppSupabaseClient,
   groupId: string,
-  ratings: { spiritual_growth_score: number | null; group_question_score: number | null },
-): Promise<{ data: Recomputed; error: null } | { data: null; error: { message: string } }> {
+  ratings: {
+    spiritual_growth_score: number | null;
+    group_question_score: number | null;
+  }
+): Promise<
+  { data: Recomputed; error: null } | { data: null; error: { message: string } }
+> {
   const rubricRes = await fetchGroupHealthRubric(client);
-  if (rubricRes.error) return { data: null, error: { message: "rubric_read_failed" } };
+  if (rubricRes.error)
+    return { data: null, error: { message: "rubric_read_failed" } };
   const weeksRes = await fetchGroupAttendanceWeeks(
     client,
     groupId,
-    rubricRes.data.attendance_window_weeks,
+    rubricRes.data.attendance_window_weeks
   );
-  if (weeksRes.error) return { data: null, error: { message: "attendance_read_failed" } };
+  if (weeksRes.error)
+    return { data: null, error: { message: "attendance_read_failed" } };
 
   const attendance = attendanceConsistency(weeksRes.data, rubricRes.data);
   const grade = computeGrade(
-    dimensionScoresFromInputs({ attendance_pct: attendance.rolling_pct, ...ratings }),
-    rubricRes.data,
+    dimensionScoresFromInputs({
+      attendance_pct: attendance.rolling_pct,
+      ...ratings,
+    }),
+    rubricRes.data
   );
 
   return {
@@ -106,17 +116,9 @@ const RECOMPUTE_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
 
 export async function adminRecomputeGroupHealthAssessment(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<GroupIdPayload>,
+  input: ActionInput<GroupIdPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RECOMPUTE_SPEC, prev, input);
-}
-
-// Plain-form wrapper so the surface can recompute from a server component
-// <form action={...}> without a client island.
-export async function recomputeGroupHealthFormAction(
-  formData: FormData,
-): Promise<void> {
-  await adminRecomputeGroupHealthAssessment(undefined, formData);
 }
 
 // #128 ratings write: capture the admin-entered spiritual-growth + relayed
@@ -125,7 +127,10 @@ export async function recomputeGroupHealthFormAction(
 // full state of both dimensions, so the validated payload IS the desired row (an
 // empty score is an explicit clear) — no merge-from-prior needed. The RPC forces
 // the group-question leader-reported provenance flag server-side.
-const RATINGS_SPEC: AdminWriteActionSpec<GroupHealthRatingsPayload, { id: string }> = {
+const RATINGS_SPEC: AdminWriteActionSpec<
+  GroupHealthRatingsPayload,
+  { id: string }
+> = {
   name: "admin.group_health.set_ratings",
   // The form posts both scores and the note alongside group_id; the runner's
   // default lift forwards only the listed FormData fields, so name them all.
@@ -162,14 +167,7 @@ const RATINGS_SPEC: AdminWriteActionSpec<GroupHealthRatingsPayload, { id: string
 
 export async function adminSetGroupHealthRatings(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<GroupHealthRatingsPayload>,
+  input: ActionInput<GroupHealthRatingsPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RATINGS_SPEC, prev, input);
-}
-
-// Plain-form wrapper for the server-component rating editor.
-export async function setGroupHealthRatingsFormAction(
-  formData: FormData,
-): Promise<void> {
-  await adminSetGroupHealthRatings(undefined, formData);
 }
