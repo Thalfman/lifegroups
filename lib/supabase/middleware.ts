@@ -32,6 +32,30 @@ export async function updateSupabaseSession(
   // (getCurrentSession in lib/auth/session.ts) still uses getUser() so a
   // revoked/deleted Auth user is rejected on the next request, not at token
   // expiry.
-  await supabase.auth.getClaims();
+  const { data: claimsData } = await supabase.auth.getClaims();
+
+  // Serve the statically-generated /login document for anonymous visitors
+  // landing on the bare domain. A rewrite (not a redirect) keeps the address
+  // bar at "/" while the response is the CDN-cached static page, so the most
+  // common public entry point never invokes the dynamic "/" server render
+  // (cold start + session lookup). Authenticated requests fall through to the
+  // dynamic Home Hub unchanged. getClaims() above is a local JWT verification,
+  // so this gate adds no network round trip.
+  if (!claimsData?.claims && request.nextUrl.pathname === "/") {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    const rewriteResponse = NextResponse.rewrite(loginUrl, { request });
+    // Carry over any cookies the Supabase client wrote during getClaims()
+    // above — e.g. clearing stale/invalid session cookies on a failed refresh.
+    // Returning a fresh rewrite response would otherwise drop those Set-Cookie
+    // headers, leaving the bad cookies in place so every root visit keeps
+    // re-paying the refresh/validation cost. (For a clean anonymous request
+    // there are no cookies to copy, so this is a no-op on the common path.)
+    response.cookies.getAll().forEach((cookie) => {
+      rewriteResponse.cookies.set(cookie);
+    });
+    return rewriteResponse;
+  }
+
   return response;
 }
