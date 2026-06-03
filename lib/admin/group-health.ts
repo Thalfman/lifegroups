@@ -121,6 +121,12 @@ export function attendanceConsistency(
 // window, so the Watch filter has an honest trend input.
 // ---------------------------------------------------------------------------
 
+// The trend compares two 4-week half-windows, so it needs a full 8 weeks of
+// attendance regardless of the (operator-tunable) rubric attendance window. The
+// read side must fetch at least this many weeks or the prior half-window can't
+// fill and the declining leg silently never fires.
+export const ATTENDANCE_TREND_WINDOW_WEEKS = 8;
+
 export type AttendanceTrend = {
   // Average attendance % over the most-recent half-window, or null when that
   // window has no fully-rated weeks.
@@ -162,18 +168,28 @@ export function attendanceTrend(
 
   const recentPct = average(recent);
   const priorPct = average(prior);
+  // An actual drop (prior strictly above recent) of at least the margin. The
+  // strict `>` matters at marginPct = 0, where flat attendance must not count
+  // as declining.
   const declining =
     recentPct !== null &&
     priorPct !== null &&
+    priorPct > recentPct &&
     priorPct - recentPct >= marginPct;
 
   return { recent_pct: recentPct, prior_pct: priorPct, declining };
 }
 
-// Grade ladder ordering (A best → D worst), shared by the Watch filter's
-// "at or below the threshold" test. A is index 0, D index 3, so a higher index
-// is a worse grade.
-const GRADE_LADDER: GroupHealthLetter[] = ["A", "B", "C", "D"];
+// Grade ladder ordering (A best → D worst): the single source of grade order,
+// reused by the segmentation/ranking helpers and the Watch filter's "at or
+// below the threshold" test. A is index 0, D index 3, so a higher index is a
+// worse grade.
+export const GROUP_HEALTH_GRADE_LADDER: GroupHealthLetter[] = [
+  "A",
+  "B",
+  "C",
+  "D",
+];
 
 // True when `letter` is at or below `threshold` on the A–D ladder — i.e. the
 // same grade or a worse one. The director's Watch leg: a group graded at or
@@ -183,7 +199,10 @@ export function gradeAtOrBelow(
   threshold: GroupHealthLetter
 ): boolean {
   if (letter === null) return false;
-  return GRADE_LADDER.indexOf(letter) >= GRADE_LADDER.indexOf(threshold);
+  return (
+    GROUP_HEALTH_GRADE_LADDER.indexOf(letter) >=
+    GROUP_HEALTH_GRADE_LADDER.indexOf(threshold)
+  );
 }
 
 // ---------------------------------------------------------------------------

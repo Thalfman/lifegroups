@@ -332,4 +332,19 @@ describe("attendanceTrend (Admin IM 05 declining-attendance leg)", () => {
     );
     expect(trend.declining).toBe(true);
   });
+
+  it("does not treat flat attendance as declining at a zero margin", () => {
+    // marginPct 0 is a valid setting; flat (recent == prior) must not flag.
+    const flat = attendanceTrend(
+      weeksWithPcts([70, 70, 70, 70, 70, 70, 70, 70]),
+      0
+    );
+    expect(flat.declining).toBe(false);
+    // A real drop at a zero margin still flags.
+    const drop = attendanceTrend(
+      weeksWithPcts([69, 69, 69, 69, 70, 70, 70, 70]),
+      0
+    );
+    expect(drop.declining).toBe(true);
+  });
 });

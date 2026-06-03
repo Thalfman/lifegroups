@@ -27,9 +27,10 @@ per-row save buttons, editing one group at a time in the EditingSurface drawer.
   change can't be a create-or-replace). Same security envelope as #128:
   admin-only guard, SECURITY DEFINER, paired `audit_events` row, no service-role.
 - The drawer **checkbox** persists on the existing "Save rating" save (same
-  audited action), so there is no second save button. The validator treats the
-  flag's presence as a definite state to write, so **clearing a flag on a group
-  with no ratings** is not rejected as an all-empty no-op.
+  audited action), so there is no second save button. The all-empty no-op guard
+  keys on the flag's **value** (not its presence — the action runner always lifts
+  `needs_follow_up` into the payload): setting the flag is content worth saving,
+  while a save with no ratings, no note, and the box unchecked is still rejected.
 
 ## Director-tuned thresholds sourced from Settings (not hard-coded)
 

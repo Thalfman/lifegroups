@@ -388,9 +388,7 @@ describe("validateGroupHealthRatingsPayload", () => {
     if (r.ok) expect(r.value.needs_follow_up).toBe(true);
   });
 
-  it("accepts a follow-up-only submit (the key present means a definite state to write)", () => {
-    // The drawer always posts the flag's state, so clearing a flag on a group
-    // with no ratings must not be rejected as an all-empty no-op.
+  it("accepts a flag-only submit (setting needs_follow_up is content worth persisting)", () => {
     const r = validateGroupHealthRatingsPayload({
       group_id: UUID_A,
       needs_follow_up: "on",
@@ -399,7 +397,21 @@ describe("validateGroupHealthRatingsPayload", () => {
     if (r.ok) expect(r.value.needs_follow_up).toBe(true);
   });
 
-  it("still rejects a bare object with no ratings, note, or follow-up state", () => {
+  it("rejects a real-form no-op: no ratings, no note, follow-up unchecked", () => {
+    // The action runner lifts needs_follow_up into the payload even when the
+    // checkbox is unchecked (value undefined). The guard must key on the flag's
+    // VALUE, not its presence, or it never fires for a real drawer save.
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      needs_follow_up: undefined,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /at least one/i.test(e))).toBe(true);
+    }
+  });
+
+  it("still rejects a bare object with no ratings, note, or follow-up flag", () => {
     const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
     expect(r.ok).toBe(false);
   });

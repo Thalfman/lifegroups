@@ -12,6 +12,7 @@ import {
   computeGrade,
   decodeGroupHealthRubric,
   dimensionScoresFromInputs,
+  ATTENDANCE_TREND_WINDOW_WEEKS,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
 } from "@/lib/admin/group-health";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
@@ -285,14 +286,17 @@ export async function listGroupHealthOverview(
 
   // Each group's attendance read is independent (2 round-trips: sessions then
   // records), so fan them out concurrently rather than serializing one group at
-  // a time — the overview otherwise blocks on 2*N sequential queries.
+  // a time — the overview otherwise blocks on 2*N sequential queries. Fetch at
+  // least the trend's 8-week span even when the rubric window is smaller, or the
+  // declining leg can never fill its prior half-window; attendanceConsistency
+  // re-slices to the rubric window, so the grade is unaffected.
+  const weeksToFetch = Math.max(
+    rubric.attendance_window_weeks,
+    ATTENDANCE_TREND_WINDOW_WEEKS
+  );
   const weeksByGroup = await Promise.all(
     groups.map((group) =>
-      fetchGroupAttendanceWeeks(
-        client,
-        group.id,
-        rubric.attendance_window_weeks
-      )
+      fetchGroupAttendanceWeeks(client, group.id, weeksToFetch)
     )
   );
 

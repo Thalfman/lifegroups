@@ -65,21 +65,19 @@ export function validateGroupHealthRatingsPayload(
     note = noteRaw ?? null;
   }
 
-  // The drawer always posts the follow-up flag's state (present in the payload),
-  // so a submit always asserts a definite needs_follow_up value — including
-  // clearing a flag on a group with no ratings. `needsFollowUpPresent` marks
-  // that real-form case; a bare object without the key is the legacy no-op.
-  const needsFollowUpPresent = "needs_follow_up" in input;
   const needsFollowUp = readBooleanFlag(input.needs_follow_up);
 
-  // Reject an all-empty submit: it would wipe both ratings + the note and write
-  // an audit row for a no-op. Clearing one rating while the other stands is
-  // fine, and a follow-up toggle is itself content worth persisting.
+  // Reject a true no-op: no ratings, no note, and the follow-up flag not set. It
+  // would wipe both ratings + the note and write an audit row for nothing.
+  // (Keying this on the flag's *presence* would defeat the guard — the action
+  // runner always lifts needs_follow_up into the payload, even unchecked.)
+  // Setting the flag is content worth persisting; the only case this still
+  // rejects is fully clearing an already-empty row, which is itself a no-op.
   if (
     spiritualScore === null &&
     questionScore === null &&
     note === null &&
-    !needsFollowUpPresent
+    !needsFollowUp
   ) {
     errors.push("Enter at least one rating or a note.");
   }
