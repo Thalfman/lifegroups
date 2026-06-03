@@ -7,13 +7,23 @@
 // server-side in the action.
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
-import { superAdminCleanSlateWipe } from "@/app/(protected)/admin/super-admin/clean-slate-actions";
+import { PButton, pButtonStyle } from "@/components/pastoral/button";
+import {
+  superAdminCleanSlateWipe,
+  superAdminCleanSlateRevert,
+  superAdminCleanSlateImport,
+} from "@/app/(protected)/admin/super-admin/clean-slate-actions";
 import {
   CLEAN_SLATE_CONFIRM_PHRASE,
+  CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
   type CleanSlateWipeSuccess,
+  type CleanSlateRevertSuccess,
+  type CleanSlateImportSuccess,
 } from "@/lib/admin/danger-zone";
-import type { CleanSlateImpact } from "@/lib/supabase/maintenance-reads";
+import type {
+  CleanSlateImpact,
+  CleanSlateLatestSnapshot,
+} from "@/lib/supabase/maintenance-reads";
 import {
   useActionForm,
   FormStatus,
@@ -40,10 +50,24 @@ const TABLE_LABELS: Record<string, string> = {
   shepherd_care_follow_ups: "Shepherd-care follow-ups",
 };
 
+// Format a snapshot's capture time for the recovery section. Fixed locale +
+// UTC so server and client render the same string (no hydration mismatch).
+function formatSnapshotTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", {
+    timeZone: "UTC",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 export function CleanSlateCard({
   impact,
+  snapshot,
 }: {
   impact: CleanSlateImpact | null;
+  snapshot: CleanSlateLatestSnapshot | null;
 }) {
   const { state, formAction, pending } = useActionForm<CleanSlateWipeSuccess>(
     superAdminCleanSlateWipe
@@ -197,6 +221,226 @@ export function CleanSlateCard({
           ) : null}
         </div>
         <FormStatus state={state} />
+      </form>
+
+      <CleanSlateRecovery snapshot={snapshot} />
+    </div>
+  );
+}
+
+// Recovery (#293 revert + #294 export/import): restore the captured snapshot
+// back into an empty database. Revert reads the in-DB snapshot; Export saves it
+// to a file; Import restores from a previously exported file (the only path once
+// the in-DB snapshot is gone). Revert + Import are gated behind the RESTORE
+// type-to-confirm phrase; all restores require an empty target (target_not_empty).
+function CleanSlateRecovery({
+  snapshot,
+}: {
+  snapshot: CleanSlateLatestSnapshot | null;
+}) {
+  const revert = useActionForm<CleanSlateRevertSuccess>(
+    superAdminCleanSlateRevert
+  );
+  const importForm = useActionForm<CleanSlateImportSuccess>(
+    superAdminCleanSlateImport
+  );
+  const [revertConfirm, setRevertConfirm] = useState("");
+  const [importConfirm, setImportConfirm] = useState("");
+
+  const revertMatches =
+    revertConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
+  const importMatches =
+    importConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
+  const hasSnapshot = snapshot !== null;
+
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${P.terra}`,
+        paddingTop: 14,
+        display: "grid",
+        gap: 12,
+      }}
+    >
+      <h4
+        style={{
+          fontFamily: fontDisplay,
+          fontSize: 15,
+          fontWeight: 600,
+          color: P.ink,
+          margin: 0,
+        }}
+      >
+        Recover a snapshot
+      </h4>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: P.terraTextStrong,
+          lineHeight: 1.55,
+          margin: 0,
+        }}
+      >
+        Restore the most recent snapshot back into the database. Restoring needs
+        an empty target — clear history first if rows have been added since.
+        Export the snapshot to a file to keep a copy after it&rsquo;s restored,
+        or import a previously exported file.
+      </p>
+
+      {/* Latest snapshot summary. */}
+      {hasSnapshot ? (
+        <div
+          style={{
+            border: `1px solid ${P.line}`,
+            borderRadius: 8,
+            background: P.surface,
+            padding: "10px 12px",
+            display: "grid",
+            gap: 4,
+            fontFamily: fontSans,
+            fontSize: 12,
+            color: P.ink2,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <span>Snapshot captured</span>
+            <strong style={{ color: P.ink }}>
+              {formatSnapshotTime(snapshot.createdAt)} UTC
+            </strong>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <span>Rows in snapshot</span>
+            <strong style={{ color: P.ink }}>{snapshot.totalRows}</strong>
+          </div>
+        </div>
+      ) : (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            color: P.ink2,
+            margin: 0,
+          }}
+        >
+          No recoverable snapshot — nothing has been cleared, or the last
+          snapshot was already restored. You can still import a snapshot file
+          below.
+        </p>
+      )}
+
+      {/* Revert + Export row. */}
+      <form action={revert.formAction} style={{ display: "grid", gap: 10 }}>
+        <div>
+          <label htmlFor="clean-slate-revert-confirm" style={fieldLabelStyle}>
+            Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
+          </label>
+          <input
+            id="clean-slate-revert-confirm"
+            name="confirm"
+            type="text"
+            autoComplete="off"
+            value={revertConfirm}
+            onChange={(e) => setRevertConfirm(e.target.value)}
+            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+            className={fieldInputClass}
+            style={fieldInputStyle}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <PButton
+            type="submit"
+            tone="terra"
+            size="md"
+            disabled={revert.pending || !revertMatches || !hasSnapshot}
+          >
+            {revert.pending ? "Restoring…" : "Revert from snapshot"}
+          </PButton>
+          {hasSnapshot ? (
+            <a
+              href={`/admin/super-admin/clean-slate/export/${snapshot.id}`}
+              rel="nofollow noreferrer"
+              style={pButtonStyle("ghost", "md")}
+            >
+              Export snapshot file
+            </a>
+          ) : null}
+          {revert.state?.ok ? (
+            <span style={successTextStyle}>
+              Restored {revert.state.value.totalRows} row
+              {revert.state.value.totalRows === 1 ? "" : "s"} from the snapshot.
+            </span>
+          ) : null}
+        </div>
+        <FormStatus state={revert.state} />
+      </form>
+
+      {/* Import-from-file. */}
+      <form action={importForm.formAction} style={{ display: "grid", gap: 10 }}>
+        <div>
+          <label htmlFor="clean-slate-import-file" style={fieldLabelStyle}>
+            Import a snapshot file
+          </label>
+          <input
+            id="clean-slate-import-file"
+            name="file"
+            type="file"
+            accept="application/json,.json"
+            style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
+          />
+        </div>
+        <div>
+          <label htmlFor="clean-slate-import-confirm" style={fieldLabelStyle}>
+            Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
+          </label>
+          <input
+            id="clean-slate-import-confirm"
+            name="confirm"
+            type="text"
+            autoComplete="off"
+            value={importConfirm}
+            onChange={(e) => setImportConfirm(e.target.value)}
+            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+            className={fieldInputClass}
+            style={fieldInputStyle}
+          />
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <PButton
+            type="submit"
+            tone="terra"
+            size="md"
+            disabled={importForm.pending || !importMatches}
+          >
+            {importForm.pending ? "Importing…" : "Import snapshot file"}
+          </PButton>
+          {importForm.state?.ok ? (
+            <span style={successTextStyle}>
+              Imported {importForm.state.value.totalRows} row
+              {importForm.state.value.totalRows === 1 ? "" : "s"} from the file.
+            </span>
+          ) : null}
+        </div>
+        <FormStatus state={importForm.state} />
       </form>
     </div>
   );

@@ -99,6 +99,15 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   // PRD-SAC6 (#288) Clean Slate token: the wipe found no history to clear.
   nothing_to_wipe:
     "There's no accumulated history to clear right now — everything is already a clean slate.",
+  // PRD-SAC6 (#293/#294) Clean Slate revert + import tokens.
+  missing_snapshot:
+    "There's no recoverable snapshot to restore. Import a previously exported snapshot file instead.",
+  target_not_empty:
+    "There's already history in the database. Clear it first (Clean Slate) before restoring a snapshot, so the restore can't collide with existing rows.",
+  unsupported_snapshot_version:
+    "That snapshot file is from an unsupported version. Export a fresh snapshot from this app and try again.",
+  malformed_snapshot:
+    "That snapshot file is missing or has the wrong shape. Use a file exported by this app's Clean Slate Export.",
 };
 
 export const mapRpcError = makeRpcErrorMapper(
