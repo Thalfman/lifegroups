@@ -13,22 +13,18 @@ import { OpenLink } from "./overview-primitives";
 // (/admin/follow-ups, where admins can actually act on them); otherwise it lands
 // on launch planning, where the week's launch milestone is worked.
 
-function startOfTodayUtc(): number {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-}
-
-// A follow-up due within the next 7 days (inclusive of today and anything
-// already overdue) — the "this week" window. Parsed in UTC to match the stored
-// calendar day (see lib/shared/date.ts).
-function isDueThisWeek(dueDate: string | null): boolean {
+// A calendar date that falls on or before the shared "week ahead" horizon
+// (today + 7 days, inclusive of overdue) the data layer already derived. Both
+// dates are YYYY-MM-DD church-local strings, so a lexicographic compare is the
+// same-day comparison — no second (UTC) horizon, so the launch milestone and
+// the due-follow-up count can't disagree by a day across the UTC/church-local
+// boundary (Codex round 3).
+function isOnOrBeforeCutoff(
+  dueDate: string | null,
+  cutoffIso: string
+): boolean {
   if (!dueDate) return false;
-  const [y, m, d] = dueDate.split("-").map((p) => Number.parseInt(p, 10));
-  if (!y || !m || !d) return false;
-  const due = Date.UTC(y, m - 1, d);
-  const today = startOfTodayUtc();
-  const weekAhead = today + 7 * 24 * 60 * 60 * 1000;
-  return due <= weekAhead;
+  return dueDate <= cutoffIso;
 }
 
 function Row({ label, detail }: { label: string; detail: string }) {
@@ -75,11 +71,19 @@ export function ThisWeekCard({
   // counts every match, not just the first capped rows the card can see).
   const dueThisWeekCount = data.dueFollowUpsThisWeekCount;
   const lp = data.launchPlanning;
-  // Only treat the suggested-launch milestone as week-ahead work when it
-  // actually falls inside the same horizon a due follow-up would; a launch date
-  // weeks/months out is long-range planning, not this week.
+  // Launch planning is a read OUTSIDE the whole-dashboard error gate, so it can
+  // be unavailable even on an otherwise-live page. Surface that as its own
+  // partial row (below) rather than letting the launch milestone silently drop
+  // — "Nothing scheduled" would tell the admin there's no launch work when the
+  // launch data is actually just unavailable (Codex round 3).
+  const launchUnavailable = !lp.available;
+  // Only treat the suggested-launch milestone as week-ahead work when it falls
+  // inside the SAME shared church-local horizon the due-follow-up count used
+  // (data.weekAheadCutoffIso); a launch date weeks/months out is long-range
+  // planning, not this week.
   const launchDate =
-    lp.available && isDueThisWeek(lp.suggestedLaunchByDate)
+    lp.available &&
+    isOnOrBeforeCutoff(lp.suggestedLaunchByDate, data.weekAheadCutoffIso)
       ? lp.suggestedLaunchByDate
       : null;
 
@@ -110,6 +114,18 @@ export function ThisWeekCard({
     rows.push({
       label: "Recommended new groups",
       detail: String(lp.recommendedNewGroups),
+    });
+  }
+
+  // Launch planning failed to read (but the page is otherwise live): show a
+  // metadata-only note for the launch portion so the admin knows the launch
+  // outlook is unavailable rather than empty. Follow-up rows still render
+  // normally above. Suppressed when the whole dashboard degraded (that path
+  // hides the card's data entirely below).
+  if (launchUnavailable && !degraded) {
+    rows.push({
+      label: "Launch outlook",
+      detail: "Unavailable right now",
     });
   }
 

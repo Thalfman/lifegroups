@@ -113,6 +113,11 @@ describe("buildAdminDashboardData", () => {
     if (result.source !== "live") return;
     expect(captured).toBe("2026-05-25");
     expect(result.data.dueFollowUpsThisWeekCount).toBe(3);
+    // The shared "week ahead" horizon the Home card gates its launch milestone
+    // against is the SAME church-local bound the count read used — exposed so
+    // the card no longer derives a parallel (UTC) horizon (Codex round 3).
+    expect(result.data.weekAheadCutoffIso).toBe("2026-05-25");
+    expect(result.data.weekAheadCutoffIso).toBe(captured);
   });
 
   it("degrades to the fallback when the due-this-week count read errors", async () => {

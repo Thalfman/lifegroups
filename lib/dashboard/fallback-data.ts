@@ -15,9 +15,24 @@ import {
   DEMO_CAPACITY_SUMMARY,
   DEMO_HEALTH_SUMMARY,
   DEMO_LAUNCH_PLANNING,
+  DEMO_NOW_ISO,
   DEMO_SETUP_GAPS,
   DEMO_SUMMARY,
 } from "./demo-seed";
+import { churchTodayIso } from "@/lib/shared/church-time";
+
+// The demo "week ahead" horizon, derived the same way the live assembler does
+// (church-local today + 7 days from the pinned demo `now`) so the no-client
+// demo card gates its launch milestone against the same shared bound as live.
+function addDaysIso(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+const DEMO_WEEK_AHEAD_CUTOFF_ISO = addDaysIso(
+  churchTodayIso(new Date(DEMO_NOW_ISO)),
+  7
+);
 
 const FALLBACK_PIPELINE_COUNTS: Record<string, number> = {
   new: 6,
@@ -179,6 +194,7 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
   // (When the dashboard read actually failed the card is rendered degraded
   // and suppresses this entirely; this value is for the no-client demo.)
   dueFollowUpsThisWeekCount: 0,
+  weekAheadCutoffIso: DEMO_WEEK_AHEAD_CUTOFF_ISO,
 };
 
 export const LEADER_FALLBACK: LeaderDashboardData = {

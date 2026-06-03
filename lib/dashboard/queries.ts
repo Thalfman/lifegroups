@@ -586,6 +586,10 @@ export async function buildAdminDashboardData(
     return live({
       ...modelPayload,
       dueFollowUpsThisWeekCount: dueFollowUpsThisWeekCountResult.data ?? 0,
+      // Expose the SAME church-local horizon the count read used so the Home
+      // card gates its launch milestone against one shared bound, not a second
+      // (UTC) computation of its own.
+      weekAheadCutoffIso: dueThisWeekOnOrBeforeIso,
       shepherdCare,
       launchPlanning,
       leaderPipeline,
