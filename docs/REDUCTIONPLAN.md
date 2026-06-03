@@ -238,7 +238,7 @@ Inside a group detail page, use these tabs:
 | Follow-ups | Follow-ups related to this group. |
 | Events | Group-related calendar events. |
 
----
+> Boundary note: Attendance/health data comes from the check-in flow, which is currently frozen — `attendance_sessions` and `group_health_updates` stop receiving new data and `/admin/check-ins` stays behind the frozen-surface gate (ADR 0002, ADR 0009). Treat the `Attendance` tab as historical/read-only (or hidden) unless check-ins are re-enabled via the runtime flags described in ADR 0009, so admins are not shown stale or broken attendance trends as if live.
 
 # 5. Care
 
