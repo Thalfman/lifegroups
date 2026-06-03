@@ -26,6 +26,10 @@ const SETTINGS_REVALIDATE_PATHS = [
   "/admin/groups",
   "/admin",
   "/leader",
+  // The Group-health triage Watch filter reads metric defaults (Watch grade,
+  // attendance decline margin, healthy-attendance %), so a threshold edit must
+  // revalidate it too — otherwise the cached route keeps the old filtering.
+  "/admin/group-health",
 ] as const;
 
 // Check-in cadence keys (missed_checkin_warning_weeks, check_in_due_offset_hours)
