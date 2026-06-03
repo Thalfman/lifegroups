@@ -228,90 +228,96 @@ export function GroupHealthTriage({
         })}
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th style={thStyle}>Group</th>
-            <th style={thStyle}>Last check-in</th>
-            <th style={thStyle}>Attendance (8-wk avg)</th>
-            <th style={thStyle}>Grade</th>
-            <th style={thStyle}>Missing ratings</th>
-            <th style={thStyle}>Last saved</th>
-            <th style={thStyle}>
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.length === 0 ? (
+      {/* Phone usability (Admin Interaction Model req 13): a seven-column data
+          table cannot fit a 375px viewport, so the table scrolls inside its own
+          region rather than forcing the whole page to scroll horizontally —
+          matching the other admin tables (care directory, scenarios). */}
+      <div className="lg-m-table-wrap" style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
             <tr>
-              <td style={{ ...tdStyle, color: P.ink2 }} colSpan={7}>
-                {rows.length === 0
-                  ? "No active groups to assess yet."
-                  : "No groups match this filter."}
-              </td>
+              <th style={thStyle}>Group</th>
+              <th style={thStyle}>Last check-in</th>
+              <th style={thStyle}>Attendance (8-wk avg)</th>
+              <th style={thStyle}>Grade</th>
+              <th style={thStyle}>Missing ratings</th>
+              <th style={thStyle}>Last saved</th>
+              <th style={thStyle}>
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
-          ) : (
-            visible.map((row) => {
-              const missing = missingRatings(
-                row,
-                spiritualGrowthLabel,
-                groupQuestionLabel
-              );
-              return (
-                <tr key={row.group_id}>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>
-                    {row.group_name}
-                  </td>
-                  <td style={tdStyle}>{dateCell(row.last_check_in_week)}</td>
-                  <td style={tdStyle}>
-                    {row.attendance_pct === null
-                      ? "—"
-                      : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
-                    {row.stale ? (
-                      <span
-                        style={{
-                          marginLeft: 6,
-                          fontSize: 11,
-                          color: P.mustardTextStrong,
-                        }}
-                      >
-                        stale
-                      </span>
-                    ) : null}
-                  </td>
-                  <td style={tdStyle}>
-                    {row.computed_letter ??
-                      (row.unassessed ? "Not assessed" : "—")}
-                  </td>
-                  <td
-                    style={{
-                      ...tdStyle,
-                      color: missing.length ? P.terraTextStrong : P.ink3,
-                    }}
-                  >
-                    {missing.length === 0 ? "None" : missing.join(", ")}
-                  </td>
-                  <td style={tdStyle}>{dateCell(row.last_saved_at)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>
-                    <PButton
-                      tone="ghost"
-                      size="sm"
-                      aria-label={`Open ${row.group_name} health editor`}
-                      onClick={() => {
-                        dirtyRef.current = false;
-                        setOpenGroupId(row.group_id);
+          </thead>
+          <tbody>
+            {visible.length === 0 ? (
+              <tr>
+                <td style={{ ...tdStyle, color: P.ink2 }} colSpan={7}>
+                  {rows.length === 0
+                    ? "No active groups to assess yet."
+                    : "No groups match this filter."}
+                </td>
+              </tr>
+            ) : (
+              visible.map((row) => {
+                const missing = missingRatings(
+                  row,
+                  spiritualGrowthLabel,
+                  groupQuestionLabel
+                );
+                return (
+                  <tr key={row.group_id}>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                      {row.group_name}
+                    </td>
+                    <td style={tdStyle}>{dateCell(row.last_check_in_week)}</td>
+                    <td style={tdStyle}>
+                      {row.attendance_pct === null
+                        ? "—"
+                        : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
+                      {row.stale ? (
+                        <span
+                          style={{
+                            marginLeft: 6,
+                            fontSize: 11,
+                            color: P.mustardTextStrong,
+                          }}
+                        >
+                          stale
+                        </span>
+                      ) : null}
+                    </td>
+                    <td style={tdStyle}>
+                      {row.computed_letter ??
+                        (row.unassessed ? "Not assessed" : "—")}
+                    </td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        color: missing.length ? P.terraTextStrong : P.ink3,
                       }}
                     >
-                      Open
-                    </PButton>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                      {missing.length === 0 ? "None" : missing.join(", ")}
+                    </td>
+                    <td style={tdStyle}>{dateCell(row.last_saved_at)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <PButton
+                        tone="ghost"
+                        size="sm"
+                        aria-label={`Open ${row.group_name} health editor`}
+                        onClick={() => {
+                          dirtyRef.current = false;
+                          setOpenGroupId(row.group_id);
+                        }}
+                      >
+                        Open
+                      </PButton>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* One always-mounted drawer (open toggled), so Radix owns the focus trap
           and focus restore natively — matching the established calendar drawer
