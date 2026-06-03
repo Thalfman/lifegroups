@@ -33,7 +33,13 @@ export function DeactivateProfileButton({
     <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
       <form action={formAction} onSubmit={confirmDeactivate}>
         <input type="hidden" name="profile_id" value={profileId} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="ghost"
+          size="sm"
+          disabled={pending}
+          aria-label={fullName ? `${label} ${fullName}` : undefined}
+        >
           {pending ? "Deactivating…" : label}
         </PButton>
       </form>

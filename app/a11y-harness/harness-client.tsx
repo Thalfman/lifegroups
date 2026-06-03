@@ -20,6 +20,10 @@ import {
   AdminFollowUpsShell,
   type AdminFollowUpsData,
 } from "@/components/admin/follow-ups/follow-ups-shell";
+import {
+  PeopleManagementShell,
+  type PeopleManagementData,
+} from "@/components/admin/people-management-shell";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import {
@@ -321,6 +325,53 @@ const SETTINGS_DATA: SettingsShellData = {
   errors: { defaults: null, groups: null, overrides: null },
 };
 
+// People surface (#270, Admin Interaction Model req 3). Proves the People page
+// defaults to the Directory view, with Add person and Assignments as secondary
+// views reached by explicit actions, and that group assignment happens in a
+// detail surface (the EditingSurface drawer) rather than repeated inline per
+// group. Reuses the dashboard demo seed for the directory + assignment rosters,
+// plus a couple of member records (the seed has none).
+const PEOPLE_MEMBERS = [
+  {
+    id: "people-mem-1",
+    full_name: "Jordan Avery",
+    email: null,
+    phone: null,
+    household_name: null,
+    status: "active" as const,
+    care_sensitivity_flag: false,
+    created_at: STAMP,
+    updated_at: STAMP,
+  },
+  {
+    id: "people-mem-2",
+    full_name: "Riley Chen",
+    email: "riley@example.test",
+    phone: null,
+    household_name: null,
+    status: "active" as const,
+    care_sensitivity_flag: false,
+    created_at: STAMP,
+    updated_at: STAMP,
+  },
+];
+
+const PEOPLE_DATA: PeopleManagementData = {
+  currentActorProfileId: "p-priya",
+  profiles: DEMO_PROFILES,
+  members: PEOPLE_MEMBERS,
+  groups: DEMO_GROUPS,
+  groupLeaders: DEMO_LEADERS,
+  memberships: DEMO_MEMBERSHIPS,
+  errors: {
+    profiles: null,
+    members: null,
+    groups: null,
+    leaders: null,
+    memberships: null,
+  },
+};
+
 function Surface({
   id,
   heading,
@@ -396,6 +447,10 @@ export function A11yHarnessClient() {
             </div>
           ))}
         </div>
+      </Surface>
+
+      <Surface id="people" heading="People (directory / add / assignments)">
+        <PeopleManagementShell data={PEOPLE_DATA} />
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">
