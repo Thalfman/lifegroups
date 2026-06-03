@@ -1,5 +1,4 @@
 import {
-  currentUtcDateIso,
   fetchActiveGroupCount,
   fetchActiveMemberships,
   fetchActiveShepherdCoverageAssignmentsForAdmin,
@@ -418,8 +417,11 @@ export async function buildAdminDashboardData(
     const weekEnd = addDaysIsoForWeek(selectedWeek, 6);
     // Pin "today" once so the shepherd-care summary uses the same
     // calendar day for needs_attention math and the dashboard for any
-    // request-bound timing.
-    const todayIso = currentUtcDateIso();
+    // request-bound timing. Derived from the SAME injected `now` that drives
+    // `selectedWeek` / the activity period (via `isoWeekStart`/
+    // `overviewPeriodRange`) so fixed-`now` runs (tests, deterministic demo
+    // paths) compute "this week" against one clock, not the real wall clock.
+    const todayIso = churchTodayIso(now);
     // The "this week" horizon the Home card renders: today + 7 days, inclusive
     // of overdue. Computed here so the UNtruncated due-count read below matches
     // the card's `isDueThisWeek` window exactly.

@@ -8,8 +8,10 @@ import { OpenLink } from "./overview-primitives";
 // follow-ups and the launch milestone, composed from data the dashboard already
 // fetches (no new data source). Every row is metadata only — a count or a date,
 // never a follow-up or note body — so this card is safe outside the guarded
-// care/planning surfaces (ADR 0002). The single action lands on launch planning,
-// where the week's launch work happens ("View planning").
+// care/planning surfaces (ADR 0002). The action follows the week's work: when
+// follow-ups are due it lands on the dedicated follow-up workflow
+// (/admin/follow-ups, where admins can actually act on them); otherwise it lands
+// on launch planning, where the week's launch milestone is worked.
 
 function startOfTodayUtc(): number {
   const now = new Date();
@@ -100,19 +102,30 @@ export function ThisWeekCard({
     });
   }
 
-  if (lp.available && lp.recommendedNewGroups > 0) {
+  // The capacity figure is only this-week work when the launch it drives falls
+  // inside the week-ahead window; gated behind `launchDate` (same horizon as the
+  // launch-date row) so long-range capacity planning doesn't surface under
+  // "This week". When the launch is out of window the row drops with the date.
+  if (launchDate && lp.available && lp.recommendedNewGroups > 0) {
     rows.push({
       label: "Recommended new groups",
       detail: String(lp.recommendedNewGroups),
     });
   }
 
+  // Route the single action to the workflow where this week's work is actually
+  // done: due follow-ups take priority (they're the immediately-actionable
+  // work) and land on the dedicated follow-up surface; otherwise the action
+  // points at launch planning for the launch milestone.
+  const action =
+    dueThisWeekCount > 0 ? (
+      <OpenLink href="/admin/follow-ups" label="Work follow-ups" />
+    ) : (
+      <OpenLink href="/admin/launch-planning" label="View planning" />
+    );
+
   return (
-    <StatusCard
-      eyebrow="This week"
-      title="The week ahead"
-      action={<OpenLink href="/admin/launch-planning" label="View planning" />}
-    >
+    <StatusCard eyebrow="This week" title="The week ahead" action={action}>
       {degraded ? (
         <p
           style={{

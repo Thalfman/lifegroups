@@ -92,6 +92,29 @@ describe("buildAdminDashboardData", () => {
     expect(result.data.dueFollowUpsThisWeekCount).toBe(12);
   });
 
+  it("derives the due-this-week horizon from the injected `now`, not the wall clock", async () => {
+    // Regression (Codex round 2): the count read must ask Supabase for the same
+    // "this week" the rest of the dashboard (selectedWeek, activity period) is
+    // assembled around — i.e. today+7 measured from `options.now`. With a fixed
+    // `now` of 2026-05-18 the horizon is 2026-05-25, regardless of the real
+    // current date, so fixed-date runs don't drift onto the live week.
+    let captured: string | undefined;
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOpenFollowUpsDueCount: async ({ dueOnOrBeforeIso }) => {
+          captured = dueOnOrBeforeIso;
+          return { data: 3, error: null };
+        },
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(captured).toBe("2026-05-25");
+    expect(result.data.dueFollowUpsThisWeekCount).toBe(3);
+  });
+
   it("degrades to the fallback when the due-this-week count read errors", async () => {
     // The count read is part of the firstError gate: it backs the Home "This
     // week" card's headline figure, so a failure degrades the page rather than
