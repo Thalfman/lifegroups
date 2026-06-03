@@ -14,22 +14,30 @@ import type {
   GroupSetupCategory,
 } from "@/lib/dashboard/labels";
 
-// Setup is "complete" when the group has at least one active leader AND its
-// meeting day + time are both set. The two specific gaps each get their own
-// label so the operator knows exactly what's missing; if both are missing we
-// surface the leader gap first (a group can't run without a leader at all),
-// falling back to the generic "Needs setup" when neither specific gap applies
-// (defensive — shouldn't happen given the two checks, but keeps the union
-// total).
+// Setup is "complete" when the group has at least one active leader, its
+// meeting day + time are both set, AND it has an effective capacity to measure
+// against (plan §4: Needs Setup lists groups missing leader, meeting details,
+// capacity, or other setup info). The two named gaps each get their own label
+// so the operator knows exactly what's missing; if both are missing we surface
+// the leader gap first (a group can't run without a leader at all). A missing
+// effective capacity has no dedicated label, so it falls back to the generic
+// "Needs setup" — the capacity zone is unknown until a default or per-group
+// override resolves one.
+//
+// `effectiveCapacity` is the SAME defaults → per-group-override value the cards
+// and list resolve (lib/admin/metrics.effectiveCapacity); null means no zone
+// can be computed. Pass it through rather than re-resolving here (ADR 0011).
 export function setupCategory(args: {
   hasLeader: boolean;
   meetingDay: string | null;
   meetingTime: string | null;
+  effectiveCapacity: number | null;
 }): GroupSetupCategory {
   const hasMeeting =
     Boolean(args.meetingDay?.trim()) && Boolean(args.meetingTime?.trim());
   if (!args.hasLeader) return "needs_leader";
   if (!hasMeeting) return "missing_meeting";
+  if (args.effectiveCapacity === null) return "needs_setup";
   return "complete";
 }
 

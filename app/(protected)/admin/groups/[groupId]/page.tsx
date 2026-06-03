@@ -34,7 +34,7 @@ import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import {
   currentPeriodMonthIso,
   fetchGroupHealthRatings,
-  listGroupHealthOverview,
+  getGroupHealthOverviewForGroup,
 } from "@/lib/admin/group-health-read";
 import {
   capacityCategoryLabel,
@@ -58,6 +58,13 @@ import {
   effectiveCapacityWarningPct,
   isExcludedFromCapacityMetrics,
 } from "@/lib/admin/metrics";
+import {
+  generateOccurrencesInRange,
+  mergeOverrides,
+  toSavedOverrides,
+  type ResolvedOccurrence,
+} from "@/lib/calendar/occurrences";
+import { churchTodayIso } from "@/lib/shared/church-time";
 import type { GroupsRow } from "@/types/database";
 import type { AttendanceSessionStatus, GroupHealthLetter } from "@/types/enums";
 
@@ -204,7 +211,10 @@ async function OverviewTab({
       fetchAllGroupLeaders(client, { activeOnly: true }),
       fetchActiveMemberships(client, { groupId }),
       fetchMetricDefaultsCached(client),
-      listGroupHealthOverview(client, currentPeriodMonthIso()),
+      // Targeted single-group health read (#308): runs the same grade
+      // computation as the bulk overview but only for this group, so opening
+      // one detail page no longer recomputes every active group.
+      getGroupHealthOverviewForGroup(client, groupId, currentPeriodMonthIso()),
       // Per-group metric overrides — resolved the SAME way the Groups list and
       // Settings do (defaults → per-group override precedence, ADR 0011) so the
       // detail capacity zone can't disagree with the list card for this group.
@@ -218,12 +228,12 @@ async function OverviewTab({
   );
   const memberCount = (membershipsRes.data ?? []).length;
   const grade: GroupHealthLetter | null =
-    (healthRes.data ?? []).find((r) => r.group_id === groupId)
-      ?.computed_letter ?? null;
+    healthRes.data?.computed_letter ?? null;
 
+  const cap = effectiveCapacity(group, override, defaults);
   const status = capacityStatus({
     activeMemberCount: memberCount,
-    effectiveCapacity: effectiveCapacity(group, override, defaults),
+    effectiveCapacity: cap,
     warningPct: effectiveCapacityWarningPct(override, defaults),
     fullPct: effectiveCapacityFullPct(defaults),
     excluded: isExcludedFromCapacityMetrics(override),
@@ -235,6 +245,8 @@ async function OverviewTab({
     hasLeader,
     meetingDay: group.meeting_day,
     meetingTime: group.meeting_time,
+    // Same resolved capacity the zone shows; null keeps the group in Needs Setup.
+    effectiveCapacity: cap,
   });
   const health = healthCategory(grade, defaults.group_health_watch_grade);
   const capacity = capacityCategory(status);
@@ -366,12 +378,13 @@ async function HealthTab({ groupId }: { groupId: string }) {
 
   const period = currentPeriodMonthIso();
   const [overviewRes, ratingsRes, defaultsRes] = await Promise.all([
-    listGroupHealthOverview(client, period),
+    // Single-group health read (#308) — same grade logic, O(1) reads.
+    getGroupHealthOverviewForGroup(client, groupId, period),
     fetchGroupHealthRatings(client, groupId, period),
     fetchMetricDefaultsCached(client),
   ]);
 
-  const row = (overviewRes.data ?? []).find((r) => r.group_id === groupId);
+  const row = overviewRes.data ?? null;
   const ratings = ratingsRes.data;
   const watchGrade = decodeMetricDefaults(
     defaultsRes.data ?? null
@@ -544,6 +557,13 @@ async function FollowUpsTab({ groupId }: { groupId: string }) {
 
 // --- Events: upcoming calendar events for this group ------------------------
 
+// How far ahead the Events tab lists upcoming scheduled meetings. Groups on the
+// normal recurring schedule have no saved override rows, so a plain row read
+// returns nothing even though meetings are coming up; like the calendar surface,
+// we GENERATE occurrences from the group's schedule for this window so the tab
+// matches what the full calendar shows.
+const EVENTS_LOOKAHEAD_DAYS = 56; // ~8 weeks
+
 async function EventsTab({
   groupId,
   group,
@@ -554,19 +574,49 @@ async function EventsTab({
   const client = await createSupabaseServerClient();
   if (!client) return null;
 
-  const eventsRes = await fetchGroupCalendarEvents(client, { groupId });
+  const todayIso = churchTodayIso();
+  const toIso = addDaysIso(todayIso, EVENTS_LOOKAHEAD_DAYS);
+
+  // Pull the saved override rows over the same window so generated occurrences
+  // pick up any per-date changes (cancelled, retyped, retitled) — the calendar
+  // page merges the two the identical way (read-only here; no writes per ADR
+  // 0009).
+  const eventsRes = await fetchGroupCalendarEvents(client, {
+    groupId,
+    fromDate: todayIso,
+    toDate: toIso,
+  });
   const events = eventsRes.data ?? [];
+
+  // Reuse the calendar's occurrence-generation + override-merge helpers rather
+  // than duplicating the cadence logic. Generated meetings from the group's
+  // recurring schedule are surfaced even when no override row exists.
+  const generated = generateOccurrencesInRange(
+    {
+      meetingDay: group.meeting_day,
+      meetingTime: group.meeting_time,
+      meetingFrequency: group.meeting_frequency,
+      meetingWeekParity: group.meeting_week_parity,
+    },
+    todayIso,
+    toIso
+  );
+  const resolved = mergeOverrides(
+    generated,
+    toSavedOverrides(events),
+    group.meeting_time
+  );
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
-        {events.length === 0 ? (
-          <p style={bodyTextStyle}>No calendar events on record.</p>
+        {resolved.length === 0 ? (
+          <p style={bodyTextStyle}>No upcoming meetings or events scheduled.</p>
         ) : (
           <ul style={listResetStyle}>
-            {events.map((e) => (
+            {resolved.map((o) => (
               <li
-                key={e.id}
+                key={o.overrideId ?? `gen-${o.date}`}
                 style={{
                   ...bodyTextStyle,
                   display: "flex",
@@ -576,9 +626,10 @@ async function EventsTab({
                   borderTop: "1px solid var(--c-line)",
                 }}
               >
-                <span>{e.title ?? e.event_type}</span>
+                <span>{occurrenceLabel(o)}</span>
                 <span style={{ color: "var(--c-ink3)" }}>
-                  {weekLabel(e.event_date)}
+                  {weekLabel(o.date)}
+                  {o.meetingTime ? ` · ${o.meetingTime}` : ""}
                 </span>
               </li>
             ))}
@@ -597,6 +648,23 @@ async function EventsTab({
       </Link>
     </div>
   );
+}
+
+// A human label for one resolved occurrence: the saved title when present, else
+// the gathering type, with a "Cancelled / Off" suffix so paused dates read
+// honestly rather than as live meetings.
+function occurrenceLabel(o: ResolvedOccurrence): string {
+  const base = o.title?.trim() || eventTypeLabel(o.eventType);
+  if (o.status === "cancelled") return `${base} · Cancelled`;
+  if (o.status === "off") return `${base} · Off`;
+  return base;
+}
+
+function eventTypeLabel(type: ResolvedOccurrence["eventType"]): string {
+  return type
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 // --- Small presentational helpers -------------------------------------------
@@ -632,6 +700,14 @@ function meetingSummary(group: GroupsRow): string {
   if (day) return day;
   if (time) return time;
   return "No meeting day/time set";
+}
+
+// Add a whole number of days to a YYYY-MM-DD date, UTC-anchored to avoid
+// runtime-timezone drift (the calendar's own range helpers do the same).
+function addDaysIso(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
 }
 
 function weekLabel(iso: string): string {

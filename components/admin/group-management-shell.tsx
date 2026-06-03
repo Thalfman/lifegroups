@@ -11,6 +11,22 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 
+// Per-group triage signals that the four status labels alone don't carry. All
+// default to "no concern" when absent, so a group the overview never returned
+// (or a failed side read) never spuriously lands in a triage tab.
+export type GroupHealthSignals = {
+  // One or more required ratings (spiritual-growth / group-question) are not yet
+  // recorded for the current period — distinct from "not assessed", because a
+  // group can have an attendance-derived grade letter while still missing these.
+  missingRequiredRatings: boolean;
+  // The group has at least one open / in-progress generic follow-up, or the
+  // director's group-health "needs follow-up" flag is set.
+  hasOpenFollowUp: boolean;
+  // A leader / co-leader of this group has an open shepherd-care concern
+  // (per-leader care model, PRD). Members are never counted.
+  hasCareConcern: boolean;
+};
+
 export type GroupManagementData = {
   groups: GroupsRow[];
   groupLeaders: GroupLeadersRow[];
@@ -24,6 +40,11 @@ export type GroupManagementData = {
   // zone. Absent / null = not assessed. Keyed by group id; closed groups are
   // simply absent (the overview reads active groups only).
   healthGradesByGroupId: Record<string, GroupHealthLetter | null>;
+  // Per-group triage signals beyond the grade letter, projected from the same
+  // group-health overview the Health zone uses, plus the group's open follow-up
+  // and leader-care concern reads. These drive the Needs Health Check (missing
+  // required ratings) and Needs Attention (union of concerns) tabs per plan §4.
+  healthSignalsByGroupId: Record<string, GroupHealthSignals>;
   errors: {
     groups: string | null;
     leaders: string | null;

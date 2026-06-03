@@ -233,6 +233,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
           hasLeader: (leadersByGroupId.get(g.id) ?? NO_LEADERS).length > 0,
           meetingDay: g.meeting_day,
           meetingTime: g.meeting_time,
+          // Same defaults → per-group override capacity the card + capacity zone
+          // resolve; null = no zone, which keeps the group in Needs Setup.
+          effectiveCapacity: cap,
         }),
         health: healthCategory(
           props.healthGradesByGroupId[g.id] ?? null,
