@@ -3,10 +3,22 @@ import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-for
 import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
 import { ResetMetricDefaultsButton } from "@/components/admin/forms/reset-metric-defaults-button";
+import { EditableCopyForm } from "@/components/admin/forms/editable-copy-form";
+import {
+  SettingsTabs,
+  type SettingsTab,
+} from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
-import { P, fontBody, fontDisplay } from "@/lib/pastoral";
+import { PLinkButton } from "@/components/pastoral/button";
+import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
 import type { MetricDefaults } from "@/lib/admin/metrics";
+import {
+  EDITABLE_COPY_DEFINITIONS,
+  GROUP_HEALTH_COPY_KEYS,
+  resolveCopy,
+  type EditableCopyConfig,
+} from "@/lib/admin/editable-copy";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 
 export type SettingsShellData = {
@@ -14,6 +26,17 @@ export type SettingsShellData = {
   defaultsSource: "live" | "fallback";
   groups: GroupsRow[];
   groupMetricSettings: GroupMetricSettingsRow[];
+  // Issue #304: whether the viewer is the super_admin. Settings is a
+  // ministry-admin surface, but two facets stay behind the super-admin
+  // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
+  // platform_config) and bulk people import (requireSuperAdminSession). For a
+  // ministry_admin these tabs surface the capability and deep-link to the
+  // Super Admin Console rather than exposing a write path here.
+  isSuperAdmin: boolean;
+  // Decoded editable copy (group-health question wording + care-status labels)
+  // per ADR 0007. Only populated for the super_admin, whose RLS lets the page
+  // read platform_config; null for a ministry_admin (who can't read it).
+  editableCopy: EditableCopyConfig | null;
   errors: {
     defaults: string | null;
     groups: string | null;
@@ -36,8 +59,42 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
   const anyError =
     data.errors.defaults || data.errors.groups || data.errors.overrides;
 
+  const tabs: SettingsTab[] = [
+    {
+      id: "general",
+      label: "General",
+      panel: (
+        <GeneralPanel
+          isSuperAdmin={data.isSuperAdmin}
+          editableCopy={data.editableCopy}
+        />
+      ),
+    },
+    {
+      id: "thresholds",
+      label: "Thresholds",
+      panel: (
+        <ThresholdsPanel
+          data={data}
+          settingsByGroupId={settingsByGroupId}
+          overrideRows={overrideRows}
+        />
+      ),
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      panel: <NotificationsPanel />,
+    },
+    {
+      id: "imports",
+      label: "Imports",
+      panel: <ImportsPanel isSuperAdmin={data.isSuperAdmin} />,
+    },
+  ];
+
   return (
-    <div style={{ display: "grid", gap: 36 }}>
+    <div style={{ display: "grid", gap: 28 }}>
       {anyError ? (
         <div role="alert" style={alertStyle}>
           Some sections couldn&rsquo;t load. The page below shows what we did
@@ -53,6 +110,30 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         </div>
       ) : null}
 
+      {/* Thresholds is the default tab: it carries the metric defaults an
+          operator changes most, and the Settings a11y spec inspects those
+          fields on load. */}
+      <SettingsTabs tabs={tabs} defaultTabId="thresholds" />
+    </div>
+  );
+}
+
+// Thresholds tab (#304): care stale-contact days, capacity warnings, and health
+// thresholds grouped together — these all live in the single MetricDefaultsForm
+// (primary defaults always visible; capacity/attendance/group-health thresholds
+// behind the Advanced thresholds disclosure). The rarely-used per-group
+// overrides stay demoted into their own collapsed disclosure below.
+function ThresholdsPanel({
+  data,
+  settingsByGroupId,
+  overrideRows,
+}: {
+  data: SettingsShellData;
+  settingsByGroupId: Map<string, GroupMetricSettingsRow>;
+  overrideRows: { settings: GroupMetricSettingsRow; group: GroupsRow | null }[];
+}) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
           eyebrow="Global metric defaults"
@@ -149,6 +230,148 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
           </section>
         </div>
       </details>
+    </div>
+  );
+}
+
+// General tab (#304): basic ministry/app defaults. Owns the Julian pastoral copy
+// per ADR 0007 — the two Group-Health question wordings and the five care-status
+// labels. Editing those writes the Super-Admin-only platform_config via a
+// super-admin RPC, so the editor renders only for the super_admin; a
+// ministry_admin sees a clear pointer to the Super Admin Console rather than a
+// write path that the RLS would reject anyway (no data-model change).
+function GeneralPanel({
+  isSuperAdmin,
+  editableCopy,
+}: {
+  isSuperAdmin: boolean;
+  editableCopy: EditableCopyConfig | null;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Pastoral wording"
+          title="Group-health questions & care-status labels"
+          description="The wording leaders see on the group-health check-in and the labels used across the care dashboard. Keep them in the ministry's own voice."
+        />
+        {isSuperAdmin ? (
+          <Card>
+            <div style={{ display: "grid", gap: 10 }}>
+              {EDITABLE_COPY_DEFINITIONS.map((def) => {
+                const isGroupHealth =
+                  def.key === GROUP_HEALTH_COPY_KEYS.spiritualGrowth ||
+                  def.key === GROUP_HEALTH_COPY_KEYS.groupQuestion;
+                const inputId = `copy-${def.key.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+                return (
+                  <div
+                    key={def.key}
+                    className="lg-m-grid-stack"
+                    style={copyRowStyle}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <label htmlFor={inputId} style={copyLabelStyle}>
+                        {def.label}
+                      </label>
+                      <div style={copyTagStyle}>
+                        {isGroupHealth
+                          ? "Group-health question"
+                          : "Care-status label"}
+                      </div>
+                    </div>
+                    <EditableCopyForm
+                      copyKey={def.key}
+                      inputId={inputId}
+                      currentValue={resolveCopy(editableCopy ?? {}, def.key)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+                margin: "0 0 14px",
+                lineHeight: 1.55,
+              }}
+            >
+              The group-health question wording and care-status labels are
+              edited in the Super Admin Console. Ask the super admin to adjust
+              them there; the changes take effect everywhere these labels
+              appear.
+            </p>
+            <PLinkButton href="/admin/super-admin" tone="ghost" size="sm">
+              Open Super Admin Console →
+            </PLinkButton>
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// Notifications tab (#304): no notification/reminder settings exist yet, so we
+// show an honest empty state rather than fabricating controls.
+function NotificationsPanel() {
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <SectionHeader
+        eyebrow="Notifications"
+        title="Reminder & email preferences"
+        description="Where reminder and email preferences will live once they ship."
+      />
+      <Empty
+        title="No notification settings yet"
+        description="There aren't any reminder or email preferences to configure right now. This tab is reserved for them so they land in a predictable place."
+      />
+    </div>
+  );
+}
+
+// Imports tab (#304): a navigation/discoverability surface only. Bulk people
+// import is a security-critical write path gated by requireSuperAdminSession()
+// in the Super Admin Console — that boundary is unchanged. This tab deep-links
+// to that surface for the super_admin and explains the gate to a ministry_admin;
+// it introduces NO normal-admin write path.
+function ImportsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <SectionHeader
+        eyebrow="Imports"
+        title="Bulk people import"
+        description="Import tools for getting people into the system in bulk."
+      />
+      <Card>
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            margin: "0 0 14px",
+            lineHeight: 1.55,
+          }}
+        >
+          Bulk people import is a guarded write path and stays in the Super
+          Admin Console.{" "}
+          {isSuperAdmin
+            ? "Open the console to run an import."
+            : "Only the super admin can run an import; ask them if you need people loaded in bulk."}
+        </p>
+        {isSuperAdmin ? (
+          <PLinkButton
+            href="/admin/super-admin#people-import"
+            tone="ghost"
+            size="sm"
+          >
+            Open import in Super Admin Console →
+          </PLinkButton>
+        ) : null}
+      </Card>
     </div>
   );
 }
@@ -311,6 +534,32 @@ function Empty({ title, description }: { title: string; description: string }) {
 }
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
+
+const copyRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 14,
+  border: `1px solid ${P.line}`,
+  borderRadius: 8,
+  padding: "12px 14px",
+  flexWrap: "wrap" as const,
+} as const;
+
+const copyLabelStyle = {
+  display: "block",
+  fontFamily: fontSans,
+  fontSize: 13,
+  fontWeight: 600,
+  color: P.ink,
+  marginBottom: 4,
+} as const;
+
+const copyTagStyle = {
+  fontFamily: fontBody,
+  fontSize: 11,
+  color: P.ink3,
+} as const;
 
 const detailsStyle = {
   border: `1px solid ${P.line}`,
