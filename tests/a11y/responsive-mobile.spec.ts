@@ -18,15 +18,19 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 //      collapsed-to-one-column layouts stay accessible (palette contrast stays
 //      the one documented non-blocking carve-out).
 //
-// New surfaces are covered automatically: add the surface to the harness and it
-// joins both loops below.
+// Coverage of a new harness surface is split: the axe pass scans the whole
+// harness, so a new surface joins it automatically; the per-surface overflow
+// check iterates the explicit SURFACE_IDS list below, so a new surface must be
+// added there to be checked for horizontal overflow.
 
 // A narrow phone. 375px is the iPhone SE / mini class width and sits under the
 // repo's 767px mobile breakpoint, so the .lg-m-* rules are active.
 const PHONE = { width: 375, height: 812 };
 
-// Every surface mounted in the harness. Kept in sync with harness-client.tsx;
-// a missing id fails fast in the loop rather than silently skipping.
+// Every surface mounted in the harness, listed explicitly so the per-surface
+// overflow loop covers each one (add a new harness surface here too). An id
+// with no matching surface fails fast on the visibility assertion rather than
+// silently skipping.
 const SURFACE_IDS = [
   "groups-directory",
   "groups-directory-collisions",

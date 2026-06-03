@@ -98,5 +98,7 @@ renders every harness surface at a 375px phone viewport and asserts:
   (color-contrast remains the one documented non-blocking palette carve-out,
   a PRD Non-Goal).
 
-New surfaces are covered automatically: add them to the harness and they
-join both loops. Run with `npm run test:a11y`.
+The axe pass scans the whole harness, so a new surface joins it automatically.
+The per-surface overflow check iterates an explicit `SURFACE_IDS` list, so a
+new harness surface must also be added there to be checked for horizontal
+overflow. Run with `npm run test:a11y`.
