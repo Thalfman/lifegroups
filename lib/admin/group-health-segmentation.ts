@@ -7,6 +7,7 @@
 // override-resolved effective grade once override-wiring lands (#129).
 
 import type { GroupHealthLetter } from "@/types/enums";
+import { GROUP_HEALTH_GRADE_LADDER } from "@/lib/admin/group-health";
 
 // The minimal shape segmentation needs from an overview row: who the group is
 // and its grade letter (null when the rubric couldn't grade it yet).
@@ -29,7 +30,8 @@ export type GradeSegmentation = {
   unassessed: GradedGroup[];
 };
 
-const LETTER_ORDER: GroupHealthLetter[] = ["A", "B", "C", "D"];
+// One grade ladder, shared with the rubric module (no second copy to drift).
+const LETTER_ORDER = GROUP_HEALTH_GRADE_LADDER;
 
 function byName(a: GradedGroup, b: GradedGroup): number {
   return a.group_name.localeCompare(b.group_name);
@@ -45,7 +47,7 @@ function rankWeight(letter: GroupHealthLetter | null): number {
 // ties. The dashboard's "which groups need me" list.
 export function rankByGrade(groups: GradedGroup[]): GradedGroup[] {
   return [...groups].sort(
-    (a, b) => rankWeight(a.letter) - rankWeight(b.letter) || byName(a, b),
+    (a, b) => rankWeight(a.letter) - rankWeight(b.letter) || byName(a, b)
   );
 }
 

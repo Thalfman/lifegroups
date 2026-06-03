@@ -174,6 +174,57 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
             </div>
           </div>
 
+          {/* Admin IM 05 (#265): the two director-confirmed Group-health triage
+              thresholds. Sourced here (not hard-coded) so the Watch filter
+              honours the director's mental model. */}
+          <div className="lg-m-grid-stack" style={formGridStyle}>
+            <div>
+              <label htmlFor="group_health_watch_grade" style={fieldLabelStyle}>
+                Group-health Watch grade
+              </label>
+              <select
+                id="group_health_watch_grade"
+                name="group_health_watch_grade"
+                defaultValue={defaults.group_health_watch_grade}
+                style={fieldInputStyle}
+              >
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+              </select>
+              <p style={hintStyle}>
+                Groups graded at or below this letter land on the Watch filter.
+              </p>
+            </div>
+
+            <div>
+              <label
+                htmlFor="group_health_attendance_decline_margin_pct"
+                style={fieldLabelStyle}
+              >
+                Attendance decline margin (points)
+              </label>
+              <input
+                id="group_health_attendance_decline_margin_pct"
+                name="group_health_attendance_decline_margin_pct"
+                type="number"
+                min={0}
+                max={100}
+                inputMode="numeric"
+                defaultValue={
+                  defaults.group_health_attendance_decline_margin_pct
+                }
+                style={fieldInputStyle}
+              />
+              <p style={hintStyle}>
+                0–100. A group whose recent 4-week attendance average drops
+                below the prior 4 weeks by at least this many points counts as
+                declining (Watch).
+              </p>
+            </div>
+          </div>
+
           <div className="lg-m-grid-stack" style={formGridStyle}>
             <ReadOnlyDefault
               label="Check-in due offset (hours)"

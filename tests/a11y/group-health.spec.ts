@@ -165,6 +165,64 @@ test.describe("group health triage + editing surface", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("the Watch filter shows groups at/below the threshold or declining", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("button", { name: "Watch" }).click();
+
+    // Dawson (grade C, at the threshold) and Bryant (declining attendance) are
+    // on Watch; Anderson (grade B, not declining) is not.
+    await expect(
+      surface.getByRole("button", { name: "Open Dawson health editor" })
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("button", { name: "Open Bryant health editor" })
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("button", { name: "Open Anderson health editor" })
+    ).toHaveCount(0);
+    await expect(
+      surface.getByRole("button", { name: "Watch" })
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("the Needs follow-up filter shows only flagged groups", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("button", { name: "Needs follow-up" }).click();
+
+    // Only Dawson carries the open follow-up flag.
+    await expect(
+      surface.getByRole("button", { name: "Open Dawson health editor" })
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("button", { name: "Open Anderson health editor" })
+    ).toHaveCount(0);
+    await expect(
+      surface.getByRole("button", { name: "Open Bryant health editor" })
+    ).toHaveCount(0);
+  });
+
+  test("the drawer's follow-up checkbox names its group as record context", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface
+      .getByRole("button", { name: "Open Anderson health editor" })
+      .click();
+    const dialog = page.getByRole("dialog");
+
+    // Named with the group (not a bare "Needs follow-up"), and unchecked for a
+    // group with no open flag.
+    const checkbox = dialog.getByRole("checkbox", {
+      name: "Flag Anderson as needing follow-up",
+    });
+    await expect(checkbox).toBeVisible();
+    await expect(checkbox).not.toBeChecked();
+  });
+
   test("axe finds no critical or serious violations with the drawer open", async ({
     page,
   }) => {

@@ -2,6 +2,7 @@ import { isUuid } from "@/lib/shared/uuid";
 import type { ValidationResult } from "./shared";
 import {
   isRecord,
+  readBooleanFlag,
   readOptionalString,
   normalizeUuid,
   readOptionalInteger,
@@ -18,6 +19,9 @@ export type GroupHealthRatingsPayload = {
   spiritual_growth_score: number | null;
   spiritual_growth_note: string | null;
   group_question_score: number | null;
+  // Admin IM 05 (#265): the open follow-up flag, toggled by the drawer
+  // checkbox and persisted on the same save as the ratings.
+  needs_follow_up: boolean;
 };
 
 export function validateGroupHealthRatingsPayload(
@@ -61,9 +65,25 @@ export function validateGroupHealthRatingsPayload(
     note = noteRaw ?? null;
   }
 
-  // Reject an all-empty submit: it would wipe both ratings + the note and write
-  // an audit row for a no-op. Clearing one rating while the other stands is fine.
-  if (spiritualScore === null && questionScore === null && note === null) {
+  const needsFollowUp = readBooleanFlag(input.needs_follow_up);
+  // The currently-displayed (possibly carried-from-a-prior-month) flag, posted
+  // as a hidden field so the no-op guard can tell "clearing an open flag" from
+  // "a blank save on a never-flagged group". Client-supplied and only a UX
+  // heuristic — the RPC stays the security boundary — so it is not persisted.
+  const priorFollowUp = readBooleanFlag(input.prior_needs_follow_up);
+
+  // Reject a true no-op: no ratings, no note, and no follow-up change. Setting
+  // the flag (needsFollowUp) or clearing a flag that was open (priorFollowUp)
+  // is meaningful and goes through; only a blank save on an unflagged group is
+  // a no-op. (Keying this on the flag's *presence* would defeat the guard — the
+  // action runner always lifts needs_follow_up into the payload, even unchecked.)
+  if (
+    spiritualScore === null &&
+    questionScore === null &&
+    note === null &&
+    !needsFollowUp &&
+    !priorFollowUp
+  ) {
     errors.push("Enter at least one rating or a note.");
   }
 
@@ -76,6 +96,7 @@ export function validateGroupHealthRatingsPayload(
       spiritual_growth_score: spiritualScore,
       spiritual_growth_note: note,
       group_question_score: questionScore,
+      needs_follow_up: needsFollowUp,
     },
   };
 }

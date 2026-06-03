@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   attendanceConsistency,
+  attendanceTrend,
   BUILT_IN_GROUP_HEALTH_RUBRIC,
   computeGrade,
   decodeGroupHealthRubric,
   dimensionScoresFromInputs,
+  gradeAtOrBelow,
   ratingToScore,
   type AttendanceWeekTally,
 } from "@/lib/admin/group-health";
@@ -14,7 +16,7 @@ function week(
   meeting_week: string,
   present: number,
   absent: number,
-  excused = 0,
+  excused = 0
 ): AttendanceWeekTally {
   return { meeting_week, present, absent, excused };
 }
@@ -98,7 +100,7 @@ describe("dimensionScoresFromInputs — assessment row → 0–100 dimension sco
         attendance_pct: 82,
         spiritual_growth_score: 4,
         group_question_score: 3,
-      }),
+      })
     ).toEqual({ attendance: 82, spiritual_growth: 75, group_question: 50 });
   });
 
@@ -109,7 +111,7 @@ describe("dimensionScoresFromInputs — assessment row → 0–100 dimension sco
         attendance_pct: 70,
         spiritual_growth_score: null,
         group_question_score: null,
-      }),
+      })
     ).toEqual({ attendance: 70 });
   });
 });
@@ -117,7 +119,10 @@ describe("dimensionScoresFromInputs — assessment row → 0–100 dimension sco
 describe("computeGrade — weighted dimensions → numeric → A–D letter", () => {
   it("grades on attendance alone when it is the only dimension (the tracer case)", () => {
     // One live dimension: the numeric is just that score; 92 ≥ cut-line a (90) → A.
-    expect(computeGrade({ attendance: 92 })).toEqual({ numeric: 92, letter: "A" });
+    expect(computeGrade({ attendance: 92 })).toEqual({
+      numeric: 92,
+      letter: "A",
+    });
   });
 
   it("maps the internal numeric onto A/B/C/D by the cut-lines (default 90/75/60)", () => {
@@ -180,8 +185,12 @@ describe("computeGrade — weighted dimensions → numeric → A–D letter", ()
 describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
   it("falls back to the built-in rubric for missing or non-object settings", () => {
     expect(decodeGroupHealthRubric(null)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
-    expect(decodeGroupHealthRubric(undefined)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
-    expect(decodeGroupHealthRubric("nope")).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
+    expect(decodeGroupHealthRubric(undefined)).toEqual(
+      BUILT_IN_GROUP_HEALTH_RUBRIC
+    );
+    expect(decodeGroupHealthRubric("nope")).toEqual(
+      BUILT_IN_GROUP_HEALTH_RUBRIC
+    );
     expect(decodeGroupHealthRubric(42)).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC);
   });
 
@@ -205,7 +214,7 @@ describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
     expect(rubric.weights.group_question).toBe(10);
     // spiritual_growth wasn't supplied — keeps its default.
     expect(rubric.weights.spiritual_growth).toBe(
-      BUILT_IN_GROUP_HEALTH_RUBRIC.weights.spiritual_growth,
+      BUILT_IN_GROUP_HEALTH_RUBRIC.weights.spiritual_growth
     );
   });
 
@@ -219,7 +228,9 @@ describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
   it("rejects non-descending cut-lines, keeping the built-in ladder intact", () => {
     // a must be > b > c; this set would make every score an A. Reject wholesale
     // rather than grade on a broken ladder.
-    const rubric = decodeGroupHealthRubric({ cut_lines: { a: 50, b: 75, c: 60 } });
+    const rubric = decodeGroupHealthRubric({
+      cut_lines: { a: 50, b: 75, c: 60 },
+    });
     expect(rubric.cut_lines).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines);
   });
 
@@ -227,12 +238,113 @@ describe("decodeGroupHealthRubric — tunable rubric from settings", () => {
     // A negative weight or a set summing to zero leaves computeGrade with no
     // usable total — fall back to the built-in weights rather than ungradeable.
     expect(
-      decodeGroupHealthRubric({ weights: { attendance: -5, spiritual_growth: 40, group_question: 20 } })
-        .weights,
+      decodeGroupHealthRubric({
+        weights: { attendance: -5, spiritual_growth: 40, group_question: 20 },
+      }).weights
     ).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.weights);
     expect(
-      decodeGroupHealthRubric({ weights: { attendance: 0, spiritual_growth: 0, group_question: 0 } })
-        .weights,
+      decodeGroupHealthRubric({
+        weights: { attendance: 0, spiritual_growth: 0, group_question: 0 },
+      }).weights
     ).toEqual(BUILT_IN_GROUP_HEALTH_RUBRIC.weights);
+  });
+});
+
+describe("gradeAtOrBelow (Admin IM 05 Watch grade leg)", () => {
+  it("treats the same grade or a worse one as at-or-below the threshold", () => {
+    // Threshold C → C and D are watched.
+    expect(gradeAtOrBelow("C", "C")).toBe(true);
+    expect(gradeAtOrBelow("D", "C")).toBe(true);
+    // A and B are above the threshold.
+    expect(gradeAtOrBelow("B", "C")).toBe(false);
+    expect(gradeAtOrBelow("A", "C")).toBe(false);
+  });
+
+  it("never matches an ungraded group", () => {
+    expect(gradeAtOrBelow(null, "C")).toBe(false);
+    expect(gradeAtOrBelow(null, "D")).toBe(false);
+  });
+
+  it("honours a stricter or looser threshold", () => {
+    // Threshold B → B, C, D watched; A clear.
+    expect(gradeAtOrBelow("B", "B")).toBe(true);
+    expect(gradeAtOrBelow("A", "B")).toBe(false);
+    // Threshold D → only D watched.
+    expect(gradeAtOrBelow("C", "D")).toBe(false);
+    expect(gradeAtOrBelow("D", "D")).toBe(true);
+  });
+});
+
+describe("attendanceTrend (Admin IM 05 declining-attendance leg)", () => {
+  // Eight consecutive weeks, newest first. Helper builds present/absent so the
+  // weekly attendance % is exactly `pct`.
+  function weeksWithPcts(pcts: number[]): AttendanceWeekTally[] {
+    return pcts.map((pct, i) => {
+      const present = pct; // out of 100 rated
+      return week(
+        `2026-05-${String(31 - i).padStart(2, "0")}`,
+        present,
+        100 - present
+      );
+    });
+  }
+
+  it("flags a recent window that drops below the prior by ≥ the margin", () => {
+    // Recent 4 avg 60, prior 4 avg 80 → a 20-point drop ≥ a 10-point margin.
+    const trend = attendanceTrend(
+      weeksWithPcts([60, 60, 60, 60, 80, 80, 80, 80]),
+      10
+    );
+    expect(trend.recent_pct).toBe(60);
+    expect(trend.prior_pct).toBe(80);
+    expect(trend.declining).toBe(true);
+  });
+
+  it("does not flag a drop smaller than the margin", () => {
+    // Recent 75, prior 80 → only a 5-point drop, under the 10-point margin.
+    const trend = attendanceTrend(
+      weeksWithPcts([75, 75, 75, 75, 80, 80, 80, 80]),
+      10
+    );
+    expect(trend.declining).toBe(false);
+  });
+
+  it("does not flag rising or flat attendance", () => {
+    const rising = attendanceTrend(
+      weeksWithPcts([90, 90, 90, 90, 60, 60, 60, 60]),
+      10
+    );
+    expect(rising.declining).toBe(false);
+  });
+
+  it("treats insufficient data (fewer than two full windows) as not declining", () => {
+    // Only five recorded weeks: the prior window can't be filled, so we report
+    // not-declining rather than inventing a trend.
+    const trend = attendanceTrend(weeksWithPcts([50, 50, 50, 50, 90]), 10);
+    expect(trend.prior_pct).toBeNull();
+    expect(trend.declining).toBe(false);
+  });
+
+  it("honours the margin at the boundary (drop exactly equal to the margin)", () => {
+    const trend = attendanceTrend(
+      weeksWithPcts([70, 70, 70, 70, 80, 80, 80, 80]),
+      10
+    );
+    expect(trend.declining).toBe(true);
+  });
+
+  it("does not treat flat attendance as declining at a zero margin", () => {
+    // marginPct 0 is a valid setting; flat (recent == prior) must not flag.
+    const flat = attendanceTrend(
+      weeksWithPcts([70, 70, 70, 70, 70, 70, 70, 70]),
+      0
+    );
+    expect(flat.declining).toBe(false);
+    // A real drop at a zero margin still flags.
+    const drop = attendanceTrend(
+      weeksWithPcts([69, 69, 69, 69, 70, 70, 70, 70]),
+      0
+    );
+    expect(drop.declining).toBe(true);
   });
 });

@@ -740,6 +740,9 @@ export type AdminSetGroupHealthRatingsArgs = {
   p_spiritual_growth_score: number | null;
   p_spiritual_growth_note: string | null;
   p_group_question_score: number | null;
+  // Admin IM 05 (#265): the open follow-up flag, set/cleared from the same
+  // editor drawer save.
+  p_needs_follow_up: boolean;
   p_attendance_pct: number | null;
   p_attendance_weeks_counted: number;
   p_computed_numeric: number | null;

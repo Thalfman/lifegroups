@@ -26,6 +26,10 @@ const SETTINGS_REVALIDATE_PATHS = [
   "/admin/groups",
   "/admin",
   "/leader",
+  // The Group-health triage Watch filter reads metric defaults (Watch grade,
+  // attendance decline margin, healthy-attendance %), so a threshold edit must
+  // revalidate it too — otherwise the cached route keeps the old filtering.
+  "/admin/group-health",
 ] as const;
 
 // Check-in cadence keys (missed_checkin_warning_weeks, check_in_due_offset_hours)
@@ -43,6 +47,8 @@ const METRIC_DEFAULT_FIELDS = [
   "default_healthy_attendance_pct",
   "shepherd_care_stale_days_direct",
   "shepherd_care_stale_days_delegated",
+  "group_health_watch_grade",
+  "group_health_attendance_decline_margin_pct",
 ] as const;
 
 const GROUP_METRIC_FIELDS = [

@@ -6,11 +6,11 @@
 // Opening a group reveals its rating fields in the shared EditingSurface
 // drawer, and saving there affects only that group.
 //
-// This is the ungated shell + table scaffolding. The provisional triage
-// filters use only what is honestly derivable today; the gated definitions
-// (director thresholds, attendance-trend direction, follow-up flags) are
-// deferred to step 05 — see FILTERS below and docs/retros for the data
-// fallbacks that are documented rather than invented.
+// Admin IM 05 (#265) lands the final, director-confirmed triage filters on top
+// of the step-04 shell: Not assessed, Needs rating, Watch, and Needs follow-up.
+// The thresholds the gated filters need (Watch grade, attendance decline
+// margin) come from Settings, not hard-coded here — see matchesFilter and the
+// director sign-off recorded on the issue.
 
 import {
   useEffect,
@@ -21,6 +21,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
+import { gradeAtOrBelow } from "@/lib/admin/group-health";
+import type { GroupHealthLetter } from "@/types/enums";
 import {
   adminSetGroupHealthRatings,
   adminRecomputeGroupHealthAssessment,
@@ -39,19 +41,26 @@ import { PButton } from "@/components/pastoral/button";
 import { dateLabel } from "@/lib/calendar/occurrences";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
-// --- Provisional triage filters --------------------------------------------
-// "Not assessed" and "Needs rating" are derivable from today's data with no
-// director input, so they ship as working filters. "Watch" (below the
-// director's grade/attendance threshold) and "Needs follow-up" (an open flag
-// on the latest assessment) have no ungated data source yet — the threshold is
-// gated (step 05) and no follow-up/flag column exists on the assessment — so
-// they are intentionally omitted here rather than faked with placeholder logic.
-type FilterKey = "all" | "not_assessed" | "needs_rating";
+// --- Triage filters (director-confirmed, Admin IM 05 / #265) ----------------
+//   * Not assessed — no rating has ever been recorded.
+//   * Needs rating — an assessment exists but a required 1–5 rating is missing.
+//     (No time-staleness clause: a complete assessment never ages back in.)
+//   * Watch — the latest grade is at or below the director's Watch threshold
+//     (default C), OR attendance is declining (recent vs prior 4-week window).
+//   * Needs follow-up — the assessment's open follow-up flag is set.
+type FilterKey =
+  | "all"
+  | "not_assessed"
+  | "needs_rating"
+  | "watch"
+  | "needs_follow_up";
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All groups" },
   { key: "not_assessed", label: "Not assessed" },
   { key: "needs_rating", label: "Needs rating" },
+  { key: "watch", label: "Watch" },
+  { key: "needs_follow_up", label: "Needs follow-up" },
 ];
 
 // A required rating is missing when its 1–5 score is null.
@@ -68,16 +77,29 @@ function missingRatings(
 
 function matchesFilter(
   row: GroupHealthOverviewRow,
-  filter: FilterKey
+  filter: FilterKey,
+  watchGrade: GroupHealthLetter
 ): boolean {
   if (filter === "all") return true;
   if (filter === "not_assessed") return row.unassessed;
-  // Needs rating: an assessment exists (not unassessed) but a required 1–5
-  // rating is still missing.
-  return (
-    !row.unassessed &&
-    (row.spiritual_growth_score === null || row.group_question_score === null)
-  );
+  if (filter === "needs_rating") {
+    // An assessment exists (not unassessed) but a required 1–5 rating is still
+    // missing.
+    return (
+      !row.unassessed &&
+      (row.spiritual_growth_score === null || row.group_question_score === null)
+    );
+  }
+  if (filter === "watch") {
+    // Latest grade at or below the director's threshold, OR declining
+    // attendance (the read model already applied the director's decline margin).
+    return (
+      gradeAtOrBelow(row.computed_letter, watchGrade) ||
+      row.attendance_declining
+    );
+  }
+  // Needs follow-up: the open flag on the latest assessment.
+  return row.needs_follow_up;
 }
 
 // "Saturday, May 16" via the shared UTC-anchored label, so date columns don't
@@ -113,11 +135,14 @@ export function GroupHealthTriage({
   period,
   spiritualGrowthLabel,
   groupQuestionLabel,
+  watchGrade,
 }: {
   rows: GroupHealthOverviewRow[];
   period: string;
   spiritualGrowthLabel: string;
   groupQuestionLabel: string;
+  // The director's Watch grade threshold, sourced from Settings (#265).
+  watchGrade: GroupHealthLetter;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -126,7 +151,7 @@ export function GroupHealthTriage({
   // handlers read it, and we don't want edits to re-render the list.
   const dirtyRef = useRef(false);
 
-  const visible = rows.filter((row) => matchesFilter(row, filter));
+  const visible = rows.filter((row) => matchesFilter(row, filter, watchGrade));
   const openRow = rows.find((r) => r.group_id === openGroupId) ?? null;
 
   const requestClose = () => {
@@ -427,6 +452,51 @@ function GroupHealthEditorBody({
             defaultValue={row.spiritual_growth_note ?? ""}
           />
         </div>
+
+        <label
+          htmlFor={`gh-followup-${row.group_id}`}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            fontFamily: fontBody,
+            fontSize: 14,
+            color: P.ink,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            id={`gh-followup-${row.group_id}`}
+            type="checkbox"
+            name="needs_follow_up"
+            defaultChecked={row.needs_follow_up}
+            aria-label={`Flag ${row.group_name} as needing follow-up`}
+            style={{ marginTop: 3 }}
+          />
+          {/* The currently-displayed flag (which may be carried from a prior
+              month), so an empty "uncheck to close the action" save isn't
+              rejected as a no-op — it must be able to write the current-month
+              needs_follow_up=false row that supersedes the carried flag. */}
+          <input
+            type="hidden"
+            name="prior_needs_follow_up"
+            value={row.needs_follow_up ? "true" : "false"}
+          />
+          <span>
+            Needs follow-up
+            <span
+              style={{
+                display: "block",
+                fontSize: 11,
+                color: P.ink3,
+                marginTop: 2,
+              }}
+            >
+              Keep this group on the follow-up filter until the action is
+              closed.
+            </span>
+          </span>
+        </label>
 
         <FormStatus state={ratings.state} successText="Saved." />
         <FormStatus state={recompute.state} successText="Grade saved." />

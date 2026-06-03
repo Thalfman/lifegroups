@@ -139,6 +139,14 @@ const RATINGS_SPEC: AdminWriteActionSpec<
     "spiritual_growth_score",
     "spiritual_growth_note",
     "group_question_score",
+    // Always lifted (the runner sets the key even when the checkbox is
+    // unchecked), so the validator can tell a real drawer save — which may be
+    // clearing the flag — from a legacy no-op object.
+    "needs_follow_up",
+    // The displayed (possibly carried) flag, so unchecking it on a group with
+    // no current-month ratings still saves (clears the carried flag) instead of
+    // being rejected as an empty no-op.
+    "prior_needs_follow_up",
   ],
   validate: validateGroupHealthRatingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
@@ -155,6 +163,7 @@ const RATINGS_SPEC: AdminWriteActionSpec<
       p_spiritual_growth_score: value.spiritual_growth_score,
       p_spiritual_growth_note: value.spiritual_growth_note,
       p_group_question_score: value.group_question_score,
+      p_needs_follow_up: value.needs_follow_up,
       p_attendance_pct: recomputed.data.attendance_pct,
       p_attendance_weeks_counted: recomputed.data.attendance_weeks_counted,
       p_computed_numeric: recomputed.data.computed_numeric,

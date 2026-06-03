@@ -17,13 +17,55 @@ describe("decodeMetricDefaults (Julian P1/P2/Q5 baselines)", () => {
   it("keeps the documented baseline in sync", () => {
     expect(BUILT_IN_METRIC_DEFAULTS.default_group_capacity).toBe(12);
     expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct).toBe(30);
-    expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated).toBe(60);
+    expect(BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated).toBe(
+      60
+    );
+  });
+
+  it("defaults the Admin IM 05 Watch grade to C and the decline margin to 10 when unset", () => {
+    const d = decodeMetricDefaults(null);
+    expect(d.group_health_watch_grade).toBe("C");
+    expect(d.group_health_attendance_decline_margin_pct).toBe(10);
+    expect(BUILT_IN_METRIC_DEFAULTS.group_health_watch_grade).toBe("C");
+    expect(
+      BUILT_IN_METRIC_DEFAULTS.group_health_attendance_decline_margin_pct
+    ).toBe(10);
+  });
+
+  it("reads a tuned Watch grade and decline margin from the stored row", () => {
+    const d = decodeMetricDefaults({
+      id: "x",
+      setting_key: "metric_defaults",
+      setting_value: {
+        group_health_watch_grade: "B",
+        group_health_attendance_decline_margin_pct: 15,
+      },
+      created_at: "",
+      updated_at: "",
+    });
+    expect(d.group_health_watch_grade).toBe("B");
+    expect(d.group_health_attendance_decline_margin_pct).toBe(15);
+  });
+
+  it("falls back to C for an invalid stored Watch grade", () => {
+    const d = decodeMetricDefaults({
+      id: "x",
+      setting_key: "metric_defaults",
+      setting_value: { group_health_watch_grade: "F" },
+      created_at: "",
+      updated_at: "",
+    });
+    expect(d.group_health_watch_grade).toBe("C");
   });
 });
 
 describe("effectiveCapacity", () => {
   it("falls back to the ministry default when group + override are unset", () => {
-    const cap = effectiveCapacity({ capacity: null }, null, BUILT_IN_METRIC_DEFAULTS);
+    const cap = effectiveCapacity(
+      { capacity: null },
+      null,
+      BUILT_IN_METRIC_DEFAULTS
+    );
     expect(cap).toBe(12);
   });
 
@@ -40,7 +82,7 @@ describe("effectiveCapacity", () => {
         check_in_due_offset_hours_override: null,
         allow_over_capacity: false,
       },
-      BUILT_IN_METRIC_DEFAULTS,
+      BUILT_IN_METRIC_DEFAULTS
     );
     expect(cap).toBe(8);
   });
@@ -51,10 +93,10 @@ describe("capacityStatus — Julian P2 kept-open-past-12", () => {
 
   it("reports a group at/over capacity as full by default", () => {
     expect(
-      capacityStatus({ ...base, activeMemberCount: 12, effectiveCapacity: 12 }),
+      capacityStatus({ ...base, activeMemberCount: 12, effectiveCapacity: 12 })
     ).toBe("full");
     expect(
-      capacityStatus({ ...base, activeMemberCount: 14, effectiveCapacity: 12 }),
+      capacityStatus({ ...base, activeMemberCount: 14, effectiveCapacity: 12 })
     ).toBe("full");
   });
 
@@ -65,7 +107,7 @@ describe("capacityStatus — Julian P2 kept-open-past-12", () => {
         activeMemberCount: 14,
         effectiveCapacity: 12,
         allowOverCapacity: true,
-      }),
+      })
     ).toBe("open_by_choice");
   });
 
@@ -77,7 +119,7 @@ describe("capacityStatus — Julian P2 kept-open-past-12", () => {
         activeMemberCount: 10,
         effectiveCapacity: 12,
         allowOverCapacity: true,
-      }),
+      })
     ).toBe("warning");
     expect(
       capacityStatus({
@@ -85,7 +127,7 @@ describe("capacityStatus — Julian P2 kept-open-past-12", () => {
         activeMemberCount: 5,
         effectiveCapacity: 12,
         allowOverCapacity: true,
-      }),
+      })
     ).toBe("ok");
   });
 });

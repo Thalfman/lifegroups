@@ -16,7 +16,7 @@ import type {
   GroupMetricSettingsRow,
   GroupsRow,
 } from "@/types/database";
-import type { GroupHealthStatus } from "@/types/enums";
+import type { GroupHealthLetter, GroupHealthStatus } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
@@ -41,6 +41,16 @@ export type MetricDefaults = {
   // Both operator-configurable; replaces the former single shepherd_care_stale_days.
   shepherd_care_stale_days_direct: number;
   shepherd_care_stale_days_delegated: number;
+  // Admin IM 05 (#265): the two director-confirmed Group-health triage
+  // thresholds, sourced here (not hard-coded) so the Watch filter honours the
+  // director's mental model.
+  //   * group_health_watch_grade — a group graded at or below this letter
+  //     lands on Watch. Default C (so C and D groups are watched).
+  //   * group_health_attendance_decline_margin_pct — a group whose recent
+  //     4-week attendance average is lower than its prior 4-week average by at
+  //     least this many points is "declining". Default 10.
+  group_health_watch_grade: GroupHealthLetter;
+  group_health_attendance_decline_margin_pct: number;
 };
 
 // Documented baseline values. Mirrors the Phase 5A.5 reset RPC so
@@ -55,7 +65,23 @@ export const BUILT_IN_METRIC_DEFAULTS: MetricDefaults = {
   check_in_due_offset_hours: 24,
   shepherd_care_stale_days_direct: 30,
   shepherd_care_stale_days_delegated: 60,
+  group_health_watch_grade: "C",
+  group_health_attendance_decline_margin_pct: 10,
 };
+
+// A valid A–D letter under `key`, or the fallback when absent/invalid. The
+// Watch grade threshold is stored as a letter (not a number) so it reads the
+// way the director thinks about grades.
+function readJsonGrade(
+  source: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: GroupHealthLetter
+): GroupHealthLetter {
+  if (!source) return fallback;
+  const raw = source[key];
+  if (raw === "A" || raw === "B" || raw === "C" || raw === "D") return raw;
+  return fallback;
+}
 
 function readJsonInt(
   source: Record<string, unknown> | null | undefined,
@@ -127,6 +153,16 @@ export function decodeMetricDefaults(
       source,
       "shepherd_care_stale_days_delegated",
       BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated
+    ),
+    group_health_watch_grade: readJsonGrade(
+      source,
+      "group_health_watch_grade",
+      BUILT_IN_METRIC_DEFAULTS.group_health_watch_grade
+    ),
+    group_health_attendance_decline_margin_pct: readJsonInt(
+      source,
+      "group_health_attendance_decline_margin_pct",
+      BUILT_IN_METRIC_DEFAULTS.group_health_attendance_decline_margin_pct
     ),
   };
 }

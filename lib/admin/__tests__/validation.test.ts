@@ -368,6 +368,67 @@ describe("validateGroupHealthRatingsPayload", () => {
       expect(r.value.group_question_score).toBeNull();
     }
   });
+
+  it("defaults the follow-up flag to false when absent", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      spiritual_growth_score: "4",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.needs_follow_up).toBe(false);
+  });
+
+  it("reads the follow-up flag from the checkbox 'on' value", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      spiritual_growth_score: "4",
+      needs_follow_up: "on",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.needs_follow_up).toBe(true);
+  });
+
+  it("accepts a flag-only submit (setting needs_follow_up is content worth persisting)", () => {
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      needs_follow_up: "on",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.needs_follow_up).toBe(true);
+  });
+
+  it("rejects a real-form no-op: no ratings, no note, follow-up unchecked", () => {
+    // The action runner lifts needs_follow_up into the payload even when the
+    // checkbox is unchecked (value undefined). The guard must key on the flag's
+    // VALUE, not its presence, or it never fires for a real drawer save.
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      needs_follow_up: undefined,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => /at least one/i.test(e))).toBe(true);
+    }
+  });
+
+  it("allows clearing a carried flag: empty save, box unchecked, prior flag set", () => {
+    // A group on the filter only via a carried prior-month flag. Unchecking to
+    // close the action posts empty + needs_follow_up false, but the prior flag
+    // makes it a real change (writes the current-month needs_follow_up=false
+    // row that supersedes the carried flag), so it must not be rejected.
+    const r = validateGroupHealthRatingsPayload({
+      group_id: UUID_A,
+      needs_follow_up: undefined,
+      prior_needs_follow_up: "true",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.needs_follow_up).toBe(false);
+  });
+
+  it("still rejects a bare object with no ratings, note, or follow-up flag", () => {
+    const r = validateGroupHealthRatingsPayload({ group_id: UUID_A });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe("validateLogShepherdCareInteractionPayload", () => {
@@ -1098,6 +1159,60 @@ describe("validateMetricDefaultsPayload — per-tier stale windows (Julian Q5)",
     expect(
       validateMetricDefaultsPayload({ shepherd_care_stale_days: 30 }).ok
     ).toBe(false);
+  });
+});
+
+describe("validateMetricDefaultsPayload — Group-health triage thresholds (#265)", () => {
+  it("accepts an A–D Watch grade and an in-range decline margin", () => {
+    const r = validateMetricDefaultsPayload({
+      group_health_watch_grade: "B",
+      group_health_attendance_decline_margin_pct: 15,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_health_watch_grade).toBe("B");
+      expect(r.value.group_health_attendance_decline_margin_pct).toBe(15);
+    }
+  });
+
+  it("rejects a Watch grade outside A–D", () => {
+    expect(
+      validateMetricDefaultsPayload({ group_health_watch_grade: "F" }).ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({ group_health_watch_grade: "c" }).ok
+    ).toBe(false);
+  });
+
+  it("rejects a decline margin outside 0–100 or non-integer", () => {
+    expect(
+      validateMetricDefaultsPayload({
+        group_health_attendance_decline_margin_pct: 101,
+      }).ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({
+        group_health_attendance_decline_margin_pct: -1,
+      }).ok
+    ).toBe(false);
+    expect(
+      validateMetricDefaultsPayload({
+        group_health_attendance_decline_margin_pct: "lots",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("accepts the 0 and 100 margin boundaries", () => {
+    expect(
+      validateMetricDefaultsPayload({
+        group_health_attendance_decline_margin_pct: 0,
+      }).ok
+    ).toBe(true);
+    expect(
+      validateMetricDefaultsPayload({
+        group_health_attendance_decline_margin_pct: 100,
+      }).ok
+    ).toBe(true);
   });
 });
 
