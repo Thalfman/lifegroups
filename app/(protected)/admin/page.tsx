@@ -15,7 +15,7 @@ export default async function AdminPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   const params = (await searchParams) ?? {};
   const grain = resolveOverviewGrain(params.period);
@@ -48,6 +48,7 @@ export default async function AdminPage({
         data={data}
         guestsLive={guestsLive}
         degraded={degraded}
+        scopeId={session.profile.id}
       />
     </>
   );

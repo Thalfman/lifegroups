@@ -11,6 +11,7 @@ import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ActivityBand } from "./ActivityBand";
 import { PeriodSlicer } from "./PeriodSlicer";
+import { CollapsibleOverview } from "./CollapsibleOverview";
 
 // Executive overview for the /admin landing. Re-skinned warm (pastoral palette)
 // so it meshes with the Leader care / Launch planning surfaces instead of
@@ -40,16 +41,26 @@ export function DashboardClient({
   data,
   guestsLive,
   degraded,
+  scopeId,
 }: {
   data: AdminDashboardData;
   guestsLive: boolean;
   // True when the dashboard read failed and `data` is demo fallback.
   degraded?: boolean;
+  // Signed-in profile id, scoping the collapsible-overview saved default (#292).
+  scopeId?: string | null;
 }) {
   return (
     <PageBody>
       <div style={{ display: "grid", gap: 18 }}>
         <VitalSignsBand data={data} />
+
+        {/* Most actionable content leads (#291): the ranked next actions sit
+            directly beneath the vital signs rather than at the page foot. */}
+        <div style={{ display: "grid", gap: 10 }}>
+          <SectionHeading>Top next actions</SectionHeading>
+          <NeedsAttentionArea data={data} degraded={degraded} />
+        </div>
 
         <div style={{ display: "grid", gap: 10 }}>
           <div
@@ -67,38 +78,35 @@ export function DashboardClient({
           <ActivityBand activity={data.activity} />
         </div>
 
-        <div
-          className="lg-shell-grid-2"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
-        >
-          <LeaderCareOverviewCard summary={data.shepherdCare} />
-          <LaunchPlanningOverviewCard
-            snapshot={data.launchPlanning}
-            multiplication={data.multiplication}
-          />
-        </div>
+        <CollapsibleOverview scopeId={scopeId}>
+          <div
+            className="lg-shell-grid-2"
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}
+          >
+            <LeaderCareOverviewCard summary={data.shepherdCare} />
+            <LaunchPlanningOverviewCard
+              snapshot={data.launchPlanning}
+              multiplication={data.multiplication}
+            />
+          </div>
 
-        <div
-          className="lg-shell-grid-3"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 18,
-          }}
-        >
-          <HealthDistributionCard counts={data.healthSummary.counts} />
-          <GuestPipelineFunnelCard
-            breakdown={data.guestPipelineBreakdown}
-            total={data.guestPipelineCount}
-            live={guestsLive}
-          />
-          <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
-        </div>
-
-        <div style={{ display: "grid", gap: 10 }}>
-          <SectionHeading>Top next actions</SectionHeading>
-          <NeedsAttentionArea data={data} degraded={degraded} />
-        </div>
+          <div
+            className="lg-shell-grid-3"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 18,
+            }}
+          >
+            <HealthDistributionCard counts={data.healthSummary.counts} />
+            <GuestPipelineFunnelCard
+              breakdown={data.guestPipelineBreakdown}
+              total={data.guestPipelineCount}
+              live={guestsLive}
+            />
+            <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
+          </div>
+        </CollapsibleOverview>
       </div>
     </PageBody>
   );

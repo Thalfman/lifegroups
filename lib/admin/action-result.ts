@@ -96,6 +96,9 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "We couldn't find that unlock method. Refresh the page and try again.",
   cannot_remove_last_slot:
     "You can't remove your last unlock method. Add another passkey first, or rotate your recovery code.",
+  // PRD-SAC6 (#288) Clean Slate token: the wipe found no history to clear.
+  nothing_to_wipe:
+    "There's no accumulated history to clear right now — everything is already a clean slate.",
 };
 
 export const mapRpcError = makeRpcErrorMapper(
