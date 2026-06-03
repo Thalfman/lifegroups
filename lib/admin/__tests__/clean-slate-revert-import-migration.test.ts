@@ -18,7 +18,7 @@ let sql: MigrationSql;
 
 beforeAll(() => {
   sql = loadMigration(
-    "20260603140000_phase_sac6_clean_slate_revert_import.sql"
+    "20260603150000_phase_sac6_clean_slate_revert_import.sql"
   );
 });
 
