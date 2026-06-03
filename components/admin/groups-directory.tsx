@@ -14,8 +14,12 @@ import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import {
   capacityCategory,
   healthCategory,
+  matchesListTab,
   setupCategory,
+  type GroupListTab,
+  type GroupTriageSignals,
 } from "@/lib/dashboard/group-status";
+import type { GroupHealthSignals } from "@/components/admin/group-management-shell";
 import {
   capacityCategoryLabel,
   healthCategoryLabel,
@@ -87,6 +91,10 @@ type GroupsDirectoryProps = {
   // Group-Health Grade (Q12 computed letter) per group id; absent/null = not
   // assessed. The Health zone reflects this grade, not the health_status enum.
   healthGradesByGroupId: Record<string, GroupHealthLetter | null>;
+  // Per-group triage signals beyond the grade letter (missing required ratings,
+  // open follow-up, leader-care concern) — drives Needs Health Check + Needs
+  // Attention per plan §4. Absent = no concern.
+  healthSignalsByGroupId: Record<string, GroupHealthSignals>;
   // Director-tuned Watch threshold from Settings — a group graded at or below
   // it reads as "Needs attention".
   watchGrade: GroupHealthLetter;
@@ -94,12 +102,9 @@ type GroupsDirectoryProps = {
 
 // The five list tabs (issue #300). "all" lists every active group; "archived"
 // lists closed groups; the three middle tabs are derived attention buckets.
-type ListTab =
-  | "all"
-  | "needs_setup"
-  | "needs_health_check"
-  | "needs_attention"
-  | "archived";
+// The tab keys + membership rules live in lib/dashboard/group-status so the spec
+// (plan §4) is locked in by tests; the component only renders them.
+type ListTab = GroupListTab;
 
 const TABS: { key: ListTab; label: string }[] = [
   { key: "all", label: "All Groups" },
@@ -116,6 +121,9 @@ type GroupStatus = {
   setup: GroupSetupCategory;
   health: GroupHealthCategory;
   capacity: GroupCapacityCategory;
+  // The triage signals the four categories don't carry; default to no-concern
+  // when the group has no health-overview row or side-read entry.
+  signals: GroupTriageSignals;
 };
 
 // The one record being edited or created in the shared EditingSurface drawer
@@ -227,6 +235,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         excluded: isExcludedFromCapacityMetrics(override),
         allowOverCapacity: Boolean(override?.allow_over_capacity),
       });
+      const signals = props.healthSignalsByGroupId[g.id];
       m.set(g.id, {
         lifecycle: lifecycleCategory(g.lifecycle_status),
         setup: setupCategory({
@@ -242,6 +251,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
           props.watchGrade
         ),
         capacity: capacityCategory(status),
+        signals: signals ?? NO_SIGNALS,
       });
     }
     return m;
@@ -249,6 +259,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     props.groups,
     props.metricDefaults,
     props.healthGradesByGroupId,
+    props.healthSignalsByGroupId,
     props.watchGrade,
     overrideByGroupId,
     activeMemberCountByGroup,
@@ -264,21 +275,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     (g: GroupsRow): boolean => {
       const s = statusByGroupId.get(g.id);
       if (!s) return false;
-      switch (tab) {
-        case "all":
-          // Every active (non-archived) group.
-          return s.lifecycle !== "archived";
-        case "needs_setup":
-          return s.lifecycle !== "archived" && s.setup !== "complete";
-        case "needs_health_check":
-          // Group-Health Grade never recorded yet.
-          return s.lifecycle !== "archived" && s.health === "not_assessed";
-        case "needs_attention":
-          // The grade flags a concern.
-          return s.lifecycle !== "archived" && s.health === "needs_attention";
-        case "archived":
-          return s.lifecycle === "archived";
-      }
+      // Membership rules live in the pure matchesListTab (plan §4), shared with
+      // the focused tests so the spec can't drift from the rendered tabs.
+      return matchesListTab(tab, s);
     },
     [tab, statusByGroupId]
   );
@@ -939,3 +938,11 @@ const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 // Stable empty array so a leaderless group passes the same reference to the
 // memoized GroupCard across renders (a fresh `[]` would defeat React.memo).
 const NO_LEADERS: GroupLeadersRow[] = [];
+
+// Stable "no concern" signals for groups with no health-overview row or side-
+// read entry (e.g. a group not yet graded). Frozen so it's a shared reference.
+const NO_SIGNALS: GroupTriageSignals = Object.freeze({
+  missingRequiredRatings: false,
+  hasOpenFollowUp: false,
+  hasCareConcern: false,
+});

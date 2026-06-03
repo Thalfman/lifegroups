@@ -88,6 +88,7 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         metricDefaults={data.metricDefaults}
         groupMetricSettings={data.groupMetricSettings}
         healthGradesByGroupId={data.healthGradesByGroupId}
+        healthSignalsByGroupId={data.healthSignalsByGroupId}
         watchGrade={data.metricDefaults.group_health_watch_grade}
       />
     </div>
