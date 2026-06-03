@@ -34,7 +34,9 @@ export function HealthDistributionCard({
     <StatusCard
       eyebrow="Group health"
       title="Health pulse"
-      action={<OpenLink href="/admin/group-health" />}
+      action={
+        <OpenLink href="/admin/group-health" label="Review group health" />
+      }
     >
       {total === 0 ? (
         <p

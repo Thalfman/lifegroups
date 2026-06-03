@@ -147,15 +147,12 @@ export function StatTileGrid({ children }: { children: ReactNode }) {
   );
 }
 
-// "Open →" affordance for the StatusCard `action` slot. Inherits the card's
-// terra action color.
-export function OpenLink({
-  href,
-  label = "Open",
-}: {
-  href: string;
-  label?: string;
-}) {
+// Outcome-naming link affordance for the StatusCard `action` slot. Inherits the
+// card's terra action color. Per #299 (Home as a triage page) every call site
+// passes a specific, outcome-naming label ("Review group health", "Contact
+// leaders", "View launch plan") — there is deliberately no generic "Open"
+// default, so a new card can't silently reintroduce a vague affordance.
+export function OpenLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}

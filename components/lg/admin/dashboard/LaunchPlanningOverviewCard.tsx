@@ -56,7 +56,9 @@ export function LaunchPlanningOverviewCard({
       <StatusCard
         eyebrow="Launch planning"
         title="Capacity & launch"
-        action={<OpenLink href="/admin/launch-planning" />}
+        action={
+          <OpenLink href="/admin/launch-planning" label="View launch plan" />
+        }
       >
         <EmptyState
           title="Planning data unavailable"
@@ -75,7 +77,9 @@ export function LaunchPlanningOverviewCard({
     <StatusCard
       eyebrow="Launch planning"
       title="Capacity & launch"
-      action={<OpenLink href="/admin/launch-planning" />}
+      action={
+        <OpenLink href="/admin/launch-planning" label="View launch plan" />
+      }
     >
       <div style={{ marginBottom: 12 }}>
         <RiskPill label={risk.label} tone={risk.tone} />

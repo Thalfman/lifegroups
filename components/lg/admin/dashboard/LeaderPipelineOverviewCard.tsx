@@ -27,7 +27,9 @@ export function LeaderPipelineOverviewCard({
       <StatusCard
         eyebrow="Leaders"
         title="Leader pipeline"
-        action={<OpenLink href="/admin/leader-pipeline" />}
+        action={
+          <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
+        }
       >
         <EmptyState
           title="Pipeline data unavailable"
@@ -43,7 +45,9 @@ export function LeaderPipelineOverviewCard({
     <StatusCard
       eyebrow="Leaders"
       title="Leader pipeline"
-      action={<OpenLink href="/admin/leader-pipeline" />}
+      action={
+        <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
+      }
     >
       {summary.total === 0 ? (
         <p
