@@ -23,7 +23,9 @@ export function EditableCopyForm({
     <form
       key={currentValue}
       action={formAction}
-      style={{ display: "grid", gap: 6, minWidth: 240 }}
+      // min(240px, 100%): keep a comfortable desktop minimum but never force a
+      // width wider than a narrow phone viewport (Admin Interaction Model req 13).
+      style={{ display: "grid", gap: 6, minWidth: "min(240px, 100%)" }}
     >
       <input type="hidden" name="key" value={copyKey} />
       <input
