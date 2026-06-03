@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
@@ -19,19 +20,46 @@ import {
 export function CareFollowUpCreateForm({
   careProfileId,
   shepherdProfileId,
+  // Supplied when rendered inside the EditingSurface drawer (#268), mirroring
+  // the Follow-up create flow (#267): `onSaved` closes + refreshes once the
+  // follow-up is created, `onDirty` lets the drawer warn before discarding
+  // entered values, `onCancel` renders a Cancel control beside Add follow-up,
+  // and `onPendingChange` lets the drawer block dismissal while the create is
+  // in flight.
+  onSaved,
+  onDirty,
+  onCancel,
+  onPendingChange,
 }: {
   careProfileId: string;
   shepherdProfileId: string;
+  onSaved?: () => void;
+  onDirty?: () => void;
+  onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateShepherdCareFollowUp,
     { resetOnSuccess: true }
   );
 
+  // useActionForm resets the <form> on success; in the drawer `onSaved` then
+  // closes it (the form unmounts, so the reset is moot there but harmless).
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+  }, [state, onSaved]);
+
+  // Mirror the in-flight state up so the drawer keeps itself open until the
+  // create resolves rather than being dismissed mid-write.
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   return (
     <form
       ref={formRef}
       action={formAction}
+      onChange={onDirty}
       style={{ display: "grid", gap: 12 }}
     >
       <input type="hidden" name="care_profile_id" value={careProfileId} />
@@ -84,10 +112,21 @@ export function CareFollowUpCreateForm({
             placeholder="What exactly needs to happen?"
           />
         </div>
-        <div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add follow-up"}
           </PButton>
+          {onCancel ? (
+            <PButton
+              type="button"
+              tone="ghost"
+              size="md"
+              disabled={pending}
+              onClick={onCancel}
+            >
+              Cancel
+            </PButton>
+          ) : null}
         </div>
       </div>
       <FormStatus state={state} successText="Follow-up added." />

@@ -21,6 +21,7 @@ import {
   type AdminFollowUpsData,
 } from "@/components/admin/follow-ups/follow-ups-shell";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
+import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -405,11 +406,34 @@ export function A11yHarnessClient() {
         <AdminFollowUpsShell data={FOLLOW_UPS_EMPTY_DATA} />
       </Surface>
 
+      {/* Leader care follow-ups (#268, Admin Interaction Model req 1). Proves
+          the validated Editing Pattern propagated to care follow-up creation:
+          the list renders no inline create form, "Add follow-up" opens the
+          shared EditingSurface drawer, and the per-row status quick-actions
+          still carry record context (the accessible-name suite checks both the
+          status-button uniqueness here and the no-bare-name invariant). */}
       <Surface id="care-follow-ups" heading="Shepherd care follow-ups">
-        <CareFollowUpList
-          followUps={CARE_FOLLOW_UPS}
+        <CareFollowUpsSection
+          careProfileId="care-1"
           shepherdProfileId="care-1"
+          followUps={CARE_FOLLOW_UPS}
           todayIso="2026-05-18"
+          leaderName="Anderson Lee"
+        />
+      </Surface>
+
+      {/* First-run state: an empty care follow-up list, to prove the empty
+          prompt is replaced (not left stale) while the create drawer is open. */}
+      <Surface
+        id="care-follow-ups-empty"
+        heading="Shepherd care follow-ups (empty)"
+      >
+        <CareFollowUpsSection
+          careProfileId="care-1"
+          shepherdProfileId="care-1"
+          followUps={[]}
+          todayIso="2026-05-18"
+          leaderName="Anderson Lee"
         />
       </Surface>
 

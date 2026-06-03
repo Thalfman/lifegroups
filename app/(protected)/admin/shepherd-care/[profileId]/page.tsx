@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
-import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-follow-up-create-form";
-import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
+import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { LogInteractionForm } from "@/components/admin/shepherd-care/log-interaction-form";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
@@ -455,17 +454,13 @@ export default async function AdminShepherdCareDetailPage({
                 : ""}
             </p>
             {detail.care ? (
-              <div style={{ display: "grid", gap: 16 }}>
-                <CareFollowUpCreateForm
-                  careProfileId={detail.care.id}
-                  shepherdProfileId={profileId}
-                />
-                <CareFollowUpList
-                  followUps={detail.followUps}
-                  shepherdProfileId={profileId}
-                  todayIso={today}
-                />
-              </div>
+              <CareFollowUpsSection
+                careProfileId={detail.care.id}
+                shepherdProfileId={profileId}
+                followUps={detail.followUps}
+                todayIso={today}
+                leaderName={detail.profileFullName}
+              />
             ) : (
               <p
                 style={{
