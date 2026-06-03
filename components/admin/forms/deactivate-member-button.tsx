@@ -33,7 +33,13 @@ export function DeactivateMemberButton({
     <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
       <form action={formAction} onSubmit={confirmDeactivate}>
         <input type="hidden" name="member_id" value={memberId} />
-        <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="ghost"
+          size="sm"
+          disabled={pending}
+          aria-label={fullName ? `${label} ${fullName}` : undefined}
+        >
           {pending ? "Deactivating…" : label}
         </PButton>
       </form>

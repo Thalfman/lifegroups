@@ -20,7 +20,11 @@ import {
   AdminFollowUpsShell,
   type AdminFollowUpsData,
 } from "@/components/admin/follow-ups/follow-ups-shell";
-import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
+import {
+  PeopleManagementShell,
+  type PeopleManagementData,
+} from "@/components/admin/people-management-shell";
+import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -320,6 +324,53 @@ const SETTINGS_DATA: SettingsShellData = {
   errors: { defaults: null, groups: null, overrides: null },
 };
 
+// People surface (#270, Admin Interaction Model req 3). Proves the People page
+// defaults to the Directory view, with Add person and Assignments as secondary
+// views reached by explicit actions, and that group assignment happens in a
+// detail surface (the EditingSurface drawer) rather than repeated inline per
+// group. Reuses the dashboard demo seed for the directory + assignment rosters,
+// plus a couple of member records (the seed has none).
+const PEOPLE_MEMBERS = [
+  {
+    id: "people-mem-1",
+    full_name: "Jordan Avery",
+    email: null,
+    phone: null,
+    household_name: null,
+    status: "active" as const,
+    care_sensitivity_flag: false,
+    created_at: STAMP,
+    updated_at: STAMP,
+  },
+  {
+    id: "people-mem-2",
+    full_name: "Riley Chen",
+    email: "riley@example.test",
+    phone: null,
+    household_name: null,
+    status: "active" as const,
+    care_sensitivity_flag: false,
+    created_at: STAMP,
+    updated_at: STAMP,
+  },
+];
+
+const PEOPLE_DATA: PeopleManagementData = {
+  currentActorProfileId: "p-priya",
+  profiles: DEMO_PROFILES,
+  members: PEOPLE_MEMBERS,
+  groups: DEMO_GROUPS,
+  groupLeaders: DEMO_LEADERS,
+  memberships: DEMO_MEMBERSHIPS,
+  errors: {
+    profiles: null,
+    members: null,
+    groups: null,
+    leaders: null,
+    memberships: null,
+  },
+};
+
 function Surface({
   id,
   heading,
@@ -397,6 +448,10 @@ export function A11yHarnessClient() {
         </div>
       </Surface>
 
+      <Surface id="people" heading="People (directory / add / assignments)">
+        <PeopleManagementShell data={PEOPLE_DATA} />
+      </Surface>
+
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">
         <AdminFollowUpsShell data={FOLLOW_UPS_ADMIN_DATA} />
       </Surface>
@@ -405,11 +460,34 @@ export function A11yHarnessClient() {
         <AdminFollowUpsShell data={FOLLOW_UPS_EMPTY_DATA} />
       </Surface>
 
+      {/* Leader care follow-ups (#268, Admin Interaction Model req 1). Proves
+          the validated Editing Pattern propagated to care follow-up creation:
+          the list renders no inline create form, "Add follow-up" opens the
+          shared EditingSurface drawer, and the per-row status quick-actions
+          still carry record context (the accessible-name suite checks both the
+          status-button uniqueness here and the no-bare-name invariant). */}
       <Surface id="care-follow-ups" heading="Shepherd care follow-ups">
-        <CareFollowUpList
-          followUps={CARE_FOLLOW_UPS}
+        <CareFollowUpsSection
+          careProfileId="care-1"
           shepherdProfileId="care-1"
+          followUps={CARE_FOLLOW_UPS}
           todayIso="2026-05-18"
+          leaderName="Anderson Lee"
+        />
+      </Surface>
+
+      {/* First-run state: an empty care follow-up list, to prove the empty
+          prompt is replaced (not left stale) while the create drawer is open. */}
+      <Surface
+        id="care-follow-ups-empty"
+        heading="Shepherd care follow-ups (empty)"
+      >
+        <CareFollowUpsSection
+          careProfileId="care-1"
+          shepherdProfileId="care-1"
+          followUps={[]}
+          todayIso="2026-05-18"
+          leaderName="Anderson Lee"
         />
       </Surface>
 
