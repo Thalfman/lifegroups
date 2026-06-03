@@ -12,13 +12,18 @@ import { useEffect } from "react";
 // asked for instead of on a collapsed, unfocused region.
 export function SuperAdminSectionAnchors() {
   useEffect(() => {
+    function detailsFor(id: string): HTMLDetailsElement | null {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      return el.tagName === "DETAILS"
+        ? (el as HTMLDetailsElement)
+        : el.querySelector("details");
+    }
+
     function openAndFocus(id: string) {
       const el = document.getElementById(id);
       if (!el) return;
-      const details =
-        el.tagName === "DETAILS"
-          ? (el as HTMLDetailsElement)
-          : el.querySelector("details");
+      const details = detailsFor(id);
       if (details) details.open = true;
       el.scrollIntoView({ block: "start" });
       // The <summary> is the section heading and is natively focusable; fall
@@ -39,6 +44,10 @@ export function SuperAdminSectionAnchors() {
       if (!anchor) return;
       const id = decodeURIComponent(anchor.getAttribute("href")!.slice(1));
       if (!id) return;
+      // Only take over links that target a collapsible console section; any
+      // other in-page anchor keeps its native jump (this listener is on
+      // `document`, so it would otherwise hijack every '#' link on the page).
+      if (!detailsFor(id)) return;
       // Take over the jump so we expand + focus even when re-clicking the same
       // link (which would not fire `hashchange`).
       event.preventDefault();

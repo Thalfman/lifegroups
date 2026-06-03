@@ -582,7 +582,14 @@ export function SuperAdminConsoleShell({
           {testAccountsPanel}
         </CommandSection>
 
-        <CommandSection id="audit" eyebrow="Audit">
+        {/* Collapsed by default like every operational section (#261), but
+            expand when the audit read failed so its inline error isn't hidden
+            behind a closed disclosure. */}
+        <CommandSection
+          id="audit"
+          eyebrow="Audit"
+          defaultOpen={Boolean(data.errors.audit)}
+        >
           <AuditTrailSection
             events={data.auditEvents}
             profilesById={data.profilesById}

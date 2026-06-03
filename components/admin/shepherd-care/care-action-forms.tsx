@@ -245,10 +245,15 @@ export function CareProfileFieldForm({
             <label htmlFor="cta-next_touchpoint_due" style={fieldLabelStyle}>
               Next touchpoint
             </label>
+            {/* Required: this drawer always submits set_next_touchpoint_due, so
+                an empty save would clear the leader's scheduled touchpoint. The
+                drawer's one job is to *set* a date — requiring it stops a blank
+                save from silently wiping an existing touchpoint. */}
             <input
               id="cta-next_touchpoint_due"
               name="next_touchpoint_due"
               type="date"
+              required
               defaultValue={current?.next_touchpoint_due ?? ""}
               style={fieldInputStyle}
             />
