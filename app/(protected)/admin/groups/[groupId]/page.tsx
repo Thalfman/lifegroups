@@ -251,35 +251,66 @@ async function OverviewTab({
   const health = healthCategory(grade, defaults.group_health_watch_grade);
   const capacity = capacityCategory(status);
 
+  // The four labels are only trustworthy if every read that feeds them
+  // succeeded. On a failure, fail closed with a notice rather than rendering
+  // a confidently-wrong "Not assessed" / "Needs leader" / "Open" status.
+  const statusError =
+    leadersRes.error ||
+    membershipsRes.error ||
+    defaultsRes.error ||
+    overrideRes.error ||
+    healthRes.error;
+  // The live attendance read fell back to the last-saved grade — show the grade
+  // but mark it so the letter isn't mistaken for a current reading.
+  const stale = healthRes.data?.stale ?? false;
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      {/* Four independent labels — shown separately, never combined. */}
-      <Card style={{ padding: "16px 18px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <StatusZone label="Lifecycle">
-            <PBadge>{lifecycleCategoryLabel(lifecycle)}</PBadge>
-          </StatusZone>
-          <StatusZone label="Setup">
-            <PBadge>{setupCategoryLabel(setup)}</PBadge>
-          </StatusZone>
-          <StatusZone label="Health">
-            <PBadge>{healthCategoryLabel(health)}</PBadge>
-          </StatusZone>
-          <StatusZone label="Capacity">
-            <PBadge>{capacityCategoryLabel(capacity)}</PBadge>
-          </StatusZone>
-        </div>
-      </Card>
+      {statusError ? (
+        <ErrorNote>
+          This group&apos;s status couldn&apos;t be loaded right now — one or
+          more reads failed. Retry in a moment or check the database connection.
+        </ErrorNote>
+      ) : (
+        <>
+          {/* Four independent labels — shown separately, never combined. */}
+          <Card style={{ padding: "16px 18px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <StatusZone label="Lifecycle">
+                <PBadge>{lifecycleCategoryLabel(lifecycle)}</PBadge>
+              </StatusZone>
+              <StatusZone label="Setup">
+                <PBadge>{setupCategoryLabel(setup)}</PBadge>
+              </StatusZone>
+              <StatusZone label="Health">
+                <PBadge>{healthCategoryLabel(health)}</PBadge>
+              </StatusZone>
+              <StatusZone label="Capacity">
+                <PBadge>{capacityCategoryLabel(capacity)}</PBadge>
+              </StatusZone>
+            </div>
+            {stale ? (
+              <p style={{ ...bodyTextStyle, fontSize: 12, marginTop: 10 }}>
+                Health grade is last-known — the live attendance read was
+                unavailable.
+              </p>
+            ) : null}
+          </Card>
+        </>
+      )}
 
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 12 }}>
-          <DetailRow label="Members" value={`${memberCount}`} />
+          <DetailRow
+            label="Members"
+            value={membershipsRes.error ? "—" : `${memberCount}`}
+          />
           <DetailRow label="Meeting" value={meetingSummary(group)} />
           <DetailRow
             label="Location"
@@ -331,12 +362,21 @@ async function PeopleTab({ groupId }: { groupId: string }) {
     .filter((m) => m.status === "active")
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
+  // Fail closed per section: a failed read must not render an empty roster as
+  // if authoritative (leader names come from the profiles read).
+  const leadersError = leadersRes.error || profilesRes.error;
+  const membersError = membershipsRes.error || membersRes.error;
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 10 }}>
           <div style={labelStyle}>Leaders</div>
-          {leaders.length === 0 ? (
+          {leadersError ? (
+            <p role="alert" style={bodyTextStyle}>
+              Leaders couldn&apos;t be loaded right now.
+            </p>
+          ) : leaders.length === 0 ? (
             <p style={bodyTextStyle}>No leader assigned yet.</p>
           ) : (
             <ul style={listResetStyle}>
@@ -356,8 +396,14 @@ async function PeopleTab({ groupId }: { groupId: string }) {
 
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 10 }}>
-          <div style={labelStyle}>Active members ({members.length})</div>
-          {members.length === 0 ? (
+          <div style={labelStyle}>
+            Active members{membersError ? "" : ` (${members.length})`}
+          </div>
+          {membersError ? (
+            <p role="alert" style={bodyTextStyle}>
+              Members couldn&apos;t be loaded right now.
+            </p>
+          ) : members.length === 0 ? (
             <p style={bodyTextStyle}>No active members on the roster.</p>
           ) : (
             <ul style={listResetStyle}>
@@ -395,6 +441,21 @@ async function HealthTab({ groupId }: { groupId: string }) {
   ).group_health_watch_grade;
   const grade = row?.computed_letter ?? null;
   const health = healthCategory(grade, watchGrade);
+  // Fail closed: a failed health/ratings read must not masquerade as a genuine
+  // "Not assessed" / "Not rated" grade.
+  const healthError = overviewRes.error || ratingsRes.error || defaultsRes.error;
+  const stale = row?.stale ?? false;
+
+  if (healthError) {
+    return (
+      <div style={{ display: "grid", gap: 14 }}>
+        <ErrorNote>
+          The Group-Health Grade couldn&apos;t be loaded right now — a read
+          failed. Retry in a moment.
+        </ErrorNote>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -403,6 +464,11 @@ async function HealthTab({ groupId }: { groupId: string }) {
           <StatusZone label={`Group-Health Grade · ${period}`}>
             <PBadge>{healthCategoryLabel(health)}</PBadge>
           </StatusZone>
+          {stale ? (
+            <p style={{ ...bodyTextStyle, fontSize: 12 }}>
+              Grade is last-known — the live attendance read was unavailable.
+            </p>
+          ) : null}
           <DetailRow label="Grade" value={grade ?? "Not assessed"} />
           <DetailRow
             label="Attendance (8-wk avg)"
@@ -471,7 +537,11 @@ async function AttendanceTab({ groupId }: { groupId: string }) {
       </div>
 
       <Card style={{ padding: "16px 18px" }}>
-        {sessions.length === 0 ? (
+        {sessionsRes.error ? (
+          <p role="alert" style={bodyTextStyle}>
+            Attendance history couldn&apos;t be loaded right now — a read failed.
+          </p>
+        ) : sessions.length === 0 ? (
           <p style={bodyTextStyle}>No attendance sessions on record.</p>
         ) : (
           <ul style={listResetStyle}>
@@ -511,7 +581,12 @@ async function FollowUpsTab({ groupId }: { groupId: string }) {
 
   return (
     <Card style={{ padding: "16px 18px" }}>
-      {followUps.length === 0 ? (
+      {followUpsRes.error ? (
+        <p role="alert" style={bodyTextStyle}>
+          Follow-ups couldn&apos;t be loaded right now — a read failed. This is
+          not a confirmation that the group has none.
+        </p>
+      ) : followUps.length === 0 ? (
         <p style={bodyTextStyle}>No open follow-ups for this group.</p>
       ) : (
         <ul style={listResetStyle}>
@@ -711,6 +786,18 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span style={labelStyle}>{label}</span>
       <span style={bodyTextStyle}>{value}</span>
     </div>
+  );
+}
+
+// A read failed for this tab: say so plainly rather than letting a swallowed
+// `?? []` / `?? null` render an empty or misleading state as if authoritative.
+function ErrorNote({ children }: { children: React.ReactNode }) {
+  return (
+    <Card style={{ padding: "16px 18px" }}>
+      <p role="alert" style={{ ...bodyTextStyle, fontSize: 13 }}>
+        {children}
+      </p>
+    </Card>
   );
 }
 
