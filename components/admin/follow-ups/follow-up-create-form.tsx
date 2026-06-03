@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateFollowUp } from "@/app/(protected)/admin/follow-ups/actions";
 import {
@@ -38,16 +39,42 @@ export function FollowUpCreateForm({
   members,
   guests,
   assignees,
+  // Supplied when rendered inside the EditingSurface drawer (#267), mirroring
+  // the Groups create flow (#266): `onSaved` closes + refreshes once the
+  // follow-up is created, `onDirty` lets the drawer warn before discarding
+  // entered values, `onCancel` renders a Cancel control beside Add follow-up,
+  // and `onPendingChange` lets the drawer block dismissal while the create is
+  // in flight.
+  onSaved,
+  onDirty,
+  onCancel,
+  onPendingChange,
 }: {
   groups: GroupsRow[];
   members: MembersRow[];
   guests: GuestDirectoryEntry[];
   assignees: ProfilesRow[];
+  onSaved?: () => void;
+  onDirty?: () => void;
+  onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateFollowUp,
     { resetOnSuccess: true }
   );
+
+  // useActionForm resets the <form> on success; in the drawer `onSaved` then
+  // closes it (the form unmounts, so the reset is moot there but harmless).
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+  }, [state, onSaved]);
+
+  // Mirror the in-flight state up so the drawer keeps itself open until the
+  // create resolves rather than being dismissed mid-write.
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   const sortedMembers = [...members].sort((a, b) =>
     a.full_name.localeCompare(b.full_name)
@@ -57,6 +84,7 @@ export function FollowUpCreateForm({
     <form
       ref={formRef}
       action={formAction}
+      onChange={onDirty}
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
@@ -225,10 +253,21 @@ export function FollowUpCreateForm({
             placeholder="Context only the admin team should see."
           />
         </div>
-        <div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add follow-up"}
           </PButton>
+          {onCancel ? (
+            <PButton
+              type="button"
+              tone="ghost"
+              size="md"
+              disabled={pending}
+              onClick={onCancel}
+            >
+              Cancel
+            </PButton>
+          ) : null}
         </div>
       </div>
       <FormStatus state={state} successText="Follow-up created." />
