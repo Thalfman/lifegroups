@@ -25,6 +25,7 @@ import {
   type PeopleManagementData,
 } from "@/components/admin/people-management-shell";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
+import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -490,6 +491,19 @@ export function A11yHarnessClient() {
           shepherdProfileId="care-1"
           followUps={[]}
           todayIso="2026-05-18"
+          leaderName="Anderson Lee"
+        />
+      </Surface>
+
+      {/* Leader care actions, redesigned as plain separate choices (#272,
+          Admin Interaction Model req 10). Each choice opens a focused Editing
+          Pattern drawer doing one thing; the buttons carry distinct,
+          non-generic names and the drawer's Close control carries leader
+          context. */}
+      <Surface id="care-actions" heading="Leader care actions (redesigned)">
+        <CareActions
+          shepherdProfileId="00000000-0000-4000-8000-000000000001"
+          current={null}
           leaderName="Anderson Lee"
         />
       </Surface>

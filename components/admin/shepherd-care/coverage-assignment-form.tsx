@@ -20,7 +20,7 @@ import {
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
 
 // `defaultValue` uses the caller's LOCAL calendar day for the same
-// rationale as log-interaction-form.tsx — keep the picker on the
+// rationale as care-action-forms.tsx — keep the picker on the
 // admin's natural "today" without rejecting it server-side.
 function todayLocalIso(): string {
   const now = new Date();
