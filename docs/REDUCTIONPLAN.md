@@ -263,6 +263,10 @@ A user should not need to check multiple top-level pages to understand who needs
 - Make care actions explicit.
 - Use clear action labels like `Log contact`, `Create follow-up`, and `Mark complete`.
 
+> Boundary notes (this is navigation consolidation only, not a data or route merge):
+> - "Care" is the user-facing nav label/area only. The existing `/admin/shepherd-care` route path and filenames stay frozen, per ADR `0008` — renaming touches RLS/RPC/audit-sensitive care code for no functional payoff. Any actual route migration needs its own ADR.
+> - Care follow-ups stay on the dedicated shepherd-care tables (`shepherd_care_follow_ups`), kept separate from the leader-readable generic `follow_ups` table because care content is more sensitive and generic follow-ups have reachable leader read paths. Generic and care follow-ups may cross-link as counts/links only — generic surfaces must not read care-note content.
+
 ## Merge Into Care
 
 | Current Concept | New Location |
@@ -289,7 +293,7 @@ Use these tabs:
 
 | Tab | Shows |
 |---|---|
-| Needs Contact | Leaders or people who need outreach. |
+| Needs Contact | Leaders / co-leaders who need outreach. (Care is per-leader per `docs/PRD.md`; do not pull members or other non-leader people into shepherd-care unless a separate member-care model is defined.) |
 | Follow-ups | Open follow-up tasks. |
 | Due Soon | Follow-ups due soon or overdue. |
 | Recent Care | Recently logged calls, notes, meetings, or care activity. |
