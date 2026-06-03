@@ -2,8 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-button";
 import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
@@ -266,10 +272,19 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     leadersByGroupId,
   ]);
 
-  // Debounce the text query so the filter + localeCompare sort over the full
-  // group list runs once typing settles, not on every keystroke. The input
-  // stays bound to `query` so it still feels instant.
-  const trimmed = useDebouncedValue(query.trim().toLowerCase(), 150);
+  // Defer the two inputs that drive the expensive work — the text filter, the
+  // locale-aware sort, and the re-render of every group card. The search box
+  // (`query`) and the active-tab highlight (`tab`) update urgently so the
+  // interaction paints instantly; the heavy list derivation keys off the
+  // deferred copies and runs as a low-priority, interruptible render. This
+  // keeps keystrokes and tab clicks snappy (low INP) on a long roster without a
+  // fixed debounce delay, and React drops superseded renders as you keep typing.
+  const deferredQuery = useDeferredValue(query);
+  const deferredTab = useDeferredValue(tab);
+  const trimmed = deferredQuery.trim().toLowerCase();
+  // True while the rendered list still reflects the previous input — used to
+  // dim it briefly so the stale rows read as catching up, not as the result.
+  const listIsStale = query !== deferredQuery || tab !== deferredTab;
 
   const matchesTab = useCallback(
     (g: GroupsRow): boolean => {
@@ -277,9 +292,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       if (!s) return false;
       // Membership rules live in the pure matchesListTab (plan §4), shared with
       // the focused tests so the spec can't drift from the rendered tabs.
-      return matchesListTab(tab, s);
+      return matchesListTab(deferredTab, s);
     },
-    [tab, statusByGroupId]
+    [deferredTab, statusByGroupId]
   );
 
   const visible = useMemo(
@@ -368,6 +383,8 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             fontFamily: fontBody,
             fontSize: 13,
             color: P.ink2,
+            opacity: listIsStale ? 0.6 : 1,
+            transition: "opacity 120ms ease",
           }}
         >
           {isArchivedTab
@@ -375,7 +392,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             : "No groups match the current tab."}
         </div>
       ) : (
-        <ul style={listResetStyle}>
+        <ul
+          style={{
+            ...listResetStyle,
+            opacity: listIsStale ? 0.6 : 1,
+            transition: "opacity 120ms ease",
+          }}
+        >
           {visible.map((g) => (
             <li key={g.id} style={{ marginBottom: 14 }}>
               <GroupCard
