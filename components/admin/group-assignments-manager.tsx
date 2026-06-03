@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
+import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { AssignLeaderForm } from "@/components/admin/forms/assign-leader-form";
 import { AssignMemberForm } from "@/components/admin/forms/assign-member-form";
 import { PButton } from "@/components/pastoral/button";
@@ -52,33 +52,22 @@ export function GroupAssignmentsManager({
   leadersError: string | null;
   membershipsError: string | null;
 }) {
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  // A select was touched in the drawer → warn before discarding on dismissal.
-  // A ref (not state) so changing it never re-renders the roster behind the
-  // drawer. Assign actions are additive server actions that complete regardless
-  // of the drawer, so there is nothing to block on dismissal — only unsaved
-  // dropdown selections to warn about.
-  const dirtyRef = useRef(false);
-
-  const openGroup = useCallback((groupId: string) => {
-    dirtyRef.current = false;
-    setSelectedGroupId(groupId);
-  }, []);
-  const markDirty = useCallback(() => {
-    dirtyRef.current = true;
-  }, []);
-  const requestClose = useCallback(() => {
-    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
-      return;
-    }
-    dirtyRef.current = false;
-    setSelectedGroupId(null);
-  }, []);
+  // A per-group drawer (target = the group id being edited). Assignments are
+  // additive: the drawer stays open after each save so several people can be
+  // placed in a row, and the assign server actions revalidate /admin/people
+  // themselves, so the roster behind the open drawer refreshes without a
+  // client router.refresh. `markSaved` (wired to each form's onSaved) clears the
+  // dirty flag once a write lands, so closing right after a successful assign
+  // never falsely warns about unsaved changes.
+  const drawer = useEditingDrawer<string>({
+    closeOnSave: false,
+    refreshOnSave: false,
+  });
 
   const selectedGroup =
-    selectedGroupId === null
+    drawer.target === null
       ? null
-      : (groups.find((g) => g.id === selectedGroupId) ?? null);
+      : (groups.find((g) => g.id === drawer.target) ?? null);
 
   const leadersFor = (groupId: string) =>
     groupLeaders.filter((gl) => gl.group_id === groupId && gl.active);
@@ -157,6 +146,9 @@ export function GroupAssignmentsManager({
                           .join(" · ")}
                       </span>
                     ) : null}
+                    <PBadge tone="neutral">
+                      {group.lifecycle_status.replace(/_/g, " ")}
+                    </PBadge>
                   </div>
                   <div
                     style={{
@@ -184,7 +176,7 @@ export function GroupAssignmentsManager({
                   type="button"
                   tone="ghost"
                   size="sm"
-                  onClick={() => openGroup(group.id)}
+                  onClick={() => drawer.open(group.id)}
                   aria-label={`Edit assignments for ${group.name}${
                     group.location_area ? ` (${group.location_area})` : ""
                   }`}
@@ -202,7 +194,7 @@ export function GroupAssignmentsManager({
           here, out of the list flow. */}
       <EditingSurface
         open={selectedGroup !== null}
-        onRequestClose={requestClose}
+        onRequestClose={drawer.requestClose}
         eyebrow="Assignments"
         title={selectedGroup ? selectedGroup.name : "Assignments"}
         description="Add leaders and members to this group. Each assignment saves on its own; close when you're done."
@@ -216,7 +208,7 @@ export function GroupAssignmentsManager({
           // onChange bubbles from the selects, so the drawer can warn before
           // discarding a half-made selection without the forms needing to know
           // about the drawer.
-          <div onChange={markDirty} style={{ display: "grid", gap: 22 }}>
+          <div onChange={drawer.markDirty} style={{ display: "grid", gap: 22 }}>
             <Subsection
               title={`Leaders (${leadersFor(selectedGroup.id).length})`}
             >
@@ -257,6 +249,8 @@ export function GroupAssignmentsManager({
               <AssignLeaderForm
                 groupId={selectedGroup.id}
                 leaderOptions={leaderOptions}
+                onSaved={drawer.markSaved}
+                onPendingChange={drawer.reportPending}
               />
             </Subsection>
 
@@ -289,6 +283,8 @@ export function GroupAssignmentsManager({
               <AssignMemberForm
                 groupId={selectedGroup.id}
                 memberOptions={memberOptions}
+                onSaved={drawer.markSaved}
+                onPendingChange={drawer.reportPending}
               />
             </Subsection>
           </div>

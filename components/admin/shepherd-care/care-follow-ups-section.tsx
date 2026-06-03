@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { PButton } from "@/components/pastoral/button";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
+import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-follow-up-create-form";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import { P, fontBody } from "@/lib/pastoral";
@@ -14,10 +13,8 @@ import type { ShepherdCareFollowUpsRow } from "@/types/database";
 // Creating a follow-up used to render a full inline form stacked above the
 // list, pushing it down; now "Add follow-up" opens the EditingSurface drawer
 // out of the list flow, so the list never reflows and the page's scroll
-// position survives the round trip. `dirtyRef` (typed-into form → warn before
-// discarding) and `submittingRef` (a create in flight → block dismissal) are
-// refs, not state, so neither typing nor an in-flight save re-renders the list
-// behind the drawer.
+// position survives the round trip. The dirty/in-flight bookkeeping lives in
+// the shared useEditingDrawer hook.
 //
 // Per-row status quick-actions (Start / Mark done / Reopen) stay on the list:
 // they are single-action transitions that already carry record context in
@@ -38,45 +35,18 @@ export function CareFollowUpsSection({
   // record context (req 1) rather than a bare "Close".
   leaderName: string;
 }) {
-  const router = useRouter();
-  const [createOpen, setCreateOpen] = useState(false);
-  const dirtyRef = useRef(false);
-  const submittingRef = useRef(false);
-
-  const openCreate = useCallback(() => {
-    dirtyRef.current = false;
-    setCreateOpen(true);
-  }, []);
-  const markDirty = useCallback(() => {
-    dirtyRef.current = true;
-  }, []);
-  const reportPending = useCallback((pending: boolean) => {
-    submittingRef.current = pending;
-  }, []);
-  const requestClose = useCallback(() => {
-    // A create is in flight: ignore every dismissal route (Escape, overlay, ×,
-    // Cancel) so we don't unmount the form mid-write — it auto-closes via
-    // onSaved when the write lands.
-    if (submittingRef.current) return;
-    if (dirtyRef.current && !window.confirm("Discard your unsaved changes?")) {
-      return;
-    }
-    dirtyRef.current = false;
-    setCreateOpen(false);
-  }, []);
-  const handleSaved = useCallback(() => {
-    dirtyRef.current = false;
-    submittingRef.current = false;
-    setCreateOpen(false);
-    // Refresh so the new follow-up appears in the list immediately (the server
-    // action revalidates the detail page too).
-    router.refresh();
-  }, [router]);
+  // Create drawer: closes + refreshes on save so the new follow-up appears.
+  const drawer = useEditingDrawer();
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <PButton type="button" tone="terra" size="md" onClick={openCreate}>
+        <PButton
+          type="button"
+          tone="terra"
+          size="md"
+          onClick={() => drawer.open(true)}
+        >
           Add follow-up
         </PButton>
       </div>
@@ -91,7 +61,7 @@ export function CareFollowUpsSection({
             fontStyle: "italic",
           }}
         >
-          {createOpen
+          {drawer.isOpen
             ? "Fill in the details in the panel and save to add the first one."
             : "No follow-ups yet. Use Add follow-up to capture the next concrete step you owe this leader."}
         </p>
@@ -107,8 +77,8 @@ export function CareFollowUpsSection({
           and focus restore, matching the Follow-up create flow (#267). Creation
           opens here, out of the list flow, so the list never reflows. */}
       <EditingSurface
-        open={createOpen}
-        onRequestClose={requestClose}
+        open={drawer.isOpen}
+        onRequestClose={drawer.requestClose}
         eyebrow="Care follow-up"
         title="Add a follow-up"
         description={`A concrete next step you owe ${leaderName}. Admin-only — it never appears on leader or member surfaces.`}
@@ -117,10 +87,10 @@ export function CareFollowUpsSection({
         <CareFollowUpCreateForm
           careProfileId={careProfileId}
           shepherdProfileId={shepherdProfileId}
-          onCancel={requestClose}
-          onDirty={markDirty}
-          onPendingChange={reportPending}
-          onSaved={handleSaved}
+          onCancel={drawer.requestClose}
+          onDirty={drawer.markDirty}
+          onPendingChange={drawer.reportPending}
+          onSaved={drawer.markSaved}
         />
       </EditingSurface>
     </div>

@@ -24,7 +24,6 @@ import {
   PeopleManagementShell,
   type PeopleManagementData,
 } from "@/components/admin/people-management-shell";
-import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import {
   SettingsShell,

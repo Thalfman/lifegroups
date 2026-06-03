@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminAssignMemberToGroup } from "@/app/(protected)/admin/people/actions";
 import {
@@ -14,14 +15,30 @@ import { P, fontBody } from "@/lib/pastoral";
 export function AssignMemberForm({
   groupId,
   memberOptions,
+  // Supplied when rendered inside the EditingSurface drawer (#270): `onSaved`
+  // lets the drawer clear its dirty flag once an assign lands (so closing right
+  // after a successful assign never falsely warns), and `onPendingChange` lets
+  // it block dismissal while the write is in flight.
+  onSaved,
+  onPendingChange,
 }: {
   groupId: string;
   memberOptions: { id: string; label: string }[];
+  onSaved?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminAssignMemberToGroup,
     { resetOnSuccess: true }
   );
+
+  useEffect(() => {
+    if (state?.ok) onSaved?.();
+  }, [state, onSaved]);
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
 
   const noOptions = memberOptions.length === 0;
 
