@@ -119,6 +119,25 @@ test.describe("group health triage + editing surface", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
+  test("editing the ratings disables 'Save grade only' so edits can't be silently discarded", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface
+      .getByRole("button", { name: "Open Anderson health editor" })
+      .click();
+    const dialog = page.getByRole("dialog");
+    const recompute = dialog.getByRole("button", {
+      name: "Recompute Anderson grade",
+    });
+    // Enabled until there are unsaved rating edits.
+    await expect(recompute).toBeEnabled();
+    await dialog.getByLabel(/Spiritual growth/i).fill("5");
+    // Now dirty: recomputing would grade against the last saved ratings and
+    // throw away the typed edit, so it is disabled.
+    await expect(recompute).toBeDisabled();
+  });
+
   test("closing returns to the prior filter state", async ({ page }) => {
     const surface = page.locator(SURFACE);
 

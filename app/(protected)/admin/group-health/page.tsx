@@ -32,14 +32,18 @@ export default async function GroupHealthPage() {
   }
 
   const period = currentPeriodMonthIso();
-  const overview = await listGroupHealthOverview(client, period);
-
+  // The overview and the editable-copy config are independent reads, so fetch
+  // them concurrently rather than waterfalling on this on-every-load surface.
+  //
   // Phase SAC.2 (#162): the two question wordings are operator-editable via the
   // Super Admin Console. platform_config is Super-Admin-only via RLS, so for a
   // ministry_admin this read returns null and decodeAppConfig yields {} — which
   // makes resolveCopy fall back to the documented placeholders. That graceful
   // fallback is the intended behaviour, not an error.
-  const platformConfig = await fetchPlatformConfig(client);
+  const [overview, platformConfig] = await Promise.all([
+    listGroupHealthOverview(client, period),
+    fetchPlatformConfig(client),
+  ]);
   const editableCopy = decodeAppConfig(platformConfig.data).editableCopy;
   const spiritualGrowthLabel = resolveCopy(
     editableCopy,

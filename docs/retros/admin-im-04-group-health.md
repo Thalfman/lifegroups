@@ -39,8 +39,16 @@ a reason or derived from a director-approved source — never faked:
 
 - EditingSurface is the unit to reuse; pass record context into both `title`
   and `closeLabel` so repeated surfaces keep unique accessible names.
-- Conditionally unmounting the drawer races Radix's focus restore; the list
-  owner should restore focus to the triggering control on close (see
-  `closeEditor` in the triage component). Bake this into the shared pattern.
+- **Keep the surface mounted and toggle `open`** (don't conditionally unmount
+  the drawer), matching the existing `AdminMasterCalendarDrawer`. EditingSurface
+  itself captures the opener and restores focus on close (Radix only
+  auto-restores to a `DialogTrigger`, which list-opened surfaces don't have), so
+  consumers get correct focus return for free — they must not re-implement it.
+- Guard discard in the consumer: track dirty via the form's `onChange`, gate
+  `onRequestClose` with a confirm, and disable any action (e.g. "Save grade
+  only") that would persist around unsaved edits.
 - The harness + a11y spec are the template: drop the new surface into
   `app/a11y-harness/harness-client.tsx` and assert the same checklist.
+- Follow-up (not this slice): `AdminMasterCalendarDrawer` predates EditingSurface
+  and duplicates the drawer chrome; fold it into EditingSurface when convenient
+  so there is one drawer shell.

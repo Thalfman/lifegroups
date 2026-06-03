@@ -21,7 +21,7 @@
 // dismissal route (Escape, overlay, Close button), so a caller with a dirty
 // form can warn before discarding. This component never decides to discard.
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,12 @@ export function EditingSurface({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  // The control that had focus when the surface opened, so we return focus to
+  // it on close. Radix only auto-restores to a DialogTrigger element; surfaces
+  // opened programmatically from a list have none, so the reusable surface owns
+  // this itself — every consumer gets correct focus return for free.
+  const openerRef = useRef<HTMLElement | null>(null);
+
   return (
     <Dialog
       open={open}
@@ -76,6 +82,19 @@ export function EditingSurface({
           // Radix auto-associates the DialogDescription; when there is none,
           // opt out explicitly so it doesn't warn about a missing description.
           {...(description ? {} : { "aria-describedby": undefined })}
+          // Capture the opener before Radix moves focus inward, then restore to
+          // it on close instead of Radix's default (which has no trigger to
+          // return to here).
+          onOpenAutoFocus={() => {
+            openerRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            const opener = openerRef.current;
+            if (opener && document.contains(opener)) {
+              event.preventDefault();
+              opener.focus();
+            }
+          }}
           className="lg-m-editing-surface"
           style={{
             position: "fixed",

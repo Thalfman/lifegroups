@@ -190,6 +190,23 @@ const GROUP_HEALTH_ROWS: GroupHealthOverviewRow[] = [
     stale: false,
     unassessed: true,
   },
+  {
+    // Stale fallback: the live attendance read failed, so we show the last
+    // persisted snapshot flagged "stale" with no fresh check-in week.
+    group_id: "grp-dawson",
+    group_name: "Dawson",
+    attendance_pct: 74,
+    attendance_weeks_counted: 8,
+    spiritual_growth_score: 3,
+    spiritual_growth_note: null,
+    group_question_score: 3,
+    group_question_leader_reported: false,
+    computed_letter: "C",
+    last_check_in_week: null,
+    last_saved_at: "2026-05-10T12:00:00Z",
+    stale: true,
+    unassessed: false,
+  },
 ];
 
 const SETTINGS_DATA: SettingsShellData = {

@@ -14,10 +14,10 @@
 
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type MutableRefObject,
 } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
@@ -36,6 +36,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { PButton } from "@/components/pastoral/button";
+import { dateLabel } from "@/lib/calendar/occurrences";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // --- Provisional triage filters --------------------------------------------
@@ -56,11 +57,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 // A required rating is missing when its 1–5 score is null.
 function missingRatings(
   row: GroupHealthOverviewRow,
-  labels: { spiritualGrowth: string; groupQuestion: string }
+  spiritualGrowthLabel: string,
+  groupQuestionLabel: string
 ): string[] {
   const missing: string[] = [];
-  if (row.spiritual_growth_score === null) missing.push(labels.spiritualGrowth);
-  if (row.group_question_score === null) missing.push(labels.groupQuestion);
+  if (row.spiritual_growth_score === null) missing.push(spiritualGrowthLabel);
+  if (row.group_question_score === null) missing.push(groupQuestionLabel);
   return missing;
 }
 
@@ -78,28 +80,12 @@ function matchesFilter(
   );
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-// Deterministic, locale-independent date label (avoids SSR/client hydration
-// drift from toLocaleDateString). Accepts an ISO date or timestamp.
-function dayMonth(iso: string | null): string {
+// "Saturday, May 16" via the shared UTC-anchored label, so date columns don't
+// drift with the runtime timezone. last_check_in_week is a date; last_saved_at
+// is a timestamp — slice it to its date part before labelling.
+function dateCell(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  return dateLabel(iso.slice(0, 10));
 }
 
 const thStyle: CSSProperties = {
@@ -135,39 +121,30 @@ export function GroupHealthTriage({
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  // The control that opened the drawer, so we return focus to it on close. We
-  // conditionally unmount the drawer (one instance, keyed per group), which
-  // races Radix's own focus restore — so we restore focus explicitly.
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  // Unsaved-edit flag, written by the open editor's form and read on close so
+  // we can warn before discarding. A ref (not state) because only the close
+  // handlers read it, and we don't want edits to re-render the list.
+  const dirtyRef = useRef(false);
 
-  const openEditor = (groupId: string, trigger: HTMLButtonElement) => {
-    triggerRef.current = trigger;
-    setOpenGroupId(groupId);
-  };
+  const visible = rows.filter((row) => matchesFilter(row, filter));
+  const openRow = rows.find((r) => r.group_id === openGroupId) ?? null;
 
-  const closeEditor = () => {
+  const requestClose = () => {
+    if (
+      dirtyRef.current &&
+      !window.confirm("Discard unsaved changes to this group's ratings?")
+    ) {
+      return;
+    }
+    dirtyRef.current = false;
     setOpenGroupId(null);
-    const trigger = triggerRef.current;
-    if (trigger) requestAnimationFrame(() => trigger.focus());
   };
 
-  const labels = useMemo(
-    () => ({
-      spiritualGrowth: spiritualGrowthLabel,
-      groupQuestion: groupQuestionLabel,
-    }),
-    [spiritualGrowthLabel, groupQuestionLabel]
-  );
-
-  const visible = useMemo(
-    () => rows.filter((row) => matchesFilter(row, filter)),
-    [rows, filter]
-  );
-
-  const openRow = useMemo(
-    () => rows.find((r) => r.group_id === openGroupId) ?? null,
-    [rows, openGroupId]
-  );
+  // Close without prompting (the edit was saved / there is nothing to discard).
+  const forceClose = () => {
+    dirtyRef.current = false;
+    setOpenGroupId(null);
+  };
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -213,17 +190,7 @@ export function GroupHealthTriage({
             <th style={thStyle}>Missing ratings</th>
             <th style={thStyle}>Last saved</th>
             <th style={thStyle}>
-              <span
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  overflow: "hidden",
-                  clip: "rect(0 0 0 0)",
-                }}
-              >
-                Actions
-              </span>
+              <span className="sr-only">Actions</span>
             </th>
           </tr>
         </thead>
@@ -238,13 +205,17 @@ export function GroupHealthTriage({
             </tr>
           ) : (
             visible.map((row) => {
-              const missing = missingRatings(row, labels);
+              const missing = missingRatings(
+                row,
+                spiritualGrowthLabel,
+                groupQuestionLabel
+              );
               return (
                 <tr key={row.group_id}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>
                     {row.group_name}
                   </td>
-                  <td style={tdStyle}>{dayMonth(row.last_check_in_week)}</td>
+                  <td style={tdStyle}>{dateCell(row.last_check_in_week)}</td>
                   <td style={tdStyle}>
                     {row.attendance_pct === null
                       ? "—"
@@ -273,13 +244,16 @@ export function GroupHealthTriage({
                   >
                     {missing.length === 0 ? "None" : missing.join(", ")}
                   </td>
-                  <td style={tdStyle}>{dayMonth(row.last_saved_at)}</td>
+                  <td style={tdStyle}>{dateCell(row.last_saved_at)}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <PButton
                       tone="ghost"
                       size="sm"
                       aria-label={`Open ${row.group_name} health editor`}
-                      onClick={(e) => openEditor(row.group_id, e.currentTarget)}
+                      onClick={() => {
+                        dirtyRef.current = false;
+                        setOpenGroupId(row.group_id);
+                      }}
                     >
                       Open
                     </PButton>
@@ -291,106 +265,116 @@ export function GroupHealthTriage({
         </tbody>
       </table>
 
-      {openRow ? (
-        <GroupHealthEditor
-          key={openRow.group_id}
-          row={openRow}
-          period={period}
-          spiritualGrowthLabel={spiritualGrowthLabel}
-          groupQuestionLabel={groupQuestionLabel}
-          onClose={closeEditor}
-        />
-      ) : null}
+      {/* One always-mounted drawer (open toggled), so Radix owns the focus trap
+          and focus restore natively — matching the established calendar drawer
+          and keeping the focus contract inside the reusable surface, not each
+          consumer. */}
+      <GroupHealthEditorDrawer
+        row={openRow}
+        period={period}
+        spiritualGrowthLabel={spiritualGrowthLabel}
+        groupQuestionLabel={groupQuestionLabel}
+        dirtyRef={dirtyRef}
+        onRequestClose={requestClose}
+        onSaved={forceClose}
+      />
     </div>
   );
 }
 
-// The rating editor that lives inside the EditingSurface drawer. Reuses the
-// existing audited server actions, so saving here is the same write path as
-// before — only the surface changed (out of the list, one group at a time).
-function GroupHealthEditor({
+function GroupHealthEditorDrawer({
   row,
   period,
   spiritualGrowthLabel,
   groupQuestionLabel,
-  onClose,
+  dirtyRef,
+  onRequestClose,
+  onSaved,
 }: {
-  row: GroupHealthOverviewRow;
+  row: GroupHealthOverviewRow | null;
   period: string;
   spiritualGrowthLabel: string;
   groupQuestionLabel: string;
-  onClose: () => void;
+  dirtyRef: MutableRefObject<boolean>;
+  onRequestClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <EditingSurface
+      open={row !== null}
+      onRequestClose={onRequestClose}
+      eyebrow="Group health"
+      title={row?.group_name ?? ""}
+      description={
+        row
+          ? `Ratings for ${period}. Saving recomputes this group's grade and writes the month's snapshot — no other group is affected.`
+          : undefined
+      }
+      closeLabel={row ? `Close ${row.group_name} health editor` : "Close"}
+    >
+      {row ? (
+        // Keyed per group so the rating fields + action state reset when a
+        // different group is opened, while the Dialog itself stays mounted.
+        <GroupHealthEditorBody
+          key={row.group_id}
+          row={row}
+          spiritualGrowthLabel={spiritualGrowthLabel}
+          groupQuestionLabel={groupQuestionLabel}
+          dirtyRef={dirtyRef}
+          onSaved={onSaved}
+        />
+      ) : null}
+    </EditingSurface>
+  );
+}
+
+// The rating editor inside the drawer. Reuses the existing audited server
+// actions, so saving here is the same write path as before — only the surface
+// changed (out of the list, one group at a time).
+function GroupHealthEditorBody({
+  row,
+  spiritualGrowthLabel,
+  groupQuestionLabel,
+  dirtyRef,
+  onSaved,
+}: {
+  row: GroupHealthOverviewRow;
+  spiritualGrowthLabel: string;
+  groupQuestionLabel: string;
+  dirtyRef: MutableRefObject<boolean>;
+  onSaved: () => void;
 }) {
   const router = useRouter();
-  const dirtyRef = useRef(false);
+  const [dirty, setDirty] = useState(false);
   const ratings = useActionForm(adminSetGroupHealthRatings);
   const recompute = useActionForm(adminRecomputeGroupHealthAssessment);
 
   // A successful save closes the drawer and refreshes the list so the new grade
-  // / last-saved show immediately (the action revalidates the route too).
+  // / last-saved show immediately (the action revalidates the route too). This
+  // instance is keyed per group, so `saved` only transitions false→true once.
   const saved = Boolean(ratings.state?.ok || recompute.state?.ok);
   useEffect(() => {
     if (!saved) return;
     dirtyRef.current = false;
     router.refresh();
-    onClose();
-    // onClose / router identities are stable enough; we only act on a fresh
-    // successful save transition.
+    onSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved]);
 
-  const requestClose = () => {
-    if (dirtyRef.current) {
-      const discard = window.confirm(
-        "Discard unsaved changes to this group's ratings?"
-      );
-      if (!discard) return;
-    }
-    onClose();
+  const markDirty = () => {
+    setDirty(true);
+    dirtyRef.current = true;
   };
 
+  const formId = `gh-ratings-${row.group_id}`;
+
   return (
-    <EditingSurface
-      open
-      onRequestClose={requestClose}
-      eyebrow="Group health"
-      title={row.group_name}
-      description={`Ratings for ${period}. Saving recomputes this group's grade and writes the month's snapshot — no other group is affected.`}
-      closeLabel={`Close ${row.group_name} health editor`}
-      footer={
-        <>
-          <form action={recompute.formAction}>
-            <input type="hidden" name="group_id" value={row.group_id} />
-            <PButton
-              type="submit"
-              tone="ghost"
-              size="sm"
-              disabled={recompute.pending}
-              aria-label={`Recompute ${row.group_name} grade`}
-            >
-              {recompute.pending ? "Saving…" : "Save grade only"}
-            </PButton>
-          </form>
-          <PButton
-            type="submit"
-            tone="terra"
-            size="sm"
-            form={`gh-ratings-${row.group_id}`}
-            disabled={ratings.pending}
-            aria-label={`Save ${row.group_name} health rating`}
-          >
-            {ratings.pending ? "Saving…" : "Save rating"}
-          </PButton>
-        </>
-      }
-    >
+    <>
       <form
-        id={`gh-ratings-${row.group_id}`}
+        id={formId}
         ref={ratings.formRef}
         action={ratings.formAction}
-        onChange={() => {
-          dirtyRef.current = true;
-        }}
+        onChange={markDirty}
         style={{ display: "grid", gap: 16 }}
       >
         <input type="hidden" name="group_id" value={row.group_id} />
@@ -447,6 +431,44 @@ function GroupHealthEditor({
         <FormStatus state={ratings.state} successText="Saved." />
         <FormStatus state={recompute.state} successText="Grade saved." />
       </form>
-    </EditingSurface>
+
+      <div
+        style={{
+          marginTop: 4,
+          paddingTop: 14,
+          borderTop: `1px solid ${P.line}`,
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+        }}
+      >
+        {/* Recompute grades from the last *saved* ratings, so it's disabled while
+            there are unsaved edits — otherwise it would silently discard them. */}
+        <form action={recompute.formAction}>
+          <input type="hidden" name="group_id" value={row.group_id} />
+          <PButton
+            type="submit"
+            tone="ghost"
+            size="sm"
+            disabled={dirty || recompute.pending}
+            aria-label={`Recompute ${row.group_name} grade`}
+            title={dirty ? "Save your rating edits first" : undefined}
+          >
+            {recompute.pending ? "Saving…" : "Save grade only"}
+          </PButton>
+        </form>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="sm"
+          form={formId}
+          disabled={ratings.pending}
+          aria-label={`Save ${row.group_name} health rating`}
+        >
+          {ratings.pending ? "Saving…" : "Save rating"}
+        </PButton>
+      </div>
+    </>
   );
 }
