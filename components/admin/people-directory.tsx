@@ -1,7 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { memo, useDeferredValue, useMemo, useState } from "react";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
@@ -39,9 +38,18 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
-  // Debounce the text query so the two list filters run once typing settles,
-  // not on every keystroke. The input stays bound to `query` for instant feedback.
-  const trimmed = useDebouncedValue(query.trim().toLowerCase(), 150);
+  // Defer the inputs that drive the two list filters and the re-render of every
+  // profile/member row. The search box (`query`) and the status select stay
+  // bound to their urgent state for instant feedback, while the heavy filtering
+  // keys off the deferred copies and runs as a low-priority, interruptible
+  // render — keeping typing and filtering snappy (low INP) on a long directory
+  // without a fixed debounce delay. The type filter only toggles section
+  // visibility, so it stays urgent.
+  const deferredQuery = useDeferredValue(query);
+  const deferredStatusFilter = useDeferredValue(statusFilter);
+  const trimmed = deferredQuery.trim().toLowerCase();
+  const listIsStale =
+    query !== deferredQuery || statusFilter !== deferredStatusFilter;
 
   const groupsById = useMemo(
     () => new Map(props.groups.map((g) => [g.id, g])),
@@ -74,7 +82,8 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   }, [props.memberships, groupsById]);
 
   const filterProfile = (p: ProfilesRow): boolean => {
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (deferredStatusFilter !== "all" && p.status !== deferredStatusFilter)
+      return false;
     if (trimmed) {
       const hay = `${p.full_name} ${p.email}`.toLowerCase();
       if (!hay.includes(trimmed)) return false;
@@ -83,7 +92,8 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   };
 
   const filterMember = (m: MembersRow): boolean => {
-    if (statusFilter !== "all" && m.status !== statusFilter) return false;
+    if (deferredStatusFilter !== "all" && m.status !== deferredStatusFilter)
+      return false;
     if (trimmed) {
       const hay = `${m.full_name} ${m.email ?? ""}`.toLowerCase();
       if (!hay.includes(trimmed)) return false;
@@ -94,13 +104,13 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const visibleProfiles = useMemo(
     () => props.profiles.filter(filterProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.profiles, statusFilter, trimmed]
+    [props.profiles, deferredStatusFilter, trimmed]
   );
 
   const visibleMembers = useMemo(
     () => props.members.filter(filterMember),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.members, statusFilter, trimmed]
+    [props.members, deferredStatusFilter, trimmed]
   );
 
   const showLogin = typeFilter !== "member";
@@ -136,6 +146,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
           headerTitle="People who sign in"
           headerDescription="Ministry admins, leaders, and co-leaders. They sign in to record check-ins and review groups."
           countLabel={`${visibleProfiles.length} shown`}
+          stale={listIsStale}
           empty={
             props.errors.profiles
               ? `Couldn't load profiles: ${props.errors.profiles}`
@@ -163,6 +174,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
           headerTitle="Participants (non-login)"
           headerDescription="Members are people in the directory who don't sign in. Leaders mark their attendance and admins place them in groups."
           countLabel={`${visibleMembers.length} shown`}
+          stale={listIsStale}
           empty={
             props.errors.members
               ? `Couldn't load members: ${props.errors.members}`
@@ -282,6 +294,7 @@ function DirectorySection({
   headerDescription,
   countLabel,
   empty,
+  stale = false,
   children,
 }: {
   headerEyebrow: string;
@@ -289,6 +302,9 @@ function DirectorySection({
   headerDescription: string;
   countLabel?: string;
   empty: string | null;
+  // True while the rendered rows still reflect the previous filter input —
+  // dims the list briefly so the stale rows read as catching up.
+  stale?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -373,6 +389,8 @@ function DirectorySection({
             border: `1px solid ${P.line}`,
             borderRadius: 10,
             overflow: "hidden",
+            opacity: stale ? 0.6 : 1,
+            transition: "opacity 120ms ease",
           }}
         >
           <ul style={listResetStyle}>{children}</ul>
