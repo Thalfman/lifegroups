@@ -41,6 +41,28 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
+  -- The clean_slate advisory lock only serializes the clean-slate RPCs; ordinary
+  -- history-write RPCs (leader check-ins, guest/follow-up writes, etc.) do NOT
+  -- take it. Lock every wipe table up front so no concurrent write can slip a row
+  -- in between the emptiness check and the restore inserts — which would either
+  -- merge a new row into the restored snapshot or trip a late FK/unique conflict
+  -- instead of the target_not_empty guard. EXCLUSIVE blocks other writers (it
+  -- conflicts with the ROW EXCLUSIVE that INSERT/UPDATE/DELETE take) while still
+  -- allowing plain SELECTs, and our own inserts below proceed (a transaction
+  -- never conflicts with its own locks). Table locks are held to transaction end.
+  lock table
+    public.attendance_records,
+    public.attendance_sessions,
+    public.follow_ups,
+    public.guests,
+    public.group_health_updates,
+    public.group_health_assessments,
+    public.group_status_history,
+    public.church_attendance_snapshots,
+    public.shepherd_care_follow_ups,
+    public.shepherd_care_interactions
+  in exclusive mode;
+
   if exists (select 1 from public.attendance_records)
      or exists (select 1 from public.attendance_sessions)
      or exists (select 1 from public.follow_ups)

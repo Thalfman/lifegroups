@@ -27,6 +27,16 @@ describe("SAC6 revert/import — shared restore body", () => {
     assertSecurityDefiner(sql, "super_admin_clean_slate_restore_payload");
   });
 
+  it("locks the history tables in exclusive mode before the emptiness check", () => {
+    const body = functionBody(sql, "super_admin_clean_slate_restore_payload");
+    expect(body).toContain("lock table");
+    expect(body).toContain("in exclusive mode");
+    const lock = body.indexOf("lock table");
+    const guard = body.indexOf("raise exception 'target_not_empty'");
+    expect(lock).toBeGreaterThan(-1);
+    expect(lock).toBeLessThan(guard);
+  });
+
   it("guards target_not_empty before inserting anything", () => {
     const body = functionBody(sql, "super_admin_clean_slate_restore_payload");
     expect(body).toContain("raise exception 'target_not_empty'");

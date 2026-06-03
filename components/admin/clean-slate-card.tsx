@@ -362,6 +362,12 @@ function CleanSlateRecovery({
         action={revert.formAction}
         style={{ display: "grid", gap: 10 }}
       >
+        {/* Bind the revert to the snapshot the operator actually sees. A stale
+            tab whose snapshot was replaced by a later wipe then fails with
+            missing_snapshot rather than silently restoring a different one. */}
+        {hasSnapshot ? (
+          <input type="hidden" name="snapshotId" value={snapshot.id} />
+        ) : null}
         <div>
           <label htmlFor="clean-slate-revert-confirm" style={fieldLabelStyle}>
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm

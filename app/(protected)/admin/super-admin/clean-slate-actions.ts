@@ -10,6 +10,7 @@ import {
   mapRpcError,
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
+import { isUuid } from "@/lib/shared/uuid";
 import {
   rpcSuperAdminCleanSlateWipe,
   rpcSuperAdminCleanSlateRevert,
@@ -100,9 +101,9 @@ export async function superAdminCleanSlateWipe(
 }
 
 // PRD-SAC6 Feature 1 (#293): in-DB Clean Slate revert. Gate super_admin,
-// re-verify the RESTORE phrase, run the revert RPC (restores the latest
-// un-restored snapshot), then read the counts back from the restored snapshot
-// row for the success summary.
+// re-verify the RESTORE phrase, run the revert RPC bound to the snapshot id the
+// form displayed (so a stale tab fails with missing_snapshot rather than
+// restoring a different snapshot), then read the counts back for the summary.
 export async function superAdminCleanSlateRevert(
   _prev: ActionResult<CleanSlateRevertSuccess> | undefined,
   input: unknown
@@ -118,13 +119,19 @@ export async function superAdminCleanSlateRevert(
     ]);
   }
 
+  // The card submits the displayed snapshot id; bind the RPC to it. A malformed
+  // / absent id falls back to null (latest un-restored), which the RPC resolves.
+  const submittedId =
+    typeof raw.snapshotId === "string" && isUuid(raw.snapshotId)
+      ? raw.snapshotId
+      : null;
+
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  // Latest un-restored snapshot (p_snapshot_id null lets the RPC resolve it).
   const { data: snapshotId, error } = await rpcSuperAdminCleanSlateRevert(
     client,
-    { p_snapshot_id: null }
+    { p_snapshot_id: submittedId }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!snapshotId) {
