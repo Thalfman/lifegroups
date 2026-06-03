@@ -48,6 +48,7 @@ const EMPTY_DATA: GroupManagementData = {
     memberships: "The database is not configured in this environment.",
     sessions: "The database is not configured in this environment.",
     settings: "The database is not configured in this environment.",
+    health: "The database is not configured in this environment.",
   },
 };
 
@@ -59,8 +60,9 @@ async function loadData(): Promise<GroupManagementData> {
   // the groups.health_status enum. We read the same live overview the Group
   // Health surface uses and project just each group's computed letter. It is
   // independent of the other reads, so it joins the same parallel batch rather
-  // than waterfalling. A read failure leaves the map empty (groups read as
-  // "Not assessed") rather than failing the whole page — the rest still loads.
+  // than waterfalling. A read failure leaves the grade map empty, but it is
+  // surfaced via errors.health (below) so the page warns rather than silently
+  // showing every group as "Not assessed"; the rest of the page still loads.
   const [
     groupsResult,
     leadersResult,
@@ -173,6 +175,7 @@ async function loadData(): Promise<GroupManagementData> {
         sessionsResult.error?.message ??
         null,
       settings: settingsResult.error?.message ?? null,
+      health: healthOverview.error?.message ?? null,
     },
   };
 }

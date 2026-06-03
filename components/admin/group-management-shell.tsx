@@ -52,6 +52,10 @@ export type GroupManagementData = {
     memberships: string | null;
     sessions: string | null;
     settings: string | null;
+    // The Group-Health overview read. When it fails the grade/​signal maps are
+    // empty, so every group would otherwise read as "Not assessed" with no
+    // warning — surface the failure rather than silently misclassifying.
+    health: string | null;
   };
 };
 
@@ -62,7 +66,8 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
     data.errors.profiles ||
     data.errors.memberships ||
     data.errors.sessions ||
-    data.errors.settings;
+    data.errors.settings ||
+    data.errors.health;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>

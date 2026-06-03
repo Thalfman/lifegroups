@@ -323,9 +323,13 @@ async function PeopleTab({ groupId }: { groupId: string }) {
   );
   const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
   const membersRes = await fetchMembersByIds(client, memberIds);
-  const members = (membersRes.data ?? []).sort((a, b) =>
-    a.full_name.localeCompare(b.full_name)
-  );
+  // An active group_memberships link does not guarantee the member record is
+  // still active (a deactivated member's link may not have been cleaned up), so
+  // filter on members.status — matching the other roster surfaces — to avoid
+  // overstating the active roster.
+  const members = (membersRes.data ?? [])
+    .filter((m) => m.status === "active")
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -586,6 +590,23 @@ async function EventsTab({
     fromDate: todayIso,
     toDate: toIso,
   });
+
+  // Fail closed if the override read failed: without it we cannot tell which
+  // generated occurrences were cancelled / retyped / retitled, so showing the
+  // un-overridden schedule would present stale dates as live meetings. Surface
+  // the failure instead of guessing.
+  if (eventsRes.error) {
+    return (
+      <div style={{ display: "grid", gap: 14 }}>
+        <Card style={{ padding: "16px 18px" }}>
+          <p style={bodyTextStyle} role="alert">
+            Upcoming meetings are unavailable right now — the calendar read
+            failed. Retry in a moment or open the group calendar.
+          </p>
+        </Card>
+      </div>
+    );
+  }
   const events = eventsRes.data ?? [];
 
   // Reuse the calendar's occurrence-generation + override-merge helpers rather
