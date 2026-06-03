@@ -1,5 +1,5 @@
 import type { UserRole } from "@/types/enums";
-import { isAdminRole, isOverShepherdRole } from "@/lib/auth/roles";
+import { ADMIN_AREAS, isAdminRole, isOverShepherdRole } from "@/lib/auth/roles";
 
 export interface HubTile {
   href: string;
@@ -7,22 +7,10 @@ export interface HubTile {
   icon: string;
 }
 
-// The admin-OS tile set, mirroring the Admin OS + Manage nav spine in
-// adminNavGroups but surfaced as a flat, ordered launcher. Note "Leader care"
-// over the unchanged /admin/shepherd-care route — the ADR-0008 label/glossary
-// rename sits on top of the deliberately-frozen shepherd_care_* schema.
-const ADMIN_TILES: readonly HubTile[] = [
-  { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
-  // Launch planning now carries the former Capacity board and Multiplication
-  // surfaces (ADR 0010 surface-budget consolidation); both old routes redirect
-  // here, so they no longer get their own hub tile.
-  { href: "/admin/launch-planning", label: "Launch planning", icon: "compass" },
-  { href: "/admin/group-health", label: "Group health", icon: "sprout" },
-  { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
-  { href: "/admin/people", label: "People", icon: "people" },
-  { href: "/admin/groups", label: "Groups", icon: "groups" },
-  { href: "/admin/calendar", label: "Calendar", icon: "cal" },
-];
+// The Home Hub launcher mirrors the six-area spine (ADR 0013): one tile per
+// area, in the same order as the sidebar and bottom nav, so all three surfaces
+// stay consistent. The shared source is ADMIN_AREAS in lib/auth/roles.ts.
+const ADMIN_TILES: readonly HubTile[] = ADMIN_AREAS.map((a) => ({ ...a }));
 
 // Super Admin alone sees the console tile, matching the super-admin nav gate in
 // navItemsForRole / adminNavGroups.

@@ -58,57 +58,77 @@ export function defaultLandingPathForRole(role: UserRole): string {
   return "/unauthorized";
 }
 
-// Julian admin OS ordering: shepherd care + launch planning lead, then
-// follow-ups (the leader-visible task queue), then operational
-// management (people, groups, calendar). Guests is intentionally
-// omitted from nav per PRODUCT_ROADMAP.md EXT.1, and Check-ins is omitted
-// per docs/adr/0002-oversight-ladder-and-leader-gating.md — both routes
-// still resolve for existing bookmarks / direct URLs under the admin guard.
+export interface AdminArea {
+  href: string;
+  label: string;
+  icon: string;
+}
+
+// The six job-oriented areas of the reduced IA (ADR 0013). This is the single
+// source of truth shared by every navigation surface — admin sidebar
+// (adminNavGroups), Home Hub launcher tiles (lib/auth/hub-tiles.ts), and the
+// bottom-nav list (navItemsForRole) — so all three stay consistent by
+// construction. Rendered as a flat list, no section headers.
+//
+// Area→job mapping (ADR 0013, amending ADR 0010): Groups→job 3 (group health),
+// Care→job 1 (leader care), Planning→job 2 (launch), Home=cross-job triage,
+// People=shared substrate, Settings=System utility. Care/Planning point at the
+// new landing shells (#298); the frozen routes they will host
+// (shepherd-care, follow-ups, launch-planning, calendar, group-health) keep
+// their paths and still resolve directly (ADR 0008/0009).
+export const ADMIN_AREAS: readonly AdminArea[] = [
+  { href: "/admin", label: "Home", icon: "sun" },
+  { href: "/admin/groups", label: "Groups", icon: "groups" },
+  { href: "/admin/care", label: "Care", icon: "heart" },
+  { href: "/admin/people", label: "People", icon: "people" },
+  { href: "/admin/planning", label: "Planning", icon: "compass" },
+  { href: "/admin/settings", label: "Settings", icon: "cog" },
+];
+
+// Super Admin is NOT one of the six areas (ADR 0002): it is appended only for
+// super_admin and is otherwise unchanged. It must never be hidden or replaced
+// by the six-area structure.
+export const SUPER_ADMIN_AREA: AdminArea = {
+  href: "/admin/super-admin",
+  label: "Super admin",
+  icon: "star",
+};
+
+// Bottom-nav list, realigned to the six areas (ADR 0013). Admin roles get the
+// flat six (Home → /admin), plus the Super Admin entry for super_admin. The
+// Home Hub at `/` is the pre-admin landing — kept as the lone item for
+// non-admin roles, but it is not one of the six areas.
 export function navItemsForRole(
   role: UserRole
 ): { href: string; label: string }[] {
+  if (isAdminRole(role)) {
+    const items = ADMIN_AREAS.map((a) => ({ href: a.href, label: a.label }));
+    if (role === "super_admin") {
+      items.push({
+        href: SUPER_ADMIN_AREA.href,
+        label: SUPER_ADMIN_AREA.label,
+      });
+    }
+    return items;
+  }
   const items: { href: string; label: string }[] = [
     { href: "/", label: "Home" },
   ];
-  if (isAdminRole(role)) {
-    items.push({ href: "/admin", label: "Admin" });
-    items.push({ href: "/admin/shepherd-care", label: "Leader care" });
-    // Launch planning now also carries the former Capacity board and
-    // Multiplication surfaces (ADR 0010 surface-budget consolidation); both old
-    // routes redirect here. Leader pipeline stays its own destination.
-    items.push({ href: "/admin/launch-planning", label: "Launch planning" });
-    items.push({ href: "/admin/leader-pipeline", label: "Leader pipeline" });
-    items.push({ href: "/admin/follow-ups", label: "Follow-ups" });
-    items.push({ href: "/admin/people", label: "People" });
-    items.push({ href: "/admin/groups", label: "Groups" });
-    items.push({ href: "/admin/calendar", label: "Calendar" });
-    // Check-ins dropped from nav per
-    // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
-    // reporting loop). The /admin/check-ins route stays dormant and reachable
-    // by direct URL under the admin guard.
-    items.push({ href: "/admin/settings", label: "Settings" });
-    if (role === "super_admin") {
-      items.push({ href: "/admin/super-admin", label: "Super admin" });
-    }
-  } else if (isOverShepherdRole(role)) {
-    // Focused Over-Shepherd nav: a single "My Shepherds" entry. The directory
-    // it links to arrives in the read-surface slice; this slice lands the
-    // entry pointing at the placeholder landing.
+  if (isOverShepherdRole(role)) {
+    // Focused Over-Shepherd nav: a single "My Leaders" entry. The directory it
+    // links to arrives in the read-surface slice; this slice lands the entry
+    // pointing at the placeholder landing.
     items.push({ href: "/over-shepherd", label: "My Leaders" });
   }
   // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // no leader nav entry is emitted for any role. leader / co_leader see only
-  // the minimal no-access shell (Home).
+  // no leader nav entry is emitted for leader / co_leader — they see only the
+  // minimal no-access shell (Home).
   return items;
 }
 
 export type AdminNavGroupKey = "top" | "manage" | "shepherd" | "system";
 
-export interface AdminNavItem {
-  href: string;
-  label: string;
-  icon: string;
-}
+export type AdminNavItem = AdminArea;
 
 export interface AdminNavGroup {
   group: AdminNavGroupKey;
@@ -117,72 +137,18 @@ export interface AdminNavGroup {
 }
 
 export function adminNavGroups(role: UserRole): AdminNavGroup[] {
-  // Julian admin OS pivot (2026-05): the "shepherd" group now leads with
-  // the admin-OS spine (shepherd care, launch planning, follow-ups) and
-  // is labeled "Admin OS". The "manage" group holds operational surfaces
-  // (people, groups, calendar). Check-ins was dropped from this group per
-  // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
-  // reporting loop); Guests is intentionally dropped per PRODUCT_ROADMAP.md
-  // EXT.1. Both routes still resolve so direct URLs / bookmarks work. See
-  // docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the pivot rationale.
-  const groups: AdminNavGroup[] = [
-    {
-      group: "top",
-      label: "",
-      items: [{ href: "/admin", label: "Admin", icon: "sun" }],
-    },
-    {
-      group: "shepherd",
-      // User-facing label is "Ministry Admin" (#177); "Admin OS" stays the
-      // internal name for this spine in comments/docs.
-      label: "Ministry Admin",
-      // Group health (#146) joins the Admin OS spine as an oversight surface:
-      // it ships dimension-complete with ADR 0007 placeholder labels and was
-      // previously reachable only by direct URL.
-      items: [
-        { href: "/admin/shepherd-care", label: "Leader care", icon: "heart" },
-        // Launch planning absorbs the former Capacity board and Multiplication
-        // surfaces (ADR 0010 surface-budget consolidation); both old routes
-        // redirect here. Leader pipeline stays its own destination.
-        {
-          href: "/admin/launch-planning",
-          label: "Launch planning",
-          icon: "compass",
-        },
-        {
-          href: "/admin/leader-pipeline",
-          label: "Leader pipeline",
-          icon: "people",
-        },
-        { href: "/admin/follow-ups", label: "Follow-ups", icon: "flag" },
-        { href: "/admin/group-health", label: "Group health", icon: "sprout" },
-      ],
-    },
-    {
-      group: "manage",
-      label: "Manage",
-      // Check-ins dropped from nav per
-      // docs/adr/0002-oversight-ladder-and-leader-gating.md (dead Shepherd→admin
-      // reporting loop). The /admin/check-ins route stays dormant and reachable
-      // by direct URL under the admin guard.
-      items: [
-        { href: "/admin/people", label: "People", icon: "people" },
-        { href: "/admin/groups", label: "Groups", icon: "groups" },
-        { href: "/admin/calendar", label: "Calendar", icon: "cal" },
-      ],
-    },
-    {
-      group: "system",
-      label: "System",
-      items: [
-        { href: "/admin/settings", label: "Settings", icon: "cog" },
-        ...(role === "super_admin"
-          ? [{ href: "/admin/super-admin", label: "Super admin", icon: "star" }]
-          : []),
-      ],
-    },
-  ];
-  return groups;
+  // Six-area spine (ADR 0013): a single flat group with no section header
+  // (empty label) renders the six areas as a flat list, collapsing the former
+  // grouped sidebar (top / Ministry Admin / Manage / System). Super Admin is
+  // appended only for super_admin and is unchanged (ADR 0002). The frozen
+  // surfaces these areas will host (shepherd-care, follow-ups, launch-planning,
+  // calendar, group-health) keep their routes and resolve by direct URL
+  // (ADR 0008/0009).
+  const items: AdminNavItem[] = ADMIN_AREAS.map((a) => ({ ...a }));
+  if (role === "super_admin") {
+    items.push({ ...SUPER_ADMIN_AREA });
+  }
+  return [{ group: "top", label: "", items }];
 }
 
 // Sidebar nav groups for the lg shell (LgAppShell), resolved per role so the
