@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
+import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import {
   AdminMasterCalendarGrid,
   type DayClickPayload,
@@ -28,6 +29,41 @@ import type {
 
 type ViewMode = "month" | "list";
 
+type CalendarViewSnapshot = {
+  // null = the user never explicitly toggled the view, so the persisted state
+  // carries no opinion and the responsive default (below) decides on restore.
+  // Persisting the auto-selected mobile "list" as if it were a choice would
+  // wrongly override the desktop month default on a later visit (#263).
+  viewMode: ViewMode | null;
+  groupFilter: string[];
+  typeFilter: GroupCalendarEventType[];
+  statusFilter: GroupCalendarEventStatus[];
+  dayFilter: number[];
+  leaderFilter: string;
+};
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
+
+// Validate a restored calendar view against its current shape. We check
+// structure (and the closed `viewMode` set, plus null for "no explicit
+// choice"), not membership: a stale group or leader id simply matches nothing
+// and the existing empty state offers a reset, which is friendlier than
+// silently dropping the whole saved view (#263).
+function isCalendarViewSnapshot(value: unknown): value is CalendarViewSnapshot {
+  if (value === null || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    (v.viewMode === "month" || v.viewMode === "list" || v.viewMode === null) &&
+    isStringArray(v.groupFilter) &&
+    isStringArray(v.typeFilter) &&
+    isStringArray(v.statusFilter) &&
+    Array.isArray(v.dayFilter) &&
+    v.dayFilter.every((d) => typeof d === "number") &&
+    typeof v.leaderFilter === "string"
+  );
+}
+
 const ALL_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
   ...EVENT_TYPE_OPTIONS,
   { value: "off", label: friendlyEventTypeLabel("off") },
@@ -40,39 +76,19 @@ export function AdminMasterCalendarShell({
   occurrences,
   groups,
   leaderOptions,
+  viewerId,
 }: {
   monthIso: string;
   todayIso: string;
   occurrences: MasterOccurrence[];
   groups: MasterCalendarGroupSummary[];
   leaderOptions: MasterCalendarLeader[];
+  // Signed-in profile id, used only to scope this admin's saved view/filters
+  // (#263). Omitted/undefined falls back to a shared persistence bucket.
+  viewerId?: string | null;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const userToggledRef = useRef(false);
-
-  // Default-view decision (Calendar polish, PRD req 11, #262): Month stays the
-  // desktop default; List remains the mobile default (auto-selected below) and
-  // is one tap away via the toggle. Rationale: the master calendar's value is
-  // the at-a-glance month grid spanning every group; List is better for dense
-  // days and narrow screens, where it is already chosen automatically. We did
-  // not switch admin work to default to List (Open Question 2 — director mobile
-  // usage — is non-blocking; revisit if the director works primarily on phone).
-
-  // Hydration-safe mobile default: stay on "month" through SSR and the
-  // first client render, then flip to "list" only if the viewport
-  // matches AND the user hasn't manually picked a view yet.
-  useEffect(() => {
-    if (userToggledRef.current) return;
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 720px)");
-    if (mq.matches) setViewMode("list");
-    const onChange = (e: MediaQueryListEvent) => {
-      if (userToggledRef.current) return;
-      setViewMode(e.matches ? "list" : "month");
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
 
   const setViewModeManual = (next: ViewMode) => {
     userToggledRef.current = true;
@@ -90,6 +106,67 @@ export function AdminMasterCalendarShell({
   // display name don't collapse into one option (and so picking one
   // doesn't over-match the other).
   const [leaderFilter, setLeaderFilter] = useState<string>("");
+
+  // Saved views & filters (PRD req 12, #263): remember this admin's view mode
+  // and every filter selection across reloads and return visits. Declared
+  // before the mobile-default effect below so its restore pass runs first — a
+  // restored selection marks the view as user-chosen (userToggledRef), which
+  // keeps the responsive auto-default from clobbering it.
+  const persistHydrated = usePersistedViewState({
+    surface: "calendar",
+    scopeId: viewerId,
+    snapshot: {
+      // Only persist the view as a real preference once the user has toggled
+      // it; otherwise leave it null so a return visit re-runs the responsive
+      // default instead of inheriting an auto-selected mobile "list".
+      viewMode: userToggledRef.current ? viewMode : null,
+      groupFilter,
+      typeFilter,
+      statusFilter,
+      dayFilter,
+      leaderFilter,
+    },
+    restore: (saved) => {
+      // A null saved view means "no explicit choice" — leave userToggledRef
+      // false so the responsive default (and resize listener) still apply.
+      if (saved.viewMode !== null) {
+        userToggledRef.current = true;
+        setViewMode(saved.viewMode);
+      }
+      setGroupFilter(saved.groupFilter);
+      setTypeFilter(saved.typeFilter);
+      setStatusFilter(saved.statusFilter);
+      setDayFilter(saved.dayFilter);
+      setLeaderFilter(saved.leaderFilter);
+    },
+    validate: isCalendarViewSnapshot,
+  });
+
+  // Default-view decision (Calendar polish, PRD req 11, #262): Month stays the
+  // desktop default; List remains the mobile default (auto-selected below) and
+  // is one tap away via the toggle. Rationale: the master calendar's value is
+  // the at-a-glance month grid spanning every group; List is better for dense
+  // days and narrow screens, where it is already chosen automatically. We did
+  // not switch admin work to default to List (Open Question 2 — director mobile
+  // usage — is non-blocking; revisit if the director works primarily on phone).
+
+  // Hydration-safe mobile default: stay on "month" through SSR and the
+  // first client render, then flip to "list" only if the viewport
+  // matches AND the user hasn't manually picked (or had restored) a view.
+  // Held until persistence has hydrated so a saved view always wins.
+  useEffect(() => {
+    if (!persistHydrated) return;
+    if (userToggledRef.current) return;
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 720px)");
+    if (mq.matches) setViewMode("list");
+    const onChange = (e: MediaQueryListEvent) => {
+      if (userToggledRef.current) return;
+      setViewMode(e.matches ? "list" : "month");
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [persistHydrated]);
 
   // Selected occurrence for the drawer. We use a composite key
   // (groupId|date) since the master view has multiple occurrences per

@@ -48,7 +48,7 @@ export default async function AdminMasterCalendarPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const params = (await searchParams) ?? {};
   const monthIso = pickMonthParam(params.month) ?? churchMonthIso();
 
@@ -91,9 +91,19 @@ export default async function AdminMasterCalendarPage({
               >
                 {monthLabel(monthIso)}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
                 {prevMonth ? (
-                  <Link href={`/admin/calendar?month=${prevMonth}`} style={navLinkStyle}>
+                  <Link
+                    href={`/admin/calendar?month=${prevMonth}`}
+                    style={navLinkStyle}
+                  >
                     ← {monthLabel(prevMonth)}
                   </Link>
                 ) : null}
@@ -105,7 +115,10 @@ export default async function AdminMasterCalendarPage({
                   This month
                 </Link>
                 {nextMonth ? (
-                  <Link href={`/admin/calendar?month=${nextMonth}`} style={navLinkStyle}>
+                  <Link
+                    href={`/admin/calendar?month=${nextMonth}`}
+                    style={navLinkStyle}
+                  >
                     {monthLabel(nextMonth)} →
                   </Link>
                 ) : null}
@@ -119,6 +132,7 @@ export default async function AdminMasterCalendarPage({
             occurrences={data.occurrences}
             groups={data.groups}
             leaderOptions={data.leaderOptions}
+            viewerId={session.profile.id}
           />
         </div>
       </PageBody>
