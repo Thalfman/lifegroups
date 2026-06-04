@@ -35,7 +35,7 @@ the **genuine remaining gaps**.
 - Editing Pattern (right drawer / mobile sheet) — `components/lg/admin/editing-surface.tsx`.
 
 **Confirmed remaining gaps (this plan's target):**
-1. **A11y:** sidebar active links have visual styling but **no `aria-current`** (`components/lg/shell/Sidebar.tsx:86-114`); the **month-grid calendar cell editor** derives its accessible name from concatenated cell text (day # + "Today" + type + clock + status + "Special") — `components/calendar/calendar-occurrence-editor.tsx` trigger fed by `components/calendar/calendar-month-grid.tsx`.
+1. **A11y:** sidebar active links have visual styling but **no `aria-current`** (`components/lg/shell/Sidebar.tsx:86-114`); and **calendar/event occurrence triggers** derive their accessible name from concatenated child text rather than a meaningful label — confirmed on the **month-grid cell editor** (`components/calendar/calendar-occurrence-editor.tsx` fed by `components/calendar/calendar-month-grid.tsx`: day # + "Today" + type + clock + status + "Special"), and to be swept across the Planning **list event buttons** and **drawer/list triggers** too.
 2. **Home:** Needs Attention rows show *action + count* but **no "why it matters"** rationale line (the review asks for issue, count, why, next action).
 3. **Groups scan speed:** only the six-zone **card view** exists; sort is name-only. No dense, sortable **Ops table / compact mode**.
 4. **Care duplication:** `/admin/care` and frozen `/admin/shepherd-care` load near-identical data, so the surfaces feel duplicated.
@@ -45,6 +45,15 @@ the **genuine remaining gaps**.
 - **Deliverable:** the full plan as a PRD (all focus areas), phased.
 - **Care dedup:** *Canonicalize, keep deep links* — make `/admin/care` the canonical entry; the `/admin/shepherd-care` **landing alias-renders the same Care shell (200, not a redirect)** per ADR 0013, while `/admin/shepherd-care/[profileId]` detail and `/over-shepherds` keep their own surfaces (no broken URLs; respects the ADR 0008/0009/0013 freeze).
 - **Groups dense view:** add a card/table toggle that **remembers the admin's last choice** (per-user persisted).
+
+### Recommended first implementation PR (summary)
+
+Ship the **Phase 1 a11y bundle** first — small, cross-cutting, low-risk, and it lays the test
+hooks later phases reuse: (1) `aria-current="page"` on active sidebar links incl. alias URLs;
+(2) meaningful, unique accessible names on **all** calendar occurrence triggers (month-grid
+cells, Planning list event buttons, drawer/list triggers); (3) a "why it matters" rationale on
+each Needs Attention row; (4) tests for all three. No routing, data, schema, or Super Admin
+changes. Full scope in [Recommended first PR](#recommended-first-pr-small-safe) near the end.
 
 ### Constraints (carried through every phase)
 - Do not remove routes without a redirect/alias. The `shepherd_care_*` schema and `shepherd-care` / `over-shepherd` **paths stay frozen** (ADR 0008/0009) — this is nav/label/redirect work, never a schema rename.
@@ -72,8 +81,8 @@ deeper routes feel like **subviews of one mental model**, not peers.
 | **Home** | `/admin` | Needs attention · This week · Ministry snapshot · Recent activity | — |
 | **Groups** | `/admin/groups` | List (card/**table** toggle) · tabs: All / Needs Setup / Needs Health Check / Needs Attention / Archived | `/admin/group-health` (triage); `/admin/groups/[id]`, `…/calendar` |
 | **Care** | `/admin/care` | Dashboard · Directory · Follow-ups · Coverage · Recent interactions | `/admin/shepherd-care/[profileId]`, `/admin/shepherd-care/over-shepherds*`; `/admin/shepherd-care` landing **alias-renders** Care; `/admin/follow-ups` resolves + appears as Care/Follow-ups |
-| **People** | `/admin/people` | Directory · Leaders · Members · Apprentices · Add Person | `/admin/leader-pipeline` (→ People/Apprentices) |
-| **Planning** | `/admin/planning` | Calendar · Launch Planning · Capacity · Pipeline/Multiplication + **opinionated views**: This week · Needs coverage · Cancelled/OFF · By leader | `/admin/launch-planning`, `/admin/calendar` (landings **alias-render** Planning) |
+| **People** | `/admin/people` | Directory · Leaders · Members · **Apprentices (owns the leader-pipeline record surface)** · Add Person | `/admin/leader-pipeline` (→ People/Apprentices) |
+| **Planning** | `/admin/planning` | Calendar · Launch Planning · Capacity · Multiplication + **opinionated views**: This week · Needs coverage · Cancelled/OFF · By leader. **Pipeline = read-only launch-capacity context that links to People/Apprentices; it does not own apprentice records.** | `/admin/launch-planning`, `/admin/calendar` (landings **alias-render** Planning) |
 | **Settings** | `/admin/settings` | (unchanged) | — |
 | **Super Admin** | `/admin/super-admin` | (unchanged, super_admin only) | — |
 
@@ -89,6 +98,31 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 > removes the duplicate-feeling surface without amending ADR 0013. Reserve `redirect()` /
 > `next.config` `redirects()` strictly for genuinely new, non-frozen aliases.
 
+**Alias-render tab-state contract.** Every alias must resolve to the *same* canonical shell with
+the right initial view — never a duplicated page. The contract:
+
+1. **One canonical shell owns the experience.** Planning has a single shell
+   (`components/admin/planning/planning-shell.tsx`); Care has one (`components/admin/care/care-shell.tsx`).
+   Alias landings do **not** fork their own components or data loaders.
+2. **The alias landing passes an initial view key** to that shell — e.g. `calendar`, `launches`,
+   `capacity`, `multiplication` for Planning; `dashboard`, `directory`, `follow-ups`, `coverage`,
+   `recent` for Care. The canonical entry (`/admin/planning`, `/admin/care`) defaults to its first
+   view; `/admin/launch-planning` selects `launches`, `/admin/calendar` selects `calendar`,
+   `/admin/follow-ups` selects Care `follow-ups`.
+3. **The URL stays 200-resolvable** under the admin guard — no 302 (ADR 0013).
+4. **The side nav marks the owning canonical area current** (`aria-current="page"`) via the
+   alias→canonical map (Phase 1.1), so `/admin/calendar` highlights Planning, etc.
+5. **No duplicated loaders/components.** The alias route is a thin entry that calls the same
+   server loader and renders the same shell with a different initial view key.
+
+**Leader Pipeline ownership (resolves the People ⟷ Planning overlap).**
+- **People owns the leader pipeline as the record-management surface** — creating/editing apprentices
+  and advancing readiness stages lives under People → Apprentices (the `/admin/leader-pipeline`
+  surface, aliased into People/Apprentices).
+- **Planning may only *summarize or link* to the pipeline as launch-capacity context** (e.g. "N
+  apprentices ready to lead" feeding the launch forecast), linking out to People/Apprentices for any
+  edit. Planning never owns or mutates apprentice records.
+
 ---
 
 ## Phased implementation plan
@@ -96,14 +130,30 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 ### Phase 1 — Quick wins & accessibility fixes (low risk, ship first)
 
 1. **`aria-current="page"` on active sidebar links.** Add to the active `<Link>` in `components/lg/shell/Sidebar.tsx`. **Cover the frozen aliases:** `isActiveHref` only matches the literal nav hrefs (`/admin/care`, `/admin/planning`), so on a frozen alias URL (`/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`) the canonical area would get no active link — add an **alias→canonical map** to the active-state logic so an alias highlights its owning area. Mirror in `MobileSidebar`. Extend `tests/a11y/*` to assert exactly one `aria-current="page"` per nav, **including when on an alias URL**.
-2. **Fix concatenated accessible names on calendar cells.** Give `CalendarOccurrenceEditor`'s trigger an explicit `aria-label` summarizing the cell ("Edit Oct 14 — Study, 6:30p, Scheduled" / "Add event on Oct 14") instead of inheriting concatenated children. Source the label in `components/calendar/calendar-month-grid.tsx`; add an optional `triggerAriaLabel` prop to `calendar-occurrence-editor.tsx`. Add the month grid to the a11y harness + a spec asserting unique, non-concatenated names.
+2. **Fix concatenated accessible names on all calendar/event triggers.** Give every calendar
+   occurrence trigger an explicit `aria-label` that summarizes the occurrence ("Edit Oct 14 —
+   Study, 6:30p, Scheduled" / "Add event on Oct 14") instead of inheriting concatenated child
+   text. Scope is **all** such controls, not just the month grid:
+   - **Month-grid cell editor** — `components/calendar/calendar-occurrence-editor.tsx` (add an
+     optional `triggerAriaLabel` prop), labelled from `components/calendar/calendar-month-grid.tsx`.
+   - **Planning list event buttons** and **drawer/list triggers** — `components/admin/planning/planning-calendar-panel.tsx`,
+     `components/admin/admin-master-calendar-list.tsx`, `components/admin/admin-master-calendar-drawer.tsx`
+     (the master list/drawer "Open … calendar" links already carry context; audit the event/occurrence
+     *buttons* beside them for the same).
+   - Add these surfaces to the a11y harness.
+
+   **Acceptance criteria:** every calendar/event control (cell, pill, list row button, drawer
+   action) exposes a **meaningful, unique accessible name** — not raw concatenated child text —
+   and remains unique even when occurrences collide (same group, multiple dates; same date,
+   multiple events). Verified by the existing forbidden-bare-name + uniqueness Playwright gates
+   extended to these surfaces.
 3. **Needs Attention "why it matters".** Add a one-line rationale to each row. Extend `TopNextAction` in `lib/dashboard/needs-attention.ts` with a `why` string (pure, unit-tested) and render it under the action in `NeedsAttentionArea.tsx`. Keep imperative phrasing + count; rationale is calm, pastoral ("Unled groups can't meet or grow").
 4. **Audit dialogs/tabs/destructive actions** for keyboard + SR clarity across the surfaces touched (Groups, Care, Planning). Most are already correct (Radix Dialog, WAI-ARIA tabs); fix any gaps found and pin them with the existing harness pattern.
 5. **Loading-state sweep.** Confirm no surface traps on a bare "Loading…"; `PageSkeleton` already covers route transitions — verify per-tab/per-widget async states degrade to a labelled empty/skeleton, not ambiguous text.
 
 ### Phase 2 — Admin scan-speed improvements
 
-6. **Groups Ops table / compact mode.** Add a **card ⇄ table** toggle to `components/admin/groups-directory.tsx`. Table columns: group, leader/co-leader, setup status, health (grade), capacity, meeting day/time, check-in, actions. **Sortable** column headers. Reuse existing derivation (`statusByGroupId`, `capacityStatus`, `latestCheckinText`, `PBadge` tones). **Check-in column:** reusing `latestSession` shows *latest-week* status, not a true per-group last check-in (see Data assumptions) — label it accordingly or add a per-group read; decide before building. Persist the toggle per user (localStorage; SSR-safe default = cards on first load). Keep the existing tabs as the work-queue filters (already mapped). Preserve record-context action names (the suite already enforces this).
+6. **Groups Ops table / compact mode.** Add a **card ⇄ table** toggle to `components/admin/groups-directory.tsx`. Table columns: group, leader/co-leader, setup status, health (grade), capacity, meeting day/time, check-in, actions. **Sortable** column headers. Reuse existing derivation (`statusByGroupId`, `capacityStatus`, `latestCheckinText`, `PBadge` tones). **Check-in column:** reusing `latestSession` shows *latest-week* status, not a true per-group last check-in (see Data assumptions) — label it accordingly or add a per-group read; decide before building. **Preference persistence:** this is a **local, per-browser** UI preference (not server state). SSR-safe default = **cards** on first paint; hydrate the saved choice client-side. Store under a **profile-scoped localStorage key** — `adminGroupsView:${profileId}` when the authenticated profile id is available (so shared devices don't bleed one admin's choice into another), falling back to a plain `adminGroupsView` key when it isn't. Keep the existing tabs as the work-queue filters (already mapped). Preserve record-context action names (the suite already enforces this).
 7. **Home de-crowding.** Keep the four-section hierarchy; verify the deeper overview cards stay behind `CollapsibleOverview` so vital signs lead and urgent work is never buried. (Aligns with the Surface Simplification open question on the weekly-cadence cluster — coordinate, don't duplicate.)
 8. **People prominence pass.** Make Add Person, role change, deactivation, and profile navigation visually primary and clearly *safe* (confirm-on-destructive, plain-language role labels). People is already split; this is emphasis + safety affordances, not restructuring.
 
@@ -111,11 +161,23 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 
 9. **Canonicalize Care.** Make the `/admin/shepherd-care` landing **render the canonical Care shell** (200, not a redirect — ADR 0013); keep `[profileId]` and `/over-shepherds` on their own surfaces. Ensure `/admin/care` exposes the five intended subviews (Dashboard, Directory, Follow-ups, Coverage, Recent interactions) and that `/admin/follow-ups` reads as the Follow-ups subview while staying directly resolvable. Single source of truth for leader care.
 10. **Canonicalize Planning entries.** Make `/admin/launch-planning` and `/admin/calendar` landings **render the canonical Planning shell** at the matching tab once those tabs fully host the content (200, not a redirect); both stay directly resolvable throughout.
-11. **Label/route reconciliation.** Ensure nav labels and in-page eyebrows no longer present Care/Shepherd Care, Planning/Launch Planning, Group Health, Leader Pipeline as competing destinations — they read as area + subview. (Vocabulary fixes already largely landed per `CONCEPT_RECONCILIATION.md` §A.)
+11. **Label/route reconciliation.** Ensure nav labels and in-page eyebrows no longer present Care/Shepherd Care, Planning/Launch Planning, Group Health, Leader Pipeline as competing destinations — they read as area + subview. Specifically, **Leader Pipeline reads as People → Apprentices** (its record home); any Planning reference to the pipeline reads as launch-capacity context that links back to People, not a second owner. (Vocabulary fixes already largely landed per `CONCEPT_RECONCILIATION.md` §A.)
 
 ### Phase 4 — Deeper workflow improvements
 
 12. **Planning opinionated views.** Add saved admin views — **This week**, **Needs coverage**, **Cancelled/OFF**, **By leader** — as primary affordances on `/admin/planning`. Move advanced filters into a collapsible/secondary area (the filter infra + Select-all/Clear-all/chips already exist in `planning-calendar-panel.tsx`). Reduce repeated "Open group calendar" link noise (group by date/leader; one entry point per group rather than per occurrence row).
+
+    **"Needs coverage" predicate (product-level).** This is **calendar/staffing coverage**, never
+    shepherd-care coverage. An occurrence appears in "Needs coverage" only when **all** hold:
+    - the group's **lifecycle is `active`** (exclude `inactive`, `paused`, `closed`/archived);
+    - the occurrence **status is `scheduled`** (exclude `off` and `cancelled`);
+    - it is a **real meeting occurrence** (`isMeetingOccurrence` — exclude special/non-meeting rows);
+    - the group has **no assigned leader or co-leader** for that occurrence/group context.
+
+    Explicitly **excluded**: OFF weeks, cancelled occurrences, inactive/paused/closed groups, and
+    non-meeting rows — none are actionable staffing gaps. Derive from `loadMasterCalendar`
+    occurrences + group leaders; do **not** use `fetchActiveShepherdCoverageAssignmentsForAdmin`
+    (that is over-shepherd *pastoral* coverage — see Data assumptions).
 13. **Care next-action clarity.** Make the obvious next action explicit on each care item: **log contact**, **assign over-shepherd**, **schedule touchpoint**, **resolve follow-up**. The single-purpose action forms already exist (`components/admin/shepherd-care/care-action-forms.tsx`, RPCs in `lib/admin/rpc.ts`); this is surfacing/ordering, not new write paths. (Coordinate with Surface Simplification C1 — don't double-edit the interaction form.)
 14. **Groups → table follow-through.** Saved sort/column preferences; optional density setting. Lower priority.
 
@@ -124,8 +186,8 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 ## Specific files / routes / components likely to change
 
 **Nav & a11y (Phase 1):**
-- `components/lg/shell/Sidebar.tsx`, `components/lg/shell/MobileSidebar.tsx` — `aria-current`.
-- `components/calendar/calendar-occurrence-editor.tsx`, `components/calendar/calendar-month-grid.tsx` — explicit trigger `aria-label`.
+- `components/lg/shell/Sidebar.tsx`, `components/lg/shell/MobileSidebar.tsx` — `aria-current` + alias→canonical active-state map.
+- Calendar/event triggers — `components/calendar/calendar-occurrence-editor.tsx`, `components/calendar/calendar-month-grid.tsx`, `components/admin/planning/planning-calendar-panel.tsx`, `components/admin/admin-master-calendar-list.tsx`, `components/admin/admin-master-calendar-drawer.tsx` — explicit, unique trigger `aria-label`s.
 - `lib/dashboard/needs-attention.ts`, `components/lg/admin/dashboard/NeedsAttentionArea.tsx` — `why` rationale.
 - `tests/a11y/accessible-names.spec.ts` (+ harness) — new assertions.
 
@@ -165,7 +227,7 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 - **Super Admin (ADR 0002).** No structural change; any shared primitive (`PageHeader`, field styles, `PBadge`) edited for the table must preserve Super Admin rendering.
 - **PR overlap with in-flight PRDs.** Admin Interaction Model + Surface Simplification touch Groups (create form, capacity default), Care (interaction form), People (split), Settings, Launch Planning. **Coordinate ownership**: this plan owns scan-speed (table), nav a11y, Needs-Attention rationale, Care/Planning *canonicalization* and *opinionated views* — not the model/vocabulary/form-density work those PRDs own. Sequence after or alongside, never editing the same files in opposite directions.
 - **Table vs pastoral tone.** Keep `PBadge` tones, warm lines, tabular-nums; no dense grey grid. Validate the table reads calm, not spreadsheet-cold.
-- **localStorage toggle + SSR.** Default to cards server-side; hydrate the saved preference client-side to avoid flash/mismatch.
+- **Groups view preference (local, profile-scoped).** This is a per-browser UI preference, not server state: default to cards server-side, hydrate the saved choice client-side to avoid flash/mismatch, and key it `adminGroupsView:${profileId}` (fallback `adminGroupsView` when no profile id) so a shared device doesn't carry one admin's view into another's session.
 
 ---
 
@@ -173,12 +235,12 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 
 **Automated (extend existing suites):**
 - Unit (Vitest): `needs-attention` `why` strings per category, empty/degraded behavior; any new Planning view-derivation helper; Groups table sort comparators.
-- A11y (Playwright, `tests/a11y/`): exactly one `aria-current="page"` in sidebar; calendar month-grid cell triggers have unique, non-concatenated names; Groups **table** rows keep record-context action names (extend `groups-directory` harness surface for table mode); axe = no critical/serious on every touched surface.
+- A11y (Playwright, `tests/a11y/`): exactly one `aria-current="page"` in sidebar **including when on an alias URL** (`/admin/calendar` highlights Planning, etc.); **all** calendar/event triggers (month-grid cells, Planning list event buttons, drawer/list triggers) have meaningful, **unique, non-concatenated** names — including under occurrence collisions; Groups **table** rows keep record-context action names (extend `groups-directory` harness surface for table mode); axe = no critical/serious on every touched surface.
 - Alias-resolution tests: the frozen landings `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`, `/admin/follow-ups`, `/admin/group-health` all return **200** under the admin guard (none 3xx) and render the canonical shell; the sub-routes `/admin/shepherd-care/<seeded profileId>` (use a real seeded id, **not** a literal `[profileId]`) and `/admin/shepherd-care/over-shepherds` (the actual admin path — **not** `/over-shepherds`) also still resolve 200.
 
 **Manual keyboard / screen-reader:**
 - Tab through sidebar — active item announces "current page".
-- Calendar month grid — each cell button announces a meaningful, distinct name.
+- Calendar surfaces — month-grid cells, Planning list event buttons, and drawer/list triggers each announce a meaningful, distinct name (not concatenated child text).
 - Groups — toggle card/table by keyboard; sort headers operable; Edit/Calendar/View name their group; toggle preference persists across reload.
 - Care — from `/admin/care`, complete log-contact / assign-over-shepherd / schedule-touchpoint / resolve-follow-up via keyboard; focus returns to trigger on drawer close.
 - Planning — switch opinionated views, expand/collapse advanced filters, confirm reduced link noise; SR reads view names not raw filter state.
@@ -199,8 +261,8 @@ direct URL under the admin guard*, so these are **alias-renders, not 302 redirec
 The full scope ships as this PRD; the **first implementation PR** is the Phase 1 a11y bundle
 because it is small, cross-cutting, and low-risk:
 
-1. `aria-current="page"` on active sidebar links (`Sidebar.tsx`, `MobileSidebar.tsx`).
-2. Explicit `aria-label` on calendar month-grid cell editor triggers (`calendar-occurrence-editor.tsx`, `calendar-month-grid.tsx`) — kills the concatenated-name read.
+1. `aria-current="page"` on active sidebar links, incl. the alias→canonical map so alias URLs highlight their owning area (`Sidebar.tsx`, `MobileSidebar.tsx`).
+2. Explicit, unique `aria-label`s on **all** calendar/event triggers — month-grid cells (`calendar-occurrence-editor.tsx`, `calendar-month-grid.tsx`) plus Planning list event buttons and drawer/list triggers (`planning-calendar-panel.tsx`, `admin-master-calendar-list.tsx`, `admin-master-calendar-drawer.tsx`) — kills the concatenated-name read.
 3. "Why it matters" rationale line in Needs Attention (`needs-attention.ts` + `NeedsAttentionArea.tsx`).
 4. Test coverage for all three in `tests/a11y/` + a `needs-attention` unit test.
 
