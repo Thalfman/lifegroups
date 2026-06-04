@@ -178,6 +178,25 @@ test.describe("admin accessible names carry record context", () => {
       await accessibleNames(list.getByRole("button", { name: /^View .+ on / })),
       "master calendar list occurrence cards"
     );
+
+    // Two DIFFERENT groups share a display name AND a date/type/time/status, so
+    // the leader discriminator is the only thing keeping their occurrence
+    // buttons (and their "Open group calendar" links) distinct — group names are
+    // not unique. Both views must hold up under that collision.
+    for (const surface of [list, masterGrid]) {
+      expectAllUnique(
+        await accessibleNames(
+          surface.getByRole("button", { name: /^View Sunday Night on / })
+        ),
+        "same-name same-date occurrence buttons"
+      );
+    }
+    expectAllUnique(
+      await accessibleNames(
+        list.getByRole("link", { name: /^Open Sunday Night calendar/ })
+      ),
+      "same-name same-date calendar links"
+    );
   });
 
   test("follow-up status actions name their follow-up", async ({ page }) => {

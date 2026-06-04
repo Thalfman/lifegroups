@@ -128,7 +128,8 @@ const GROUP_GRID_OCCURRENCES: ResolvedOccurrence[] = [
 function occurrence(
   groupName: string,
   groupId: string,
-  date: string
+  date: string,
+  leaderName = "Pat Lee"
 ): MasterOccurrence {
   return {
     groupId,
@@ -138,7 +139,7 @@ function occurrence(
     meetingTime: "19:00",
     meetingFrequency: "weekly",
     meetingWeekParity: null,
-    leaders: [{ profileId: `${groupId}-l`, name: "Pat Lee" }],
+    leaders: [{ profileId: `${groupId}-l`, name: leaderName }],
     date,
     weekdayIndex: 2,
     inheritedMeetingTime: "19:00",
@@ -159,6 +160,14 @@ const OCCURRENCES: MasterOccurrence[] = [
   occurrence("Anderson", "grp-anderson", "2026-05-26"),
   occurrence("Bryant", "grp-bryant", "2026-05-19"),
   occurrence("Carter", "grp-carter", "2026-05-26"),
+  // Two DIFFERENT groups that share the same display name AND the same date,
+  // type, time, and status — group names are not unique. Only the leader
+  // discriminator in the accessible name keeps these occurrence triggers
+  // distinct, which is exactly the collision the name builder must guard. They
+  // sit on their own date (May 12) so both pills stay under the grid's per-cell
+  // cap and the month-grid view exercises the collision too.
+  occurrence("Sunday Night", "grp-sun-a", "2026-05-12", "Dana Cole"),
+  occurrence("Sunday Night", "grp-sun-b", "2026-05-12", "Sam Reed"),
 ];
 
 // Group + leader fixtures for the master-calendar filter shell (#262). Distinct

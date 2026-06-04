@@ -10,6 +10,10 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import {
+  occurrenceAccessibleName,
+  occurrenceCalendarLinkName,
+} from "@/lib/admin/master-calendar-label";
 import { statusStripeColor } from "./admin-master-calendar-status";
 
 function statusTone(status: MasterOccurrence["status"]): PTone {
@@ -134,18 +138,11 @@ function OccurrenceCard({
   const stripe = statusStripeColor(occurrence.status);
   // Explicit, meaningful accessible name (#322): without it the button's name
   // is the concatenated child text (group + status/type + clock + leaders),
-  // which reads as a run-on. Lead with the group, then date keeps it unique
-  // across a recurring group's dates, and type/status keep it unique when two
-  // groups share a date.
-  const statusOrType =
-    occurrence.status === "scheduled"
-      ? typeLabel
-      : friendlyEventStatusLabel(occurrence.status);
-  const detailParts = [statusOrType];
-  if (clock) detailParts.push(clock);
-  const cardAriaLabel = `View ${occurrence.groupName} on ${dateLabel(
-    occurrence.date
-  )} — ${detailParts.join(", ")}`;
+  // which reads as a run-on. The shared helper leads with the group, then the
+  // date (unique across a recurring group's dates) and a leader discriminator
+  // (group names are not unique, so two same-named groups sharing a date stay
+  // distinct).
+  const cardAriaLabel = occurrenceAccessibleName(occurrence);
   return (
     <li
       style={{
@@ -212,7 +209,7 @@ function OccurrenceCard({
       </button>
       <Link
         href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
-        aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
+        aria-label={occurrenceCalendarLinkName(occurrence)}
         style={{
           fontFamily: fontSans,
           fontSize: 11,

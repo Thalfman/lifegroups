@@ -3,7 +3,6 @@
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import {
   WEEKDAY_HEADERS,
-  dateLabel,
   dayNumberLabel,
   formatClock,
   gridCellsForMonth,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
+import { occurrenceAccessibleName } from "@/lib/admin/master-calendar-label";
 import { statusStripeColor } from "./admin-master-calendar-status";
 
 export type DayClickPayload = { date: string };
@@ -205,16 +205,10 @@ function OccurrencePill({
   const tone = statusTone(occurrence.status);
   const showStatusBadge = occurrence.status !== "scheduled";
   // Explicit, meaningful accessible name (#322): the pill's child text reads as
-  // a run-on to a screen reader. Date keeps it unique across a recurring
-  // group's cells; group + type/status keep it unique when groups share a date.
-  const statusOrType = showStatusBadge
-    ? friendlyEventStatusLabel(occurrence.status)
-    : typeLabel;
-  const detailParts = [statusOrType];
-  if (clock) detailParts.push(clock);
-  const pillAriaLabel = `View ${occurrence.groupName} on ${dateLabel(
-    occurrence.date
-  )} — ${detailParts.join(", ")}`;
+  // a run-on to a screen reader. The shared helper keeps it unique across a
+  // recurring group's cells (date) and across two same-named groups sharing a
+  // date (leader discriminator — group names are not unique).
+  const pillAriaLabel = occurrenceAccessibleName(occurrence);
 
   return (
     <button
