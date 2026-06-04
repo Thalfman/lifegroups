@@ -41,6 +41,18 @@ export function PlanningShell({
 }) {
   const [active, setActive] = useState<PlanningTabKey>(initialTab);
 
+  // Alias routes (/admin/launch-planning, /admin/calendar) render this same
+  // client shell with a different initialTab. If React reuses the instance
+  // across a client-side route transition, useState would keep the old tab and
+  // the alias would open on the wrong view — breaking the "200 at the matching
+  // tab" contract. Re-seed active whenever initialTab changes (the documented
+  // "adjust state when a prop changes during render" pattern — no effect).
+  const [seededTab, setSeededTab] = useState<PlanningTabKey>(initialTab);
+  if (seededTab !== initialTab) {
+    setSeededTab(initialTab);
+    setActive(initialTab);
+  }
+
   const panels: Record<PlanningTabKey, ReactNode> = {
     calendar,
     launches,

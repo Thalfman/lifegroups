@@ -104,6 +104,23 @@ function readPage(relPath: string): string {
   return readFileSync(fileURLToPath(new URL(relPath, import.meta.url)), "utf8");
 }
 
+describe("PlanningShell re-seeds the active tab when initialTab changes (#329)", () => {
+  // If React reuses the client shell across a client-side route transition
+  // between aliases, useState(initialTab) alone would keep the old tab and the
+  // alias would open on the wrong view. The shell guards against this by
+  // re-seeding `active` when `initialTab` changes during render (the documented
+  // pattern, no effect). Pin that guard so it can't be silently dropped.
+  const SHELL = readFileSync(
+    fileURLToPath(new URL("../planning-shell.tsx", import.meta.url)),
+    "utf8"
+  );
+
+  it("syncs active to a changed initialTab during render", () => {
+    expect(SHELL).toMatch(/if\s*\(\s*seededTab\s*!==\s*initialTab\s*\)/);
+    expect(SHELL).toContain("setActive(initialTab)");
+  });
+});
+
 describe("Planning entry pages resolve 200, not 3xx (#329)", () => {
   it("the canonical page and both aliases never redirect", () => {
     for (const relPath of Object.values(PAGES)) {
