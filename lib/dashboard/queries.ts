@@ -26,6 +26,7 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
   AdminDashboardData,
@@ -296,14 +297,9 @@ function buildActivitySummary(
 // branches, the pure-model wiring) and Supabase. The orchestration is a
 // function of this interface, so it can be exercised through an in-memory
 // adapter in a unit test instead of a live client. Each method mirrors a
-// read-model fetcher with the `client` argument already applied.
-type OmitClient<F> = F extends (
-  client: AppSupabaseClient,
-  ...rest: infer R
-) => infer Ret
-  ? (...rest: R) => Ret
-  : never;
-
+// read-model fetcher with the `client` argument already applied. The
+// `OmitClient` / `bindReads` scaffold now lives in `lib/supabase/reads-seam.ts`
+// so every surface shares it (ADR 0015).
 export type AdminDashboardReads = {
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaults>;
   fetchAllGroups: OmitClient<typeof fetchAllGroups>;
@@ -335,33 +331,12 @@ export type AdminDashboardReads = {
   fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
 };
 
-// Curry the live client across a map of read-model fetchers, producing the
-// reads-seam adapter. Each fetcher takes the client as its first argument; the
-// returned method has that argument already applied, so adding a read is one
-// shorthand entry below rather than a hand-written forwarder line.
-function bindClientToReads<
-  T extends Record<
-    string,
-    (client: AppSupabaseClient, ...args: never[]) => unknown
-  >,
->(
-  client: AppSupabaseClient,
-  fetchers: T
-): { [K in keyof T]: OmitClient<T[K]> } {
-  return Object.fromEntries(
-    Object.entries(fetchers).map(([key, fetcher]) => [
-      key,
-      (...args: never[]) => fetcher(client, ...args),
-    ])
-  ) as { [K in keyof T]: OmitClient<T[K]> };
-}
-
 // The production adapter at the reads seam: binds the live Supabase client to
-// every read-model fetcher.
+// every read-model fetcher via the shared `bindReads` scaffold (ADR 0015).
 export function supabaseAdminDashboardReads(
   client: AppSupabaseClient
 ): AdminDashboardReads {
-  return bindClientToReads(client, {
+  return bindReads(client, {
     fetchMetricDefaults: fetchMetricDefaultsCached,
     fetchAllGroups,
     fetchActiveGroupCount,

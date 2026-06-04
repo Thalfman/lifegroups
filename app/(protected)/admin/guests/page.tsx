@@ -5,69 +5,15 @@
 // intact. No new work here without an EXT.1 spec. See
 // docs/PRODUCT_SURFACE_AUDIT_2026-05.md.
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
-import {
-  GuestsManagementShell,
-  type GuestsManagementData,
-} from "@/components/admin/guests/guests-shell";
+import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
+import { loadGuestsData } from "@/components/admin/guests/guests-data";
 import { requireAdmin } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchAllGroups,
-  fetchGuestFollowUpCounts,
-  fetchGuests,
-  fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_DATA: GuestsManagementData = {
-  guests: [],
-  groups: [],
-  ownerProfiles: [],
-  openFollowUpsByGuest: {},
-  errors: {
-    guests: "The database is not configured in this environment.",
-    groups: "The database is not configured in this environment.",
-    profiles: "The database is not configured in this environment.",
-    followUps: "The database is not configured in this environment.",
-  },
-};
-
-async function loadData(): Promise<GuestsManagementData> {
-  const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_DATA;
-
-  const [guestsResult, groupsResult, profilesResult] = await Promise.all([
-    fetchGuests(client),
-    fetchAllGroups(client),
-    fetchProfilesForAdmin(client, {
-      roles: ["super_admin", "ministry_admin", "leader", "co_leader"],
-      statuses: ["active"],
-    }),
-  ]);
-
-  const guests = guestsResult.data ?? [];
-  const guestIds = guests.map((g) => g.id);
-  const followUpCountsResult = await fetchGuestFollowUpCounts(client, guestIds);
-  const followUpCounts = followUpCountsResult.data ?? new Map<string, number>();
-
-  return {
-    guests,
-    groups: groupsResult.data ?? [],
-    ownerProfiles: profilesResult.data ?? [],
-    openFollowUpsByGuest: Object.fromEntries(followUpCounts.entries()),
-    errors: {
-      guests: guestsResult.error?.message ?? null,
-      groups: groupsResult.error?.message ?? null,
-      profiles: profilesResult.error?.message ?? null,
-      followUps: followUpCountsResult.error?.message ?? null,
-    },
-  };
-}
-
 export default async function AdminGuestsPage() {
   await requireAdmin();
-  const data = await loadData();
+  const data = await loadGuestsData();
 
   return (
     <>

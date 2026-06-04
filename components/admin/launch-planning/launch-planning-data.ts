@@ -38,7 +38,44 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type { ApprenticeOption } from "@/components/admin/multiplication/multiplication-planner";
+
+// The reads this surface assembles, as one interface (ADR 0015). `loadX` binds
+// the live client; a test binds an in-memory adapter. The two bundle reads
+// (inputs, capacity extras) carry bespoke per-section error shapes the
+// assembly's precedence depends on, so they stay raw rather than flattening
+// through the readBatch combinator.
+export type LaunchPlanningReads = {
+  fetchLaunchPlanningAssumptions: OmitClient<
+    typeof fetchLaunchPlanningAssumptions
+  >;
+  fetchLaunchPlanningInputsForAdmin: OmitClient<
+    typeof fetchLaunchPlanningInputsForAdmin
+  >;
+  fetchLaunchPlanningScenariosForAdmin: OmitClient<
+    typeof fetchLaunchPlanningScenariosForAdmin
+  >;
+  fetchLeaderPipelineForAdmin: OmitClient<typeof fetchLeaderPipelineForAdmin>;
+  fetchMultiplicationCandidatesForAdmin: OmitClient<
+    typeof fetchMultiplicationCandidatesForAdmin
+  >;
+  fetchCapacityBoardExtras: OmitClient<typeof fetchCapacityBoardExtras>;
+};
+
+export function supabaseLaunchPlanningReads(
+  client: AppSupabaseClient
+): LaunchPlanningReads {
+  return bindReads(client, {
+    fetchLaunchPlanningAssumptions,
+    fetchLaunchPlanningInputsForAdmin,
+    fetchLaunchPlanningScenariosForAdmin,
+    fetchLeaderPipelineForAdmin,
+    fetchMultiplicationCandidatesForAdmin,
+    fetchCapacityBoardExtras,
+  });
+}
 
 // ADR 0010 surface-budget consolidation: this single data set answers one job —
 // "how many groups can we launch, and when" — and feeds both the frozen
@@ -179,10 +216,13 @@ function emptyData(): LaunchPlanningPageData {
   };
 }
 
-export async function loadLaunchPlanningData(): Promise<LaunchPlanningPageData> {
-  const client = await createSupabaseServerClient();
-  if (!client) return emptyData();
-
+// Pure assembly: a function of the reads seam. Every degrade path (the
+// per-section capacity gate, the pipeline-blocks-multiplication gate, the
+// baseline normalization) is reachable from a test through an in-memory
+// `reads` adapter, with no live client.
+export async function buildLaunchPlanningData(
+  reads: LaunchPlanningReads
+): Promise<LaunchPlanningPageData> {
   // Run the independent fetches in parallel so TTFB tracks the slowest rather
   // than their sum. The three former surfaces shared inputs, the capacity
   // extras, and the leader pipeline, so each is fetched once here.
@@ -200,12 +240,12 @@ export async function loadLaunchPlanningData(): Promise<LaunchPlanningPageData> 
     candidatesRes,
     boardExtras,
   ] = await Promise.all([
-    fetchLaunchPlanningAssumptions(client),
-    fetchLaunchPlanningInputsForAdmin(client),
-    fetchLaunchPlanningScenariosForAdmin(client),
-    fetchLeaderPipelineForAdmin(client),
-    fetchMultiplicationCandidatesForAdmin(client),
-    fetchCapacityBoardExtras(client),
+    reads.fetchLaunchPlanningAssumptions(),
+    reads.fetchLaunchPlanningInputsForAdmin(),
+    reads.fetchLaunchPlanningScenariosForAdmin(),
+    reads.fetchLeaderPipelineForAdmin(),
+    reads.fetchMultiplicationCandidatesForAdmin(),
+    reads.fetchCapacityBoardExtras(),
   ]);
 
   const metricDefaults = decodeMetricDefaults(inputsBundle.metricDefaultsRow);
@@ -328,4 +368,10 @@ export async function loadLaunchPlanningData(): Promise<LaunchPlanningPageData> 
     multiplicationError,
     todayIso,
   };
+}
+
+export async function loadLaunchPlanningData(): Promise<LaunchPlanningPageData> {
+  const client = await createSupabaseServerClient();
+  if (!client) return emptyData();
+  return buildLaunchPlanningData(supabaseLaunchPlanningReads(client));
 }
