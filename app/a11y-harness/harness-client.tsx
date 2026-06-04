@@ -15,7 +15,10 @@
 import { useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import { AdminMasterCalendarList } from "@/components/admin/admin-master-calendar-list";
+import { AdminMasterCalendarGrid } from "@/components/admin/admin-master-calendar-grid";
 import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
+import { CalendarMonthGrid } from "@/components/calendar/calendar-month-grid";
+import type { CalendarOccurrenceEditorActions } from "@/components/calendar/calendar-occurrence-editor";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
 import {
   AdminFollowUpsShell,
@@ -54,8 +57,73 @@ import type {
   MasterOccurrence,
 } from "@/lib/admin/master-calendar";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
+import type { ResolvedOccurrence } from "@/lib/calendar/occurrences";
+import type { ActionResult } from "@/lib/shared/action-result";
 
 const STAMP = "2026-05-18T12:00:00Z";
+
+// Mock server actions for the per-group calendar grid. The harness only
+// exercises accessible names on the cell edit triggers (#322), not the
+// save/clear round trips, so these never run — they exist to satisfy the
+// editor's action props.
+const NOOP_CALENDAR_ACTION = async (): Promise<
+  ActionResult<{ id: string }>
+> => ({
+  ok: true,
+  value: { id: "noop" },
+});
+const CALENDAR_GRID_ACTIONS: CalendarOccurrenceEditorActions = {
+  create: NOOP_CALENDAR_ACTION,
+  update: NOOP_CALENDAR_ACTION,
+  archive: NOOP_CALENDAR_ACTION,
+};
+
+// A weekly group recurs on every Tuesday of May 2026, so the SAME group's edit
+// triggers repeat across multiple dates: their accessible names must stay
+// unique (disambiguated by date), and a scheduled study + an OFF week + a
+// special social keep the type/status discriminators in the name meaningful.
+const GROUP_GRID_OCCURRENCES: ResolvedOccurrence[] = [
+  {
+    date: "2026-05-05",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "study",
+    status: "scheduled",
+    title: null,
+    description: null,
+    overrideId: null,
+  },
+  {
+    date: "2026-05-12",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "off",
+    status: "off",
+    title: null,
+    description: null,
+    overrideId: "grid-ov-1",
+  },
+  {
+    date: "2026-05-19",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "study",
+    status: "scheduled",
+    title: null,
+    description: null,
+    overrideId: null,
+  },
+  {
+    date: "2026-05-26",
+    meetingTime: "18:30",
+    isMeetingOccurrence: false,
+    eventType: "social",
+    status: "scheduled",
+    title: "Cookout",
+    description: null,
+    overrideId: "grid-ov-2",
+  },
+];
 
 function occurrence(
   groupName: string,
@@ -489,6 +557,21 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Master calendar month grid (#322). The per-day occurrence pills are
+          <button>s whose accessible name must summarize the occurrence ("View
+          Anderson on Tuesday, May 19 — Study, 7:00 PM") rather than read as the
+          concatenated child text. Two groups share May 19 and May 26, so the
+          same-date collision is real and the uniqueness gate is meaningful. */}
+      <Surface id="master-calendar-grid" heading="Master calendar (month grid)">
+        <AdminMasterCalendarGrid
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={OCCURRENCES}
+          onSelect={setSelected}
+          onMoreFromDay={() => {}}
+        />
+      </Surface>
+
       {/* Master calendar filter shell (#262, Admin Interaction Model req 11).
           Mounts the real FilterBar so axe runs against the polish controls:
           the per-field Select all / Clear all pairs and the removable active-
@@ -501,6 +584,27 @@ export function A11yHarnessClient() {
           occurrences={OCCURRENCES}
           groups={CALENDAR_GROUPS}
           leaderOptions={CALENDAR_LEADERS}
+        />
+      </Surface>
+
+      {/* Per-group calendar month grid (#322). Each editable cell renders a
+          <button> whose accessible name must be an explicit, meaningful summary
+          ("Edit Tuesday, May 5 — Study, 6:30 PM, Scheduled" / "Add event on
+          …") rather than the concatenated child text. A weekly group recurring
+          on multiple Tuesdays makes the same-group/different-date collision
+          real, so the uniqueness gate is meaningful. */}
+      <Surface
+        id="calendar-month-grid"
+        heading="Calendar month grid (per group)"
+      >
+        <CalendarMonthGrid
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={GROUP_GRID_OCCURRENCES}
+          groupId="00000000-0000-4000-8000-000000000002"
+          groupMeetingTime="18:30"
+          actions={CALENDAR_GRID_ACTIONS}
+          canEdit
         />
       </Surface>
 

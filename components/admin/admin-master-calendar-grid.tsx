@@ -3,6 +3,7 @@
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import {
   WEEKDAY_HEADERS,
+  dateLabel,
   dayNumberLabel,
   formatClock,
   gridCellsForMonth,
@@ -129,9 +130,7 @@ function GridCellView({
         background: baseBg,
         border: `1px solid ${P.line}`,
         borderRadius: 10,
-        boxShadow: cell.isToday
-          ? `inset 0 0 0 1px ${P.terra}`
-          : undefined,
+        boxShadow: cell.isToday ? `inset 0 0 0 1px ${P.terra}` : undefined,
       }}
     >
       <div
@@ -162,7 +161,11 @@ function GridCellView({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {visible.map((o) => (
-          <OccurrencePill key={`${o.groupId}|${o.date}`} occurrence={o} onClick={() => onSelect(o)} />
+          <OccurrencePill
+            key={`${o.groupId}|${o.date}`}
+            occurrence={o}
+            onClick={() => onSelect(o)}
+          />
         ))}
         {overflow > 0 ? (
           <button
@@ -201,11 +204,23 @@ function OccurrencePill({
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
   const showStatusBadge = occurrence.status !== "scheduled";
+  // Explicit, meaningful accessible name (#322): the pill's child text reads as
+  // a run-on to a screen reader. Date keeps it unique across a recurring
+  // group's cells; group + type/status keep it unique when groups share a date.
+  const statusOrType = showStatusBadge
+    ? friendlyEventStatusLabel(occurrence.status)
+    : typeLabel;
+  const detailParts = [statusOrType];
+  if (clock) detailParts.push(clock);
+  const pillAriaLabel = `View ${occurrence.groupName} on ${dateLabel(
+    occurrence.date
+  )} — ${detailParts.join(", ")}`;
 
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={pillAriaLabel}
       title={`${occurrence.groupName} · ${typeLabel}${clock ? ` · ${clock}` : ""}`}
       style={{
         display: "flex",
@@ -248,7 +263,9 @@ function OccurrencePill({
         }}
       >
         {showStatusBadge ? (
-          <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
+          <PBadge tone={tone}>
+            {friendlyEventStatusLabel(occurrence.status)}
+          </PBadge>
         ) : (
           <span>{typeLabel}</span>
         )}

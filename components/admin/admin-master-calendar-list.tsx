@@ -132,6 +132,20 @@ function OccurrenceCard({
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
   const stripe = statusStripeColor(occurrence.status);
+  // Explicit, meaningful accessible name (#322): without it the button's name
+  // is the concatenated child text (group + status/type + clock + leaders),
+  // which reads as a run-on. Lead with the group, then date keeps it unique
+  // across a recurring group's dates, and type/status keep it unique when two
+  // groups share a date.
+  const statusOrType =
+    occurrence.status === "scheduled"
+      ? typeLabel
+      : friendlyEventStatusLabel(occurrence.status);
+  const detailParts = [statusOrType];
+  if (clock) detailParts.push(clock);
+  const cardAriaLabel = `View ${occurrence.groupName} on ${dateLabel(
+    occurrence.date
+  )} — ${detailParts.join(", ")}`;
   return (
     <li
       style={{
@@ -147,6 +161,7 @@ function OccurrenceCard({
       <button
         type="button"
         onClick={() => onSelect(occurrence)}
+        aria-label={cardAriaLabel}
         style={{
           background: "transparent",
           border: "none",
