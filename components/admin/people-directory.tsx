@@ -474,7 +474,7 @@ const ProfileRow = memo(function ProfileRow({
   const isLeaderType =
     profile.role === "leader" || profile.role === "co_leader";
   return (
-    <li style={rowStyle}>
+    <li className="lg-m-grid-stack" style={rowStyle}>
       <div style={{ minWidth: 0 }}>
         <div
           style={{
@@ -589,7 +589,7 @@ const MemberRow = memo(function MemberRow({
   assignedGroups: GroupsRow[];
 }) {
   return (
-    <li style={rowStyle}>
+    <li className="lg-m-grid-stack" style={rowStyle}>
       <div style={{ minWidth: 0 }}>
         <div
           style={{

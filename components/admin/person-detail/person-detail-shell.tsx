@@ -406,6 +406,7 @@ function PanelHeading({ title, caption }: { title: string; caption: string }) {
 function DefList({ rows }: { rows: { label: string; value: string }[] }) {
   return (
     <dl
+      className="lg-m-grid-stack"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(80px, 140px) 1fr",

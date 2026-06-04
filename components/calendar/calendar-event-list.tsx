@@ -60,7 +60,15 @@ export function CalendarEventList({
 
   if (!archivedSeparate) {
     return (
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gap: 10,
+        }}
+      >
         {events.map((event) => (
           <CalendarEventRow
             key={event.id}
@@ -79,9 +87,21 @@ export function CalendarEventList({
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {active.length > 0 ? (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 10,
+          }}
+        >
           {active.map((event) => (
-            <CalendarEventRow key={event.id} event={event} renderActions={renderActions} />
+            <CalendarEventRow
+              key={event.id}
+              event={event}
+              renderActions={renderActions}
+            />
           ))}
         </ul>
       ) : (
@@ -123,9 +143,22 @@ export function CalendarEventList({
           >
             Archived ({archived.length})
           </summary>
-          <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 4px", display: "grid", gap: 10 }}>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: "10px 0 4px",
+              display: "grid",
+              gap: 10,
+            }}
+          >
             {archived.map((event) => (
-              <CalendarEventRow key={event.id} event={event} renderActions={renderActions} archived />
+              <CalendarEventRow
+                key={event.id}
+                event={event}
+                renderActions={renderActions}
+                archived
+              />
             ))}
           </ul>
         </details>
@@ -147,10 +180,12 @@ function CalendarEventRow({
   const displayLabel = eventDisplayLabel(event);
   const typeLabel = friendlyEventTypeLabel(event.event_type);
   const statusLabel = friendlyEventStatusLabel(event.status);
-  const showTypeAside = displayLabel !== typeLabel && event.status === "scheduled";
+  const showTypeAside =
+    displayLabel !== typeLabel && event.status === "scheduled";
 
   return (
     <li
+      className="lg-m-grid-stack"
       style={{
         background: archived ? P.bgDeep : P.surface,
         border: `1px solid ${P.line}`,
@@ -188,17 +223,39 @@ function CalendarEventRow({
           {displayLabel}
         </div>
         {showTypeAside ? (
-          <div style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2, fontStyle: "italic" }}>
+          <div
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+              fontStyle: "italic",
+            }}
+          >
             {typeLabel}
           </div>
         ) : null}
         {event.description ? (
-          <p style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2, margin: "4px 0 0", lineHeight: 1.5 }}>
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+              margin: "4px 0 0",
+              lineHeight: 1.5,
+            }}
+          >
             {event.description}
           </p>
         ) : null}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          alignItems: "flex-end",
+        }}
+      >
         <PBadge tone={statusTone(event.status)}>{statusLabel}</PBadge>
         {renderActions ? renderActions(event) : null}
       </div>
