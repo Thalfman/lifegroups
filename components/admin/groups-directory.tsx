@@ -433,10 +433,28 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // fixed debounce delay, and React drops superseded renders as you keep typing.
   const deferredQuery = useDeferredValue(query);
   const deferredTab = useDeferredValue(tab);
+  // The table-view controls drive the SAME expensive work — re-deriving and
+  // re-sorting `tableRows` and re-rendering every row — so they defer too. The
+  // urgent state above stays bound to the controls (the clicked header, toggle,
+  // density segment, or column checkbox highlights on the same frame); only the
+  // heavy list derivation/render keys off these deferred copies, so it runs as a
+  // low-priority, interruptible render and the interaction paints instantly.
+  // Setters stay plain useState updates so the persisted-state restore is
+  // untouched and SSR still emits the render-time defaults (no hydration flash).
+  const deferredSort = useDeferredValue(sort);
+  const deferredMode = useDeferredValue(mode);
+  const deferredColumns = useDeferredValue(columns);
+  const deferredDensity = useDeferredValue(density);
   const trimmed = deferredQuery.trim().toLowerCase();
   // True while the rendered list still reflects the previous input — used to
   // dim it briefly so the stale rows read as catching up, not as the result.
-  const listIsStale = query !== deferredQuery || tab !== deferredTab;
+  const listIsStale =
+    query !== deferredQuery ||
+    tab !== deferredTab ||
+    sort !== deferredSort ||
+    mode !== deferredMode ||
+    columns !== deferredColumns ||
+    density !== deferredDensity;
 
   const matchesTab = useCallback(
     (g: GroupsRow): boolean => {
@@ -470,7 +488,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   // leader/check-in text the row renders. Built from the SAME maps the cards use
   // — no new reads. Only assembled while in table mode so card mode pays nothing.
   const tableRows = useMemo(() => {
-    if (mode !== "table") return [];
+    if (deferredMode !== "table") return [];
     const rows = visible.map((g) => {
       const status = statusByGroupId.get(g.id)!;
       const leaders = leadersByGroupId.get(g.id) ?? NO_LEADERS;
@@ -489,14 +507,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       };
       return { group: g, status, leaderText, session, sortRow };
     });
-    const comparator = compareGroupsBy(sortKey, sortDir);
+    const comparator = compareGroupsBy(deferredSort.key, deferredSort.dir);
     rows.sort((a, b) => comparator(a.sortRow, b.sortRow));
     return rows;
   }, [
-    mode,
+    deferredMode,
     visible,
-    sortKey,
-    sortDir,
+    deferredSort,
     statusByGroupId,
     leadersByGroupId,
     profilesById,
@@ -611,7 +628,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             ? "No archived groups."
             : "No groups match the current tab."}
         </div>
-      ) : mode === "table" ? (
+      ) : deferredMode === "table" ? (
         <div
           style={{
             opacity: listIsStale ? 0.6 : 1,
@@ -623,8 +640,8 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
-            shownColumns={columns}
-            density={density}
+            shownColumns={deferredColumns}
+            density={deferredDensity}
             profilesById={profilesById}
             activeMemberCountByGroup={activeMemberCountByGroup}
             overrideByGroupId={overrideByGroupId}
@@ -996,6 +1013,177 @@ const DENSITY_HEADER_PADDING: Record<GroupsTableDensity, string> = {
   compact: "6px 12px",
 };
 
+// One table row, memoized like GroupCard so the table re-renders cheaply. A sort
+// click only reorders these elements — their props are unchanged, so React skips
+// re-rendering every row (the main INP win). Column/density toggles do change
+// `shownColumns`/`density` for all rows, but those re-renders are cheap memoized
+// leaves and run behind the deferred values in GroupsDirectory, off the click's
+// critical path. The per-row scalars (override, member count) arrive resolved
+// from the parent's stable maps so identical rows stay referentially equal.
+const GroupTableRowView = memo(function GroupTableRowView({
+  group,
+  status,
+  leaderText,
+  session,
+  shownColumns,
+  density,
+  override,
+  memberCount,
+  defaults,
+  onEdit,
+}: {
+  group: GroupsRow;
+  status: GroupStatus;
+  leaderText: string | null;
+  session: AttendanceSessionsRow | null;
+  shownColumns: GroupsTableOptionalColumn[];
+  density: GroupsTableDensity;
+  override: GroupMetricSettingsRow | null;
+  memberCount: number;
+  defaults: MetricDefaults;
+  onEdit: (group: GroupsRow) => void;
+}) {
+  const show = (column: GroupsTableOptionalColumn) =>
+    isColumnShown(shownColumns, column);
+  const dCellStyle: React.CSSProperties = {
+    ...cellStyle,
+    padding: DENSITY_CELL_PADDING[density],
+  };
+  const groupLabel = groupAccessibleLabel(group);
+  const isArchived = status.lifecycle === "archived";
+  const excluded = isExcludedFromCapacityMetrics(override);
+  const cap = effectiveCapacity(group, override, defaults);
+  const isCapacityUnknown = unknownCapacity(group, override, defaults);
+  return (
+    <tr
+      style={{
+        borderBottom: `1px solid ${P.line2}`,
+        opacity: isArchived ? 0.7 : 1,
+      }}
+    >
+      {/* Group + lifecycle (structural — always shown) */}
+      <td style={dCellStyle}>
+        <div style={{ display: "grid", gap: 4, alignContent: "start" }}>
+          <span style={{ fontWeight: 500, color: P.ink }}>{group.name}</span>
+          <span>
+            <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
+              {lifecycleCategoryLabel(status.lifecycle)}
+            </PBadge>
+          </span>
+        </div>
+      </td>
+      {/* Leader / co-leader */}
+      {show("leader") ? (
+        <td style={{ ...dCellStyle, color: P.ink2 }}>
+          {leaderText ?? "Unassigned"}
+        </td>
+      ) : null}
+      {/* Setup */}
+      {show("setup") ? (
+        <td style={dCellStyle}>
+          <PBadge tone={SETUP_TONE[status.setup]}>
+            {setupCategoryLabel(status.setup)}
+          </PBadge>
+        </td>
+      ) : null}
+      {/* Health grade */}
+      {show("health") ? (
+        <td style={dCellStyle}>
+          <PBadge tone={HEALTH_TONE[status.health]}>
+            {healthCategoryLabel(status.health)}
+          </PBadge>
+        </td>
+      ) : null}
+      {/* Capacity (numeric → tabular-nums, right-aligned) */}
+      {show("capacity") ? (
+        <td
+          style={{
+            ...dCellStyle,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+            color: P.ink2,
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 4,
+            }}
+          >
+            <PBadge tone={CAPACITY_TONE[status.capacity]}>
+              {capacityCategoryLabel(status.capacity)}
+            </PBadge>
+            <span>
+              {excluded
+                ? "Excluded"
+                : `${memberCount}${
+                    isCapacityUnknown ? " / —" : ` / ${cap ?? "—"}`
+                  }`}
+            </span>
+          </div>
+        </td>
+      ) : null}
+      {/* Meeting day/time */}
+      {show("meeting") ? (
+        <td style={{ ...dCellStyle, color: P.ink2 }}>{metaLine(group)}</td>
+      ) : null}
+      {/* Latest-week check-in — reuses the already-loaded session */}
+      {show("checkin") ? (
+        <td style={{ ...dCellStyle, color: P.ink3 }}>
+          {latestCheckinText(session)}
+        </td>
+      ) : null}
+      {/* Actions — record-context names, unique per group */}
+      <td style={{ ...dCellStyle, textAlign: "right" }}>
+        <div
+          style={{
+            display: "inline-flex",
+            gap: 6,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Link
+            href={`/admin/groups/${group.id}`}
+            aria-label={`View ${groupLabel}`}
+            style={tableLinkStyle}
+          >
+            View
+          </Link>
+          {isArchived ? (
+            <RestoreGroupButton
+              groupId={group.id}
+              groupName={group.name}
+              ariaLabel={`Restore ${groupLabel}`}
+            />
+          ) : (
+            <>
+              <Link
+                href={`/admin/groups/${group.id}/calendar`}
+                aria-label={`Open ${groupLabel} calendar`}
+                style={tableLinkStyle}
+              >
+                Calendar
+              </Link>
+              <PButton
+                type="button"
+                tone="terra"
+                size="sm"
+                aria-label={`Edit ${groupLabel}`}
+                onClick={() => onEdit(group)}
+              >
+                Edit
+              </PButton>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 function GroupsTable({
   rows,
   sortKey,
@@ -1026,11 +1214,7 @@ function GroupsTable({
   const visibleColumns = TABLE_COLUMNS.filter(
     (col) => !col.optional || isColumnShown(shownColumns, col.optional)
   );
-  const show = (column: GroupsTableOptionalColumn) =>
-    isColumnShown(shownColumns, column);
-  const cellPad = DENSITY_CELL_PADDING[density];
   const headerPad = DENSITY_HEADER_PADDING[density];
-  const dCellStyle: React.CSSProperties = { ...cellStyle, padding: cellPad };
   return (
     <div style={{ overflowX: "auto" }}>
       <table
@@ -1114,154 +1298,21 @@ function GroupsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ group, status, leaderText, session }) => {
-            const groupLabel = groupAccessibleLabel(group);
-            const isArchived = status.lifecycle === "archived";
-            const override = overrideByGroupId.get(group.id) ?? null;
-            const excluded = isExcludedFromCapacityMetrics(override);
-            const cap = effectiveCapacity(group, override, defaults);
-            const isCapacityUnknown = unknownCapacity(
-              group,
-              override,
-              defaults
-            );
-            const memberCount = activeMemberCountByGroup.get(group.id) ?? 0;
-            return (
-              <tr
-                key={group.id}
-                style={{
-                  borderBottom: `1px solid ${P.line2}`,
-                  opacity: isArchived ? 0.7 : 1,
-                }}
-              >
-                {/* Group + lifecycle (structural — always shown) */}
-                <td style={dCellStyle}>
-                  <div
-                    style={{ display: "grid", gap: 4, alignContent: "start" }}
-                  >
-                    <span style={{ fontWeight: 500, color: P.ink }}>
-                      {group.name}
-                    </span>
-                    <span>
-                      <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
-                        {lifecycleCategoryLabel(status.lifecycle)}
-                      </PBadge>
-                    </span>
-                  </div>
-                </td>
-                {/* Leader / co-leader */}
-                {show("leader") ? (
-                  <td style={{ ...dCellStyle, color: P.ink2 }}>
-                    {leaderText ?? "Unassigned"}
-                  </td>
-                ) : null}
-                {/* Setup */}
-                {show("setup") ? (
-                  <td style={dCellStyle}>
-                    <PBadge tone={SETUP_TONE[status.setup]}>
-                      {setupCategoryLabel(status.setup)}
-                    </PBadge>
-                  </td>
-                ) : null}
-                {/* Health grade */}
-                {show("health") ? (
-                  <td style={dCellStyle}>
-                    <PBadge tone={HEALTH_TONE[status.health]}>
-                      {healthCategoryLabel(status.health)}
-                    </PBadge>
-                  </td>
-                ) : null}
-                {/* Capacity (numeric → tabular-nums, right-aligned) */}
-                {show("capacity") ? (
-                  <td
-                    style={{
-                      ...dCellStyle,
-                      textAlign: "right",
-                      fontVariantNumeric: "tabular-nums",
-                      color: P.ink2,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "inline-flex",
-                        flexDirection: "column",
-                        alignItems: "flex-end",
-                        gap: 4,
-                      }}
-                    >
-                      <PBadge tone={CAPACITY_TONE[status.capacity]}>
-                        {capacityCategoryLabel(status.capacity)}
-                      </PBadge>
-                      <span>
-                        {excluded
-                          ? "Excluded"
-                          : `${memberCount}${
-                              isCapacityUnknown ? " / —" : ` / ${cap ?? "—"}`
-                            }`}
-                      </span>
-                    </div>
-                  </td>
-                ) : null}
-                {/* Meeting day/time */}
-                {show("meeting") ? (
-                  <td style={{ ...dCellStyle, color: P.ink2 }}>
-                    {metaLine(group)}
-                  </td>
-                ) : null}
-                {/* Latest-week check-in — reuses the already-loaded session */}
-                {show("checkin") ? (
-                  <td style={{ ...dCellStyle, color: P.ink3 }}>
-                    {latestCheckinText(session)}
-                  </td>
-                ) : null}
-                {/* Actions — record-context names, unique per group */}
-                <td style={{ ...dCellStyle, textAlign: "right" }}>
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      gap: 6,
-                      flexWrap: "wrap",
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <Link
-                      href={`/admin/groups/${group.id}`}
-                      aria-label={`View ${groupLabel}`}
-                      style={tableLinkStyle}
-                    >
-                      View
-                    </Link>
-                    {isArchived ? (
-                      <RestoreGroupButton
-                        groupId={group.id}
-                        groupName={group.name}
-                        ariaLabel={`Restore ${groupLabel}`}
-                      />
-                    ) : (
-                      <>
-                        <Link
-                          href={`/admin/groups/${group.id}/calendar`}
-                          aria-label={`Open ${groupLabel} calendar`}
-                          style={tableLinkStyle}
-                        >
-                          Calendar
-                        </Link>
-                        <PButton
-                          type="button"
-                          tone="terra"
-                          size="sm"
-                          aria-label={`Edit ${groupLabel}`}
-                          onClick={() => onEdit(group)}
-                        >
-                          Edit
-                        </PButton>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+          {rows.map(({ group, status, leaderText, session }) => (
+            <GroupTableRowView
+              key={group.id}
+              group={group}
+              status={status}
+              leaderText={leaderText}
+              session={session}
+              shownColumns={shownColumns}
+              density={density}
+              override={overrideByGroupId.get(group.id) ?? null}
+              memberCount={activeMemberCountByGroup.get(group.id) ?? 0}
+              defaults={defaults}
+              onEdit={onEdit}
+            />
+          ))}
         </tbody>
       </table>
     </div>
