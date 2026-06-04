@@ -3,6 +3,10 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
 import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareItemList } from "@/components/admin/care/care-item-list";
+import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
+import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
+import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
+import { CoverageByOverShepherdCard } from "@/components/admin/shepherd-care/coverage-by-over-shepherd-card";
 import {
   CareShell,
   type CareTab,
@@ -32,19 +36,34 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
-import { buildShepherdCareDashboardModel } from "@/lib/admin/shepherd-care-dashboard";
+import {
+  buildShepherdCareDashboardModel,
+  countAllAttentionItems,
+} from "@/lib/admin/shepherd-care-dashboard";
 import { buildCareArea } from "@/lib/admin/care-area";
 import type { GroupsRow } from "@/types/database";
 import { P, fontBody } from "@/lib/pastoral";
 
-// Care area (ADR 0013, #301). Care is the entry point for Job 1 — "who needs
-// attention?" — and hosts the former Leader care + Follow-ups surfaces as the
-// five tabs Needs Contact, Follow-ups, Due Soon, Recent Care, Completed. It is
-// a NEW route: the frozen /admin/shepherd-care and /admin/follow-ups paths,
-// tables, and filenames are unchanged and still resolve directly (ADR
-// 0008/0009). This is a navigation/layout consolidation, not a data or route
-// merge — care-note content stays on the per-leader detail page and the generic
-// queue stays on the generic follow_ups table; the two only cross-link.
+// Care area (ADR 0013, #301; re-keyed to the PRD IA in #334). Care is the entry
+// point for Job 1 — "how are my leaders doing?" — and hosts the former Leader
+// care + Follow-ups surfaces as the five canonical tabs Dashboard, Directory,
+// Follow-ups, Coverage, Recent interactions. Every panel is backed by data
+// already loaded below (loadCarePageData) — the re-key introduces NO new reads:
+//   • Dashboard      — summary tiles + attention queue (the former Needs Contact
+//                      signal — "who needs contact" — now lives here).
+//   • Directory      — the full leader roster with coverage owner column.
+//   • Follow-ups     — the generic open-task queue (the former Due Soon /
+//                      Completed buckets are the queue's due-window / Done
+//                      filters).
+//   • Coverage       — over-shepherd buckets + an Unassigned bucket.
+//   • Recent interactions — the recent calls / notes / meetings feed (renamed
+//                      from Recent Care).
+// It is a NEW route: the frozen /admin/shepherd-care and /admin/follow-ups
+// paths, tables, and filenames are unchanged and still alias-render directly
+// (200, not 302) (ADR 0008/0009, #328). This is a navigation/layout
+// consolidation, not a data or route merge — care-note content stays on the
+// per-leader detail page and the generic queue stays on the generic follow_ups
+// table; the two only cross-link.
 export const dynamic = "force-dynamic";
 
 type CareData = {
@@ -202,8 +221,11 @@ export async function loadCarePageData(): Promise<{
     followUpsData.groups
   );
 
-  // The full triage queue (not the dashboard's top-N slice) so Needs Contact
-  // lists every leader/co-leader who needs outreach.
+  // Dashboard model drives the Dashboard tab's summary tiles + attention queue
+  // (the former Needs Contact signal) and the Coverage tab's over-shepherd
+  // buckets. The attention queue keeps its default top-N slice for the scan
+  // surface; countAllAttentionItems gives the true total so the queue can render
+  // its "+N more in the Directory" footer.
   const dashboard = buildShepherdCareDashboardModel({
     entries: care.entries,
     assignments: care.assignments,
@@ -214,9 +236,33 @@ export async function loadCarePageData(): Promise<{
     todayIso: today,
     assignmentsAvailable: care.assignmentsAvailable,
     windows: care.windows,
-    limits: { attention: Math.max(care.entries.length, 1) },
   });
+  const totalAttention = countAllAttentionItems(
+    care.entries,
+    care.assignments,
+    today,
+    {
+      coverageAvailable: care.assignmentsAvailable,
+      windows: care.windows,
+      careFollowUps: care.outstandingFollowUps,
+    }
+  );
 
+  // Coverage owner per leader, so the Directory table can render its
+  // "Over-shepherd" column from the already-loaded active assignments.
+  const coverageByShepherdId = new Map<
+    string,
+    ActiveShepherdCoverageAssignmentSummary
+  >();
+  for (const a of care.assignments) {
+    coverageByShepherdId.set(a.shepherd_profile_id, a);
+  }
+
+  // The Recent interactions tab reuses the enriched care-item rows (owner +
+  // group resolved) rather than the raw dashboard feed. buildCareArea still
+  // builds its other buckets (needs-contact / due-soon / completed); after the
+  // #334 re-key those signals are surfaced via the Dashboard attention queue and
+  // the Follow-ups queue, so only recentCare is consumed here.
   const area = buildCareArea({
     entries: care.entries,
     attentionQueue: dashboard.attentionQueue,
@@ -245,14 +291,31 @@ export async function loadCarePageData(): Promise<{
 
   const tabs: CareTab[] = [
     {
-      key: "needs-contact",
-      label: "Needs Contact",
-      count: area.needsContact.length,
+      key: "dashboard",
+      label: "Dashboard",
+      count: totalAttention,
       panel: (
-        <CareItemList
-          items={area.needsContact}
-          emptyTitle="No leaders need outreach right now"
-          emptyDescription="Everyone is within their care cadence. Check back as touchpoints come due."
+        <div style={{ display: "grid", gap: 18 }}>
+          <ShepherdCareDashboardSummaryCards
+            summary={dashboard.summary}
+            coverageAvailable={dashboard.coverageAvailable}
+            followUpsAvailable={dashboard.followUpsAvailable}
+          />
+          <CareAttentionQueue
+            items={dashboard.attentionQueue}
+            totalCount={totalAttention}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "directory",
+      label: "Directory",
+      count: care.entries.length,
+      panel: (
+        <ShepherdCareDirectoryTable
+          entries={care.entries}
+          coverageByShepherdId={coverageByShepherdId}
         />
       ),
     },
@@ -267,38 +330,19 @@ export async function loadCarePageData(): Promise<{
       ),
     },
     {
-      key: "due-soon",
-      label: "Due Soon",
-      count: area.dueSoon.length,
-      panel: (
-        <CareItemList
-          items={area.dueSoon}
-          emptyTitle="Nothing due soon"
-          emptyDescription="No care follow-ups are overdue or due in the next week."
-        />
-      ),
+      key: "coverage",
+      label: "Coverage",
+      panel: <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />,
     },
     {
-      key: "recent-care",
-      label: "Recent Care",
+      key: "recent-interactions",
+      label: "Recent interactions",
       count: area.recentCare.length,
       panel: (
         <CareItemList
           items={area.recentCare}
           emptyTitle="No recent care logged"
           emptyDescription="Logged calls, notes, and meetings will appear here as they happen."
-        />
-      ),
-    },
-    {
-      key: "completed",
-      label: "Completed",
-      count: area.completed.length,
-      panel: (
-        <CareItemList
-          items={area.completed}
-          emptyTitle="No completed follow-ups yet"
-          emptyDescription="Care follow-ups you mark complete will land here."
         />
       ),
     },
@@ -311,7 +355,7 @@ export async function loadCarePageData(): Promise<{
 // this same view, only changing which tab opens first, so the experience is
 // identical regardless of which URL resolved it (ADR 0013, #328).
 export async function CarePageView({
-  initialTab = "needs-contact",
+  initialTab = "dashboard",
 }: {
   initialTab?: CareTabKey;
 }) {
@@ -321,14 +365,15 @@ export async function CarePageView({
     <>
       <PageHeader
         eyebrow="Care"
-        title="Who needs"
-        italic="attention"
-        lede="How your leaders are doing, in one place — who needs outreach, open follow-ups, what's due, and recent care. Care notes stay admin-only and never leave the leader's detail page."
+        title="How your leaders"
+        italic="are doing"
+        lede="Your leaders' care in one place — a dashboard of who needs a touch, the full directory, open follow-ups, coverage by over-shepherd, and recent interactions. Care notes stay admin-only and never leave the leader's detail page."
       />
       <PageBody>
         {/* Page-level so a failed care read is visible from every tab, not just
-            Needs Contact — otherwise Due Soon / Recent Care / Completed would
-            show their normal empty state and falsely signal "no care work". */}
+            the Dashboard — otherwise Directory / Coverage / Recent interactions
+            would show their normal empty state and falsely signal "no care
+            work". */}
         {errorBanner ? (
           <div style={{ marginBottom: 18 }}>{errorBanner}</div>
         ) : null}
