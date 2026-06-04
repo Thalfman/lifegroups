@@ -36,7 +36,19 @@ The bounds — "anything" means anything *except* the documented exceptions:
   `group_memberships`, and the `group_id` history tables) silently erase children
   with no tombstone before any block could fire. The RPC refuses when any
   dependent exists and reports what is blocking; the operator clears or reassigns
-  first. No silent cascade through care history.
+  first. No silent cascade through care history. **Two carve-outs to this rule:**
+  - `audit_events.actor_profile_id` is **not** a blocker. It is the one FK
+    deliberately handled by the `on delete set null` + actor-descriptor strategy
+    below, so an audited profile stays deletable; the rule would otherwise
+    contradict itself (audit rows are off-limits to clear, so an authored audit
+    event would block the profile forever).
+  - **Confidential dependents block opaquely.** Private Care Note rows (SC.4)
+    must never have their existence, count, or key-slot metadata reported to the
+    Super Admin — that would leak through the security-definer preflight and
+    breach ADR 0002/0003 ("not visible to the Super Admin either"). When a
+    private-note dependent blocks a delete, the report is an opaque "this person
+    has confidential records that only their owner can remove" — no table, count,
+    or note metadata — and only the creating Ministry Admin can clear it.
 - **Every deletion writes both a tombstone and an `audit_events` row.** The
   tombstone is a full JSON snapshot of the row(s) captured before removal, making
   the act recoverable by re-import. It does **not** replace the paired
