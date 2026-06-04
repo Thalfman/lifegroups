@@ -36,6 +36,10 @@ export default async function AdminPlanningPage({
       monthIso={monthIso}
       viewerId={session.profile.id}
       initialTab="calendar"
+      // Canonical Planning entry owns the #331 opinionated saved views; the
+      // frozen /admin/calendar alias does NOT pass this, so it keeps its
+      // pre-#331 calendar behavior (ADR 0013 freeze).
+      planningViews
     />
   );
 }

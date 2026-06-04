@@ -114,11 +114,21 @@ export const UNASSIGNED_LEADER_NAME = "Unassigned";
 // sufficient from `loadMasterCalendar` alone: each occurrence already carries
 // its group's deduped leader list (profileId + name), so no new read is needed.
 // Buckets are sorted by leader name with the Unassigned bucket pinned last.
+//
+// `selectedLeaderIds` composes with the advanced Leader/co-leader filter: that
+// filter keeps an occurrence if ANY of its leaders matches, so a co-led group
+// (Dana+Sam) filtered to Dana still carries Sam in its leader list. Without
+// this, grouping would render a stray Sam bucket. When a non-empty set is
+// passed, only buckets for those leaders are produced (co-leaders outside the
+// selection are dropped); an empty/omitted set groups under every leader.
 export function groupOccurrencesByLeader(
-  occurrences: MasterOccurrence[]
+  occurrences: MasterOccurrence[],
+  selectedLeaderIds?: ReadonlySet<string>
 ): LeaderGroup[] {
   const byLeader = new Map<string, LeaderGroup>();
   const unassigned: MasterOccurrence[] = [];
+  const hasSelection =
+    selectedLeaderIds !== undefined && selectedLeaderIds.size > 0;
 
   for (const occ of occurrences) {
     if (occ.leaders.length === 0) {
@@ -126,6 +136,7 @@ export function groupOccurrencesByLeader(
       continue;
     }
     for (const leader of occ.leaders) {
+      if (hasSelection && !selectedLeaderIds.has(leader.profileId)) continue;
       const bucket = byLeader.get(leader.profileId) ?? {
         profileId: leader.profileId,
         name: leader.name,

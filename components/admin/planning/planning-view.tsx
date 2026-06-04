@@ -22,10 +22,17 @@ export async function PlanningView({
   monthIso,
   viewerId,
   initialTab = "calendar",
+  planningViews = false,
 }: {
   monthIso: string;
   viewerId?: string | null;
   initialTab?: PlanningTabKey;
+  // Opt the Calendar tab into the #331 opinionated saved views. ONLY the
+  // canonical /admin/planning page passes this; the frozen /admin/calendar and
+  // /admin/launch-planning aliases leave it off so /admin/calendar keeps its
+  // pre-#331 calendar behavior (ADR 0013 freeze). Default off so an alias that
+  // forgets to set it can't accidentally leak the new affordances.
+  planningViews?: boolean;
 }) {
   const data = await loadLaunchPlanningData();
   const panels = buildLaunchPlanningPanels(data);
@@ -71,7 +78,11 @@ export async function PlanningView({
           <PlanningShell
             initialTab={initialTab}
             calendar={
-              <PlanningCalendarPanel monthIso={monthIso} viewerId={viewerId} />
+              <PlanningCalendarPanel
+                monthIso={monthIso}
+                viewerId={viewerId}
+                planningViews={planningViews}
+              />
             }
             launches={launchesPanel}
             capacity={capacityPanel}

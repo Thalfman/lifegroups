@@ -190,3 +190,75 @@ describe("groupOccurrencesByLeader", () => {
     expect(groups.some((g) => g.profileId === null)).toBe(false);
   });
 });
+
+describe("Unassigned coverage badge counts only genuine gaps", () => {
+  // The "By leader" view's Unassigned bucket badge must reflect the count of
+  // occurrences that strictly need coverage (occurrenceNeedsCoverage), NOT the
+  // raw count of leaderless rows — cancelled/OFF, non-meeting, and non-active
+  // rows are leaderless but are not actionable staffing gaps (#331). This
+  // mirrors the predicate the component filters the bucket with.
+  const unassignedBucket: MasterOccurrence[] = [
+    occ({ groupId: "gap-1", leaders: [] }), // genuine gap
+    occ({ groupId: "gap-2", leaders: [] }), // genuine gap
+    occ({ groupId: "off", leaders: [], status: "off" }), // not a gap
+    occ({ groupId: "cancelled", leaders: [], status: "cancelled" }), // not a gap
+    occ({ groupId: "special", leaders: [], isMeetingOccurrence: false }), // not a gap
+    occ({ groupId: "paused", leaders: [], lifecycleStatus: "at_risk" }), // not a gap
+  ];
+
+  it("counts only the rows where occurrenceNeedsCoverage is true", () => {
+    const coverageCount = unassignedBucket.filter(
+      occurrenceNeedsCoverage
+    ).length;
+    expect(coverageCount).toBe(2);
+  });
+
+  it("a bucket of only non-actionable leaderless rows yields no badge", () => {
+    const nonGaps = unassignedBucket.filter((o) => !occurrenceNeedsCoverage(o));
+    expect(nonGaps.filter(occurrenceNeedsCoverage)).toHaveLength(0);
+  });
+});
+
+describe("groupOccurrencesByLeader composes with the leader filter", () => {
+  const coLed = occ({
+    groupId: "a",
+    leaders: [
+      { profileId: "p-1", name: "Dana Cole" },
+      { profileId: "p-2", name: "Sam Reed" },
+    ],
+  });
+
+  it("renders every leader's bucket when no selection is passed", () => {
+    const groups = groupOccurrencesByLeader([coLed]);
+    expect(groups.map((g) => g.name)).toEqual(["Dana Cole", "Sam Reed"]);
+  });
+
+  it("renders only the selected leader's bucket for a co-led group", () => {
+    // The advanced Leader filter keeps a co-led occurrence if ANY leader
+    // matches, so Dana's occurrence still carries Sam — grouping must drop the
+    // stray Sam bucket when Dana is the active filter (#331).
+    const groups = groupOccurrencesByLeader([coLed], new Set(["p-1"]));
+    expect(groups.map((g) => g.name)).toEqual(["Dana Cole"]);
+    expect(groups[0].occurrences.map((o) => o.groupId)).toEqual(["a"]);
+  });
+
+  it("an empty selection set groups under every leader (no narrowing)", () => {
+    const groups = groupOccurrencesByLeader([coLed], new Set());
+    expect(groups.map((g) => g.name)).toEqual(["Dana Cole", "Sam Reed"]);
+  });
+
+  it("keeps the Unassigned bucket independent of the leader selection", () => {
+    // Occurrences with no leaders never carry a leader to match, so they are
+    // never affected by the selection set; the shell already drops them from
+    // `filtered` when a leader filter is active, but the grouping itself must
+    // not mishandle them.
+    const groups = groupOccurrencesByLeader(
+      [coLed, occ({ groupId: "b", leaders: [] })],
+      new Set(["p-1"])
+    );
+    const names = groups.map((g) => g.name);
+    expect(names).toContain("Dana Cole");
+    expect(names).not.toContain("Sam Reed");
+    expect(names).toContain("Unassigned");
+  });
+});

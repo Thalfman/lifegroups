@@ -55,3 +55,25 @@ export function occurrenceCalendarLinkName(
   if (leaders) parts.push(leaders);
   return `Open ${occurrence.groupName} calendar — ${parts.join(", ")}`;
 }
+
+// Accessible name for the "By leader" view's ONE-per-group calendar link (#331).
+// That view collapses a leader's repeating occurrences of a group to a single
+// link, so the per-occurrence date discriminator is gone — yet group names are
+// not unique, so two same-named groups under the same view would both expose a
+// bare "Open <name> calendar". Carry the leader-section context (the leader's
+// name, or "unassigned") plus a stable group-id suffix so the accessible name
+// stays unique even when both the group name AND the leader collide.
+export function groupCalendarLinkName(args: {
+  groupId: string;
+  groupName: string;
+  // The leader whose section this link sits under, or null for the synthetic
+  // "Unassigned" bucket.
+  leaderName: string | null;
+}): string {
+  const context = args.leaderName ? `led by ${args.leaderName}` : "unassigned";
+  // The group id is the only GUARANTEED-unique discriminator (group names AND
+  // leaders can both collide), so include it in full — a truncated prefix could
+  // still collide for ids sharing a stem (e.g. grp-sun-a / grp-sun-b). Keep it
+  // last so the human-readable leader context leads the name.
+  return `Open ${args.groupName} calendar — ${context} (${args.groupId})`;
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  groupCalendarLinkName,
   occurrenceAccessibleName,
   occurrenceCalendarLinkName,
 } from "@/lib/admin/master-calendar-label";
@@ -80,6 +81,43 @@ describe("occurrenceCalendarLinkName", () => {
     );
     expect(a.startsWith("Open Sunday Night calendar — ")).toBe(true);
     expect(a).toContain("led by Dana Cole");
+    expect(a).not.toBe(b);
+  });
+});
+
+describe("groupCalendarLinkName", () => {
+  it("names the group and carries the leader-section context", () => {
+    const name = groupCalendarLinkName({
+      groupId: "grp-anderson",
+      groupName: "Anderson",
+      leaderName: "Pat Lee",
+    });
+    expect(name).toBe("Open Anderson calendar — led by Pat Lee (grp-anderson)");
+  });
+
+  it("labels the Unassigned bucket without a leader clause", () => {
+    const name = groupCalendarLinkName({
+      groupId: "grp-x",
+      groupName: "Bryant",
+      leaderName: null,
+    });
+    expect(name).toBe("Open Bryant calendar — unassigned (grp-x)");
+  });
+
+  it("stays unique for two same-named groups even under the same leader", () => {
+    // The "By leader" view drops the per-occurrence date discriminator the list
+    // link uses, so two same-named groups would both expose a bare "Open <name>
+    // calendar". The group-id suffix keeps the accessible names distinct (#331).
+    const a = groupCalendarLinkName({
+      groupId: "grp-sun-a",
+      groupName: "Sunday Night",
+      leaderName: "Dana Cole",
+    });
+    const b = groupCalendarLinkName({
+      groupId: "grp-sun-b",
+      groupName: "Sunday Night",
+      leaderName: "Dana Cole",
+    });
     expect(a).not.toBe(b);
   });
 });

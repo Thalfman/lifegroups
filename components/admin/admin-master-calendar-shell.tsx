@@ -293,6 +293,16 @@ export function AdminMasterCalendarShell({
 
   const bounds = monthBounds(monthIso);
 
+  // The list normally re-clips to the visible month. The "This week" view
+  // (#331) is anchored to today's ISO week, which can spill into an adjacent
+  // month on the first/last days of a month; the panel widens the loaded set to
+  // include that out-of-month part of the week, and `viewScoped` is already
+  // narrowed to exactly the ISO week — so for this view the list must NOT clip
+  // to the month, or the widened occurrences would be dropped right back out.
+  const isThisWeek = planningViews && planningView === "this-week";
+  const listFromIso = isThisWeek ? null : (bounds?.firstIso ?? null);
+  const listToIso = isThisWeek ? null : (bounds?.lastIso ?? null);
+
   const filterBar = (
     <FilterBar
       groups={groups}
@@ -399,6 +409,7 @@ export function AdminMasterCalendarShell({
         <PlanningByLeaderList
           occurrences={filtered}
           monthIso={monthIso}
+          leaderFilter={leaderFilter}
           onSelect={onSelect}
         />
       ) : viewMode === "month" && !planningViews ? (
@@ -418,8 +429,8 @@ export function AdminMasterCalendarShell({
       ) : (
         <AdminMasterCalendarList
           occurrences={filtered}
-          fromIso={bounds?.firstIso ?? null}
-          toIso={bounds?.lastIso ?? null}
+          fromIso={listFromIso}
+          toIso={listToIso}
           anchorDate={listAnchorDate}
           onAnchorConsumed={() => setListAnchorDate(null)}
           onSelect={onSelect}

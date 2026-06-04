@@ -5,7 +5,11 @@ import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calend
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { loadMasterCalendar } from "@/lib/admin/master-calendar";
 import { monthLabel, shiftMonthIso } from "@/lib/calendar/occurrences";
-import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
+import {
+  churchMonthIso,
+  churchTodayIso,
+  isoWeekStart,
+} from "@/lib/shared/church-time";
 
 const navLinkStyle: React.CSSProperties = {
   fontFamily: "var(--font-body)",
@@ -26,6 +30,14 @@ const navLinkActiveStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
+// Add `days` to a YYYY-MM-DD date, returning YYYY-MM-DD. Pure calendar math on
+// UTC midnight (the date is already a fixed calendar day), matching isoWeekStart.
+function addDaysIso(iso: string, days: number): string {
+  const anchor = new Date(`${iso}T00:00:00Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
 // The Calendar tab of the Planning area (#303, #331). It hosts the same master
 // calendar as the frozen /admin/calendar route, but leads with opinionated
 // saved views (This week / Needs coverage / Cancelled-OFF / By leader) as the
@@ -39,9 +51,16 @@ const navLinkActiveStyle: React.CSSProperties = {
 export async function PlanningCalendarPanel({
   monthIso,
   viewerId,
+  planningViews = false,
 }: {
   monthIso: string;
   viewerId?: string | null;
+  // Opt into the opinionated saved views (#331). Only the canonical
+  // /admin/planning entry sets this; the frozen /admin/calendar alias leaves it
+  // off so its calendar keeps its pre-#331 behavior (no view switcher, no
+  // collapsed filters, no link de-noise, no adjacent-month widening). Routed
+  // from the page through PlanningView so the two entries can't drift.
+  planningViews?: boolean;
 }) {
   const client = await createSupabaseServerClient();
   if (!client) {
@@ -57,9 +76,35 @@ export async function PlanningCalendarPanel({
   // that here so a calendar-only outage shows an ErrorBanner in this tab rather
   // than 500-ing all of /admin/planning and blocking the Launches / Capacity /
   // Scenarios / Multiplication tabs (whose loader renders partial-error panels).
+  const todayIso = churchTodayIso();
+
   let data: Awaited<ReturnType<typeof loadMasterCalendar>>;
   try {
     data = await loadMasterCalendar(client, { monthIso });
+
+    // "This week" (#331) filters the loaded set to the current ISO week
+    // (Mon–Sun). The loader is month-bounded, so on the first/last days of a
+    // month the current ISO week spans an adjacent month and that part would be
+    // silently omitted. Widen the load — only when the opinionated views are on
+    // (the only mode with a "This week" view) — by pulling any adjacent month
+    // the current week overlaps and merging just the in-week occurrences. Most
+    // months/days touch no boundary, so this adds a read only at the edges.
+    if (planningViews) {
+      const weekStart = isoWeekStart(todayIso);
+      const weekEnd = addDaysIso(weekStart, 6);
+      const adjacentMonths = new Set<string>();
+      for (const edge of [weekStart, weekEnd]) {
+        const edgeMonth = edge.slice(0, 7);
+        if (edgeMonth !== monthIso) adjacentMonths.add(edgeMonth);
+      }
+      for (const adjMonth of adjacentMonths) {
+        const adj = await loadMasterCalendar(client, { monthIso: adjMonth });
+        const inWeek = adj.occurrences.filter(
+          (o) => o.date >= weekStart && o.date <= weekEnd
+        );
+        data = { ...data, occurrences: [...data.occurrences, ...inWeek] };
+      }
+    }
   } catch (err) {
     return (
       <ErrorBanner>
@@ -68,7 +113,6 @@ export async function PlanningCalendarPanel({
       </ErrorBanner>
     );
   }
-  const todayIso = churchTodayIso();
   const prevMonth = shiftMonthIso(monthIso, -1);
   const nextMonth = shiftMonthIso(monthIso, 1);
   const isCurrentMonth = monthIso === churchMonthIso();
@@ -140,7 +184,7 @@ export async function PlanningCalendarPanel({
         defaultViewMode="list"
         persistSurface="planning-calendar"
         showLegendAlways
-        planningViews
+        planningViews={planningViews}
       />
     </div>
   );

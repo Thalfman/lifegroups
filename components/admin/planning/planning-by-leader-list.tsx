@@ -10,9 +10,13 @@ import {
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { MasterOccurrence } from "@/lib/admin/master-calendar";
-import { occurrenceAccessibleName } from "@/lib/admin/master-calendar-label";
+import {
+  occurrenceAccessibleName,
+  groupCalendarLinkName,
+} from "@/lib/admin/master-calendar-label";
 import {
   groupOccurrencesByLeader,
+  occurrenceNeedsCoverage,
   type LeaderGroup,
 } from "@/lib/admin/planning-views";
 import { statusStripeColor } from "@/components/admin/admin-master-calendar-status";
@@ -32,15 +36,25 @@ function statusTone(status: MasterOccurrence["status"]): PTone {
 export function PlanningByLeaderList({
   occurrences,
   monthIso,
+  leaderFilter,
   onSelect,
 }: {
   occurrences: MasterOccurrence[];
   monthIso: string;
+  // The active advanced Leader/co-leader filter (a profile id, or "" for none).
+  // When set, grouping must show ONLY that leader's bucket — a co-led group
+  // (Dana+Sam) filtered to Dana would otherwise still render a Sam bucket, since
+  // the filter keeps an occurrence if ANY of its leaders matches (#331).
+  leaderFilter: string;
   onSelect: (o: MasterOccurrence) => void;
 }) {
   const leaderGroups = useMemo(
-    () => groupOccurrencesByLeader(occurrences),
-    [occurrences]
+    () =>
+      groupOccurrencesByLeader(
+        occurrences,
+        leaderFilter ? new Set([leaderFilter]) : undefined
+      ),
+    [occurrences, leaderFilter]
   );
 
   if (leaderGroups.length === 0) return null;
@@ -97,6 +111,20 @@ function LeaderSection({
 
   const isUnassigned = leaderGroup.profileId === null;
 
+  // The "Needs coverage" badge is a STRICT staffing-gap signal — a scheduled
+  // real meeting of an active group with no leader (occurrenceNeedsCoverage,
+  // #331). The Unassigned bucket also holds cancelled/OFF, non-meeting, and
+  // non-active-group rows that are leaderless but NOT actionable gaps, so the
+  // badge must reflect the count of genuine gaps, not merely "this bucket has
+  // leaderless rows". Show it only when at least one row truly needs coverage.
+  const coverageCount = useMemo(
+    () =>
+      isUnassigned
+        ? leaderGroup.occurrences.filter(occurrenceNeedsCoverage).length
+        : 0,
+    [isUnassigned, leaderGroup.occurrences]
+  );
+
   return (
     <section
       style={{
@@ -126,7 +154,11 @@ function LeaderSection({
         }}
       >
         {leaderGroup.name}
-        {isUnassigned ? <PBadge tone="followup">Needs coverage</PBadge> : null}
+        {coverageCount > 0 ? (
+          <PBadge tone="followup">
+            Needs coverage{coverageCount > 1 ? ` (${coverageCount})` : ""}
+          </PBadge>
+        ) : null}
       </h3>
 
       <div style={{ display: "grid", gap: 12 }}>
@@ -153,11 +185,17 @@ function LeaderSection({
               </div>
               {/* ONE entry point per group (#331): the group's calendar, opened
                   to the visible month, rather than a link on every occurrence
-                  row. The accessible name carries the group + month so two
-                  same-named groups stay distinguishable. */}
+                  row. The shared link-name helper carries the leader-section
+                  context + a group-id suffix so two same-named groups expose
+                  distinct accessible names (the collapsed view drops the
+                  per-occurrence date discriminator the list link uses). */}
               <Link
                 href={`/admin/groups/${group.groupId}/calendar?month=${monthIso}`}
-                aria-label={`Open ${group.groupName} calendar`}
+                aria-label={groupCalendarLinkName({
+                  groupId: group.groupId,
+                  groupName: group.groupName,
+                  leaderName: isUnassigned ? null : leaderGroup.name,
+                })}
                 style={{
                   fontFamily: fontSans,
                   fontSize: 11,
@@ -206,6 +244,7 @@ function OccurrenceRow({
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
   const stripe = statusStripeColor(occurrence.status);
+  const needsCoverage = occurrenceNeedsCoverage(occurrence);
   return (
     <li
       style={{
@@ -246,6 +285,7 @@ function OccurrenceRow({
         ) : (
           <PBadge tone="healthy">{typeLabel}</PBadge>
         )}
+        {needsCoverage ? <PBadge tone="followup">Needs coverage</PBadge> : null}
         {clock ? <span>{clock}</span> : null}
       </button>
     </li>
