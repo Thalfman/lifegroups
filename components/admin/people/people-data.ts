@@ -20,12 +20,8 @@ import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
-import {
-  buildPipelineRollup,
-  type ApprenticeView,
-  type PipelineGroupRef,
-  type PipelineRollup,
-} from "@/lib/admin/leader-pipeline";
+import type { PipelineRollup } from "@/lib/admin/leader-pipeline";
+import { buildLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 
 // The People surface's three data sets — the directory, the apprentice
 // pipeline rollup, and the per-leader needs-contact set — as functions of one
@@ -118,42 +114,15 @@ export async function buildPeopleDirectoryData(
 }
 
 // The Apprentices tab renders the same leader pipeline the frozen
-// /admin/leader-pipeline route shows. Loading the rollup here is an
-// entry-point change only — Planning still reads the pipeline as launch
-// staffing supply through its own loader (ADR 0008/0009), unchanged.
+// /admin/leader-pipeline route shows, so it reuses the one shared pipeline
+// builder (ADR 0011 — extract genuinely duplicated rules). `PeopleReads` is a
+// superset of `LeaderPipelineReads`, so it satisfies the shared builder
+// directly. Planning still reads the pipeline as launch staffing supply through
+// its own loader (ADR 0008/0009), unchanged.
 export async function buildPeoplePipelineData(
   reads: PeopleReads
 ): Promise<PeoplePipelineData> {
-  const [pipelineRes, allGroupsRes] = await Promise.all([
-    reads.fetchLeaderPipeline(),
-    reads.fetchAllGroups(),
-  ]);
-
-  const activeGroups: PipelineGroupRef[] = (allGroupsRes.data ?? [])
-    .filter((g) => g.lifecycle_status === "active")
-    .map((g) => ({ id: g.id, name: g.name }));
-
-  const apprentices: ApprenticeView[] = (pipelineRes.data ?? []).map((e) => ({
-    id: e.apprentice.id,
-    groupId: e.apprentice.group_id,
-    groupName: e.groupName ?? "Unknown group",
-    displayName: e.apprentice.display_name,
-    memberId: e.apprentice.member_id,
-    stage: e.apprentice.readiness_stage,
-    expectedReadyOn: e.apprentice.expected_ready_on,
-    notes: e.apprentice.notes,
-  }));
-
-  const rollup = buildPipelineRollup(apprentices, activeGroups);
-  const availableGroups = [...activeGroups].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  return {
-    rollup,
-    availableGroups,
-    error: pipelineRes.error?.message ?? allGroupsRes.error?.message ?? null,
-  };
+  return buildLeaderPipelineData(reads);
 }
 
 // The set of leaders/co-leaders whose care cadence has lapsed, so each person
