@@ -39,7 +39,7 @@ export type NeedsAttentionTone = "primary" | "warning";
 //     still showcases its items.)
 export function buildNeedsAttentionItems(
   data: AdminDashboardData,
-  options: { degraded?: boolean } = {}
+  options: { degraded?: boolean; mutedKeys?: ReadonlySet<string> } = {}
 ): NeedsAttentionItem[] {
   if (options.degraded) return [];
 
@@ -97,7 +97,12 @@ export function buildNeedsAttentionItems(
     },
   ];
 
-  return candidates.filter((c) => c.count > 0);
+  // Drop any Super-Admin-muted categories (launch-optics mutes, #260 follow-up).
+  // Muting suppresses a time-based category from the queue entirely; only the
+  // three time-based keys are ever mutable, so no_leader / setup_gaps are
+  // unaffected regardless of what is passed.
+  const muted = options.mutedKeys;
+  return candidates.filter((c) => c.count > 0 && !(muted?.has(c.key) ?? false));
 }
 
 // Ranked "Top next actions" queue (Admin Interaction Model PRD req 8, #271).
@@ -186,7 +191,7 @@ function imperativeAction(item: NeedsAttentionItem): string {
 
 export function buildTopNextActions(
   data: AdminDashboardData,
-  options: { degraded?: boolean } = {}
+  options: { degraded?: boolean; mutedKeys?: ReadonlySet<string> } = {}
 ): TopNextAction[] {
   return buildNeedsAttentionItems(data, options)
     .map((item) => ({

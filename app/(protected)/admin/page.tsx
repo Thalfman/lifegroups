@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
+import { getMutedAttentionKeys } from "@/lib/admin/needs-attention-mutes";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,15 @@ export default async function AdminPage({
   // alongside the dashboard read — not after it — so the dashboard never
   // presents Guests as an active workflow unless it has been re-enabled-and-
   // verified (#256), without adding a serial round trip to this hot page.
-  const [dashboard, guestsLive] = await Promise.all([
+  // The launch-optics mutes (which time-based Needs-attention categories a Super
+  // Admin has hidden) resolve through the admin-readable feature-flags RPC, so a
+  // ministry_admin sees the same muted Home as the Super Admin who set it.
+  // Resolve it alongside the dashboard read — not after — to keep this hot page
+  // to a single round of parallel reads.
+  const [dashboard, guestsLive, mutedKeys] = await Promise.all([
     getAdminDashboardData(client, { grain }),
     isFrozenSurfaceLive("guests"),
+    getMutedAttentionKeys(),
   ]);
   const { data } = dashboard;
   // A degraded read returns demo fallback data carrying an error; the deliberate
@@ -48,6 +55,7 @@ export default async function AdminPage({
         guestsLive={guestsLive}
         degraded={degraded}
         scopeId={session.profile.id}
+        mutedKeys={mutedKeys}
       />
     </>
   );

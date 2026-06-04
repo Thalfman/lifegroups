@@ -71,7 +71,61 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
       "Re-enable the frozen guest surface (ADR 0002). Requires route + RLS re-verification before the toggle can take effect.",
     kind: "frozen_surface",
   },
+  // Launch-optics mutes (#reset-attention-metrics). Plain on/off switches that
+  // hide a time-based "Needs attention" category from the admin Home queue so a
+  // brand-new ministry — with no contact history, no submitted check-ins, and no
+  // follow-ups — does not read as already behind on day one. Default off: every
+  // category shows until a Super Admin mutes it. Suppression applies to the whole
+  // admin team's Home view (see resolveMutedAttentionKeys), not just the owner's.
+  {
+    key: "mute_care_attention",
+    label: "Mute: leaders needing care attention",
+    description:
+      "Hide the time-based 'Leaders needing care attention' item from the Home 'Needs attention' queue. Useful before launch, when no leader has been contacted yet.",
+    kind: "new_surface",
+  },
+  {
+    key: "mute_health_checks",
+    label: "Mute: overdue or missing health checks",
+    description:
+      "Hide the time-based 'Overdue or missing health checks' item from the Home 'Needs attention' queue. Useful before launch, when no check-ins have been submitted yet.",
+    kind: "new_surface",
+  },
+  {
+    key: "mute_follow_ups",
+    label: "Mute: open follow-ups",
+    description:
+      "Hide the 'Open follow-ups' item from the Home 'Needs attention' queue. Useful before launch, before any follow-ups have been created.",
+    kind: "new_surface",
+  },
 ];
+
+// Maps each launch-optics mute flag to the dashboard "Needs attention" category
+// key it suppresses (the keys built in lib/dashboard/needs-attention.ts). This
+// is the single place the flag-key ↔ category-key mapping lives, so the registry
+// and the dashboard filter can never drift.
+const MUTE_FLAG_TO_ATTENTION_KEY: Record<string, string> = {
+  mute_care_attention: "care_attention",
+  mute_health_checks: "health",
+  mute_follow_ups: "follow_ups",
+};
+
+// The set of "Needs attention" category keys currently muted by Super-Admin
+// flags. Resolved through resolveFlag, so an absent/off flag (the default)
+// contributes nothing — a fresh install mutes nothing. Only the three
+// time-based categories can appear here; no_leader / setup_gaps are not mutable
+// by construction.
+export function resolveMutedAttentionKeys(
+  config: FeatureFlagsConfig
+): Set<string> {
+  const muted = new Set<string>();
+  for (const [flagKey, attentionKey] of Object.entries(
+    MUTE_FLAG_TO_ATTENTION_KEY
+  )) {
+    if (resolveFlag(config, flagKey)) muted.add(attentionKey);
+  }
+  return muted;
+}
 
 const DEFINITIONS_BY_KEY: ReadonlyMap<string, FeatureFlagDefinition> = new Map(
   FEATURE_FLAG_DEFINITIONS.map((definition) => [definition.key, definition])

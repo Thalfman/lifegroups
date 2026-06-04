@@ -158,13 +158,21 @@ function AllClear({ children }: { children: string }) {
 export function NeedsAttentionArea({
   data,
   degraded,
+  mutedKeys,
 }: {
   data: AdminDashboardData;
   // The dashboard read degraded to demo fallback; suppress the queue so its
   // counts and links are never mistaken for live work to do.
   degraded?: boolean;
+  // "Needs attention" category keys a Super Admin has muted (launch optics):
+  // each named category drops out of the queue entirely. Resolved server-side
+  // from feature flags; an empty/undefined list mutes nothing.
+  mutedKeys?: string[];
 }) {
-  const actions = buildTopNextActions(data, { degraded });
+  const actions = buildTopNextActions(data, {
+    degraded,
+    mutedKeys: mutedKeys ? new Set(mutedKeys) : undefined,
+  });
 
   if (actions.length === 0) {
     return <AllClear>Nothing needs your attention right now.</AllClear>;

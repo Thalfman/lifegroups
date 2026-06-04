@@ -53,6 +53,7 @@ export function DashboardClient({
   guestsLive,
   degraded,
   scopeId,
+  mutedKeys,
 }: {
   data: AdminDashboardData;
   guestsLive: boolean;
@@ -60,6 +61,8 @@ export function DashboardClient({
   degraded?: boolean;
   // Signed-in profile id, scoping the collapsible-overview saved default (#292).
   scopeId?: string | null;
+  // "Needs attention" category keys a Super Admin has muted (launch optics).
+  mutedKeys?: string[];
 }) {
   return (
     <PageBody>
@@ -74,7 +77,11 @@ export function DashboardClient({
           <SectionHeading>
             <span id="home-needs-attention">Needs attention</span>
           </SectionHeading>
-          <NeedsAttentionArea data={data} degraded={degraded} />
+          <NeedsAttentionArea
+            data={data}
+            degraded={degraded}
+            mutedKeys={mutedKeys}
+          />
         </section>
 
         {/* 2 — This week. The near-term horizon, composed from data already on
