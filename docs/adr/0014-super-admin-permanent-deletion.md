@@ -43,8 +43,8 @@ The bounds — "anything" means anything *except* the documented exceptions:
     `group_calendar_events.created_by/updated_by`, `group_history.changed_by`. The
     preflight must bucket these as blockers and report them; otherwise the RPC
     trips a raw DB constraint instead of the mapped blocker it promises. **A
-    dependent counts as a blocker unless its FK is explicitly `set null` or
-    `cascade`.**
+    dependent counts as a blocker unless its FK is explicitly `on delete set
+    null` (the one non-blocking exception below); `cascade` stays a blocker.**
   - `on delete set null` → **not a blocker.** These FKs were deliberately
     designed to null and let the row outlive its author (e.g.
     `launch_planning_scenarios.created_by/updated_by`, multiplication/leader
