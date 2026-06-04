@@ -427,6 +427,7 @@ export async function fetchShepherdCareFollowUpsForProfile(
 // dashboard only counts and buckets by status + due date, then links to the
 // per-shepherd detail page for the task content.
 export type CareFollowUpDashboardRow = {
+  id: string;
   care_profile_id: string;
   status: ShepherdCareFollowUpsRow["status"];
   due_date: string | null;
@@ -443,7 +444,7 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
 ): Promise<ReadResult<CareFollowUpDashboardRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select("care_profile_id, status, due_date")
+    .select("id, care_profile_id, status, due_date")
     .neq("status", "done")
     .range(0, 9999);
   if (error) {
@@ -453,6 +454,106 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
     };
   }
   return { data: (data ?? []) as CareFollowUpDashboardRow[], error: null };
+}
+
+// A leader's active group(s), for the leader-detail Group tab + Overview's
+// "assigned group" line (#301). Name + id only; the detail page links into the
+// group's own surface for the rest.
+export type LedGroupSummary = { id: string; name: string };
+
+/**
+ * The active groups a leader / co-leader leads, resolved from their active
+ * group_leaders rows. Two cheap scoped reads (assignments, then names) rather
+ * than a relational embed, to keep the projection explicit. Returns [] when the
+ * leader leads nothing.
+ */
+export async function fetchLedGroupSummariesForProfile(
+  client: ReadClient,
+  profileId: string
+): Promise<ReadResult<LedGroupSummary[]>> {
+  const assignments = await client
+    .from("group_leaders")
+    .select("group_id")
+    .eq("profile_id", profileId)
+    .eq("active", true)
+    // group_leaders also carries member rows (role = 'member'); only the
+    // leader / co_leader assignments describe groups this profile *leads*, so
+    // the Group tab + related-group labels don't show a group they're only a
+    // member of.
+    .in("role", ["leader", "co_leader"]);
+  if (assignments.error) {
+    return {
+      data: null,
+      error: wrapError(
+        "fetchLedGroupSummariesForProfile/assignments",
+        assignments.error
+      ),
+    };
+  }
+  const groupIds = Array.from(
+    new Set(
+      ((assignments.data ?? []) as { group_id: string }[]).map(
+        (r) => r.group_id
+      )
+    )
+  );
+  if (groupIds.length === 0) return { data: [], error: null };
+
+  const groups = await client
+    .from("groups")
+    .select("id, name")
+    .in("id", groupIds)
+    // Closing a group sets groups.lifecycle_status but leaves its group_leaders
+    // rows active, so exclude non-active groups here — otherwise the Group /
+    // Overview tabs would show (and link to) a closed group as a current one.
+    .eq("lifecycle_status", "active")
+    .order("name", { ascending: true });
+  if (groups.error) {
+    return {
+      data: null,
+      error: wrapError("fetchLedGroupSummariesForProfile/groups", groups.error),
+    };
+  }
+  return { data: (groups.data ?? []) as LedGroupSummary[], error: null };
+}
+
+// Minimal cross-profile projection for the Care area's Completed tab (#301).
+// Like CareFollowUpDashboardRow it EXCLUDES title / notes bodies — the
+// Completed list shows who, when, and a "View follow-up" link into the
+// per-leader detail page for the task content; it never ships note bodies to
+// the aggregate surface.
+export type CareFollowUpCompletedRow = {
+  id: string;
+  care_profile_id: string;
+  status: ShepherdCareFollowUpsRow["status"];
+  due_date: string | null;
+  completed_at: string | null;
+};
+
+/**
+ * Admin-only feed of recently COMPLETED (done) care follow-ups across all
+ * profiles, used by the Care area's Completed tab (#301). Ordered by
+ * completion recency and capped, since the tab only shows the recent tail.
+ * Note bodies are never projected.
+ */
+export async function fetchRecentlyCompletedCareFollowUpsForAdmin(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<CareFollowUpCompletedRow[]>> {
+  const limit = options.limit ?? 50;
+  const { data, error } = await client
+    .from("shepherd_care_follow_ups")
+    .select("id, care_profile_id, status, due_date, completed_at")
+    .eq("status", "done")
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .range(0, Math.max(0, limit - 1));
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchRecentlyCompletedCareFollowUpsForAdmin", error),
+    };
+  }
+  return { data: (data ?? []) as CareFollowUpCompletedRow[], error: null };
 }
 
 /**

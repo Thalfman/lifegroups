@@ -550,7 +550,12 @@ describe("buildShepherdCareDashboardModel", () => {
       status: CareFollowUpDashboardRow["status"],
       due: string | null
     ): CareFollowUpDashboardRow {
-      return { care_profile_id: `care-${shepherdId}`, status, due_date: due };
+      return {
+        id: `fu-${shepherdId}-${due ?? "none"}`,
+        care_profile_id: `care-${shepherdId}`,
+        status,
+        due_date: due,
+      };
     }
 
     it("surfaces an overdue_care_follow_up reason and counts overdue/outstanding", () => {

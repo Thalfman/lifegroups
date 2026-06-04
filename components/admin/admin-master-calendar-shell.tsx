@@ -77,6 +77,9 @@ export function AdminMasterCalendarShell({
   groups,
   leaderOptions,
   viewerId,
+  defaultViewMode = "month",
+  persistSurface = "calendar",
+  showLegendAlways = false,
 }: {
   monthIso: string;
   todayIso: string;
@@ -86,8 +89,20 @@ export function AdminMasterCalendarShell({
   // Signed-in profile id, used only to scope this admin's saved view/filters
   // (#263). Omitted/undefined falls back to a shared persistence bucket.
   viewerId?: string | null;
+  // The desktop default view. The frozen /admin/calendar keeps "month" (the
+  // at-a-glance grid is its value); the Planning area hosts the same calendar
+  // with "list" so the upcoming-events view leads (#303). Mobile still
+  // auto-selects list regardless.
+  defaultViewMode?: ViewMode;
+  // Persistence bucket, so the Planning-hosted calendar's view/filter choices
+  // don't bleed into the frozen /admin/calendar surface and vice versa (#303).
+  persistSurface?: string;
+  // Show the status legend above the calendar in every view (not only month).
+  // Planning's list-first calendar wants the event-type colors explained up
+  // front; the frozen route keeps the legend tied to the month grid.
+  showLegendAlways?: boolean;
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const userToggledRef = useRef(false);
 
   const setViewModeManual = (next: ViewMode) => {
@@ -113,7 +128,7 @@ export function AdminMasterCalendarShell({
   // restored selection marks the view as user-chosen (userToggledRef), which
   // keeps the responsive auto-default from clobbering it.
   const persistHydrated = usePersistedViewState({
-    surface: "calendar",
+    surface: persistSurface,
     scopeId: viewerId,
     snapshot: {
       // Only persist the view as a real preference once the user has toggled
@@ -162,11 +177,11 @@ export function AdminMasterCalendarShell({
     if (mq.matches) setViewMode("list");
     const onChange = (e: MediaQueryListEvent) => {
       if (userToggledRef.current) return;
-      setViewMode(e.matches ? "list" : "month");
+      setViewMode(e.matches ? "list" : defaultViewMode);
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [persistHydrated]);
+  }, [persistHydrated, defaultViewMode]);
 
   // Selected occurrence for the drawer. We use a composite key
   // (groupId|date) since the master view has multiple occurrences per
@@ -254,11 +269,13 @@ export function AdminMasterCalendarShell({
         totalCount={occurrences.length}
       />
 
+      {showLegendAlways ? <AdminCalendarLegend /> : null}
+
       {filtered.length === 0 ? (
         <EmptyState hasActiveFilters={hasActiveFilters} />
       ) : viewMode === "month" ? (
         <>
-          <AdminCalendarLegend />
+          {showLegendAlways ? null : <AdminCalendarLegend />}
           <AdminMasterCalendarGrid
             monthIso={monthIso}
             todayIso={todayIso}
