@@ -62,9 +62,39 @@ const LAUNCH_SCENARIO: PermanentDeletionEntity = {
   },
 };
 
+// #313: Groups — proves the block + report dependency rule.
+const GROUP: PermanentDeletionEntity = {
+  entityType: "group",
+  label: "Group",
+  pluralLabel: "Groups",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("groups")
+      .select("id, name, lifecycle_status")
+      .order("name", { ascending: true });
+    const rows = (data ?? []) as Array<{
+      id: string;
+      name: string;
+      lifecycle_status: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label:
+        str(r.name) +
+        (r.lifecycle_status && r.lifecycle_status !== "active"
+          ? ` (${r.lifecycle_status})`
+          : ""),
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.name) || "Group";
+  },
+};
+
 // Registry order is the order the picker lists entity types.
 export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   LAUNCH_SCENARIO,
+  GROUP,
 ];
 
 export function findPermanentDeletionEntity(
