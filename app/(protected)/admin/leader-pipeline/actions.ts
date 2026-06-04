@@ -26,13 +26,17 @@ import {
 // staffing forecast (#186); revalidate those surfaces so a stage advance shows
 // up everywhere it counts. The Capacity Board and Multiplication views now live
 // inside /admin/launch-planning (ADR 0010 consolidation; their old routes only
-// redirect), so launch-planning is the one surface to revalidate.
+// redirect), so launch-planning is the one surface to revalidate. The pipeline
+// is also embedded as the Apprentices tab under /admin/people (#302), so a
+// create/advance/archive run from there must refresh that surface too.
 const REVALIDATE_PATH_PIPELINE = "/admin/leader-pipeline";
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
+const REVALIDATE_PATH_PEOPLE = "/admin/people";
 
 const APPRENTICE_REVALIDATE = [
   REVALIDATE_PATH_PIPELINE,
   REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_PEOPLE,
 ] as const;
 
 // Translate a FormData (or plain object) into the validator's expected shape.
