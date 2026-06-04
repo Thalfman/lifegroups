@@ -59,7 +59,16 @@ export type GroupManagementData = {
   };
 };
 
-export function GroupManagementShell({ data }: { data: GroupManagementData }) {
+export function GroupManagementShell({
+  data,
+  viewerId,
+}: {
+  data: GroupManagementData;
+  // Signed-in profile id, threaded only to scope this browser's saved
+  // card⇄table view preference per admin (#325). Null when no identity is
+  // available; the directory falls back to a shared bucket.
+  viewerId?: string | null;
+}) {
   const anyError =
     data.errors.groups ||
     data.errors.leaders ||
@@ -95,6 +104,7 @@ export function GroupManagementShell({ data }: { data: GroupManagementData }) {
         healthGradesByGroupId={data.healthGradesByGroupId}
         healthSignalsByGroupId={data.healthSignalsByGroupId}
         watchGrade={data.metricDefaults.group_health_watch_grade}
+        viewerId={viewerId}
       />
     </div>
   );

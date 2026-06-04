@@ -38,6 +38,9 @@ import {
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
+import { Sidebar } from "@/components/lg/shell/Sidebar";
+import { adminNavGroups } from "@/lib/auth/roles";
+import { NAV_ALIAS_TO_CANONICAL } from "@/lib/nav/active-nav";
 import { P } from "@/lib/pastoral";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
@@ -124,6 +127,19 @@ const GROUP_GRID_OCCURRENCES: ResolvedOccurrence[] = [
     overrideId: "grid-ov-2",
   },
 ];
+
+// Active paths exercised by the sidebar-active-state surface (#321): the six
+// canonical area roots plus every frozen alias URL. The alias keys come from
+// the resolver's own map so the harness can't drift from the source of truth.
+const SIDEBAR_ACTIVE_PATHS = [
+  "/admin",
+  "/admin/groups",
+  "/admin/care",
+  "/admin/people",
+  "/admin/planning",
+  "/admin/settings",
+  ...Object.keys(NAV_ALIAS_TO_CANONICAL),
+] as const;
 
 function occurrence(
   groupName: string,
@@ -750,6 +766,27 @@ export function A11yHarnessClient() {
         >
           <p>Guarded permanent actions.</p>
         </SuperAdminCollapsibleSection>
+      </Surface>
+
+      {/* Sidebar active-state (#321). The real sidebar can't be navigated to a
+          frozen alias URL inside the harness (usePathname is fixed to the
+          harness route), so each instance is rendered with an explicit
+          `activePath` — the canonical area paths plus the six frozen aliases.
+          The spec asserts exactly one aria-current="page" per instance and that
+          it falls on the area that OWNS the path (alias → canonical). */}
+      <Surface id="sidebar-active-state" heading="Sidebar active state">
+        <div style={{ display: "grid", gap: 24 }}>
+          {SIDEBAR_ACTIVE_PATHS.map((activePath) => (
+            <div key={activePath} data-sidebar-active-path={activePath}>
+              <h3 style={{ margin: "0 0 8px" }}>{activePath}</h3>
+              <Sidebar
+                navGroups={adminNavGroups("ministry_admin")}
+                activePath={activePath}
+                navLabel={`Sidebar @ ${activePath}`}
+              />
+            </div>
+          ))}
+        </div>
       </Surface>
     </main>
   );

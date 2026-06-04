@@ -70,7 +70,7 @@ export function LeaderProfileForm() {
           />
         </div>
         <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <PButton type="submit" tone="solid" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add leader"}
           </PButton>
         </div>
