@@ -112,7 +112,9 @@ test.describe("admin People tabs", () => {
       .fill("zzz-no-such-person-zzz");
 
     // The directory reports no matches.
-    await expect(surface.getByText(/No people match/)).toBeVisible();
+    await expect(
+      surface.getByText(/No leaders or oversight roles match/)
+    ).toBeVisible();
     // The add forms are still not on the page.
     expect(await surface.getByText("Add leader profile").count()).toBe(0);
   });

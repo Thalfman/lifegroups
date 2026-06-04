@@ -153,17 +153,17 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {showLogin ? (
         <DirectorySection
           headerEyebrow={
-            props.scope === "leaders" ? "Leaders" : "Leaders & admins"
+            props.scope === "leaders" ? "Leaders" : "Leaders & oversight"
           }
           headerTitle={
             props.scope === "leaders"
               ? "Leaders and co-leaders"
-              : "Leaders and admins"
+              : "Leaders and oversight"
           }
           headerDescription={
             props.scope === "leaders"
-              ? "Current leaders and co-leaders who record check-ins and review their groups."
-              : "Ministry admins, leaders, and co-leaders who record check-ins and review groups."
+              ? "Current leaders and co-leaders who shepherd their groups."
+              : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
           }
           countLabel={`${visibleProfiles.length} shown`}
           stale={listIsStale}
@@ -172,10 +172,12 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               ? `Couldn't load profiles: ${props.errors.profiles}`
               : visibleProfiles.length === 0
                 ? trimmed || statusFilter !== "all"
-                  ? "No people match the current filters."
+                  ? props.scope === "leaders"
+                    ? "No leaders or co-leaders match the current filters."
+                    : "No leaders or oversight roles match the current filters."
                   : props.scope === "leaders"
                     ? "No leaders or co-leaders yet. Add one from Add Person."
-                    : "No leaders or admins yet. Add one from Add Person."
+                    : "No leaders or oversight roles yet. Add one from Add Person."
                 : null
           }
         >
