@@ -64,6 +64,28 @@ describe("CareShell honors initialTab (#328)", () => {
   });
 });
 
+describe("CareShell re-seeds the active tab when initialTab changes (#328)", () => {
+  // If React reuses the client shell across a client-side route transition
+  // between aliases, useState(initialTab) alone would keep the old tab and the
+  // alias would open on the wrong view. The shell guards against this by
+  // re-seeding `active` when `initialTab` changes during render (the documented
+  // pattern, no effect). Pin that guard so it can't be silently dropped.
+  const SHELL = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../../components/admin/care/care-shell.tsx",
+        import.meta.url
+      )
+    ),
+    "utf8"
+  );
+
+  it("syncs active to a changed initialTab during render", () => {
+    expect(SHELL).toMatch(/if\s*\(\s*seededTab\s*!==\s*initialTab\s*\)/);
+    expect(SHELL).toContain("setActive(initialTab)");
+  });
+});
+
 describe("Care alias entries alias-render the canonical shell, not a redirect (#328)", () => {
   const SHEPHERD_CARE = readAlias("shepherd-care/page.tsx");
   const FOLLOW_UPS = readAlias("follow-ups/page.tsx");
