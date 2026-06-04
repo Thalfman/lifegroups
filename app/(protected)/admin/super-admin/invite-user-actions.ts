@@ -21,6 +21,9 @@ export type InviteUserSuccess = {
   role: InviteUserPayload["role"];
   authUserState: "invited" | "existing_reused";
   groupAssignmentState: "none" | "created" | "reactivated" | "already_active";
+  // Present only on the "link" delivery path for a newly-invited user; the
+  // copyable invite action_link. Absent when an existing login is reused.
+  inviteLink?: string;
   warnings: string[];
 };
 
@@ -33,10 +36,16 @@ type EdgeFnResponse = {
   role?: InviteUserSuccess["role"];
   authUserState?: InviteUserSuccess["authUserState"];
   groupAssignmentState?: InviteUserSuccess["groupAssignmentState"];
+  inviteLink?: string;
   warnings?: string[];
   errors?: string[];
   missing?: string[];
-  postgrestError?: { code?: string; message?: string; details?: string; hint?: string };
+  postgrestError?: {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
   duplicateProfileInfo?: { authUserId?: string; rowCountSeen: number };
 };
 
@@ -86,12 +95,12 @@ function mapFnError(raw: string): string {
 function redact(message: string): string {
   return message.replace(
     /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-    "[REDACTED_JWT]",
+    "[REDACTED_JWT]"
   );
 }
 
 async function extractErrorBody(
-  err: unknown,
+  err: unknown
 ): Promise<{ status: number | null; body: Partial<EdgeFnResponse> | null }> {
   if (!err || typeof err !== "object") return { status: null, body: null };
   const ctx = (err as { context?: unknown }).context;
@@ -170,9 +179,13 @@ function readFromForm(input: unknown): Record<string, unknown> {
   return {};
 }
 
-export async function superAdminInviteUser(
-  _prev: ActionResult<InviteUserSuccess> | undefined,
+// Shared invite workflow. `delivery` selects how the credential reaches the
+// invitee: "email" sends the Supabase invite email (historical default);
+// "link" returns a copyable action_link in the success value. Both run the
+// same audited profile/group/audit write in the Edge Function.
+async function runInvite(
   input: FormData | Record<string, unknown>,
+  delivery: "email" | "link"
 ): Promise<ActionResult<InviteUserSuccess>> {
   const auth = await requireSuperAdminSession();
   if (!auth.ok) return actionFail([auth.error]);
@@ -182,11 +195,12 @@ export async function superAdminInviteUser(
   if (!v.ok) return actionFail(v.errors);
 
   const client = await createSupabaseServerClient();
-  if (!client) return actionFail(["The database is not configured on this deployment."]);
+  if (!client)
+    return actionFail(["The database is not configured on this deployment."]);
 
   const { data, error } = await client.functions.invoke<EdgeFnResponse>(
     "invite-user",
-    { body: v.value },
+    { body: { ...v.value, delivery } }
   );
 
   if (error) {
@@ -201,7 +215,7 @@ export async function superAdminInviteUser(
         duplicateProfileInfo: body?.duplicateProfileInfo,
         extras: body?.errors,
         warnings: body?.warnings,
-      }),
+      })
     );
   }
 
@@ -220,7 +234,7 @@ export async function superAdminInviteUser(
         duplicateProfileInfo: data.duplicateProfileInfo,
         extras: data.errors,
         warnings: data.warnings,
-      }),
+      })
     );
   }
 
@@ -244,6 +258,25 @@ export async function superAdminInviteUser(
     role: data.role,
     authUserState: data.authUserState,
     groupAssignmentState: data.groupAssignmentState,
+    inviteLink: data.inviteLink,
     warnings: (data.warnings ?? []).map(redact),
   });
+}
+
+// Form action bound to the "Send invite" button via useActionState. Sends the
+// Supabase invite email.
+export async function superAdminInviteUser(
+  _prev: ActionResult<InviteUserSuccess> | undefined,
+  input: FormData | Record<string, unknown>
+): Promise<ActionResult<InviteUserSuccess>> {
+  return runInvite(input, "email");
+}
+
+// Invoked directly from the client by the "Copy invite link" button. Provisions
+// the same profile/group/audit write but returns a copyable invite link for a
+// newly-invited user instead of sending the email.
+export async function superAdminGenerateInviteLink(
+  input: FormData | Record<string, unknown>
+): Promise<ActionResult<InviteUserSuccess>> {
+  return runInvite(input, "link");
 }
