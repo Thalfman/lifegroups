@@ -16,6 +16,20 @@ export interface ProfilesRow {
   updated_at: Timestamp;
 }
 
+export interface InvitationsRow {
+  id: UUID;
+  token_hash: string;
+  role: E.UserRole;
+  group_id: UUID | null;
+  single_use: boolean;
+  max_uses: number | null;
+  used_count: number;
+  expires_at: Timestamp;
+  revoked_at: Timestamp | null;
+  created_by_profile_id: UUID;
+  created_at: Timestamp;
+}
+
 export interface GroupsRow {
   id: UUID;
   name: string;
@@ -562,6 +576,20 @@ export interface Database {
         Row: AppSettingsRow;
         Insert: InsertOf<AppSettingsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<AppSettingsRow>;
+        Relationships: [];
+      };
+      invitations: {
+        Row: InvitationsRow;
+        Insert: InsertOf<
+          InvitationsRow,
+          | "id"
+          | "created_at"
+          | "single_use"
+          | "max_uses"
+          | "used_count"
+          | "revoked_at"
+        >;
+        Update: Partial<InvitationsRow>;
         Relationships: [];
       };
       audit_events_archive: {

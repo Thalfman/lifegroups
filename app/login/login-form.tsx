@@ -56,12 +56,14 @@ export function LoginForm() {
   // open-redirect guard.
   const [next, setNext] = useState<string | null>(null);
   const [resetOk, setResetOk] = useState(false);
+  const [invitedOk, setInvitedOk] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextValue = params.get("next");
     setNext(nextValue && isSafeNextPath(nextValue) ? nextValue : null);
     setResetOk(params.get("reset") === "ok");
+    setInvitedOk(params.get("invited") === "1");
   }, []);
 
   return (
@@ -96,6 +98,33 @@ export function LoginForm() {
           }}
         >
           Password updated. Sign in.
+        </p>
+      ) : null}
+
+      {invitedOk && !resetOk && !state.error ? (
+        <p
+          role="status"
+          style={{
+            position: "fixed",
+            top: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            width: "calc(100% - 48px)",
+            maxWidth: 460,
+            background: "var(--c-sageTint)",
+            border: "1px solid var(--c-sage)",
+            borderRadius: 8,
+            padding: "10px 12px",
+            fontFamily: "var(--font-sans)",
+            fontSize: 12.5,
+            color: "var(--c-ink2)",
+            margin: 0,
+            boxShadow: "var(--c-shadowLg)",
+            textAlign: "center",
+          }}
+        >
+          Account created. Sign in with your new email and password.
         </p>
       ) : null}
 

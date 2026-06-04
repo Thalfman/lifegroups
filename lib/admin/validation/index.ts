@@ -11,6 +11,7 @@ export * from "./guests";
 export * from "./follow-ups";
 export * from "./settings";
 export * from "./super-admin";
+export * from "./invite-link";
 export * from "./shepherd-care";
 export * from "./launch-planning";
 export * from "./group-health";

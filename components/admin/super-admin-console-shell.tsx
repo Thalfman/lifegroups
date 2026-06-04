@@ -10,6 +10,7 @@ import {
   type AssignableProfile,
 } from "@/components/admin/forms/role-change-form";
 import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
+import { InviteLinkForm } from "@/components/admin/forms/invite-link-form";
 import { PlatformConfigTracerForm } from "@/components/admin/forms/platform-config-tracer-form";
 import { FeatureFlagToggleForm } from "@/components/admin/forms/feature-flag-toggle-form";
 import { EditableCopyForm } from "@/components/admin/forms/editable-copy-form";
@@ -479,6 +480,9 @@ export function SuperAdminConsoleShell({
           </div>
           <div style={cardStyle}>
             <InviteUserForm groups={data.inviteUserGroups} />
+          </div>
+          <div style={cardStyle}>
+            <InviteLinkForm groups={data.inviteUserGroups} />
           </div>
           <AccountManagementCard data={data} />
         </CommandSection>

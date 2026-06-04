@@ -52,6 +52,68 @@ function getLimiters(): LimiterPair | null {
   return cached;
 }
 
+// Invite-redeem limiter (Phase IL.1). A separate per-IP sliding window guards
+// the public /invite redemption endpoint against token brute-forcing and mass
+// self-signup. Lazily built and cached like the forgot-password pair; shares
+// the same Upstash credentials and the same fail-open posture.
+let cachedRedeem: Ratelimit | null | undefined;
+
+function buildRedeemLimiter(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (!url || !token) return null;
+  const redis = new Redis({ url, token });
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "15 m"),
+    prefix: "rl:invredeem:ip",
+    analytics: false,
+  });
+}
+
+export type InviteRedeemLimitInput = {
+  ip: string | null;
+  requestId?: string;
+};
+
+export type InviteRedeemLimitResult =
+  | { configured: false }
+  | { configured: true; allowed: boolean };
+
+export async function checkInviteRedeemLimit(
+  input: InviteRedeemLimitInput
+): Promise<InviteRedeemLimitResult> {
+  if (cachedRedeem === undefined) cachedRedeem = buildRedeemLimiter();
+  const limiter = cachedRedeem;
+  if (!limiter) {
+    if (!disabledWarned) {
+      disabledWarned = true;
+      log.warn({
+        event: "rate_limit_disabled",
+        route_or_action: "invite-redeem",
+        request_id: input.requestId,
+      });
+    }
+    return { configured: false };
+  }
+  // No IP available (untrusted proxy header) -> skip the per-IP bucket rather
+  // than collapse every caller into one shared key.
+  if (!input.ip) return { configured: true, allowed: true };
+  try {
+    const res = await limiter.limit(input.ip);
+    return { configured: true, allowed: res.success };
+  } catch (err) {
+    log.error({
+      event: "rate_limit_backend_error",
+      outcome: "fail",
+      route_or_action: "invite-redeem",
+      request_id: input.requestId,
+      error_message: err instanceof Error ? err.message : String(err),
+    });
+    return { configured: true, allowed: true };
+  }
+}
+
 export type ForgotPasswordLimitInput = {
   ip: string | null;
   emailHash: string;
@@ -64,7 +126,7 @@ export type ForgotPasswordLimitResult =
   | { configured: true; allowed: false; which: "ip" | "email" };
 
 export async function checkForgotPasswordLimit(
-  input: ForgotPasswordLimitInput,
+  input: ForgotPasswordLimitInput
 ): Promise<ForgotPasswordLimitResult> {
   const limiters = getLimiters();
   if (!limiters) {
