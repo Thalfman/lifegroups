@@ -1,5 +1,6 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Master calendar filter polish (Admin Interaction Model PRD req 11, #262).
 // Proves the new affordances on the real FilterBar rendered in the harness:
@@ -106,5 +107,140 @@ test.describe("master calendar filter affordances (#262)", () => {
     await expect(
       surface.getByRole("button", { name: /^Remove .+ filter: / })
     ).toHaveCount(0);
+  });
+});
+
+// Issue #324 — a11y hardening sweep, dialogs thread. The occurrence detail
+// drawer (components/admin/admin-master-calendar-drawer.tsx) is a Radix Dialog
+// opened programmatically by selecting an occurrence row (no DialogTrigger), so
+// Radix has no trigger to auto-restore focus to. This pins that the drawer
+// passes the focus checklist: it has an accessible name, opening moves focus in,
+// and Escape closes it returning focus to the row that opened it.
+test.describe("master calendar occurrence drawer (#324)", () => {
+  const SURFACE = '[data-a11y-surface="master-calendar-filters"]';
+
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+    // The occurrence rows (and the drawer) live in the list view.
+    await page
+      .locator(SURFACE)
+      .getByRole("tab", { name: "List", exact: true })
+      .click();
+  });
+
+  test("opening an occurrence names the drawer and moves focus in", async ({
+    page,
+  }) => {
+    const opener = page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first();
+    await opener.click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    // The drawer carries an accessible name (its DialogTitle), so it is not an
+    // anonymous "dialog" to assistive tech.
+    await expect(dialog).toHaveAttribute("aria-labelledby", /.+/);
+    const focusInside = await dialog.evaluate((node) =>
+      node.contains(document.activeElement)
+    );
+    expect(focusInside).toBe(true);
+  });
+
+  test("Escape closes the drawer and returns focus to the opening row", async ({
+    page,
+  }) => {
+    const opener = page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first();
+    await opener.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test("axe finds no critical or serious violations with the drawer open", async ({
+    page,
+  }) => {
+    await page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first()
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expectNoBlockingAxeViolations(results);
+  });
+});
+
+// Planning opinionated views (#331). The same master-calendar shell with the
+// Planning opt-in: a primary view switcher (This week / Needs coverage /
+// Cancelled-OFF / By leader) as a tablist whose tabs read view names, the
+// advanced filters moved into a collapsible disclosure, and the repeated
+// "Open group calendar" link de-noised to one entry point per group.
+test.describe("planning opinionated views (#331)", () => {
+  const SURFACE = '[data-a11y-surface="planning-opinionated-views"]';
+
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+  });
+
+  test("the opinionated views are present as named primary affordances", async ({
+    page,
+  }) => {
+    const switcher = page
+      .locator(SURFACE)
+      .getByRole("tablist", { name: "Planning views" });
+    await expect(switcher).toBeVisible();
+    for (const view of [
+      "This week",
+      "Needs coverage",
+      "Cancelled / OFF",
+      "By leader",
+    ]) {
+      await expect(switcher.getByRole("tab", { name: view })).toBeVisible();
+    }
+  });
+
+  test("advanced filters live in a collapsible secondary disclosure", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    const disclosure = surface.getByText("Advanced filters", { exact: true });
+    await expect(disclosure).toBeVisible();
+    // Collapsed by default → the filter fields aren't visible until expanded.
+    const statusField = surface.getByRole("button", {
+      name: "Select all Status",
+    });
+    await expect(statusField).toBeHidden();
+    await disclosure.click();
+    await expect(statusField).toBeVisible();
+  });
+
+  test("By leader surfaces one calendar link per group, not per occurrence", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("tab", { name: "By leader" }).click();
+    // Anderson recurs on two May dates; the flat list would render two identical
+    // "Open group calendar" links. The de-noised By-leader view collapses that
+    // to exactly one per group under each leader.
+    await expect(
+      surface.getByRole("link", { name: "Open Anderson calendar" })
+    ).toHaveCount(1);
+  });
+
+  test("axe finds no blocking violations across the opinionated views", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("tab", { name: "By leader" }).click();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
+    expectNoBlockingAxeViolations(results);
   });
 });

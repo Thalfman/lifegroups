@@ -127,6 +127,78 @@ test.describe("admin accessible names carry record context", () => {
     }
   });
 
+  // Issue #322: every calendar/event trigger must carry an explicit, meaningful
+  // accessible name summarizing the occurrence (date + type + clock + status)
+  // instead of inheriting the concatenated child text — and stay unique when
+  // occurrences collide (a weekly group recurring on several dates; two groups
+  // sharing a date).
+  test("calendar/event triggers name their occurrence and stay unique", async ({
+    page,
+  }) => {
+    // Per-group month grid: each editable cell's edit button reads "Edit <date>
+    // — …", and empty editable dates read "Add event on <date>". Both shapes
+    // must be unique across the grid (date disambiguates the recurring group).
+    const grid = page.locator('[data-a11y-surface="calendar-month-grid"]');
+    await expect(
+      grid.getByRole("button", { name: /^Edit .+ — .+/ }).first()
+    ).toBeVisible();
+    await expect(
+      grid.getByRole("button", { name: /^Add event on .+/ }).first()
+    ).toBeVisible();
+    expectAllUnique(
+      await accessibleNames(grid.getByRole("button", { name: /^Edit .+/ })),
+      "calendar grid edit triggers"
+    );
+    expectAllUnique(
+      await accessibleNames(
+        grid.getByRole("button", { name: /^Add event on /i })
+      ),
+      "calendar grid add-event triggers"
+    );
+
+    // Master calendar month grid: the per-day occurrence pills read "View
+    // <group> on <date> — …". Two groups share a date, so these must be unique.
+    const masterGrid = page.locator(
+      '[data-a11y-surface="master-calendar-grid"]'
+    );
+    await expect(
+      masterGrid.getByRole("button", { name: /^View .+ on .+ — .+/ }).first()
+    ).toBeVisible();
+    expectAllUnique(
+      await accessibleNames(
+        masterGrid.getByRole("button", { name: /^View .+ on / })
+      ),
+      "master calendar grid occurrence pills"
+    );
+
+    // Master calendar list: each occurrence card button names its occurrence;
+    // the recurring group across dates must keep them unique.
+    const list = page.locator('[data-a11y-surface="master-calendar-list"]');
+    expectAllUnique(
+      await accessibleNames(list.getByRole("button", { name: /^View .+ on / })),
+      "master calendar list occurrence cards"
+    );
+
+    // Two DIFFERENT groups share a display name AND a date/type/time/status, so
+    // the leader discriminator is the only thing keeping their occurrence
+    // buttons (and their "Open group calendar" links) distinct — group names are
+    // not unique. Both views must hold up under that collision.
+    for (const surface of [list, masterGrid]) {
+      expectAllUnique(
+        await accessibleNames(
+          surface.getByRole("button", { name: /^View Sunday Night on / })
+        ),
+        "same-name same-date occurrence buttons"
+      );
+    }
+    expectAllUnique(
+      await accessibleNames(
+        list.getByRole("link", { name: /^Open Sunday Night calendar/ })
+      ),
+      "same-name same-date calendar links"
+    );
+  });
+
   test("follow-up status actions name their follow-up", async ({ page }) => {
     for (const id of ["follow-up-status", "care-follow-ups"]) {
       const surface = page.locator(`[data-a11y-surface="${id}"]`);

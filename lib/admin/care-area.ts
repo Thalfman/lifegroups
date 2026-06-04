@@ -8,6 +8,11 @@ import {
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import { formatIsoDateOr } from "@/lib/shared/date";
+import {
+  careActionAccessibleName,
+  resolveAttentionNextAction,
+  resolveOpenFollowUpNextAction,
+} from "@/lib/admin/care-next-action";
 
 // The Care area (#301) reorganizes the existing leader-care signals into five
 // urgency/completion buckets — Needs Contact, Follow-ups, Due Soon, Recent
@@ -17,12 +22,16 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 // from status + dates only — so the aggregate surface never leaks private care
 // content (the care-note boundary stays on the per-leader detail page).
 
+// Every actionable care item surfaces ONE of the four canonical next actions
+// (#332); the resolver in care-next-action.ts decides which per item. "View
+// follow-up" is the only non-action label — a completed follow-up is a closed
+// record with no next action, so its row links read-only to the history.
 export type CareItemActionLabel =
   | "Log contact"
-  | "Create follow-up"
-  | "View follow-up"
-  | "Mark complete"
-  | "Add note";
+  | "Assign over-shepherd"
+  | "Schedule touchpoint"
+  | "Resolve follow-up"
+  | "View follow-up";
 
 export type CareItemDueTone = "overdue" | "soon" | "neutral";
 
@@ -39,6 +48,10 @@ export type CareItem = {
   // Coverage owner ("Tom"), or null for unassigned.
   ownerName: string | null;
   actionLabel: CareItemActionLabel;
+  // Record-context accessible name for the action trigger, e.g. "Log contact
+  // for Jane Doe" (#332 / req 4) — never a bare "Log contact". The visible
+  // label stays the short verb; this is what assistive tech announces.
+  actionAccessibleName: string;
   actionHref: string;
 };
 
@@ -129,9 +142,21 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
   const ownerOf = (shepherdId: string) =>
     input.ownerNameByShepherdId.get(shepherdId) ?? null;
 
-  // --- Needs Contact: every leader/co-leader the attention engine flags. ---
+  // --- Needs Contact: every leader/co-leader the attention engine flags. The
+  // obvious next action is resolved per item from the item's PRIMARY attention
+  // reason (#332): when a leader is flagged primarily for an overdue care
+  // follow-up, the next step is to resolve that follow-up (Follow-ups tab), not
+  // a coverage/touchpoint/log-contact action on Overview. Otherwise the
+  // outreach precedence applies — an uncovered leader needs an over-shepherd
+  // first, one with no scheduled touchpoint needs one set, and otherwise the
+  // action is to log the contact. ---
   const needsContact: CareItem[] = input.attentionQueue.map((item) => {
+    const owner = ownerOf(item.shepherdProfileId);
     const due = nextTouchpointByShepherdId.get(item.shepherdProfileId) ?? null;
+    const next = resolveAttentionNextAction(item.reason, {
+      hasOverShepherd: owner !== null,
+      hasScheduledTouchpoint: due !== null,
+    });
     return {
       key: item.shepherdProfileId,
       personName: item.shepherdName,
@@ -139,9 +164,13 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
       groupName: groupOf(item.shepherdProfileId),
       dueLabel: due ? dueLabelFor(due, input.todayIso) : null,
       dueTone: due ? dueToneFor(due, input.todayIso, window) : "neutral",
-      ownerName: ownerOf(item.shepherdProfileId),
-      actionLabel: "Log contact",
-      actionHref: careDetailHref(item.shepherdProfileId),
+      ownerName: owner,
+      actionLabel: next.label as CareItemActionLabel,
+      actionAccessibleName: careActionAccessibleName(
+        next.label,
+        item.shepherdName
+      ),
+      actionHref: careDetailHref(item.shepherdProfileId, next.tab),
     };
   });
 
@@ -155,6 +184,8 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     if (days > window) continue; // not due yet
     const shepherd = shepherdByCareProfileId.get(fu.care_profile_id);
     if (!shepherd) continue; // follow-up for an off-directory leader
+    // An open follow-up's obvious next action is to resolve it (#332).
+    const next = resolveOpenFollowUpNextAction();
     dueSoonRows.push({
       days,
       // Key on the follow-up id: a leader can have several follow-ups due on
@@ -168,8 +199,12 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
         dueLabel: dueLabelFor(fu.due_date, input.todayIso),
         dueTone: dueToneFor(fu.due_date, input.todayIso, window),
         ownerName: ownerOf(shepherd.shepherdId),
-        actionLabel: "View follow-up",
-        actionHref: careDetailHref(shepherd.shepherdId, "follow-ups"),
+        actionLabel: next.label as CareItemActionLabel,
+        actionAccessibleName: careActionAccessibleName(
+          next.label,
+          shepherd.name
+        ),
+        actionHref: careDetailHref(shepherd.shepherdId, next.tab),
       },
     });
   }
@@ -180,7 +215,10 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
   );
   const dueSoon: CareItem[] = dueSoonRows.map((r) => r.item);
 
-  // --- Recent Care: recently logged calls / notes / meetings / texts. ---
+  // --- Recent Care: recently logged calls / notes / meetings / texts. The
+  // obvious next action after a logged contact is to keep the cadence going by
+  // logging the next one (#332); Overview hosts the log form (Contact History
+  // is read-only). ---
   const recentCare: CareItem[] = input.recentInteractions.map((row) => ({
     key: `int-${row.id}`,
     personName: row.shepherd_full_name,
@@ -189,9 +227,11 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     dueLabel: formatIsoDateOr(row.interaction_at, "—"),
     dueTone: "neutral",
     ownerName: ownerOf(row.shepherd_profile_id),
-    actionLabel: "Add note",
-    // Overview hosts the care-action forms (log a contact, add a summary);
-    // Contact History is read-only, so "Add note" must land on Overview.
+    actionLabel: "Log contact",
+    actionAccessibleName: careActionAccessibleName(
+      "Log contact",
+      row.shepherd_full_name
+    ),
     actionHref: careDetailHref(row.shepherd_profile_id, "overview"),
   }));
 
@@ -210,7 +250,10 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
         : null,
       dueTone: "neutral",
       ownerName: ownerOf(shepherd.shepherdId),
+      // A completed follow-up is a closed record — no next action, just a
+      // read-only link to the history.
       actionLabel: "View follow-up",
+      actionAccessibleName: `View follow-up for ${shepherd.name}`,
       actionHref: careDetailHref(shepherd.shepherdId, "follow-ups"),
     });
   }

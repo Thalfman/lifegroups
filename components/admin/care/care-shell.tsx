@@ -3,18 +3,28 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { P, fontSans } from "@/lib/pastoral";
 
-// The Care area's five tabs (ADR 0013, #301). Care is the entry point for Job 1
-// — "who needs attention?" — and hosts the former Leader care + Follow-ups
-// surfaces. Needs Contact / Due Soon / Recent Care / Completed reorganize the
-// leader-care signals by urgency and completion; Follow-ups is the generic
-// open-task queue. It is a NEW route: /admin/shepherd-care and
-// /admin/follow-ups keep their files and still resolve (ADR 0008/0009).
+// The Care area's five tabs (ADR 0013, #301, re-keyed in #334). Care is the
+// entry point for Job 1 — "how are my leaders doing?" — and hosts the former
+// Leader care + Follow-ups surfaces. The keys ARE the canonical PRD IA names
+// (Dashboard · Directory · Follow-ups · Coverage · Recent interactions) so they
+// are the single source of truth any future alias/nav reference can rely on.
+// It is a NEW route: /admin/shepherd-care and /admin/follow-ups keep their
+// files and still alias-render (200, not 302) (ADR 0008/0009, #328).
+//
+// Migration map from the prior keys (no functionality lost, #334):
+//   needs-contact → folded into `dashboard` (the attention queue IS who needs
+//                   contact); `due-soon` + `completed` → folded into
+//                   `follow-ups` (the generic queue already filters by due
+//                   window and Done status); recent-care → `recent-interactions`
+//                   (rename). `directory` + `coverage` are net-new panels, each
+//                   backed by data already loaded in loadCarePageData() — no new
+//                   reads, no placeholders.
 export type CareTabKey =
-  | "needs-contact"
+  | "dashboard"
+  | "directory"
   | "follow-ups"
-  | "due-soon"
-  | "recent-care"
-  | "completed";
+  | "coverage"
+  | "recent-interactions";
 
 export type CareTab = {
   key: CareTabKey;
@@ -27,12 +37,24 @@ export type CareTab = {
 
 export function CareShell({
   tabs,
-  initialTab = "needs-contact",
+  initialTab = "dashboard",
 }: {
   tabs: CareTab[];
   initialTab?: CareTabKey;
 }) {
   const [active, setActive] = useState<CareTabKey>(initialTab);
+
+  // Alias routes (/admin/shepherd-care, /admin/follow-ups) render this same
+  // client shell with a different initialTab. If React reuses the instance
+  // across a client-side route transition, useState would keep the old tab and
+  // the alias would open on the wrong view — breaking the "200 at the matching
+  // tab" contract. Re-seed active whenever initialTab changes (the documented
+  // "adjust state when a prop changes during render" pattern — no effect).
+  const [seededTab, setSeededTab] = useState<CareTabKey>(initialTab);
+  if (seededTab !== initialTab) {
+    setSeededTab(initialTab);
+    setActive(initialTab);
+  }
 
   return (
     <div style={{ display: "grid", gap: 24 }}>

@@ -14,8 +14,14 @@
 
 import { useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
+import {
+  CalendarOccurrenceEditor,
+  type CalendarOccurrenceEditorActions,
+} from "@/components/calendar/calendar-occurrence-editor";
 import { AdminMasterCalendarList } from "@/components/admin/admin-master-calendar-list";
+import { AdminMasterCalendarGrid } from "@/components/admin/admin-master-calendar-grid";
 import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
+import { CalendarMonthGrid } from "@/components/calendar/calendar-month-grid";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
 import {
   AdminFollowUpsShell,
@@ -35,6 +41,9 @@ import {
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
+import { Sidebar } from "@/components/lg/shell/Sidebar";
+import { adminNavGroups } from "@/lib/auth/roles";
+import { NAV_ALIAS_TO_CANONICAL } from "@/lib/nav/active-nav";
 import { P } from "@/lib/pastoral";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import {
@@ -54,13 +63,92 @@ import type {
   MasterOccurrence,
 } from "@/lib/admin/master-calendar";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
+import type { ResolvedOccurrence } from "@/lib/calendar/occurrences";
+import type { ActionResult } from "@/lib/shared/action-result";
 
 const STAMP = "2026-05-18T12:00:00Z";
+
+// Mock server actions for the per-group calendar grid. The harness only
+// exercises accessible names on the cell edit triggers (#322), not the
+// save/clear round trips, so these never run — they exist to satisfy the
+// editor's action props.
+const NOOP_CALENDAR_ACTION = async (): Promise<
+  ActionResult<{ id: string }>
+> => ({
+  ok: true,
+  value: { id: "noop" },
+});
+const CALENDAR_GRID_ACTIONS: CalendarOccurrenceEditorActions = {
+  create: NOOP_CALENDAR_ACTION,
+  update: NOOP_CALENDAR_ACTION,
+  archive: NOOP_CALENDAR_ACTION,
+};
+
+// A weekly group recurs on every Tuesday of May 2026, so the SAME group's edit
+// triggers repeat across multiple dates: their accessible names must stay
+// unique (disambiguated by date), and a scheduled study + an OFF week + a
+// special social keep the type/status discriminators in the name meaningful.
+const GROUP_GRID_OCCURRENCES: ResolvedOccurrence[] = [
+  {
+    date: "2026-05-05",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "study",
+    status: "scheduled",
+    title: null,
+    description: null,
+    overrideId: null,
+  },
+  {
+    date: "2026-05-12",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "off",
+    status: "off",
+    title: null,
+    description: null,
+    overrideId: "grid-ov-1",
+  },
+  {
+    date: "2026-05-19",
+    meetingTime: "18:30",
+    isMeetingOccurrence: true,
+    eventType: "study",
+    status: "scheduled",
+    title: null,
+    description: null,
+    overrideId: null,
+  },
+  {
+    date: "2026-05-26",
+    meetingTime: "18:30",
+    isMeetingOccurrence: false,
+    eventType: "social",
+    status: "scheduled",
+    title: "Cookout",
+    description: null,
+    overrideId: "grid-ov-2",
+  },
+];
+
+// Active paths exercised by the sidebar-active-state surface (#321): the six
+// canonical area roots plus every frozen alias URL. The alias keys come from
+// the resolver's own map so the harness can't drift from the source of truth.
+const SIDEBAR_ACTIVE_PATHS = [
+  "/admin",
+  "/admin/groups",
+  "/admin/care",
+  "/admin/people",
+  "/admin/planning",
+  "/admin/settings",
+  ...Object.keys(NAV_ALIAS_TO_CANONICAL),
+] as const;
 
 function occurrence(
   groupName: string,
   groupId: string,
-  date: string
+  date: string,
+  leaderName = "Pat Lee"
 ): MasterOccurrence {
   return {
     groupId,
@@ -70,7 +158,7 @@ function occurrence(
     meetingTime: "19:00",
     meetingFrequency: "weekly",
     meetingWeekParity: null,
-    leaders: [{ profileId: `${groupId}-l`, name: "Pat Lee" }],
+    leaders: [{ profileId: `${groupId}-l`, name: leaderName }],
     date,
     weekdayIndex: 2,
     inheritedMeetingTime: "19:00",
@@ -91,6 +179,14 @@ const OCCURRENCES: MasterOccurrence[] = [
   occurrence("Anderson", "grp-anderson", "2026-05-26"),
   occurrence("Bryant", "grp-bryant", "2026-05-19"),
   occurrence("Carter", "grp-carter", "2026-05-26"),
+  // Two DIFFERENT groups that share the same display name AND the same date,
+  // type, time, and status — group names are not unique. Only the leader
+  // discriminator in the accessible name keeps these occurrence triggers
+  // distinct, which is exactly the collision the name builder must guard. They
+  // sit on their own date (May 12) so both pills stay under the grid's per-cell
+  // cap and the month-grid view exercises the collision too.
+  occurrence("Sunday Night", "grp-sun-a", "2026-05-12", "Dana Cole"),
+  occurrence("Sunday Night", "grp-sun-b", "2026-05-12", "Sam Reed"),
 ];
 
 // Group + leader fixtures for the master-calendar filter shell (#262). Distinct
@@ -417,6 +513,19 @@ const PEOPLE_PIPELINE: PeoplePipelineData = {
 
 const PEOPLE_NEEDS_CONTACT: ReadonlySet<string> = new Set();
 
+// Calendar occurrence editor (#324 a11y hardening sweep). The Groups calendar
+// modal is its own Radix Dialog (separate from the EditingSurface drawer), opened
+// from a programmatic trigger rather than a DialogTrigger, and it carries the
+// "Clear override" destructive action. It is mounted here so the a11y suite can
+// pin its accessible name, focus trap/restore, Escape/Close behaviour, and the
+// keyboard-operability of the clear-override action. The stub actions never run
+// (the suite only opens the modal); they satisfy the action-form contract.
+const CALENDAR_EDITOR_ACTIONS: CalendarOccurrenceEditorActions = {
+  create: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+  update: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+  archive: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+};
+
 function Surface({
   id,
   heading,
@@ -489,6 +598,21 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Master calendar month grid (#322). The per-day occurrence pills are
+          <button>s whose accessible name must summarize the occurrence ("View
+          Anderson on Tuesday, May 19 — Study, 7:00 PM") rather than read as the
+          concatenated child text. Two groups share May 19 and May 26, so the
+          same-date collision is real and the uniqueness gate is meaningful. */}
+      <Surface id="master-calendar-grid" heading="Master calendar (month grid)">
+        <AdminMasterCalendarGrid
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={OCCURRENCES}
+          onSelect={setSelected}
+          onMoreFromDay={() => {}}
+        />
+      </Surface>
+
       {/* Master calendar filter shell (#262, Admin Interaction Model req 11).
           Mounts the real FilterBar so axe runs against the polish controls:
           the per-field Select all / Clear all pairs and the removable active-
@@ -501,6 +625,79 @@ export function A11yHarnessClient() {
           occurrences={OCCURRENCES}
           groups={CALENDAR_GROUPS}
           leaderOptions={CALENDAR_LEADERS}
+        />
+      </Surface>
+
+      {/* Planning opinionated views (#331). The same shell with the Planning
+          opt-in: the primary view switcher (This week / Needs coverage /
+          Cancelled-OFF / By leader), the advanced filters in a collapsible
+          disclosure, and de-noised per-group calendar links. axe runs against
+          the switcher (a tablist whose tabs read view names), the disclosure,
+          and the By-leader layout's single per-group link. */}
+      <Surface
+        id="planning-opinionated-views"
+        heading="Planning (opinionated views)"
+      >
+        <AdminMasterCalendarShell
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={OCCURRENCES}
+          groups={CALENDAR_GROUPS}
+          leaderOptions={CALENDAR_LEADERS}
+          defaultViewMode="list"
+          persistSurface="planning-calendar-harness"
+          showLegendAlways
+          planningViews
+        />
+      </Surface>
+
+      {/* Calendar occurrence editor (#324). A saved-override occurrence so the
+          modal renders the destructive "Clear override" action. It opens the
+          Radix Dialog from a programmatic (non-DialogTrigger) button — the case
+          the a11y suite pins for focus trap + restore. */}
+      <Surface
+        id="calendar-occurrence-editor"
+        heading="Calendar occurrence editor"
+      >
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <CalendarOccurrenceEditor
+            groupId="grp-anderson"
+            groupMeetingTime="19:00"
+            occurrence={{
+              date: "2026-05-19",
+              meetingTime: "19:00",
+              eventType: "study",
+              status: "scheduled",
+              title: "Week 3 of the rotation",
+              description: null,
+              overrideId: "override-1",
+              isMeetingOccurrence: true,
+            }}
+            actions={CALENDAR_EDITOR_ACTIONS}
+            triggerLabel="Edit Anderson occurrence on May 19"
+            canEdit
+          />
+        </div>
+      </Surface>
+
+      {/* Per-group calendar month grid (#322). Each editable cell renders a
+          <button> whose accessible name must be an explicit, meaningful summary
+          ("Edit Tuesday, May 5 — Study, 6:30 PM, Scheduled" / "Add event on
+          …") rather than the concatenated child text. A weekly group recurring
+          on multiple Tuesdays makes the same-group/different-date collision
+          real, so the uniqueness gate is meaningful. */}
+      <Surface
+        id="calendar-month-grid"
+        heading="Calendar month grid (per group)"
+      >
+        <CalendarMonthGrid
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={GROUP_GRID_OCCURRENCES}
+          groupId="00000000-0000-4000-8000-000000000002"
+          groupMeetingTime="18:30"
+          actions={CALENDAR_GRID_ACTIONS}
+          canEdit
         />
       </Surface>
 
@@ -637,6 +834,27 @@ export function A11yHarnessClient() {
         >
           <p>Guarded permanent actions.</p>
         </SuperAdminCollapsibleSection>
+      </Surface>
+
+      {/* Sidebar active-state (#321). The real sidebar can't be navigated to a
+          frozen alias URL inside the harness (usePathname is fixed to the
+          harness route), so each instance is rendered with an explicit
+          `activePath` — the canonical area paths plus the six frozen aliases.
+          The spec asserts exactly one aria-current="page" per instance and that
+          it falls on the area that OWNS the path (alias → canonical). */}
+      <Surface id="sidebar-active-state" heading="Sidebar active state">
+        <div style={{ display: "grid", gap: 24 }}>
+          {SIDEBAR_ACTIVE_PATHS.map((activePath) => (
+            <div key={activePath} data-sidebar-active-path={activePath}>
+              <h3 style={{ margin: "0 0 8px" }}>{activePath}</h3>
+              <Sidebar
+                navGroups={adminNavGroups("ministry_admin")}
+                activePath={activePath}
+                navLabel={`Sidebar @ ${activePath}`}
+              />
+            </div>
+          ))}
+        </div>
       </Surface>
     </main>
   );

@@ -36,6 +36,7 @@ const SURFACE_IDS = [
   "groups-directory-collisions",
   "master-calendar-list",
   "master-calendar-filters",
+  "planning-opinionated-views",
   "follow-up-status",
   "people",
   "follow-ups",

@@ -35,7 +35,7 @@ export function DeactivateMemberButton({
         <input type="hidden" name="member_id" value={memberId} />
         <PButton
           type="submit"
-          tone="ghost"
+          tone="terra"
           size="sm"
           disabled={pending}
           aria-label={fullName ? `${label} ${fullName}` : undefined}

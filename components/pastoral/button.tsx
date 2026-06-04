@@ -56,6 +56,9 @@ type PButtonCommonProps = {
 
 type PLinkButtonProps = PButtonCommonProps & {
   href: string;
+  // Explicit accessible name, so a link whose visible text is generic
+  // ("Open group calendar") can still carry record context (#322).
+  "aria-label"?: string;
 };
 
 export function PLinkButton({
@@ -64,9 +67,14 @@ export function PLinkButton({
   href,
   style,
   children,
+  "aria-label": ariaLabel,
 }: PLinkButtonProps) {
   return (
-    <Link href={href} style={{ ...styleFor(tone, size), ...style }}>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      style={{ ...styleFor(tone, size), ...style }}
+    >
       {children}
     </Link>
   );

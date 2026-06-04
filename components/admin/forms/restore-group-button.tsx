@@ -10,9 +10,14 @@ import { useActionForm, FormStatus } from "./action-form";
 export function RestoreGroupButton({
   groupId,
   groupName,
+  ariaLabel,
 }: {
   groupId: string;
   groupName?: string;
+  // Record-context accessible name (e.g. "Restore {group} · {area}") so repeated
+  // restore controls in a list/table stay uniquely named for screen readers.
+  // Falls back to the visible "Restore group" text when omitted.
+  ariaLabel?: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminReopenGroup
@@ -34,7 +39,13 @@ export function RestoreGroupButton({
     <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
       <form action={formAction} onSubmit={confirmRestore}>
         <input type="hidden" name="group_id" value={groupId} />
-        <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="sm"
+          disabled={pending}
+          aria-label={ariaLabel}
+        >
           {pending ? "Restoring…" : "Restore group"}
         </PButton>
       </form>

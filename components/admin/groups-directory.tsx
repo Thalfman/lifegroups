@@ -25,6 +25,28 @@ import {
   type GroupListTab,
   type GroupTriageSignals,
 } from "@/lib/dashboard/group-status";
+import {
+  checkinRankForStatus,
+  compareGroupsBy,
+  meetingDayIndexFromName,
+  meetingMinutesFromTime,
+  type GroupsTableSortDir,
+  type GroupsTableSortKey,
+  type GroupsTableSortRow,
+} from "@/lib/dashboard/groups-table-sort";
+import {
+  DEFAULT_GROUPS_TABLE_COLUMNS,
+  DEFAULT_GROUPS_TABLE_DENSITY,
+  GROUPS_TABLE_DENSITIES,
+  GROUPS_TABLE_OPTIONAL_COLUMNS,
+  isColumnShown,
+  isGroupsTableDensity,
+  normalizeGroupsTableColumns,
+  toggleGroupsTableColumn,
+  type GroupsTableDensity,
+  type GroupsTableOptionalColumn,
+} from "@/lib/dashboard/groups-table-prefs";
+import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import type { GroupHealthSignals } from "@/components/admin/group-management-shell";
 import {
   capacityCategoryLabel,
@@ -104,7 +126,65 @@ type GroupsDirectoryProps = {
   // Director-tuned Watch threshold from Settings — a group graded at or below
   // it reads as "Needs attention".
   watchGrade: GroupHealthLetter;
+  // Signed-in profile id, used only to scope this browser's saved card⇄table
+  // view preference per admin (#325). Null falls back to a shared bucket.
+  viewerId?: string | null;
 };
+
+// The card⇄table view mode. SSR + first client paint always render "cards"
+// (the historical default), then the persisted choice is adopted after the
+// restore effect runs — so the server and first client markup match (no flash).
+type ViewMode = "cards" | "table";
+
+// The persisted view snapshot for this surface (#325, extended in #333): the
+// card⇄table mode, the table's sort column + direction, the shown optional
+// columns, and the display density. Local, per-browser, profile-scoped — a UI
+// preference, never server state. Held as one snapshot under the surface's
+// profile-scoped key so the whole Groups view restores atomically without flash.
+type GroupsViewSnapshot = {
+  mode: ViewMode;
+  sortKey: GroupsTableSortKey;
+  sortDir: GroupsTableSortDir;
+  // The shown optional columns (#333). Omitted by pre-#333 snapshots; the
+  // validator tolerates that and the directory normalises to the default set.
+  columns?: GroupsTableOptionalColumn[];
+  // The table display density (#333). Omitted by pre-#333 snapshots; defaults
+  // to "comfortable" so older saved views keep their historical look.
+  density?: GroupsTableDensity;
+};
+
+const SORT_KEYS = new Set<GroupsTableSortKey>([
+  "group",
+  "leader",
+  "setup",
+  "health",
+  "capacity",
+  "meeting",
+  "checkin",
+]);
+
+// Accept any snapshot whose required #325 fields are valid. The #333 additions
+// (columns, density) are optional: a pre-#333 saved value omits them, and we
+// only reject a present-but-wrong-typed field — the directory then normalises
+// columns/density through their own helpers, so a stale or partial value
+// degrades to the defaults rather than discarding the whole snapshot.
+function isGroupsViewSnapshot(value: unknown): value is GroupsViewSnapshot {
+  if (value === null || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (
+    !(
+      (v.mode === "cards" || v.mode === "table") &&
+      typeof v.sortKey === "string" &&
+      SORT_KEYS.has(v.sortKey as GroupsTableSortKey) &&
+      (v.sortDir === "asc" || v.sortDir === "desc")
+    )
+  ) {
+    return false;
+  }
+  if (v.columns !== undefined && !Array.isArray(v.columns)) return false;
+  if (v.density !== undefined && !isGroupsTableDensity(v.density)) return false;
+  return true;
+}
 
 // The five list tabs (issue #300). "all" lists every active group; "archived"
 // lists closed groups; the three middle tabs are derived attention buckets.
@@ -138,10 +218,82 @@ type GroupStatus = {
 // state survive the round trip.
 type GroupEditorState = { mode: "create" } | { mode: "edit"; group: GroupsRow };
 
+// One assembled row for the Ops table (#325): the group, its four status
+// categories, the resolved leader text + latest-week session it renders, and
+// the scalar sort key the comparators ordered it by. Built once per visible
+// group from the same maps the cards use — no new reads.
+type GroupTableRow = {
+  group: GroupsRow;
+  status: GroupStatus;
+  leaderText: string | null;
+  session: AttendanceSessionsRow | null;
+  sortRow: GroupsTableSortRow;
+};
+
 export function GroupsDirectory(props: GroupsDirectoryProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<ListTab>("all");
+
+  // Card⇄table view mode and the table's sort. SSR + the first client render
+  // use these render-time defaults ("cards", sorted by group name ascending) so
+  // server and client markup match; usePersistedViewState then adopts the
+  // admin's saved choice after its restore effect (no hydration flash). The
+  // preference is local, per-browser, and profile-scoped (#325).
+  const [mode, setMode] = useState<ViewMode>("cards");
+  // Sort key + direction live in one state object so the header click handler
+  // computes both from a single functional update — nesting one setter inside
+  // another's updater would double-fire under React StrictMode's intentional
+  // double-invocation and cancel the direction toggle.
+  const [sort, setSort] = useState<{
+    key: GroupsTableSortKey;
+    dir: GroupsTableSortDir;
+  }>({ key: "group", dir: "asc" });
+  const { key: sortKey, dir: sortDir } = sort;
+
+  // The shown optional table columns and the display density (#333). Like the
+  // mode + sort above, SSR + the first client render use these defaults (all
+  // optional columns shown, comfortable density) so server and client markup
+  // match; the persisted choice is adopted after the restore effect runs.
+  const [columns, setColumns] = useState<GroupsTableOptionalColumn[]>(() => [
+    ...DEFAULT_GROUPS_TABLE_COLUMNS,
+  ]);
+  const [density, setDensity] = useState<GroupsTableDensity>(
+    DEFAULT_GROUPS_TABLE_DENSITY
+  );
+
+  usePersistedViewState<GroupsViewSnapshot>({
+    surface: "groups",
+    scopeId: props.viewerId,
+    snapshot: { mode, sortKey, sortDir, columns, density },
+    restore: (saved) => {
+      setMode(saved.mode);
+      setSort({ key: saved.sortKey, dir: saved.sortDir });
+      // Normalise the saved column/density values through their own helpers so a
+      // stale, partial, or omitted value degrades to the defaults (never hides
+      // every column or restores an unknown density).
+      setColumns(normalizeGroupsTableColumns(saved.columns));
+      setDensity(saved.density ?? DEFAULT_GROUPS_TABLE_DENSITY);
+    },
+    validate: isGroupsViewSnapshot,
+  });
+
+  // Toggle a column header: clicking the active column flips direction;
+  // clicking a new column selects it ascending.
+  const onSort = useCallback((key: GroupsTableSortKey) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" }
+    );
+  }, []);
+
+  // Show/hide one optional column. The helper refuses to hide the last column
+  // and keeps the canonical render order, so the table never collapses to a
+  // name-and-actions strip and columns never reorder.
+  const onToggleColumn = useCallback((column: GroupsTableOptionalColumn) => {
+    setColumns((prev) => toggleGroupsTableColumn(prev, column));
+  }, []);
 
   // Which record the drawer is editing/creating, plus two flags the open form
   // reports back: `dirtyRef` (edits pending → warn before discarding) and
@@ -313,11 +465,79 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     [props.groups, matchesTab, trimmed]
   );
 
+  // Table-mode rows: the same `visible` groups, each paired with the scalars the
+  // sort comparators key off (lib/dashboard/groups-table-sort) and the resolved
+  // leader/check-in text the row renders. Built from the SAME maps the cards use
+  // — no new reads. Only assembled while in table mode so card mode pays nothing.
+  const tableRows = useMemo(() => {
+    if (mode !== "table") return [];
+    const rows = visible.map((g) => {
+      const status = statusByGroupId.get(g.id)!;
+      const leaders = leadersByGroupId.get(g.id) ?? NO_LEADERS;
+      const leaderText = leaderTextFor(leaders, profilesById);
+      const session = sessionByGroupId.get(g.id) ?? null;
+      const sortRow: GroupsTableSortRow = {
+        name: g.name,
+        leaderText,
+        setup: status.setup,
+        health: status.health,
+        healthGrade: props.healthGradesByGroupId[g.id] ?? null,
+        capacity: status.capacity,
+        meetingDayIndex: meetingDayIndexFromName(g.meeting_day),
+        meetingMinutes: meetingMinutesFromTime(g.meeting_time),
+        checkinRank: checkinRankForStatus(session?.status ?? null),
+      };
+      return { group: g, status, leaderText, session, sortRow };
+    });
+    const comparator = compareGroupsBy(sortKey, sortDir);
+    rows.sort((a, b) => comparator(a.sortRow, b.sortRow));
+    return rows;
+  }, [
+    mode,
+    visible,
+    sortKey,
+    sortDir,
+    statusByGroupId,
+    leadersByGroupId,
+    profilesById,
+    sessionByGroupId,
+    props.healthGradesByGroupId,
+  ]);
+
   const isArchivedTab = tab === "archived";
 
   return (
     <section style={{ display: "grid", gap: 18 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <ViewModeToggle mode={mode} onModeChange={setMode} />
+          {/* Density + column controls are table-only — they have no meaning for
+              the card layout, so they appear once the admin switches to table. */}
+          {mode === "table" ? (
+            <>
+              <DensityToggle density={density} onDensityChange={setDensity} />
+              <ColumnVisibilityMenu
+                columns={columns}
+                onToggleColumn={onToggleColumn}
+              />
+            </>
+          ) : null}
+        </div>
         <PButton type="button" tone="terra" size="sm" onClick={openCreate}>
           New group
         </PButton>
@@ -390,6 +610,27 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
           {isArchivedTab
             ? "No archived groups."
             : "No groups match the current tab."}
+        </div>
+      ) : mode === "table" ? (
+        <div
+          style={{
+            opacity: listIsStale ? 0.6 : 1,
+            transition: "opacity 120ms ease",
+          }}
+        >
+          <GroupsTable
+            rows={tableRows}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+            shownColumns={columns}
+            density={density}
+            profilesById={profilesById}
+            activeMemberCountByGroup={activeMemberCountByGroup}
+            overrideByGroupId={overrideByGroupId}
+            defaults={props.metricDefaults}
+            onEdit={openEdit}
+          />
         </div>
       ) : (
         <ul
@@ -474,6 +715,555 @@ function TabBar({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Card⇄table view toggle (#325)
+// ---------------------------------------------------------------------------
+
+// A two-option segmented control that switches the directory between the
+// six-zone cards and the dense Ops table. The choice persists per browser,
+// scoped to the signed-in admin (usePersistedViewState). Rendered as an explicit
+// radiogroup so the current view is announced and keyboard-reachable.
+function ViewModeToggle({
+  mode,
+  onModeChange,
+}: {
+  mode: ViewMode;
+  onModeChange: (m: ViewMode) => void;
+}) {
+  const options: { key: ViewMode; label: string }[] = [
+    { key: "cards", label: "Cards" },
+    { key: "table", label: "Table" },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Group list layout"
+      style={{
+        display: "inline-flex",
+        gap: 4,
+        padding: 4,
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 999,
+      }}
+    >
+      {options.map((o) => {
+        const active = mode === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onModeChange(o.key)}
+            style={{
+              padding: "5px 14px",
+              borderRadius: 999,
+              border: "none",
+              background: active ? P.ink : "transparent",
+              color: active ? P.surface : P.ink2,
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Density toggle (#333)
+// ---------------------------------------------------------------------------
+
+// A two-option segmented control that switches the Ops table between the roomy
+// "comfortable" rows and the tighter "compact" rows. The choice persists per
+// browser, scoped to the signed-in admin, alongside the other Groups view prefs.
+// Rendered as a radiogroup so the current density is announced and keyboard-
+// reachable, matching the card⇄table toggle's pattern.
+const DENSITY_LABELS: Record<GroupsTableDensity, string> = {
+  comfortable: "Comfortable",
+  compact: "Compact",
+};
+
+function DensityToggle({
+  density,
+  onDensityChange,
+}: {
+  density: GroupsTableDensity;
+  onDensityChange: (d: GroupsTableDensity) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Table density"
+      style={{
+        display: "inline-flex",
+        gap: 4,
+        padding: 4,
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 999,
+      }}
+    >
+      {GROUPS_TABLE_DENSITIES.map((d) => {
+        const active = density === d;
+        return (
+          <button
+            key={d}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onDensityChange(d)}
+            style={{
+              padding: "5px 14px",
+              borderRadius: 999,
+              border: "none",
+              background: active ? P.ink : "transparent",
+              color: active ? P.surface : P.ink2,
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {DENSITY_LABELS[d]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Column visibility menu (#333)
+// ---------------------------------------------------------------------------
+
+// Per-column show/hide toggles for the table's optional columns. Each is a
+// checkbox so its state is announced, grouped under a labelled fieldset so a
+// screen-reader user hears the group purpose. The last shown column can't be
+// hidden (the toggle helper refuses it), so it is rendered disabled to make that
+// constraint visible. The shown set persists with the other Groups view prefs.
+const COLUMN_MENU_LABELS: Record<GroupsTableOptionalColumn, string> = {
+  leader: "Leader / co-leader",
+  setup: "Setup",
+  health: "Health grade",
+  capacity: "Capacity",
+  meeting: "Meeting day/time",
+  checkin: "Latest-week check-in",
+};
+
+function ColumnVisibilityMenu({
+  columns,
+  onToggleColumn,
+}: {
+  columns: GroupsTableOptionalColumn[];
+  onToggleColumn: (column: GroupsTableOptionalColumn) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const lastShown = columns.length <= 1;
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          padding: "7px 14px",
+          borderRadius: 999,
+          border: `1px solid ${P.line}`,
+          background: P.surface,
+          color: P.ink2,
+          fontFamily: fontSans,
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: "pointer",
+        }}
+      >
+        Columns
+      </button>
+      {open ? (
+        <fieldset
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            zIndex: 10,
+            minWidth: 200,
+            margin: 0,
+            padding: "12px 14px",
+            display: "grid",
+            gap: 8,
+            background: P.surface,
+            border: `1px solid ${P.line}`,
+            borderRadius: 10,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+          }}
+        >
+          <legend
+            style={{
+              padding: 0,
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              fontWeight: 600,
+              color: P.ink3,
+            }}
+          >
+            Show columns
+          </legend>
+          {GROUPS_TABLE_OPTIONAL_COLUMNS.map((col) => {
+            const shown = isColumnShown(columns, col);
+            // The single remaining shown column can't be hidden — disable it so
+            // the constraint is visible rather than a silent no-op.
+            const disabled = shown && lastShown;
+            return (
+              <label
+                key={col}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: disabled ? P.ink3 : P.ink2,
+                  cursor: disabled ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={shown}
+                  disabled={disabled}
+                  onChange={() => onToggleColumn(col)}
+                />
+                {COLUMN_MENU_LABELS[col]}
+              </label>
+            );
+          })}
+        </fieldset>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ops table (#325) — a dense, sortable view of the same groups the cards show.
+// Warm and pastoral, not a grey spreadsheet: PBadge tones for the four status
+// categories, tabular-nums for the capacity figures, and record-context action
+// names on every repeated control (the a11y suite enforces uniqueness).
+// ---------------------------------------------------------------------------
+
+// The sortable columns, in render order. `numeric` columns get tabular-nums and
+// the check-in column reuses the already-loaded latest-week session text. The
+// "group" column is structural (never hideable); the rest carry an `optional`
+// key so the header can filter them by the admin's saved column choice (#333).
+const TABLE_COLUMNS: {
+  key: GroupsTableSortKey;
+  label: string;
+  numeric?: boolean;
+  // The matching optional-column key, or undefined for the structural "group"
+  // column that is always shown.
+  optional?: GroupsTableOptionalColumn;
+}[] = [
+  { key: "group", label: "Group" },
+  { key: "leader", label: "Leader / co-leader", optional: "leader" },
+  { key: "setup", label: "Setup", optional: "setup" },
+  { key: "health", label: "Health grade", optional: "health" },
+  { key: "capacity", label: "Capacity", numeric: true, optional: "capacity" },
+  { key: "meeting", label: "Meeting day/time", optional: "meeting" },
+  { key: "checkin", label: "Latest-week check-in", optional: "checkin" },
+];
+
+// Cell padding per density. Compact tightens the vertical rhythm so more groups
+// fit on screen; comfortable keeps the historical roomy rows.
+const DENSITY_CELL_PADDING: Record<GroupsTableDensity, string> = {
+  comfortable: "12px",
+  compact: "6px 12px",
+};
+
+const DENSITY_HEADER_PADDING: Record<GroupsTableDensity, string> = {
+  comfortable: "10px 12px",
+  compact: "6px 12px",
+};
+
+function GroupsTable({
+  rows,
+  sortKey,
+  sortDir,
+  onSort,
+  shownColumns,
+  density,
+  profilesById,
+  activeMemberCountByGroup,
+  overrideByGroupId,
+  defaults,
+  onEdit,
+}: {
+  rows: GroupTableRow[];
+  sortKey: GroupsTableSortKey;
+  sortDir: GroupsTableSortDir;
+  onSort: (key: GroupsTableSortKey) => void;
+  shownColumns: GroupsTableOptionalColumn[];
+  density: GroupsTableDensity;
+  profilesById: Map<string, ProfilesRow>;
+  activeMemberCountByGroup: Map<string, number>;
+  overrideByGroupId: Map<string, GroupMetricSettingsRow>;
+  defaults: MetricDefaults;
+  onEdit: (group: GroupsRow) => void;
+}) {
+  // Render the structural "group" column plus only the optional columns the
+  // admin has chosen to show, keeping the table's fixed render order.
+  const visibleColumns = TABLE_COLUMNS.filter(
+    (col) => !col.optional || isColumnShown(shownColumns, col.optional)
+  );
+  const show = (column: GroupsTableOptionalColumn) =>
+    isColumnShown(shownColumns, column);
+  const cellPad = DENSITY_CELL_PADDING[density];
+  const headerPad = DENSITY_HEADER_PADDING[density];
+  const dCellStyle: React.CSSProperties = { ...cellStyle, padding: cellPad };
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontFamily: fontBody,
+          fontSize: 13,
+        }}
+      >
+        <caption style={visuallyHiddenStyle}>
+          Groups, with sortable columns for group, leader, setup, health grade,
+          capacity, meeting day and time, and the latest-week check-in.
+        </caption>
+        <thead>
+          <tr>
+            {visibleColumns.map((col) => {
+              const active = sortKey === col.key;
+              return (
+                <th
+                  key={col.key}
+                  scope="col"
+                  aria-sort={
+                    active
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                  style={{
+                    textAlign: col.numeric ? "right" : "left",
+                    padding: 0,
+                    borderBottom: `1px solid ${P.line}`,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSort(col.key)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      width: "100%",
+                      justifyContent: col.numeric ? "flex-end" : "flex-start",
+                      padding: headerPad,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontFamily: fontSans,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
+                      fontWeight: 600,
+                      color: active ? P.ink : P.ink3,
+                    }}
+                  >
+                    {col.label}
+                    <span aria-hidden="true" style={{ fontSize: 9 }}>
+                      {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
+                    </span>
+                  </button>
+                </th>
+              );
+            })}
+            <th
+              scope="col"
+              style={{
+                textAlign: "right",
+                padding: headerPad,
+                borderBottom: `1px solid ${P.line}`,
+                fontFamily: fontSans,
+                fontSize: 10,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                fontWeight: 600,
+                color: P.ink3,
+              }}
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ group, status, leaderText, session }) => {
+            const groupLabel = groupAccessibleLabel(group);
+            const isArchived = status.lifecycle === "archived";
+            const override = overrideByGroupId.get(group.id) ?? null;
+            const excluded = isExcludedFromCapacityMetrics(override);
+            const cap = effectiveCapacity(group, override, defaults);
+            const isCapacityUnknown = unknownCapacity(
+              group,
+              override,
+              defaults
+            );
+            const memberCount = activeMemberCountByGroup.get(group.id) ?? 0;
+            return (
+              <tr
+                key={group.id}
+                style={{
+                  borderBottom: `1px solid ${P.line2}`,
+                  opacity: isArchived ? 0.7 : 1,
+                }}
+              >
+                {/* Group + lifecycle (structural — always shown) */}
+                <td style={dCellStyle}>
+                  <div
+                    style={{ display: "grid", gap: 4, alignContent: "start" }}
+                  >
+                    <span style={{ fontWeight: 500, color: P.ink }}>
+                      {group.name}
+                    </span>
+                    <span>
+                      <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
+                        {lifecycleCategoryLabel(status.lifecycle)}
+                      </PBadge>
+                    </span>
+                  </div>
+                </td>
+                {/* Leader / co-leader */}
+                {show("leader") ? (
+                  <td style={{ ...dCellStyle, color: P.ink2 }}>
+                    {leaderText ?? "Unassigned"}
+                  </td>
+                ) : null}
+                {/* Setup */}
+                {show("setup") ? (
+                  <td style={dCellStyle}>
+                    <PBadge tone={SETUP_TONE[status.setup]}>
+                      {setupCategoryLabel(status.setup)}
+                    </PBadge>
+                  </td>
+                ) : null}
+                {/* Health grade */}
+                {show("health") ? (
+                  <td style={dCellStyle}>
+                    <PBadge tone={HEALTH_TONE[status.health]}>
+                      {healthCategoryLabel(status.health)}
+                    </PBadge>
+                  </td>
+                ) : null}
+                {/* Capacity (numeric → tabular-nums, right-aligned) */}
+                {show("capacity") ? (
+                  <td
+                    style={{
+                      ...dCellStyle,
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                      color: P.ink2,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        gap: 4,
+                      }}
+                    >
+                      <PBadge tone={CAPACITY_TONE[status.capacity]}>
+                        {capacityCategoryLabel(status.capacity)}
+                      </PBadge>
+                      <span>
+                        {excluded
+                          ? "Excluded"
+                          : `${memberCount}${
+                              isCapacityUnknown ? " / —" : ` / ${cap ?? "—"}`
+                            }`}
+                      </span>
+                    </div>
+                  </td>
+                ) : null}
+                {/* Meeting day/time */}
+                {show("meeting") ? (
+                  <td style={{ ...dCellStyle, color: P.ink2 }}>
+                    {metaLine(group)}
+                  </td>
+                ) : null}
+                {/* Latest-week check-in — reuses the already-loaded session */}
+                {show("checkin") ? (
+                  <td style={{ ...dCellStyle, color: P.ink3 }}>
+                    {latestCheckinText(session)}
+                  </td>
+                ) : null}
+                {/* Actions — record-context names, unique per group */}
+                <td style={{ ...dCellStyle, textAlign: "right" }}>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <Link
+                      href={`/admin/groups/${group.id}`}
+                      aria-label={`View ${groupLabel}`}
+                      style={tableLinkStyle}
+                    >
+                      View
+                    </Link>
+                    {isArchived ? (
+                      <RestoreGroupButton
+                        groupId={group.id}
+                        groupName={group.name}
+                        ariaLabel={`Restore ${groupLabel}`}
+                      />
+                    ) : (
+                      <>
+                        <Link
+                          href={`/admin/groups/${group.id}/calendar`}
+                          aria-label={`Open ${groupLabel} calendar`}
+                          style={tableLinkStyle}
+                        >
+                          Calendar
+                        </Link>
+                        <PButton
+                          type="button"
+                          tone="terra"
+                          size="sm"
+                          aria-label={`Edit ${groupLabel}`}
+                          onClick={() => onEdit(group)}
+                        >
+                          Edit
+                        </PButton>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -637,32 +1427,15 @@ const GroupCard = memo(function GroupCard({
   onEdit: (group: GroupsRow) => void;
 }) {
   const isArchived = status.lifecycle === "archived";
-  // Repeated row actions (View / Edit / Calendar / Restore) name their group,
-  // but group names are not unique in the data model. Append a stable,
-  // human-meaningful discriminator — meeting area, else meeting day — so two
-  // groups that share a name stay distinguishable to screen-reader users.
-  const groupContext =
-    group.location_area?.trim() || group.meeting_day?.trim() || null;
-  const groupLabel = groupContext
-    ? `${group.name} (${groupContext})`
-    : group.name;
+  // Repeated row actions name their group plus a stable discriminator so two
+  // groups that share a name stay distinguishable (shared with the table mode).
+  const groupLabel = groupAccessibleLabel(group);
 
   const cap = effectiveCapacity(group, override, defaults);
   const isCapacityUnknown = unknownCapacity(group, override, defaults);
   const excluded = isExcludedFromCapacityMetrics(override);
 
-  const leaderText =
-    leaders.length === 0
-      ? "Unassigned"
-      : leaders
-          .map((l) => {
-            const profile = profilesById.get(l.profile_id);
-            if (!profile) return "(unknown)";
-            return `${profile.full_name} · ${
-              l.role === "co_leader" ? "Co" : "Lead"
-            }`;
-          })
-          .join(" · ");
+  const leaderText = leaderTextFor(leaders, profilesById) ?? "Unassigned";
 
   return (
     <article
@@ -730,7 +1503,11 @@ const GroupCard = memo(function GroupCard({
             View group
           </Link>
           {isArchived ? (
-            <RestoreGroupButton groupId={group.id} groupName={group.name} />
+            <RestoreGroupButton
+              groupId={group.id}
+              groupName={group.name}
+              ariaLabel={`Restore ${groupLabel}`}
+            />
           ) : (
             <>
               <Link
@@ -876,6 +1653,40 @@ const primaryLinkStyle: React.CSSProperties = {
   fontWeight: 500,
 };
 
+const cellStyle: React.CSSProperties = {
+  padding: "12px",
+  verticalAlign: "top",
+};
+
+const tableLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "5px 10px",
+  borderRadius: 8,
+  background: P.surface,
+  border: `1px solid ${P.line}`,
+  color: P.ink,
+  fontFamily: fontBody,
+  fontSize: 12,
+  textDecoration: "none",
+  fontWeight: 500,
+  whiteSpace: "nowrap",
+};
+
+// Off-screen but available to assistive tech — for the table <caption> that
+// describes the sortable columns without adding visible chrome.
+const visuallyHiddenStyle: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
 const secondaryLinkStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -893,6 +1704,36 @@ const secondaryLinkStyle: React.CSSProperties = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// The resolved "leader · co-leader" text, or null when the group has no active
+// leader. Shared by the card's Setup zone and the table's Leader column so both
+// read identically and the table sorts the same text it shows. Null (rather than
+// "Unassigned") lets the table sort unassigned groups last and lets the card
+// pick its own placeholder.
+function leaderTextFor(
+  leaders: GroupLeadersRow[],
+  profilesById: Map<string, ProfilesRow>
+): string | null {
+  if (leaders.length === 0) return null;
+  return leaders
+    .map((l) => {
+      const profile = profilesById.get(l.profile_id);
+      if (!profile) return "(unknown)";
+      return `${profile.full_name} · ${l.role === "co_leader" ? "Co" : "Lead"}`;
+    })
+    .join(" · ");
+}
+
+// Repeated row actions (View / Edit / Calendar / Restore) name their group, but
+// group names are not unique in the data model. Append a stable, human-meaningful
+// discriminator — meeting area, else meeting day — so two groups that share a
+// name stay distinguishable to screen-reader users. Shared by the card and the
+// table so both modes carry identical record-context action names (a11y suite).
+function groupAccessibleLabel(group: GroupsRow): string {
+  const context =
+    group.location_area?.trim() || group.meeting_day?.trim() || null;
+  return context ? `${group.name} (${context})` : group.name;
+}
 
 function metaLine(group: GroupsRow): string {
   const parts: string[] = [];

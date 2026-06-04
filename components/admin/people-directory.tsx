@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { memo, useDeferredValue, useMemo, useState } from "react";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
 import { PBadge } from "@/components/pastoral/atoms";
+import { PLinkButton } from "@/components/pastoral/button";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
@@ -434,21 +434,21 @@ function CareIndicator({
   );
 }
 
-function ViewPersonLink({ href }: { href: string }) {
+// Profile navigation reads as a primary affordance: a solid (ink) pill rather
+// than a plain text link. The visible label stays "View person" so the a11y
+// suite's link-name probe matches, while aria-label carries the person's name so
+// the repeated row links stay uniquely named for screen-reader users.
+function ViewPersonLink({ href, name }: { href: string; name: string }) {
   return (
-    <Link
+    <PLinkButton
       href={href}
-      style={{
-        fontFamily: fontSans,
-        fontSize: 12,
-        fontWeight: 600,
-        color: P.terra,
-        textDecoration: "none",
-        whiteSpace: "nowrap",
-      }}
+      tone="solid"
+      size="sm"
+      style={{ whiteSpace: "nowrap" }}
+      aria-label={`View person ${name}`}
     >
       View person →
-    </Link>
+    </PLinkButton>
   );
 }
 
@@ -544,7 +544,10 @@ const ProfileRow = memo(function ProfileRow({
           justifyContent: "flex-end",
         }}
       >
-        <ViewPersonLink href={`/admin/people/profile/${profile.id}`} />
+        <ViewPersonLink
+          href={`/admin/people/profile/${profile.id}`}
+          name={profile.full_name}
+        />
         {isSelf ? (
           <span
             style={{
@@ -655,7 +658,10 @@ const MemberRow = memo(function MemberRow({
           justifyContent: "flex-end",
         }}
       >
-        <ViewPersonLink href={`/admin/people/member/${member.id}`} />
+        <ViewPersonLink
+          href={`/admin/people/member/${member.id}`}
+          name={member.full_name}
+        />
         {member.status === "active" ? (
           <DeactivateMemberButton
             memberId={member.id}

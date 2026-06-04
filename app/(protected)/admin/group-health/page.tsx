@@ -18,7 +18,7 @@ export default async function GroupHealthPage() {
   if (view.status === "no-db") {
     return (
       <>
-        <PageHeader eyebrow="Ministry Admin" title="Group health" />
+        <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
           <p style={{ fontFamily: "var(--font-body)", color: "var(--c-ink2)" }}>
             The database isn&apos;t configured, so grades can&apos;t be loaded.
@@ -31,7 +31,7 @@ export default async function GroupHealthPage() {
   if (view.status === "error") {
     return (
       <>
-        <PageHeader eyebrow="Ministry Admin" title="Group health" />
+        <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
           <p style={{ fontFamily: "var(--font-body)", color: "#923220" }}>
             Couldn&apos;t load group-health grades. Refresh to try again.
@@ -44,7 +44,7 @@ export default async function GroupHealthPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Ministry Admin"
+        eyebrow="Groups"
         title="Group health"
         lede={`Group-Health Grade for ${view.period}, recomputed live from attendance consistency (rolling 8-week average) and your 1–5 ratings. Open a group to edit its ratings; saving writes the month's snapshot.`}
       />

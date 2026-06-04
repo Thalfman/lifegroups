@@ -4,10 +4,13 @@ import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { CareItem, CareItemDueTone } from "@/lib/admin/care-area";
 
 // One care item rendered with the reduction-plan six-field structure (#301):
-// Person, Reason, Related group, Due date, Owner, Action. The action is an
-// explicit verb (Log contact / View follow-up / Add note …) — never a vague
-// Open / Manage / Update — and links into the per-leader detail page where the
-// work actually happens.
+// Person, Reason, Related group, Due date, Owner, Action. The action is the ONE
+// obvious next step for the item — Log contact / Assign over-shepherd / Schedule
+// touchpoint / Resolve follow-up (#332), resolved in lib/admin/care-next-action
+// — never a vague Open / Manage / Update. Each links into the per-leader detail
+// page (deep-linked to the tab that hosts the action's existing form) where the
+// work actually happens; the action's accessible name carries the person so it
+// reads "Log contact for Jane Doe", not a bare verb.
 
 const DUE_TONE: Record<
   CareItemDueTone,
@@ -160,6 +163,10 @@ export function CareItemList({
             </div>
             <Link
               href={item.actionHref}
+              // Record-context accessible name (#332 / req 4): assistive tech
+              // announces "Log contact for Jane Doe", not a bare "Log contact"
+              // repeated down the list. The visible label stays the short verb.
+              aria-label={item.actionAccessibleName}
               style={{
                 flexShrink: 0,
                 alignSelf: "center",

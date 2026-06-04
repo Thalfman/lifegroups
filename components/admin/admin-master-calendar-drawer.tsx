@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,11 @@ export function AdminMasterCalendarDrawer({
   onClose: () => void;
 }) {
   const open = occurrence !== null;
+  // The occurrence row that had focus when the drawer opened, so we return focus
+  // to it on close. The drawer is opened programmatically by selecting a row
+  // (no DialogTrigger), so Radix has no trigger to auto-restore to — own it here
+  // as the EditingSurface and the occurrence editor do.
+  const openerRef = useRef<HTMLElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
       <DialogPortal>
@@ -48,6 +54,16 @@ export function AdminMasterCalendarDrawer({
         />
         <DialogContent
           aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            openerRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            const opener = openerRef.current;
+            if (opener && document.contains(opener)) {
+              event.preventDefault();
+              opener.focus();
+            }
+          }}
           className="lg-m-master-calendar-drawer"
           style={{
             position: "fixed",
@@ -68,9 +84,15 @@ export function AdminMasterCalendarDrawer({
           }}
         >
           {occurrence ? (
-            <DrawerBody occurrence={occurrence} monthIso={monthIso} onClose={onClose} />
+            <DrawerBody
+              occurrence={occurrence}
+              monthIso={monthIso}
+              onClose={onClose}
+            />
           ) : (
-            <DialogTitle style={{ display: "none" }}>Occurrence details</DialogTitle>
+            <DialogTitle style={{ display: "none" }}>
+              Occurrence details
+            </DialogTitle>
           )}
         </DialogContent>
       </DialogPortal>
@@ -158,7 +180,9 @@ function DrawerBody({
       <div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {occurrence.status !== "scheduled" ? (
-            <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
+            <PBadge tone={tone}>
+              {friendlyEventStatusLabel(occurrence.status)}
+            </PBadge>
           ) : (
             <PBadge tone="healthy">{typeLabel}</PBadge>
           )}
@@ -169,7 +193,10 @@ function DrawerBody({
         </div>
 
         <Field label="Gathering type" value={typeLabel} />
-        <Field label="Status" value={friendlyEventStatusLabel(occurrence.status)} />
+        <Field
+          label="Status"
+          value={friendlyEventStatusLabel(occurrence.status)}
+        />
         <Field
           label="Meeting time (inherited from group)"
           value={clock ?? "Not set on the group schedule"}
@@ -182,7 +209,9 @@ function DrawerBody({
               : "Unassigned"
           }
         />
-        {occurrence.title ? <Field label="Title" value={occurrence.title} /> : null}
+        {occurrence.title ? (
+          <Field label="Title" value={occurrence.title} />
+        ) : null}
         {occurrence.description ? (
           <Field label="Description" value={occurrence.description} multiline />
         ) : null}
@@ -199,10 +228,20 @@ function DrawerBody({
           justifyContent: "flex-end",
         }}
       >
-        <PLinkButton href={groupDetailHref} tone="ghost" size="sm">
+        <PLinkButton
+          href={groupDetailHref}
+          tone="ghost"
+          size="sm"
+          aria-label={`View ${occurrence.groupName} group`}
+        >
           View group
         </PLinkButton>
-        <PLinkButton href={groupCalendarHref} tone="terra" size="sm">
+        <PLinkButton
+          href={groupCalendarHref}
+          tone="terra"
+          size="sm"
+          aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
+        >
           Open group calendar
         </PLinkButton>
       </footer>

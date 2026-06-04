@@ -66,6 +66,7 @@ export function CalendarOccurrenceEditor({
   occurrence,
   actions,
   triggerLabel,
+  triggerAriaLabel,
   triggerStyle,
   triggerClassName,
   canEdit,
@@ -78,6 +79,12 @@ export function CalendarOccurrenceEditor({
   occurrence: CalendarOccurrenceEditorOccurrence;
   actions: CalendarOccurrenceEditorActions;
   triggerLabel: React.ReactNode;
+  // Explicit, meaningful accessible name for the trigger button. Without it
+  // the button's name is the concatenated child text (day # + "Today" + type
+  // + clock + status + "Special"), which reads as a meaningless run-on to a
+  // screen reader. Callers build a summary like "Edit Oct 14 — Study, 6:30p,
+  // Scheduled" or "Add event on Oct 14" and pass it here (#322).
+  triggerAriaLabel?: string;
   triggerStyle?: React.CSSProperties;
   triggerClassName?: string;
   canEdit: boolean;
@@ -110,6 +117,7 @@ export function CalendarOccurrenceEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label={triggerAriaLabel}
         style={{
           ...triggerStyle,
           background: triggerStyle?.background ?? "transparent",
@@ -165,6 +173,11 @@ function EditorModal({
   const titleId = `${idRoot}-title`;
   const descriptionId = `${idRoot}-description`;
   const formRef = useRef<HTMLFormElement>(null);
+  // The control that had focus when the editor opened, so we return focus to it
+  // on close. This modal opens from a programmatic button (not a DialogTrigger)
+  // and is conditionally mounted, so Radix has no trigger to auto-restore to —
+  // mirror the EditingSurface pattern and own the restore ourselves.
+  const openerRef = useRef<HTMLElement | null>(null);
   const [status, setStatus] = useState<GroupCalendarEventStatus>(
     occurrence.status
   );
@@ -217,6 +230,18 @@ function EditorModal({
           }}
         />
         <DialogContent
+          // Capture the opener before Radix moves focus inward, then restore to
+          // it on close (Radix's default has no trigger to return to here).
+          onOpenAutoFocus={() => {
+            openerRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            const opener = openerRef.current;
+            if (opener && document.contains(opener)) {
+              event.preventDefault();
+              opener.focus();
+            }
+          }}
           style={{
             position: "fixed",
             top: "50%",
