@@ -23,9 +23,7 @@ export function LeaderProfileForm() {
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
-        Leaders sign in to record attendance and pulses. Sign-in linkage is
-        handled through the documented authentication setup &mdash; this form
-        just creates the profile row.
+        Leaders record attendance and pulses. This form creates the profile row.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>

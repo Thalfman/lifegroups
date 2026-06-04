@@ -131,7 +131,7 @@ export function PeopleManagementShell({
           <SectionHeader
             eyebrow="Add new"
             title="Add a leader or a member"
-            description="Leader profiles get a sign-in. Members are participant records only — they don't sign in. Place them in a group from a person's Group tab."
+            description="Add a leader or a member. Place members in a group from a person's Group tab."
           />
           <div
             className="lg-m-grid-stack"
@@ -144,14 +144,14 @@ export function PeopleManagementShell({
             <Card>
               <CardHeader
                 title="Add leader profile"
-                caption="Creates a sign-in profile."
+                caption="Creates a leader profile."
               />
               <LeaderProfileForm />
             </Card>
             <Card>
               <CardHeader
                 title="Add member"
-                caption="Non-login participant record. Email is optional."
+                caption="Participant record. Email is optional."
               />
               <MemberForm />
             </Card>
