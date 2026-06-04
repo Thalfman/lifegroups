@@ -3,14 +3,18 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
-    // Client-side Router Cache window so navigating between admin surfaces —
+    // Short client-side Router Cache so navigating between admin surfaces —
     // and back/forward — renders the already-fetched RSC payload instantly
-    // instead of re-running the server read on every visit. The sidebar links
-    // use `prefetch={true}` (see Sidebar.tsx) to warm each tab's full payload —
-    // data included — while idle, and this window keeps those prefetched
-    // payloads valid long enough that bouncing between tabs is consistently
-    // instant with no skeleton flash. The window also throttles re-prefetching
-    // to ~once per window rather than once per page load.
+    // instead of re-running the server read on every visit. Combined with the
+    // shared admin `loading.tsx` skeleton, a sidebar click commits immediately
+    // rather than after a fetch round-trip.
+    //
+    // The "instant on every click" behaviour comes from the sidebar links'
+    // `prefetch={true}` (see Sidebar.tsx), which warms each tab's full payload
+    // before it's clicked — NOT from a long cache window. So this window is
+    // deliberately kept short: a longer one would widen the period in which a
+    // prefetched payload is served with no server round-trip, broadening both
+    // stale-data and revoked-access exposure without improving perceived speed.
     //
     // Freshness is preserved where it matters: every mutation flows through
     // `runAdminWriteAction` → `revalidatePath`, which busts this cache for the
@@ -19,8 +23,8 @@ const nextConfig: NextConfig = {
     // data up to `dynamic` seconds stale — the accepted tradeoff for instant
     // navigation (see the loading decision; care data is the sensitive case).
     staleTimes: {
-      dynamic: 300,
-      static: 300,
+      dynamic: 30,
+      static: 180,
     },
   },
   // ADR 0010 surface-budget consolidation: the Capacity board and Multiplication
