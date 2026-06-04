@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { PAvatar } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { leaderSubmitCheckinAndReturn } from "@/app/(protected)/leader/actions";
@@ -96,6 +96,94 @@ function todayIso(): string {
   return `${y}-${m}-${day}`;
 }
 
+// One roster row, memoized so tapping P/A/E re-renders only the member whose
+// status changed — not all N rows × 3 buttons. `onSelect` is the form's stable
+// setMember, and `status` is this member's own value, so unchanged rows keep
+// identical props and React skips them when the form re-renders for the counts.
+const MemberRow = memo(function MemberRow({
+  member,
+  status,
+  isLast,
+  onSelect,
+}: {
+  member: Member;
+  status: AttendanceStatus | undefined;
+  isLast: boolean;
+  onSelect: (memberId: string, value: AttendanceStatus) => void;
+}) {
+  return (
+    <li
+      className="lg-m-roster-row"
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 12,
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "12px 18px",
+        borderBottom: isLast ? "none" : `1px solid ${P.line2}`,
+        background: P.surface,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          minWidth: 0,
+        }}
+      >
+        <PAvatar name={member.fullName} size={36} tone="terra" />
+        <span
+          style={{
+            fontFamily: fontBody,
+            fontSize: 15,
+            fontWeight: 500,
+            color: P.ink,
+          }}
+        >
+          {member.fullName}
+        </span>
+      </div>
+      <div
+        role="group"
+        aria-label={`Attendance for ${member.fullName}`}
+        style={{ display: "flex", gap: 6 }}
+      >
+        {ATTENDANCE_OPTIONS.map((opt) => {
+          const selected = status === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onSelect(member.id, opt.value)}
+              aria-label={`Mark ${member.fullName} ${opt.full.toLowerCase()}`}
+              aria-pressed={selected}
+              className="lg-m-attbtn"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 999,
+                display: "grid",
+                placeItems: "center",
+                fontSize: 14,
+                fontFamily: fontSans,
+                fontWeight: 700,
+                background: selected ? P.terra : "transparent",
+                color: selected ? P.surface : P.ink2,
+                border: `1px solid ${selected ? P.terra : P.line}`,
+                cursor: "pointer",
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </li>
+  );
+});
+
 export function CheckInForm({
   groupId,
   groupName,
@@ -146,9 +234,12 @@ export function CheckInForm({
     return JSON.stringify(entries);
   }, [attendance]);
 
-  function setMember(memberId: string, value: AttendanceStatus) {
+  // Stable identity (no deps — it only uses the functional updater) so the
+  // memoized MemberRow below isn't re-rendered just because the form re-rendered
+  // to update the running counts.
+  const setMember = useCallback((memberId: string, value: AttendanceStatus) => {
     setAttendance((prev) => ({ ...prev, [memberId]: value }));
-  }
+  }, []);
 
   const showAttendance = status === "submitted";
   const submitLabel = (() => {
@@ -158,15 +249,23 @@ export function CheckInForm({
     return alreadySubmitted ? "Update check-in" : "Submit check-in";
   })();
 
-  const presentCount = Object.values(attendance).filter(
-    (v) => v === "present"
-  ).length;
-  const absentCount = Object.values(attendance).filter(
-    (v) => v === "absent"
-  ).length;
-  const excusedCount = Object.values(attendance).filter(
-    (v) => v === "excused"
-  ).length;
+  // One pass over the attendance map (recomputed only when it changes) instead
+  // of three separate Object.values().filter() scans on every keystroke/tap.
+  const { presentCount, absentCount, excusedCount } = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let excused = 0;
+    for (const v of Object.values(attendance)) {
+      if (v === "present") present += 1;
+      else if (v === "absent") absent += 1;
+      else if (v === "excused") excused += 1;
+    }
+    return {
+      presentCount: present,
+      absentCount: absent,
+      excusedCount: excused,
+    };
+  }, [attendance]);
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 22 }}>
@@ -361,82 +460,15 @@ export function CheckInForm({
                 overflow: "hidden",
               }}
             >
-              {members.map((member, i, arr) => {
-                const current = attendance[member.id];
-                return (
-                  <li
-                    key={member.id}
-                    className="lg-m-roster-row"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 12,
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 18px",
-                      borderBottom:
-                        i < arr.length - 1 ? `1px solid ${P.line2}` : "none",
-                      background: P.surface,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        minWidth: 0,
-                      }}
-                    >
-                      <PAvatar name={member.fullName} size={36} tone="terra" />
-                      <span
-                        style={{
-                          fontFamily: fontBody,
-                          fontSize: 15,
-                          fontWeight: 500,
-                          color: P.ink,
-                        }}
-                      >
-                        {member.fullName}
-                      </span>
-                    </div>
-                    <div
-                      role="group"
-                      aria-label={`Attendance for ${member.fullName}`}
-                      style={{ display: "flex", gap: 6 }}
-                    >
-                      {ATTENDANCE_OPTIONS.map((opt) => {
-                        const selected = current === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => setMember(member.id, opt.value)}
-                            aria-label={`Mark ${member.fullName} ${opt.full.toLowerCase()}`}
-                            aria-pressed={selected}
-                            className="lg-m-attbtn"
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 999,
-                              display: "grid",
-                              placeItems: "center",
-                              fontSize: 14,
-                              fontFamily: fontSans,
-                              fontWeight: 700,
-                              background: selected ? P.terra : "transparent",
-                              color: selected ? P.surface : P.ink2,
-                              border: `1px solid ${selected ? P.terra : P.line}`,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </li>
-                );
-              })}
+              {members.map((member, i, arr) => (
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  status={attendance[member.id]}
+                  isLast={i === arr.length - 1}
+                  onSelect={setMember}
+                />
+              ))}
             </ul>
           )}
         </FieldSet>
