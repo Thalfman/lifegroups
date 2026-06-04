@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
     // shared admin `loading.tsx` skeleton, a sidebar click commits immediately
     // rather than after a fetch round-trip.
     //
+    // The "instant on every click" behaviour comes from the sidebar links'
+    // `prefetch={true}` (see Sidebar.tsx), which warms each tab's full payload
+    // before it's clicked — NOT from a long cache window. So this window is
+    // deliberately kept short: a longer one would widen the period in which a
+    // prefetched payload is served with no server round-trip, broadening both
+    // stale-data and revoked-access exposure without improving perceived speed.
+    //
     // Freshness is preserved where it matters: every mutation flows through
     // `runAdminWriteAction` → `revalidatePath`, which busts this cache for the
     // affected path, so a care/health/follow-up edit is reflected on the next

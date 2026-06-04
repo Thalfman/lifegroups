@@ -19,6 +19,11 @@ import {
 
 const REVALIDATE_PATHS = [
   "/admin/follow-ups",
+  // Canonical Care surface renders this same generic follow-up queue (via
+  // AdminFollowUpsShell in /admin/care/page.tsx). It's a sidebar-prefetched,
+  // router-cached path, so a status edit made elsewhere must bust it too or
+  // the Care tab's Follow-ups list shows the old status until the cache window.
+  "/admin/care",
   "/admin/guests",
   "/admin",
   "/leader",

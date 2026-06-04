@@ -51,6 +51,11 @@ function calendarPaths(groupId: string): string[] {
     // too -- otherwise marking a week OFF here can leave a stale "due"
     // state on /admin/check-ins/[groupId] until the next full reload.
     `/admin/check-ins/${groupId}`,
+    // The Planning surface's Calendar tab aggregates every group's events into
+    // the master calendar (loadMasterCalendar). It's a sidebar-prefetched,
+    // router-cached path, so a group calendar write must bust it too or the
+    // master calendar shows the stale event set until the cache window expires.
+    "/admin/planning",
   ];
 }
 
