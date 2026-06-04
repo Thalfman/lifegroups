@@ -129,6 +129,8 @@ describe("superAdminPermanentDeletePreflight", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.value.entityType).toBe("group");
+      expect(result.value.entityId).toBe(SCENARIO);
       expect(result.value.deletable).toBe(false);
       expect(result.value.blockers).toHaveLength(1);
       expect(result.value.blockers[0].count).toBe(3);
@@ -147,6 +149,8 @@ describe("superAdminPermanentDeletePreflight", () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.value.entityType).toBe("profile");
+      expect(result.value.entityId).toBe(SCENARIO);
       expect(result.value.confidential).toBe(true);
       expect(result.value.blockers).toHaveLength(0);
     }

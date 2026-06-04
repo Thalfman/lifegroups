@@ -77,13 +77,15 @@ export function PermanentDeleteCard({
 
   // After a successful delete the targeted row is gone — clear the selection
   // and confirm so the form can't be re-submitted against the now-missing row.
-  const delOk = del.state?.ok;
+  // Depend on the state object (not the extracted boolean, which stays true
+  // across consecutive successes and would skip the reset on a second delete).
+  const delState = del.state;
   useEffect(() => {
-    if (delOk) {
+    if (delState?.ok) {
       setSelectedId("");
       setConfirm("");
     }
-  }, [delOk]);
+  }, [delState]);
 
   // The preflight result only describes the row it was run for. Stamped with its
   // target, so a report for a previously-selected row is discarded the moment
@@ -411,10 +413,12 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
     { resetOnSuccess: true }
   );
   const [confirm, setConfirm] = useState("");
-  const ok = restore.state?.ok;
+  // Depend on the state object, not the extracted boolean (which stays true
+  // across consecutive successes and would skip clearing on a later restore).
+  const restoreState = restore.state;
   useEffect(() => {
-    if (ok) setConfirm("");
-  }, [ok]);
+    if (restoreState?.ok) setConfirm("");
+  }, [restoreState]);
   const matches = confirm.trim() === TOMBSTONE_RESTORE_CONFIRM_PHRASE;
   const alreadyRestored = tombstone.restoredAt !== null;
 
