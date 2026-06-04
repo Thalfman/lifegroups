@@ -50,7 +50,13 @@ The bounds — "anything" means anything *except* the documented exceptions:
   off-limits, deleting a profile that has performed audited actions would
   otherwise be impossible (an unclearable blocker). We migrate that FK to
   **`on delete set null`** so the audit event survives with its actor link
-  nulled, rather than blocking the delete or deleting the audit row.
+  nulled, rather than blocking the delete or deleting the audit row. Because the
+  audit feed renders "by &lt;name&gt;" only by joining `actor_profile_id` to a
+  live profile, nulling that link alone would strip actor attribution from every
+  past action of a deleted profile. So `audit_events` also gains a **denormalized
+  actor descriptor** (name + email) captured at write time — backfilled from
+  current profiles in the same migration — so attribution is durable and survives
+  both the FK null and the profile's deletion.
 - **No Super Admin profile is ever a target.** Permanent deletion forbids
   targeting any `super_admin` row (not just self and bootstrap), matching the
   existing `super_admin_set_profile_status` `forbidden_target` guard. Permanent
@@ -74,9 +80,11 @@ The bounds — "anything" means anything *except* the documented exceptions:
   `super_admin_*` SECURITY DEFINER delete RPC that snapshots-then-deletes, writes
   the paired `audit_events` row, and surfaces blocking dependents as a mapped
   error token.
-- One schema change beyond the new table: `audit_events.actor_profile_id` gains
-  `on delete set null`, so deleting a profile preserves its audit events with a
-  null actor instead of being permanently blocked by them.
+- Two schema changes beyond the new table: `audit_events.actor_profile_id` gains
+  `on delete set null`, and `audit_events` gains a denormalized actor descriptor
+  (name + email) written at insert time and backfilled for existing rows — so a
+  deleted profile's past actions keep their attribution in the audit feed even
+  after the FK is nulled.
 - "Delete" is now an overloaded word: Archive (the reversible default) vs
   Permanent deletion (this hatch). CONTEXT.md disambiguates both, plus Tombstone.
 - The archive-everywhere model is intact; this is the single, audited, bounded
