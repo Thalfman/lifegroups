@@ -29,26 +29,33 @@ The bounds — "anything" means anything *except* the documented exceptions:
 
 - **Scope is curated**, not every table. Operational entities only. Private Care
   Notes and audit/tombstone rows are off-limits.
-- **Dependents block, they do not cascade.** The RPC must **preflight every
-  dependent row regardless of its FK action** — `on delete cascade` and
-  `set null` rows count as blockers too, not just `on delete restrict`. Relying
-  on DB `restrict` alone would let cascade FKs (e.g. `group_leaders`,
-  `group_memberships`, and the `group_id` history tables) silently erase children
-  with no tombstone before any block could fire. The RPC refuses when any
-  dependent exists and reports what is blocking; the operator clears or reassigns
-  first. No silent cascade through care history. **Two carve-outs to this rule:**
-  - `audit_events.actor_profile_id` is **not** a blocker. It is the one FK
-    deliberately handled by the `on delete set null` + actor-descriptor strategy
-    below, so an audited profile stays deletable; the rule would otherwise
-    contradict itself (audit rows are off-limits to clear, so an authored audit
-    event would block the profile forever).
-  - **Confidential dependents block opaquely.** Private Care Note rows (SC.4)
-    must never have their existence, count, or key-slot metadata reported to the
-    Super Admin — that would leak through the security-definer preflight and
-    breach ADR 0002/0003 ("not visible to the Super Admin either"). When a
-    private-note dependent blocks a delete, the report is an opaque "this person
-    has confidential records that only their owner can remove" — no table, count,
-    or note metadata — and only the creating Ministry Admin can clear it.
+- **Cascade and restrict dependents block; set-null dependents do not.** The
+  RPC preflights dependents by **FK action**, because the action encodes the
+  schema's intent:
+  - `on delete cascade` → **blocker.** Relying on the DB would silently erase
+    real child rows (e.g. `group_leaders`, `group_memberships`, the `group_id`
+    history tables) with no tombstone. The RPC refuses and reports them so the
+    operator archives/clears them first. No silent cascade through care history.
+  - `on delete restrict` → **blocker** (the DB enforces it anyway); reported the
+    same way.
+  - `on delete set null` → **not a blocker.** These FKs were deliberately
+    designed to null and let the row outlive its author (e.g.
+    `launch_planning_scenarios.created_by/updated_by`, multiplication/leader
+    pipeline rows, church-attendance snapshots, group-health assessments, and
+    `audit_events.actor_profile_id`). Blocking on them would make any Ministry
+    Admin who ever authored an operational row undeletable, contradicting the
+    schema. They null on delete as intended. Where a nulled reference would lose
+    information that matters — only `audit_events` today — we preserve it with a
+    durable descriptor (see Users below) rather than blocking.
+- **Private Care Notes are a permanent blocker.** A profile or care profile that
+  has SC.4 private-note rows **cannot be permanently deleted** — `disable` is the
+  path instead. SC.4 has no note hard-delete (the note RPC only upserts
+  ciphertext; lifecycle RPCs only drop key slots), so there is genuinely no
+  operator-clearable path, and the notes escape the Super Admin entirely (ADR
+  0002/0003). The block is reported **opaquely** — "this person has confidential
+  records and cannot be permanently deleted; disable instead" — with no table,
+  count, or key-slot metadata, so the security-definer preflight cannot leak
+  private-note existence to the Super Admin.
 - **Every deletion writes both a tombstone and an `audit_events` row.** The
   tombstone is a full JSON snapshot of the row(s) captured before removal, making
   the act recoverable by re-import. It does **not** replace the paired
@@ -57,18 +64,19 @@ The bounds — "anything" means anything *except* the documented exceptions:
   stays in the canonical immutable audit feed and existing audit tooling.
 - **Users are `public.profiles` rows only.** `auth.users` is never touched, so
   the no-service-role-key invariant holds. Disable/re-enable
-  (`set_profile_status`) remains the normal lever for logins. Because
-  `audit_events.actor_profile_id` references `profiles(id)` and audit rows are
-  off-limits, deleting a profile that has performed audited actions would
-  otherwise be impossible (an unclearable blocker). We migrate that FK to
-  **`on delete set null`** so the audit event survives with its actor link
-  nulled, rather than blocking the delete or deleting the audit row. Because the
-  audit feed renders "by &lt;name&gt;" only by joining `actor_profile_id` to a
-  live profile, nulling that link alone would strip actor attribution from every
-  past action of a deleted profile. So `audit_events` also gains a **denormalized
-  actor descriptor** (name + email) captured at write time — backfilled from
-  current profiles in the same migration — so attribution is durable and survives
-  both the FK null and the profile's deletion.
+  (`set_profile_status`) remains the normal lever for logins.
+  `audit_events.actor_profile_id` currently has no on-delete clause (so it would
+  block like `restrict`); we migrate it to **`on delete set null`** so it falls
+  under the set-null "not a blocker" rule above and the audit event survives with
+  its actor link nulled. Because the audit feed renders "by &lt;name&gt;" only by
+  joining `actor_profile_id` to a live profile, nulling that link alone would
+  strip actor attribution from every past action of a deleted profile. So
+  `audit_events` — **and its `audit_events_archive` mirror, plus the reset RPC
+  that copies rows into it** — also gain a **denormalized actor descriptor**
+  (name + email) captured at write time and backfilled from current profiles in
+  the same migration. Without the archive carrying the descriptor, a Super Admin
+  could reset audit logs and then delete the actor, re-introducing the same lost
+  attribution in the archived history.
 - **No Super Admin profile is ever a target.** Permanent deletion forbids
   targeting any `super_admin` row (not just self and bootstrap), matching the
   existing `super_admin_set_profile_status` `forbidden_target` guard. Permanent
@@ -92,11 +100,15 @@ The bounds — "anything" means anything *except* the documented exceptions:
   `super_admin_*` SECURITY DEFINER delete RPC that snapshots-then-deletes, writes
   the paired `audit_events` row, and surfaces blocking dependents as a mapped
   error token.
-- Two schema changes beyond the new table: `audit_events.actor_profile_id` gains
-  `on delete set null`, and `audit_events` gains a denormalized actor descriptor
-  (name + email) written at insert time and backfilled for existing rows — so a
-  deleted profile's past actions keep their attribution in the audit feed even
-  after the FK is nulled.
+- Schema changes beyond the new table: `audit_events.actor_profile_id` gains
+  `on delete set null`, and both `audit_events` and `audit_events_archive` (plus
+  the audit-reset copy RPC) gain a denormalized actor descriptor (name + email)
+  written at insert time and backfilled for existing rows — so a deleted
+  profile's past actions keep their attribution in the live feed and the archive.
+- Some profiles cannot be permanently deleted, by design: any profile with
+  cascade/restrict dependents (until cleared) and any profile or care profile
+  with SC.4 private notes (no clear path exists — `disable` instead). This is an
+  accepted limit, not a gap.
 - "Delete" is now an overloaded word: Archive (the reversible default) vs
   Permanent deletion (this hatch). CONTEXT.md disambiguates both, plus Tombstone.
 - The archive-everywhere model is intact; this is the single, audited, bounded
