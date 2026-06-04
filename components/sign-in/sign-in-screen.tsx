@@ -79,10 +79,7 @@ export function SignInScreen() {
             margin: 0,
           }}
         >
-          Welcome back.{" "}
-          <em style={{ fontStyle: "italic", color: "var(--c-ink2)" }}>
-            Let&rsquo;s lead well.
-          </em>
+          Welcome back.
         </h1>
 
         <div
