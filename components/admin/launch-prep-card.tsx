@@ -210,7 +210,10 @@ export function LaunchPrepCard({
                     state.value.clearedRows === 1 ? "" : "s"
                   } of history`
                 : "History was already clear"}
-              {" · "}launch warnings hidden. A snapshot was saved for recovery.
+              {" · "}launch warnings hidden.
+              {state.value.snapshotId
+                ? " A snapshot was saved for recovery."
+                : ""}
             </span>
           ) : null}
         </div>
