@@ -108,6 +108,8 @@ function mapRpcToken(message: string): { code: string; status: number } {
     return { code: "invitation_revoked", status: 410 };
   if (message.includes("invitation_used"))
     return { code: "invitation_used", status: 409 };
+  if (message.includes("rate_limited"))
+    return { code: "rate_limited", status: 429 };
   if (message.includes("email_taken"))
     return { code: "email_unavailable", status: 409 };
   if (message.includes("forbidden_target"))
@@ -143,22 +145,6 @@ Deno.serve(async (req: Request) => {
     return fail("missing_edge_function_env", 500);
   }
 
-  // Server-only gate. This function is public (verify_jwt=false) because the
-  // invite token is the credential, but the only legitimate caller is the Next
-  // server action — the invitee's browser never hits this URL directly. When
-  // INVITE_REDEEM_SECRET is configured we require the action to present it, so a
-  // direct POST to the function URL can't bypass the per-IP rate limit enforced
-  // in the action. Enforce-if-configured (matching the repo's rate-limit /
-  // SITE_URL posture): unset in local/preview means open, but production must
-  // set it on both the function and the Next runtime.
-  const expectedSecret = Deno.env.get("INVITE_REDEEM_SECRET") ?? "";
-  if (expectedSecret) {
-    const presented = req.headers.get("x-invite-secret") ?? "";
-    if (presented !== expectedSecret) {
-      return fail("unauthorized", 401);
-    }
-  }
-
   let parsed: any;
   try {
     parsed = await req.json();
@@ -180,6 +166,36 @@ Deno.serve(async (req: Request) => {
   const service = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // Always-on, DB-backed per-IP throttle. This function is public, so the only
+  // way to bound a direct POST (which skips the Next action's rate limit) is to
+  // throttle here. Supabase's edge gateway (Envoy, use_remote_address=true)
+  // APPENDS the real connection IP to x-forwarded-for, so the trusted client IP
+  // is the LAST hop — not the first, which a caller can spoof by prepending
+  // entries. We therefore key on the last hop: for a direct attacker that's
+  // their real connection IP (not forgeable here); for the normal browser flow
+  // it's the Vercel egress IP (the fine-grained per-invitee limit already runs
+  // in the action). A generous ceiling avoids nuisance-throttling legitimate
+  // shared-egress traffic while still capping a single abusive IP. Fail open on
+  // a throttle backend error so a transient DB hiccup can't take signup down.
+  const xff = req.headers.get("x-forwarded-for") ?? "";
+  const hops = xff
+    .split(",")
+    .map((h) => h.trim())
+    .filter((h) => h.length > 0);
+  const peerIp =
+    hops.length > 0
+      ? hops[hops.length - 1]
+      : req.headers.get("x-real-ip")?.trim() || "";
+  if (peerIp) {
+    const { data: allowed, error: rateErr } = await service.rpc(
+      "check_invite_redeem_rate",
+      { p_key: peerIp, p_limit: 100, p_window_seconds: 900 }
+    );
+    if (!rateErr && allowed === false) {
+      return fail("rate_limited", 429);
+    }
+  }
 
   const tokenHash = await sha256Hex(token);
 
