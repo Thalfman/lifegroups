@@ -23,7 +23,8 @@ export function LeaderProfileForm() {
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
-        Leaders record attendance and pulses. This form creates the profile row.
+        Creates a leader profile in the directory. Place them in a group and
+        track their care from the person&rsquo;s tabs.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
