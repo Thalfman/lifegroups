@@ -7,6 +7,7 @@ import {
 } from "./calendar-occurrence-editor";
 import {
   WEEKDAY_HEADERS,
+  dateLabel,
   dayNumberLabel,
   formatClock,
   gridCellsForMonth,
@@ -16,6 +17,7 @@ import {
 import {
   eventDisplayLabel,
   friendlyEventStatusLabel,
+  friendlyEventTypeLabel,
 } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
@@ -23,6 +25,38 @@ function statusTone(status: ResolvedOccurrence["status"]): PTone {
   if (status === "off") return "pause";
   if (status === "cancelled") return "followup";
   return "healthy";
+}
+
+// Build an explicit, meaningful accessible name for a calendar cell's edit
+// trigger (#322). Without it the button's name is the concatenated child text
+// (day # + "Today" + type + clock + status + "Special"), which reads as a
+// run-on string. For a date with an occurrence we summarize it ("Edit
+// Saturday, May 16 — Study, 6:00 PM, Scheduled"); an empty editable date reads
+// "Add event on <date>". The date keeps the name unique across the grid, and
+// type/status keep it unique when two groups collide on the same date.
+function buildTriggerAriaLabel(
+  occurrence: ResolvedOccurrence | null,
+  date: string,
+  groupMeetingTime: string | null
+): string {
+  const friendlyDate = dateLabel(date);
+  if (!occurrence) return `Add event on ${friendlyDate}`;
+  const typeLabel = eventDisplayLabel({
+    title: occurrence.title,
+    event_type: occurrence.eventType,
+  });
+  const clock =
+    formatClock(occurrence.meetingTime) ?? formatClock(groupMeetingTime);
+  const statusLabel = friendlyEventStatusLabel(occurrence.status);
+  // Lead with the (possibly title-overridden) display label, then the canonical
+  // gathering type when a custom title masks it, so the name stays meaningful.
+  const canonicalType = friendlyEventTypeLabel(occurrence.eventType);
+  const typePart =
+    typeLabel === canonicalType ? typeLabel : `${typeLabel} (${canonicalType})`;
+  const parts = [typePart];
+  if (clock && occurrence.status === "scheduled") parts.push(clock);
+  parts.push(statusLabel);
+  return `Edit ${friendlyDate} — ${parts.join(", ")}`;
 }
 
 // Phase 5A.6 (corrected) monthly calendar grid. Generates the cells for
@@ -172,7 +206,10 @@ function GridCellView({
         ) : null}
       </div>
       {occurrence ? (
-        <OccurrencePill occurrence={occurrence} groupMeetingTime={groupMeetingTime} />
+        <OccurrencePill
+          occurrence={occurrence}
+          groupMeetingTime={groupMeetingTime}
+        />
       ) : null}
     </div>
   );
@@ -181,17 +218,16 @@ function GridCellView({
   // dates with no row yet (default cadence occurrence, or a fresh
   // non-meeting date). The editor uses overrideId === null to decide
   // between create and update.
-  const editorOccurrence: CalendarOccurrenceEditorOccurrence =
-    occurrence ?? {
-      date: cell.date,
-      meetingTime: groupMeetingTime,
-      eventType: "study",
-      status: "scheduled",
-      title: null,
-      description: null,
-      overrideId: null,
-      isMeetingOccurrence: false,
-    };
+  const editorOccurrence: CalendarOccurrenceEditorOccurrence = occurrence ?? {
+    date: cell.date,
+    meetingTime: groupMeetingTime,
+    eventType: "study",
+    status: "scheduled",
+    title: null,
+    description: null,
+    overrideId: null,
+    isMeetingOccurrence: false,
+  };
 
   const wrapperStyle: React.CSSProperties = {
     border: `1px solid ${P.line}`,
@@ -202,6 +238,12 @@ function GridCellView({
     width: "100%",
   };
 
+  const triggerAriaLabel = buildTriggerAriaLabel(
+    occurrence,
+    cell.date,
+    groupMeetingTime
+  );
+
   return (
     <CalendarOccurrenceEditor
       groupId={groupId}
@@ -209,6 +251,7 @@ function GridCellView({
       occurrence={editorOccurrence}
       actions={actions}
       triggerLabel={cellInner}
+      triggerAriaLabel={triggerAriaLabel}
       triggerStyle={wrapperStyle}
       canEdit={canEdit}
       disabledReason={disabledReason}
@@ -225,7 +268,9 @@ function OccurrencePill({
   groupMeetingTime: string | null;
 }) {
   const clock =
-    formatClock(occurrence.meetingTime) ?? formatClock(groupMeetingTime) ?? null;
+    formatClock(occurrence.meetingTime) ??
+    formatClock(groupMeetingTime) ??
+    null;
   const typeLabel = eventDisplayLabel({
     title: occurrence.title,
     event_type: occurrence.eventType,
@@ -272,7 +317,9 @@ function OccurrencePill({
       ) : null}
       {occurrence.status !== "scheduled" ? (
         <div>
-          <PBadge tone={tone}>{friendlyEventStatusLabel(occurrence.status)}</PBadge>
+          <PBadge tone={tone}>
+            {friendlyEventStatusLabel(occurrence.status)}
+          </PBadge>
         </div>
       ) : null}
       {!occurrence.isMeetingOccurrence ? (
@@ -307,13 +354,15 @@ export function describeSchedule(opts: {
   const cadenceFragments: string[] = [];
   if (opts.meetingFrequency === "weekly") cadenceFragments.push("weekly");
   if (opts.meetingFrequency === "biweekly") {
-    if (opts.meetingWeekParity === "odd") cadenceFragments.push("bi-weekly · odd weeks");
+    if (opts.meetingWeekParity === "odd")
+      cadenceFragments.push("bi-weekly · odd weeks");
     else if (opts.meetingWeekParity === "even")
       cadenceFragments.push("bi-weekly · even weeks");
     else cadenceFragments.push("bi-weekly (parity not set)");
   }
   if (opts.meetingFrequency === "monthly") cadenceFragments.push("monthly");
-  const cadence = cadenceFragments.length > 0 ? ` (${cadenceFragments.join(" ")})` : "";
+  const cadence =
+    cadenceFragments.length > 0 ? ` (${cadenceFragments.join(" ")})` : "";
   return (
     <>
       Meets <strong style={{ color: P.ink }}>{opts.meetingDay}s</strong> at{" "}
