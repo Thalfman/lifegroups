@@ -1,84 +1,39 @@
-import Link from "next/link";
-import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { requireAdmin } from "@/lib/auth/session";
-import { loadLaunchPlanningData } from "@/components/admin/launch-planning/launch-planning-data";
-import { buildLaunchPlanningPanels } from "@/components/admin/launch-planning/launch-planning-panels";
-import { LaunchPlanningShell } from "@/components/admin/launch-planning/launch-planning-shell";
-import { fontBody, P } from "@/lib/pastoral";
+import { PlanningView } from "@/components/admin/planning/planning-view";
+import { monthBounds } from "@/lib/calendar/occurrences";
+import { churchMonthIso } from "@/lib/shared/church-time";
 
+// Frozen /admin/launch-planning alias (ADR 0013, #329). This is a THIN entry to
+// the canonical Planning shell: it renders the shared PlanningView at the
+// Launches tab. Alias-render — a 200 at the matching tab, never a 302 redirect —
+// so the surface keeps its own URL but shares ONE loader + shell with the
+// canonical /admin/planning route. The sidebar marks Planning active for this
+// URL via the alias→canonical map (#321).
 export const dynamic = "force-dynamic";
 
-// ADR 0010 surface-budget consolidation: this single surface answers one job —
-// "how many groups can we launch, and when" — and absorbs the former Capacity
-// board and Multiplication surfaces (both old routes now redirect here). The
-// data loader and tab panels are shared with the Planning area (#303); this
-// frozen route keeps its path and its progressive-disclosure shell unchanged.
-export default async function AdminLaunchPlanningPage() {
-  await requireAdmin();
-  const data = await loadLaunchPlanningData();
-  const panels = buildLaunchPlanningPanels(data);
+type SearchParams = { month?: string | string[] };
+
+function pickMonthParam(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== "string") return null;
+  if (!/^\d{4}-\d{2}$/.test(raw)) return null;
+  return monthBounds(raw) ? raw : null;
+}
+
+export default async function AdminLaunchPlanningPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  const session = await requireAdmin();
+  const params = (await searchParams) ?? {};
+  const monthIso = pickMonthParam(params.month) ?? churchMonthIso();
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Launch planning"
-        title="Capacity"
-        italic="planning"
-        lede="How many Life Groups we can launch, and when — group capacity, expected growth, staffing supply, and the multiplication pipeline in one place."
-      />
-      <PageBody>
-        <div style={{ display: "grid", gap: 24 }}>
-          <LaunchPlanningShell
-            baseline={data.assumptions}
-            notice={panels.notice}
-            warnings={panels.warnings}
-            answer={panels.answer}
-            overview={panels.overview}
-            forecast={panels.forecast}
-            scenarios={panels.scenarios}
-            groups={panels.groups}
-          />
-
-          <nav
-            aria-label="Related admin surfaces"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              alignItems: "center",
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-            }}
-          >
-            <span style={{ color: P.ink3 }}>Related:</span>
-            <Link
-              href="/admin/leader-pipeline"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Leader pipeline
-            </Link>
-            <Link
-              href="/admin/groups"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Groups
-            </Link>
-            <Link
-              href="/admin/settings"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Settings
-            </Link>
-            <Link
-              href="/admin/shepherd-care"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Leader care
-            </Link>
-          </nav>
-        </div>
-      </PageBody>
-    </>
+    <PlanningView
+      monthIso={monthIso}
+      viewerId={session.profile.id}
+      initialTab="launches"
+    />
   );
 }
