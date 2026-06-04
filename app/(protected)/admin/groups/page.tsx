@@ -4,7 +4,7 @@ import {
   type GroupHealthSignals,
   type GroupManagementData,
 } from "@/components/admin/group-management-shell";
-import { requireAdmin } from "@/lib/auth/session";
+import { getCurrentSession, requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchActiveMemberships,
@@ -182,6 +182,12 @@ async function loadData(): Promise<GroupManagementData> {
 
 export default async function AdminGroupsPage() {
   await requireAdmin();
+  // The signed-in admin's profile id, used only to scope this browser's saved
+  // card⇄table view preference so two admins sharing a device don't inherit
+  // each other's choice (#325). getCurrentSession is React-cached, so this
+  // re-uses the lookup requireAdmin just performed rather than re-reading.
+  const session = await getCurrentSession();
+  const viewerId = session.kind === "authenticated" ? session.profile.id : null;
   const data = await loadData();
 
   return (
@@ -193,7 +199,7 @@ export default async function AdminGroupsPage() {
         lede="The single home for group setup, health, capacity, and lifecycle. Each group's standing reads as four independent labels — lifecycle, setup, health (the Group-Health Grade), and capacity. Open a group for its Health, Attendance, Follow-ups, and Events."
       />
       <PageBody>
-        <GroupManagementShell data={data} />
+        <GroupManagementShell data={data} viewerId={viewerId} />
       </PageBody>
     </>
   );
