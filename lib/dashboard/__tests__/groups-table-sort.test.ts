@@ -121,6 +121,17 @@ describe("sortGroupsTableRows / compareGroupsBy", () => {
       // needs_attention leads not_assessed even when neither carries a grade.
       expect(order(rows, "health", "asc")).toEqual(["concern", "plain"]);
     });
+
+    it("keeps ungraded rows last when descending", () => {
+      const rows = [
+        row({ name: "a", healthGrade: "A", health: "no_concerns" }),
+        row({ name: "none", healthGrade: null, health: "not_assessed" }),
+        row({ name: "d", healthGrade: "D", health: "needs_attention" }),
+      ];
+      // Desc flips the graded order (best grade first) but "not assessed" must
+      // not ride to the top — it stays last in both directions.
+      expect(order(rows, "health", "desc")).toEqual(["a", "d", "none"]);
+    });
   });
 
   describe("capacity column", () => {
@@ -157,6 +168,21 @@ describe("sortGroupsTableRows / compareGroupsBy", () => {
         row({ name: "noday", meetingDayIndex: null, meetingMinutes: null }),
       ];
       expect(order(rows, "meeting", "desc")).toEqual(["wed", "mon", "noday"]);
+    });
+
+    it("keeps an unset time last within a shared day when descending", () => {
+      const rows = [
+        row({ name: "early", meetingDayIndex: 3, meetingMinutes: 18 * 60 }),
+        row({ name: "late", meetingDayIndex: 3, meetingMinutes: 20 * 60 }),
+        row({ name: "notime", meetingDayIndex: 3, meetingMinutes: null }),
+      ];
+      // Desc flips the timed groups (late before early) but the group with no
+      // meeting time set stays last for that day rather than leading it.
+      expect(order(rows, "meeting", "desc")).toEqual([
+        "late",
+        "early",
+        "notime",
+      ]);
     });
   });
 

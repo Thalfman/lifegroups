@@ -939,6 +939,7 @@ function GroupsTable({
                       <RestoreGroupButton
                         groupId={group.id}
                         groupName={group.name}
+                        ariaLabel={`Restore ${groupLabel}`}
                       />
                     ) : (
                       <>
@@ -1206,7 +1207,11 @@ const GroupCard = memo(function GroupCard({
             View group
           </Link>
           {isArchived ? (
-            <RestoreGroupButton groupId={group.id} groupName={group.name} />
+            <RestoreGroupButton
+              groupId={group.id}
+              groupName={group.name}
+              ariaLabel={`Restore ${groupLabel}`}
+            />
           ) : (
             <>
               <Link

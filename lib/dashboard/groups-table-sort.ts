@@ -117,67 +117,96 @@ function missingLastVerdict(
   return null; // both present
 }
 
-// The flippable value comparison for one column: returns the ascending ordering
-// of the two rows on that column ALONE (no missing-handling, no name tie-break),
-// which the caller negates for a descending sort. Rows that tie on the column
-// return 0 here and fall through to the direction-invariant name tie-break.
+// Compare one optional dimension with the file's two invariants baked in:
+// a missing value ALWAYS trails a present one (both directions), and two
+// present values order ascending then flip for a descending sort. Returns 0
+// when both are missing or the present values tie, so the caller can fall
+// through to the next dimension (e.g. meeting time after day) or the name
+// tie-break. Threading `dir` here — rather than negating the whole column
+// result downstream — is what keeps "missing last" from flipping to the top
+// on a descending click.
+function compareOptionalDimension(
+  aValue: number | null,
+  bValue: number | null,
+  dir: GroupsTableSortDir
+): number {
+  const verdict = missingLastVerdict(aValue === null, bValue === null);
+  if (verdict !== null) {
+    // Exactly one missing → that row trails, invariant of direction. Both
+    // missing → 0, defer to the next dimension / tie-break.
+    if (verdict !== 0) return verdict;
+    return 0;
+  }
+  const value = (aValue as number) - (bValue as number);
+  return dir === "asc" ? value : -value;
+}
+
+// The fully-directed comparison for one column: missing values are held last
+// invariantly (via compareOptionalDimension), present values flip for a
+// descending sort, and rows that tie on the column return 0 so the caller can
+// apply the always-ascending name tie-break. Unlike the prior design, this
+// returns the final directed result for the column — the caller never negates
+// it — so columns with a secondary optional dimension (meeting time after day)
+// or an optional primary value (health grade) keep their missing rows last in
+// BOTH directions instead of flipping to the top on a descending click.
 function compareColumnValue(
   key: GroupsTableSortKey,
   a: GroupsTableSortRow,
-  b: GroupsTableSortRow
+  b: GroupsTableSortRow,
+  dir: GroupsTableSortDir
 ): number {
+  const flip = dir === "asc" ? 1 : -1;
   switch (key) {
     case "group":
       // The name IS the value here, so it flips with direction (unlike the
       // tie-break, which stays ascending for every other column).
-      return a.name.localeCompare(b.name);
-    case "leader":
-      // Both leaders are present here (missing handled before this is called).
-      return (a.leaderText ?? "").localeCompare(b.leaderText ?? "");
+      return flip * a.name.localeCompare(b.name);
+    case "leader": {
+      const verdict = missingLastVerdict(
+        a.leaderText === null,
+        b.leaderText === null
+      );
+      // Unassigned leaders trail invariantly; assigned ones flip with direction.
+      if (verdict !== null && verdict !== 0) return verdict;
+      return flip * (a.leaderText ?? "").localeCompare(b.leaderText ?? "");
+    }
     case "setup":
-      return SETUP_RANK[a.setup] - SETUP_RANK[b.setup];
+      return flip * (SETUP_RANK[a.setup] - SETUP_RANK[b.setup]);
     case "health": {
+      // An ungraded ("not assessed") grade is missing, not an extreme: when
+      // exactly one row is ungraded it trails in BOTH directions rather than
+      // riding to the top of a descending sort.
+      const verdict = missingLastVerdict(
+        a.healthGrade === null,
+        b.healthGrade === null
+      );
+      if (verdict !== null && verdict !== 0) return verdict;
+      // Both graded (flip with direction) — or both ungraded, the ∞ − ∞ = NaN
+      // case that falls through to the coarse category rank below.
       const byGrade = gradeRank(a.healthGrade) - gradeRank(b.healthGrade);
-      // Both graded with different grades: that decides it. Both ungraded (the
-      // ∞ − ∞ = NaN case) or equal grade: fall back to the coarse category rank
-      // so a needs-attention-but-ungraded group still leads a plain not-assessed.
-      if (Number.isFinite(byGrade) && byGrade !== 0) return byGrade;
+      if (Number.isFinite(byGrade) && byGrade !== 0) return flip * byGrade;
+      // Equal grade, or both ungraded: a needs-attention group still leads a
+      // plain not-assessed. Kept direction-invariant so the "more concern
+      // first" refinement reads the same whichever way the column is sorted.
       return HEALTH_CATEGORY_RANK[a.health] - HEALTH_CATEGORY_RANK[b.health];
     }
     case "capacity":
-      return CAPACITY_RANK[a.capacity] - CAPACITY_RANK[b.capacity];
+      return flip * (CAPACITY_RANK[a.capacity] - CAPACITY_RANK[b.capacity]);
     case "meeting": {
-      // Day leads, time breaks the day tie. Each leg sorts its own missing value
-      // last (handled at the column level for the day; time falls through here).
-      const dayMissing = missingLastVerdict(
-        a.meetingDayIndex === null,
-        b.meetingDayIndex === null
+      // Day leads, time breaks the day tie. Each leg holds its own missing
+      // value last invariantly (a set day with no time stays after the timed
+      // groups on that day, in both directions).
+      const byDay = compareOptionalDimension(
+        a.meetingDayIndex,
+        b.meetingDayIndex,
+        dir
       );
-      if (dayMissing !== null && dayMissing !== 0) return dayMissing;
-      const byDay = (a.meetingDayIndex ?? 0) - (b.meetingDayIndex ?? 0);
       if (byDay !== 0) return byDay;
-      const timeMissing = missingLastVerdict(
-        a.meetingMinutes === null,
-        b.meetingMinutes === null
-      );
-      if (timeMissing !== null && timeMissing !== 0) return timeMissing;
-      return (a.meetingMinutes ?? 0) - (b.meetingMinutes ?? 0);
+      return compareOptionalDimension(a.meetingMinutes, b.meetingMinutes, dir);
     }
     case "checkin":
-      return a.checkinRank - b.checkinRank;
+      return flip * (a.checkinRank - b.checkinRank);
   }
-}
-
-// Whether a row has no value for the column's primary missing check. Only the
-// columns whose primary value is genuinely optional (leader, meeting day) gate
-// on this; the categorical columns always have a value.
-function isColumnValueMissing(
-  key: GroupsTableSortKey,
-  row: GroupsTableSortRow
-): boolean {
-  if (key === "leader") return row.leaderText === null;
-  if (key === "meeting") return row.meetingDayIndex === null;
-  return false;
 }
 
 // Public comparator factory. Returns an Array.prototype.sort comparator for the
@@ -190,14 +219,7 @@ export function compareGroupsBy(
   dir: GroupsTableSortDir
 ): (a: GroupsTableSortRow, b: GroupsTableSortRow) => number {
   return (a, b) => {
-    const missing = missingLastVerdict(
-      isColumnValueMissing(key, a),
-      isColumnValueMissing(key, b)
-    );
-    if (missing !== null && missing !== 0) return missing;
-
-    const value = compareColumnValue(key, a, b);
-    const directed = dir === "asc" ? value : -value;
+    const directed = compareColumnValue(key, a, b, dir);
     if (directed !== 0) return directed;
 
     // Universal, always-ascending tie-break: keep equal rows in a stable,
