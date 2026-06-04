@@ -36,17 +36,29 @@ The bounds — "anything" means anything *except* the documented exceptions:
     real child rows (e.g. `group_leaders`, `group_memberships`, the `group_id`
     history tables) with no tombstone. The RPC refuses and reports them so the
     operator archives/clears them first. No silent cascade through care history.
-  - `on delete restrict` → **blocker** (the DB enforces it anyway); reported the
-    same way.
+  - `on delete restrict` **and `no action` (the Postgres default, i.e. a plain
+    `references …` with no `on delete` clause)** → **blocker.** They behave
+    identically at the DB (the delete is refused), and several live FKs are the
+    bare default — `attendance_sessions.submitted_by`, `guests.follow_up_owner_id`,
+    `group_calendar_events.created_by/updated_by`, `group_history.changed_by`. The
+    preflight must bucket these as blockers and report them; otherwise the RPC
+    trips a raw DB constraint instead of the mapped blocker it promises. **A
+    dependent counts as a blocker unless its FK is explicitly `set null` or
+    `cascade`.**
   - `on delete set null` → **not a blocker.** These FKs were deliberately
     designed to null and let the row outlive its author (e.g.
     `launch_planning_scenarios.created_by/updated_by`, multiplication/leader
     pipeline rows, church-attendance snapshots, group-health assessments, and
     `audit_events.actor_profile_id`). Blocking on them would make any Ministry
     Admin who ever authored an operational row undeletable, contradicting the
-    schema. They null on delete as intended. Where a nulled reference would lose
-    information that matters — only `audit_events` today — we preserve it with a
-    durable descriptor (see Users below) rather than blocking.
+    schema. They null on delete as intended. **But the tombstone must snapshot
+    every set-null dependent it is about to null** (the child table, row id, and
+    the FK column being cleared) so re-import can re-link them — otherwise
+    nulling links like `follow_ups.related_member_id/related_guest_id/assigned_to`
+    or `leader_pipeline.member_id` would be silent, unrecoverable loss against the
+    recoverability promise. Where a nulled reference also loses display
+    information — only `audit_events` today — we additionally preserve a durable
+    descriptor (see Users below).
 - **Private Care Notes are a permanent blocker.** A profile or care profile that
   has SC.4 private-note rows **cannot be permanently deleted** — `disable` is the
   path instead. SC.4 has no note hard-delete (the note RPC only upserts
@@ -57,8 +69,10 @@ The bounds — "anything" means anything *except* the documented exceptions:
   count, or key-slot metadata, so the security-definer preflight cannot leak
   private-note existence to the Super Admin.
 - **Every deletion writes both a tombstone and an `audit_events` row.** The
-  tombstone is a full JSON snapshot of the row(s) captured before removal, making
-  the act recoverable by re-import. It does **not** replace the paired
+  tombstone is a full JSON snapshot of the deleted row **plus the set-null
+  dependents it nulls** (child table, row id, FK column) captured before removal,
+  so re-import restores both the row and those links. It does **not** replace the
+  paired
   `audit_events` insert: the repo invariant that every RPC mutation writes a
   paired `audit_events` row in the same transaction still holds, so the deletion
   stays in the canonical immutable audit feed and existing audit tooling.
@@ -97,8 +111,9 @@ The bounds — "anything" means anything *except* the documented exceptions:
 ## Consequences
 
 - A new tombstone table (Super-Admin-readable, never deletable) and a new
-  `super_admin_*` SECURITY DEFINER delete RPC that snapshots-then-deletes, writes
-  the paired `audit_events` row, and surfaces blocking dependents as a mapped
+  `super_admin_*` SECURITY DEFINER delete RPC that snapshots the row and its
+  set-null dependents, then deletes, writes the paired `audit_events` row, and
+  surfaces blocking dependents (cascade / restrict / `no action`) as a mapped
   error token.
 - Schema changes beyond the new table: `audit_events.actor_profile_id` gains
   `on delete set null`, and both `audit_events` and `audit_events_archive` (plus
