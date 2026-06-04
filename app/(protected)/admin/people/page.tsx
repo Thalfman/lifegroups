@@ -184,7 +184,7 @@ export default async function AdminPeoplePage() {
         eyebrow="People"
         title="People"
         italic="& apprentices"
-        lede="Everyone involved and how they relate to groups — the directory, leaders, members, and the apprentice pipeline. Access and login details stay secondary. Members are non-login participant records; they never sign in."
+        lede="Everyone involved and how they relate to groups — the directory, leaders, members, and the apprentice pipeline."
       />
       <PageBody>
         <PeopleManagementShell

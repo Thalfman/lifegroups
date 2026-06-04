@@ -152,16 +152,18 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
 
       {showLogin ? (
         <DirectorySection
-          headerEyebrow="Login profiles"
+          headerEyebrow={
+            props.scope === "leaders" ? "Leaders" : "Leaders & oversight"
+          }
           headerTitle={
             props.scope === "leaders"
               ? "Leaders and co-leaders"
-              : "People who sign in"
+              : "Leaders and oversight"
           }
           headerDescription={
             props.scope === "leaders"
-              ? "Current leaders and co-leaders. They sign in to record check-ins and review their groups."
-              : "Ministry admins, leaders, and co-leaders. They sign in to record check-ins and review groups."
+              ? "Current leaders and co-leaders who shepherd their groups."
+              : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
           }
           countLabel={`${visibleProfiles.length} shown`}
           stale={listIsStale}
@@ -170,10 +172,12 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               ? `Couldn't load profiles: ${props.errors.profiles}`
               : visibleProfiles.length === 0
                 ? trimmed || statusFilter !== "all"
-                  ? "No login profiles match the current filters."
+                  ? props.scope === "leaders"
+                    ? "No leaders or co-leaders match the current filters."
+                    : "No leaders or oversight roles match the current filters."
                   : props.scope === "leaders"
                     ? "No leaders or co-leaders yet. Add one from Add Person."
-                    : "No login profiles yet. Add one from Add Person."
+                    : "No leaders or oversight roles yet. Add one from Add Person."
                 : null
           }
         >
@@ -192,8 +196,8 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {showMembers ? (
         <DirectorySection
           headerEyebrow="Members"
-          headerTitle="Participants (non-login)"
-          headerDescription="Members are people in the directory who don't sign in. Leaders mark their attendance and admins place them in groups."
+          headerTitle="Participants"
+          headerDescription="Members are people in the directory. Leaders mark their attendance and admins place them in groups."
           countLabel={`${visibleMembers.length} shown`}
           stale={listIsStale}
           empty={

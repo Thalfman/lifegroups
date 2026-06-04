@@ -23,7 +23,8 @@ import type {
 //
 // Two invariants are pinned here:
 //   1. Those buckets render as actionable CareItemList rows (person + explicit
-//      "View follow-up" action linking into the leader detail page).
+//      verb action linking into the leader detail page — "Resolve follow-up"
+//      for outstanding rows, "View follow-up" for completed ones).
 //   2. The Follow-ups tab in care/page.tsx actually wires area.dueSoon /
 //      area.completed into CareItemList alongside the generic shell — so the
 //      data that is already loaded can't be silently dropped again.
@@ -110,8 +111,11 @@ describe("Shepherd-care follow-up buckets stay actionable under /admin/care (#33
       />
     );
     // The person + an explicit verb action linking into the leader detail page.
+    // An outstanding (due-soon/overdue) follow-up routes to the actionable
+    // "Resolve follow-up" label (#332, care-next-action); only the already-done
+    // completed bucket reads "View follow-up".
     expect(html).toContain("Sue DueSoon");
-    expect(html).toContain("View follow-up");
+    expect(html).toContain("Resolve follow-up");
     expect(html).toContain("/admin/shepherd-care/leader-soon?tab=follow-ups");
     // It is the actual list, not the empty state.
     expect(html).not.toContain("Nothing due soon");

@@ -23,8 +23,8 @@ export function MemberForm() {
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
-        Members are non-auth participant records &mdash; they never sign in.
-        Email and phone are optional; capture whatever the leader already has.
+        Members are participant records. Email and phone are optional; capture
+        whatever the leader already has.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>

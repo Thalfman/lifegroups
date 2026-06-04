@@ -333,15 +333,11 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
 function AccessPanel({ person }: { person: PersonDetail }) {
   return (
     <Card>
-      <PanelHeading
-        title="Access"
-        caption="Login and role details. Shown only for people who sign in."
-      />
+      <PanelHeading title="Access" caption="Role and status details." />
       <DefList
         rows={[
-          { label: "Signs in", value: "Yes — auth-backed profile" },
           { label: "Role", value: person.roleLabel },
-          { label: "Login email", value: person.email ?? "—" },
+          { label: "Email", value: person.email ?? "—" },
           {
             label: "Status",
             value: person.status === "active" ? "Active" : "Inactive",

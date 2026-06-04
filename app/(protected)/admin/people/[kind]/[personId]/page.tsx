@@ -229,7 +229,7 @@ export default async function AdminPersonDetailPage({
         eyebrow="People"
         title={result.person.fullName}
         italic={result.person.roleLabel.toLowerCase()}
-        lede="One person, end to end — overview, group, care, activity, and access. Access and login details stay secondary."
+        lede="One person, end to end — overview, group, care, activity, and access."
       />
       <PageBody>
         <div style={{ display: "grid", gap: 18 }}>

@@ -112,7 +112,9 @@ test.describe("admin People tabs", () => {
       .fill("zzz-no-such-person-zzz");
 
     // The directory reports no matches.
-    await expect(surface.getByText(/No login profiles match/)).toBeVisible();
+    await expect(
+      surface.getByText(/No leaders or oversight roles match/)
+    ).toBeVisible();
     // The add forms are still not on the page.
     expect(await surface.getByText("Add leader profile").count()).toBe(0);
   });
@@ -127,7 +129,7 @@ test.describe("admin People tabs", () => {
       surface.getByRole("heading", { name: "Leaders and co-leaders" })
     ).toBeVisible();
     // The members section is not mounted in the leaders scope.
-    expect(await surface.getByText("Participants (non-login)").count()).toBe(0);
+    expect(await surface.getByText("Participants").count()).toBe(0);
   });
 
   test("the Members tab shows only the participants section", async ({
@@ -136,7 +138,7 @@ test.describe("admin People tabs", () => {
     const surface = page.locator(SURFACE);
     await surface.getByRole("button", { name: "Members" }).click();
 
-    await expect(surface.getByText("Participants (non-login)")).toBeVisible();
+    await expect(surface.getByText("Participants")).toBeVisible();
   });
 
   test("the Apprentices tab reveals the leader pipeline", async ({ page }) => {
