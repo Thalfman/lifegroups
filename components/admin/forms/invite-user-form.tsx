@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { PButton } from "@/components/pastoral/button";
+import { Icon } from "@/components/lg/Icon";
 import {
   superAdminInviteUser,
+  superAdminGenerateInviteLink,
   type InviteUserSuccess,
 } from "@/app/(protected)/admin/super-admin/invite-user-actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { copyToClipboard } from "@/lib/shared/copy-to-clipboard";
 import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import {
+  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
@@ -53,10 +57,68 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
     });
   const [role, setRole] = useState<InviteUserRole>("leader");
 
+  // "Copy invite link" runs outside useActionForm (it returns a credential to
+  // display rather than resetting the form), so it carries its own state.
+  const [linkPending, startLink] = useTransition();
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [linkNote, setLinkNote] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   // useActionForm resets the <form> on success; the role select is React state.
+  // Also clear any stale link UI so a copied link doesn't linger after the
+  // email path resets the form.
   useEffect(() => {
-    if (state?.ok) setRole("leader");
+    if (state?.ok) {
+      setRole("leader");
+      setInviteLink(null);
+      setLinkNote(null);
+      setLinkError(null);
+      setCopied(false);
+    }
   }, [state]);
+
+  function handleCopyExisting() {
+    if (!inviteLink) return;
+    void copyToClipboard(inviteLink).then((ok) => {
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    });
+  }
+
+  function handleGenerateLink() {
+    const form = formRef.current;
+    // Reuse the form's native required-field validation before submitting.
+    if (!form || !form.reportValidity()) return;
+    setLinkError(null);
+    setLinkNote(null);
+    setCopied(false);
+    const fd = new FormData(form);
+    startLink(async () => {
+      const res = await superAdminGenerateInviteLink(fd);
+      if (!res.ok) {
+        setInviteLink(null);
+        setLinkError(res.errors.join(" "));
+        return;
+      }
+      if (res.value.inviteLink) {
+        setInviteLink(res.value.inviteLink);
+        const ok = await copyToClipboard(res.value.inviteLink);
+        if (ok) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      } else {
+        // New-users-only: an existing login was reused, so no link exists.
+        setInviteLink(null);
+        setLinkNote(
+          "Existing login reused — no invite link to copy. Ask them to use Forgot password to set a new password."
+        );
+      }
+    });
+  }
 
   const groupVisible = role === "leader" || role === "co_leader";
 
@@ -211,13 +273,72 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
         This sends a real invite and creates or links a real login profile.
       </p>
 
-      <div>
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="md"
+          disabled={pending || linkPending}
+        >
           {pending ? "Sending invite…" : "Send invite"}
+        </PButton>
+        <PButton
+          type="button"
+          tone="ghost"
+          size="md"
+          onClick={handleGenerateLink}
+          disabled={pending || linkPending}
+        >
+          <Icon name="clipboard" size={16} />
+          {linkPending ? "Generating link…" : "Copy invite link"}
         </PButton>
       </div>
 
       <FormStatus state={state} />
+
+      {linkError ? <p style={errorTextStyle}>{linkError}</p> : null}
+
+      {linkNote ? (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12,
+            color: P.ink2,
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          {linkNote}
+        </p>
+      ) : null}
+
+      {inviteLink ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          <span style={successTextStyle}>
+            Invite link generated and copied to your clipboard. Share it
+            directly — using it sets the person&apos;s password.
+          </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="text"
+              readOnly
+              value={inviteLink}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{ ...fieldInputStyle, fontSize: 12 }}
+              aria-label="Invite link"
+            />
+            <PButton
+              type="button"
+              tone="ghost"
+              size="sm"
+              onClick={handleCopyExisting}
+            >
+              <Icon name={copied ? "check" : "clipboard"} size={16} />
+              {copied ? "Copied!" : "Copy"}
+            </PButton>
+          </div>
+        </div>
+      ) : null}
 
       {state?.ok ? (
         <div style={{ display: "grid", gap: 6 }}>

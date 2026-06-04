@@ -9,18 +9,27 @@
 //   2. Look up the caller's profile via the service-role client; require
 //      status='active' and role='super_admin'.
 //   3. Validate the payload (full_name, email, role, optional phone,
-//      optional group_id; group_id rejected for ministry_admin).
-//   4. Resolve the Supabase Auth user by email; if missing,
-//      `auth.admin.inviteUserByEmail` to send a real invite email.
+//      optional group_id; group_id rejected for ministry_admin; optional
+//      delivery 'email' | 'link', default 'email').
+//   4. Resolve the Supabase Auth user by email; if missing, provision it:
+//      delivery='email' -> `auth.admin.inviteUserByEmail` sends a real
+//      invite email; delivery='link' -> `auth.admin.generateLink` returns
+//      the invite action_link for the super_admin to share directly.
 //   5. Call the SECURITY DEFINER RPC `super_admin_complete_invite` to
 //      relink-or-insert the profile, optionally upsert group_leaders,
 //      and write the audit_events row -- all in one transaction.
 //
-// Never returns passwords, tokens, the service-role key, auth headers,
-// or full env dumps. Errors are redacted of known secret values.
+// On the delivery='link' path the invite `action_link` (a single-use
+// credential) is returned in the success body to the verified super_admin
+// caller only; it is never logged. Otherwise this function never returns
+// passwords, tokens, the service-role key, auth headers, or full env
+// dumps. Errors are redacted of known secret values.
 
 // deno-lint-ignore-file no-explicit-any
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // Minimal structured logger. Mirrors the field conventions in
 // lib/observability/logger.ts but inlined here because Deno cannot resolve
@@ -44,7 +53,12 @@ function logJson(level: LogLevel, ctx: EdgeLogContext): void {
   try {
     line = JSON.stringify(payload);
   } catch {
-    line = JSON.stringify({ ts: payload.ts, level, event: ctx.event, _serialize_error: true });
+    line = JSON.stringify({
+      ts: payload.ts,
+      level,
+      event: ctx.event,
+      _serialize_error: true,
+    });
   }
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
@@ -58,7 +72,12 @@ function emailDomain(email: string): string | null {
 
 type Role = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
 type AuthUserState = "invited" | "existing_reused";
-type GroupAssignmentState = "none" | "created" | "reactivated" | "already_active";
+type GroupAssignmentState =
+  | "none"
+  | "created"
+  | "reactivated"
+  | "already_active";
+type Delivery = "email" | "link";
 
 type InvitePayload = {
   full_name: string;
@@ -66,6 +85,7 @@ type InvitePayload = {
   role: Role;
   phone: string | null;
   group_id: string | null;
+  delivery: Delivery;
 };
 
 type PostgrestErrorPayload = {
@@ -89,6 +109,7 @@ type ResponseBody = {
   role?: Role;
   authUserState?: AuthUserState;
   groupAssignmentState?: GroupAssignmentState;
+  inviteLink?: string;
   warnings: string[];
   errors: string[];
   missing?: string[];
@@ -98,7 +119,8 @@ type ResponseBody = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^(?=[^\d]*\d)[+0-9().\- ]{7,20}$/;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function emptyResponse(): ResponseBody {
   return { ok: false, warnings: [], errors: [] };
@@ -110,7 +132,8 @@ function jsonResponse(body: ResponseBody, status: number): Response {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
     },
   });
@@ -129,13 +152,16 @@ function redact(message: string, secrets: Set<string>): string {
     const escaped = secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     out = out.replace(new RegExp(escaped, "g"), "[REDACTED]");
   }
-  out = out.replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]");
+  out = out.replace(
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+    "[REDACTED_JWT]"
+  );
   return out;
 }
 
 function redactPostgrestError(
   pgErr: PostgrestErrorPayload | null | undefined,
-  secrets: Set<string>,
+  secrets: Set<string>
 ): PostgrestErrorPayload | undefined {
   if (!pgErr) return undefined;
   const safe: PostgrestErrorPayload = {};
@@ -178,14 +204,18 @@ async function padToFloor(startMs: number, floorMs: number): Promise<void> {
 // cap is reached.
 async function findAuthUserByEmail(
   client: SupabaseClient,
-  email: string,
+  email: string
 ): Promise<{ id: string; email: string | null } | null> {
   const target = email.toLowerCase();
   const perPage = 200;
   const maxPages = 500; // 100k users with perPage=200
   for (let page = 1; page <= maxPages; page += 1) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
-    if (error) throw new Error(`listUsers failed on page ${page}: ${error.message}`);
+    const { data, error } = await client.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error)
+      throw new Error(`listUsers failed on page ${page}: ${error.message}`);
     const users = data?.users ?? [];
     const match = users.find((u) => (u.email ?? "").toLowerCase() === target);
     if (match) return { id: match.id, email: match.email ?? null };
@@ -194,12 +224,15 @@ async function findAuthUserByEmail(
   // Tenant exceeds maxPages -- surface as a failure rather than risk a
   // false-negative that would mis-route the flow into "invite new user".
   throw new Error(
-    `listUsers exceeded ${maxPages} pages (perPage=${perPage}); could not confirm whether the email is already registered`,
+    `listUsers exceeded ${maxPages} pages (perPage=${perPage}); could not confirm whether the email is already registered`
   );
 }
 
 type CallerProfileLookup =
-  | { kind: "ok"; row: { id: string; email: string | null; role: string; status: string } }
+  | {
+      kind: "ok";
+      row: { id: string; email: string | null; role: string; status: string };
+    }
   | { kind: "none" }
   | { kind: "duplicate"; count: number }
   | { kind: "error"; pg: PostgrestErrorPayload };
@@ -207,7 +240,7 @@ type CallerProfileLookup =
 async function lookupCallerProfile(
   service: SupabaseClient,
   callerAuthId: string,
-  secrets: Set<string>,
+  secrets: Set<string>
 ): Promise<CallerProfileLookup> {
   const { data: rows, error } = await service
     .from("profiles")
@@ -215,7 +248,8 @@ async function lookupCallerProfile(
     .eq("auth_user_id", callerAuthId)
     .limit(2);
   if (error) {
-    const pg = redactPostgrestError(error as PostgrestErrorPayload, secrets) ?? {};
+    const pg =
+      redactPostgrestError(error as PostgrestErrorPayload, secrets) ?? {};
     return { kind: "error", pg };
   }
   const list = (rows ?? []) as Array<{
@@ -228,10 +262,15 @@ async function lookupCallerProfile(
   if (list.length === 0) return { kind: "none" };
   if (list.length > 1) return { kind: "duplicate", count: list.length };
   const r = list[0];
-  return { kind: "ok", row: { id: r.id, email: r.email, role: r.role, status: r.status } };
+  return {
+    kind: "ok",
+    row: { id: r.id, email: r.email, role: r.role, status: r.status },
+  };
 }
 
-function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { ok: false; errors: string[] } {
+function validatePayload(
+  raw: unknown
+): { ok: true; value: InvitePayload } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { ok: false, errors: ["payload must be an object"] };
@@ -241,9 +280,11 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
   const fullName = typeof r.full_name === "string" ? r.full_name.trim() : "";
   if (fullName.length === 0) errors.push("full_name is required");
 
-  const emailRaw = typeof r.email === "string" ? r.email.trim().toLowerCase() : "";
+  const emailRaw =
+    typeof r.email === "string" ? r.email.trim().toLowerCase() : "";
   if (emailRaw.length === 0) errors.push("email is required");
-  else if (!EMAIL_RE.test(emailRaw)) errors.push("email is not a valid address");
+  else if (!EMAIL_RE.test(emailRaw))
+    errors.push("email is not a valid address");
 
   const role = typeof r.role === "string" ? r.role : "";
   if (
@@ -252,7 +293,9 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
     role !== "leader" &&
     role !== "co_leader"
   ) {
-    errors.push("role must be ministry_admin, over_shepherd, leader, or co_leader");
+    errors.push(
+      "role must be ministry_admin, over_shepherd, leader, or co_leader"
+    );
   }
 
   let phone: string | null = null;
@@ -277,8 +320,22 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
     }
   }
 
-  if ((role === "ministry_admin" || role === "over_shepherd") && groupId !== null) {
+  if (
+    (role === "ministry_admin" || role === "over_shepherd") &&
+    groupId !== null
+  ) {
     errors.push(`${role} profiles cannot be assigned to a group`);
+  }
+
+  // Optional delivery channel for the invite credential; defaults to the
+  // historical email behavior. 'link' returns a copyable action_link instead.
+  let delivery: Delivery = "email";
+  if (r.delivery !== undefined && r.delivery !== null && r.delivery !== "") {
+    if (r.delivery !== "email" && r.delivery !== "link") {
+      errors.push("delivery must be 'email' or 'link'");
+    } else {
+      delivery = r.delivery;
+    }
   }
 
   if (errors.length > 0) return { ok: false, errors };
@@ -290,6 +347,7 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
       role: role as Role,
       phone,
       group_id: groupId,
+      delivery,
     },
   };
 }
@@ -297,27 +355,38 @@ function validatePayload(raw: unknown): { ok: true; value: InvitePayload } | { o
 // Maps a token raised by super_admin_complete_invite to (response code,
 // HTTP status). Anything unknown becomes db_error / 500.
 function mapRpcToken(message: string): { code: string; status: number } {
-  if (message.includes("edge_function_only")) return { code: "edge_function_only", status: 500 };
-  if (message.includes("invalid_actor")) return { code: "invalid_actor", status: 500 };
-  if (message.includes("invalid_role")) return { code: "invalid_payload", status: 400 };
+  if (message.includes("edge_function_only"))
+    return { code: "edge_function_only", status: 500 };
+  if (message.includes("invalid_actor"))
+    return { code: "invalid_actor", status: 500 };
+  if (message.includes("invalid_role"))
+    return { code: "invalid_payload", status: 400 };
   if (message.includes("group_not_allowed_for_ministry_admin"))
     return { code: "invalid_payload", status: 400 };
-  if (message.includes("invalid_input")) return { code: "invalid_payload", status: 400 };
-  if (message.includes("forbidden_target")) return { code: "cannot_modify_super_admin_profile", status: 409 };
-  if (message.includes("missing_group")) return { code: "missing_group", status: 422 };
-  if (message.includes("profile_write_conflict")) return { code: "profile_write_conflict", status: 409 };
+  if (message.includes("invalid_input"))
+    return { code: "invalid_payload", status: 400 };
+  if (message.includes("forbidden_target"))
+    return { code: "cannot_modify_super_admin_profile", status: 409 };
+  if (message.includes("missing_group"))
+    return { code: "missing_group", status: 422 };
+  if (message.includes("profile_write_conflict"))
+    return { code: "profile_write_conflict", status: 409 };
   return { code: "db_error", status: 500 };
 }
 
 // deno-lint-ignore no-explicit-any
-declare const Deno: { env: { get: (k: string) => string | undefined }; serve: (handler: (req: Request) => Promise<Response> | Response) => any };
+declare const Deno: {
+  env: { get: (k: string) => string | undefined };
+  serve: (handler: (req: Request) => Promise<Response> | Response) => any;
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Headers":
+          "authorization, x-client-info, apikey, content-type",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
       },
     });
@@ -330,7 +399,11 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const siteUrl = (Deno.env.get("SITE_URL") ?? Deno.env.get("NEXT_PUBLIC_SITE_URL") ?? "").replace(/\/+$/, "");
+  const siteUrl = (
+    Deno.env.get("SITE_URL") ??
+    Deno.env.get("NEXT_PUBLIC_SITE_URL") ??
+    ""
+  ).replace(/\/+$/, "");
   const secrets = buildSecretSet(serviceRoleKey);
 
   if (req.method !== "POST") {
@@ -351,7 +424,9 @@ Deno.serve(async (req: Request) => {
   logJson("info", {
     event: "invite.attempt",
     request_id: requestId,
-    caller_present: (req.headers.get("Authorization")?.toLowerCase().startsWith("bearer ") ?? false),
+    caller_present:
+      req.headers.get("Authorization")?.toLowerCase().startsWith("bearer ") ??
+      false,
   });
 
   const missing: string[] = [];
@@ -376,7 +451,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  const hasAuthHeader = authHeader?.toLowerCase().startsWith("bearer ") ?? false;
+  const hasAuthHeader =
+    authHeader?.toLowerCase().startsWith("bearer ") ?? false;
   if (!hasAuthHeader) {
     logJson("warn", {
       event: "invite.unauthorized",
@@ -433,7 +509,9 @@ Deno.serve(async (req: Request) => {
     body.code = "invalid_or_expired_session";
     body.message = "Supabase Auth could not verify the bearer token.";
     body.errors.push("invalid_or_expired_session");
-    body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
+    body.errors.push(
+      redact(err instanceof Error ? err.message : String(err), secrets)
+    );
     return jsonResponse(body, 401);
   }
 
@@ -454,7 +532,8 @@ Deno.serve(async (req: Request) => {
     });
     const body = emptyResponse();
     body.code = "profile_lookup_query_failed";
-    body.message = "The Edge Function could not query profiles with the configured elevated key.";
+    body.message =
+      "The Edge Function could not query profiles with the configured elevated key.";
     body.postgrestError = lookup.pg;
     body.errors.push("profile_lookup_query_failed");
     return jsonResponse(body, 500);
@@ -483,7 +562,10 @@ Deno.serve(async (req: Request) => {
     });
     const body = emptyResponse();
     body.code = "duplicate_profiles_for_auth_user";
-    body.duplicateProfileInfo = { authUserId: callerAuthId, rowCountSeen: lookup.count };
+    body.duplicateProfileInfo = {
+      authUserId: callerAuthId,
+      rowCountSeen: lookup.count,
+    };
     body.errors.push("duplicate_profiles_for_auth_user");
     return jsonResponse(body, 409);
   }
@@ -541,16 +623,53 @@ Deno.serve(async (req: Request) => {
   // Auth user resolve / invite.
   let authId: string;
   let authUserState: AuthUserState;
+  // Populated only on the delivery='link' new-user path; surfaced to the
+  // verified super_admin in the success body and never logged.
+  let inviteLink: string | undefined;
   try {
     const existingAuth = await findAuthUserByEmail(service, payload.email);
     if (existingAuth) {
+      // New-users-only: an already-registered login gets no invite link.
       authId = existingAuth.id;
       authUserState = "existing_reused";
-    } else {
-      const { data, error } = await service.auth.admin.inviteUserByEmail(payload.email, {
-        data: { full_name: payload.full_name },
-        redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+    } else if (payload.delivery === "link") {
+      const { data, error } = await service.auth.admin.generateLink({
+        type: "invite",
+        email: payload.email,
+        options: {
+          data: { full_name: payload.full_name },
+          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+        },
       });
+      if (error || !data?.user?.id) {
+        logJson("error", {
+          event: "invite.rpc_failed",
+          outcome: "fail",
+          request_id: requestId,
+          latency_ms: elapsed(),
+          error_code: "invite_failed",
+          stage: "auth_admin_generate_link",
+          actor_profile_id: callerProfile.id,
+          target_email_domain,
+          target_role: payload.role,
+        });
+        const body = emptyResponse();
+        body.code = "invite_failed";
+        body.errors.push("invite_failed");
+        if (error) body.errors.push(redact(error.message, secrets));
+        return jsonResponse(body, 500);
+      }
+      authId = data.user.id;
+      authUserState = "invited";
+      inviteLink = data.properties?.action_link ?? undefined;
+    } else {
+      const { data, error } = await service.auth.admin.inviteUserByEmail(
+        payload.email,
+        {
+          data: { full_name: payload.full_name },
+          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+        }
+      );
       if (error || !data?.user?.id) {
         logJson("error", {
           event: "invite.rpc_failed",
@@ -583,12 +702,17 @@ Deno.serve(async (req: Request) => {
       actor_profile_id: callerProfile.id,
       target_email_domain,
       target_role: payload.role,
-      error_message: redact(err instanceof Error ? err.message : String(err), secrets),
+      error_message: redact(
+        err instanceof Error ? err.message : String(err),
+        secrets
+      ),
     });
     const body = emptyResponse();
     body.code = "invite_failed";
     body.errors.push("invite_failed");
-    body.errors.push(redact(err instanceof Error ? err.message : String(err), secrets));
+    body.errors.push(
+      redact(err instanceof Error ? err.message : String(err), secrets)
+    );
     return jsonResponse(body, 500);
   }
 
@@ -610,7 +734,7 @@ Deno.serve(async (req: Request) => {
       p_phone: payload.phone,
       p_group_id: payload.group_id,
       p_auth_user_state: authUserState,
-    },
+    }
   );
 
   if (rpcErr) {
@@ -632,12 +756,15 @@ Deno.serve(async (req: Request) => {
     body.code = mapped.code;
     body.errors.push(mapped.code);
     body.errors.push(redact(rpcErr.message ?? "rpc failed", secrets));
-    body.postgrestError = redactPostgrestError(rpcErr as PostgrestErrorPayload, secrets);
+    body.postgrestError = redactPostgrestError(
+      rpcErr as PostgrestErrorPayload,
+      secrets
+    );
     // The auth user may have been created above; surface that to the
     // operator so they know retry is safe and will reuse it.
     if (authUserState === "invited") {
       body.warnings.push(
-        "Supabase Auth user was created before the DB write failed; a retry with the same email will reuse it.",
+        "Supabase Auth user was created before the DB write failed; a retry with the same email will reuse it."
       );
     }
     return jsonResponse(body, mapped.status);
@@ -687,5 +814,8 @@ Deno.serve(async (req: Request) => {
     warnings: [],
     errors: [],
   };
+  // Credential — present only on the delivery='link' new-user path. Returned
+  // to the verified super_admin; deliberately absent from all log lines.
+  if (inviteLink) body.inviteLink = inviteLink;
   return jsonResponse(body, 200);
 });
