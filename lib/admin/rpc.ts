@@ -218,6 +218,17 @@ export function rpcSuperAdminCleanSlateImport(
   return callUuidRpc(client, "super_admin_clean_slate_import", args);
 }
 
+// PRD-SAC6 follow-up: one-click launch prep. In one transaction the RPC mutes
+// the three launch-optics warning flags, runs the Clean Slate history wipe
+// (idempotent — nothing_to_wipe is swallowed), and purges the per-category
+// history-reset snapshots. Returns the wipe snapshot id, or null when history
+// was already clear (the action reads cleared counts back from the snapshot row).
+export function rpcSuperAdminLaunchPrep(
+  client: AppSupabaseClient
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_launch_prep", {});
+}
+
 // PRD-SAC6 follow-up: per-category history reset. Snapshots + deletes one
 // category's history tables and writes the paired audit row in one transaction,
 // returning the snapshot id (the action reads counts back from the snapshot row).

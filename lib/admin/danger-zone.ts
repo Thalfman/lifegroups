@@ -18,6 +18,12 @@ export const CLEAN_SLATE_RESTORE_CONFIRM_PHRASE = "RESTORE";
 // CLEAN_SLATE_RESTORE_CONFIRM_PHRASE above.
 export const HISTORY_RESET_CONFIRM_PHRASE = "RESET";
 
+// One-click launch prep: the exact phrase the operator must type to clear all
+// accumulated history AND hide the time-based launch warnings on Home in one
+// guarded step. Composed of the existing Clean Slate wipe (recoverable snapshot
+// captured first) + the launch-optics mute flags.
+export const LAUNCH_PREP_CONFIRM_PHRASE = "PREPARE FOR LAUNCH";
+
 // ADR 0014 (#312): the exact phrase the operator must type to permanently
 // delete a curated entity (physical removal, captured to a tombstone).
 export const PERMANENT_DELETE_CONFIRM_PHRASE = "PERMANENTLY DELETE";
@@ -97,4 +103,13 @@ export type HistoryResetRevertSuccess = HistoryResetSuccess;
 export type CleanSlateImportSuccess = {
   totalRows: number;
   rowCounts: Record<string, number>;
+};
+
+// One-click launch prep echoes how many history rows were cleared (0 when the
+// database was already clean), which launch warnings were muted, and the
+// recoverable snapshot id (null when there was no history to snapshot).
+export type LaunchPrepSuccess = {
+  clearedRows: number;
+  mutedKeys: string[];
+  snapshotId: string | null;
 };

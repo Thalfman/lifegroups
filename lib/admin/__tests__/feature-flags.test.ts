@@ -5,6 +5,7 @@ import {
   isFrozenSurfaceFlag,
   getFeatureFlagDefinition,
   resolveMutedAttentionKeys,
+  LAUNCH_MUTE_FLAG_KEYS,
   FEATURE_FLAG_DEFINITIONS,
   type FeatureFlagsConfig,
 } from "@/lib/admin/feature-flags";
@@ -123,6 +124,34 @@ describe("feature-flags", () => {
         mute_health_checks: { enabled: true },
         mute_follow_ups: { enabled: true },
       };
+      expect(resolveMutedAttentionKeys(config)).toEqual(
+        new Set(["care_attention", "health", "follow_ups"])
+      );
+    });
+  });
+
+  describe("launch-prep mute helpers", () => {
+    it("LAUNCH_MUTE_FLAG_KEYS lists exactly the time-based mute flags", () => {
+      expect([...LAUNCH_MUTE_FLAG_KEYS].sort()).toEqual(
+        ["mute_care_attention", "mute_follow_ups", "mute_health_checks"].sort()
+      );
+    });
+
+    it("every launch mute key is a known new-surface flag (no drift)", () => {
+      for (const key of LAUNCH_MUTE_FLAG_KEYS) {
+        const def = getFeatureFlagDefinition(key);
+        expect(def, `missing definition for ${key}`).toBeDefined();
+        expect(def?.kind).toBe("new_surface");
+      }
+    });
+
+    it("enabling exactly the launch mute keys mutes all three categories", () => {
+      // The atomic super_admin_launch_prep RPC enables these keys; the dashboard
+      // reads them back through resolveMutedAttentionKeys. Round-trip so the
+      // launch-prep key set and the dashboard filter can't drift apart.
+      const config: FeatureFlagsConfig = Object.fromEntries(
+        LAUNCH_MUTE_FLAG_KEYS.map((k) => [k, { enabled: true }])
+      );
       expect(resolveMutedAttentionKeys(config)).toEqual(
         new Set(["care_attention", "health", "follow_ups"])
       );

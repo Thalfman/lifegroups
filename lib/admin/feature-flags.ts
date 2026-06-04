@@ -110,6 +110,15 @@ const MUTE_FLAG_TO_ATTENTION_KEY: Record<string, string> = {
   mute_follow_ups: "follow_ups",
 };
 
+// The launch-optics mute flag keys, in display order. Derived from the single
+// flag-key ↔ category-key map above so the launch-prep card (preview) + action
+// (the muted-keys it echoes) can never list a flag the dashboard filter doesn't
+// honour (or miss one it does). The atomic super_admin_launch_prep RPC enables
+// exactly these keys; the launch-prep migration test guards the SQL against drift.
+export const LAUNCH_MUTE_FLAG_KEYS: readonly string[] = Object.keys(
+  MUTE_FLAG_TO_ATTENTION_KEY
+);
+
 // The set of "Needs attention" category keys currently muted by Super-Admin
 // flags. Resolved through resolveFlag, so an absent/off flag (the default)
 // contributes nothing — a fresh install mutes nothing. Only the three
