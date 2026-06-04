@@ -143,22 +143,6 @@ Deno.serve(async (req: Request) => {
     return fail("missing_edge_function_env", 500);
   }
 
-  // Server-only gate. This function is public (verify_jwt=false) because the
-  // invite token is the credential, but the only legitimate caller is the Next
-  // server action — the invitee's browser never hits this URL directly. When
-  // INVITE_REDEEM_SECRET is configured we require the action to present it, so a
-  // direct POST to the function URL can't bypass the per-IP rate limit enforced
-  // in the action. Enforce-if-configured (matching the repo's rate-limit /
-  // SITE_URL posture): unset in local/preview means open, but production must
-  // set it on both the function and the Next runtime.
-  const expectedSecret = Deno.env.get("INVITE_REDEEM_SECRET") ?? "";
-  if (expectedSecret) {
-    const presented = req.headers.get("x-invite-secret") ?? "";
-    if (presented !== expectedSecret) {
-      return fail("unauthorized", 401);
-    }
-  }
-
   let parsed: any;
   try {
     parsed = await req.json();
@@ -180,6 +164,28 @@ Deno.serve(async (req: Request) => {
   const service = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // Always-on, DB-backed per-IP throttle. This function is public, so the only
+  // way to bound a direct POST (which skips the Next action's rate limit) is to
+  // throttle here. The peer IP is the infra-set x-forwarded-for first hop: for a
+  // direct attacker that's their real IP; for the normal browser flow it's the
+  // Vercel egress IP (the fine-grained per-invitee limit already runs in the
+  // action). A generous ceiling avoids nuisance-throttling legitimate
+  // shared-egress traffic while still capping a single abusive IP. Fail open on
+  // a throttle backend error so a transient DB hiccup can't take signup down.
+  const peerIp =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip")?.trim() ||
+    "";
+  if (peerIp) {
+    const { data: allowed, error: rateErr } = await service.rpc(
+      "check_invite_redeem_rate",
+      { p_key: peerIp, p_limit: 100, p_window_seconds: 900 }
+    );
+    if (!rateErr && allowed === false) {
+      return fail("rate_limited", 429);
+    }
+  }
 
   const tokenHash = await sha256Hex(token);
 

@@ -113,21 +113,12 @@ export async function redeemInviteAction(
     return { error: "Signup is not configured on this deployment." };
   }
 
-  // Present the server-only shared secret (when configured) so the Edge
-  // Function can reject direct POSTs that would bypass the rate limit above.
-  // This is the only place the secret is read; it never reaches the browser.
-  const inviteSecret = process.env.INVITE_REDEEM_SECRET?.trim();
-  const invokeOptions: {
-    body: Record<string, unknown>;
-    headers?: Record<string, string>;
-  } = { body: { token, full_name: fullName, email, password } };
-  if (inviteSecret) {
-    invokeOptions.headers = { "x-invite-secret": inviteSecret };
-  }
-
+  // The per-IP limit above guards the browser flow; the Edge Function applies
+  // its own always-on DB-backed per-IP throttle so a direct POST can't bypass
+  // rate limiting (Phase IL.2).
   const { data, error } = await client.functions.invoke<EdgeResponse>(
     "redeem-invite",
-    invokeOptions
+    { body: { token, full_name: fullName, email, password } }
   );
 
   if (error) {
