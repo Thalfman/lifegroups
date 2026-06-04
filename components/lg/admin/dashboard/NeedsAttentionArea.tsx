@@ -30,18 +30,22 @@ function toneColor(tone: NeedsAttentionTone): string {
 function ActionRow({
   rank,
   action,
+  why,
   count,
   href,
   plus,
   tone,
-}: Pick<TopNextAction, "action" | "count" | "href" | "plus" | "tone"> & {
+}: Pick<
+  TopNextAction,
+  "action" | "why" | "count" | "href" | "plus" | "tone"
+> & {
   rank: number;
 }) {
   return (
     <li style={{ listStyle: "none", margin: 0 }}>
       <Link
         href={href}
-        aria-label={`${action} — review`}
+        aria-label={`${action}. ${why} Review.`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -77,13 +81,31 @@ function ActionRow({
         <span
           style={{
             flex: "1 1 auto",
-            fontFamily: fontBody,
-            fontSize: 14.5,
-            color: P.ink,
-            fontWeight: 600,
+            display: "grid",
+            gap: 2,
+            minWidth: 0,
           }}
         >
-          {action}
+          <span
+            style={{
+              fontFamily: fontBody,
+              fontSize: 14.5,
+              color: P.ink,
+              fontWeight: 600,
+            }}
+          >
+            {action}
+          </span>
+          <span
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12.5,
+              color: P.ink3,
+              fontWeight: 400,
+            }}
+          >
+            {why}
+          </span>
         </span>
         <span
           aria-hidden
@@ -154,11 +176,12 @@ export function NeedsAttentionArea({
         aria-label="Top next actions"
         style={{ display: "grid", gap: 8, margin: 0, padding: 0 }}
       >
-        {actions.map(({ key, action, count, href, plus, tone }, i) => (
+        {actions.map(({ key, action, why, count, href, plus, tone }, i) => (
           <ActionRow
             key={key}
             rank={i + 1}
             action={action}
+            why={why}
             count={count}
             href={href}
             plus={plus}

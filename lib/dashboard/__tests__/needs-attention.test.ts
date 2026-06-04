@@ -213,3 +213,68 @@ describe("buildTopNextActions", () => {
     expect(buildTopNextActions(d, { degraded: true })).toEqual([]);
   });
 });
+
+// "Why it matters" rationale (req #323). A static, per-category pastoral line
+// that explains why now — derived purely, never from the count.
+describe("buildTopNextActions: why-it-matters rationale", () => {
+  it("carries the calm pastoral rationale for each category", () => {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 2;
+    d.setupGaps.counts.noCapacity = 1;
+    d.healthSummary.counts.missing = 3;
+    d.shepherdCare.needsAttention = 4;
+    d.followUps = baseData().followUps;
+
+    const why = Object.fromEntries(
+      buildTopNextActions(d).map((a) => [a.key, a.why])
+    );
+    expect(why.no_leader).toBe("Unled groups can't meet or grow.");
+    expect(why.setup_gaps).toBe(
+      "Missing details keep a group from gathering well."
+    );
+    expect(why.care_attention).toBe(
+      "Leaders carry more when no one is checking in."
+    );
+    expect(why.health).toBe(
+      "Regular checks keep a group's health from drifting unseen."
+    );
+    expect(why.follow_ups).toBe(
+      "Follow-ups close the loop on care already begun."
+    );
+  });
+
+  it("gives every returned category a non-empty rationale", () => {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 1;
+    d.setupGaps.counts.noCapacity = 1;
+    d.healthSummary.counts.missing = 1;
+    d.shepherdCare.needsAttention = 1;
+    d.followUps = baseData().followUps;
+
+    const actions = buildTopNextActions(d);
+    expect(actions.length).toBeGreaterThan(0);
+    for (const a of actions) {
+      expect(a.why.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("derives the rationale purely — identical regardless of the count", () => {
+    const one = allClearData();
+    one.setupGaps.counts.noLeader = 1;
+    const many = allClearData();
+    many.setupGaps.counts.noLeader = 99;
+
+    expect(buildTopNextActions(one)[0].why).toBe(
+      buildTopNextActions(many)[0].why
+    );
+  });
+
+  it("returns no rows (so no rationale) when the read degraded", () => {
+    // Degraded → empty queue, so there are simply no why lines to render.
+    expect(buildTopNextActions(baseData(), { degraded: true })).toEqual([]);
+  });
+
+  it("returns no rows (so no rationale) when nothing needs attention", () => {
+    expect(buildTopNextActions(allClearData())).toEqual([]);
+  });
+});
