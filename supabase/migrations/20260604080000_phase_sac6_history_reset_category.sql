@@ -141,14 +141,24 @@ begin
           coalesce((select jsonb_agg(to_jsonb(t.*)) from public.attendance_sessions t), '[]'::jsonb)
       );
     when 'guests' then
-      lock table public.guests in exclusive mode;
+      -- Lock follow_ups too: deleting guests fires the
+      -- follow_ups.related_guest_id ON DELETE SET NULL FK, so capture the
+      -- affected links first (under the lock) to keep the guest reset fully
+      -- recoverable — the revert re-links them after restoring the guests.
+      lock table public.guests, public.follow_ups in exclusive mode;
       select count(*) into c_a from public.guests;
       v_counts := jsonb_build_object('guests', c_a);
       v_total := c_a;
       v_payload := jsonb_build_object(
         'schema_version', 1, 'category', p_category,
         'guests',
-          coalesce((select jsonb_agg(to_jsonb(t.*)) from public.guests t), '[]'::jsonb)
+          coalesce((select jsonb_agg(to_jsonb(t.*)) from public.guests t), '[]'::jsonb),
+        'follow_up_guest_links',
+          coalesce(
+            (select jsonb_agg(jsonb_build_object('id', f.id, 'related_guest_id', f.related_guest_id))
+               from public.follow_ups f where f.related_guest_id is not null),
+            '[]'::jsonb
+          )
       );
     when 'church_attendance' then
       lock table public.church_attendance_snapshots in exclusive mode;
@@ -320,12 +330,20 @@ begin
       insert into public.attendance_records
         select * from jsonb_populate_recordset(null::public.attendance_records, v_payload->'attendance_records');
     when 'guests' then
-      lock table public.guests in exclusive mode;
+      lock table public.guests, public.follow_ups in exclusive mode;
       if exists (select 1 from public.guests) then
         raise exception 'target_not_empty';
       end if;
       insert into public.guests
         select * from jsonb_populate_recordset(null::public.guests, v_payload->'guests');
+      -- Re-link the follow_ups whose related_guest_id the reset nulled. Only rows
+      -- that still exist are updated; the guests they point to were just restored,
+      -- so the FK holds. Follow-ups deleted since the reset are silently skipped.
+      update public.follow_ups f
+        set related_guest_id = l.related_guest_id
+        from jsonb_to_recordset(coalesce(v_payload->'follow_up_guest_links', '[]'::jsonb))
+          as l(id uuid, related_guest_id uuid)
+        where f.id = l.id;
     when 'church_attendance' then
       lock table public.church_attendance_snapshots in exclusive mode;
       if exists (select 1 from public.church_attendance_snapshots) then

@@ -182,3 +182,21 @@ describe("history-reset migration — category coverage", () => {
     }
   });
 });
+
+describe("history-reset migration — guest link preservation", () => {
+  it("captures the affected follow_up guest links in the guests snapshot", () => {
+    const body = functionBody(sql, RESET_FN);
+    expect(body).toContain("'follow_up_guest_links'");
+    // The guests branch locks follow_ups so the captured links can't drift
+    // between capture and the SET NULL the guest delete fires.
+    expect(body).toContain(
+      "lock table public.guests, public.follow_ups in exclusive mode"
+    );
+  });
+
+  it("re-links the captured follow_ups on revert", () => {
+    const body = functionBody(sql, REVERT_FN);
+    expect(body).toContain("follow_up_guest_links");
+    expect(body).toContain("update public.follow_ups");
+  });
+});
