@@ -56,6 +56,8 @@ type PButtonCommonProps = {
 
 type PLinkButtonProps = PButtonCommonProps & {
   href: string;
+  // Explicit accessible name, so a link whose visible text is generic
+  // ("Open group calendar") can still carry record context (#322).
   "aria-label"?: string;
 };
 

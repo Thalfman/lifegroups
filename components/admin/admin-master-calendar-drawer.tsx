@@ -228,10 +228,20 @@ function DrawerBody({
           justifyContent: "flex-end",
         }}
       >
-        <PLinkButton href={groupDetailHref} tone="ghost" size="sm">
+        <PLinkButton
+          href={groupDetailHref}
+          tone="ghost"
+          size="sm"
+          aria-label={`View ${occurrence.groupName} group`}
+        >
           View group
         </PLinkButton>
-        <PLinkButton href={groupCalendarHref} tone="terra" size="sm">
+        <PLinkButton
+          href={groupCalendarHref}
+          tone="terra"
+          size="sm"
+          aria-label={`Open ${occurrence.groupName} calendar — ${dateLabel(occurrence.date)}`}
+        >
           Open group calendar
         </PLinkButton>
       </footer>

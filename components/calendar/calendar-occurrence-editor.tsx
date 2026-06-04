@@ -66,6 +66,7 @@ export function CalendarOccurrenceEditor({
   occurrence,
   actions,
   triggerLabel,
+  triggerAriaLabel,
   triggerStyle,
   triggerClassName,
   canEdit,
@@ -78,6 +79,12 @@ export function CalendarOccurrenceEditor({
   occurrence: CalendarOccurrenceEditorOccurrence;
   actions: CalendarOccurrenceEditorActions;
   triggerLabel: React.ReactNode;
+  // Explicit, meaningful accessible name for the trigger button. Without it
+  // the button's name is the concatenated child text (day # + "Today" + type
+  // + clock + status + "Special"), which reads as a meaningless run-on to a
+  // screen reader. Callers build a summary like "Edit Oct 14 — Study, 6:30p,
+  // Scheduled" or "Add event on Oct 14" and pass it here (#322).
+  triggerAriaLabel?: string;
   triggerStyle?: React.CSSProperties;
   triggerClassName?: string;
   canEdit: boolean;
@@ -110,6 +117,7 @@ export function CalendarOccurrenceEditor({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label={triggerAriaLabel}
         style={{
           ...triggerStyle,
           background: triggerStyle?.background ?? "transparent",
