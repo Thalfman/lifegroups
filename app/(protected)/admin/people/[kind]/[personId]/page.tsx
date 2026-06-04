@@ -31,11 +31,16 @@ export const dynamic = "force-dynamic";
 
 type Params = { kind: string; personId: string };
 
-function activeGroupOptions(
+// Every non-closed group is a valid placement target: the assignment RPC only
+// requires the group to exist, and groups that are launching_soon, needs_leader,
+// at_risk, or paused are exactly the ones still being staffed. Only `closed`
+// (terminal) groups cannot receive placements, matching the old group-centric
+// Assignments matrix, which rendered every open group.
+function assignableGroupOptions(
   groups: GroupsRow[]
 ): { id: string; name: string }[] {
   return groups
-    .filter((g) => g.lifecycle_status === "active")
+    .filter((g) => g.lifecycle_status !== "closed")
     .map((g) => ({ id: g.id, name: g.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -97,9 +102,11 @@ async function loadProfileDetail(
     }));
 
   const isLeader = isLeaderRole(profile.role);
-  const needsContact = isLeader
-    ? await leaderNeedsContact(client, profileId, todayIso)
-    : false;
+  const isActive = profile.status === "active";
+  const needsContact =
+    isLeader && isActive
+      ? await leaderNeedsContact(client, profileId, todayIso)
+      : false;
 
   const person: PersonDetail = {
     kind: "profile",
@@ -112,11 +119,19 @@ async function loadProfileDetail(
     isLoginBacked: true,
     isLeader,
     needsContact,
+    // Only leaders/co-leaders can be assigned to a group as staff; the
+    // assign-leader RPC rejects any other role, so non-leader login profiles
+    // (ministry/super admins, over-shepherds) must not see a placement form
+    // that is guaranteed to fail.
+    canPlaceInGroup: isLeader,
     groups: personGroups,
-    careHref: isLeader ? `/admin/shepherd-care/${profile.id}` : null,
+    // The shepherd-care surface 404s inactive profiles, so only an active
+    // leader gets a working care link.
+    careHref:
+      isLeader && isActive ? `/admin/shepherd-care/${profile.id}` : null,
   };
 
-  return { person, availableGroups: activeGroupOptions(groups) };
+  return { person, availableGroups: assignableGroupOptions(groups) };
 }
 
 async function loadMemberDetail(
@@ -158,11 +173,13 @@ async function loadMemberDetail(
     isLoginBacked: false,
     isLeader: false,
     needsContact: false,
+    // Members are placed via the assign-member RPC, which accepts any member.
+    canPlaceInGroup: true,
     groups: personGroups,
     careHref: null,
   };
 
-  return { person, availableGroups: activeGroupOptions(groups) };
+  return { person, availableGroups: assignableGroupOptions(groups) };
 }
 
 export default async function AdminPersonDetailPage({

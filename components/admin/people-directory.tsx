@@ -393,11 +393,22 @@ function DirectorySection({
 // Care / contact indicator
 // ---------------------------------------------------------------------------
 
-// The per-row Contact/Care indicator (reduction plan §6 person row). Leaders and
-// co-leaders carry a real care cadence, so they read "Needs contact" or "No
-// current concerns". Members are separate participant records with no care
-// model (per the issue's Care boundary), so their rows show a neutral dash.
-function CareIndicator({ needsContact }: { needsContact: boolean }) {
+// The per-row Contact/Care indicator (reduction plan §6 person row). Every row
+// carries this field so the six-field layout is uniform across person types.
+// Leaders and co-leaders carry a real care cadence, so they read "Needs
+// contact" or "No current concerns". Everyone else — members and non-leader
+// login profiles (admins, over-shepherds) — has no per-leader care model, so
+// the field renders a neutral "No care model" placeholder rather than vanishing.
+function CareIndicator({
+  hasCareModel,
+  needsContact,
+}: {
+  hasCareModel: boolean;
+  needsContact: boolean;
+}) {
+  if (!hasCareModel) {
+    return <PBadge tone="neutral">No care model</PBadge>;
+  }
   return (
     <PBadge tone={needsContact ? "followup" : "healthy"}>
       {needsContact ? "Needs contact" : "No current concerns"}
@@ -472,7 +483,10 @@ const ProfileRow = memo(function ProfileRow({
           <PBadge tone={profile.status === "active" ? "healthy" : "pause"}>
             {profile.status === "active" ? "Active" : "Inactive"}
           </PBadge>
-          {isLeaderType ? <CareIndicator needsContact={needsContact} /> : null}
+          <CareIndicator
+            hasCareModel={isLeaderType}
+            needsContact={needsContact}
+          />
         </div>
         <div
           style={{
@@ -578,6 +592,7 @@ const MemberRow = memo(function MemberRow({
           <PBadge tone={member.status === "active" ? "healthy" : "pause"}>
             {member.status === "active" ? "Active" : "Inactive"}
           </PBadge>
+          <CareIndicator hasCareModel={false} needsContact={false} />
         </div>
         <div
           style={{

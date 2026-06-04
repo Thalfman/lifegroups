@@ -29,6 +29,10 @@ export type PersonDetail = {
   // Leader / co-leader only — the only profiles with a care model.
   isLeader: boolean;
   needsContact: boolean;
+  // Whether this person can be staffed into a group: members always, login
+  // profiles only when they are leaders/co-leaders (the assign-leader RPC
+  // rejects other roles).
+  canPlaceInGroup: boolean;
   groups: PersonGroupRef[];
   // Guarded shepherd-care surface for this leader (leaders only).
   careHref: string | null;
@@ -51,12 +55,14 @@ export function PersonDetailShell({
 }) {
   // Access tab: auth-backed login profiles only — members never sign in, so a
   // member detail page must not show Access or any account affordance. Care
-  // tab: leader / co-leader only — the care model is per-leader, so member
-  // pages must not show leader shepherd-care history (issue #302 boundaries).
+  // tab: active leader / co-leader only — the care model is per-leader and the
+  // shepherd-care surface 404s inactive profiles, so inactive leaders and
+  // members get no Care tab (issue #302 boundaries).
+  const showCare = person.isLeader && person.status === "active";
   const tabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "Overview" },
     { key: "group", label: "Group" },
-    ...(person.isLeader ? [{ key: "care" as const, label: "Care" }] : []),
+    ...(showCare ? [{ key: "care" as const, label: "Care" }] : []),
     { key: "activity", label: "Activity" },
     ...(person.isLoginBacked
       ? [{ key: "access" as const, label: "Access" }]
@@ -218,7 +224,7 @@ function GroupPanel({
         )}
       </Card>
 
-      {person.status === "active" ? (
+      {person.canPlaceInGroup && person.status === "active" ? (
         <Card>
           <PanelHeading
             title="Place in a group"

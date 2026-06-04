@@ -33,11 +33,16 @@ const REVALIDATE_PATH = "/admin/people";
 
 type CreateLeaderPayload = { full_name: string; email: string; phone?: string };
 
-const CREATE_LEADER_SPEC: AdminWriteActionSpec<CreateLeaderPayload, { id: string }> = {
+const CREATE_LEADER_SPEC: AdminWriteActionSpec<
+  CreateLeaderPayload,
+  { id: string }
+> = {
   name: "admin.people.create_leader",
   keys: ["full_name", "email", "phone"],
   validate: validateCreateLeaderProfilePayload,
-  fields: async (_actor, value) => ({ target_email_hash: await hashEmail(value.email) }),
+  fields: async (_actor, value) => ({
+    target_email_hash: await hashEmail(value.email),
+  }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
     rpcAdminCreateLeaderProfile(client, {
@@ -51,16 +56,23 @@ const CREATE_LEADER_SPEC: AdminWriteActionSpec<CreateLeaderPayload, { id: string
 
 export async function adminCreateLeaderProfile(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateLeaderPayload>,
+  input: ActionInput<CreateLeaderPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_LEADER_SPEC, prev, input);
 }
 
 // ----- 2. adminCreateMember -----------------------------------------------
 
-type CreateMemberPayload = { full_name: string; email?: string; phone?: string };
+type CreateMemberPayload = {
+  full_name: string;
+  email?: string;
+  phone?: string;
+};
 
-const CREATE_MEMBER_SPEC: AdminWriteActionSpec<CreateMemberPayload, { id: string }> = {
+const CREATE_MEMBER_SPEC: AdminWriteActionSpec<
+  CreateMemberPayload,
+  { id: string }
+> = {
   name: "admin.people.create_member",
   keys: ["full_name", "email", "phone"],
   validate: validateCreateMemberPayload,
@@ -80,7 +92,7 @@ const CREATE_MEMBER_SPEC: AdminWriteActionSpec<CreateMemberPayload, { id: string
 
 export async function adminCreateMember(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateMemberPayload>,
+  input: ActionInput<CreateMemberPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_MEMBER_SPEC, prev, input);
 }
@@ -93,7 +105,10 @@ type AssignLeaderPayload = {
   role: "leader" | "co_leader";
 };
 
-const ASSIGN_LEADER_SPEC: AdminWriteActionSpec<AssignLeaderPayload, { id: string }> = {
+const ASSIGN_LEADER_SPEC: AdminWriteActionSpec<
+  AssignLeaderPayload,
+  { id: string }
+> = {
   name: "admin.people.assign_leader_to_group",
   keys: ["group_id", "profile_id", "role"],
   validate: validateAssignLeaderToGroupPayload,
@@ -112,13 +127,20 @@ const ASSIGN_LEADER_SPEC: AdminWriteActionSpec<AssignLeaderPayload, { id: string
       p_profile_id: value.profile_id,
       p_role: value.role,
     }),
-  revalidate: () => REVALIDATE_PATH,
+  // Placement can now be driven from a person's detail page (Group tab) as well
+  // as the People directory, so refresh both the People surface and that
+  // person's detail route — otherwise the detail page's server-rendered
+  // "Current group assignment" panel would keep showing the stale roster.
+  revalidate: (value) => [
+    REVALIDATE_PATH,
+    `/admin/people/profile/${value.profile_id}`,
+  ],
   noDataError: "The assignment was not saved. Please try again.",
 };
 
 export async function adminAssignLeaderToGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<AssignLeaderPayload>,
+  input: ActionInput<AssignLeaderPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ASSIGN_LEADER_SPEC, prev, input);
 }
@@ -127,7 +149,10 @@ export async function adminAssignLeaderToGroup(
 
 type AssignMemberPayload = { group_id: string; member_id: string };
 
-const ASSIGN_MEMBER_SPEC: AdminWriteActionSpec<AssignMemberPayload, { id: string }> = {
+const ASSIGN_MEMBER_SPEC: AdminWriteActionSpec<
+  AssignMemberPayload,
+  { id: string }
+> = {
   name: "admin.people.assign_member_to_group",
   keys: ["group_id", "member_id"],
   validate: validateAssignMemberToGroupPayload,
@@ -140,13 +165,16 @@ const ASSIGN_MEMBER_SPEC: AdminWriteActionSpec<AssignMemberPayload, { id: string
       p_group_id: value.group_id,
       p_member_id: value.member_id,
     }),
-  revalidate: () => REVALIDATE_PATH,
+  revalidate: (value) => [
+    REVALIDATE_PATH,
+    `/admin/people/member/${value.member_id}`,
+  ],
   noDataError: "The assignment was not saved. Please try again.",
 };
 
 export async function adminAssignMemberToGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<AssignMemberPayload>,
+  input: ActionInput<AssignMemberPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ASSIGN_MEMBER_SPEC, prev, input);
 }
@@ -175,7 +203,7 @@ const DEACTIVATE_PROFILE_SPEC: AdminWriteActionSpec<
 
 export async function adminDeactivateProfile(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<DeactivateProfilePayload>,
+  input: ActionInput<DeactivateProfilePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(DEACTIVATE_PROFILE_SPEC, prev, input);
 }
@@ -200,7 +228,7 @@ const DEACTIVATE_MEMBER_SPEC: AdminWriteActionSpec<
 
 export async function adminDeactivateMember(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<DeactivateMemberPayload>,
+  input: ActionInput<DeactivateMemberPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(DEACTIVATE_MEMBER_SPEC, prev, input);
 }
@@ -212,7 +240,10 @@ export async function adminDeactivateMember(
 // narrow target/new-role envelope; the TS guard here is defense in depth
 // so the friendly error surfaces before we even hit Supabase.
 
-type ChangeLeaderRolePayload = { profile_id: string; new_role: "leader" | "co_leader" };
+type ChangeLeaderRolePayload = {
+  profile_id: string;
+  new_role: "leader" | "co_leader";
+};
 
 const CHANGE_LEADER_ROLE_SPEC: AdminWriteActionSpec<
   ChangeLeaderRolePayload,
@@ -240,7 +271,7 @@ const CHANGE_LEADER_ROLE_SPEC: AdminWriteActionSpec<
 
 export async function adminChangeLeaderRole(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<ChangeLeaderRolePayload>,
+  input: ActionInput<ChangeLeaderRolePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CHANGE_LEADER_ROLE_SPEC, prev, input);
 }
@@ -253,6 +284,8 @@ export async function adminChangeLeaderRole(
 const NOT_ENABLED =
   "This admin workflow is intentionally out of scope for Phase 5A.1.";
 
-export async function adminCreateMinistryAdmin(_input: unknown): Promise<never> {
+export async function adminCreateMinistryAdmin(
+  _input: unknown
+): Promise<never> {
   throw new Error(NOT_ENABLED);
 }
