@@ -3,6 +3,7 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
 import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareItemList } from "@/components/admin/care/care-item-list";
+import { SectionHeader } from "@/components/layout/shell";
 import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
 import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
@@ -43,7 +44,19 @@ import {
 } from "@/lib/admin/shepherd-care-dashboard";
 import { buildCareArea } from "@/lib/admin/care-area";
 import type { GroupsRow } from "@/types/database";
-import { P, fontBody } from "@/lib/pastoral";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
+
+// Bucket heading inside the Follow-ups tab's shepherd-care section. Quieter than
+// the SectionHeader title so the two buckets read as subdivisions of one source.
+const careGroupHeadingStyle = {
+  margin: 0,
+  fontFamily: fontSans,
+  fontSize: 11,
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+  fontWeight: 700,
+  color: P.ink3,
+} as const;
 
 // Care area (ADR 0013, #301; re-keyed to the PRD IA in #334). Care is the entry
 // point for Job 1 — "how are my leaders doing?" — and hosts the former Leader
@@ -53,9 +66,12 @@ import { P, fontBody } from "@/lib/pastoral";
 //   • Dashboard      — summary tiles + attention queue (the former Needs Contact
 //                      signal — "who needs contact" — now lives here).
 //   • Directory      — the full leader roster with coverage owner column.
-//   • Follow-ups     — the generic open-task queue (the former Due Soon /
-//                      Completed buckets are the queue's due-window / Done
-//                      filters).
+//   • Follow-ups     — BOTH follow-up sources, clearly labelled: a leading
+//                      shepherd-care section (the former Due Soon / Completed
+//                      buckets, backed by shepherd_care_follow_ups) plus the
+//                      generic open-task queue (the `follow_ups` table). They are
+//                      separate tables, not one queue's filters, so both render
+//                      here rather than collapsing into the generic queue.
 //   • Coverage       — over-shepherd buckets + an Unassigned bucket.
 //   • Recent interactions — the recent calls / notes / meetings feed (renamed
 //                      from Recent Care).
@@ -259,11 +275,16 @@ export async function loadCarePageData(): Promise<{
     coverageByShepherdId.set(a.shepherd_profile_id, a);
   }
 
-  // The Recent interactions tab reuses the enriched care-item rows (owner +
-  // group resolved) rather than the raw dashboard feed. buildCareArea still
-  // builds its other buckets (needs-contact / due-soon / completed); after the
-  // #334 re-key those signals are surfaced via the Dashboard attention queue and
-  // the Follow-ups queue, so only recentCare is consumed here.
+  // buildCareArea maps the loaded reads into the enriched care-item rows (owner
+  // + group resolved). After the #334 re-key:
+  //   • recentCare        → Recent interactions tab.
+  //   • dueSoon/completed  → the SHEPHERD-CARE section of the Follow-ups tab.
+  // The shepherd_care_follow_ups buckets (dueSoon / completed) MUST keep an
+  // actionable home: AdminFollowUpsShell reads only the generic `follow_ups`
+  // table, so without this section a due-soon-not-overdue or recently-completed
+  // shepherd-care follow-up would have no list to act from anywhere under
+  // /admin/care (the Dashboard only counts the overdue ones). needsContact is
+  // surfaced via the Dashboard attention queue and so is not consumed here.
   const area = buildCareArea({
     entries: care.entries,
     attentionQueue: dashboard.attentionQueue,
@@ -323,11 +344,49 @@ export async function loadCarePageData(): Promise<{
     {
       key: "follow-ups",
       label: "Follow-ups",
+      // Two distinct follow-up sources live here, each clearly labelled so they
+      // can't be mistaken for one another (#334 P1 — keep shepherd-care
+      // follow-ups visible). The shepherd-care buckets (dueSoon / completed,
+      // backed by shepherd_care_follow_ups) lead with their own CareItemList so
+      // due-soon-not-overdue and recently-completed care follow-ups stay
+      // actionable; the generic oversight queue (the `follow_ups` table) follows
+      // unchanged so neither host loses functionality.
       panel: (
-        <AdminFollowUpsShell
-          data={followUpsData}
-          viewerId={session.profile.id}
-        />
+        <div style={{ display: "grid", gap: 36 }}>
+          <section style={{ display: "grid", gap: 18 }}>
+            <SectionHeader
+              eyebrow="Shepherd care"
+              title="Care follow-ups"
+              description="Care follow-ups due soon or overdue, plus the ones recently completed. Each links into the leader's detail page where the work happens."
+            />
+            <div style={{ display: "grid", gap: 24 }}>
+              <div style={{ display: "grid", gap: 10 }}>
+                <h3 style={careGroupHeadingStyle}>
+                  Due soon ({area.dueSoon.length})
+                </h3>
+                <CareItemList
+                  items={area.dueSoon}
+                  emptyTitle="Nothing due soon"
+                  emptyDescription="No care follow-ups are overdue or due in the next week."
+                />
+              </div>
+              <div style={{ display: "grid", gap: 10 }}>
+                <h3 style={careGroupHeadingStyle}>
+                  Completed ({area.completed.length})
+                </h3>
+                <CareItemList
+                  items={area.completed}
+                  emptyTitle="No completed follow-ups yet"
+                  emptyDescription="Care follow-ups you mark complete will land here."
+                />
+              </div>
+            </div>
+          </section>
+          <AdminFollowUpsShell
+            data={followUpsData}
+            viewerId={session.profile.id}
+          />
+        </div>
       ),
     },
     {
