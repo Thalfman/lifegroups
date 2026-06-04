@@ -29,6 +29,7 @@ export function AdminMasterCalendarList({
   anchorDate,
   onAnchorConsumed,
   onSelect,
+  denoiseGroupLinks = false,
 }: {
   occurrences: MasterOccurrence[];
   fromIso: string | null;
@@ -36,6 +37,14 @@ export function AdminMasterCalendarList({
   anchorDate: string | null;
   onAnchorConsumed: () => void;
   onSelect: (o: MasterOccurrence) => void;
+  // De-noise the repeated "Open group calendar" links (#331). A group recurring
+  // across the month renders one identical deep-link per occurrence row, which
+  // reads as noise. When set, the per-row link is dropped; the calendar stays
+  // reachable through the occurrence drawer's single "Open group calendar"
+  // action (one entry point per group), and the Planning shell's "By leader"
+  // view surfaces a single per-group link. The frozen /admin/calendar route
+  // leaves this off so its rows are unchanged.
+  denoiseGroupLinks?: boolean;
 }) {
   const grouped = useMemo(() => {
     const byDate = new Map<string, MasterOccurrence[]>();
@@ -116,6 +125,7 @@ export function AdminMasterCalendarList({
                 key={`${o.groupId}|${o.date}`}
                 occurrence={o}
                 onSelect={onSelect}
+                showCalendarLink={!denoiseGroupLinks}
               />
             ))}
           </ul>
@@ -128,9 +138,11 @@ export function AdminMasterCalendarList({
 function OccurrenceCard({
   occurrence,
   onSelect,
+  showCalendarLink = true,
 }: {
   occurrence: MasterOccurrence;
   onSelect: (o: MasterOccurrence) => void;
+  showCalendarLink?: boolean;
 }) {
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
@@ -207,22 +219,24 @@ function OccurrenceCard({
           ) : null}
         </div>
       </button>
-      <Link
-        href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
-        aria-label={occurrenceCalendarLinkName(occurrence)}
-        style={{
-          fontFamily: fontSans,
-          fontSize: 11,
-          fontWeight: 600,
-          color: P.terra,
-          textDecoration: "none",
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          alignSelf: "start",
-        }}
-      >
-        Open group calendar →
-      </Link>
+      {showCalendarLink ? (
+        <Link
+          href={`/admin/groups/${occurrence.groupId}/calendar?month=${occurrence.date.slice(0, 7)}`}
+          aria-label={occurrenceCalendarLinkName(occurrence)}
+          style={{
+            fontFamily: fontSans,
+            fontSize: 11,
+            fontWeight: 600,
+            color: P.terra,
+            textDecoration: "none",
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            alignSelf: "start",
+          }}
+        >
+          Open group calendar →
+        </Link>
+      ) : null}
     </li>
   );
 }
