@@ -56,6 +56,30 @@ escapes the oversight ladder: not visible to other tiers — and, by intent,
 not to the Super Admin either.
 _Avoid_: Encrypted note, secret note.
 
+### Deletion concepts
+
+**Archive**:
+The default, reversible way anything leaves a working surface — a soft delete
+(apprentices, multiplication candidates, launch scenarios, calendar events all
+archive). Visibility flows by the oversight ladder; the row stays. This is what
+"delete" means everywhere except the Super Admin danger zone.
+_Avoid_: Delete, soft-delete (as a user-facing label), remove.
+
+**Permanent deletion**:
+The Super-Admin-only escape hatch that physically removes a row — distinct from
+Archive. Lives in the Super Admin Console danger zone behind a type-to-confirm,
+routed through an audited `super_admin_*` RPC (never `admin_*`, which is
+Ministry-Admin-callable). Refuses (and reports) when any dependent row blocks it
+rather than cascading; never reaches Private Care Notes, audit logs, any Super
+Admin profile, or `auth.users` identities (only `public.profiles`).
+_Avoid_: Hard delete (in user-facing copy), wipe (that is Clean Slate), purge.
+
+**Tombstone**:
+The full JSON snapshot of a row captured before Permanent deletion, so the act
+is recoverable by re-import. Captured alongside (not instead of) the deletion's
+paired `audit_events` row; itself never deletable.
+_Avoid_: Backup, archive (that is the soft-delete), trash.
+
 ### Group concepts
 
 **Audience**:
