@@ -98,6 +98,13 @@ export function Sidebar({
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
+                    // Full prefetch (not the default shell-only prefetch for
+                    // dynamic routes): warms each tab's complete RSC payload —
+                    // data included — while the link sits idle in the viewport,
+                    // so a sidebar click renders from cache instantly with no
+                    // skeleton flash. Paired with the lengthened `staleTimes`
+                    // window in next.config.ts to throttle re-prefetching.
+                    prefetch={true}
                     aria-current={active ? "page" : undefined}
                     style={{
                       display: "flex",
