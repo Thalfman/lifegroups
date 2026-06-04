@@ -108,6 +108,8 @@ function mapRpcToken(message: string): { code: string; status: number } {
     return { code: "invitation_revoked", status: 410 };
   if (message.includes("invitation_used"))
     return { code: "invitation_used", status: 409 };
+  if (message.includes("rate_limited"))
+    return { code: "rate_limited", status: 429 };
   if (message.includes("email_taken"))
     return { code: "email_unavailable", status: 409 };
   if (message.includes("forbidden_target"))
