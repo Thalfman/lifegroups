@@ -75,7 +75,9 @@ test.describe("admin People tabs", () => {
     const surface = page.locator(SURFACE);
     await surface.getByRole("button", { name: "Leaders" }).click();
 
-    await expect(surface.getByText("Leaders and co-leaders")).toBeVisible();
+    await expect(
+      surface.getByRole("heading", { name: "Leaders and co-leaders" })
+    ).toBeVisible();
     // The members section is not mounted in the leaders scope.
     expect(await surface.getByText("Participants (non-login)").count()).toBe(0);
   });
@@ -93,7 +95,9 @@ test.describe("admin People tabs", () => {
     const surface = page.locator(SURFACE);
     await surface.getByRole("button", { name: "Apprentices" }).click();
 
-    await expect(surface.getByText("Leader pipeline")).toBeVisible();
+    await expect(
+      surface.getByRole("heading", { name: "Leader pipeline" })
+    ).toBeVisible();
     // The directory search is no longer mounted in this tab.
     expect(await surface.getByLabel("Search people").count()).toBe(0);
   });
