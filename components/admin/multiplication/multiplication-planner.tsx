@@ -201,7 +201,7 @@ function CandidateEditForm({
             }}
           >
             Only apprentices in this group can lead its next group. Add one in
-            the Leader pipeline.
+            People → Apprentices.
           </p>
         </div>
         <label style={{ ...checkboxLabelStyle }}>

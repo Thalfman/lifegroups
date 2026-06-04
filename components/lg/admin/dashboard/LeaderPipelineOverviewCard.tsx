@@ -25,7 +25,7 @@ export function LeaderPipelineOverviewCard({
   if (!summary.available) {
     return (
       <StatusCard
-        eyebrow="Leaders"
+        eyebrow="People"
         title="Leader pipeline"
         action={
           <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
@@ -43,7 +43,7 @@ export function LeaderPipelineOverviewCard({
 
   return (
     <StatusCard
-      eyebrow="Leaders"
+      eyebrow="People"
       title="Leader pipeline"
       action={
         <OpenLink href="/admin/leader-pipeline" label="Review pipeline" />
