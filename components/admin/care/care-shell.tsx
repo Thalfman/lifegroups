@@ -34,6 +34,18 @@ export function CareShell({
 }) {
   const [active, setActive] = useState<CareTabKey>(initialTab);
 
+  // Alias routes (/admin/shepherd-care, /admin/follow-ups) render this same
+  // client shell with a different initialTab. If React reuses the instance
+  // across a client-side route transition, useState would keep the old tab and
+  // the alias would open on the wrong view — breaking the "200 at the matching
+  // tab" contract. Re-seed active whenever initialTab changes (the documented
+  // "adjust state when a prop changes during render" pattern — no effect).
+  const [seededTab, setSeededTab] = useState<CareTabKey>(initialTab);
+  if (seededTab !== initialTab) {
+    setSeededTab(initialTab);
+    setActive(initialTab);
+  }
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <div
