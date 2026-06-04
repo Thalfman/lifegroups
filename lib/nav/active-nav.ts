@@ -30,13 +30,27 @@ export const NAV_ALIAS_TO_CANONICAL: Readonly<Record<string, string>> = {
   "/admin/follow-ups": "/admin/care",
   "/admin/leader-pipeline": "/admin/people",
   "/admin/group-health": "/admin/groups",
+  // Attendance/check-in history lives under Groups in the reduction plan, so the
+  // frozen check-ins surface marks Groups active (ADR 0013 lists it among the
+  // frozen direct URLs that own no nav entry).
+  "/admin/check-ins": "/admin/groups",
 };
 
 // Map an arbitrary path to the path used for active-state matching. A frozen
 // alias resolves to its owning canonical area; any other path resolves to
 // itself. Pure and total — unknown paths pass through unchanged.
+//
+// Matching is exact first, then alias-as-prefix: a direct child of a frozen
+// alias (e.g. /admin/shepherd-care/over-shepherds or /admin/check-ins/[groupId])
+// belongs to the same owning area as the alias root, so it resolves to that
+// canonical area too rather than passing through unmatched.
 export function resolveCanonicalPath(pathname: string): string {
-  return NAV_ALIAS_TO_CANONICAL[pathname] ?? pathname;
+  const exact = NAV_ALIAS_TO_CANONICAL[pathname];
+  if (exact) return exact;
+  for (const [alias, canonical] of Object.entries(NAV_ALIAS_TO_CANONICAL)) {
+    if (pathname.startsWith(`${alias}/`)) return canonical;
+  }
+  return pathname;
 }
 
 // Does `href` (a nav item's destination) own `pathname`? The current path is

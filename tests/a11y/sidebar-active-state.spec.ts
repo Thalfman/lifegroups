@@ -29,6 +29,7 @@ const EXPECTED_ACTIVE_LABEL: Record<string, string> = {
   "/admin/calendar": "Planning",
   "/admin/leader-pipeline": "People",
   "/admin/group-health": "Groups",
+  "/admin/check-ins": "Groups",
 };
 
 test.describe("sidebar exposes exactly one aria-current per nav", () => {

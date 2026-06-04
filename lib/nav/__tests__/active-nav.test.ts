@@ -23,6 +23,19 @@ describe("resolveCanonicalPath", () => {
       "/admin/people"
     );
     expect(resolveCanonicalPath("/admin/group-health")).toBe("/admin/groups");
+    expect(resolveCanonicalPath("/admin/check-ins")).toBe("/admin/groups");
+  });
+
+  it("resolves a child route under a frozen alias to the same owning area", () => {
+    expect(resolveCanonicalPath("/admin/shepherd-care/over-shepherds")).toBe(
+      "/admin/care"
+    );
+    expect(resolveCanonicalPath("/admin/shepherd-care/abc-123")).toBe(
+      "/admin/care"
+    );
+    expect(resolveCanonicalPath("/admin/check-ins/group-9")).toBe(
+      "/admin/groups"
+    );
   });
 
   it("passes a non-alias path through unchanged (resolves to itself)", () => {
@@ -75,6 +88,20 @@ describe("isActiveNavHref", () => {
       true
     );
     expect(isActiveNavHref("/admin/group-health", "/admin/groups")).toBe(true);
+    expect(isActiveNavHref("/admin/check-ins", "/admin/groups")).toBe(true);
+  });
+
+  it("marks the owning area active for a child route under a frozen alias", () => {
+    expect(
+      isActiveNavHref("/admin/shepherd-care/over-shepherds", "/admin/care")
+    ).toBe(true);
+    expect(isActiveNavHref("/admin/check-ins/group-9", "/admin/groups")).toBe(
+      true
+    );
+    // ...and not some other area.
+    expect(
+      isActiveNavHref("/admin/shepherd-care/over-shepherds", "/admin/groups")
+    ).toBe(false);
   });
 
   it("an alias does NOT light an area other than its owner", () => {
