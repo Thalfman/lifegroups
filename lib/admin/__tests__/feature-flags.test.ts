@@ -5,7 +5,6 @@ import {
   isFrozenSurfaceFlag,
   getFeatureFlagDefinition,
   resolveMutedAttentionKeys,
-  buildLaunchMuteConfig,
   LAUNCH_MUTE_FLAG_KEYS,
   FEATURE_FLAG_DEFINITIONS,
   type FeatureFlagsConfig,
@@ -146,19 +145,14 @@ describe("feature-flags", () => {
       }
     });
 
-    it("buildLaunchMuteConfig enables every launch mute flag", () => {
-      const config = buildLaunchMuteConfig();
-      for (const key of LAUNCH_MUTE_FLAG_KEYS) {
-        expect(config.feature_flags[key]).toEqual({ enabled: true });
-      }
-    });
-
-    it("the config it builds resolves to all three categories muted", () => {
-      // The action merges buildLaunchMuteConfig().feature_flags into
-      // platform_config; the dashboard later reads it back through
-      // resolveMutedAttentionKeys. Round-trip them so the two can't drift.
-      const merged = buildLaunchMuteConfig().feature_flags;
-      expect(resolveMutedAttentionKeys(merged)).toEqual(
+    it("enabling exactly the launch mute keys mutes all three categories", () => {
+      // The atomic super_admin_launch_prep RPC enables these keys; the dashboard
+      // reads them back through resolveMutedAttentionKeys. Round-trip so the
+      // launch-prep key set and the dashboard filter can't drift apart.
+      const config: FeatureFlagsConfig = Object.fromEntries(
+        LAUNCH_MUTE_FLAG_KEYS.map((k) => [k, { enabled: true }])
+      );
+      expect(resolveMutedAttentionKeys(config)).toEqual(
         new Set(["care_attention", "health", "follow_ups"])
       );
     });
