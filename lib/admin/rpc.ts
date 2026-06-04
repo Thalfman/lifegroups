@@ -157,6 +157,22 @@ export function rpcSuperAdminLogPasswordReset(
   return callUuidRpc(client, "super_admin_log_password_reset", args);
 }
 
+// Phase IL.1 — mint a shareable self-signup invite link. Returns the new
+// invitations.id. The raw token is generated + hashed in the action layer; only
+// its hash reaches the RPC.
+export function rpcSuperAdminCreateInvitation(
+  client: AppSupabaseClient,
+  args: {
+    p_token_hash: string;
+    p_role: UserRole;
+    p_group_id: string | null;
+    p_single_use: boolean;
+    p_expires_at: string;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_create_invitation", args);
+}
+
 // Phase SAC.4 (#164) coverage editing from the Super Admin Console reuses the
 // existing Phase 5D.1 coverage RPCs (rpcAdminAssignShepherdToOverShepherd /
 // rpcAdminEndShepherdCoverageAssignment). Those gate on auth_is_admin(), which

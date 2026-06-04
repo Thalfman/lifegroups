@@ -123,6 +123,11 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "A record with that id already exists again, so the restore can't run without overwriting it. Remove the conflicting record first.",
   missing_parent:
     "The restore can't run because a record it depends on no longer exists. Restore that parent record first.",
+  // Phase IL.1 shareable invite-link tokens.
+  group_not_allowed:
+    "Only leaders and co-leaders can be tied to a group. Clear the group or pick a leader role.",
+  invalid_expiry:
+    "That expiry isn't allowed. Pick a time in the future, at most 90 days out.",
 };
 
 export const mapRpcError = makeRpcErrorMapper(
