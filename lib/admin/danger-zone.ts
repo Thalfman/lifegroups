@@ -43,6 +43,10 @@ export type DeletionBlocker = {
 // detail, by design. `forbidden` covers a rejected target (e.g. a super_admin
 // profile). `setNull` previews the dependents the delete will null + capture.
 export type DeletionPreflight = {
+  // The target this report describes, so the UI can discard it once the
+  // operator selects a different row (a stale report must never gate a delete).
+  entityType: string;
+  entityId: string;
   deletable: boolean;
   confidential: boolean;
   forbidden: boolean;

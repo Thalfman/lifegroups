@@ -70,16 +70,31 @@ export function PermanentDeleteCard({
     [targets, entityType]
   );
 
-  // A new target selection invalidates the prior preflight + confirm.
+  // A new target selection invalidates the prior confirm phrase.
   useEffect(() => {
     setConfirm("");
   }, [entityType, selectedId]);
 
-  const report = preflight.state?.ok ? preflight.state.value : null;
-  // The preflight result only describes the row it was run for; once the
-  // selection changes the operator must re-check. We key the report to the row
-  // by clearing it implicitly (the confirm reset above) and gating delete on a
-  // freshly-checked, deletable report for THIS row.
+  // After a successful delete the targeted row is gone — clear the selection
+  // and confirm so the form can't be re-submitted against the now-missing row.
+  const delOk = del.state?.ok;
+  useEffect(() => {
+    if (delOk) {
+      setSelectedId("");
+      setConfirm("");
+    }
+  }, [delOk]);
+
+  // The preflight result only describes the row it was run for. Stamped with its
+  // target, so a report for a previously-selected row is discarded the moment
+  // the operator picks a different one — it must never gate a delete of another
+  // row or show that row's blockers under the wrong selection.
+  const report =
+    preflight.state?.ok &&
+    preflight.state.value.entityType === entityType &&
+    preflight.state.value.entityId === selectedId
+      ? preflight.state.value
+      : null;
   const phraseMatches = confirm.trim() === PERMANENT_DELETE_CONFIRM_PHRASE;
   const canDelete =
     !!selectedId && phraseMatches && report !== null && report.deletable;
@@ -186,7 +201,11 @@ export function PermanentDeleteCard({
       {report ? <PreflightReport report={report} /> : null}
 
       {/* Confirm + delete. */}
-      <form action={del.formAction} style={{ display: "grid", gap: 10 }}>
+      <form
+        ref={del.formRef}
+        action={del.formAction}
+        style={{ display: "grid", gap: 10 }}
+      >
         <input type="hidden" name="entityType" value={entityType} />
         <input type="hidden" name="id" value={selectedId} />
         <div>

@@ -70,7 +70,10 @@ function asNumber(v: unknown): number {
 }
 
 // Defensive trust-boundary read of the jsonb preflight document the RPC returns.
-function parsePreflight(data: unknown): DeletionPreflight {
+// The target (entityType/entityId) is stamped on by the caller, not the RPC.
+function parsePreflight(
+  data: unknown
+): Omit<DeletionPreflight, "entityType" | "entityId"> {
   const doc = isRecord(data) ? data : {};
   const blockers: DeletionBlocker[] = Array.isArray(doc.blockers)
     ? doc.blockers.filter(isRecord).map((b) => ({
@@ -120,7 +123,13 @@ export async function superAdminPermanentDeletePreflight(
   });
   if (error) return actionFail([mapRpcError(error.message)]);
 
-  return actionOk(parsePreflight(data));
+  // Stamp the target onto the report so the card can discard it the moment the
+  // operator selects a different row.
+  return actionOk({
+    ...parsePreflight(data),
+    entityType: target.entityType,
+    entityId: target.id,
+  });
 }
 
 // ADR 0014 (#312): permanently delete a curated entity. Gate super_admin,
