@@ -80,7 +80,7 @@ deeper routes feel like **subviews of one mental model**, not peers.
 | --- | --- | --- | --- |
 | **Home** | `/admin` | Needs attention · This week · Ministry snapshot · Recent activity | — |
 | **Groups** | `/admin/groups` | List (card/**table** toggle) · tabs: All / Needs Setup / Needs Health Check / Needs Attention / Archived | `/admin/group-health` (triage); `/admin/groups/[id]`, `…/calendar` |
-| **Care** | `/admin/care` | Dashboard · Directory · Follow-ups · Coverage · Recent interactions | `/admin/shepherd-care/[profileId]`, `/admin/shepherd-care/over-shepherds*`; `/admin/shepherd-care` landing **alias-renders** Care; `/admin/follow-ups` resolves + appears as Care/Follow-ups |
+| **Care** | `/admin/care` | **Target:** Dashboard · Directory · Follow-ups · Coverage · Recent interactions *(current `care-shell.tsx` keys are `needs-contact / follow-ups / due-soon / recent-care / completed`; re-keying is a scoped tab migration — see Alias-render contract)* | `/admin/shepherd-care/[profileId]`, `/admin/shepherd-care/over-shepherds*`; `/admin/shepherd-care` landing **alias-renders** Care; `/admin/follow-ups` resolves + appears as Care/Follow-ups |
 | **People** | `/admin/people` | Directory · Leaders · Members · **Apprentices (owns the leader-pipeline record surface)** · Add Person | `/admin/leader-pipeline` (→ People/Apprentices) |
 | **Planning** | `/admin/planning` | Calendar · Launch Planning · Capacity · Multiplication + **opinionated views**: This week · Needs coverage · Cancelled/OFF · By leader. **Pipeline = read-only launch-capacity context that links to People/Apprentices; it does not own apprentice records.** | `/admin/launch-planning`, `/admin/calendar` (landings **alias-render** Planning) |
 | **Settings** | `/admin/settings` | (unchanged) | — |
@@ -90,7 +90,8 @@ deeper routes feel like **subviews of one mental model**, not peers.
 direct URL under the admin guard*, so these are **alias-renders, not 302 redirects**):
 - `/admin/shepherd-care` (landing) **renders the canonical Care shell** (the same component as `/admin/care`), staying 200-resolvable. Sub-paths (`/[profileId]`, `/over-shepherds*`) keep their own surfaces, untouched.
 - `/admin/launch-planning` and `/admin/calendar` (landings) **render the canonical Planning shell** at the relevant tab (`launches` / `calendar`), staying 200-resolvable.
-- `/admin/follow-ups` and `/admin/group-health` stay directly resolvable as documented deep links (Follow-ups also surfaces as a Care subview; Group Health as a Groups view).
+- `/admin/follow-ups` stays directly resolvable and also surfaces as the Care **Follow-ups** subview.
+- `/admin/group-health` **keeps its own triage surface** (`app/(protected)/admin/group-health/page.tsx` → `GroupHealthTriage`, which hosts the monthly rating workflow) — it stays 200-resolvable and is **linked from Groups**, **not** alias-rendered into the Groups list shell (`groups-directory.tsx` shows status/list tabs only and does not host the rating workflow). Re-homing the rating workflow *inside* Groups is a separate, larger task and is out of scope here.
 
 > **No 302 redirects on these paths.** ADR 0013 freezes them as directly resolvable under the
 > admin guard. Achieve canonicalization by having the frozen landing render the shared canonical
@@ -105,10 +106,14 @@ the right initial view — never a duplicated page. The contract:
    (`components/admin/planning/planning-shell.tsx`); Care has one (`components/admin/care/care-shell.tsx`).
    Alias landings do **not** fork their own components or data loaders.
 2. **The alias landing passes an initial view key** to that shell — e.g. `calendar`, `launches`,
-   `capacity`, `multiplication` for Planning; `dashboard`, `directory`, `follow-ups`, `coverage`,
-   `recent` for Care. The canonical entry (`/admin/planning`, `/admin/care`) defaults to its first
-   view; `/admin/launch-planning` selects `launches`, `/admin/calendar` selects `calendar`,
-   `/admin/follow-ups` selects Care `follow-ups`.
+   `capacity`, `multiplication` for Planning. The canonical entry (`/admin/planning`, `/admin/care`)
+   defaults to its first view; `/admin/launch-planning` selects `launches`, `/admin/calendar`
+   selects `calendar`. **Care keys — use the existing shell keys.** `care-shell.tsx` currently
+   accepts only `needs-contact`, `follow-ups`, `due-soon`, `recent-care`, `completed`, so
+   `/admin/follow-ups` selects `follow-ups`. The Care subviews named in the IA table (Dashboard ·
+   Directory · Coverage · Recent interactions) are a **target set that differs from today's shell**;
+   re-keying to them is a **separate tab migration to scope first** — until then aliases must pass
+   only the keys the shell already accepts, never invented ones.
 3. **The URL stays 200-resolvable** under the admin guard — no 302 (ADR 0013).
 4. **The side nav marks the owning canonical area current** (`aria-current="page"`) via the
    alias→canonical map (Phase 1.1), so `/admin/calendar` highlights Planning, etc.
@@ -129,7 +134,7 @@ the right initial view — never a duplicated page. The contract:
 
 ### Phase 1 — Quick wins & accessibility fixes (low risk, ship first)
 
-1. **`aria-current="page"` on active sidebar links.** Add to the active `<Link>` in `components/lg/shell/Sidebar.tsx`. **Cover the frozen aliases:** `isActiveHref` only matches the literal nav hrefs (`/admin/care`, `/admin/planning`), so on a frozen alias URL (`/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`) the canonical area would get no active link — add an **alias→canonical map** to the active-state logic so an alias highlights its owning area. Mirror in `MobileSidebar`. Extend `tests/a11y/*` to assert exactly one `aria-current="page"` per nav, **including when on an alias URL**.
+1. **`aria-current="page"` on active sidebar links.** Add to the active `<Link>` in `components/lg/shell/Sidebar.tsx`. **Cover every frozen alias:** `isActiveHref` only matches the literal nav hrefs (`/admin/care`, `/admin/planning`, `/admin/people`, `/admin/groups`), so a frozen alias URL gets no active link — add an **alias→canonical map** to the active-state logic covering all of them: `/admin/shepherd-care` → Care; `/admin/launch-planning`, `/admin/calendar` → Planning; `/admin/follow-ups` → Care; `/admin/leader-pipeline` → People; `/admin/group-health` → Groups. Mirror in `MobileSidebar`. Extend `tests/a11y/*` to assert exactly one `aria-current="page"` per nav, **including when on each alias URL**.
 2. **Fix concatenated accessible names on all calendar/event triggers.** Give every calendar
    occurrence trigger an explicit `aria-label` that summarizes the occurrence ("Edit Oct 14 —
    Study, 6:30p, Scheduled" / "Add event on Oct 14") instead of inheriting concatenated child
@@ -159,7 +164,7 @@ the right initial view — never a duplicated page. The contract:
 
 ### Phase 3 — Navigation / IA consolidation
 
-9. **Canonicalize Care.** Make the `/admin/shepherd-care` landing **render the canonical Care shell** (200, not a redirect — ADR 0013); keep `[profileId]` and `/over-shepherds` on their own surfaces. Ensure `/admin/care` exposes the five intended subviews (Dashboard, Directory, Follow-ups, Coverage, Recent interactions) and that `/admin/follow-ups` reads as the Follow-ups subview while staying directly resolvable. Single source of truth for leader care.
+9. **Canonicalize Care.** Make the `/admin/shepherd-care` landing **render the canonical Care shell** (200, not a redirect — ADR 0013), passing only the **existing** shell keys (`needs-contact / follow-ups / due-soon / recent-care / completed`); keep `[profileId]` and `/over-shepherds` on their own surfaces. `/admin/follow-ups` reads as the `follow-ups` subview while staying directly resolvable. **Re-keying the shell to the target subviews (Dashboard / Directory / Coverage / Recent interactions) is a separate, scoped tab migration** — do it before any alias references those names. Single source of truth for leader care.
 10. **Canonicalize Planning entries.** Make `/admin/launch-planning` and `/admin/calendar` landings **render the canonical Planning shell** at the matching tab once those tabs fully host the content (200, not a redirect); both stay directly resolvable throughout.
 11. **Label/route reconciliation.** Ensure nav labels and in-page eyebrows no longer present Care/Shepherd Care, Planning/Launch Planning, Group Health, Leader Pipeline as competing destinations — they read as area + subview. Specifically, **Leader Pipeline reads as People → Apprentices** (its record home); any Planning reference to the pipeline reads as launch-capacity context that links back to People, not a second owner. (Vocabulary fixes already largely landed per `CONCEPT_RECONCILIATION.md` §A.)
 
@@ -236,7 +241,8 @@ the right initial view — never a duplicated page. The contract:
 **Automated (extend existing suites):**
 - Unit (Vitest): `needs-attention` `why` strings per category, empty/degraded behavior; any new Planning view-derivation helper; Groups table sort comparators.
 - A11y (Playwright, `tests/a11y/`): exactly one `aria-current="page"` in sidebar **including when on an alias URL** (`/admin/calendar` highlights Planning, etc.); **all** calendar/event triggers (month-grid cells, Planning list event buttons, drawer/list triggers) have meaningful, **unique, non-concatenated** names — including under occurrence collisions; Groups **table** rows keep record-context action names (extend `groups-directory` harness surface for table mode); axe = no critical/serious on every touched surface.
-- Alias-resolution tests: the frozen landings `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`, `/admin/follow-ups`, `/admin/group-health` all return **200** under the admin guard (none 3xx) and render the canonical shell; the sub-routes `/admin/shepherd-care/<seeded profileId>` (use a real seeded id, **not** a literal `[profileId]`) and `/admin/shepherd-care/over-shepherds` (the actual admin path — **not** `/over-shepherds`) also still resolve 200.
+- Alias-resolution tests: the alias landings `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`, `/admin/follow-ups` all return **200** under the admin guard (none 3xx) and render the **canonical shell** at the right initial view. `/admin/group-health` and `/admin/leader-pipeline` also return **200** but render their **own** surfaces (Group Health → `GroupHealthTriage` rating workflow; Leader Pipeline → the apprentice surface), **not** the canonical Groups/People list shells — assert the rating/pipeline workflow is present, not just a 200. The sub-routes `/admin/shepherd-care/<seeded profileId>` (use a real seeded id, **not** a literal `[profileId]`) and `/admin/shepherd-care/over-shepherds` (the actual admin path — **not** `/over-shepherds`) also still resolve 200.
+- Active-nav tests: each alias URL above marks its **owning** canonical area `aria-current="page"` (`/admin/group-health` → Groups, `/admin/leader-pipeline` → People, `/admin/calendar` & `/admin/launch-planning` → Planning, `/admin/shepherd-care` & `/admin/follow-ups` → Care).
 
 **Manual keyboard / screen-reader:**
 - Tab through sidebar — active item announces "current page".
