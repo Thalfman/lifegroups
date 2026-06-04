@@ -96,7 +96,7 @@ export async function PlanningView({
               href="/admin/leader-pipeline"
               style={{ color: P.ink, textDecoration: "underline" }}
             >
-              Leader pipeline
+              Apprentices
             </Link>
             <Link
               href="/admin/groups"
