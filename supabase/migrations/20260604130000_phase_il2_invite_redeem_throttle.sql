@@ -67,6 +67,14 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Serialize concurrent checks for the SAME key so the count+insert is atomic:
+  -- without this, N concurrent calls could all read a below-limit count before
+  -- any inserts and all proceed, bursting past the limit. The transaction-scoped
+  -- advisory lock auto-releases at commit; different keys hash to different lock
+  -- slots so they don't block each other. (Namespaced by a constant first arg to
+  -- avoid colliding with any other advisory-lock users.)
+  perform pg_advisory_xact_lock(hashtext('invite_redeem_throttle'), hashtext(p_key));
+
   v_window := make_interval(secs => p_window_seconds);
 
   -- Housekeeping: drop this key's rows older than the window.

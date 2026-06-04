@@ -50,6 +50,15 @@ describe("IL.2 migration — check_invite_redeem_rate", () => {
     );
   });
 
+  it("serializes same-key checks with a per-key advisory lock", () => {
+    const body = functionBody(sql, "check_invite_redeem_rate");
+    expect(body).toContain("pg_advisory_xact_lock");
+    // The lock is taken before the count so count+insert is atomic per key.
+    expect(body.indexOf("pg_advisory_xact_lock")).toBeLessThan(
+      body.indexOf("v_count >= p_limit")
+    );
+  });
+
   it("grants EXECUTE only to service_role (not anon/authenticated)", () => {
     expect(sql.lower).toContain(
       "grant  execute on function public.check_invite_redeem_rate(text, integer, integer) to service_role"

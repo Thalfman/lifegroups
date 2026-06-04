@@ -167,16 +167,24 @@ Deno.serve(async (req: Request) => {
 
   // Always-on, DB-backed per-IP throttle. This function is public, so the only
   // way to bound a direct POST (which skips the Next action's rate limit) is to
-  // throttle here. The peer IP is the infra-set x-forwarded-for first hop: for a
-  // direct attacker that's their real IP; for the normal browser flow it's the
-  // Vercel egress IP (the fine-grained per-invitee limit already runs in the
-  // action). A generous ceiling avoids nuisance-throttling legitimate
+  // throttle here. Supabase's edge gateway (Envoy, use_remote_address=true)
+  // APPENDS the real connection IP to x-forwarded-for, so the trusted client IP
+  // is the LAST hop — not the first, which a caller can spoof by prepending
+  // entries. We therefore key on the last hop: for a direct attacker that's
+  // their real connection IP (not forgeable here); for the normal browser flow
+  // it's the Vercel egress IP (the fine-grained per-invitee limit already runs
+  // in the action). A generous ceiling avoids nuisance-throttling legitimate
   // shared-egress traffic while still capping a single abusive IP. Fail open on
   // a throttle backend error so a transient DB hiccup can't take signup down.
+  const xff = req.headers.get("x-forwarded-for") ?? "";
+  const hops = xff
+    .split(",")
+    .map((h) => h.trim())
+    .filter((h) => h.length > 0);
   const peerIp =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip")?.trim() ||
-    "";
+    hops.length > 0
+      ? hops[hops.length - 1]
+      : req.headers.get("x-real-ip")?.trim() || "";
   if (peerIp) {
     const { data: allowed, error: rateErr } = await service.rpc(
       "check_invite_redeem_rate",
