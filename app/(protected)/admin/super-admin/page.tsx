@@ -27,6 +27,7 @@ import {
   fetchCleanSlateImpact,
   fetchAuditEventCount,
   fetchLatestCleanSlateSnapshot,
+  fetchHistoryResetState,
 } from "@/lib/supabase/maintenance-reads";
 import {
   fetchPermanentDeletionTargets,
@@ -217,6 +218,7 @@ function buildNoClientData(): SuperAdminConsoleData {
     auditEvents: [],
     cleanSlateImpact: null,
     latestCleanSlateSnapshot: null,
+    historyResetState: null,
     auditEventCount: null,
     permanentDeletionTargets: [],
     recentTombstones: [],
@@ -267,6 +269,7 @@ async function loadData(
     cleanSlateResult,
     auditCountResult,
     latestSnapshotResult,
+    historyResetResult,
     permanentDeletionTargets,
     recentTombstones,
   ] = await Promise.all([
@@ -285,6 +288,7 @@ async function loadData(
     fetchCleanSlateImpact(client),
     fetchAuditEventCount(client),
     fetchLatestCleanSlateSnapshot(client),
+    fetchHistoryResetState(client),
     fetchPermanentDeletionTargets(client),
     fetchRecentTombstones(client),
   ]);
@@ -341,6 +345,7 @@ async function loadData(
     auditEvents: auditEvents as AuditEventsRow[],
     cleanSlateImpact: cleanSlateResult.data,
     latestCleanSlateSnapshot: latestSnapshotResult.data,
+    historyResetState: historyResetResult.data,
     auditEventCount: auditCountResult.data,
     permanentDeletionTargets,
     recentTombstones,

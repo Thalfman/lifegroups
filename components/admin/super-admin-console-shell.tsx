@@ -19,6 +19,7 @@ import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-for
 import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import { CleanSlateCard } from "@/components/admin/clean-slate-card";
+import { HistoryResetCard } from "@/components/admin/history-reset-card";
 import { AuditResetCard } from "@/components/admin/audit-reset-card";
 import { PermanentDeleteCard } from "@/components/admin/permanent-delete-card";
 import type {
@@ -28,6 +29,7 @@ import type {
 import type {
   CleanSlateImpact,
   CleanSlateLatestSnapshot,
+  HistoryResetState,
 } from "@/lib/supabase/maintenance-reads";
 import {
   SystemStatusChecklist,
@@ -100,6 +102,9 @@ export type SuperAdminConsoleData = {
   // PRD-SAC6 (#293/#294): the latest un-restored snapshot for the revert/export
   // controls. Null when none is recoverable / the read failed.
   latestCleanSlateSnapshot: CleanSlateLatestSnapshot | null;
+  // PRD-SAC6 follow-up: per-category history-reset state (counts + recoverable
+  // snapshot per category). Null when the read failed / no client.
+  historyResetState: HistoryResetState | null;
   auditEventCount: number | null;
   // ADR 0014 (#312–#316): curated permanent-deletion targets + recent tombstones
   // for the danger-zone Permanent Deletion card.
@@ -681,6 +686,7 @@ export function SuperAdminConsoleShell({
             impact={data.cleanSlateImpact}
             snapshot={data.latestCleanSlateSnapshot}
           />
+          <HistoryResetCard state={data.historyResetState} />
           <AuditResetCard auditEventCount={data.auditEventCount} />
           <PermanentDeleteCard
             targets={data.permanentDeletionTargets}

@@ -221,6 +221,23 @@ export interface CleanSlateSnapshotsRow {
   restored_by: UUID | null;
 }
 
+// PRD-SAC6 follow-up: per-category history reset snapshot store. Super-admin-only
+// SELECT RLS; all writes flow through the super_admin_reset_history_category /
+// _revert SECURITY DEFINER RPCs. `category` records which history category the
+// snapshot captured; the store keeps at most one un-restored snapshot per category.
+export interface HistoryResetSnapshotsRow {
+  id: UUID;
+  created_by: UUID | null;
+  created_at: Timestamp;
+  category: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  row_counts: Record<string, number>;
+  total_rows: number;
+  restored_at: Timestamp | null;
+  restored_by: UUID | null;
+}
+
 // ADR 0014 (#312): permanent-deletion tombstone. Super-admin-only SELECT RLS;
 // never itself a delete target. Writes only via the super_admin_* SECURITY
 // DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
@@ -568,6 +585,20 @@ export interface Database {
           | "restored_by"
         >;
         Update: Partial<CleanSlateSnapshotsRow>;
+        Relationships: [];
+      };
+      history_reset_snapshots: {
+        Row: HistoryResetSnapshotsRow;
+        Insert: InsertOf<
+          HistoryResetSnapshotsRow,
+          | "id"
+          | "created_at"
+          | "row_counts"
+          | "total_rows"
+          | "restored_at"
+          | "restored_by"
+        >;
+        Update: Partial<HistoryResetSnapshotsRow>;
         Relationships: [];
       };
       tombstones: {

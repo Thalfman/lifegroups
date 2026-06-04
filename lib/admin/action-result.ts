@@ -104,6 +104,10 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "There's no recoverable snapshot to restore. Import a previously exported snapshot file instead.",
   target_not_empty:
     "There's already history in the database. Clear it first (Clean Slate) before restoring a snapshot, so the restore can't collide with existing rows.",
+  // PRD-SAC6 follow-up: per-category history reset token — the category key sent
+  // to the reset RPC wasn't one of the known history categories.
+  invalid_category:
+    "That isn't a resettable history category. Refresh the page and try again.",
   unsupported_snapshot_version:
     "That snapshot file is from an unsupported version. Export a fresh snapshot from this app and try again.",
   malformed_snapshot:

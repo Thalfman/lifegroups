@@ -13,6 +13,11 @@ export const AUDIT_RESET_CONFIRM_PHRASE = "RESET AUDIT LOGS";
 // type to restore a snapshot back into the database.
 export const CLEAN_SLATE_RESTORE_CONFIRM_PHRASE = "RESTORE";
 
+// Per-category history reset (PRD-SAC6 follow-up): the exact phrase the operator
+// must type to clear one category of history. The revert reuses the shared
+// CLEAN_SLATE_RESTORE_CONFIRM_PHRASE above.
+export const HISTORY_RESET_CONFIRM_PHRASE = "RESET";
+
 // ADR 0014 (#312): the exact phrase the operator must type to permanently
 // delete a curated entity (physical removal, captured to a tombstone).
 export const PERMANENT_DELETE_CONFIRM_PHRASE = "PERMANENTLY DELETE";
@@ -77,6 +82,17 @@ export type CleanSlateRevertSuccess = {
   totalRows: number;
   rowCounts: Record<string, number>;
 };
+
+// A per-category history reset / revert echoes the category it acted on, the
+// snapshot captured/restored, and the per-table counts (for the success line).
+export type HistoryResetSuccess = {
+  category: string;
+  snapshotId: string;
+  totalRows: number;
+  rowCounts: Record<string, number>;
+};
+
+export type HistoryResetRevertSuccess = HistoryResetSuccess;
 
 export type CleanSlateImportSuccess = {
   totalRows: number;

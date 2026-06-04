@@ -202,6 +202,25 @@ export function rpcSuperAdminCleanSlateImport(
   return callUuidRpc(client, "super_admin_clean_slate_import", args);
 }
 
+// PRD-SAC6 follow-up: per-category history reset. Snapshots + deletes one
+// category's history tables and writes the paired audit row in one transaction,
+// returning the snapshot id (the action reads counts back from the snapshot row).
+export function rpcSuperAdminResetHistoryCategory(
+  client: AppSupabaseClient,
+  args: { p_category: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_history_category", args);
+}
+
+// PRD-SAC6 follow-up: revert a per-category history reset. Restores only the
+// snapshot's category tables and returns the restored snapshot id.
+export function rpcSuperAdminResetHistoryCategoryRevert(
+  client: AppSupabaseClient,
+  args: { p_snapshot_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_history_category_revert", args);
+}
+
 // PRD-SAC6 (#290) standalone audit-log reset (archive-then-purge). Returns the
 // id of the single fresh audit row the purge writes.
 export function rpcSuperAdminResetAuditLogs(
