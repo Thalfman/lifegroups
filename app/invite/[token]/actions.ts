@@ -28,8 +28,11 @@ const CODE_MESSAGES: Record<string, string> = {
     "This invite link has been turned off. Ask whoever invited you for a new one.",
   invitation_used:
     "This invite link has already been used. Ask whoever invited you for a new one.",
-  email_in_use:
-    "An account already exists for that email. Try logging in, or use Forgot password to set a new one.",
+  // Generic on purpose: shown whether the email is already a login, already a
+  // profile, or lost a race — never confirms which, to avoid an enumeration
+  // oracle on a shared link.
+  email_unavailable:
+    "We couldn't sign you up with that email. If you already have an account, sign in or use Forgot password — otherwise try a different email.",
   invalid_email: "Enter a valid email address.",
   weak_password: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
   invalid_input: "Some required fields are missing. Check the form and retry.",
@@ -110,9 +113,21 @@ export async function redeemInviteAction(
     return { error: "Signup is not configured on this deployment." };
   }
 
+  // Present the server-only shared secret (when configured) so the Edge
+  // Function can reject direct POSTs that would bypass the rate limit above.
+  // This is the only place the secret is read; it never reaches the browser.
+  const inviteSecret = process.env.INVITE_REDEEM_SECRET?.trim();
+  const invokeOptions: {
+    body: Record<string, unknown>;
+    headers?: Record<string, string>;
+  } = { body: { token, full_name: fullName, email, password } };
+  if (inviteSecret) {
+    invokeOptions.headers = { "x-invite-secret": inviteSecret };
+  }
+
   const { data, error } = await client.functions.invoke<EdgeResponse>(
     "redeem-invite",
-    { body: { token, full_name: fullName, email, password } }
+    invokeOptions
   );
 
   if (error) {

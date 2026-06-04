@@ -96,6 +96,9 @@ type Invitation = {
 };
 
 // Map an exception raised by redeem_invitation to a stable response code.
+// "email already known" cases collapse to the generic `email_unavailable`
+// (see the email-enumeration note at the call site) rather than confirming the
+// address exists.
 function mapRpcToken(message: string): { code: string; status: number } {
   if (message.includes("invitation_not_found"))
     return { code: "invitation_not_found", status: 404 };
@@ -105,10 +108,12 @@ function mapRpcToken(message: string): { code: string; status: number } {
     return { code: "invitation_revoked", status: 410 };
   if (message.includes("invitation_used"))
     return { code: "invitation_used", status: 409 };
+  if (message.includes("email_taken"))
+    return { code: "email_unavailable", status: 409 };
   if (message.includes("forbidden_target"))
-    return { code: "email_in_use", status: 409 };
+    return { code: "email_unavailable", status: 409 };
   if (message.includes("profile_write_conflict"))
-    return { code: "email_in_use", status: 409 };
+    return { code: "email_unavailable", status: 409 };
   if (message.includes("invalid_input"))
     return { code: "invalid_input", status: 400 };
   return { code: "db_error", status: 500 };
@@ -136,6 +141,22 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!supabaseUrl || !serviceRoleKey) {
     return fail("missing_edge_function_env", 500);
+  }
+
+  // Server-only gate. This function is public (verify_jwt=false) because the
+  // invite token is the credential, but the only legitimate caller is the Next
+  // server action — the invitee's browser never hits this URL directly. When
+  // INVITE_REDEEM_SECRET is configured we require the action to present it, so a
+  // direct POST to the function URL can't bypass the per-IP rate limit enforced
+  // in the action. Enforce-if-configured (matching the repo's rate-limit /
+  // SITE_URL posture): unset in local/preview means open, but production must
+  // set it on both the function and the Next runtime.
+  const expectedSecret = Deno.env.get("INVITE_REDEEM_SECRET") ?? "";
+  if (expectedSecret) {
+    const presented = req.headers.get("x-invite-secret") ?? "";
+    if (presented !== expectedSecret) {
+      return fail("unauthorized", 401);
+    }
   }
 
   let parsed: any;
@@ -179,10 +200,23 @@ Deno.serve(async (req: Request) => {
   if (inv.max_uses !== null && inv.used_count >= inv.max_uses)
     return fail("invitation_used", 409);
 
-  // 2. Don't let self-signup hijack or duplicate an existing login.
+  // 2. Don't let self-signup hijack or duplicate an existing identity. Both an
+  //    existing profile (which redeem_invitation refuses to relink) and an
+  //    existing Auth user are rejected with the SAME generic code so a
+  //    link-holder can't use the distinct response to enumerate which emails
+  //    are registered. (Full enumeration-resistance would need a verified-email
+  //    flow; this avoids the explicit "email_in_use" oracle.)
+  const { data: existingProfile, error: profileErr } = await service
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (profileErr) return fail("db_error", 500);
+  if (existingProfile) return fail("email_unavailable", 409);
+
   try {
     if (await emailHasAuthUser(service, email)) {
-      return fail("email_in_use", 409);
+      return fail("email_unavailable", 409);
     }
   } catch {
     return fail("db_error", 500);
@@ -198,8 +232,9 @@ Deno.serve(async (req: Request) => {
       user_metadata: { full_name: fullName },
     });
   if (createErr || !created?.user?.id) {
-    // A duplicate here means a race with another signup of the same email.
-    return fail("email_in_use", 409);
+    // A duplicate here means a race with another signup of the same email;
+    // keep the generic code so it can't be used to enumerate.
+    return fail("email_unavailable", 409);
   }
   const authUserId = created.user.id;
 

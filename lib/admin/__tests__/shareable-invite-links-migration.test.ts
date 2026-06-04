@@ -113,6 +113,15 @@ describe("IL.1 migration — redeem_invitation", () => {
     expect(body).toContain("used_count = used_count + 1");
   });
 
+  it("never relinks an existing profile (no identity takeover); raises email_taken", () => {
+    const body = functionBody(sql, "redeem_invitation");
+    // Self-signup only ever inserts a brand-new profile.
+    expect(body).toContain("email_taken");
+    // The old relink-by-email update must be gone, so a shared link can't be
+    // used to seize a pre-created profile/login.
+    expect(body).not.toContain("set auth_user_id = p_auth_user_id");
+  });
+
   it("writes a paired self_signup.redeem_invite audit row", () => {
     assertPairedAuditInsert(
       sql,

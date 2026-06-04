@@ -224,11 +224,6 @@ declare
   v_full_name text;
   v_email text;
   v_profile_id uuid;
-  v_existing_id uuid;
-  v_existing_role public.user_role;
-  v_existing_status public.profile_status;
-  v_existing_auth uuid;
-  v_before jsonb;
   v_gl_id uuid;
   v_gl_active boolean;
   v_group_state text := 'none';
@@ -266,50 +261,31 @@ begin
     raise exception 'invitation_used';
   end if;
 
-  -- 3. Profile resolution. Canonical email is the key; the lowercase CHECK on
-  --    profiles.email guarantees a hit when a row already exists.
-  select id, role, status, auth_user_id
-    into v_existing_id, v_existing_role, v_existing_status, v_existing_auth
-    from public.profiles
-   where email = v_email
-   for update;
-
+  -- 3. Self-signup never claims an existing identity. If ANY profile already
+  --    uses this canonical email, reject: a shared link must not be usable to
+  --    seize a pre-created profile/login by typing its address. The link only
+  --    ever provisions a brand-new profile + auth user. (The admin email-invite
+  --    flow, super_admin_complete_invite, still relinks because a super_admin
+  --    explicitly chose that email; this self-service path does not.)
+  perform 1 from public.profiles where email = v_email;
   if found then
-    if v_existing_role = 'super_admin'::public.user_role then
-      raise exception 'forbidden_target';
-    end if;
-    v_before := jsonb_build_object(
-      'role', v_existing_role,
-      'status', v_existing_status,
-      'auth_user_id_set', v_existing_auth is not null
-    );
-    begin
-      update public.profiles
-         set auth_user_id = p_auth_user_id,
-             full_name    = v_full_name,
-             role         = v_inv.role,
-             status       = 'active'::public.profile_status
-       where id = v_existing_id;
-    exception
-      when unique_violation then
-        raise exception 'profile_write_conflict';
-    end;
-    v_profile_id := v_existing_id;
-  else
-    begin
-      insert into public.profiles (
-        auth_user_id, full_name, email, role, status
-      ) values (
-        p_auth_user_id, v_full_name, v_email, v_inv.role,
-        'active'::public.profile_status
-      )
-      returning id into v_profile_id;
-    exception
-      when unique_violation then
-        raise exception 'profile_write_conflict';
-    end;
-    v_before := jsonb_build_object('role', null, 'status', null);
+    raise exception 'email_taken';
   end if;
+
+  begin
+    insert into public.profiles (
+      auth_user_id, full_name, email, role, status
+    ) values (
+      p_auth_user_id, v_full_name, v_email, v_inv.role,
+      'active'::public.profile_status
+    )
+    returning id into v_profile_id;
+  exception
+    when unique_violation then
+      -- Race: a parallel writer took this email (or this auth_user_id) between
+      -- the check and the insert. Treat as taken; the redeemer can retry.
+      raise exception 'email_taken';
+  end;
 
   -- 4. Optional group_leaders assignment (leader / co_leader only).
   if v_inv.role in ('leader'::public.user_role, 'co_leader'::public.user_role)
@@ -379,7 +355,7 @@ begin
       'groupId', v_inv.group_id,
       'groupAssignmentState', v_group_state,
       'singleUse', v_inv.single_use,
-      'before', v_before,
+      'before', jsonb_build_object('role', null, 'status', null),
       'after', jsonb_build_object('role', v_inv.role, 'status', 'active')
     )
   );
