@@ -91,10 +91,45 @@ const GROUP: PermanentDeletionEntity = {
   },
 };
 
+// #314: People / Profiles. super_admin profiles are filtered out here for UX
+// (the RPC also refuses them with forbidden_target).
+const PROFILE: PermanentDeletionEntity = {
+  entityType: "profile",
+  label: "Person",
+  pluralLabel: "People",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("profiles")
+      .select("id, full_name, email, role, status")
+      .neq("role", "super_admin")
+      .order("full_name", { ascending: true });
+    const rows = (data ?? []) as Array<{
+      id: string;
+      full_name: string;
+      email: string;
+      role: string;
+      status: string;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label:
+        str(r.full_name) +
+        (r.email ? ` <${r.email}>` : "") +
+        (r.status && r.status !== "active" ? ` (${r.status})` : ""),
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const name = str(snapshot.full_name);
+    const email = str(snapshot.email);
+    return name || email || "Person";
+  },
+};
+
 // Registry order is the order the picker lists entity types.
 export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   LAUNCH_SCENARIO,
   GROUP,
+  PROFILE,
 ];
 
 export function findPermanentDeletionEntity(

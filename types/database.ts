@@ -173,6 +173,11 @@ export interface AuditEventsRow {
   entity_id: UUID | null;
   metadata: Record<string, unknown>;
   created_at: Timestamp;
+  // ADR 0014 (#314): denormalized actor descriptor, written at insert +
+  // backfilled, so attribution survives the actor's permanent deletion (when
+  // actor_profile_id nulls). The UI falls back to these when the FK is null.
+  actor_name: string | null;
+  actor_email: string | null;
 }
 
 export interface AppSettingsRow {
@@ -195,6 +200,10 @@ export interface AuditEventsArchiveRow {
   metadata: Record<string, unknown>;
   created_at: Timestamp;
   archived_at: Timestamp;
+  // ADR 0014 (#314): the descriptor mirror, so resetting logs then deleting the
+  // actor doesn't lose attribution in the archive.
+  actor_name: string | null;
+  actor_email: string | null;
 }
 
 // PRD-SAC6 (#288): single in-DB snapshot store for the Clean Slate history
@@ -525,7 +534,10 @@ export interface Database {
       };
       audit_events: {
         Row: AuditEventsRow;
-        Insert: InsertOf<AuditEventsRow, "id" | "created_at" | "metadata">;
+        Insert: InsertOf<
+          AuditEventsRow,
+          "id" | "created_at" | "metadata" | "actor_name" | "actor_email"
+        >;
         Update: Partial<AuditEventsRow>;
         Relationships: [];
       };
@@ -537,7 +549,10 @@ export interface Database {
       };
       audit_events_archive: {
         Row: AuditEventsArchiveRow;
-        Insert: InsertOf<AuditEventsArchiveRow, "metadata" | "archived_at">;
+        Insert: InsertOf<
+          AuditEventsArchiveRow,
+          "metadata" | "archived_at" | "actor_name" | "actor_email"
+        >;
         Update: Partial<AuditEventsArchiveRow>;
         Relationships: [];
       };

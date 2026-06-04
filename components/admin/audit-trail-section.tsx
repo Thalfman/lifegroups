@@ -67,6 +67,9 @@ export function AuditTrailSection({
             const actor = event.actor_profile_id
               ? profilesById.get(event.actor_profile_id)
               : null;
+            // ADR 0014 (#314): fall back to the denormalized descriptor when the
+            // actor profile is gone (permanently deleted -> FK nulled).
+            const actorLabel = actor?.full_name ?? event.actor_name ?? null;
             return (
               <li
                 key={event.id}
@@ -111,7 +114,7 @@ export function AuditTrailSection({
                       {AUDIT_ACTION_LABELS[event.action] ?? event.action} ·{" "}
                       {event.entity_type}
                     </span>
-                    {actor ? <span>by {actor.full_name}</span> : null}
+                    {actorLabel ? <span>by {actorLabel}</span> : null}
                   </div>
                 </div>
                 <div
