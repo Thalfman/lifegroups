@@ -56,6 +56,7 @@ type PButtonCommonProps = {
 
 type PLinkButtonProps = PButtonCommonProps & {
   href: string;
+  "aria-label"?: string;
 };
 
 export function PLinkButton({
@@ -64,9 +65,14 @@ export function PLinkButton({
   href,
   style,
   children,
+  "aria-label": ariaLabel,
 }: PLinkButtonProps) {
   return (
-    <Link href={href} style={{ ...styleFor(tone, size), ...style }}>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      style={{ ...styleFor(tone, size), ...style }}
+    >
       {children}
     </Link>
   );

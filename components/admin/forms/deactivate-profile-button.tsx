@@ -35,7 +35,7 @@ export function DeactivateProfileButton({
         <input type="hidden" name="profile_id" value={profileId} />
         <PButton
           type="submit"
-          tone="ghost"
+          tone="terra"
           size="sm"
           disabled={pending}
           aria-label={fullName ? `${label} ${fullName}` : undefined}
