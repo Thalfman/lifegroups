@@ -11,7 +11,17 @@
 // (super-admin) session, so RLS still applies.
 
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
-import type { CleanSlateSnapshotsRow } from "@/types/database";
+import type {
+  CleanSlateSnapshotsRow,
+  HistoryResetSnapshotsRow,
+} from "@/types/database";
+import {
+  HISTORY_RESET_CATEGORIES,
+  HISTORY_RESET_CATEGORY_KEYS,
+  HISTORY_RESET_TABLES,
+  isHistoryResetCategory,
+  type HistoryResetCategory,
+} from "@/lib/admin/history-reset";
 
 // The history tables Clean Slate clears, in display order (parents first reads
 // naturally for a human). This is for the read-only impact preview only — it is
@@ -124,6 +134,90 @@ export async function fetchCleanSlateImpact(
     return { data: { counts, total }, error: null };
   } catch (error) {
     return { data: null, error: wrapError("fetchCleanSlateImpact", error) };
+  }
+}
+
+// PRD-SAC6 follow-up: the per-category history-reset card state. For each
+// category: the current total row count across its tables (the impact preview)
+// and the latest un-restored snapshot it could revert from, if any.
+export type HistoryResetSnapshotSummary = {
+  id: string;
+  createdAt: string;
+  totalRows: number;
+};
+
+export type HistoryResetCategoryState = {
+  category: HistoryResetCategory;
+  count: number;
+  snapshot: HistoryResetSnapshotSummary | null;
+};
+
+export type HistoryResetState = {
+  categories: HistoryResetCategoryState[];
+};
+
+// Reduce the un-restored snapshot rows (ordered newest first) to the single
+// latest one per category. The store already keeps at most one un-restored
+// snapshot per category, but this stays correct even if that ever loosens.
+function latestSnapshotByCategory(
+  rows: Pick<
+    HistoryResetSnapshotsRow,
+    "id" | "created_at" | "total_rows" | "category"
+  >[]
+): Map<HistoryResetCategory, HistoryResetSnapshotSummary> {
+  const out = new Map<HistoryResetCategory, HistoryResetSnapshotSummary>();
+  for (const row of rows) {
+    if (!isHistoryResetCategory(row.category) || out.has(row.category))
+      continue;
+    const total = Number(row.total_rows);
+    out.set(row.category, {
+      id: String(row.id),
+      createdAt: String(row.created_at),
+      totalRows: Number.isFinite(total) ? total : 0,
+    });
+  }
+  return out;
+}
+
+export async function fetchHistoryResetState(
+  client: ReadClient
+): Promise<ReadResult<HistoryResetState>> {
+  try {
+    // Per-table head counts (each history table counted once), in parallel.
+    const tables = HISTORY_RESET_TABLES;
+    const counts = await Promise.all(
+      tables.map((t) => countTable(client, t as CleanSlateTable))
+    );
+    const countByTable = new Map<string, number>();
+    tables.forEach((t, i) => countByTable.set(t, counts[i]));
+
+    // Latest un-restored snapshot per category, in one read.
+    const { data: snapshotRows, error: snapshotError } = await client
+      .from("history_reset_snapshots")
+      .select("id, created_at, total_rows, category")
+      .is("restored_at", null)
+      .order("created_at", { ascending: false });
+    if (snapshotError) throw snapshotError;
+
+    const snapshots = latestSnapshotByCategory(
+      (snapshotRows ?? []) as Pick<
+        HistoryResetSnapshotsRow,
+        "id" | "created_at" | "total_rows" | "category"
+      >[]
+    );
+
+    const categories: HistoryResetCategoryState[] =
+      HISTORY_RESET_CATEGORY_KEYS.map((category) => {
+        const count = HISTORY_RESET_CATEGORIES[category].reduce(
+          (sum, table) => sum + (countByTable.get(table) ?? 0),
+          0
+        );
+        return { category, count, snapshot: snapshots.get(category) ?? null };
+      });
+
+    return { data: { categories }, error: null };
+  } catch (error) {
+    return { data: null, error: wrapError("fetchHistoryResetState", error) };
   }
 }
 
