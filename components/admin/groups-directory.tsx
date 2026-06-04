@@ -1452,6 +1452,7 @@ const GroupCard = memo(function GroupCard({
       {/* Zone 1 — Header: name + lifecycle (only). The other three categories
           live in their own zones below, so the header never combines them. */}
       <header
+        className="lg-m-grid-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr) auto",

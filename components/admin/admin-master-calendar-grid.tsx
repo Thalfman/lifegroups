@@ -216,6 +216,7 @@ function OccurrencePill({
       onClick={onClick}
       aria-label={pillAriaLabel}
       title={`${occurrence.groupName} · ${typeLabel}${clock ? ` · ${clock}` : ""}`}
+      className="lg-m-cal-pill"
       style={{
         display: "flex",
         flexDirection: "column",
