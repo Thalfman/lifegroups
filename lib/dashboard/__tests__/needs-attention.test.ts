@@ -4,6 +4,7 @@ import {
   buildNeedsAttentionItems,
   buildTopNextActions,
 } from "@/lib/dashboard/needs-attention";
+import { resolveMutedAttentionKeys } from "@/lib/admin/feature-flags";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 
@@ -140,6 +141,77 @@ describe("buildNeedsAttentionItems", () => {
     const d = baseData();
     expect(buildNeedsAttentionItems(d).length).toBeGreaterThan(0);
     expect(buildNeedsAttentionItems(d, { degraded: true })).toEqual([]);
+  });
+});
+
+// Launch-optics mutes (#reset-attention-metrics): a Super Admin can hide a
+// time-based category from the Home queue via mutedKeys, so a brand-new ministry
+// does not read as behind on day one. Only the three time-based categories are
+// mutable; no_leader / setup_gaps are unaffected by construction.
+describe("buildNeedsAttentionItems: muted categories", () => {
+  // Every category has a real action, so the only reason one drops out is a mute.
+  function everyCategoryData(): AdminDashboardData {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 1;
+    d.setupGaps.counts.noCapacity = 2; // a setup gap
+    d.healthSummary.counts.missing = 3;
+    d.shepherdCare.needsAttention = 4;
+    d.followUps = baseData().followUps; // a populated follow-ups list
+    return d;
+  }
+
+  it("drops a muted time-based category from the area even when its count > 0", () => {
+    const d = everyCategoryData();
+    const keys = buildNeedsAttentionItems(d, {
+      mutedKeys: new Set(["care_attention"]),
+    }).map((i) => i.key);
+    expect(keys).not.toContain("care_attention");
+    // The other categories are untouched.
+    expect(keys).toContain("health");
+    expect(keys).toContain("follow_ups");
+  });
+
+  it("mutes health and follow-ups independently", () => {
+    const d = everyCategoryData();
+    const keys = buildNeedsAttentionItems(d, {
+      mutedKeys: new Set(["health", "follow_ups"]),
+    }).map((i) => i.key);
+    expect(keys).not.toContain("health");
+    expect(keys).not.toContain("follow_ups");
+    expect(keys).toContain("care_attention");
+  });
+
+  it("never mutes the non-time-based categories, even when all three mutes are on", () => {
+    const d = everyCategoryData();
+    const keys = buildNeedsAttentionItems(d, {
+      mutedKeys: new Set(["care_attention", "health", "follow_ups"]),
+    }).map((i) => i.key);
+    expect(keys).toEqual(["no_leader", "setup_gaps"]);
+  });
+
+  it("can never mute no_leader / setup_gaps via the real flag resolver", () => {
+    // The structural guarantee: even with every mute flag on, the keys the
+    // resolver produces only ever name time-based categories, so the
+    // non-time-based actions survive end-to-end.
+    const d = everyCategoryData();
+    const mutedKeys = resolveMutedAttentionKeys({
+      mute_care_attention: { enabled: true },
+      mute_health_checks: { enabled: true },
+      mute_follow_ups: { enabled: true },
+    });
+    const keys = buildNeedsAttentionItems(d, { mutedKeys }).map((i) => i.key);
+    expect(keys).toEqual(["no_leader", "setup_gaps"]);
+  });
+
+  it("collapses to an empty queue when the only action is muted (all-clear)", () => {
+    const d = allClearData();
+    d.followUps = baseData().followUps; // the single remaining action
+    expect(buildNeedsAttentionItems(d).map((i) => i.key)).toEqual([
+      "follow_ups",
+    ]);
+    expect(
+      buildTopNextActions(d, { mutedKeys: new Set(["follow_ups"]) })
+    ).toEqual([]);
   });
 });
 

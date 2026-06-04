@@ -4,6 +4,7 @@ import {
   resolveFlag,
   isFrozenSurfaceFlag,
   getFeatureFlagDefinition,
+  resolveMutedAttentionKeys,
   FEATURE_FLAG_DEFINITIONS,
   type FeatureFlagsConfig,
 } from "@/lib/admin/feature-flags";
@@ -79,6 +80,52 @@ describe("feature-flags", () => {
     it("has unique flag keys", () => {
       const keys = FEATURE_FLAG_DEFINITIONS.map((d) => d.key);
       expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it("registers the three launch-optics mutes as plain on/off new-surface flags", () => {
+      for (const key of [
+        "mute_care_attention",
+        "mute_health_checks",
+        "mute_follow_ups",
+      ]) {
+        expect(getFeatureFlagDefinition(key)?.kind).toBe("new_surface");
+        expect(isFrozenSurfaceFlag(key)).toBe(false);
+      }
+    });
+  });
+
+  describe("resolveMutedAttentionKeys", () => {
+    it("mutes nothing for an empty config (the default — every category shows)", () => {
+      expect(resolveMutedAttentionKeys({})).toEqual(new Set());
+    });
+
+    it("maps each mute flag to the needs-attention category key it suppresses", () => {
+      expect(
+        resolveMutedAttentionKeys({ mute_care_attention: { enabled: true } })
+      ).toEqual(new Set(["care_attention"]));
+      expect(
+        resolveMutedAttentionKeys({ mute_health_checks: { enabled: true } })
+      ).toEqual(new Set(["health"]));
+      expect(
+        resolveMutedAttentionKeys({ mute_follow_ups: { enabled: true } })
+      ).toEqual(new Set(["follow_ups"]));
+    });
+
+    it("ignores a mute flag that is present but off", () => {
+      expect(
+        resolveMutedAttentionKeys({ mute_health_checks: { enabled: false } })
+      ).toEqual(new Set());
+    });
+
+    it("mutes all three time-based categories when every mute is on", () => {
+      const config: FeatureFlagsConfig = {
+        mute_care_attention: { enabled: true },
+        mute_health_checks: { enabled: true },
+        mute_follow_ups: { enabled: true },
+      };
+      expect(resolveMutedAttentionKeys(config)).toEqual(
+        new Set(["care_attention", "health", "follow_ups"])
+      );
     });
   });
 });

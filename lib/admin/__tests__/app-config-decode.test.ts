@@ -4,6 +4,7 @@ import {
   decodeAppConfig,
   decodeFeatureFlags,
 } from "@/lib/admin/app-config-decode";
+import { resolveMutedAttentionKeys } from "@/lib/admin/feature-flags";
 
 describe("decodeAppConfig", () => {
   it("returns the built-in defaults for a null row", () => {
@@ -108,6 +109,23 @@ describe("decodeFeatureFlags", () => {
     const flags = { guests: { enabled: true, verified: false } };
     expect(decodeFeatureFlags(flags)).toEqual(
       decodeAppConfig({ setting_value: { feature_flags: flags } }).featureFlags
+    );
+  });
+
+  // The dashboard reads launch-optics mutes through this decoder, so pin that the
+  // mute keys survive decode and resolve to the right categories end-to-end.
+  it("round-trips the launch-optics mute flags into muted attention keys", () => {
+    const stored = {
+      mute_care_attention: { enabled: true },
+      mute_follow_ups: { enabled: false },
+    };
+    const decoded = decodeFeatureFlags(stored);
+    expect(decoded.mute_care_attention).toEqual({
+      enabled: true,
+      verified: false,
+    });
+    expect(resolveMutedAttentionKeys(decoded)).toEqual(
+      new Set(["care_attention"])
     );
   });
 });
