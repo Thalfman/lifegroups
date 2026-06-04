@@ -11,13 +11,35 @@
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { readUuidRpcData } from "@/lib/shared/uuid";
 
-export type UuidRpcResult = { data: string | null; error: { message: string } | null };
+export type UuidRpcResult = {
+  data: string | null;
+  error: { message: string } | null;
+};
 
 export async function callUuidRpc(
   client: AppSupabaseClient,
   name: string,
-  args: unknown = {},
+  args: unknown = {}
 ): Promise<UuidRpcResult> {
   const r = await client.rpc(name as never, args as never);
   return { data: readUuidRpcData(r.data), error: r.error };
+}
+
+// Some RPCs return a structured jsonb document (e.g. the permanent-deletion
+// preflight returns a blockers/set-null report) rather than a single uuid. This
+// passes the parsed data through untouched as `unknown`; the caller validates
+// its shape at the trust boundary, exactly as the action layer already does for
+// other reads.
+export type JsonRpcResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+export async function callJsonRpc(
+  client: AppSupabaseClient,
+  name: string,
+  args: unknown = {}
+): Promise<JsonRpcResult> {
+  const r = await client.rpc(name as never, args as never);
+  return { data: r.data ?? null, error: r.error };
 }

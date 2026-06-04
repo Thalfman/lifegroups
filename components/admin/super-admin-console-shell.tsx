@@ -20,6 +20,11 @@ import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import { CleanSlateCard } from "@/components/admin/clean-slate-card";
 import { AuditResetCard } from "@/components/admin/audit-reset-card";
+import { PermanentDeleteCard } from "@/components/admin/permanent-delete-card";
+import type {
+  PermanentDeletionTargetGroup,
+  RecentTombstone,
+} from "@/lib/supabase/permanent-deletion-reads";
 import type {
   CleanSlateImpact,
   CleanSlateLatestSnapshot,
@@ -96,6 +101,10 @@ export type SuperAdminConsoleData = {
   // controls. Null when none is recoverable / the read failed.
   latestCleanSlateSnapshot: CleanSlateLatestSnapshot | null;
   auditEventCount: number | null;
+  // ADR 0014 (#312–#316): curated permanent-deletion targets + recent tombstones
+  // for the danger-zone Permanent Deletion card.
+  permanentDeletionTargets: PermanentDeletionTargetGroup[];
+  recentTombstones: RecentTombstone[];
   profilesById: Map<string, ProfilesRow>;
   membersById: Map<string, MembersRow>;
   groupsById: Map<string, GroupsRow>;
@@ -673,6 +682,10 @@ export function SuperAdminConsoleShell({
             snapshot={data.latestCleanSlateSnapshot}
           />
           <AuditResetCard auditEventCount={data.auditEventCount} />
+          <PermanentDeleteCard
+            targets={data.permanentDeletionTargets}
+            tombstones={data.recentTombstones}
+          />
         </CommandSection>
       </div>
     </div>

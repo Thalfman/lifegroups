@@ -29,6 +29,10 @@ import {
   fetchLatestCleanSlateSnapshot,
 } from "@/lib/supabase/maintenance-reads";
 import {
+  fetchPermanentDeletionTargets,
+  fetchRecentTombstones,
+} from "@/lib/supabase/permanent-deletion-reads";
+import {
   BUILT_IN_APP_CONFIG,
   decodeAppConfig,
 } from "@/lib/admin/app-config-decode";
@@ -214,6 +218,8 @@ function buildNoClientData(): SuperAdminConsoleData {
     cleanSlateImpact: null,
     latestCleanSlateSnapshot: null,
     auditEventCount: null,
+    permanentDeletionTargets: [],
+    recentTombstones: [],
     profilesById: new Map(),
     membersById: new Map(),
     groupsById: new Map(),
@@ -261,6 +267,8 @@ async function loadData(
     cleanSlateResult,
     auditCountResult,
     latestSnapshotResult,
+    permanentDeletionTargets,
+    recentTombstones,
   ] = await Promise.all([
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllGroups(client),
@@ -277,6 +285,8 @@ async function loadData(
     fetchCleanSlateImpact(client),
     fetchAuditEventCount(client),
     fetchLatestCleanSlateSnapshot(client),
+    fetchPermanentDeletionTargets(client),
+    fetchRecentTombstones(client),
   ]);
 
   const profiles = profilesResult.data ?? [];
@@ -332,6 +342,8 @@ async function loadData(
     cleanSlateImpact: cleanSlateResult.data,
     latestCleanSlateSnapshot: latestSnapshotResult.data,
     auditEventCount: auditCountResult.data,
+    permanentDeletionTargets,
+    recentTombstones,
     profilesById,
     membersById,
     groupsById,

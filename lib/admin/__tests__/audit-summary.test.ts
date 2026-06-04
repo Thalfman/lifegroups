@@ -20,14 +20,17 @@ function emptyMaps(): AuditSummaryMaps {
 
 function mapsWithShepherd(): AuditSummaryMaps {
   const maps = emptyMaps();
-  maps.profilesById.set(UUID_SHEPHERD, { id: UUID_SHEPHERD, full_name: "Avery Bennett" });
+  maps.profilesById.set(UUID_SHEPHERD, {
+    id: UUID_SHEPHERD,
+    full_name: "Avery Bennett",
+  });
   return maps;
 }
 
 function event(
   action: string,
   metadata: Record<string, unknown>,
-  overrides: Partial<AuditEventsRow> = {},
+  overrides: Partial<AuditEventsRow> = {}
 ): AuditEventsRow {
   return {
     id: "00000000-0000-0000-0000-000000000000",
@@ -37,6 +40,8 @@ function event(
     entity_id: null,
     metadata,
     created_at: "2026-05-22T12:00:00Z",
+    actor_name: null,
+    actor_email: null,
     ...overrides,
   };
 }
@@ -84,7 +89,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
           shepherd_profile_id: UUID_SHEPHERD,
         },
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).toContain("Avery Bennett");
     expect(summary).toContain("call");
@@ -100,7 +105,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
           shepherd_profile_id: UUID_OTHER,
         },
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).toContain("a shepherd");
   });
@@ -117,7 +122,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
           shepherd_profile_id: UUID_SHEPHERD,
         },
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).toContain("meeting");
     expect(summary).not.toContain("touchpoint");
@@ -137,7 +142,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
           shepherd_profile_id: UUID_SHEPHERD,
         },
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).not.toContain("PRIVATE NOTE");
     expect(summary).not.toContain("ANOTHER PRIVATE");
@@ -160,7 +165,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
         // Deliberately omit top-level shepherd_profile_id to mirror
         // production payloads.
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).toContain("Avery Bennett");
     expect(summary).not.toContain("a shepherd");
@@ -174,7 +179,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: true,
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(created).toBe("Created care profile for Avery Bennett");
 
@@ -185,7 +190,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: false,
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(updated).toContain("Avery Bennett");
     expect(updated).toContain("doing_well");
@@ -208,9 +213,9 @@ describe("summarizeAuditEvent — shepherd care", () => {
           before: {},
           was_just_created: false,
         },
-        { entity_id: UUID_SHEPHERD },
+        { entity_id: UUID_SHEPHERD }
       ),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).not.toContain("Avery Bennett");
     expect(summary).toContain("a shepherd");
@@ -230,7 +235,7 @@ describe("summarizeAuditEvent — shepherd care", () => {
         shepherd_profile_id: UUID_SHEPHERD,
         was_just_created: false,
       }),
-      mapsWithShepherd(),
+      mapsWithShepherd()
     );
     expect(summary).not.toContain("CONFIDENTIAL");
     expect(summary).not.toContain("ALSO PRIVATE");
@@ -246,7 +251,7 @@ describe("summarizeAuditEvent — super admin invite", () => {
         groupAssignmentState: "none",
         after: { role: "ministry_admin", status: "active" },
       }),
-      emptyMaps(),
+      emptyMaps()
     );
     expect(summary).toContain("julian@example.org");
     expect(summary).toContain("ministry-admin");
@@ -261,7 +266,10 @@ describe("summarizeAuditEvent — super admin invite", () => {
     "includes the group name when groupAssignmentState=%s",
     (state) => {
       const maps = emptyMaps();
-      maps.groupsById.set(UUID_GROUP, { id: UUID_GROUP, name: "Tuesday Night" });
+      maps.groupsById.set(UUID_GROUP, {
+        id: UUID_GROUP,
+        name: "Tuesday Night",
+      });
       const summary = summarizeAuditEvent(
         event("super_admin.invite_user", {
           email: "leader@example.org",
@@ -270,11 +278,11 @@ describe("summarizeAuditEvent — super admin invite", () => {
           groupId: UUID_GROUP,
           after: { role: "leader", status: "active" },
         }),
-        maps,
+        maps
       );
       expect(summary).toContain("leader@example.org");
       expect(summary).toContain("Tuesday Night");
-    },
+    }
   );
 
   it("omits the group fragment when groupAssignmentState=none", () => {
@@ -288,7 +296,7 @@ describe("summarizeAuditEvent — super admin invite", () => {
         groupId: null,
         after: { role: "ministry_admin", status: "active" },
       }),
-      maps,
+      maps
     );
     expect(summary).toContain("admin@example.org");
     expect(summary).not.toContain("Tuesday Night");
@@ -305,7 +313,7 @@ describe("summarizeAuditEvent — launch planning", () => {
         before: { has_notes: false },
         after: { has_notes: true, notes: "RAW PRIVATE NOTE" },
       }),
-      emptyMaps(),
+      emptyMaps()
     );
     expect(summary).toContain("expected_growth");
     expect(summary).toContain("notes");
@@ -318,7 +326,7 @@ describe("summarizeAuditEvent — launch planning", () => {
         before: { name: "Expected", is_current: false },
         after: { name: "Expected", is_current: true },
       }),
-      emptyMaps(),
+      emptyMaps()
     );
     expect(summary).toContain("Expected");
     expect(summary.toLowerCase()).toContain("current");
@@ -330,7 +338,7 @@ describe("summarizeAuditEvent — launch planning", () => {
         before: { name: "Stretch" },
         after: {},
       }),
-      emptyMaps(),
+      emptyMaps()
     );
     expect(summary).toContain("Stretch");
     expect(summary.toLowerCase()).toContain("archived");

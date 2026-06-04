@@ -173,6 +173,11 @@ export interface AuditEventsRow {
   entity_id: UUID | null;
   metadata: Record<string, unknown>;
   created_at: Timestamp;
+  // ADR 0014 (#314): denormalized actor descriptor, written at insert +
+  // backfilled, so attribution survives the actor's permanent deletion (when
+  // actor_profile_id nulls). The UI falls back to these when the FK is null.
+  actor_name: string | null;
+  actor_email: string | null;
 }
 
 export interface AppSettingsRow {
@@ -195,6 +200,10 @@ export interface AuditEventsArchiveRow {
   metadata: Record<string, unknown>;
   created_at: Timestamp;
   archived_at: Timestamp;
+  // ADR 0014 (#314): the descriptor mirror, so resetting logs then deleting the
+  // actor doesn't lose attribution in the archive.
+  actor_name: string | null;
+  actor_email: string | null;
 }
 
 // PRD-SAC6 (#288): single in-DB snapshot store for the Clean Slate history
@@ -208,6 +217,28 @@ export interface CleanSlateSnapshotsRow {
   payload: Record<string, unknown>;
   row_counts: Record<string, number>;
   total_rows: number;
+  restored_at: Timestamp | null;
+  restored_by: UUID | null;
+}
+
+// ADR 0014 (#312): permanent-deletion tombstone. Super-admin-only SELECT RLS;
+// never itself a delete target. Writes only via the super_admin_* SECURITY
+// DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
+// array of {table, column, ids} the delete nulled, so restore (#315) can re-link.
+export interface TombstonesRow {
+  id: UUID;
+  entity_type: string;
+  table_name: string;
+  entity_id: UUID;
+  row_snapshot: Record<string, unknown>;
+  set_null_dependents: Array<{
+    table: string;
+    column: string;
+    ids: UUID[];
+    count?: number;
+  }>;
+  deleted_by: UUID | null;
+  deleted_at: Timestamp;
   restored_at: Timestamp | null;
   restored_by: UUID | null;
 }
@@ -503,7 +534,10 @@ export interface Database {
       };
       audit_events: {
         Row: AuditEventsRow;
-        Insert: InsertOf<AuditEventsRow, "id" | "created_at" | "metadata">;
+        Insert: InsertOf<
+          AuditEventsRow,
+          "id" | "created_at" | "metadata" | "actor_name" | "actor_email"
+        >;
         Update: Partial<AuditEventsRow>;
         Relationships: [];
       };
@@ -515,7 +549,10 @@ export interface Database {
       };
       audit_events_archive: {
         Row: AuditEventsArchiveRow;
-        Insert: InsertOf<AuditEventsArchiveRow, "metadata" | "archived_at">;
+        Insert: InsertOf<
+          AuditEventsArchiveRow,
+          "metadata" | "archived_at" | "actor_name" | "actor_email"
+        >;
         Update: Partial<AuditEventsArchiveRow>;
         Relationships: [];
       };
@@ -531,6 +568,20 @@ export interface Database {
           | "restored_by"
         >;
         Update: Partial<CleanSlateSnapshotsRow>;
+        Relationships: [];
+      };
+      tombstones: {
+        Row: TombstonesRow;
+        Insert: InsertOf<
+          TombstonesRow,
+          | "id"
+          | "set_null_dependents"
+          | "deleted_by"
+          | "deleted_at"
+          | "restored_at"
+          | "restored_by"
+        >;
+        Update: Partial<TombstonesRow>;
         Relationships: [];
       };
       platform_config: {
