@@ -11,7 +11,9 @@ import {
 // #328 — /admin/care is the canonical Care entry. /admin/shepherd-care (landing)
 // and /admin/follow-ups are thin ALIAS entries that render the same canonical
 // Care shell and return 200, NOT a 302 redirect (ADR 0013). They differ only by
-// which tab opens first. These tests pin two invariants:
+// which tab opens first. #334 re-keyed the shell to the canonical PRD IA names
+// (dashboard · directory · follow-ups · coverage · recent-interactions); these
+// tests pin two invariants against the NEW keys:
 //   1. The shell honors `initialTab`, so an alias can open on its view.
 //   2. The alias page modules import the canonical CarePageView with the
 //      correct initialTab and never call redirect/permanentRedirect — i.e. they
@@ -22,11 +24,11 @@ function tab(key: CareTabKey, label: string): CareTab {
 }
 
 const TABS: CareTab[] = [
-  tab("needs-contact", "Needs Contact"),
+  tab("dashboard", "Dashboard"),
+  tab("directory", "Directory"),
   tab("follow-ups", "Follow-ups"),
-  tab("due-soon", "Due Soon"),
-  tab("recent-care", "Recent Care"),
-  tab("completed", "Completed"),
+  tab("coverage", "Coverage"),
+  tab("recent-interactions", "Recent interactions"),
 ];
 
 // The selected tab is the only button with aria-selected="true". Pull its id so
@@ -43,10 +45,10 @@ function readAlias(relPath: string): string {
   );
 }
 
-describe("CareShell honors initialTab (#328)", () => {
-  it("opens on needs-contact by default", () => {
+describe("CareShell honors initialTab (#328, re-keyed #334)", () => {
+  it("opens on dashboard by default", () => {
     const html = renderToStaticMarkup(<CareShell tabs={TABS} />);
-    expect(selectedTabId(html)).toBe("care-tab-needs-contact");
+    expect(selectedTabId(html)).toBe("care-tab-dashboard");
   });
 
   it("opens on the follow-ups tab when asked", () => {
@@ -56,11 +58,11 @@ describe("CareShell honors initialTab (#328)", () => {
     expect(selectedTabId(html)).toBe("care-tab-follow-ups");
   });
 
-  it("opens on the needs-contact tab when asked", () => {
+  it("opens on the dashboard tab when asked", () => {
     const html = renderToStaticMarkup(
-      <CareShell tabs={TABS} initialTab="needs-contact" />
+      <CareShell tabs={TABS} initialTab="dashboard" />
     );
-    expect(selectedTabId(html)).toBe("care-tab-needs-contact");
+    expect(selectedTabId(html)).toBe("care-tab-dashboard");
   });
 });
 
@@ -90,9 +92,9 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
   const SHEPHERD_CARE = readAlias("shepherd-care/page.tsx");
   const FOLLOW_UPS = readAlias("follow-ups/page.tsx");
 
-  it("the shepherd-care landing renders CarePageView on the needs-contact tab", () => {
+  it("the shepherd-care landing renders CarePageView on the dashboard tab", () => {
     expect(SHEPHERD_CARE).toContain("CarePageView");
-    expect(SHEPHERD_CARE).toContain('initialTab="needs-contact"');
+    expect(SHEPHERD_CARE).toContain('initialTab="dashboard"');
   });
 
   it("the follow-ups page renders CarePageView on the follow-ups tab", () => {
@@ -114,5 +116,23 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
       expect(source).not.toContain("loadCareData");
       expect(source).not.toContain("buildShepherdCareDashboardModel");
     }
+  });
+
+  // #334 — the embedded Dashboard widgets still drill down via the legacy
+  // `?view=directory` / `?coverage=…` params against the /admin/shepherd-care
+  // alias path. So the landing must forward searchParams to the canonical shell,
+  // which translates them into the matching tab (Directory / Coverage). Pin the
+  // forwarding so the drill-down deep links can't be silently re-broken.
+  const CARE_PAGE = readAlias("care/page.tsx");
+
+  it("the shepherd-care landing forwards searchParams to the canonical shell", () => {
+    expect(SHEPHERD_CARE).toContain("searchParams");
+    expect(SHEPHERD_CARE).toMatch(/searchParams=\{searchParams\}/);
+  });
+
+  it("the canonical Care view resolves drill-down params to the initial tab", () => {
+    expect(CARE_PAGE).toContain("resolveCareInitialTabFromParams");
+    // The shell must open on the resolved tab, not the raw default.
+    expect(CARE_PAGE).toMatch(/initialTab=\{resolvedTab\}/);
   });
 });

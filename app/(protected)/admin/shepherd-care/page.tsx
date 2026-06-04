@@ -1,14 +1,28 @@
-import { CarePageView } from "@/app/(protected)/admin/care/page";
+import {
+  CarePageView,
+  type CareSearchParams,
+} from "@/app/(protected)/admin/care/page";
 
 // /admin/shepherd-care is a thin alias entry to the canonical Care surface
 // (/admin/care). It ALIAS-RENDERS — returns 200, never a 302 — the same Care
-// shell, opened on the Needs Contact tab (ADR 0013, #328). The admin guard runs
-// in CarePageView via loadCarePageData(); there is one loader and one shell, so
-// no data path or component is duplicated. The /admin/shepherd-care/[profileId]
-// detail and /admin/shepherd-care/over-shepherds sub-paths are untouched and
-// still resolve on their own surfaces.
+// shell, opened on the Dashboard tab (ADR 0013, #328; re-keyed in #334 — the
+// former Needs Contact landing now lives inside the Dashboard's attention
+// queue). The admin guard runs in CarePageView via loadCarePageData(); there is
+// one loader and one shell, so no data path or component is duplicated. The
+// /admin/shepherd-care/[profileId] detail and /admin/shepherd-care/over-shepherds
+// sub-paths are untouched and still resolve on their own surfaces.
+//
+// The embedded Dashboard widgets still drill down via the legacy
+// `?view=directory` / `?coverage=…` params against THIS path, so forward
+// searchParams: CarePageView translates them into the matching Directory /
+// Coverage tab (#334), keeping the deep links live without breaking the
+// alias-render-200 contract.
 export const dynamic = "force-dynamic";
 
-export default async function AdminShepherdCarePage() {
-  return <CarePageView initialTab="needs-contact" />;
+export default async function AdminShepherdCarePage({
+  searchParams,
+}: {
+  searchParams?: Promise<CareSearchParams>;
+}) {
+  return <CarePageView initialTab="dashboard" searchParams={searchParams} />;
 }

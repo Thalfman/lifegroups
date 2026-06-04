@@ -1,4 +1,5 @@
 import { isUuid } from "@/lib/shared/uuid";
+import type { CareTabKey } from "@/components/admin/care/care-shell";
 
 // Single home for Leader-care (shepherd-care) view state. The page is one route
 // (`/admin/shepherd-care`) and one nav item; a `?view=` param selects between a
@@ -87,6 +88,37 @@ export function buildShepherdCareViewHref(state: {
   }
   const s = qs.toString();
   return s.length === 0 ? BASE_PATH : `${BASE_PATH}?${s}`;
+}
+
+// Map the legacy Leader-care view-state params (`view` / `filter` / `coverage`)
+// onto a canonical Care shell tab key (#334 drill-down fix). The Dashboard
+// widgets embedded in the Care shell (summary cards, attention queue, coverage
+// buckets) still link via `buildShepherdCareViewHref` / `buildShepherdCareTriageLink`
+// to `/admin/shepherd-care?view=directory…` / `…?coverage=…`. Since #328 those
+// URLs alias-render the canonical Care shell, which keys tabs by the PRD IA
+// names — so the alias landing must translate the params into the matching
+// initial tab, or every drill-down would reopen the default Dashboard.
+//
+//   • view=directory                 → Directory (the leader roster)
+//   • coverage=… (uuid / unassigned) → Coverage  (the over-shepherd buckets,
+//                                       where coverage triage lives in the new IA)
+//   • otherwise                      → fall back to the route's default tab
+//
+// Coverage wins over view because the coverage drill-downs are dashboard-rooted
+// (`view` stays "dashboard") yet are coverage-triage targets in the new IA.
+// NOTE: the new Directory / Coverage panels render the full set with no filter
+// affordance, so the `filter` / specific-`coverage` value can only select the
+// tab, not pre-apply a row filter — re-introducing directory filtering is a
+// separate, larger feature (the #328 consolidation dropped the filtered
+// directory). This restores the drill-down *navigation* without it.
+export function resolveCareInitialTabFromParams(
+  params: Record<string, ParamValue>,
+  fallback: CareTabKey
+): CareTabKey {
+  const coverage = resolveCoverageFilter(params.coverage);
+  if (coverage !== undefined) return "coverage";
+  if (resolveShepherdCareView(params.view) === "directory") return "directory";
+  return fallback;
 }
 
 // Cross-view link builder (#180): map a Dashboard triage target to the
