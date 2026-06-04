@@ -116,9 +116,67 @@ describe("buildCareArea", () => {
     expect(item.groupName).toBe("Anderson Life Group");
     expect(item.ownerName).toBe("Tom");
     expect(item.dueLabel).toBe("Overdue 2 days");
+    // leader-a has an over-shepherd (Tom) and a scheduled touchpoint, so the
+    // obvious next action is logging the contact (#332).
     expect(item.actionLabel).toBe("Log contact");
-    // Needs Contact links to the leader detail (default Overview tab).
-    expect(item.actionHref).toBe("/admin/shepherd-care/leader-a");
+    // Record-context accessible name (#332 / req 4), not a bare verb.
+    expect(item.actionAccessibleName).toBe("Log contact for Ada Leader");
+    // Needs Contact links to the leader detail's Overview tab (where the
+    // log / touchpoint / coverage forms live).
+    expect(item.actionHref).toBe("/admin/shepherd-care/leader-a?tab=overview");
+  });
+
+  it("surfaces Assign over-shepherd when a flagged leader has no coverage", () => {
+    const input = baseInput();
+    input.ownerNameByShepherdId = new Map(); // leader-a now uncovered
+    const item = buildCareArea(input).needsContact[0]!;
+    expect(item.actionLabel).toBe("Assign over-shepherd");
+    expect(item.actionAccessibleName).toBe(
+      "Assign over-shepherd for Ada Leader"
+    );
+    expect(item.actionHref).toBe("/admin/shepherd-care/leader-a?tab=overview");
+  });
+
+  it("routes an overdue-follow-up Needs-Contact row to Resolve follow-up on the Follow-ups tab", () => {
+    const input = baseInput();
+    // leader-a is covered (Tom) and has a scheduled touchpoint, so the contact
+    // precedence alone would pick "Log contact" → Overview. But the attention
+    // engine flagged this row PRIMARILY for an overdue care follow-up, so the
+    // obvious next action is to resolve that follow-up on the Follow-ups tab
+    // (#332), not a coverage/touchpoint/log-contact action on Overview.
+    input.attentionQueue = [
+      {
+        shepherdProfileId: "leader-a",
+        shepherdName: "Ada Leader",
+        reason: "overdue_care_follow_up",
+        secondaryReasons: [],
+        detail: "1 follow-up overdue",
+        priority: 2,
+        href: "/admin/shepherd-care/leader-a",
+      },
+    ];
+    const item = buildCareArea(input).needsContact[0]!;
+    expect(item.reason).toBe("1 follow-up overdue");
+    expect(item.actionLabel).toBe("Resolve follow-up");
+    expect(item.actionAccessibleName).toBe("Resolve follow-up for Ada Leader");
+    expect(item.actionHref).toBe(
+      "/admin/shepherd-care/leader-a?tab=follow-ups"
+    );
+  });
+
+  it("surfaces Schedule touchpoint when a covered leader has no touchpoint", () => {
+    const input = baseInput();
+    // Covered (Tom) but clear the next-touchpoint date on leader-a's entry.
+    input.entries = input.entries.map((e) =>
+      e.profile.id === "leader-a" && e.care
+        ? { ...e, care: { ...e.care, next_touchpoint_due: null } }
+        : e
+    );
+    const item = buildCareArea(input).needsContact[0]!;
+    expect(item.actionLabel).toBe("Schedule touchpoint");
+    expect(item.actionAccessibleName).toBe(
+      "Schedule touchpoint for Ada Leader"
+    );
   });
 
   it("buckets only overdue / due-soon care follow-ups into Due Soon", () => {
@@ -131,7 +189,11 @@ describe("buildCareArea", () => {
     expect(dueSoon[0]!.reason).toBe("Follow-up overdue");
     expect(dueSoon[0]!.key).toBe("fu-fu-1");
     for (const item of dueSoon) {
-      expect(item.actionLabel).toBe("View follow-up");
+      // An open follow-up's obvious next action is to resolve it (#332).
+      expect(item.actionLabel).toBe("Resolve follow-up");
+      expect(item.actionAccessibleName).toBe(
+        `Resolve follow-up for ${item.personName}`
+      );
       expect(item.actionHref).toContain("?tab=follow-ups");
     }
   });
@@ -142,7 +204,10 @@ describe("buildCareArea", () => {
     const item = recentCare[0]!;
     expect(item.personName).toBe("Ben Coleader");
     expect(item.reason).toBe("Call");
-    expect(item.actionLabel).toBe("Add note");
+    // After a logged contact, the obvious next action is to continue the
+    // cadence with another contact (#332).
+    expect(item.actionLabel).toBe("Log contact");
+    expect(item.actionAccessibleName).toBe("Log contact for Ben Coleader");
     expect(item.actionHref).toContain("?tab=overview");
   });
 
@@ -159,10 +224,10 @@ describe("buildCareArea", () => {
     const area = buildCareArea(baseInput());
     const allowed = new Set([
       "Log contact",
-      "Create follow-up",
+      "Assign over-shepherd",
+      "Schedule touchpoint",
+      "Resolve follow-up",
       "View follow-up",
-      "Mark complete",
-      "Add note",
     ]);
     for (const list of [
       area.needsContact,
@@ -172,6 +237,8 @@ describe("buildCareArea", () => {
     ]) {
       for (const item of list) {
         expect(allowed.has(item.actionLabel)).toBe(true);
+        // Every item carries a record-context accessible name (#332 / req 4).
+        expect(item.actionAccessibleName).toContain(item.personName);
       }
     }
   });
