@@ -206,4 +206,70 @@ test.describe("groups directory editing surface", () => {
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
   });
+
+  // Issue #325 — the dense Ops table with a persisted card⇄table toggle. The
+  // surface defaults to cards on the server paint (the toggle hydrates to the
+  // saved choice). These tests switch to table mode and prove the table's
+  // repeated record-context actions stay unique and axe-clean — the same
+  // invariants the card mode enforces above.
+  test("the card⇄table toggle switches to the Ops table", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+    // Sortable column headers are present, including the latest-week check-in.
+    await expect(
+      surface.getByRole("columnheader", { name: /Latest-week check-in/i })
+    ).toBeVisible();
+    await expect(surface.getByRole("button", { name: /^Group/ })).toBeVisible();
+  });
+
+  test("table-mode Edit controls name their group and stay unique", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    const editButtons = surface.getByRole("button", { name: /^Edit .+/ });
+    const names = await editButtons.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("aria-label") ?? "")
+    );
+    expect(names.length).toBeGreaterThan(1);
+    expect(new Set(names).size).toBe(names.length);
+
+    // The View / Calendar links are repeated per row too; each must name its
+    // group and stay unique so screen-reader users can tell the rows apart.
+    const viewLinks = surface.getByRole("link", { name: /^View .+/ });
+    const viewNames = await viewLinks.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("aria-label") ?? "")
+    );
+    expect(viewNames.length).toBeGreaterThan(1);
+    expect(new Set(viewNames).size).toBe(viewNames.length);
+  });
+
+  test("sorting a column updates its aria-sort", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    const leaderHeader = surface.getByRole("columnheader", {
+      name: /Leader \/ co-leader/i,
+    });
+    await expect(leaderHeader).toHaveAttribute("aria-sort", "none");
+    await leaderHeader.getByRole("button").click();
+    await expect(leaderHeader).toHaveAttribute("aria-sort", "ascending");
+    await leaderHeader.getByRole("button").click();
+    await expect(leaderHeader).toHaveAttribute("aria-sort", "descending");
+  });
+
+  test("axe finds no critical or serious violations in table mode", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expectNoBlockingAxeViolations(results);
+  });
 });

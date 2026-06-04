@@ -54,6 +54,54 @@ test.describe("admin People tabs", () => {
     ).toBeGreaterThan(0);
   });
 
+  test("destructive row actions keep record-context accessible names", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+
+    // Deactivate is destructive: its accessible name must still carry the
+    // person's name, not collapse to a wall of identical "Deactivate" buttons.
+    const deactivate = surface.getByRole("button", {
+      name: /^Deactivate .+/,
+    });
+    expect(await deactivate.count()).toBeGreaterThan(0);
+    await expect(deactivate.first()).toBeVisible();
+
+    // Role change is a destructive direction (downgrade) candidate: its trigger
+    // must name the person too.
+    const changeRole = surface.getByRole("button", {
+      name: /^Change role for .+/,
+    });
+    expect(await changeRole.count()).toBeGreaterThan(0);
+    await expect(changeRole.first()).toBeVisible();
+
+    // The View person navigation link also carries the person's name.
+    const viewPerson = surface.getByRole("link", { name: /^View person .+/ });
+    expect(await viewPerson.count()).toBeGreaterThan(0);
+  });
+
+  test("the role-change form exposes a keyboard-operable, named select", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+
+    // Open the first row's role editor and confirm its controls are reachable
+    // and clearly named for screen-reader / keyboard users.
+    await surface
+      .getByRole("button", { name: /^Change role for .+/ })
+      .first()
+      .click();
+
+    const roleSelect = surface.getByLabel("New role").first();
+    await expect(roleSelect).toBeVisible();
+    await roleSelect.focus();
+    await expect(roleSelect).toBeFocused();
+
+    // Cancel returns the editor without leaving an orphaned form.
+    await surface.getByRole("button", { name: "Cancel" }).first().click();
+    await expect(surface.getByLabel("New role")).toHaveCount(0);
+  });
+
   test("a no-results directory search leaves no large unrelated section visible", async ({
     page,
   }) => {
@@ -119,11 +167,21 @@ test.describe("admin People tabs", () => {
   }) => {
     const surface = page.locator(SURFACE);
 
-    for (const name of ["Leaders", "Members", "Apprentices", "Add Person"]) {
+    // Scan each tab while it is mounted — a single scan after the loop would
+    // only cover whichever tab was last clicked, letting regressions in the
+    // earlier tabs (e.g. the Add Person forms) slip through. Directory is last
+    // so the row-level destructive affordances (Deactivate / Change role) and
+    // the View person links are also in the DOM when scanned.
+    for (const name of [
+      "Leaders",
+      "Members",
+      "Apprentices",
+      "Add Person",
+      "Directory",
+    ]) {
       await surface.getByRole("button", { name }).click();
+      const results = await new AxeBuilder({ page }).analyze();
+      expectNoBlockingAxeViolations(results);
     }
-
-    const results = await new AxeBuilder({ page }).analyze();
-    expectNoBlockingAxeViolations(results);
   });
 });

@@ -123,7 +123,30 @@ export type TopNextAction = NeedsAttentionItem & {
   // The concern phrased as an imperative action with the live count folded in,
   // e.g. "Assign leaders to 16 groups", "Resolve 8 setup gaps".
   action: string;
+  // A one-line "why it matters" rationale, static per category (NO count, NO
+  // query) so the admin learns why now, not only what and how many. Calm and
+  // pastoral, never alarmist — secondary context rendered under the action.
+  why: string;
 };
+
+// Static per-category rationale ("why it matters"). Keyed by category `key`,
+// derived purely — never references the live count. Tone is calm and pastoral
+// (req #323): it explains the cost of leaving the work undone without alarm.
+const TOP_ACTION_WHY: Record<string, string> = {
+  no_leader: "Unled groups can't meet or grow.",
+  setup_gaps: "Missing details keep a group from gathering well.",
+  care_attention: "Leaders carry more when no one is checking in.",
+  health: "Regular checks keep a group's health from drifting unseen.",
+  follow_ups: "Follow-ups close the loop on care already begun.",
+};
+
+// A calm fallback for any category without a specific rationale, so an unknown
+// key still carries a non-empty, non-alarmist "why".
+const DEFAULT_WHY = "Tending this keeps your groups healthy.";
+
+function whyItMatters(item: NeedsAttentionItem): string {
+  return TOP_ACTION_WHY[item.key] ?? DEFAULT_WHY;
+}
 
 // Fixed category rank (lower = more urgent). Care sits with health per the
 // sign-off rationale ("then care/health"). Any key absent here sorts last.
@@ -166,7 +189,11 @@ export function buildTopNextActions(
   options: { degraded?: boolean } = {}
 ): TopNextAction[] {
   return buildNeedsAttentionItems(data, options)
-    .map((item) => ({ ...item, action: imperativeAction(item) }))
+    .map((item) => ({
+      ...item,
+      action: imperativeAction(item),
+      why: whyItMatters(item),
+    }))
     .sort(
       (a, b) =>
         (TOP_ACTION_RANK[a.key] ?? Number.MAX_SAFE_INTEGER) -
