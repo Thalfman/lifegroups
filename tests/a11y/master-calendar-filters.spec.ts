@@ -1,5 +1,6 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Master calendar filter polish (Admin Interaction Model PRD req 11, #262).
 // Proves the new affordances on the real FilterBar rendered in the harness:
@@ -106,5 +107,73 @@ test.describe("master calendar filter affordances (#262)", () => {
     await expect(
       surface.getByRole("button", { name: /^Remove .+ filter: / })
     ).toHaveCount(0);
+  });
+});
+
+// Issue #324 — a11y hardening sweep, dialogs thread. The occurrence detail
+// drawer (components/admin/admin-master-calendar-drawer.tsx) is a Radix Dialog
+// opened programmatically by selecting an occurrence row (no DialogTrigger), so
+// Radix has no trigger to auto-restore focus to. This pins that the drawer
+// passes the focus checklist: it has an accessible name, opening moves focus in,
+// and Escape closes it returning focus to the row that opened it.
+test.describe("master calendar occurrence drawer (#324)", () => {
+  const SURFACE = '[data-a11y-surface="master-calendar-filters"]';
+
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+    // The occurrence rows (and the drawer) live in the list view.
+    await page
+      .locator(SURFACE)
+      .getByRole("tab", { name: "List", exact: true })
+      .click();
+  });
+
+  test("opening an occurrence names the drawer and moves focus in", async ({
+    page,
+  }) => {
+    const opener = page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first();
+    await opener.click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    // The drawer carries an accessible name (its DialogTitle), so it is not an
+    // anonymous "dialog" to assistive tech.
+    await expect(dialog).toHaveAttribute("aria-labelledby", /.+/);
+    const focusInside = await dialog.evaluate((node) =>
+      node.contains(document.activeElement)
+    );
+    expect(focusInside).toBe(true);
+  });
+
+  test("Escape closes the drawer and returns focus to the opening row", async ({
+    page,
+  }) => {
+    const opener = page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first();
+    await opener.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test("axe finds no critical or serious violations with the drawer open", async ({
+    page,
+  }) => {
+    await page
+      .locator(SURFACE)
+      .getByRole("button", { name: /Bryant/ })
+      .first()
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expectNoBlockingAxeViolations(results);
   });
 });

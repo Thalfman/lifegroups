@@ -14,11 +14,14 @@
 
 import { useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
+import {
+  CalendarOccurrenceEditor,
+  type CalendarOccurrenceEditorActions,
+} from "@/components/calendar/calendar-occurrence-editor";
 import { AdminMasterCalendarList } from "@/components/admin/admin-master-calendar-list";
 import { AdminMasterCalendarGrid } from "@/components/admin/admin-master-calendar-grid";
 import { AdminMasterCalendarShell } from "@/components/admin/admin-master-calendar-shell";
 import { CalendarMonthGrid } from "@/components/calendar/calendar-month-grid";
-import type { CalendarOccurrenceEditorActions } from "@/components/calendar/calendar-occurrence-editor";
 import { FollowUpStatusControls } from "@/components/admin/follow-ups/follow-up-status-controls";
 import {
   AdminFollowUpsShell,
@@ -510,6 +513,19 @@ const PEOPLE_PIPELINE: PeoplePipelineData = {
 
 const PEOPLE_NEEDS_CONTACT: ReadonlySet<string> = new Set();
 
+// Calendar occurrence editor (#324 a11y hardening sweep). The Groups calendar
+// modal is its own Radix Dialog (separate from the EditingSurface drawer), opened
+// from a programmatic trigger rather than a DialogTrigger, and it carries the
+// "Clear override" destructive action. It is mounted here so the a11y suite can
+// pin its accessible name, focus trap/restore, Escape/Close behaviour, and the
+// keyboard-operability of the clear-override action. The stub actions never run
+// (the suite only opens the modal); they satisfy the action-form contract.
+const CALENDAR_EDITOR_ACTIONS: CalendarOccurrenceEditorActions = {
+  create: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+  update: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+  archive: async () => ({ ok: true as const, value: { id: "occ-1" } }),
+};
+
 function Surface({
   id,
   heading,
@@ -610,6 +626,35 @@ export function A11yHarnessClient() {
           groups={CALENDAR_GROUPS}
           leaderOptions={CALENDAR_LEADERS}
         />
+      </Surface>
+
+      {/* Calendar occurrence editor (#324). A saved-override occurrence so the
+          modal renders the destructive "Clear override" action. It opens the
+          Radix Dialog from a programmatic (non-DialogTrigger) button — the case
+          the a11y suite pins for focus trap + restore. */}
+      <Surface
+        id="calendar-occurrence-editor"
+        heading="Calendar occurrence editor"
+      >
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <CalendarOccurrenceEditor
+            groupId="grp-anderson"
+            groupMeetingTime="19:00"
+            occurrence={{
+              date: "2026-05-19",
+              meetingTime: "19:00",
+              eventType: "study",
+              status: "scheduled",
+              title: "Week 3 of the rotation",
+              description: null,
+              overrideId: "override-1",
+              isMeetingOccurrence: true,
+            }}
+            actions={CALENDAR_EDITOR_ACTIONS}
+            triggerLabel="Edit Anderson occurrence on May 19"
+            canEdit
+          />
+        </div>
       </Surface>
 
       {/* Per-group calendar month grid (#322). Each editable cell renders a

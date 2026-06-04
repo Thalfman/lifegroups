@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,11 @@ export function AdminMasterCalendarDrawer({
   onClose: () => void;
 }) {
   const open = occurrence !== null;
+  // The occurrence row that had focus when the drawer opened, so we return focus
+  // to it on close. The drawer is opened programmatically by selecting a row
+  // (no DialogTrigger), so Radix has no trigger to auto-restore to — own it here
+  // as the EditingSurface and the occurrence editor do.
+  const openerRef = useRef<HTMLElement | null>(null);
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
       <DialogPortal>
@@ -48,6 +54,16 @@ export function AdminMasterCalendarDrawer({
         />
         <DialogContent
           aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            openerRef.current = document.activeElement as HTMLElement | null;
+          }}
+          onCloseAutoFocus={(event) => {
+            const opener = openerRef.current;
+            if (opener && document.contains(opener)) {
+              event.preventDefault();
+              opener.focus();
+            }
+          }}
           className="lg-m-master-calendar-drawer"
           style={{
             position: "fixed",
