@@ -272,4 +272,92 @@ test.describe("groups directory editing surface", () => {
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
   });
+
+  // Issue #333 — Groups table follow-through: the saved sort + column choices and
+  // the new density setting persist across reload, profile-scoped, with no flash
+  // (SSR default = cards; the saved choice hydrates client-side). These tests
+  // drive the density toggle + column menu and prove they persist and stay
+  // axe-clean.
+  test("the density + column controls appear only in table mode", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    // Card mode: no density radiogroup, no Columns menu.
+    await expect(
+      surface.getByRole("radiogroup", { name: "Table density" })
+    ).toHaveCount(0);
+    await expect(surface.getByRole("button", { name: "Columns" })).toHaveCount(
+      0
+    );
+
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    // Table mode: both controls are present and keyboard-reachable.
+    await expect(
+      surface.getByRole("radiogroup", { name: "Table density" })
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("button", { name: "Columns" })
+    ).toBeVisible();
+  });
+
+  test("density choice persists across reload with no flash", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    const compact = surface.getByRole("radio", { name: "Compact" });
+    await compact.click();
+    await expect(compact).toHaveAttribute("aria-checked", "true");
+
+    await page.reload({ waitUntil: "networkidle" });
+    // The table + the compact density both restore after hydration.
+    await expect(surface.getByRole("table")).toBeVisible();
+    await expect(
+      surface.getByRole("radio", { name: "Compact" })
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("hiding a column persists across reload", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+
+    // The Setup column header starts visible.
+    await expect(
+      surface.getByRole("columnheader", { name: /Setup/i })
+    ).toBeVisible();
+
+    // Open the column menu and hide Setup.
+    await surface.getByRole("button", { name: "Columns" }).click();
+    await surface.getByRole("checkbox", { name: "Setup" }).uncheck();
+    await expect(
+      surface.getByRole("columnheader", { name: /Setup/i })
+    ).toHaveCount(0);
+
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(surface.getByRole("table")).toBeVisible();
+    // The hidden Setup column stays hidden after reload.
+    await expect(
+      surface.getByRole("columnheader", { name: /Setup/i })
+    ).toHaveCount(0);
+  });
+
+  test("axe finds no critical or serious violations with the column menu open", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("radio", { name: "Table" }).click();
+    await expect(surface.getByRole("table")).toBeVisible();
+    await surface.getByRole("button", { name: "Columns" }).click();
+    await expect(
+      surface.getByRole("checkbox", { name: "Setup" })
+    ).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expectNoBlockingAxeViolations(results);
+  });
 });
