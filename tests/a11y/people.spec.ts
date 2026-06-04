@@ -172,6 +172,11 @@ test.describe("admin People tabs", () => {
     // earlier tabs (e.g. the Add Person forms) slip through. Directory is last
     // so the row-level destructive affordances (Deactivate / Change role) and
     // the View person links are also in the DOM when scanned.
+    //
+    // Scope each scan to the People surface (the harness renders every admin
+    // surface on one page); this keeps the five per-tab scans fast and stable
+    // as other surfaces grow, instead of re-analyzing the whole document each
+    // time and drifting toward the test timeout.
     for (const name of [
       "Leaders",
       "Members",
@@ -180,7 +185,7 @@ test.describe("admin People tabs", () => {
       "Directory",
     ]) {
       await surface.getByRole("button", { name }).click();
-      const results = await new AxeBuilder({ page }).analyze();
+      const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
       expectNoBlockingAxeViolations(results);
     }
   });
