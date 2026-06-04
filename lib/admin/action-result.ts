@@ -108,6 +108,21 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
     "That snapshot file is from an unsupported version. Export a fresh snapshot from this app and try again.",
   malformed_snapshot:
     "That snapshot file is missing or has the wrong shape. Use a file exported by this app's Clean Slate Export.",
+  // ADR 0014 (#312–#316) permanent-deletion tokens.
+  missing_entity:
+    "We couldn't find that record. It may already have been deleted — refresh the page and try again.",
+  has_blocking_dependents:
+    "That record still has dependent data that would be erased. Archive or clear the blockers listed above first, then delete it.",
+  has_confidential_records:
+    "This person has confidential records and cannot be permanently deleted; disable instead.",
+  missing_tombstone:
+    "We couldn't find that tombstone. Refresh the page and try again.",
+  already_restored:
+    "That record has already been restored from this tombstone.",
+  id_already_exists:
+    "A record with that id already exists again, so the restore can't run without overwriting it. Remove the conflicting record first.",
+  missing_parent:
+    "The restore can't run because a record it depends on no longer exists. Restore that parent record first.",
 };
 
 export const mapRpcError = makeRpcErrorMapper(

@@ -25,7 +25,12 @@ import type {
   ShepherdCareStatus,
   UserRole,
 } from "@/types/enums";
-import { callUuidRpc, type UuidRpcResult } from "@/lib/shared/rpc";
+import {
+  callUuidRpc,
+  callJsonRpc,
+  type UuidRpcResult,
+  type JsonRpcResult,
+} from "@/lib/shared/rpc";
 
 type RpcResult = UuidRpcResult;
 
@@ -203,6 +208,36 @@ export function rpcSuperAdminResetAuditLogs(
   client: AppSupabaseClient
 ): Promise<RpcResult> {
   return callUuidRpc(client, "super_admin_reset_audit_logs", {});
+}
+
+// ADR 0014 (#312–#316) permanent deletion. The delete RPC snapshots the row +
+// its set-null dependents into a tombstone, writes the paired audit row, and
+// physically removes the row, returning the tombstone id.
+export function rpcSuperAdminPermanentDelete(
+  client: AppSupabaseClient,
+  args: { p_entity_type: string; p_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_permanent_delete", args);
+}
+
+// ADR 0014 (#313) preflight: returns a jsonb report of blocking dependents +
+// captured set-null dependents (and an opaque confidential flag for #314), so
+// the danger-zone panel can name what blocks a deletion before attempting it.
+export function rpcSuperAdminPermanentDeletePreflight(
+  client: AppSupabaseClient,
+  args: { p_entity_type: string; p_id: string }
+): Promise<JsonRpcResult> {
+  return callJsonRpc(client, "super_admin_permanent_delete_preflight", args);
+}
+
+// ADR 0014 (#315) recovery: re-inserts a tombstoned row from its snapshot and
+// re-links the captured set-null dependents, returning a jsonb report of how
+// many links were restored vs skipped.
+export function rpcSuperAdminRestoreTombstone(
+  client: AppSupabaseClient,
+  args: { p_tombstone_id: string }
+): Promise<JsonRpcResult> {
+  return callJsonRpc(client, "super_admin_restore_tombstone", args);
 }
 
 // Phase 5A.4 admin settings + leader-role-swap RPCs.

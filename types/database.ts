@@ -212,6 +212,28 @@ export interface CleanSlateSnapshotsRow {
   restored_by: UUID | null;
 }
 
+// ADR 0014 (#312): permanent-deletion tombstone. Super-admin-only SELECT RLS;
+// never itself a delete target. Writes only via the super_admin_* SECURITY
+// DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
+// array of {table, column, ids} the delete nulled, so restore (#315) can re-link.
+export interface TombstonesRow {
+  id: UUID;
+  entity_type: string;
+  table_name: string;
+  entity_id: UUID;
+  row_snapshot: Record<string, unknown>;
+  set_null_dependents: Array<{
+    table: string;
+    column: string;
+    ids: UUID[];
+    count?: number;
+  }>;
+  deleted_by: UUID | null;
+  deleted_at: Timestamp;
+  restored_at: Timestamp | null;
+  restored_by: UUID | null;
+}
+
 // Phase SAC.1 (#159): Super-Admin-only platform config (feature flags + editable
 // copy). Mirrors the AppSettingsRow keyed-row shape but lives in its own table
 // with Super-Admin-only RLS, so the Ministry Admin can never read it.
@@ -531,6 +553,20 @@ export interface Database {
           | "restored_by"
         >;
         Update: Partial<CleanSlateSnapshotsRow>;
+        Relationships: [];
+      };
+      tombstones: {
+        Row: TombstonesRow;
+        Insert: InsertOf<
+          TombstonesRow,
+          | "id"
+          | "set_null_dependents"
+          | "deleted_by"
+          | "deleted_at"
+          | "restored_at"
+          | "restored_by"
+        >;
+        Update: Partial<TombstonesRow>;
         Relationships: [];
       };
       platform_config: {
