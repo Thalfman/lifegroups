@@ -80,6 +80,25 @@ export function resolveOpenFollowUpNextAction(): CareNextActionResult {
   return result("resolve-follow-up", "follow-ups");
 }
 
+// The obvious next action for a Needs-Contact attention item. When the item's
+// PRIMARY attention reason is an overdue care follow-up, the task already
+// exists and its next step is to resolve it on the Follow-ups tab — routing it
+// to a coverage/touchpoint/log-contact action (and the Overview tab) would
+// point past the thing that actually flagged the row (#332). Otherwise the
+// outreach precedence in resolveContactNextAction applies. `primaryReason` is
+// CareAttentionItem.reason (the top reason buildAttentionQueue chose); kept as
+// a string param so this module stays free of an import cycle with the
+// attention engine.
+export function resolveAttentionNextAction(
+  primaryReason: string,
+  state: CareContactState
+): CareNextActionResult {
+  if (primaryReason === "overdue_care_follow_up") {
+    return resolveOpenFollowUpNextAction();
+  }
+  return resolveContactNextAction(state);
+}
+
 // Build the record-context accessible action name from the verb label + person,
 // e.g. "Log contact for Jane Doe" (#332 / req 4 — never a bare "Log contact").
 export function careActionAccessibleName(

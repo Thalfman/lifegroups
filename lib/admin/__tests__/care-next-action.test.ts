@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   careActionAccessibleName,
+  resolveAttentionNextAction,
   resolveContactNextAction,
   resolveOpenFollowUpNextAction,
   type CareContactState,
@@ -58,6 +59,50 @@ describe("resolveOpenFollowUpNextAction", () => {
     expect(r.action).toBe("resolve-follow-up");
     expect(r.label).toBe("Resolve follow-up");
     expect(r.tab).toBe("follow-ups");
+  });
+});
+
+describe("resolveAttentionNextAction", () => {
+  it("routes an overdue-care-follow-up primary reason to Resolve follow-up", () => {
+    // Even when the leader is covered and has a scheduled touchpoint (so the
+    // contact precedence would otherwise pick Log contact), an item flagged
+    // primarily for an overdue care follow-up must resolve to the follow-up
+    // path on the Follow-ups tab (#332).
+    const r = resolveAttentionNextAction(
+      "overdue_care_follow_up",
+      COVERED_AND_SCHEDULED
+    );
+    expect(r.action).toBe("resolve-follow-up");
+    expect(r.label).toBe("Resolve follow-up");
+    expect(r.tab).toBe("follow-ups");
+  });
+
+  it("still routes to the follow-up path when coverage/touchpoint gaps also exist", () => {
+    // The overdue follow-up wins over the uncovered/no-touchpoint gaps.
+    const r = resolveAttentionNextAction("overdue_care_follow_up", {
+      hasOverShepherd: false,
+      hasScheduledTouchpoint: false,
+    });
+    expect(r.action).toBe("resolve-follow-up");
+    expect(r.tab).toBe("follow-ups");
+  });
+
+  it("falls back to the contact precedence for any other primary reason", () => {
+    expect(
+      resolveAttentionNextAction("no_contact_yet", COVERED_AND_SCHEDULED).action
+    ).toBe("log-contact");
+    expect(
+      resolveAttentionNextAction("no_over_shepherd", {
+        hasOverShepherd: false,
+        hasScheduledTouchpoint: true,
+      }).action
+    ).toBe("assign-over-shepherd");
+    expect(
+      resolveAttentionNextAction("overdue_touchpoint", {
+        hasOverShepherd: true,
+        hasScheduledTouchpoint: false,
+      }).action
+    ).toBe("schedule-touchpoint");
   });
 });
 

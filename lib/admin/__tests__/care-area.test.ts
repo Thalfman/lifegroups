@@ -137,6 +137,33 @@ describe("buildCareArea", () => {
     expect(item.actionHref).toBe("/admin/shepherd-care/leader-a?tab=overview");
   });
 
+  it("routes an overdue-follow-up Needs-Contact row to Resolve follow-up on the Follow-ups tab", () => {
+    const input = baseInput();
+    // leader-a is covered (Tom) and has a scheduled touchpoint, so the contact
+    // precedence alone would pick "Log contact" → Overview. But the attention
+    // engine flagged this row PRIMARILY for an overdue care follow-up, so the
+    // obvious next action is to resolve that follow-up on the Follow-ups tab
+    // (#332), not a coverage/touchpoint/log-contact action on Overview.
+    input.attentionQueue = [
+      {
+        shepherdProfileId: "leader-a",
+        shepherdName: "Ada Leader",
+        reason: "overdue_care_follow_up",
+        secondaryReasons: [],
+        detail: "1 follow-up overdue",
+        priority: 2,
+        href: "/admin/shepherd-care/leader-a",
+      },
+    ];
+    const item = buildCareArea(input).needsContact[0]!;
+    expect(item.reason).toBe("1 follow-up overdue");
+    expect(item.actionLabel).toBe("Resolve follow-up");
+    expect(item.actionAccessibleName).toBe("Resolve follow-up for Ada Leader");
+    expect(item.actionHref).toBe(
+      "/admin/shepherd-care/leader-a?tab=follow-ups"
+    );
+  });
+
   it("surfaces Schedule touchpoint when a covered leader has no touchpoint", () => {
     const input = baseInput();
     // Covered (Tom) but clear the next-touchpoint date on leader-a's entry.

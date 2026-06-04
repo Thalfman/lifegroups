@@ -10,7 +10,7 @@ import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import {
   careActionAccessibleName,
-  resolveContactNextAction,
+  resolveAttentionNextAction,
   resolveOpenFollowUpNextAction,
 } from "@/lib/admin/care-next-action";
 
@@ -143,13 +143,17 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     input.ownerNameByShepherdId.get(shepherdId) ?? null;
 
   // --- Needs Contact: every leader/co-leader the attention engine flags. The
-  // obvious next action is resolved per item (#332): an uncovered leader needs
-  // an over-shepherd first, one with no scheduled touchpoint needs one set, and
-  // otherwise the action is to log the contact. ---
+  // obvious next action is resolved per item from the item's PRIMARY attention
+  // reason (#332): when a leader is flagged primarily for an overdue care
+  // follow-up, the next step is to resolve that follow-up (Follow-ups tab), not
+  // a coverage/touchpoint/log-contact action on Overview. Otherwise the
+  // outreach precedence applies — an uncovered leader needs an over-shepherd
+  // first, one with no scheduled touchpoint needs one set, and otherwise the
+  // action is to log the contact. ---
   const needsContact: CareItem[] = input.attentionQueue.map((item) => {
     const owner = ownerOf(item.shepherdProfileId);
     const due = nextTouchpointByShepherdId.get(item.shepherdProfileId) ?? null;
-    const next = resolveContactNextAction({
+    const next = resolveAttentionNextAction(item.reason, {
       hasOverShepherd: owner !== null,
       hasScheduledTouchpoint: due !== null,
     });
