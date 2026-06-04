@@ -24,6 +24,7 @@ import {
 import {
   PeopleManagementShell,
   type PeopleManagementData,
+  type PeoplePipelineData,
 } from "@/components/admin/people-management-shell";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
@@ -406,6 +407,16 @@ const PEOPLE_DATA: PeopleManagementData = {
   },
 };
 
+// The Apprentices tab embeds the leader pipeline (issue #302). The empty rollup
+// renders the pipeline's empty state — enough for axe to scan the tab's controls.
+const PEOPLE_PIPELINE: PeoplePipelineData = {
+  rollup: { stages: [], groupsWithoutApprentice: [], totalApprentices: 0 },
+  availableGroups: [],
+  error: null,
+};
+
+const PEOPLE_NEEDS_CONTACT: ReadonlySet<string> = new Set();
+
 function Surface({
   id,
   heading,
@@ -504,8 +515,15 @@ export function A11yHarnessClient() {
         </div>
       </Surface>
 
-      <Surface id="people" heading="People (directory / add / assignments)">
-        <PeopleManagementShell data={PEOPLE_DATA} />
+      <Surface
+        id="people"
+        heading="People (directory / leaders / members / apprentices / add)"
+      >
+        <PeopleManagementShell
+          data={PEOPLE_DATA}
+          pipeline={PEOPLE_PIPELINE}
+          needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
+        />
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">

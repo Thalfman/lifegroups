@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { memo, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
@@ -16,13 +17,25 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 
+// Directory = everyone; Leaders = login profiles filtered to leader/co-leader;
+// Members = participant (non-login) records. The People shell renders one of
+// these three scopes per tab (reduction plan §6). Directory keeps the
+// login/member type filter; the two scoped tabs lock it so the tab label and
+// the list can't disagree.
+export type DirectoryScope = "directory" | "leaders" | "members";
+
 type PeopleDirectoryProps = {
+  scope: DirectoryScope;
   profiles: ProfilesRow[];
   members: MembersRow[];
   groups: GroupsRow[];
   groupLeaders: GroupLeadersRow[];
   memberships: GroupMembershipsRow[];
   currentActorProfileId: string;
+  // Profile ids of leaders/co-leaders whose care cadence has lapsed, so each
+  // person row can show the Contact/Care indicator ("Needs contact" vs "No
+  // current concerns"). Members have no care model, so they are never in here.
+  needsContactProfileIds: ReadonlySet<string>;
   errors: {
     profiles: string | null;
     members: string | null;
@@ -32,12 +45,12 @@ type PeopleDirectoryProps = {
 };
 
 type StatusFilter = "all" | "active" | "inactive";
-type TypeFilter = "all" | "login" | "member";
+
+const LEADER_ROLES = new Set(["leader", "co_leader"]);
 
 export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
   // Debounce the text query so the two list filters run once typing settles,
   // not on every keystroke. The input stays bound to `query` for instant feedback.
@@ -74,6 +87,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   }, [props.memberships, groupsById]);
 
   const filterProfile = (p: ProfilesRow): boolean => {
+    if (props.scope === "leaders" && !LEADER_ROLES.has(p.role)) return false;
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
     if (trimmed) {
       const hay = `${p.full_name} ${p.email}`.toLowerCase();
@@ -94,7 +108,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const visibleProfiles = useMemo(
     () => props.profiles.filter(filterProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.profiles, statusFilter, trimmed]
+    [props.profiles, props.scope, statusFilter, trimmed]
   );
 
   const visibleMembers = useMemo(
@@ -103,24 +117,20 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
     [props.members, statusFilter, trimmed]
   );
 
-  const showLogin = typeFilter !== "member";
-  const showMembers = typeFilter !== "login";
+  const showLogin = props.scope === "directory" || props.scope === "leaders";
+  const showMembers = props.scope === "directory" || props.scope === "members";
 
   const anyError =
-    props.errors.profiles ||
-    props.errors.members ||
-    props.errors.leaders ||
-    props.errors.memberships;
+    (showLogin && (props.errors.profiles || props.errors.leaders)) ||
+    (showMembers && (props.errors.members || props.errors.memberships));
 
   return (
     <section style={{ display: "grid", gap: 18 }}>
       <FilterBar
         query={query}
         statusFilter={statusFilter}
-        typeFilter={typeFilter}
         onQueryChange={setQuery}
         onStatusFilterChange={setStatusFilter}
-        onTypeFilterChange={setTypeFilter}
       />
 
       {anyError ? (
@@ -133,8 +143,16 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {showLogin ? (
         <DirectorySection
           headerEyebrow="Login profiles"
-          headerTitle="People who sign in"
-          headerDescription="Ministry admins, leaders, and co-leaders. They sign in to record check-ins and review groups."
+          headerTitle={
+            props.scope === "leaders"
+              ? "Leaders and co-leaders"
+              : "People who sign in"
+          }
+          headerDescription={
+            props.scope === "leaders"
+              ? "Current leaders and co-leaders. They sign in to record check-ins and review their groups."
+              : "Ministry admins, leaders, and co-leaders. They sign in to record check-ins and review groups."
+          }
           countLabel={`${visibleProfiles.length} shown`}
           empty={
             props.errors.profiles
@@ -142,7 +160,9 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               : visibleProfiles.length === 0
                 ? trimmed || statusFilter !== "all"
                   ? "No login profiles match the current filters."
-                  : "No login profiles yet. Add one from the form below."
+                  : props.scope === "leaders"
+                    ? "No leaders or co-leaders yet. Add one from Add Person."
+                    : "No login profiles yet. Add one from Add Person."
                 : null
           }
         >
@@ -152,6 +172,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               profile={p}
               assignedGroups={profileGroupMap.get(p.id) ?? NO_GROUPS}
               isSelf={p.id === props.currentActorProfileId}
+              needsContact={props.needsContactProfileIds.has(p.id)}
             />
           ))}
         </DirectorySection>
@@ -169,7 +190,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               : visibleMembers.length === 0
                 ? trimmed || statusFilter !== "all"
                   ? "No members match the current filters."
-                  : "No members yet. Add one from the form below."
+                  : "No members yet. Add one from Add Person."
                 : null
           }
         >
@@ -193,24 +214,20 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
 function FilterBar({
   query,
   statusFilter,
-  typeFilter,
   onQueryChange,
   onStatusFilterChange,
-  onTypeFilterChange,
 }: {
   query: string;
   statusFilter: StatusFilter;
-  typeFilter: TypeFilter;
   onQueryChange: (v: string) => void;
   onStatusFilterChange: (v: StatusFilter) => void;
-  onTypeFilterChange: (v: TypeFilter) => void;
 }) {
   return (
     <div
       className="lg-m-filterbar"
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 1fr) auto auto",
+        gridTemplateColumns: "minmax(220px, 1fr) auto",
         gap: 12,
         alignItems: "center",
         background: P.surface,
@@ -246,16 +263,6 @@ function FilterBar({
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
         <option value="all">All statuses</option>
-      </select>
-      <select
-        value={typeFilter}
-        onChange={(e) => onTypeFilterChange(e.target.value as TypeFilter)}
-        aria-label="Type filter"
-        style={selectStyle}
-      >
-        <option value="all">Login + Members</option>
-        <option value="login">Login only</option>
-        <option value="member">Members only</option>
       </select>
     </div>
   );
@@ -383,21 +390,57 @@ function DirectorySection({
 }
 
 // ---------------------------------------------------------------------------
+// Care / contact indicator
+// ---------------------------------------------------------------------------
+
+// The per-row Contact/Care indicator (reduction plan §6 person row). Leaders and
+// co-leaders carry a real care cadence, so they read "Needs contact" or "No
+// current concerns". Members are separate participant records with no care
+// model (per the issue's Care boundary), so their rows show a neutral dash.
+function CareIndicator({ needsContact }: { needsContact: boolean }) {
+  return (
+    <PBadge tone={needsContact ? "followup" : "healthy"}>
+      {needsContact ? "Needs contact" : "No current concerns"}
+    </PBadge>
+  );
+}
+
+function ViewPersonLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        fontFamily: fontSans,
+        fontSize: 12,
+        fontWeight: 600,
+        color: P.terra,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      View person →
+    </Link>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Rows
 // ---------------------------------------------------------------------------
 
 // Memoized so unrelated directory re-renders (e.g. debounced-search keystrokes
-// before the filtered list settles, or toggling the other section's type
-// filter) don't re-render every row. Props are referentially stable: rows come
-// from props and the group lists from memoized maps (empty → NO_GROUPS).
+// before the filtered list settles) don't re-render every row. Props are
+// referentially stable: rows come from props and the group lists from memoized
+// maps (empty → NO_GROUPS).
 const ProfileRow = memo(function ProfileRow({
   profile,
   assignedGroups,
   isSelf,
+  needsContact,
 }: {
   profile: ProfilesRow;
   assignedGroups: GroupsRow[];
   isSelf: boolean;
+  needsContact: boolean;
 }) {
   const isLeaderType =
     profile.role === "leader" || profile.role === "co_leader";
@@ -422,11 +465,14 @@ const ProfileRow = memo(function ProfileRow({
           >
             {profile.full_name}
           </div>
+          {/* Role and Status are distinct fields (reduction plan §6): a Role
+              badge always, plus a Status badge so an inactive leader still
+              reads its role rather than collapsing to "Inactive". */}
+          <PBadge tone="neutral">{ROLE_LABELS[profile.role]}</PBadge>
           <PBadge tone={profile.status === "active" ? "healthy" : "pause"}>
-            {profile.status === "active"
-              ? ROLE_LABELS[profile.role]
-              : "Inactive"}
+            {profile.status === "active" ? "Active" : "Inactive"}
           </PBadge>
+          {isLeaderType ? <CareIndicator needsContact={needsContact} /> : null}
         </div>
         <div
           style={{
@@ -466,6 +512,7 @@ const ProfileRow = memo(function ProfileRow({
           justifyContent: "flex-end",
         }}
       >
+        <ViewPersonLink href={`/admin/people/profile/${profile.id}`} />
         {isSelf ? (
           <span
             style={{
@@ -527,8 +574,9 @@ const MemberRow = memo(function MemberRow({
           >
             {member.full_name}
           </div>
-          <PBadge tone={member.status === "active" ? "neutral" : "pause"}>
-            {member.status === "active" ? "Member · non-login" : "Inactive"}
+          <PBadge tone="neutral">Member</PBadge>
+          <PBadge tone={member.status === "active" ? "healthy" : "pause"}>
+            {member.status === "active" ? "Active" : "Inactive"}
           </PBadge>
         </div>
         <div
@@ -565,12 +613,23 @@ const MemberRow = memo(function MemberRow({
           </div>
         ) : null}
       </div>
-      {member.status === "active" ? (
-        <DeactivateMemberButton
-          memberId={member.id}
-          fullName={member.full_name}
-        />
-      ) : null}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
+        }}
+      >
+        <ViewPersonLink href={`/admin/people/member/${member.id}`} />
+        {member.status === "active" ? (
+          <DeactivateMemberButton
+            memberId={member.id}
+            fullName={member.full_name}
+          />
+        ) : null}
+      </div>
     </li>
   );
 });

@@ -1,172 +1,123 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
-// Issue 270 — Admin Interaction Model req 3: split People into distinct
-// Directory / Add person / Assignments views, and move group assignment into a
-// detail surface rather than repeating an inline assign form under every group.
-// This suite gates:
+// Issue 302 — People folds the former Leader Pipeline in as "Apprentices" and
+// presents five tabs: Directory (everyone), Leaders, Members, Apprentices, and
+// Add Person (reduction plan §6). Group placement moved off a standalone
+// Assignments view onto each person's detail page (Group tab), so the People
+// shell no longer renders the per-group assignment drawer. This suite gates:
 //
-//   1. People defaults to the Directory view; Add person and Assignments are
-//      secondary views reached by explicit actions.
-//   2. A no-results directory search does not leave a large unrelated section
-//      (Assignments) visible — it is not in the DOM until chosen.
-//   3. Group assignment happens in the EditingSurface drawer, opened per group;
-//      the Assignments list renders no inline assign forms, and each group's
-//      "Edit assignments" control carries the group name as record context.
-//   4. The drawer passes the focus & keyboard checklist (focus in, Escape +
-//      explicit Close, focus returns).
-//   5. axe finds no critical/serious violations with the drawer open.
+//   1. People defaults to the Directory view; all five tabs are explicit
+//      controls; the add forms and pipeline forms are not in the DOM until
+//      their tab is chosen.
+//   2. A no-results directory search leaves no large unrelated section visible.
+//   3. The Leaders / Members / Apprentices / Add Person tabs each reveal their
+//      own content.
+//   4. Each directory row carries a "View person" link.
+//   5. axe finds no critical/serious violations across the tabs.
 
 const SURFACE = '[data-a11y-surface="people"]';
 
-async function accessibleNames(controls: Locator): Promise<string[]> {
-  return controls.evaluateAll((els) =>
-    els.map((el) =>
-      (el.getAttribute("aria-label") ?? el.textContent ?? "").trim()
-    )
-  );
-}
-
-test.describe("admin People split views", () => {
+test.describe("admin People tabs", () => {
   test.beforeEach(async ({ page }) => {
     await gotoHarness(page);
   });
 
-  test("defaults to the Directory view; Add person and Assignments are hidden", async ({
+  test("defaults to the Directory view; all five tabs are explicit controls", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
 
     // Directory is the default: its search is present.
-    await expect(surface.getByLabel("Search people")).toBeVisible();
+    await expect(surface.getByLabel("Search people").first()).toBeVisible();
 
-    // The add-person forms and the assignment list are not rendered until their
-    // view is chosen.
+    // The add-person forms are not rendered until their tab is chosen.
     expect(await surface.getByText("Add leader profile").count()).toBe(0);
-    expect(
-      await surface
-        .getByRole("button", { name: /^Edit assignments for / })
-        .count()
-    ).toBe(0);
 
-    // The view switcher exposes all three as explicit controls.
-    for (const name of ["Directory", "Add person", "Assignments"]) {
+    // The view switcher exposes all five tabs as explicit controls.
+    for (const name of [
+      "Directory",
+      "Leaders",
+      "Members",
+      "Apprentices",
+      "Add Person",
+    ]) {
       await expect(surface.getByRole("button", { name })).toBeVisible();
     }
+  });
+
+  test("directory rows carry a View person link", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    expect(
+      await surface.getByRole("link", { name: /View person/ }).count()
+    ).toBeGreaterThan(0);
   });
 
   test("a no-results directory search leaves no large unrelated section visible", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByLabel("Search people").fill("zzz-no-such-person-zzz");
+    await surface
+      .getByLabel("Search people")
+      .first()
+      .fill("zzz-no-such-person-zzz");
 
-    // The directory reports no matches…
+    // The directory reports no matches.
     await expect(surface.getByText(/No login profiles match/)).toBeVisible();
-    // …and the Assignments workflow is still not on the page.
-    expect(
-      await surface
-        .getByRole("button", { name: /^Edit assignments for / })
-        .count()
-    ).toBe(0);
+    // The add forms are still not on the page.
+    expect(await surface.getByText("Add leader profile").count()).toBe(0);
   });
 
-  test("Add person view reveals the add forms", async ({ page }) => {
+  test("the Leaders tab filters to a Leaders and co-leaders section", async ({
+    page,
+  }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Add person" }).click();
+    await surface.getByRole("button", { name: "Leaders" }).click();
 
-    await expect(surface.getByText("Add leader profile")).toBeVisible();
-    // The member form rendered (its submit control is unambiguous, unlike the
-    // "Add member" card title text).
-    await expect(
-      surface.getByRole("button", { name: "Add member" })
-    ).toBeVisible();
-    // The directory search is no longer mounted in this view.
+    await expect(surface.getByText("Leaders and co-leaders")).toBeVisible();
+    // The members section is not mounted in the leaders scope.
+    expect(await surface.getByText("Participants (non-login)").count()).toBe(0);
+  });
+
+  test("the Members tab shows only the participants section", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("button", { name: "Members" }).click();
+
+    await expect(surface.getByText("Participants (non-login)")).toBeVisible();
+  });
+
+  test("the Apprentices tab reveals the leader pipeline", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("button", { name: "Apprentices" }).click();
+
+    await expect(surface.getByText("Leader pipeline")).toBeVisible();
+    // The directory search is no longer mounted in this tab.
     expect(await surface.getByLabel("Search people").count()).toBe(0);
   });
 
-  test("Assignments view lists groups with no inline assign forms, only per-group edit controls", async ({
-    page,
-  }) => {
+  test("the Add Person tab reveals the add forms", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Assignments" }).click();
+    await surface.getByRole("button", { name: "Add Person" }).click();
 
-    // No assignment form renders inline in the list…
-    expect(
-      await surface.getByRole("button", { name: "Assign leader" }).count()
-    ).toBe(0);
-
-    // …only per-group edit controls, each naming its group.
-    const editControls = surface.getByRole("button", {
-      name: /^Edit assignments for /,
-    });
-    expect(await editControls.count()).toBeGreaterThan(1);
-    const names = await accessibleNames(editControls);
-    expect(
-      new Set(names).size,
-      `unique edit controls, got: ${names.join(" | ")}`
-    ).toBe(names.length);
-  });
-
-  test("opening a group's assignments uses the drawer and passes the focus checklist", async ({
-    page,
-  }) => {
-    const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Assignments" }).click();
-
-    const opener = surface
-      .getByRole("button", { name: /^Edit assignments for / })
-      .first();
-    await opener.click();
-
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    // The assign forms live inside the drawer now.
+    await expect(surface.getByText("Add leader profile")).toBeVisible();
     await expect(
-      dialog.getByRole("button", { name: "Assign leader" })
+      surface.getByRole("button", { name: "Add member" })
     ).toBeVisible();
-
-    // Opening moved focus into the drawer.
-    const focusInside = await dialog.evaluate((node) =>
-      node.contains(document.activeElement)
-    );
-    expect(focusInside).toBe(true);
-
-    // Escape closes and returns focus to the triggering control.
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(opener).toBeFocused();
+    // The directory search is no longer mounted in this tab.
+    expect(await surface.getByLabel("Search people").count()).toBe(0);
   });
 
-  test("the explicit Close control closes the assignments drawer", async ({
+  test("axe finds no critical or serious violations across the People tabs", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Assignments" }).click();
-    await surface
-      .getByRole("button", { name: /^Edit assignments for / })
-      .first()
-      .click();
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await dialog
-      .getByRole("button", { name: /^Close assignments for / })
-      .click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-  });
-
-  test("axe finds no critical or serious violations with the assignments drawer open", async ({
-    page,
-  }) => {
-    const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Assignments" }).click();
-    await surface
-      .getByRole("button", { name: /^Edit assignments for / })
-      .first()
-      .click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    for (const name of ["Leaders", "Members", "Apprentices", "Add Person"]) {
+      await surface.getByRole("button", { name }).click();
+    }
 
     const results = await new AxeBuilder({ page }).analyze();
     expectNoBlockingAxeViolations(results);
