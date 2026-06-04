@@ -88,10 +88,14 @@ function dueLabelFor(dueIso: string, todayIso: string): string {
   return days === 1 ? "Due tomorrow" : `Due in ${days} days`;
 }
 
-function dueToneFor(dueIso: string, todayIso: string): CareItemDueTone {
+function dueToneFor(
+  dueIso: string,
+  todayIso: string,
+  windowDays: number
+): CareItemDueTone {
   const days = daysFromToday(dueIso, todayIso);
   if (days < 0) return "overdue";
-  if (days <= DEFAULT_DUE_SOON_WINDOW_DAYS) return "soon";
+  if (days <= windowDays) return "soon";
   return "neutral";
 }
 
@@ -134,15 +138,16 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
       reason: item.detail,
       groupName: groupOf(item.shepherdProfileId),
       dueLabel: due ? dueLabelFor(due, input.todayIso) : null,
-      dueTone: due ? dueToneFor(due, input.todayIso) : "neutral",
+      dueTone: due ? dueToneFor(due, input.todayIso, window) : "neutral",
       ownerName: ownerOf(item.shepherdProfileId),
       actionLabel: "Log contact",
       actionHref: careDetailHref(item.shepherdProfileId),
     };
   });
 
-  // --- Due Soon: care follow-ups overdue or due within the window. ---
-  const dueSoon: CareItem[] = [];
+  // --- Due Soon: care follow-ups overdue or due within the window, sorted by
+  // urgency (most overdue first) so the triage tab leads with what's late. ---
+  const dueSoonRows: { item: CareItem; days: number }[] = [];
   for (const fu of input.outstandingFollowUps) {
     if (fu.status === "done") continue; // feed is not-done, but be defensive
     if (!fu.due_date) continue;
@@ -150,19 +155,30 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     if (days > window) continue; // not due yet
     const shepherd = shepherdByCareProfileId.get(fu.care_profile_id);
     if (!shepherd) continue; // follow-up for an off-directory leader
-    dueSoon.push({
-      key: `fu-${fu.care_profile_id}-${fu.due_date}`,
-      personName: shepherd.name,
-      reason: days < 0 ? "Follow-up overdue" : "Follow-up due soon",
-      groupName: groupOf(shepherd.shepherdId),
-      dueLabel: dueLabelFor(fu.due_date, input.todayIso),
-      dueTone: dueToneFor(fu.due_date, input.todayIso),
-      ownerName: ownerOf(shepherd.shepherdId),
-      actionLabel: "View follow-up",
-      actionHref: careDetailHref(shepherd.shepherdId, "follow-ups"),
+    dueSoonRows.push({
+      days,
+      // Key on the follow-up id: a leader can have several follow-ups due on
+      // the same date, so a (profile, date) key would collide and let React
+      // reuse the wrong row.
+      item: {
+        key: `fu-${fu.id}`,
+        personName: shepherd.name,
+        reason: days < 0 ? "Follow-up overdue" : "Follow-up due soon",
+        groupName: groupOf(shepherd.shepherdId),
+        dueLabel: dueLabelFor(fu.due_date, input.todayIso),
+        dueTone: dueToneFor(fu.due_date, input.todayIso, window),
+        ownerName: ownerOf(shepherd.shepherdId),
+        actionLabel: "View follow-up",
+        actionHref: careDetailHref(shepherd.shepherdId, "follow-ups"),
+      },
     });
   }
-  dueSoon.sort((a, b) => a.personName.localeCompare(b.personName));
+  // Most overdue (smallest/most-negative days) first; ties broken by name.
+  dueSoonRows.sort(
+    (a, b) =>
+      a.days - b.days || a.item.personName.localeCompare(b.item.personName)
+  );
+  const dueSoon: CareItem[] = dueSoonRows.map((r) => r.item);
 
   // --- Recent Care: recently logged calls / notes / meetings / texts. ---
   const recentCare: CareItem[] = input.recentInteractions.map((row) => ({
@@ -174,7 +190,9 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     dueTone: "neutral",
     ownerName: ownerOf(row.shepherd_profile_id),
     actionLabel: "Add note",
-    actionHref: careDetailHref(row.shepherd_profile_id, "contact-history"),
+    // Overview hosts the care-action forms (log a contact, add a summary);
+    // Contact History is read-only, so "Add note" must land on Overview.
+    actionHref: careDetailHref(row.shepherd_profile_id, "overview"),
   }));
 
   // --- Completed: recently completed care follow-ups. ---
@@ -183,7 +201,7 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
     const shepherd = shepherdByCareProfileId.get(fu.care_profile_id);
     if (!shepherd) continue;
     completed.push({
-      key: `done-${fu.care_profile_id}-${fu.completed_at ?? fu.due_date ?? ""}`,
+      key: `done-${fu.id}`,
       personName: shepherd.name,
       reason: "Follow-up completed",
       groupName: groupOf(shepherd.shepherdId),

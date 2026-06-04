@@ -51,7 +51,21 @@ export async function PlanningCalendarPanel({
     );
   }
 
-  const data = await loadMasterCalendar(client, { monthIso });
+  // loadMasterCalendar throws when any underlying calendar read fails. Contain
+  // that here so a calendar-only outage shows an ErrorBanner in this tab rather
+  // than 500-ing all of /admin/planning and blocking the Launches / Capacity /
+  // Scenarios / Multiplication tabs (whose loader renders partial-error panels).
+  let data: Awaited<ReturnType<typeof loadMasterCalendar>>;
+  try {
+    data = await loadMasterCalendar(client, { monthIso });
+  } catch (err) {
+    return (
+      <ErrorBanner>
+        The calendar could not be loaded:{" "}
+        {err instanceof Error ? err.message : "unknown error"}
+      </ErrorBanner>
+    );
+  }
   const todayIso = churchTodayIso();
   const prevMonth = shiftMonthIso(monthIso, -1);
   const nextMonth = shiftMonthIso(monthIso, 1);

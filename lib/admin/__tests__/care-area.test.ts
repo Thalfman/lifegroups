@@ -55,12 +55,28 @@ function baseInput(): BuildCareAreaInput {
     },
   ];
   const outstandingFollowUps: CareFollowUpDashboardRow[] = [
-    { care_profile_id: "cp-a", status: "open", due_date: "2026-06-01" }, // overdue
-    { care_profile_id: "cp-b", status: "open", due_date: "2026-06-06" }, // due soon
-    { care_profile_id: "cp-b", status: "open", due_date: "2026-08-01" }, // far out
+    {
+      id: "fu-1",
+      care_profile_id: "cp-a",
+      status: "open",
+      due_date: "2026-06-01",
+    }, // overdue
+    {
+      id: "fu-2",
+      care_profile_id: "cp-b",
+      status: "open",
+      due_date: "2026-06-06",
+    }, // due soon
+    {
+      id: "fu-3",
+      care_profile_id: "cp-b",
+      status: "open",
+      due_date: "2026-08-01",
+    }, // far out
   ];
   const completedFollowUps: CareFollowUpCompletedRow[] = [
     {
+      id: "done-1",
       care_profile_id: "cp-a",
       status: "done",
       due_date: "2026-05-20",
@@ -111,6 +127,9 @@ describe("buildCareArea", () => {
     expect(dueSoon).toHaveLength(2);
     const reasons = dueSoon.map((i) => i.reason).sort();
     expect(reasons).toEqual(["Follow-up due soon", "Follow-up overdue"]);
+    // Most overdue first: the overdue row sorts ahead of the due-soon row.
+    expect(dueSoon[0]!.reason).toBe("Follow-up overdue");
+    expect(dueSoon[0]!.key).toBe("fu-fu-1");
     for (const item of dueSoon) {
       expect(item.actionLabel).toBe("View follow-up");
       expect(item.actionHref).toContain("?tab=follow-ups");
@@ -124,7 +143,7 @@ describe("buildCareArea", () => {
     expect(item.personName).toBe("Ben Coleader");
     expect(item.reason).toBe("Call");
     expect(item.actionLabel).toBe("Add note");
-    expect(item.actionHref).toContain("?tab=contact-history");
+    expect(item.actionHref).toContain("?tab=overview");
   });
 
   it("maps completed care follow-ups into Completed", () => {
@@ -160,10 +179,16 @@ describe("buildCareArea", () => {
   it("skips follow-ups whose care profile is not in the directory", () => {
     const input = baseInput();
     input.outstandingFollowUps = [
-      { care_profile_id: "cp-ghost", status: "open", due_date: "2026-06-01" },
+      {
+        id: "fu-ghost",
+        care_profile_id: "cp-ghost",
+        status: "open",
+        due_date: "2026-06-01",
+      },
     ];
     input.completedFollowUps = [
       {
+        id: "done-ghost",
         care_profile_id: "cp-ghost",
         status: "done",
         due_date: "2026-05-01",

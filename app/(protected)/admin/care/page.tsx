@@ -133,6 +133,7 @@ async function loadCareData(todayIso: string): Promise<CareData> {
       recentRes.error?.message ??
       outstandingRes.error?.message ??
       completedRes.error?.message ??
+      metricDefaultsRes.error?.message ??
       groupLeadersRes.error?.message ??
       null,
   };

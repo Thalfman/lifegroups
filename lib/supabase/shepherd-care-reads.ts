@@ -427,6 +427,7 @@ export async function fetchShepherdCareFollowUpsForProfile(
 // dashboard only counts and buckets by status + due date, then links to the
 // per-shepherd detail page for the task content.
 export type CareFollowUpDashboardRow = {
+  id: string;
   care_profile_id: string;
   status: ShepherdCareFollowUpsRow["status"];
   due_date: string | null;
@@ -443,7 +444,7 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
 ): Promise<ReadResult<CareFollowUpDashboardRow[]>> {
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select("care_profile_id, status, due_date")
+    .select("id, care_profile_id, status, due_date")
     .neq("status", "done")
     .range(0, 9999);
   if (error) {
@@ -474,7 +475,12 @@ export async function fetchLedGroupSummariesForProfile(
     .from("group_leaders")
     .select("group_id")
     .eq("profile_id", profileId)
-    .eq("active", true);
+    .eq("active", true)
+    // group_leaders also carries member rows (role = 'member'); only the
+    // leader / co_leader assignments describe groups this profile *leads*, so
+    // the Group tab + related-group labels don't show a group they're only a
+    // member of.
+    .in("role", ["leader", "co_leader"]);
   if (assignments.error) {
     return {
       data: null,
@@ -513,6 +519,7 @@ export async function fetchLedGroupSummariesForProfile(
 // per-leader detail page for the task content; it never ships note bodies to
 // the aggregate surface.
 export type CareFollowUpCompletedRow = {
+  id: string;
   care_profile_id: string;
   status: ShepherdCareFollowUpsRow["status"];
   due_date: string | null;
@@ -532,7 +539,7 @@ export async function fetchRecentlyCompletedCareFollowUpsForAdmin(
   const limit = options.limit ?? 50;
   const { data, error } = await client
     .from("shepherd_care_follow_ups")
-    .select("care_profile_id, status, due_date, completed_at")
+    .select("id, care_profile_id, status, due_date, completed_at")
     .eq("status", "done")
     .order("completed_at", { ascending: false, nullsFirst: false })
     .range(0, Math.max(0, limit - 1));
