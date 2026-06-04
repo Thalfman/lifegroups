@@ -1,8 +1,13 @@
+import type { ReactNode } from "react";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
 import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareItemList } from "@/components/admin/care/care-item-list";
-import { CareShell, type CareTab } from "@/components/admin/care/care-shell";
+import {
+  CareShell,
+  type CareTab,
+  type CareTabKey,
+} from "@/components/admin/care/care-shell";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -170,7 +175,16 @@ function buildGroupNameByShepherdId(
   return out;
 }
 
-export default async function AdminCarePage() {
+// Shared loader + tab/banner builder for the canonical Care shell. The canonical
+// /admin/care page and the thin alias entries (/admin/shepherd-care landing and
+// /admin/follow-ups) all call this one function so there is a single data path
+// and a single set of tabs — the aliases only differ by which tab they open on
+// (ADR 0013, #328). It runs the admin guard so a thin alias page is a guarded
+// entry just like the canonical page.
+export async function loadCarePageData(): Promise<{
+  tabs: CareTab[];
+  errorBanner: ReactNode;
+}> {
   const session = await requireAdmin();
   const today = currentUtcDateIso();
 
@@ -290,6 +304,19 @@ export default async function AdminCarePage() {
     },
   ];
 
+  return { tabs, errorBanner };
+}
+
+// The canonical Care surface: one header, one shell. The alias entries render
+// this same view, only changing which tab opens first, so the experience is
+// identical regardless of which URL resolved it (ADR 0013, #328).
+export async function CarePageView({
+  initialTab = "needs-contact",
+}: {
+  initialTab?: CareTabKey;
+}) {
+  const { tabs, errorBanner } = await loadCarePageData();
+
   return (
     <>
       <PageHeader
@@ -305,8 +332,12 @@ export default async function AdminCarePage() {
         {errorBanner ? (
           <div style={{ marginBottom: 18 }}>{errorBanner}</div>
         ) : null}
-        <CareShell tabs={tabs} />
+        <CareShell tabs={tabs} initialTab={initialTab} />
       </PageBody>
     </>
   );
+}
+
+export default async function AdminCarePage() {
+  return <CarePageView />;
 }
