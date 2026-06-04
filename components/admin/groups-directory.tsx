@@ -34,6 +34,18 @@ import {
   type GroupsTableSortKey,
   type GroupsTableSortRow,
 } from "@/lib/dashboard/groups-table-sort";
+import {
+  DEFAULT_GROUPS_TABLE_COLUMNS,
+  DEFAULT_GROUPS_TABLE_DENSITY,
+  GROUPS_TABLE_DENSITIES,
+  GROUPS_TABLE_OPTIONAL_COLUMNS,
+  isColumnShown,
+  isGroupsTableDensity,
+  normalizeGroupsTableColumns,
+  toggleGroupsTableColumn,
+  type GroupsTableDensity,
+  type GroupsTableOptionalColumn,
+} from "@/lib/dashboard/groups-table-prefs";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import type { GroupHealthSignals } from "@/components/admin/group-management-shell";
 import {
@@ -124,13 +136,21 @@ type GroupsDirectoryProps = {
 // restore effect runs — so the server and first client markup match (no flash).
 type ViewMode = "cards" | "table";
 
-// The persisted view snapshot for this surface (#325): the card⇄table mode plus
-// the table's sort column + direction. Local, per-browser, profile-scoped — a UI
-// preference, never server state.
+// The persisted view snapshot for this surface (#325, extended in #333): the
+// card⇄table mode, the table's sort column + direction, the shown optional
+// columns, and the display density. Local, per-browser, profile-scoped — a UI
+// preference, never server state. Held as one snapshot under the surface's
+// profile-scoped key so the whole Groups view restores atomically without flash.
 type GroupsViewSnapshot = {
   mode: ViewMode;
   sortKey: GroupsTableSortKey;
   sortDir: GroupsTableSortDir;
+  // The shown optional columns (#333). Omitted by pre-#333 snapshots; the
+  // validator tolerates that and the directory normalises to the default set.
+  columns?: GroupsTableOptionalColumn[];
+  // The table display density (#333). Omitted by pre-#333 snapshots; defaults
+  // to "comfortable" so older saved views keep their historical look.
+  density?: GroupsTableDensity;
 };
 
 const SORT_KEYS = new Set<GroupsTableSortKey>([
@@ -143,15 +163,27 @@ const SORT_KEYS = new Set<GroupsTableSortKey>([
   "checkin",
 ]);
 
+// Accept any snapshot whose required #325 fields are valid. The #333 additions
+// (columns, density) are optional: a pre-#333 saved value omits them, and we
+// only reject a present-but-wrong-typed field — the directory then normalises
+// columns/density through their own helpers, so a stale or partial value
+// degrades to the defaults rather than discarding the whole snapshot.
 function isGroupsViewSnapshot(value: unknown): value is GroupsViewSnapshot {
   if (value === null || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return (
-    (v.mode === "cards" || v.mode === "table") &&
-    typeof v.sortKey === "string" &&
-    SORT_KEYS.has(v.sortKey as GroupsTableSortKey) &&
-    (v.sortDir === "asc" || v.sortDir === "desc")
-  );
+  if (
+    !(
+      (v.mode === "cards" || v.mode === "table") &&
+      typeof v.sortKey === "string" &&
+      SORT_KEYS.has(v.sortKey as GroupsTableSortKey) &&
+      (v.sortDir === "asc" || v.sortDir === "desc")
+    )
+  ) {
+    return false;
+  }
+  if (v.columns !== undefined && !Array.isArray(v.columns)) return false;
+  if (v.density !== undefined && !isGroupsTableDensity(v.density)) return false;
+  return true;
 }
 
 // The five list tabs (issue #300). "all" lists every active group; "archived"
@@ -219,13 +251,29 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   }>({ key: "group", dir: "asc" });
   const { key: sortKey, dir: sortDir } = sort;
 
+  // The shown optional table columns and the display density (#333). Like the
+  // mode + sort above, SSR + the first client render use these defaults (all
+  // optional columns shown, comfortable density) so server and client markup
+  // match; the persisted choice is adopted after the restore effect runs.
+  const [columns, setColumns] = useState<GroupsTableOptionalColumn[]>(() => [
+    ...DEFAULT_GROUPS_TABLE_COLUMNS,
+  ]);
+  const [density, setDensity] = useState<GroupsTableDensity>(
+    DEFAULT_GROUPS_TABLE_DENSITY
+  );
+
   usePersistedViewState<GroupsViewSnapshot>({
     surface: "groups",
     scopeId: props.viewerId,
-    snapshot: { mode, sortKey, sortDir },
+    snapshot: { mode, sortKey, sortDir, columns, density },
     restore: (saved) => {
       setMode(saved.mode);
       setSort({ key: saved.sortKey, dir: saved.sortDir });
+      // Normalise the saved column/density values through their own helpers so a
+      // stale, partial, or omitted value degrades to the defaults (never hides
+      // every column or restores an unknown density).
+      setColumns(normalizeGroupsTableColumns(saved.columns));
+      setDensity(saved.density ?? DEFAULT_GROUPS_TABLE_DENSITY);
     },
     validate: isGroupsViewSnapshot,
   });
@@ -238,6 +286,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
+  }, []);
+
+  // Show/hide one optional column. The helper refuses to hide the last column
+  // and keeps the canonical render order, so the table never collapses to a
+  // name-and-actions strip and columns never reorder.
+  const onToggleColumn = useCallback((column: GroupsTableOptionalColumn) => {
+    setColumns((prev) => toggleGroupsTableColumn(prev, column));
   }, []);
 
   // Which record the drawer is editing/creating, plus two flags the open form
@@ -462,7 +517,27 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
           flexWrap: "wrap",
         }}
       >
-        <ViewModeToggle mode={mode} onModeChange={setMode} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <ViewModeToggle mode={mode} onModeChange={setMode} />
+          {/* Density + column controls are table-only — they have no meaning for
+              the card layout, so they appear once the admin switches to table. */}
+          {mode === "table" ? (
+            <>
+              <DensityToggle density={density} onDensityChange={setDensity} />
+              <ColumnVisibilityMenu
+                columns={columns}
+                onToggleColumn={onToggleColumn}
+              />
+            </>
+          ) : null}
+        </div>
         <PButton type="button" tone="terra" size="sm" onClick={openCreate}>
           New group
         </PButton>
@@ -548,6 +623,8 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={onSort}
+            shownColumns={columns}
+            density={density}
             profilesById={profilesById}
             activeMemberCountByGroup={activeMemberCountByGroup}
             overrideByGroupId={overrideByGroupId}
@@ -704,6 +781,182 @@ function ViewModeToggle({
 }
 
 // ---------------------------------------------------------------------------
+// Density toggle (#333)
+// ---------------------------------------------------------------------------
+
+// A two-option segmented control that switches the Ops table between the roomy
+// "comfortable" rows and the tighter "compact" rows. The choice persists per
+// browser, scoped to the signed-in admin, alongside the other Groups view prefs.
+// Rendered as a radiogroup so the current density is announced and keyboard-
+// reachable, matching the card⇄table toggle's pattern.
+const DENSITY_LABELS: Record<GroupsTableDensity, string> = {
+  comfortable: "Comfortable",
+  compact: "Compact",
+};
+
+function DensityToggle({
+  density,
+  onDensityChange,
+}: {
+  density: GroupsTableDensity;
+  onDensityChange: (d: GroupsTableDensity) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Table density"
+      style={{
+        display: "inline-flex",
+        gap: 4,
+        padding: 4,
+        background: P.surface,
+        border: `1px solid ${P.line}`,
+        borderRadius: 999,
+      }}
+    >
+      {GROUPS_TABLE_DENSITIES.map((d) => {
+        const active = density === d;
+        return (
+          <button
+            key={d}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onDensityChange(d)}
+            style={{
+              padding: "5px 14px",
+              borderRadius: 999,
+              border: "none",
+              background: active ? P.ink : "transparent",
+              color: active ? P.surface : P.ink2,
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            {DENSITY_LABELS[d]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Column visibility menu (#333)
+// ---------------------------------------------------------------------------
+
+// Per-column show/hide toggles for the table's optional columns. Each is a
+// checkbox so its state is announced, grouped under a labelled fieldset so a
+// screen-reader user hears the group purpose. The last shown column can't be
+// hidden (the toggle helper refuses it), so it is rendered disabled to make that
+// constraint visible. The shown set persists with the other Groups view prefs.
+const COLUMN_MENU_LABELS: Record<GroupsTableOptionalColumn, string> = {
+  leader: "Leader / co-leader",
+  setup: "Setup",
+  health: "Health grade",
+  capacity: "Capacity",
+  meeting: "Meeting day/time",
+  checkin: "Latest-week check-in",
+};
+
+function ColumnVisibilityMenu({
+  columns,
+  onToggleColumn,
+}: {
+  columns: GroupsTableOptionalColumn[];
+  onToggleColumn: (column: GroupsTableOptionalColumn) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const lastShown = columns.length <= 1;
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          padding: "7px 14px",
+          borderRadius: 999,
+          border: `1px solid ${P.line}`,
+          background: P.surface,
+          color: P.ink2,
+          fontFamily: fontSans,
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: "pointer",
+        }}
+      >
+        Columns
+      </button>
+      {open ? (
+        <fieldset
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            zIndex: 10,
+            minWidth: 200,
+            margin: 0,
+            padding: "12px 14px",
+            display: "grid",
+            gap: 8,
+            background: P.surface,
+            border: `1px solid ${P.line}`,
+            borderRadius: 10,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+          }}
+        >
+          <legend
+            style={{
+              padding: 0,
+              fontFamily: fontSans,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              fontWeight: 600,
+              color: P.ink3,
+            }}
+          >
+            Show columns
+          </legend>
+          {GROUPS_TABLE_OPTIONAL_COLUMNS.map((col) => {
+            const shown = isColumnShown(columns, col);
+            // The single remaining shown column can't be hidden — disable it so
+            // the constraint is visible rather than a silent no-op.
+            const disabled = shown && lastShown;
+            return (
+              <label
+                key={col}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: disabled ? P.ink3 : P.ink2,
+                  cursor: disabled ? "default" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={shown}
+                  disabled={disabled}
+                  onChange={() => onToggleColumn(col)}
+                />
+                {COLUMN_MENU_LABELS[col]}
+              </label>
+            );
+          })}
+        </fieldset>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Ops table (#325) — a dense, sortable view of the same groups the cards show.
 // Warm and pastoral, not a grey spreadsheet: PBadge tones for the four status
 // categories, tabular-nums for the capacity figures, and record-context action
@@ -711,26 +964,45 @@ function ViewModeToggle({
 // ---------------------------------------------------------------------------
 
 // The sortable columns, in render order. `numeric` columns get tabular-nums and
-// the check-in column reuses the already-loaded latest-week session text.
+// the check-in column reuses the already-loaded latest-week session text. The
+// "group" column is structural (never hideable); the rest carry an `optional`
+// key so the header can filter them by the admin's saved column choice (#333).
 const TABLE_COLUMNS: {
   key: GroupsTableSortKey;
   label: string;
   numeric?: boolean;
+  // The matching optional-column key, or undefined for the structural "group"
+  // column that is always shown.
+  optional?: GroupsTableOptionalColumn;
 }[] = [
   { key: "group", label: "Group" },
-  { key: "leader", label: "Leader / co-leader" },
-  { key: "setup", label: "Setup" },
-  { key: "health", label: "Health grade" },
-  { key: "capacity", label: "Capacity", numeric: true },
-  { key: "meeting", label: "Meeting day/time" },
-  { key: "checkin", label: "Latest-week check-in" },
+  { key: "leader", label: "Leader / co-leader", optional: "leader" },
+  { key: "setup", label: "Setup", optional: "setup" },
+  { key: "health", label: "Health grade", optional: "health" },
+  { key: "capacity", label: "Capacity", numeric: true, optional: "capacity" },
+  { key: "meeting", label: "Meeting day/time", optional: "meeting" },
+  { key: "checkin", label: "Latest-week check-in", optional: "checkin" },
 ];
+
+// Cell padding per density. Compact tightens the vertical rhythm so more groups
+// fit on screen; comfortable keeps the historical roomy rows.
+const DENSITY_CELL_PADDING: Record<GroupsTableDensity, string> = {
+  comfortable: "12px",
+  compact: "6px 12px",
+};
+
+const DENSITY_HEADER_PADDING: Record<GroupsTableDensity, string> = {
+  comfortable: "10px 12px",
+  compact: "6px 12px",
+};
 
 function GroupsTable({
   rows,
   sortKey,
   sortDir,
   onSort,
+  shownColumns,
+  density,
   profilesById,
   activeMemberCountByGroup,
   overrideByGroupId,
@@ -741,12 +1013,24 @@ function GroupsTable({
   sortKey: GroupsTableSortKey;
   sortDir: GroupsTableSortDir;
   onSort: (key: GroupsTableSortKey) => void;
+  shownColumns: GroupsTableOptionalColumn[];
+  density: GroupsTableDensity;
   profilesById: Map<string, ProfilesRow>;
   activeMemberCountByGroup: Map<string, number>;
   overrideByGroupId: Map<string, GroupMetricSettingsRow>;
   defaults: MetricDefaults;
   onEdit: (group: GroupsRow) => void;
 }) {
+  // Render the structural "group" column plus only the optional columns the
+  // admin has chosen to show, keeping the table's fixed render order.
+  const visibleColumns = TABLE_COLUMNS.filter(
+    (col) => !col.optional || isColumnShown(shownColumns, col.optional)
+  );
+  const show = (column: GroupsTableOptionalColumn) =>
+    isColumnShown(shownColumns, column);
+  const cellPad = DENSITY_CELL_PADDING[density];
+  const headerPad = DENSITY_HEADER_PADDING[density];
+  const dCellStyle: React.CSSProperties = { ...cellStyle, padding: cellPad };
   return (
     <div style={{ overflowX: "auto" }}>
       <table
@@ -763,7 +1047,7 @@ function GroupsTable({
         </caption>
         <thead>
           <tr>
-            {TABLE_COLUMNS.map((col) => {
+            {visibleColumns.map((col) => {
               const active = sortKey === col.key;
               return (
                 <th
@@ -791,7 +1075,7 @@ function GroupsTable({
                       gap: 4,
                       width: "100%",
                       justifyContent: col.numeric ? "flex-end" : "flex-start",
-                      padding: "10px 12px",
+                      padding: headerPad,
                       background: "transparent",
                       border: "none",
                       cursor: "pointer",
@@ -815,7 +1099,7 @@ function GroupsTable({
               scope="col"
               style={{
                 textAlign: "right",
-                padding: "10px 12px",
+                padding: headerPad,
                 borderBottom: `1px solid ${P.line}`,
                 fontFamily: fontSans,
                 fontSize: 10,
@@ -850,8 +1134,8 @@ function GroupsTable({
                   opacity: isArchived ? 0.7 : 1,
                 }}
               >
-                {/* Group + lifecycle */}
-                <td style={cellStyle}>
+                {/* Group + lifecycle (structural — always shown) */}
+                <td style={dCellStyle}>
                   <div
                     style={{ display: "grid", gap: 4, alignContent: "start" }}
                   >
@@ -866,60 +1150,72 @@ function GroupsTable({
                   </div>
                 </td>
                 {/* Leader / co-leader */}
-                <td style={{ ...cellStyle, color: P.ink2 }}>
-                  {leaderText ?? "Unassigned"}
-                </td>
+                {show("leader") ? (
+                  <td style={{ ...dCellStyle, color: P.ink2 }}>
+                    {leaderText ?? "Unassigned"}
+                  </td>
+                ) : null}
                 {/* Setup */}
-                <td style={cellStyle}>
-                  <PBadge tone={SETUP_TONE[status.setup]}>
-                    {setupCategoryLabel(status.setup)}
-                  </PBadge>
-                </td>
+                {show("setup") ? (
+                  <td style={dCellStyle}>
+                    <PBadge tone={SETUP_TONE[status.setup]}>
+                      {setupCategoryLabel(status.setup)}
+                    </PBadge>
+                  </td>
+                ) : null}
                 {/* Health grade */}
-                <td style={cellStyle}>
-                  <PBadge tone={HEALTH_TONE[status.health]}>
-                    {healthCategoryLabel(status.health)}
-                  </PBadge>
-                </td>
+                {show("health") ? (
+                  <td style={dCellStyle}>
+                    <PBadge tone={HEALTH_TONE[status.health]}>
+                      {healthCategoryLabel(status.health)}
+                    </PBadge>
+                  </td>
+                ) : null}
                 {/* Capacity (numeric → tabular-nums, right-aligned) */}
-                <td
-                  style={{
-                    ...cellStyle,
-                    textAlign: "right",
-                    fontVariantNumeric: "tabular-nums",
-                    color: P.ink2,
-                  }}
-                >
-                  <div
+                {show("capacity") ? (
+                  <td
                     style={{
-                      display: "inline-flex",
-                      flexDirection: "column",
-                      alignItems: "flex-end",
-                      gap: 4,
+                      ...dCellStyle,
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                      color: P.ink2,
                     }}
                   >
-                    <PBadge tone={CAPACITY_TONE[status.capacity]}>
-                      {capacityCategoryLabel(status.capacity)}
-                    </PBadge>
-                    <span>
-                      {excluded
-                        ? "Excluded"
-                        : `${memberCount}${
-                            isCapacityUnknown ? " / —" : ` / ${cap ?? "—"}`
-                          }`}
-                    </span>
-                  </div>
-                </td>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        gap: 4,
+                      }}
+                    >
+                      <PBadge tone={CAPACITY_TONE[status.capacity]}>
+                        {capacityCategoryLabel(status.capacity)}
+                      </PBadge>
+                      <span>
+                        {excluded
+                          ? "Excluded"
+                          : `${memberCount}${
+                              isCapacityUnknown ? " / —" : ` / ${cap ?? "—"}`
+                            }`}
+                      </span>
+                    </div>
+                  </td>
+                ) : null}
                 {/* Meeting day/time */}
-                <td style={{ ...cellStyle, color: P.ink2 }}>
-                  {metaLine(group)}
-                </td>
+                {show("meeting") ? (
+                  <td style={{ ...dCellStyle, color: P.ink2 }}>
+                    {metaLine(group)}
+                  </td>
+                ) : null}
                 {/* Latest-week check-in — reuses the already-loaded session */}
-                <td style={{ ...cellStyle, color: P.ink3 }}>
-                  {latestCheckinText(session)}
-                </td>
+                {show("checkin") ? (
+                  <td style={{ ...dCellStyle, color: P.ink3 }}>
+                    {latestCheckinText(session)}
+                  </td>
+                ) : null}
                 {/* Actions — record-context names, unique per group */}
-                <td style={{ ...cellStyle, textAlign: "right" }}>
+                <td style={{ ...dCellStyle, textAlign: "right" }}>
                   <div
                     style={{
                       display: "inline-flex",
