@@ -22,8 +22,12 @@ import {
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
+// The Planning area (#303) hosts the Scenarios tab, so scenario writes from
+// /admin/planning must revalidate it too, not just the frozen route.
+const REVALIDATE_PATH_PLANNING = "/admin/planning";
 const SCENARIO_REVALIDATE_PATHS = [
   REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_PLANNING,
   REVALIDATE_PATH_ADMIN,
 ] as const;
 

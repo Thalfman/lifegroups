@@ -503,6 +503,10 @@ export async function fetchLedGroupSummariesForProfile(
     .from("groups")
     .select("id, name")
     .in("id", groupIds)
+    // Closing a group sets groups.lifecycle_status but leaves its group_leaders
+    // rows active, so exclude non-active groups here — otherwise the Group /
+    // Overview tabs would show (and link to) a closed group as a current one.
+    .eq("lifecycle_status", "active")
     .order("name", { ascending: true });
   if (groups.error) {
     return {

@@ -30,13 +30,18 @@ import {
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
+// The Planning area (#303) hosts these launch/capacity/multiplication forms as
+// tabs, so saves made from /admin/planning must revalidate it too — otherwise
+// the tab keeps showing stale server-rendered data until a full reload.
+const REVALIDATE_PATH_PLANNING = "/admin/planning";
 
 // The former /admin/multiplication and /admin/capacity-board surfaces are now
 // folded into /admin/launch-planning (ADR 0010 surface-budget consolidation;
 // both old routes redirect here). Candidate and capacity-target writes therefore
-// only need to revalidate launch planning + the admin home.
+// only need to revalidate launch planning + the Planning area + the admin home.
 const CANDIDATE_REVALIDATE = [
   REVALIDATE_PATH_LAUNCH_PLANNING,
+  REVALIDATE_PATH_PLANNING,
   REVALIDATE_PATH_ADMIN,
 ] as const;
 
@@ -144,7 +149,11 @@ const UPDATE_ASSUMPTIONS_SPEC: AdminWriteActionSpec<
     rpcAdminUpdateLaunchPlanningAssumptions(client, {
       p_settings: value as Record<string, unknown>,
     }),
-  revalidate: () => [REVALIDATE_PATH_LAUNCH_PLANNING, REVALIDATE_PATH_ADMIN],
+  revalidate: () => [
+    REVALIDATE_PATH_LAUNCH_PLANNING,
+    REVALIDATE_PATH_PLANNING,
+    REVALIDATE_PATH_ADMIN,
+  ],
   noDataError: "The assumptions were not saved. Please try again.",
 };
 
@@ -179,7 +188,11 @@ const RECORD_ATTENDANCE_SPEC: AdminWriteActionSpec<
       p_attendance_count: value.attendance_count,
       p_note: value.note,
     }),
-  revalidate: () => [REVALIDATE_PATH_LAUNCH_PLANNING, REVALIDATE_PATH_ADMIN],
+  revalidate: () => [
+    REVALIDATE_PATH_LAUNCH_PLANNING,
+    REVALIDATE_PATH_PLANNING,
+    REVALIDATE_PATH_ADMIN,
+  ],
   noDataError: "The attendance snapshot was not saved. Please try again.",
 };
 

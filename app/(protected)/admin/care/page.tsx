@@ -122,10 +122,12 @@ async function loadCareData(todayIso: string): Promise<CareData> {
     outstandingFollowUps: outstandingRes.data ?? [],
     outstandingFollowUpsAvailable: outstandingRes.error === null,
     completedFollowUps: completedRes.data ?? [],
-    groupLeaders: (groupLeadersRes.data ?? []).map((r) => ({
-      profile_id: r.profile_id,
-      group_id: r.group_id,
-    })),
+    // Only leader / co_leader rows describe groups a care target *leads*;
+    // group_leaders also carries role = 'member' rows, which must not show up as
+    // a led/related group in the Care tabs.
+    groupLeaders: (groupLeadersRes.data ?? [])
+      .filter((r) => r.role === "leader" || r.role === "co_leader")
+      .map((r) => ({ profile_id: r.profile_id, group_id: r.group_id })),
     windows,
     error:
       overShepherdsRes.error?.message ??
@@ -145,7 +147,14 @@ function buildGroupNameByShepherdId(
   groupLeaders: { profile_id: string; group_id: string }[],
   groups: GroupsRow[]
 ): Map<string, string> {
-  const nameById = new Map(groups.map((g) => [g.id, g.name]));
+  // Only active groups: closing a group updates groups.lifecycle_status but
+  // leaves its group_leaders rows active, so a closed group would otherwise
+  // surface as a current related group.
+  const nameById = new Map(
+    groups
+      .filter((g) => g.lifecycle_status === "active")
+      .map((g) => [g.id, g.name])
+  );
   const namesByLeader = new Map<string, string[]>();
   for (const gl of groupLeaders) {
     const name = nameById.get(gl.group_id);
@@ -226,14 +235,11 @@ export default async function AdminCarePage() {
       label: "Needs Contact",
       count: area.needsContact.length,
       panel: (
-        <div style={{ display: "grid", gap: 16 }}>
-          {errorBanner}
-          <CareItemList
-            items={area.needsContact}
-            emptyTitle="No leaders need outreach right now"
-            emptyDescription="Everyone is within their care cadence. Check back as touchpoints come due."
-          />
-        </div>
+        <CareItemList
+          items={area.needsContact}
+          emptyTitle="No leaders need outreach right now"
+          emptyDescription="Everyone is within their care cadence. Check back as touchpoints come due."
+        />
       ),
     },
     {
@@ -293,6 +299,12 @@ export default async function AdminCarePage() {
         lede="How your leaders are doing, in one place — who needs outreach, open follow-ups, what's due, and recent care. Care notes stay admin-only and never leave the leader's detail page."
       />
       <PageBody>
+        {/* Page-level so a failed care read is visible from every tab, not just
+            Needs Contact — otherwise Due Soon / Recent Care / Completed would
+            show their normal empty state and falsely signal "no care work". */}
+        {errorBanner ? (
+          <div style={{ marginBottom: 18 }}>{errorBanner}</div>
+        ) : null}
         <CareShell tabs={tabs} />
       </PageBody>
     </>

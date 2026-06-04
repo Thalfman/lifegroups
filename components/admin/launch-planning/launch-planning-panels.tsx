@@ -32,7 +32,13 @@ export type LaunchPlanningPanels = {
   overview: ReactNode;
   forecast: ReactNode;
   scenarios: ReactNode;
+  // The combined capacity board + multiplication planner, for the frozen
+  // launch-planning route's single "Groups and multiplication" tab.
   groups: ReactNode;
+  // The two halves of `groups`, so the Planning area can split them across its
+  // Capacity and Multiplication tabs.
+  capacityBoard: ReactNode;
+  multiplicationPlanner: ReactNode;
 };
 
 function SectionEyebrow({ children }: { children: ReactNode }) {
@@ -185,35 +191,42 @@ export function buildLaunchPlanningPanels(
     </div>
   );
 
+  // The capacity board and the multiplication planner are built separately so
+  // the Planning area (#303) can place the board under its Capacity tab (the
+  // reduction plan defines Capacity as "current and forecasted group capacity")
+  // and the planner under Multiplication. The frozen /admin/launch-planning
+  // route keeps them combined in its single "Groups and multiplication" tab via
+  // `groups` below.
+  const capacityBoard = data.capacityError ? (
+    <ErrorBanner>
+      The capacity board could not be loaded: {data.capacityError}
+    </ErrorBanner>
+  ) : (
+    // It owns the single "Suggested to multiply" panel — derived from capacity
+    // data, not the leader pipeline — so it stays visible even when the pipeline
+    // read (which only gates the planner) fails.
+    <CapacityBoard model={data.capacityModel} />
+  );
+
+  const multiplicationPlanner = data.multiplicationError ? (
+    <ErrorBanner>
+      The multiplication pipeline could not be loaded:{" "}
+      {data.multiplicationError}
+    </ErrorBanner>
+  ) : (
+    // Suggestions render in the capacity board, so they are suppressed here.
+    <MultiplicationPlanner
+      segments={data.segments}
+      availableGroups={data.availableGroups}
+      apprenticesByGroup={data.apprenticesByGroup}
+      suggestions={[]}
+    />
+  );
+
   const groups = (
     <div style={{ display: "grid", gap: 24 }}>
-      {/* Capacity board (merged-in). It owns the single "Suggested to multiply"
-          panel — that panel is derived from capacity data, not the leader
-          pipeline, so it stays visible even when the pipeline read (which only
-          gates the multiplication planner below) fails. */}
-      {data.capacityError ? (
-        <ErrorBanner>
-          The capacity board could not be loaded: {data.capacityError}
-        </ErrorBanner>
-      ) : (
-        <CapacityBoard model={data.capacityModel} />
-      )}
-
-      {/* Multiplication planner (merged-in). Suggestions render in the capacity
-          section above, so they are suppressed here. */}
-      {data.multiplicationError ? (
-        <ErrorBanner>
-          The multiplication pipeline could not be loaded:{" "}
-          {data.multiplicationError}
-        </ErrorBanner>
-      ) : (
-        <MultiplicationPlanner
-          segments={data.segments}
-          availableGroups={data.availableGroups}
-          apprenticesByGroup={data.apprenticesByGroup}
-          suggestions={[]}
-        />
-      )}
+      {capacityBoard}
+      {multiplicationPlanner}
     </div>
   );
 
@@ -221,5 +234,15 @@ export function buildLaunchPlanningPanels(
     <LaunchPlanningAnswerCards inputs={data.inputs} outputs={data.outputs} />
   );
 
-  return { notice, warnings, answer, overview, forecast, scenarios, groups };
+  return {
+    notice,
+    warnings,
+    answer,
+    overview,
+    forecast,
+    scenarios,
+    groups,
+    capacityBoard,
+    multiplicationPlanner,
+  };
 }

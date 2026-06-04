@@ -57,6 +57,17 @@ export default async function AdminPlanningPage({
     </div>
   );
 
+  // Capacity tab: "current and forecasted group capacity" (reduction plan §7).
+  // The forecast inputs/results plus the capacity board (current per-group
+  // status), which the frozen route keeps under its "Groups and multiplication"
+  // tab but the plan places here.
+  const capacityPanel = (
+    <div style={{ display: "grid", gap: 24 }}>
+      {panels.forecast}
+      {panels.capacityBoard}
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -75,9 +86,9 @@ export default async function AdminPlanningPage({
               />
             }
             launches={launchesPanel}
-            capacity={panels.forecast}
+            capacity={capacityPanel}
             scenarios={panels.scenarios}
-            multiplication={panels.groups}
+            multiplication={panels.multiplicationPlanner}
           />
 
           <nav
