@@ -72,7 +72,10 @@ export function ChangeLeaderRoleForm({
           tone="solid"
           size="sm"
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setNewRole(otherRole);
+            setOpen(true);
+          }}
           aria-label={`Change role for ${profileName}`}
         >
           Change role
@@ -142,7 +145,10 @@ export function ChangeLeaderRoleForm({
           type="button"
           tone="ghost"
           size="sm"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setNewRole(otherRole);
+            setOpen(false);
+          }}
           disabled={pending}
         >
           Cancel

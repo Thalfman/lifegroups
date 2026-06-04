@@ -167,20 +167,21 @@ test.describe("admin People tabs", () => {
   }) => {
     const surface = page.locator(SURFACE);
 
+    // Scan each tab while it is mounted — a single scan after the loop would
+    // only cover whichever tab was last clicked, letting regressions in the
+    // earlier tabs (e.g. the Add Person forms) slip through. Directory is last
+    // so the row-level destructive affordances (Deactivate / Change role) and
+    // the View person links are also in the DOM when scanned.
     for (const name of [
       "Leaders",
       "Members",
       "Apprentices",
       "Add Person",
-      // Return to Directory so the row-level destructive affordances
-      // (Deactivate / Change role) and the View person links are in the DOM
-      // for the final scan.
       "Directory",
     ]) {
       await surface.getByRole("button", { name }).click();
+      const results = await new AxeBuilder({ page }).analyze();
+      expectNoBlockingAxeViolations(results);
     }
-
-    const results = await new AxeBuilder({ page }).analyze();
-    expectNoBlockingAxeViolations(results);
   });
 });
