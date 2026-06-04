@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Heart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { loginAction, type LoginFormState } from "./actions";
 import { isSafeNextPath } from "./next-path";
 
@@ -227,54 +227,6 @@ export function LoginForm() {
           {pending ? "Signing in…" : "Sign in"}
           <ArrowRight size={15} strokeWidth={2} aria-hidden />
         </button>
-
-        <div
-          style={{
-            marginTop: 4,
-            background: "var(--c-sageTint)",
-            border: "1px solid var(--c-line)",
-            borderRadius: 8,
-            padding: "10px 12px",
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-          }}
-        >
-          <Heart
-            size={14}
-            strokeWidth={2}
-            aria-hidden
-            style={{
-              color: "var(--c-sageDeep)",
-              flexShrink: 0,
-              marginTop: 2,
-            }}
-          />
-          <p
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: 11.5,
-              lineHeight: 1.5,
-              color: "var(--c-ink2)",
-              margin: 0,
-            }}
-          >
-            <strong style={{ color: "var(--c-ink)", fontWeight: 600 }}>
-              Members don&rsquo;t sign in.
-            </strong>{" "}
-            This portal is for leaders, co-leaders, and ministry staff. If
-            you&rsquo;re looking for a group, head to{" "}
-            <a
-              href="https://www.foxvalleychurch.org/life-groups"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "var(--c-clay)", fontWeight: 500 }}
-            >
-              Find a Life Group
-            </a>
-            .
-          </p>
-        </div>
 
         <style>{`
         .lg-signin-field:focus-within {
