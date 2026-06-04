@@ -5,6 +5,8 @@ import {
   isFrozenSurfaceFlag,
   getFeatureFlagDefinition,
   resolveMutedAttentionKeys,
+  buildLaunchMuteConfig,
+  LAUNCH_MUTE_FLAG_KEYS,
   FEATURE_FLAG_DEFINITIONS,
   type FeatureFlagsConfig,
 } from "@/lib/admin/feature-flags";
@@ -124,6 +126,39 @@ describe("feature-flags", () => {
         mute_follow_ups: { enabled: true },
       };
       expect(resolveMutedAttentionKeys(config)).toEqual(
+        new Set(["care_attention", "health", "follow_ups"])
+      );
+    });
+  });
+
+  describe("launch-prep mute helpers", () => {
+    it("LAUNCH_MUTE_FLAG_KEYS lists exactly the time-based mute flags", () => {
+      expect([...LAUNCH_MUTE_FLAG_KEYS].sort()).toEqual(
+        ["mute_care_attention", "mute_follow_ups", "mute_health_checks"].sort()
+      );
+    });
+
+    it("every launch mute key is a known new-surface flag (no drift)", () => {
+      for (const key of LAUNCH_MUTE_FLAG_KEYS) {
+        const def = getFeatureFlagDefinition(key);
+        expect(def, `missing definition for ${key}`).toBeDefined();
+        expect(def?.kind).toBe("new_surface");
+      }
+    });
+
+    it("buildLaunchMuteConfig enables every launch mute flag", () => {
+      const config = buildLaunchMuteConfig();
+      for (const key of LAUNCH_MUTE_FLAG_KEYS) {
+        expect(config.feature_flags[key]).toEqual({ enabled: true });
+      }
+    });
+
+    it("the config it builds resolves to all three categories muted", () => {
+      // The action merges buildLaunchMuteConfig().feature_flags into
+      // platform_config; the dashboard later reads it back through
+      // resolveMutedAttentionKeys. Round-trip them so the two can't drift.
+      const merged = buildLaunchMuteConfig().feature_flags;
+      expect(resolveMutedAttentionKeys(merged)).toEqual(
         new Set(["care_attention", "health", "follow_ups"])
       );
     });
