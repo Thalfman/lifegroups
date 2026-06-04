@@ -43,6 +43,31 @@ describe("SAC6 launch prep — super_admin_launch_prep", () => {
     }
   });
 
+  it("holds the clean_slate advisory lock across the whole step", () => {
+    const body = functionBody(sql, "super_admin_launch_prep");
+    expect(body).toContain("pg_advisory_xact_lock(hashtext('clean_slate'))");
+    // Taken in THIS function before the wipe, so it survives the nothing_to_wipe
+    // subtransaction rollback (which releases the wipe's own re-entrant grab) and
+    // keeps the snapshot purges serialized against a concurrent revert/wipe.
+    const lock = body.indexOf("pg_advisory_xact_lock(hashtext('clean_slate'))");
+    const wipe = body.indexOf("public.super_admin_clean_slate_wipe()");
+    expect(lock).toBeGreaterThan(-1);
+    expect(lock).toBeLessThan(wipe);
+  });
+
+  it("retires stale clean_slate_snapshots on the nothing_to_wipe path", () => {
+    const body = functionBody(sql, "super_admin_launch_prep");
+    // On the no-op path the wipe raised before clearing its own snapshot store,
+    // so launch prep must retire it here — between swallowing the error and the
+    // else/raise — or a stale full snapshot's revert could re-inject pre-launch rows.
+    const noop = body.indexOf("if sqlerrm = 'nothing_to_wipe' then");
+    const purgeCss = body.indexOf("delete from public.clean_slate_snapshots");
+    const elseRaise = body.indexOf("else\n        raise;");
+    expect(noop).toBeGreaterThan(-1);
+    expect(purgeCss).toBeGreaterThan(noop);
+    expect(purgeCss).toBeLessThan(elseRaise);
+  });
+
   it("reuses the audited Clean Slate wipe and swallows nothing_to_wipe", () => {
     const body = functionBody(sql, "super_admin_launch_prep");
     expect(body).toContain("public.super_admin_clean_slate_wipe()");

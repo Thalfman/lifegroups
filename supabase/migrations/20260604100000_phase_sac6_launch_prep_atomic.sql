@@ -51,6 +51,14 @@ begin
     raise exception 'insufficient_privilege';
   end if;
 
+  -- Serialize the WHOLE launch prep on the shared 'clean_slate' key, held to
+  -- transaction end. The nested wipe takes this same (re-entrant) lock, but its
+  -- acquisition is rolled back together with the nothing_to_wipe subtransaction
+  -- below — so taking it here is what keeps the snapshot purges serialized
+  -- against a concurrent Reset-by-category revert or Clean Slate wipe even on
+  -- the already-empty no-op path.
+  perform pg_advisory_xact_lock(hashtext('clean_slate'));
+
   -- (a) Deep-merge the three launch-optics mute flags into platform_config.
   -- Mirrors super_admin_set_platform_config's feature_flags merge: read the
   -- single config row FOR UPDATE, overlay the three flag keys onto the existing
@@ -85,6 +93,13 @@ begin
     when others then
       if sqlerrm = 'nothing_to_wipe' then
         v_snapshot_id := null;
+        -- History was already empty (a prior wipe ran), so the wipe raised
+        -- BEFORE it cleared clean_slate_snapshots. Retire any stale full snapshot
+        -- here too, so its Clean Slate revert can't re-inject pre-launch rows into
+        -- the launch-ready database. The successful-wipe path already replaces the
+        -- store with the single fresh recovery snapshot, so this is only needed on
+        -- the no-op path. Serialized by the advisory lock held above.
+        delete from public.clean_slate_snapshots;
       else
         raise;
       end if;
@@ -120,4 +135,4 @@ revoke all     on function public.super_admin_launch_prep() from authenticated;
 grant  execute on function public.super_admin_launch_prep() to authenticated;
 
 comment on function public.super_admin_launch_prep() is
-  'PRD-SAC6 follow-up: super-admin one-click launch prep. In one transaction: deep-merges the three launch-optics mute flags into platform_config, runs the Clean Slate history wipe (recoverable snapshot first; nothing_to_wipe swallowed as idempotent), purges all history_reset_snapshots so no per-category Revert can re-inject pre-launch rows, and writes a paired super_admin.launch_prep audit row. Returns the wipe snapshot id, or null when history was already clear.';
+  'PRD-SAC6 follow-up: super-admin one-click launch prep. Holds the shared clean_slate advisory lock for the whole transaction, then: deep-merges the three launch-optics mute flags into platform_config, runs the Clean Slate history wipe (recoverable snapshot first; nothing_to_wipe swallowed as idempotent — and on that no-op path also retires any stale clean_slate_snapshots), purges all history_reset_snapshots so no Revert can re-inject pre-launch rows, and writes a paired super_admin.launch_prep audit row. Returns the wipe snapshot id, or null when history was already clear.';
