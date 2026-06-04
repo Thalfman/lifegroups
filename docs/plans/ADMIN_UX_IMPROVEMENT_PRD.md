@@ -43,7 +43,7 @@ the **genuine remaining gaps**.
 
 ### Decisions confirmed with owner
 - **Deliverable:** the full plan as a PRD (all focus areas), phased.
-- **Care dedup:** *Canonicalize, keep deep links* — make `/admin/care` the single entry; redirect the `/admin/shepherd-care` **landing** to `/admin/care`, but preserve `/admin/shepherd-care/[profileId]` detail and `/over-shepherds` deep links (no broken URLs; respects the ADR 0008/0009 freeze).
+- **Care dedup:** *Canonicalize, keep deep links* — make `/admin/care` the canonical entry; the `/admin/shepherd-care` **landing alias-renders the same Care shell (200, not a redirect)** per ADR 0013, while `/admin/shepherd-care/[profileId]` detail and `/over-shepherds` keep their own surfaces (no broken URLs; respects the ADR 0008/0009/0013 freeze).
 - **Groups dense view:** add a card/table toggle that **remembers the admin's last choice** (per-user persisted).
 
 ### Constraints (carried through every phase)
@@ -67,24 +67,27 @@ the **genuine remaining gaps**.
 The six-area spine stays. Within it, make each area's *primary entry* canonical and its
 deeper routes feel like **subviews of one mental model**, not peers.
 
-| Area | Canonical entry | Subviews (tabs/views) | Frozen deep links preserved (redirect landing only) |
+| Area | Canonical entry | Subviews (tabs/views) | Frozen paths stay 200-resolvable (alias-render landing) |
 | --- | --- | --- | --- |
 | **Home** | `/admin` | Needs attention · This week · Ministry snapshot · Recent activity | — |
 | **Groups** | `/admin/groups` | List (card/**table** toggle) · tabs: All / Needs Setup / Needs Health Check / Needs Attention / Archived | `/admin/group-health` (triage); `/admin/groups/[id]`, `…/calendar` |
-| **Care** | `/admin/care` | Dashboard · Directory · Follow-ups · Coverage · Recent interactions | `/admin/shepherd-care/[profileId]`, `/admin/shepherd-care/over-shepherds*`; **landing** `/admin/shepherd-care` → `/admin/care`; `/admin/follow-ups` → Care/Follow-ups |
+| **Care** | `/admin/care` | Dashboard · Directory · Follow-ups · Coverage · Recent interactions | `/admin/shepherd-care/[profileId]`, `/admin/shepherd-care/over-shepherds*`; `/admin/shepherd-care` landing **alias-renders** Care; `/admin/follow-ups` resolves + appears as Care/Follow-ups |
 | **People** | `/admin/people` | Directory · Leaders · Members · Apprentices · Add Person | `/admin/leader-pipeline` (→ People/Apprentices) |
-| **Planning** | `/admin/planning` | Calendar · Launch Planning · Capacity · Pipeline/Multiplication + **opinionated views**: This week · Needs coverage · Cancelled/OFF · By leader | `/admin/launch-planning`, `/admin/calendar` (landing → Planning) |
+| **Planning** | `/admin/planning` | Calendar · Launch Planning · Capacity · Pipeline/Multiplication + **opinionated views**: This week · Needs coverage · Cancelled/OFF · By leader | `/admin/launch-planning`, `/admin/calendar` (landings **alias-render** Planning) |
 | **Settings** | `/admin/settings` | (unchanged) | — |
 | **Super Admin** | `/admin/super-admin` | (unchanged, super_admin only) | — |
 
-**Aliases/redirects to add** (all preserve existing inbound links):
-- `/admin/shepherd-care` (exact, landing) → `/admin/care` (server redirect). Sub-paths untouched.
-- `/admin/launch-planning` (exact) → `/admin/planning?tab=launches`; `/admin/calendar` (exact) → `/admin/planning?tab=calendar`. (Phase 3; keep direct resolution until the tabs fully host them.)
-- Confirm `/admin/follow-ups` and `/admin/group-health` either redirect into their host area or stay as documented deep links — they remain reachable either way.
+**Canonical aliases to add** (ADR 0013-compliant — every frozen path must *still resolve by
+direct URL under the admin guard*, so these are **alias-renders, not 302 redirects**):
+- `/admin/shepherd-care` (landing) **renders the canonical Care shell** (the same component as `/admin/care`), staying 200-resolvable. Sub-paths (`/[profileId]`, `/over-shepherds*`) keep their own surfaces, untouched.
+- `/admin/launch-planning` and `/admin/calendar` (landings) **render the canonical Planning shell** at the relevant tab (`launches` / `calendar`), staying 200-resolvable.
+- `/admin/follow-ups` and `/admin/group-health` stay directly resolvable as documented deep links (Follow-ups also surfaces as a Care subview; Group Health as a Groups view).
 
-> Redirect via Next.js `redirect()` inside the existing page (cheapest, keeps the guard) or
-> `next.config` `redirects()` for exact paths. Use **exact-match** so `[profileId]` and
-> `/over-shepherds` deep links never get swallowed.
+> **No 302 redirects on these paths.** ADR 0013 freezes them as directly resolvable under the
+> admin guard. Achieve canonicalization by having the frozen landing render the shared canonical
+> shell component (one experience, two URLs) with a 200 response — not by redirecting. This
+> removes the duplicate-feeling surface without amending ADR 0013. Reserve `redirect()` /
+> `next.config` `redirects()` strictly for genuinely new, non-frozen aliases.
 
 ---
 
@@ -100,14 +103,14 @@ deeper routes feel like **subviews of one mental model**, not peers.
 
 ### Phase 2 — Admin scan-speed improvements
 
-6. **Groups Ops table / compact mode.** Add a **card ⇄ table** toggle to `components/admin/groups-directory.tsx`. Table columns: group, leader/co-leader, setup status, health (grade), capacity, meeting day/time, last check-in, actions. **Sortable** column headers. Reuse all existing derivation (`statusByGroupId`, `capacityStatus`, `latestCheckinText`, `PBadge` tones) — no new data. Persist the toggle per user (localStorage; SSR-safe default = cards on first load). Keep the existing tabs as the work-queue filters (already mapped). Preserve record-context action names (the suite already enforces this).
+6. **Groups Ops table / compact mode.** Add a **card ⇄ table** toggle to `components/admin/groups-directory.tsx`. Table columns: group, leader/co-leader, setup status, health (grade), capacity, meeting day/time, check-in, actions. **Sortable** column headers. Reuse existing derivation (`statusByGroupId`, `capacityStatus`, `latestCheckinText`, `PBadge` tones). **Check-in column:** reusing `latestSession` shows *latest-week* status, not a true per-group last check-in (see Data assumptions) — label it accordingly or add a per-group read; decide before building. Persist the toggle per user (localStorage; SSR-safe default = cards on first load). Keep the existing tabs as the work-queue filters (already mapped). Preserve record-context action names (the suite already enforces this).
 7. **Home de-crowding.** Keep the four-section hierarchy; verify the deeper overview cards stay behind `CollapsibleOverview` so vital signs lead and urgent work is never buried. (Aligns with the Surface Simplification open question on the weekly-cadence cluster — coordinate, don't duplicate.)
 8. **People prominence pass.** Make Add Person, role change, deactivation, and profile navigation visually primary and clearly *safe* (confirm-on-destructive, plain-language role labels). People is already split; this is emphasis + safety affordances, not restructuring.
 
 ### Phase 3 — Navigation / IA consolidation
 
-9. **Canonicalize Care.** Redirect the `/admin/shepherd-care` landing → `/admin/care`; keep `[profileId]` and `/over-shepherds` deep links. Ensure `/admin/care` exposes the five intended subviews (Dashboard, Directory, Follow-ups, Coverage, Recent interactions) and that `/admin/follow-ups` reads as the Follow-ups subview (redirect landing or cross-link). Single source of truth for leader care.
-10. **Canonicalize Planning entries.** Redirect `/admin/launch-planning` and `/admin/calendar` landings into Planning tabs once those tabs fully host the content; keep deep resolution until then.
+9. **Canonicalize Care.** Make the `/admin/shepherd-care` landing **render the canonical Care shell** (200, not a redirect — ADR 0013); keep `[profileId]` and `/over-shepherds` on their own surfaces. Ensure `/admin/care` exposes the five intended subviews (Dashboard, Directory, Follow-ups, Coverage, Recent interactions) and that `/admin/follow-ups` reads as the Follow-ups subview while staying directly resolvable. Single source of truth for leader care.
+10. **Canonicalize Planning entries.** Make `/admin/launch-planning` and `/admin/calendar` landings **render the canonical Planning shell** at the matching tab once those tabs fully host the content (200, not a redirect); both stay directly resolvable throughout.
 11. **Label/route reconciliation.** Ensure nav labels and in-page eyebrows no longer present Care/Shepherd Care, Planning/Launch Planning, Group Health, Leader Pipeline as competing destinations — they read as area + subview. (Vocabulary fixes already largely landed per `CONCEPT_RECONCILIATION.md` §A.)
 
 ### Phase 4 — Deeper workflow improvements
@@ -133,31 +136,32 @@ deeper routes feel like **subviews of one mental model**, not peers.
 - `components/admin/people-management-shell.tsx`, `components/admin/people-directory.tsx` — action prominence + destructive-action safety.
 
 **Care (Phase 3/4):**
-- `app/(protected)/admin/shepherd-care/page.tsx` — landing redirect to `/admin/care` (keep sub-routes).
+- `app/(protected)/admin/shepherd-care/page.tsx` — landing alias-renders the canonical Care shell (stays 200; keep sub-routes).
 - `app/(protected)/admin/care/page.tsx`, `components/admin/care/care-shell.tsx`, `components/admin/care/care-item-list.tsx`, `components/admin/shepherd-care/care-actions.tsx`.
 
 **Planning (Phase 3/4):**
-- `app/(protected)/admin/launch-planning/page.tsx`, `app/(protected)/admin/calendar/page.tsx` — landing redirects.
+- `app/(protected)/admin/launch-planning/page.tsx`, `app/(protected)/admin/calendar/page.tsx` — landings alias-render the canonical Planning shell (stay 200).
 - `app/(protected)/admin/planning/page.tsx`, `components/admin/planning/planning-shell.tsx`, `components/admin/planning/planning-calendar-panel.tsx`, `components/admin/admin-master-calendar-list.tsx` — opinionated views, collapsible filters, link de-noise.
 
-**Routing/aliases:** `next.config.*` `redirects()` for exact landing paths, or in-page `redirect()`.
+**Routing/aliases:** alias-render at the frozen page components (no `next.config` `redirects()` and no in-page `redirect()` on frozen paths — they must stay 200-resolvable); reserve `redirect()` for genuinely new, non-frozen aliases only.
 
 ---
 
 ## Data / API assumptions to verify
 
-- Groups table view needs **no new data**: leader/co-leader (`fetchAllGroupLeaders`), setup/health/capacity (derived in `groups-directory.tsx`), meeting day/time (`GroupsRow`), last check-in (`fetchAttendanceSessions` / `latestSession`) are all already loaded in `app/(protected)/admin/groups/page.tsx`.
+- Groups table view reuses already-loaded data: leader/co-leader (`fetchAllGroupLeaders`), setup/health/capacity (derived in `groups-directory.tsx`), meeting day/time (`GroupsRow`) — all loaded in `app/(protected)/admin/groups/page.tsx`. **One caveat on "last check-in":** the page loads a **single global latest meeting week** then `fetchAttendanceSessions({ meetingWeek: latestWeek })`, so `latestSession` is **this-week's check-in status**, not each group's *true* last check-in (a group last seen an earlier week reads blank). Decide explicitly before building: label the column **"Latest-week check-in"** (no new data; matches the existing card semantics) **or** add a per-group latest-session read for a true "last check-in."
 - Needs Attention `why` strings are static per category — no query change.
-- Planning "By leader" / "Needs coverage" views: confirm the master-calendar load already exposes leader + coverage fields (`loadMasterCalendar` returns leader options; coverage from `fetchActiveShepherdCoverageAssignmentsForAdmin`). Verify "Needs coverage" can be derived without a new read.
-- Care canonicalization: confirm `/admin/care` already loads the full set (`fetchShepherdCareDirectoryForAdmin`, coverage, over-shepherds, recent interactions, outstanding/completed care follow-ups) so redirecting the shepherd-care landing loses nothing.
-- Redirects must run **after** the admin guard (`requireAdmin`) so role boundaries are unchanged.
+- Planning **"Needs coverage" must be defined from calendar data, not care coverage.** `fetchActiveShepherdCoverageAssignmentsForAdmin` is **Leader-Care over-shepherd coverage** (`shepherd_coverage_assignments`) — a different concept; using it would surface leaders missing *pastoral* coverage, not meetings missing a leader. Derive "Needs coverage" from `loadMasterCalendar` occurrences + group leaders (e.g. active occurrences with no assigned leader present), and add a new read only if those fields are insufficient.
+- Planning **"By leader"**: confirm `loadMasterCalendar` leader options are enough to group occurrences by leader without a new read.
+- Care canonicalization: confirm `/admin/care` already loads the full set (`fetchShepherdCareDirectoryForAdmin`, coverage, over-shepherds, recent interactions, outstanding/completed care follow-ups) so the aliased shepherd-care landing renders the same content with no loss.
+- Alias-renders must run **after** the admin guard (`requireAdmin`) so role boundaries are unchanged.
 
 ---
 
 ## Risks & migration concerns
 
-- **Frozen-route freeze (ADR 0008/0009).** Only redirect **exact landing paths**; never the `[profileId]`/`/over-shepherds` sub-paths or any `shepherd_care_*` table/route. Add tests asserting deep links still resolve 200.
-- **Inbound links / bookmarks.** External docs and Julian's bookmarks may point at `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`. Redirects (not deletions) keep them working; announce the canonical URLs.
+- **Frozen-route freeze (ADR 0008/0009/0013).** Frozen landings must **stay directly resolvable (200)** — alias-render the canonical shell, do **not** 302-redirect them, and never touch the `[profileId]`/`/over-shepherds` sub-paths or any `shepherd_care_*` table/route. Add tests asserting every frozen path resolves 200 (not 3xx). *(Raised by Codex review of PR #320 — the earlier redirect framing conflicted with ADR 0013; corrected here.)*
+- **Inbound links / bookmarks (ADR 0013).** External docs and Julian's bookmarks point at `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`. ADR 0013 requires these to **stay directly resolvable** — alias-render the canonical shell at each (200); **never 302-redirect** (violates the freeze) and never delete (breaks links).
 - **Super Admin (ADR 0002).** No structural change; any shared primitive (`PageHeader`, field styles, `PBadge`) edited for the table must preserve Super Admin rendering.
 - **PR overlap with in-flight PRDs.** Admin Interaction Model + Surface Simplification touch Groups (create form, capacity default), Care (interaction form), People (split), Settings, Launch Planning. **Coordinate ownership**: this plan owns scan-speed (table), nav a11y, Needs-Attention rationale, Care/Planning *canonicalization* and *opinionated views* — not the model/vocabulary/form-density work those PRDs own. Sequence after or alongside, never editing the same files in opposite directions.
 - **Table vs pastoral tone.** Keep `PBadge` tones, warm lines, tabular-nums; no dense grey grid. Validate the table reads calm, not spreadsheet-cold.
@@ -170,7 +174,7 @@ deeper routes feel like **subviews of one mental model**, not peers.
 **Automated (extend existing suites):**
 - Unit (Vitest): `needs-attention` `why` strings per category, empty/degraded behavior; any new Planning view-derivation helper; Groups table sort comparators.
 - A11y (Playwright, `tests/a11y/`): exactly one `aria-current="page"` in sidebar; calendar month-grid cell triggers have unique, non-concatenated names; Groups **table** rows keep record-context action names (extend `groups-directory` harness surface for table mode); axe = no critical/serious on every touched surface.
-- Redirect tests: `/admin/shepherd-care` → `/admin/care`; `/admin/launch-planning` / `/admin/calendar` → Planning tabs; `/admin/shepherd-care/[id]` and `/over-shepherds` still 200.
+- Alias-resolution tests: `/admin/shepherd-care`, `/admin/launch-planning`, `/admin/calendar`, `/admin/follow-ups`, `/admin/group-health`, `/admin/shepherd-care/[id]`, and `/over-shepherds` all return **200** under the admin guard (none 3xx), and the frozen landings render the canonical shell.
 
 **Manual keyboard / screen-reader:**
 - Tab through sidebar — active item announces "current page".
@@ -212,4 +216,4 @@ test hooks the later phases reuse.
 - `npm run test:a11y` (Playwright) — axe clean + new aria-current / calendar-name / table-name assertions pass.
 - `npm run build` / typecheck — no type regressions from the `TopNextAction` and toggle changes.
 - Manual pass with keyboard + VoiceOver/NVDA on Home, Groups (both views), Care, Planning per the test plan.
-- Confirm every redirected landing still serves deep links (200) and the admin guard runs first.
+- Confirm every frozen landing alias-renders (200, not 3xx), serves its deep links, and runs the admin guard first.
