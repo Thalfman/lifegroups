@@ -117,4 +117,22 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
       expect(source).not.toContain("buildShepherdCareDashboardModel");
     }
   });
+
+  // #334 — the embedded Dashboard widgets still drill down via the legacy
+  // `?view=directory` / `?coverage=…` params against the /admin/shepherd-care
+  // alias path. So the landing must forward searchParams to the canonical shell,
+  // which translates them into the matching tab (Directory / Coverage). Pin the
+  // forwarding so the drill-down deep links can't be silently re-broken.
+  const CARE_PAGE = readAlias("care/page.tsx");
+
+  it("the shepherd-care landing forwards searchParams to the canonical shell", () => {
+    expect(SHEPHERD_CARE).toContain("searchParams");
+    expect(SHEPHERD_CARE).toMatch(/searchParams=\{searchParams\}/);
+  });
+
+  it("the canonical Care view resolves drill-down params to the initial tab", () => {
+    expect(CARE_PAGE).toContain("resolveCareInitialTabFromParams");
+    // The shell must open on the resolved tab, not the raw default.
+    expect(CARE_PAGE).toMatch(/initialTab=\{resolvedTab\}/);
+  });
 });

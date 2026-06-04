@@ -12,6 +12,7 @@ import {
   type CareTab,
   type CareTabKey,
 } from "@/components/admin/care/care-shell";
+import { resolveCareInitialTabFromParams } from "@/lib/admin/shepherd-care-view";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -351,14 +352,32 @@ export async function loadCarePageData(): Promise<{
   return { tabs, errorBanner };
 }
 
+// Legacy Leader-care drill-down params that the embedded Dashboard widgets
+// still emit (`?view=directory`, `?coverage=…`) against the frozen
+// /admin/shepherd-care alias. The shared entry resolves them to the matching
+// canonical tab so those deep links open Directory / Coverage instead of
+// reloading the default Dashboard (#334 — PRD "serves its deep links").
+export type CareSearchParams = {
+  view?: string | string[];
+  filter?: string | string[];
+  coverage?: string | string[];
+};
+
 // The canonical Care surface: one header, one shell. The alias entries render
 // this same view, only changing which tab opens first, so the experience is
-// identical regardless of which URL resolved it (ADR 0013, #328).
+// identical regardless of which URL resolved it (ADR 0013, #328). `initialTab`
+// is the route's default landing tab; the legacy `view` / `coverage` drill-down
+// params (when present) override it so embedded-widget deep links resolve to the
+// right tab — see resolveCareInitialTabFromParams.
 export async function CarePageView({
   initialTab = "dashboard",
+  searchParams,
 }: {
   initialTab?: CareTabKey;
+  searchParams?: Promise<CareSearchParams>;
 }) {
+  const params = (await searchParams) ?? {};
+  const resolvedTab = resolveCareInitialTabFromParams(params, initialTab);
   const { tabs, errorBanner } = await loadCarePageData();
 
   return (
@@ -377,12 +396,16 @@ export async function CarePageView({
         {errorBanner ? (
           <div style={{ marginBottom: 18 }}>{errorBanner}</div>
         ) : null}
-        <CareShell tabs={tabs} initialTab={initialTab} />
+        <CareShell tabs={tabs} initialTab={resolvedTab} />
       </PageBody>
     </>
   );
 }
 
-export default async function AdminCarePage() {
-  return <CarePageView />;
+export default async function AdminCarePage({
+  searchParams,
+}: {
+  searchParams?: Promise<CareSearchParams>;
+}) {
+  return <CarePageView searchParams={searchParams} />;
 }
