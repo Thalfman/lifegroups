@@ -4,29 +4,8 @@ import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups
 import { CareItemList } from "@/components/admin/care/care-item-list";
 import { CareShell, type CareTab } from "@/components/admin/care/care-shell";
 import { requireAdmin } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  currentUtcDateIso,
-  fetchActiveShepherdCoverageAssignmentsForAdmin,
-  fetchAllGroupLeaders,
-  fetchOutstandingCareFollowUpsForAdmin,
-  fetchOverShepherdsForAdmin,
-  fetchRecentShepherdCareInteractionsForAdmin,
-  fetchRecentlyCompletedCareFollowUpsForAdmin,
-  fetchShepherdCareDirectoryForAdmin,
-  type ActiveShepherdCoverageAssignmentSummary,
-  type CareFollowUpCompletedRow,
-  type CareFollowUpDashboardRow,
-  type OverShepherdListRow,
-  type ShepherdCareDirectoryEntry,
-  type ShepherdCareRecentInteractionRow,
-} from "@/lib/supabase/read-models";
-import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import {
-  careCadenceWindowsFromDefaults,
-  decodeMetricDefaults,
-} from "@/lib/admin/metrics";
-import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
+import { currentUtcDateIso } from "@/lib/supabase/read-models";
+import { loadCareData } from "@/components/admin/care/care-data";
 import { buildShepherdCareDashboardModel } from "@/lib/admin/shepherd-care-dashboard";
 import { buildCareArea } from "@/lib/admin/care-area";
 import type { GroupsRow } from "@/types/database";
@@ -41,105 +20,6 @@ import { P, fontBody } from "@/lib/pastoral";
 // merge — care-note content stays on the per-leader detail page and the generic
 // queue stays on the generic follow_ups table; the two only cross-link.
 export const dynamic = "force-dynamic";
-
-type CareData = {
-  entries: ShepherdCareDirectoryEntry[];
-  assignments: ActiveShepherdCoverageAssignmentSummary[];
-  assignmentsAvailable: boolean;
-  overShepherds: OverShepherdListRow[];
-  recentInteractions: ShepherdCareRecentInteractionRow[];
-  outstandingFollowUps: CareFollowUpDashboardRow[];
-  outstandingFollowUpsAvailable: boolean;
-  completedFollowUps: CareFollowUpCompletedRow[];
-  groupLeaders: { profile_id: string; group_id: string }[];
-  windows: CareCadenceWindows;
-  error: string | null;
-};
-
-function emptyCareData(error: string): CareData {
-  return {
-    entries: [],
-    assignments: [],
-    assignmentsAvailable: false,
-    overShepherds: [],
-    recentInteractions: [],
-    outstandingFollowUps: [],
-    outstandingFollowUpsAvailable: false,
-    completedFollowUps: [],
-    groupLeaders: [],
-    windows: careCadenceWindowsFromDefaults(decodeMetricDefaults(null)),
-    error,
-  };
-}
-
-async function loadCareData(todayIso: string): Promise<CareData> {
-  const client = await createSupabaseServerClient();
-  if (!client) {
-    return emptyCareData("Database is not configured in this environment.");
-  }
-
-  // The directory needs the configured staleness windows + the active-coverage
-  // set (so its needs_attention matches the dashboard's), so resolve those
-  // first; everything else is independent and joins the batch.
-  const [
-    overShepherdsRes,
-    assignmentsRes,
-    recentRes,
-    outstandingRes,
-    completedRes,
-    metricDefaultsRes,
-    groupLeadersRes,
-  ] = await Promise.all([
-    fetchOverShepherdsForAdmin(client, { includeArchived: true }),
-    fetchActiveShepherdCoverageAssignmentsForAdmin(client),
-    fetchRecentShepherdCareInteractionsForAdmin(client, { limit: 30 }),
-    fetchOutstandingCareFollowUpsForAdmin(client),
-    fetchRecentlyCompletedCareFollowUpsForAdmin(client, { limit: 50 }),
-    fetchMetricDefaultsCached(client),
-    fetchAllGroupLeaders(client, { activeOnly: true }),
-  ]);
-
-  const windows = careCadenceWindowsFromDefaults(
-    decodeMetricDefaults(metricDefaultsRes.data ?? null)
-  );
-  const delegatedShepherdIds = assignmentsRes.error
-    ? undefined
-    : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
-
-  const directory = await fetchShepherdCareDirectoryForAdmin(client, {
-    todayIso,
-    windows,
-    delegatedShepherdIds,
-  });
-  if (directory.error) return emptyCareData(directory.error.message);
-
-  return {
-    entries: directory.data,
-    assignments: assignmentsRes.data ?? [],
-    assignmentsAvailable: assignmentsRes.error === null,
-    overShepherds: overShepherdsRes.data ?? [],
-    recentInteractions: recentRes.data ?? [],
-    outstandingFollowUps: outstandingRes.data ?? [],
-    outstandingFollowUpsAvailable: outstandingRes.error === null,
-    completedFollowUps: completedRes.data ?? [],
-    // Only leader / co_leader rows describe groups a care target *leads*;
-    // group_leaders also carries role = 'member' rows, which must not show up as
-    // a led/related group in the Care tabs.
-    groupLeaders: (groupLeadersRes.data ?? [])
-      .filter((r) => r.role === "leader" || r.role === "co_leader")
-      .map((r) => ({ profile_id: r.profile_id, group_id: r.group_id })),
-    windows,
-    error:
-      overShepherdsRes.error?.message ??
-      assignmentsRes.error?.message ??
-      recentRes.error?.message ??
-      outstandingRes.error?.message ??
-      completedRes.error?.message ??
-      metricDefaultsRes.error?.message ??
-      groupLeadersRes.error?.message ??
-      null,
-  };
-}
 
 // Resolve each leader's group name(s) from the active group_leaders rows joined
 // to the groups list (already loaded for the Follow-ups tab, so no extra read).
