@@ -29,6 +29,11 @@ export default defineConfig({
       ".next/**",
       "supabase/functions/**",
       "dist/**",
+      // Ephemeral agent git worktrees live under `.claude/worktrees/**` and
+      // carry their own (possibly mid-refactor) copies of the test files.
+      // Scanning them double-runs the suite and surfaces unrelated failures
+      // from in-progress work, so keep the runner to the real tree.
+      "**/.claude/**",
     ],
   },
 });
