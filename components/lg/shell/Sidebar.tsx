@@ -7,17 +7,15 @@ import { Wordmark } from "./Wordmark";
 import { Verse } from "./Verse";
 import { NavLinkStatus } from "./NavLinkStatus";
 import type { AdminNavGroup } from "@/lib/auth/roles";
-
-function isActiveHref(currentPath: string, href: string): boolean {
-  if (href === "/admin") return currentPath === "/admin";
-  return currentPath === href || currentPath.startsWith(`${href}/`);
-}
+import { isActiveNavHref } from "@/lib/nav/active-nav";
 
 export function Sidebar({
   navGroups,
   onNavigate,
   asDrawer = false,
   homeHref = "/admin",
+  activePath,
+  navLabel = "Primary",
 }: {
   navGroups: AdminNavGroup[];
   onNavigate?: () => void;
@@ -25,8 +23,18 @@ export function Sidebar({
   // Where the brand/wordmark links. Role-aware so an over_shepherd (who cannot
   // reach /admin) lands on their own home instead of /unauthorized.
   homeHref?: string;
+  // Override the path used for active-state resolution. Defaults to the live
+  // `usePathname()`; supplied only by the a11y harness so a Playwright spec can
+  // assert aria-current against frozen alias URLs the harness can't navigate to.
+  activePath?: string;
+  // Accessible name for the primary <nav> landmark. Defaults to "Primary"
+  // (one sidebar per page in production). The harness renders several sidebars
+  // at once and passes a distinct label each so axe's landmark-unique rule and
+  // assistive tech can tell them apart.
+  navLabel?: string;
 }) {
-  const pathname = usePathname() ?? "";
+  const livePathname = usePathname() ?? "";
+  const pathname = activePath ?? livePathname;
 
   return (
     <aside
@@ -59,6 +67,7 @@ export function Sidebar({
       </div>
 
       <nav
+        aria-label={navLabel}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -83,12 +92,13 @@ export function Sidebar({
             ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {g.items.map((item) => {
-                const active = isActiveHref(pathname, item.href);
+                const active = isActiveNavHref(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
                     style={{
                       display: "flex",
                       alignItems: "center",
