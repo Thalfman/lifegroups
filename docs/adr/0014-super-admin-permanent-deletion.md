@@ -19,23 +19,43 @@ audited `admin_*` SECURITY DEFINER RPCs with no service-role key in the runtime
 Permanent deletion is a **bounded escape hatch**, not a new default. Archive
 stays the normal path everywhere. We add a Super-Admin-only "Permanent deletion"
 panel in the Super Admin Console danger zone, type-to-confirm (reusing the Clean
-Slate pattern), routed through a new audited `admin_*` RPC.
+Slate pattern), routed through a new audited **`super_admin_*`** SECURITY DEFINER
+RPC gated on `auth_role() = 'super_admin'`. The `super_admin_*` naming/gate is
+deliberate: `admin_*` RPCs are Ministry-Admin-callable via `auth_is_admin()`, so
+naming this `admin_*` would leave a realistic path to exposing permanent deletion
+to Ministry Admins despite the UI copy.
 
 The bounds — "anything" means anything *except* the documented exceptions:
 
 - **Scope is curated**, not every table. Operational entities only. Private Care
   Notes and audit/tombstone rows are off-limits.
-- **Dependents block, they do not cascade.** The RPC refuses when `restrict`
-  dependents exist and reports what is blocking; the operator clears or
-  reassigns first. No silent cascade through care history.
-- **Every deletion writes a tombstone** — a full JSON snapshot of the row(s)
-  captured before removal — making the act accountable and recoverable by
-  re-import. This is the deletion's paired audit record.
+- **Dependents block, they do not cascade.** The RPC must **preflight every
+  dependent row regardless of its FK action** — `on delete cascade` and
+  `set null` rows count as blockers too, not just `on delete restrict`. Relying
+  on DB `restrict` alone would let cascade FKs (e.g. `group_leaders`,
+  `group_memberships`, and the `group_id` history tables) silently erase children
+  with no tombstone before any block could fire. The RPC refuses when any
+  dependent exists and reports what is blocking; the operator clears or reassigns
+  first. No silent cascade through care history.
+- **Every deletion writes both a tombstone and an `audit_events` row.** The
+  tombstone is a full JSON snapshot of the row(s) captured before removal, making
+  the act recoverable by re-import. It does **not** replace the paired
+  `audit_events` insert: the repo invariant that every RPC mutation writes a
+  paired `audit_events` row in the same transaction still holds, so the deletion
+  stays in the canonical immutable audit feed and existing audit tooling.
 - **Users are `public.profiles` rows only.** `auth.users` is never touched, so
   the no-service-role-key invariant holds. Disable/re-enable
-  (`set_profile_status`) remains the normal lever for logins.
-- **Self and bootstrap Super Admin are blocked**, mirroring the existing
-  self-target guard.
+  (`set_profile_status`) remains the normal lever for logins. Because
+  `audit_events.actor_profile_id` references `profiles(id)` and audit rows are
+  off-limits, deleting a profile that has performed audited actions would
+  otherwise be impossible (an unclearable blocker). We migrate that FK to
+  **`on delete set null`** so the audit event survives with its actor link
+  nulled, rather than blocking the delete or deleting the audit row.
+- **No Super Admin profile is ever a target.** Permanent deletion forbids
+  targeting any `super_admin` row (not just self and bootstrap), matching the
+  existing `super_admin_set_profile_status` `forbidden_target` guard. Permanent
+  deletion is strictly more destructive than disable, so the role-boundary guard
+  must be at least as wide.
 
 ## Considered options
 
@@ -51,8 +71,12 @@ The bounds — "anything" means anything *except* the documented exceptions:
 ## Consequences
 
 - A new tombstone table (Super-Admin-readable, never deletable) and a new
-  `admin_*` SECURITY DEFINER delete RPC that snapshots-then-deletes and surfaces
-  blocking dependents as a mapped error token.
+  `super_admin_*` SECURITY DEFINER delete RPC that snapshots-then-deletes, writes
+  the paired `audit_events` row, and surfaces blocking dependents as a mapped
+  error token.
+- One schema change beyond the new table: `audit_events.actor_profile_id` gains
+  `on delete set null`, so deleting a profile preserves its audit events with a
+  null actor instead of being permanently blocked by them.
 - "Delete" is now an overloaded word: Archive (the reversible default) vs
   Permanent deletion (this hatch). CONTEXT.md disambiguates both, plus Tombstone.
 - The archive-everywhere model is intact; this is the single, audited, bounded

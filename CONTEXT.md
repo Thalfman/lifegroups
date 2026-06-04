@@ -68,15 +68,16 @@ _Avoid_: Delete, soft-delete (as a user-facing label), remove.
 **Permanent deletion**:
 The Super-Admin-only escape hatch that physically removes a row — distinct from
 Archive. Lives in the Super Admin Console danger zone behind a type-to-confirm,
-routed through an audited `admin_*` RPC. Refuses (and reports) when dependents
-block it rather than cascading; never reaches Private Care Notes, audit logs,
-the acting Super Admin, or `auth.users` identities (only `public.profiles`).
+routed through an audited `super_admin_*` RPC (never `admin_*`, which is
+Ministry-Admin-callable). Refuses (and reports) when any dependent row blocks it
+rather than cascading; never reaches Private Care Notes, audit logs, any Super
+Admin profile, or `auth.users` identities (only `public.profiles`).
 _Avoid_: Hard delete (in user-facing copy), wipe (that is Clean Slate), purge.
 
 **Tombstone**:
 The full JSON snapshot of a row captured before Permanent deletion, so the act
-is accountable and recoverable by re-import. The deletion's paired audit record;
-itself never deletable.
+is recoverable by re-import. Captured alongside (not instead of) the deletion's
+paired `audit_events` row; itself never deletable.
 _Avoid_: Backup, archive (that is the soft-delete), trash.
 
 ### Group concepts
