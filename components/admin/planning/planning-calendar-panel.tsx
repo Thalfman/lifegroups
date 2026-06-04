@@ -26,11 +26,13 @@ const navLinkActiveStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
-// The Calendar tab of the Planning area (#303). It hosts the same master
-// calendar as the frozen /admin/calendar route, but leads with the list /
-// upcoming view so the most scannable answer to "what's coming next?" is first;
-// the month grid stays one tap away via the in-calendar view toggle, and the
-// status legend rides above every view so the event-type colors are explained.
+// The Calendar tab of the Planning area (#303, #331). It hosts the same master
+// calendar as the frozen /admin/calendar route, but leads with opinionated
+// saved views (This week / Needs coverage / Cancelled-OFF / By leader) as the
+// PRIMARY affordance, moves the fine-grained filters into a collapsible
+// secondary disclosure, and de-noises the repeated per-row "Open group
+// calendar" links to one entry point per group. The status legend rides above
+// every view so the event-type colors are explained.
 // Month navigation reloads /admin/planning?month=… (the area defaults back to
 // this Calendar tab), keeping month switching server-rendered without moving
 // the frozen route.
@@ -138,6 +140,7 @@ export async function PlanningCalendarPanel({
         defaultViewMode="list"
         persistSurface="planning-calendar"
         showLegendAlways
+        planningViews
       />
     </div>
   );

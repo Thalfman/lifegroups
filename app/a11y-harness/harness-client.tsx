@@ -628,6 +628,29 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Planning opinionated views (#331). The same shell with the Planning
+          opt-in: the primary view switcher (This week / Needs coverage /
+          Cancelled-OFF / By leader), the advanced filters in a collapsible
+          disclosure, and de-noised per-group calendar links. axe runs against
+          the switcher (a tablist whose tabs read view names), the disclosure,
+          and the By-leader layout's single per-group link. */}
+      <Surface
+        id="planning-opinionated-views"
+        heading="Planning (opinionated views)"
+      >
+        <AdminMasterCalendarShell
+          monthIso="2026-05"
+          todayIso="2026-05-18"
+          occurrences={OCCURRENCES}
+          groups={CALENDAR_GROUPS}
+          leaderOptions={CALENDAR_LEADERS}
+          defaultViewMode="list"
+          persistSurface="planning-calendar-harness"
+          showLegendAlways
+          planningViews
+        />
+      </Surface>
+
       {/* Calendar occurrence editor (#324). A saved-override occurrence so the
           modal renders the destructive "Clear override" action. It opens the
           Radix Dialog from a programmatic (non-DialogTrigger) button — the case

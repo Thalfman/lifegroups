@@ -10,6 +10,12 @@ import {
 import { AdminMasterCalendarList } from "./admin-master-calendar-list";
 import { AdminMasterCalendarDrawer } from "./admin-master-calendar-drawer";
 import { AdminCalendarLegend } from "./admin-calendar-legend";
+import { PlanningByLeaderList } from "./planning/planning-by-leader-list";
+import {
+  PLANNING_VIEWS,
+  filterOccurrencesForView,
+  type PlanningViewKey,
+} from "@/lib/admin/planning-views";
 import { WEEKDAY_HEADERS, monthBounds } from "@/lib/calendar/occurrences";
 import {
   EVENT_STATUS_OPTIONS,
@@ -40,7 +46,17 @@ type CalendarViewSnapshot = {
   statusFilter: GroupCalendarEventStatus[];
   dayFilter: number[];
   leaderFilter: string;
+  // The active opinionated view (#331), persisted alongside the filters so a
+  // return visit reopens on the same view. Absent on snapshots saved by the
+  // frozen /admin/calendar (which never sets the opinionated-views prop); the
+  // validator tolerates that and defaults to "all".
+  planningView?: PlanningViewKey;
 };
+
+const PLANNING_VIEW_KEYS = PLANNING_VIEWS.map((v) => v.key);
+
+const isPlanningViewKey = (v: unknown): v is PlanningViewKey =>
+  typeof v === "string" && PLANNING_VIEW_KEYS.includes(v as PlanningViewKey);
 
 const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -60,7 +76,10 @@ function isCalendarViewSnapshot(value: unknown): value is CalendarViewSnapshot {
     isStringArray(v.statusFilter) &&
     Array.isArray(v.dayFilter) &&
     v.dayFilter.every((d) => typeof d === "number") &&
-    typeof v.leaderFilter === "string"
+    typeof v.leaderFilter === "string" &&
+    // Optional and only ever a known key; an older snapshot without it (or a
+    // stale key from a renamed view) falls back to "all" on restore.
+    (v.planningView === undefined || isPlanningViewKey(v.planningView))
   );
 }
 
@@ -80,6 +99,7 @@ export function AdminMasterCalendarShell({
   defaultViewMode = "month",
   persistSurface = "calendar",
   showLegendAlways = false,
+  planningViews = false,
 }: {
   monthIso: string;
   todayIso: string;
@@ -101,6 +121,12 @@ export function AdminMasterCalendarShell({
   // Planning's list-first calendar wants the event-type colors explained up
   // front; the frozen route keeps the legend tied to the month grid.
   showLegendAlways?: boolean;
+  // Opt into the Planning area's opinionated saved views (#331): a primary
+  // view switcher (This week / Needs coverage / Cancelled-OFF / By leader)
+  // above the calendar, the advanced filters moved into a collapsible
+  // secondary area, and de-noised per-group calendar links. The frozen
+  // /admin/calendar route leaves this off and is unchanged.
+  planningViews?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const userToggledRef = useRef(false);
@@ -122,6 +148,10 @@ export function AdminMasterCalendarShell({
   // doesn't over-match the other).
   const [leaderFilter, setLeaderFilter] = useState<string>("");
 
+  // The active opinionated view (#331). Inert unless planningViews is set; the
+  // frozen /admin/calendar never renders the switcher, so it stays "all".
+  const [planningView, setPlanningView] = useState<PlanningViewKey>("all");
+
   // Saved views & filters (PRD req 12, #263): remember this admin's view mode
   // and every filter selection across reloads and return visits. Declared
   // before the mobile-default effect below so its restore pass runs first — a
@@ -140,6 +170,7 @@ export function AdminMasterCalendarShell({
       statusFilter,
       dayFilter,
       leaderFilter,
+      planningView,
     },
     restore: (saved) => {
       // A null saved view means "no explicit choice" — leave userToggledRef
@@ -153,6 +184,11 @@ export function AdminMasterCalendarShell({
       setStatusFilter(saved.statusFilter);
       setDayFilter(saved.dayFilter);
       setLeaderFilter(saved.leaderFilter);
+      // Restore the opinionated view (#331). Defaults to "all" when the
+      // snapshot predates the feature or the route doesn't offer the switcher.
+      if (planningViews && saved.planningView !== undefined) {
+        setPlanningView(saved.planningView);
+      }
     },
     validate: isCalendarViewSnapshot,
   });
@@ -189,8 +225,19 @@ export function AdminMasterCalendarShell({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [listAnchorDate, setListAnchorDate] = useState<string | null>(null);
 
+  // The opinionated view narrows the set first (#331); the advanced filters
+  // then compose on top of whatever view is active. When planningViews is off
+  // (frozen /admin/calendar) this is a no-op pass-through of every occurrence.
+  const viewScoped = useMemo(
+    () =>
+      planningViews
+        ? filterOccurrencesForView(occurrences, planningView, todayIso)
+        : occurrences,
+    [planningViews, occurrences, planningView, todayIso]
+  );
+
   const filtered = useMemo(() => {
-    return occurrences.filter((o) => {
+    return viewScoped.filter((o) => {
       if (groupFilter.length > 0 && !groupFilter.includes(o.groupId))
         return false;
       if (typeFilter.length > 0 && !typeFilter.includes(o.eventType))
@@ -204,7 +251,7 @@ export function AdminMasterCalendarShell({
       return true;
     });
   }, [
-    occurrences,
+    viewScoped,
     groupFilter,
     typeFilter,
     statusFilter,
@@ -246,34 +293,118 @@ export function AdminMasterCalendarShell({
 
   const bounds = monthBounds(monthIso);
 
+  const filterBar = (
+    <FilterBar
+      groups={groups}
+      leaderOptions={leaderOptions}
+      groupFilter={groupFilter}
+      setGroupFilter={setGroupFilter}
+      typeFilter={typeFilter}
+      setTypeFilter={setTypeFilter}
+      statusFilter={statusFilter}
+      setStatusFilter={setStatusFilter}
+      dayFilter={dayFilter}
+      setDayFilter={setDayFilter}
+      leaderFilter={leaderFilter}
+      setLeaderFilter={setLeaderFilter}
+      hasActiveFilters={hasActiveFilters}
+      onReset={resetFilters}
+      viewMode={viewMode}
+      onChangeView={setViewModeManual}
+      filteredCount={filtered.length}
+      totalCount={viewScoped.length}
+      // The opinionated views own the view toggle's "primary" slot, so hide the
+      // Month/List toggle inside the advanced filters when they're present —
+      // By leader has its own grouped layout and the other views read best as
+      // the list. The frozen route keeps the toggle in the bar.
+      hideViewToggle={planningViews}
+    />
+  );
+
+  // "By leader" renders its own group→leader layout and ignores month/list.
+  const isByLeader = planningViews && planningView === "by-leader";
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <FilterBar
-        groups={groups}
-        leaderOptions={leaderOptions}
-        groupFilter={groupFilter}
-        setGroupFilter={setGroupFilter}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        dayFilter={dayFilter}
-        setDayFilter={setDayFilter}
-        leaderFilter={leaderFilter}
-        setLeaderFilter={setLeaderFilter}
-        hasActiveFilters={hasActiveFilters}
-        onReset={resetFilters}
-        viewMode={viewMode}
-        onChangeView={setViewModeManual}
-        filteredCount={filtered.length}
-        totalCount={occurrences.length}
-      />
+      {planningViews ? (
+        <PlanningViewSwitcher
+          value={planningView}
+          onChange={setPlanningView}
+          counts={{
+            total: viewScoped.length,
+            shown: filtered.length,
+            hasActiveFilters,
+          }}
+        />
+      ) : null}
+
+      {/* Advanced (secondary) filters. As primary affordances the opinionated
+          views lead; the fine-grained filters move into a collapsible
+          disclosure so they're available but no longer the first thing the
+          director meets (#331). The frozen route renders the bar inline. */}
+      {planningViews ? (
+        <details
+          style={{
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
+            background: P.surface,
+            padding: "10px 14px",
+          }}
+          open={hasActiveFilters}
+        >
+          <summary
+            style={{
+              cursor: "pointer",
+              fontFamily: fontSans,
+              fontSize: 11,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: P.ink3,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            Advanced filters
+            {hasActiveFilters ? (
+              <span
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 11,
+                  letterSpacing: 0,
+                  textTransform: "none",
+                  color: P.terra,
+                  background: P.terraSoft,
+                  border: `1px solid ${P.terra}`,
+                  borderRadius: 999,
+                  padding: "1px 8px",
+                }}
+              >
+                Active
+              </span>
+            ) : null}
+          </summary>
+          <div style={{ paddingTop: 12 }}>{filterBar}</div>
+        </details>
+      ) : (
+        filterBar
+      )}
 
       {showLegendAlways ? <AdminCalendarLegend /> : null}
 
       {filtered.length === 0 ? (
         <EmptyState hasActiveFilters={hasActiveFilters} />
-      ) : viewMode === "month" ? (
+      ) : isByLeader ? (
+        <PlanningByLeaderList
+          occurrences={filtered}
+          monthIso={monthIso}
+          onSelect={onSelect}
+        />
+      ) : viewMode === "month" && !planningViews ? (
+        // The month grid is the frozen /admin/calendar's at-a-glance view.
+        // Planning leads with the opinionated views (list-shaped), so it never
+        // renders the grid — its view toggle is hidden.
         <>
           {showLegendAlways ? null : <AdminCalendarLegend />}
           <AdminMasterCalendarGrid
@@ -292,6 +423,7 @@ export function AdminMasterCalendarShell({
           anchorDate={listAnchorDate}
           onAnchorConsumed={() => setListAnchorDate(null)}
           onSelect={onSelect}
+          denoiseGroupLinks={planningViews}
         />
       )}
 
@@ -300,6 +432,75 @@ export function AdminMasterCalendarShell({
         occurrence={selected}
         onClose={() => setSelectedKey(null)}
       />
+    </div>
+  );
+}
+
+// The opinionated saved-view switcher (#331) — the PRIMARY affordance on
+// /admin/planning. Rendered as a tablist so screen readers announce it as a
+// view chooser and read each view name; the active view's occurrence count
+// rides alongside so the director sees how many meetings the view surfaces.
+function PlanningViewSwitcher({
+  value,
+  onChange,
+  counts,
+}: {
+  value: PlanningViewKey;
+  onChange: (next: PlanningViewKey) => void;
+  counts: { total: number; shown: number; hasActiveFilters: boolean };
+}) {
+  const itemStyle = (active: boolean): React.CSSProperties => ({
+    fontFamily: fontSans,
+    fontSize: 12,
+    fontWeight: active ? 700 : 500,
+    color: active ? P.surface : P.ink3,
+    background: active ? P.terra : "transparent",
+    border: "none",
+    padding: "8px 14px",
+    cursor: "pointer",
+    borderRadius: 999,
+  });
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <div
+        role="tablist"
+        aria-label="Planning views"
+        style={{
+          display: "inline-flex",
+          flexWrap: "wrap",
+          alignSelf: "start",
+          background: P.surface,
+          border: `1px solid ${P.line}`,
+          borderRadius: 999,
+          padding: 3,
+          gap: 2,
+        }}
+      >
+        {PLANNING_VIEWS.map((view) => (
+          <button
+            key={view.key}
+            type="button"
+            role="tab"
+            aria-selected={value === view.key}
+            onClick={() => onChange(view.key)}
+            style={itemStyle(value === view.key)}
+          >
+            {view.label}
+          </button>
+        ))}
+      </div>
+      <div
+        aria-live="polite"
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12,
+          color: P.ink3,
+        }}
+      >
+        {counts.hasActiveFilters
+          ? `${counts.shown} of ${counts.total} in this view`
+          : `${counts.total} ${counts.total === 1 ? "meeting" : "meetings"} in this view`}
+      </div>
     </div>
   );
 }
@@ -405,6 +606,7 @@ function FilterBar({
   onChangeView,
   filteredCount,
   totalCount,
+  hideViewToggle = false,
 }: {
   groups: MasterCalendarGroupSummary[];
   leaderOptions: MasterCalendarLeader[];
@@ -424,6 +626,10 @@ function FilterBar({
   onChangeView: (next: ViewMode) => void;
   filteredCount: number;
   totalCount: number;
+  // Hide the Month/List toggle when the opinionated views own the primary view
+  // slot (#331): By leader has its own layout and the other Planning views read
+  // as the list, so the grid/list toggle would be misleading there.
+  hideViewToggle?: boolean;
 }) {
   const groupOptions = useMemo(
     () => groups.map((g) => ({ value: g.groupId, label: g.groupName })),
@@ -571,7 +777,9 @@ function FilterBar({
               Reset filters
             </PButton>
           ) : null}
-          <ViewToggle viewMode={viewMode} onChange={onChangeView} />
+          {hideViewToggle ? null : (
+            <ViewToggle viewMode={viewMode} onChange={onChangeView} />
+          )}
         </div>
       </div>
       <ActiveFilterChips chips={activeChips} />

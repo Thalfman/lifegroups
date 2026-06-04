@@ -177,3 +177,70 @@ test.describe("master calendar occurrence drawer (#324)", () => {
     expectNoBlockingAxeViolations(results);
   });
 });
+
+// Planning opinionated views (#331). The same master-calendar shell with the
+// Planning opt-in: a primary view switcher (This week / Needs coverage /
+// Cancelled-OFF / By leader) as a tablist whose tabs read view names, the
+// advanced filters moved into a collapsible disclosure, and the repeated
+// "Open group calendar" link de-noised to one entry point per group.
+test.describe("planning opinionated views (#331)", () => {
+  const SURFACE = '[data-a11y-surface="planning-opinionated-views"]';
+
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+  });
+
+  test("the opinionated views are present as named primary affordances", async ({
+    page,
+  }) => {
+    const switcher = page
+      .locator(SURFACE)
+      .getByRole("tablist", { name: "Planning views" });
+    await expect(switcher).toBeVisible();
+    for (const view of [
+      "This week",
+      "Needs coverage",
+      "Cancelled / OFF",
+      "By leader",
+    ]) {
+      await expect(switcher.getByRole("tab", { name: view })).toBeVisible();
+    }
+  });
+
+  test("advanced filters live in a collapsible secondary disclosure", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    const disclosure = surface.getByText("Advanced filters", { exact: true });
+    await expect(disclosure).toBeVisible();
+    // Collapsed by default → the filter fields aren't visible until expanded.
+    const statusField = surface.getByRole("button", {
+      name: "Select all Status",
+    });
+    await expect(statusField).toBeHidden();
+    await disclosure.click();
+    await expect(statusField).toBeVisible();
+  });
+
+  test("By leader surfaces one calendar link per group, not per occurrence", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("tab", { name: "By leader" }).click();
+    // Anderson recurs on two May dates; the flat list would render two identical
+    // "Open group calendar" links. The de-noised By-leader view collapses that
+    // to exactly one per group under each leader.
+    await expect(
+      surface.getByRole("link", { name: "Open Anderson calendar" })
+    ).toHaveCount(1);
+  });
+
+  test("axe finds no blocking violations across the opinionated views", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByRole("tab", { name: "By leader" }).click();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
+    expectNoBlockingAxeViolations(results);
+  });
+});
