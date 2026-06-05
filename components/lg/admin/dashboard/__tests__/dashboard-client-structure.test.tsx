@@ -107,4 +107,26 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
       ).toBeGreaterThan(needsAttention);
     }
   });
+
+  // Care/Plan/Multiply pivot (ADR 0016, #372): Home must not present stats for a
+  // tab the operator retired. When Planning / People are hidden, their snapshot
+  // cards drop with the tab; the Care-owned cards stay.
+  it("drops the launch-planning and leader-pipeline cards when their tab is hidden", () => {
+    const html = renderToStaticMarkup(
+      <DashboardClient
+        data={ADMIN_FALLBACK}
+        guestsLive={false}
+        scopeId="p1"
+        hiddenNavAreas={["/admin/planning", "/admin/people"]}
+      />
+    );
+
+    expect(html).not.toContain("Launch planning"); // LaunchPlanningOverviewCard
+    expect(html).not.toContain("Leader pipeline"); // LeaderPipelineOverviewCard
+
+    // Care-owned snapshot cards (and the frozen-gated guest funnel) stay.
+    expect(html).toContain("Leader care"); // LeaderCareOverviewCard
+    expect(html).toContain("Health pulse"); // HealthDistributionCard
+    expect(html).toContain("Pipeline funnel"); // GuestPipelineFunnelCard
+  });
 });

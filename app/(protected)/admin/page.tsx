@@ -6,6 +6,7 @@ import { getAdminDashboardData } from "@/lib/dashboard/queries";
 import { resolveOverviewGrain } from "@/lib/admin/overview-period";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import { getMutedAttentionKeys } from "@/lib/admin/needs-attention-mutes";
+import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +32,15 @@ export default async function AdminPage({
   // ministry_admin sees the same muted Home as the Super Admin who set it.
   // Resolve it alongside the dashboard read — not after — to keep this hot page
   // to a single round of parallel reads.
-  const [dashboard, guestsLive, mutedKeys] = await Promise.all([
+  // hiddenNavAreas (ADR 0016): the Super-Admin nav-visibility flags also govern
+  // which Ministry-snapshot cards Home shows, so a retired tab leaves no stats
+  // behind. Resolved alongside the dashboard read to keep this hot page to a
+  // single round of parallel reads.
+  const [dashboard, guestsLive, mutedKeys, hiddenNavAreas] = await Promise.all([
     getAdminDashboardData(client, { grain }),
     isFrozenSurfaceLive("guests"),
     getMutedAttentionKeys(),
+    loadHiddenNavAreas(),
   ]);
   const { data } = dashboard;
   // A degraded read returns demo fallback data carrying an error; the deliberate
@@ -57,6 +63,7 @@ export default async function AdminPage({
         scopeId={session.profile.id}
         mutedKeys={mutedKeys}
         canResetActivity={session.profile.role === "super_admin"}
+        hiddenNavAreas={[...hiddenNavAreas]}
       />
     </>
   );

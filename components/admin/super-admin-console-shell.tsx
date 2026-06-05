@@ -1262,7 +1262,8 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
       >
         New surfaces toggle freely. Frozen surfaces stay off until re-verified,
         so a stale toggle can’t re-expose a surface before its routes and access
-        are re-checked.
+        are re-checked. Nav flags re-show a tab the Care/Plan/Multiply pivot
+        hides by default — the route resolves by direct URL either way.
       </p>
       <div style={{ display: "grid", gap: 10 }}>
         {FEATURE_FLAG_DEFINITIONS.map((def) => {
@@ -1270,12 +1271,15 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           const state = flags[def.key];
           const enabled = state?.enabled === true;
           const frozen = def.kind === "frozen_surface";
+          const navVis = def.kind === "nav_visibility";
           const frozenHeldOff = frozen && enabled && state?.verified !== true;
           const riskNote = frozenHeldOff
             ? "Turned on, but held off until its routes and access are re-verified."
             : frozen
               ? "Frozen surface — stays off until re-verified."
-              : null;
+              : navVis
+                ? "Hidden by default (Care/Plan/Multiply pivot). Turning this on re-shows the tab; its route resolves by direct URL either way."
+                : null;
           return (
             <div
               key={def.key}
@@ -1318,11 +1322,19 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                     {def.label}
                   </span>
                   <StatusBadge
-                    label={frozen ? "Frozen" : "New"}
+                    label={frozen ? "Frozen" : navVis ? "Nav" : "New"}
                     tone={frozen ? "warning" : "planned"}
                   />
                   <StatusBadge
-                    label={resolved ? "On" : "Off"}
+                    label={
+                      resolved
+                        ? navVis
+                          ? "Shown"
+                          : "On"
+                        : navVis
+                          ? "Hidden"
+                          : "Off"
+                    }
                     tone={resolved ? "good" : "disabled"}
                   />
                 </div>

@@ -5,13 +5,17 @@ import {
   isFrozenSurfaceFlag,
   getFeatureFlagDefinition,
   resolveMutedAttentionKeys,
+  resolveHiddenNav,
   LAUNCH_MUTE_FLAG_KEYS,
+  NAV_VISIBILITY_FLAGS,
+  DEFAULT_HIDDEN_NAV_AREAS,
   FEATURE_FLAG_DEFINITIONS,
   type FeatureFlagsConfig,
 } from "@/lib/admin/feature-flags";
 
 const NEW_SURFACE_KEY = "home_hub_welcome_banner";
 const FROZEN_SURFACE_KEY = "leader_surface";
+const NAV_VISIBILITY_KEY = "nav_show_groups";
 
 describe("feature-flags", () => {
   describe("resolveFlag — the ADR 0009 resolution table", () => {
@@ -61,6 +65,23 @@ describe("feature-flags", () => {
       };
       expect(resolveFlag(config, "not_a_real_flag")).toBe(false);
     });
+
+    it("resolves a nav-visibility flag like a plain on/off switch (no verify needed)", () => {
+      expect(resolveFlag({}, NAV_VISIBILITY_KEY)).toBe(false);
+      expect(
+        resolveFlag(
+          { [NAV_VISIBILITY_KEY]: { enabled: true } },
+          NAV_VISIBILITY_KEY
+        )
+      ).toBe(true);
+      // No `verified` marker is consulted for nav flags (unlike frozen surfaces).
+      expect(
+        resolveFlag(
+          { [NAV_VISIBILITY_KEY]: { enabled: true, verified: false } },
+          NAV_VISIBILITY_KEY
+        )
+      ).toBe(true);
+    });
   });
 
   describe("registry", () => {
@@ -92,6 +113,63 @@ describe("feature-flags", () => {
         expect(getFeatureFlagDefinition(key)?.kind).toBe("new_surface");
         expect(isFrozenSurfaceFlag(key)).toBe(false);
       }
+    });
+
+    it("registers the three nav-visibility flags as their own kind (not frozen)", () => {
+      for (const { key } of NAV_VISIBILITY_FLAGS) {
+        expect(getFeatureFlagDefinition(key)?.kind).toBe("nav_visibility");
+        expect(isFrozenSurfaceFlag(key)).toBe(false);
+      }
+    });
+
+    it("keeps the nav-visibility registry and the area map in lock-step (no drift)", () => {
+      // Every nav_visibility definition in the registry has a NAV_VISIBILITY_FLAGS
+      // entry, and vice versa — so the resolver can never govern a tab the
+      // console can't toggle, or expose a toggle the resolver ignores.
+      const registryNavKeys = FEATURE_FLAG_DEFINITIONS.filter(
+        (d) => d.kind === "nav_visibility"
+      )
+        .map((d) => d.key)
+        .sort();
+      const mapKeys = NAV_VISIBILITY_FLAGS.map((f) => f.key).sort();
+      expect(registryNavKeys).toEqual(mapKeys);
+    });
+  });
+
+  describe("resolveHiddenNav — the ADR 0016 hidden-set resolution", () => {
+    it("hides every nav-visibility tab for an empty config (the pivot default)", () => {
+      expect(resolveHiddenNav({})).toEqual(new Set(DEFAULT_HIDDEN_NAV_AREAS));
+      // The default-hidden set is exactly the three governed areas.
+      expect([...DEFAULT_HIDDEN_NAV_AREAS].sort()).toEqual(
+        ["/admin/groups", "/admin/people", "/admin/planning"].sort()
+      );
+    });
+
+    it("drops an area from the hidden set when its flag is enabled", () => {
+      const hidden = resolveHiddenNav({ nav_show_groups: { enabled: true } });
+      expect(hidden.has("/admin/groups")).toBe(false);
+      // The others stay hidden.
+      expect(hidden.has("/admin/people")).toBe(true);
+      expect(hidden.has("/admin/planning")).toBe(true);
+    });
+
+    it("re-shows every tab when all three flags are on", () => {
+      const config: FeatureFlagsConfig = Object.fromEntries(
+        NAV_VISIBILITY_FLAGS.map((f) => [f.key, { enabled: true }])
+      );
+      expect(resolveHiddenNav(config)).toEqual(new Set());
+    });
+
+    it("keeps a tab hidden when its flag is present but off", () => {
+      const hidden = resolveHiddenNav({
+        nav_show_planning: { enabled: false },
+      });
+      expect(hidden.has("/admin/planning")).toBe(true);
+    });
+
+    it("fails safe: an unknown stored flag key reveals nothing", () => {
+      const hidden = resolveHiddenNav({ nav_show_bogus: { enabled: true } });
+      expect(hidden).toEqual(new Set(DEFAULT_HIDDEN_NAV_AREAS));
     });
   });
 

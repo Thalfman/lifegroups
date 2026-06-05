@@ -14,22 +14,26 @@ import { gotoHarness } from "./harness";
 // lib/nav/__tests__/active-nav.test.ts; this is the rendered-aria-current gate.
 
 // path under test → the area LABEL that must carry aria-current="page".
+// Care/Plan/Multiply pivot (ADR 0016): the default-visible spine is Home · Care
+// · Plan · Multiply · Settings, and every frozen alias is owned by a visible
+// area (Groups/People/Planning are hidden by default, so their roots aren't in
+// the default sidebar and aren't asserted here).
 const EXPECTED_ACTIVE_LABEL: Record<string, string> = {
-  // Canonical area roots light their own area.
+  // Visible area roots light their own area.
   "/admin": "Home",
-  "/admin/groups": "Groups",
   "/admin/care": "Care",
-  "/admin/people": "People",
-  "/admin/planning": "Planning",
+  "/admin/plan": "Plan",
+  "/admin/multiply": "Multiply",
   "/admin/settings": "Settings",
-  // Frozen aliases light their owning canonical area.
+  // Frozen aliases light their owning (still-visible) canonical area.
   "/admin/shepherd-care": "Care",
   "/admin/follow-ups": "Care",
-  "/admin/launch-planning": "Planning",
-  "/admin/calendar": "Planning",
-  "/admin/leader-pipeline": "People",
-  "/admin/group-health": "Groups",
-  "/admin/check-ins": "Groups",
+  "/admin/leader-pipeline": "Care",
+  "/admin/group-health": "Care",
+  "/admin/check-ins": "Care",
+  "/admin/launch-planning": "Multiply",
+  "/admin/calendar": "Multiply",
+  "/admin/guests": "Plan",
 };
 
 test.describe("sidebar exposes exactly one aria-current per nav", () => {

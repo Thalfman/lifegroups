@@ -1,5 +1,10 @@
 import type { UserRole } from "@/types/enums";
-import { ADMIN_AREAS, isAdminRole, isOverShepherdRole } from "@/lib/auth/roles";
+import {
+  ADMIN_AREAS,
+  DEFAULT_HIDDEN_ADMIN_AREAS,
+  isAdminRole,
+  isOverShepherdRole,
+} from "@/lib/auth/roles";
 
 export interface HubTile {
   href: string;
@@ -7,10 +12,18 @@ export interface HubTile {
   icon: string;
 }
 
-// The Home Hub launcher mirrors the six-area spine (ADR 0013): one tile per
-// area, in the same order as the sidebar and bottom nav, so all three surfaces
-// stay consistent. The shared source is ADMIN_AREAS in lib/auth/roles.ts.
-const ADMIN_TILES: readonly HubTile[] = ADMIN_AREAS.map((a) => ({ ...a }));
+// The Home Hub launcher mirrors the Care/Plan/Multiply spine (ADR 0016): one
+// tile per VISIBLE area, in the same order as the sidebar and bottom nav, so all
+// three surfaces stay consistent. The shared source is ADMIN_AREAS in
+// lib/auth/roles.ts; default-hidden tabs (Groups/People/Planning) drop out via
+// the same hiddenAreas set the sidebar uses (resolveHiddenNav).
+function adminTiles(hiddenAreas: ReadonlySet<string>): HubTile[] {
+  return ADMIN_AREAS.filter((a) => !hiddenAreas.has(a.href)).map((a) => ({
+    href: a.href,
+    label: a.label,
+    icon: a.icon,
+  }));
+}
 
 // Super Admin alone sees the console tile, matching the super-admin nav gate in
 // navItemsForRole / adminNavGroups.
@@ -26,10 +39,13 @@ const OVER_SHEPHERD_TILES: readonly HubTile[] = [
   { href: "/over-shepherd", label: "My Leaders", icon: "people" },
 ];
 
-export function hubTilesForRole(role: UserRole): HubTile[] {
+export function hubTilesForRole(
+  role: UserRole,
+  hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
+): HubTile[] {
   if (isAdminRole(role)) {
     return [
-      ...ADMIN_TILES,
+      ...adminTiles(hiddenAreas),
       ...(role === "super_admin" ? [SUPER_ADMIN_CONSOLE_TILE] : []),
     ];
   }

@@ -7,13 +7,22 @@
 // answer. No I/O — callers load the config, this resolves it — so the ADR 0009
 // guarantee is isolation-testable and cannot be bypassed by glue.
 //
-// Two kinds of flag exist:
+// Three kinds of flag exist:
 //   * new-surface flags are a plain on/off switch.
 //   * frozen-surface flags gate an ADR-0002-frozen surface (the Leader surface,
 //     weekly check-ins, guests). They resolve to enabled ONLY when the flag is
 //     on AND a `verified` marker is present. Turning the toggle on is necessary
 //     but not sufficient; the surface's routes + RLS must be re-verified (which
 //     sets the `verified` marker) before the flag can actually enable it.
+//   * nav-visibility flags govern a top-level nav tab that the Care/Plan/Multiply
+//     pivot hides by default (Groups, People, Planning — ADR 0016). They are the
+//     INVERSE of frozen-surface flags: a frozen flag re-enables an off-by-default
+//     surface, whereas a nav-visibility flag concerns an on-by-default, fully
+//     working surface that the pivot now hides — Tom can flip it back on without
+//     a deploy, and the route always resolves by direct URL regardless. The flag
+//     records "this default-hidden tab has been re-shown"; resolution treats it
+//     like a plain on/off switch (enabled ⇒ tab shown), so resolveHiddenNav can
+//     derive the hidden set as "every nav-visibility tab whose flag is not on".
 
 // Stored state for a single flag. `verified` is meaningful only for
 // frozen-surface flags; new-surface flags ignore it.
@@ -26,7 +35,10 @@ export type FeatureFlagState = {
 // not present in the map are treated as off.
 export type FeatureFlagsConfig = Record<string, FeatureFlagState>;
 
-export type FeatureFlagKind = "new_surface" | "frozen_surface";
+export type FeatureFlagKind =
+  | "new_surface"
+  | "frozen_surface"
+  | "nav_visibility";
 
 export type FeatureFlagDefinition = {
   // Stable storage key inside the `feature_flags` config map.
@@ -70,6 +82,33 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     description:
       "Re-enable the frozen guest surface (ADR 0002). Requires route + RLS re-verification before the toggle can take effect.",
     kind: "frozen_surface",
+  },
+  // Nav-visibility flags (ADR 0016). The Care/Plan/Multiply pivot hides the three
+  // old top-level tabs — Groups, People, Planning — by DEFAULT; each route still
+  // resolves by direct URL and nothing is deleted. These flags let a Super Admin
+  // re-show a hidden tab without a deploy: ON ⇒ the tab is back in nav. Default
+  // off ⇒ hidden, matching the pivot. resolveHiddenNav derives the hidden-area
+  // set from these; the area each governs lives in NAV_VISIBILITY_FLAGS below.
+  {
+    key: "nav_show_groups",
+    label: "Show Groups tab",
+    description:
+      "Re-show the Groups tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+    kind: "nav_visibility",
+  },
+  {
+    key: "nav_show_people",
+    label: "Show People tab",
+    description:
+      "Re-show the People tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+    kind: "nav_visibility",
+  },
+  {
+    key: "nav_show_planning",
+    label: "Show Planning tab",
+    description:
+      "Re-show the Planning tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+    kind: "nav_visibility",
   },
   // Launch-optics mutes (#reset-attention-metrics). Plain on/off switches that
   // hide a time-based "Needs attention" category from the admin Home queue so a
@@ -134,6 +173,45 @@ export function resolveMutedAttentionKeys(
     if (resolveFlag(config, flagKey)) muted.add(attentionKey);
   }
   return muted;
+}
+
+// The nav-visibility flag key ↔ the top-level area href it governs (ADR 0016).
+// Single source for resolveHiddenNav; kept in lock-step with the nav-visibility
+// entries in FEATURE_FLAG_DEFINITIONS and with ADMIN_AREAS' `navFlagKey` in
+// lib/auth/roles.ts (a drift test guards all three from diverging).
+export const NAV_VISIBILITY_FLAGS: readonly {
+  key: string;
+  areaHref: string;
+}[] = [
+  { key: "nav_show_groups", areaHref: "/admin/groups" },
+  { key: "nav_show_people", areaHref: "/admin/people" },
+  { key: "nav_show_planning", areaHref: "/admin/planning" },
+];
+
+// The default-hidden set: with no stored config every nav-visibility tab is
+// hidden (the pivot default). Exported so nav code and tests share one baseline.
+export const DEFAULT_HIDDEN_NAV_AREAS: ReadonlySet<string> = new Set(
+  NAV_VISIBILITY_FLAGS.map((f) => f.areaHref)
+);
+
+// Resolve which default-hidden top-level areas are currently HIDDEN, given the
+// stored feature-flag config (ADR 0016). An area is hidden unless its
+// nav-visibility flag is explicitly enabled (resolveFlag), so:
+//   * empty / absent config        -> all three hidden (the pivot default)
+//   * nav_show_* flag on           -> that area shown (dropped from the set)
+//   * unknown stored flag key      -> reveals nothing (resolveFlag fails safe);
+//                                     the loop only consults known nav areas, so
+//                                     a stray key can never un-hide a tab.
+// Pure and total: no I/O, callers load the config and pass it in. The WRITE side
+// (flipping these flags) is Super-Admin-scoped and audited via the same
+// superAdminSetFeatureFlag path as every other flag — a ministry_admin cannot
+// flip them (ADR 0009 / 0016).
+export function resolveHiddenNav(config: FeatureFlagsConfig): Set<string> {
+  const hidden = new Set<string>();
+  for (const { key, areaHref } of NAV_VISIBILITY_FLAGS) {
+    if (!resolveFlag(config, key)) hidden.add(areaHref);
+  }
+  return hidden;
 }
 
 const DEFINITIONS_BY_KEY: ReadonlyMap<string, FeatureFlagDefinition> = new Map(
