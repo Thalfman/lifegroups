@@ -138,6 +138,14 @@ describe("group-health-grade migration — audited SECURITY DEFINER write path",
     );
   });
 
+  it("normalizes the override period to the first of its month", () => {
+    const body = functionBody(sql, "admin_set_group_rubric_grade");
+    expect(body).toContain("date_trunc('month', p_override_period_month)");
+    // …and persists/audits the normalized value, not the raw parameter.
+    expect(body).toContain("p_override_scope, v_period");
+    expect(body).toContain("'override_period_month', v_period");
+  });
+
   it("upserts on (group_id, ministry_year)", () => {
     const body = functionBody(sql, "admin_set_group_rubric_grade");
     expect(body).toContain("on conflict (group_id, ministry_year) do update");

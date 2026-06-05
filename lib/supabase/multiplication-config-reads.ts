@@ -200,10 +200,16 @@ type LeaderTypeJoinRow = {
     audience_category: GroupAudienceCategory | null;
     lifecycle_status: string | null;
   } | null;
+  profile: { role: string | null } | null;
 };
 
 const GRADE_SCORE_COLUMNS =
   "criterion_scores, override_letter, override_scope, override_period_month";
+
+// Page cap for the rollup reads, mirroring the funnel read. A ministry year with
+// more grade rows than this would otherwise be silently truncated by PostgREST's
+// default page size and grade the pillar on a partial set.
+const HEALTH_GRADE_PAGE_LIMIT = 10000;
 
 // A grade already resolved to its effective letter, ready for bucketing.
 type ResolvedGroupGrade = {
@@ -280,17 +286,26 @@ export async function fetchHealthGradesByType(
           `${GRADE_SCORE_COLUMNS}, group:groups(audience_category, lifecycle_status)`
         )
         .eq("ministry_year", ministryYear)
+        .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
         .returns<GroupGradeJoinRow[]>(),
       client
         .from("leader_rubric_grades")
         .select(`profile_id, ${GRADE_SCORE_COLUMNS}`)
         .eq("ministry_year", ministryYear)
+        .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
         .returns<LeaderGradeRow[]>(),
       client
         .from("group_leaders")
-        .select("profile_id, group:groups(audience_category, lifecycle_status)")
+        // profile:profiles(role) gates out a stale-but-active leadership row whose
+        // profile has since been converted away from leader/co_leader — the os7
+        // role-guard predicate documents that group_leaders rows don't cascade on
+        // a role change, so an ex-leader's grade must not keep feeding the pillar.
+        .select(
+          "profile_id, group:groups(audience_category, lifecycle_status), profile:profiles(role)"
+        )
         .eq("active", true)
         .in("role", ["leader", "co_leader"])
+        .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
         .returns<LeaderTypeJoinRow[]>(),
     ]);
 
@@ -321,6 +336,11 @@ export async function fetchHealthGradesByType(
   const leaderTypesByProfile = new Map<string, Set<GroupAudienceCategory>>();
   for (const row of leaderTypeRes.data ?? []) {
     if (row.group?.lifecycle_status === "closed") continue;
+    // The profile must still BE a leader/co_leader — a stale active group_leaders
+    // row left behind by a role change does not count (matches os7's predicate,
+    // which gates on the profile's current role, not just the group_leaders row).
+    const profileRole = row.profile?.role ?? null;
+    if (profileRole !== "leader" && profileRole !== "co_leader") continue;
     const type = row.group?.audience_category ?? null;
     if (!isCategory(type)) continue;
     const set = leaderTypesByProfile.get(row.profile_id) ?? new Set();

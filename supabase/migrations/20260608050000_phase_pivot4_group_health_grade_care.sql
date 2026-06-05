@@ -101,6 +101,7 @@ as $$
 declare
   v_actor uuid;
   v_group_exists boolean;
+  v_period date;
   v_before jsonb;
   v_id uuid;
 begin
@@ -163,6 +164,13 @@ begin
   if (p_override_letter is null) <> (p_override_scope is null) then
     raise exception 'invalid_input';
   end if;
+  -- Normalize the override period to the first of its month (when supplied), so a
+  -- caller that sends any mid-month date doesn't store a value the read path —
+  -- which compares to the first-of-month string — treats as instantly expired.
+  -- Mirrors the leader-grade RPC (and the table's date_trunc CHECK constraint).
+  if p_override_period_month is not null then
+    v_period := date_trunc('month', p_override_period_month)::date;
+  end if;
 
   select true into v_group_exists from public.groups where id = p_group_id for update;
   if v_group_exists is null then
@@ -189,7 +197,7 @@ begin
   )
   values (
     p_group_id, p_ministry_year, p_criterion_scores, p_computed_letter,
-    p_override_letter, p_override_scope, p_override_period_month,
+    p_override_letter, p_override_scope, v_period,
     v_actor, v_actor
   )
   on conflict (group_id, ministry_year) do update
@@ -216,7 +224,7 @@ begin
         'computed_letter', p_computed_letter,
         'override_letter', p_override_letter,
         'override_scope', p_override_scope,
-        'override_period_month', p_override_period_month
+        'override_period_month', v_period
       )
     )
   );

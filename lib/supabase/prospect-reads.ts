@@ -1,5 +1,10 @@
 import type { GroupLifecycleStatus, ProspectState } from "@/types/enums";
-import { decodeNextStep, type NextStep } from "@/lib/admin/prospect-next-step";
+import {
+  decodeNextStep,
+  dueFollowUps,
+  type DueFollowUp,
+  type NextStep,
+} from "@/lib/admin/prospect-next-step";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // Read-model for the Interest Funnel board (#375, extended in #379). Column-
@@ -60,6 +65,49 @@ export async function fetchProspects(
     next_step: decodeNextStep(row.next_step),
   }));
   return { data: decoded, error: null };
+}
+
+// Armed follow-ups that have come due, read DIRECTLY (not derived from the capped
+// board page). The board read is newest-first and capped at PROSPECT_PAGE_LIMIT,
+// so in a church with more prospects than the cap an older prospect's due
+// follow-up would fall off the page and the reminder would be silently missed.
+// This filters in the DB — non-archived, a dated `follow_up` step due on/before
+// today — so the cap only ever bounds the (small) already-due set, then re-derives
+// the canonical list purely via dueFollowUps. The jsonb path filters mirror
+// decodeNextStep's stored snake_case keys (type / due_date).
+const DUE_FOLLOW_UP_COLUMNS = "id, full_name, next_step";
+
+type DueFollowUpRawRow = {
+  id: string;
+  full_name: string;
+  next_step: unknown;
+};
+
+export async function fetchDueFollowUps(
+  client: ReadClient,
+  todayIso: string
+): Promise<ReadResult<DueFollowUp[]>> {
+  const { data, error } = await client
+    .from("prospects")
+    .select(DUE_FOLLOW_UP_COLUMNS)
+    .eq("archived", false)
+    // jsonb-path filters on the stored Next Step (snake_case keys, per
+    // decodeNextStep): a dated follow_up step due on/before today.
+    .eq("next_step->>type", "follow_up")
+    .not("next_step->>due_date", "is", null)
+    .lte("next_step->>due_date", todayIso)
+    .range(0, PROSPECT_PAGE_LIMIT - 1)
+    .returns<DueFollowUpRawRow[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchDueFollowUps", error) };
+  // Re-derive purely so the DB filter and the UI's due rule share one tested home
+  // (dueFollowUps also drops anything that doesn't normalize cleanly).
+  const rows = ((data ?? []) as DueFollowUpRawRow[]).map((row) => ({
+    id: row.id,
+    full_name: row.full_name,
+    next_step: decodeNextStep(row.next_step),
+  }));
+  return { data: dueFollowUps(rows, todayIso), error: null };
 }
 
 // Narrow group-option read for the Plan board's Match/Join picker + roll-up

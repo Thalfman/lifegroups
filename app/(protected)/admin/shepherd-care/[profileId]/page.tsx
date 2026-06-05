@@ -87,6 +87,16 @@ const cardStyle = {
   padding: 20,
 };
 
+// Shown in place of a grade editor when its read failed — blocks editing so a
+// blank seed can't overwrite an existing grade (#377/#378 read-failure guard).
+const gradeReadErrorStyle = {
+  fontFamily: fontBody,
+  fontSize: 13,
+  color: P.terraTextStrong,
+  margin: 0,
+  lineHeight: 1.5,
+};
+
 async function loadDetail(
   profileId: string,
   creatorProfileId: string,
@@ -304,6 +314,10 @@ export default async function AdminShepherdCareDetailPage({
   // loadDetail shape is untouched; failures degrade to an empty editor.
   let leaderRubricCriteria: RubricCriterion[] = [];
   let leaderGrade: LeaderRubricGradeRow | null = null;
+  // A transient read failure must NOT seed the editor with empty scores — saving
+  // from that state would overwrite an existing grade with a blank one. Track it
+  // and block the editor (showing an error) rather than degrading to empty.
+  let leaderGradeReadFailed = false;
   {
     const client = await createSupabaseServerClient();
     if (client) {
@@ -315,6 +329,7 @@ export default async function AdminShepherdCareDetailPage({
       ]);
       leaderRubricCriteria = rubricRes.data?.criteria ?? [];
       leaderGrade = gradeRes.data ?? null;
+      leaderGradeReadFailed = Boolean(rubricRes.error || gradeRes.error);
     }
   }
 
@@ -349,18 +364,25 @@ export default async function AdminShepherdCareDetailPage({
     ministryYear !== null && detail.ledGroups.length > 0
       ? await createSupabaseServerClient()
       : null;
-  const rubricCriteria =
+  const groupRubricRes =
     gradeClient !== null
-      ? decodeRubricCriteria(
-          (await fetchHealthRubric(gradeClient, "group")).data?.criteria ?? null
-        )
-      : [];
+      ? await fetchHealthRubric(gradeClient, "group")
+      : null;
+  const rubricCriteria = decodeRubricCriteria(
+    groupRubricRes?.data?.criteria ?? null
+  );
+  // A failed group-rubric read taints every group's editor (empty criteria); a
+  // failed per-group grade read taints just that group. Either way we block the
+  // affected editor instead of seeding empty scores that could overwrite a grade.
+  const groupRubricReadFailed = Boolean(groupRubricRes?.error);
   const gradeByGroupId = new Map<string, GroupRubricGradeView>();
+  const gradeReadFailed = new Set<string>();
   if (gradeClient !== null && ministryYear !== null) {
     await Promise.all(
       detail.ledGroups.map(async (g) => {
         const res = await getGroupRubricGrade(gradeClient, g.id, ministryYear);
-        if (res.data) gradeByGroupId.set(g.id, res.data);
+        if (res.error) gradeReadFailed.add(g.id);
+        else if (res.data) gradeByGroupId.set(g.id, res.data);
       })
     );
   }
@@ -581,21 +603,29 @@ export default async function AdminShepherdCareDetailPage({
                   {g.name} →
                 </Link>
                 {ministryYear !== null ? (
-                  <GroupRubricGradeEntry
-                    groupId={g.id}
-                    groupName={g.name}
-                    ministryYear={ministryYear}
-                    criteria={rubricCriteria}
-                    initialScores={gradeView?.criterion_scores ?? {}}
-                    initialOverrideLetter={
-                      gradeView?.grade.overridden
-                        ? gradeView.grade.effective_letter
-                        : null
-                    }
-                    initialOverrideScope={
-                      gradeView?.grade.override_scope ?? null
-                    }
-                  />
+                  groupRubricReadFailed || gradeReadFailed.has(g.id) ? (
+                    <p role="alert" style={gradeReadErrorStyle}>
+                      This group&rsquo;s grade couldn&rsquo;t be loaded. Reload
+                      before editing — saving now could overwrite the saved
+                      grade.
+                    </p>
+                  ) : (
+                    <GroupRubricGradeEntry
+                      groupId={g.id}
+                      groupName={g.name}
+                      ministryYear={ministryYear}
+                      criteria={rubricCriteria}
+                      initialScores={gradeView?.criterion_scores ?? {}}
+                      initialOverrideLetter={
+                        gradeView?.grade.overridden
+                          ? gradeView.grade.effective_letter
+                          : null
+                      }
+                      initialOverrideScope={
+                        gradeView?.grade.override_scope ?? null
+                      }
+                    />
+                  )
                 ) : null}
               </li>
             );
@@ -637,17 +667,24 @@ export default async function AdminShepherdCareDetailPage({
         from their Care Status above — it&rsquo;s a report card, not a pastoral
         signal.
       </p>
-      <LeaderHealthGradeEditor
-        profileId={profileId}
-        leaderName={detail.profileFullName}
-        ministryYear={ministryYear}
-        criteria={leaderRubricCriteria}
-        initialScores={leaderGrade?.criterion_scores ?? {}}
-        initialOverrideLetter={
-          leaderResolved?.overridden ? leaderResolved.letter : null
-        }
-        initialOverrideScope={leaderResolved?.override_scope ?? null}
-      />
+      {leaderGradeReadFailed ? (
+        <p role="alert" style={gradeReadErrorStyle}>
+          This leader&rsquo;s grade couldn&rsquo;t be loaded. Reload before
+          editing — saving now could overwrite the saved grade.
+        </p>
+      ) : (
+        <LeaderHealthGradeEditor
+          profileId={profileId}
+          leaderName={detail.profileFullName}
+          ministryYear={ministryYear}
+          criteria={leaderRubricCriteria}
+          initialScores={leaderGrade?.criterion_scores ?? {}}
+          initialOverrideLetter={
+            leaderResolved?.overridden ? leaderResolved.letter : null
+          }
+          initialOverrideScope={leaderResolved?.override_scope ?? null}
+        />
+      )}
     </section>
   );
 
