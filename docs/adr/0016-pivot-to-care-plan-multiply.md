@@ -26,12 +26,15 @@ spine): the navigation collapses to **Home · Care · Plan · Multiply · Settin
 
 ## How the old surfaces are turned off
 
-Groups, Planning/Launch, People (roster), the admin Calendar, and Follow-ups are
-each hidden behind a **Super-Admin nav-visibility flag, default off**. Following
-ADR 0008/0009's frozen-route discipline, their routes, tables, and filenames
-stay and still resolve by direct URL; nothing is deleted, and Tom can re-show any
-tab. The underlying data (memberships, capacity, the multiplication seed) is
-retained, not dropped — only the surfaces are hidden.
+The **nav-visibility flags govern the three real top-level tabs — Groups, People,
+and Planning/Launch — default off**, Super-Admin-toggleable. The admin
+**Calendar** and **Follow-ups** are already off-nav (direct-URL aliases owned by
+another area), so they need no flag; the pivot only re-points their active-state
+ownership to a still-visible area. Following ADR 0008/0009's frozen-route
+discipline, all these routes, tables, and filenames stay and still resolve by
+direct URL; nothing is deleted, and Tom can re-show any flagged tab. The
+underlying data (memberships, capacity, the multiplication seed) is retained, not
+dropped — only the surfaces are hidden. (Design checkpoint: issue #372.)
 
 ## Why this is legal under the amended budget
 
