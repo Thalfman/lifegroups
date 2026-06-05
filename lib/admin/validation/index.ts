@@ -8,6 +8,7 @@ export { isRecord, normalizeUuid } from "./shared";
 export * from "./groups";
 export * from "./people";
 export * from "./guests";
+export * from "./prospects";
 export * from "./follow-ups";
 export * from "./settings";
 export * from "./super-admin";

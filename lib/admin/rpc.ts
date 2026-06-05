@@ -19,6 +19,7 @@ import type {
   MeetingWeekParity,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
+  ProspectState,
   RoleInGroup,
   ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
@@ -527,6 +528,29 @@ export function rpcAdminUpdateGuestPipeline(
   args: AdminUpdateGuestPipelineArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_guest_pipeline", args);
+}
+
+// #375 Interest Funnel: Prospect create + transition. The transition RPC is the
+// authoritative funnel gate (legal edges + group-required + joined-archives),
+// rejecting with the fixed tokens illegal_transition / group_required /
+// missing_prospect. A null p_group_id carries the current group forward.
+
+export function rpcAdminCreateProspect(
+  client: AppSupabaseClient,
+  args: { p_full_name: string; p_email: string | null; p_phone: string | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_prospect", args);
+}
+
+export function rpcAdminTransitionProspect(
+  client: AppSupabaseClient,
+  args: {
+    p_prospect_id: string;
+    p_state: ProspectState;
+    p_group_id: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_transition_prospect", args);
 }
 
 export type AdminCreateFollowUpArgs = {
