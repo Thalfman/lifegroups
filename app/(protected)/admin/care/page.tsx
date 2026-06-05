@@ -3,6 +3,7 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { AdminFollowUpsShell } from "@/components/admin/follow-ups/follow-ups-shell";
 import { loadAdminFollowUpsData } from "@/components/admin/follow-ups/follow-ups-data";
 import { CareItemList } from "@/components/admin/care/care-item-list";
+import { CareAccordion } from "@/components/admin/care/care-accordion";
 import { SectionHeader } from "@/components/layout/shell";
 import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
 import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
@@ -49,6 +50,7 @@ import {
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
 import { buildCareArea } from "@/lib/admin/care-area";
+import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import type { GroupsRow } from "@/types/database";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
@@ -318,6 +320,19 @@ export async function loadCarePageData(): Promise<{
     todayIso: today,
   });
 
+  // #373 — the canonical Care view: an Over-Shepherd accordion (ADR 0016).
+  // Pure consolidation of data already loaded above (over-shepherds, active
+  // coverage assignments, the care directory, group leaders + groups) — no new
+  // reads. Each leader carries their Leader Care Status; the grade/notes/prayer
+  // slots are placeholders the panel renders (#377/#378/#381 fill them later).
+  const accordionPanes = buildCareAccordion({
+    overShepherds: care.overShepherds,
+    assignments: care.assignments,
+    groupLeaders: care.groupLeaders,
+    groups: followUpsData.groups,
+    careEntries: care.entries,
+  });
+
   const errorBanner = care.error ? (
     <p
       style={{
@@ -334,6 +349,13 @@ export async function loadCarePageData(): Promise<{
   ) : null;
 
   const tabs: CareTab[] = [
+    {
+      // #373 — canonical Care view, the default landing tab: the Over-Shepherd
+      // accordion (collapsed by default).
+      key: "over-shepherds",
+      label: "Over-Shepherds",
+      panel: <CareAccordion panes={accordionPanes} />,
+    },
     {
       key: "dashboard",
       label: "Dashboard",
@@ -451,7 +473,7 @@ export type CareSearchParams = {
 // params (when present) override it so embedded-widget deep links resolve to the
 // right tab — see resolveCareInitialTabFromParams.
 export async function CarePageView({
-  initialTab = "dashboard",
+  initialTab = "over-shepherds",
   searchParams,
 }: {
   initialTab?: CareTabKey;
@@ -467,7 +489,7 @@ export async function CarePageView({
         eyebrow="Care"
         title="How your leaders"
         italic="are doing"
-        lede="Your leaders' care in one place — a dashboard of who needs a touch, the full directory, open follow-ups, coverage by over-shepherd, and recent interactions. Care notes stay admin-only and never leave the leader's detail page."
+        lede="Your leaders' care in one place — grouped by over-shepherd. Open a pane to see who they cover, then a leader for their care status and detail. The dashboard, directory, follow-ups, coverage, and recent interactions stay a tab away. Care notes stay admin-only and never leave the leader's detail page."
       />
       <PageBody>
         {/* Page-level so a failed care read is visible from every tab, not just

@@ -3,23 +3,19 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { P, fontSans } from "@/lib/pastoral";
 
-// The Care area's five tabs (ADR 0013, #301, re-keyed in #334). Care is the
-// entry point for Job 1 — "how are my leaders doing?" — and hosts the former
-// Leader care + Follow-ups surfaces. The keys ARE the canonical PRD IA names
-// (Dashboard · Directory · Follow-ups · Coverage · Recent interactions) so they
-// are the single source of truth any future alias/nav reference can rely on.
-// It is a NEW route: /admin/shepherd-care and /admin/follow-ups keep their
-// files and still alias-render (200, not 302) (ADR 0008/0009, #328).
-//
-// Migration map from the prior keys (no functionality lost, #334):
-//   needs-contact → folded into `dashboard` (the attention queue IS who needs
-//                   contact); `due-soon` + `completed` → folded into
-//                   `follow-ups` (the generic queue already filters by due
-//                   window and Done status); recent-care → `recent-interactions`
-//                   (rename). `directory` + `coverage` are net-new panels, each
-//                   backed by data already loaded in loadCarePageData() — no new
-//                   reads, no placeholders.
+// The Care area's tabs (ADR 0013/0016, #301, re-keyed in #334, #373). Care is
+// the entry point for Job 1 — "how are my leaders doing?". Since #373 the
+// CANONICAL Care view is the Over-Shepherd accordion (`over-shepherds`), the
+// default landing tab: leaders grouped by their over-shepherd, collapsed by
+// default, each leader opening to their Leader Care Status + placeholder
+// Group-/Leader-Health Grade / Care Notes / Prayer Requests slots (ADR 0016).
+// The remaining keys are the prior PRD IA names (Dashboard · Directory ·
+// Follow-ups · Coverage · Recent interactions), kept so their data + the
+// shepherd-care follow-up buckets stay reachable and the /admin/shepherd-care
+// and /admin/follow-ups alias entries still land on a coherent tab and
+// alias-render (200, not 302) (ADR 0008/0009, #328).
 export type CareTabKey =
+  | "over-shepherds"
   | "dashboard"
   | "directory"
   | "follow-ups"
@@ -37,7 +33,7 @@ export type CareTab = {
 
 export function CareShell({
   tabs,
-  initialTab = "dashboard",
+  initialTab = "over-shepherds",
 }: {
   tabs: CareTab[];
   initialTab?: CareTabKey;
