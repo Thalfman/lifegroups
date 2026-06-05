@@ -463,7 +463,13 @@ const SETTINGS_DATA: SettingsShellData = {
   // editable-copy editor is in the tree for the a11y scan.
   isSuperAdmin: true,
   editableCopy: {},
-  errors: { defaults: null, groups: null, overrides: null },
+  errors: {
+    defaults: null,
+    groups: null,
+    overrides: null,
+    multiplication: null,
+    leaderRubric: null,
+  },
 };
 
 // People surface (#270, Admin Interaction Model req 3). Proves the People page

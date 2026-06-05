@@ -99,7 +99,15 @@ export async function getGroupRubricGrade(
   const scores = data?.criterion_scores ?? {};
   const override =
     data?.override_letter && data?.override_scope
-      ? { letter: data.override_letter, scope: data.override_scope }
+      ? {
+          letter: data.override_letter,
+          scope: data.override_scope,
+          // Resolve expiry against the month the override was actually set for,
+          // not the current period — otherwise an expired "this_month" override
+          // would read as perpetually active here and in the Multiplication
+          // rollup built from this view.
+          period_month: data.override_period_month ?? periodMonthIso,
+        }
       : null;
 
   const grade = resolveGroupRubricGrade({

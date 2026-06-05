@@ -103,6 +103,32 @@ describe("resolveGroupRubricGrade — override precedence by scope", () => {
     expect(active.override_scope).toBe("this_month");
   });
 
+  it("a this_month override set in an earlier month has expired", () => {
+    // Override carries the month it was SET for; resolving in a later month must
+    // fall back to the computed letter (the read path passes the stored month).
+    const expired = resolve({
+      override: { letter: "A", scope: "this_month", period_month: "2025-09-01" },
+      periodMonth: "2025-10-01",
+    });
+    expect(expired.overridden).toBe(false);
+    expect(expired.override_scope).toBeNull();
+    // Falls back to the computed B (80*0.6 + 90*0.4 = 84).
+    expect(expired.effective_letter).toBe("B");
+  });
+
+  it("an until_cleared override set in an earlier month still stands", () => {
+    const standing = resolve({
+      override: {
+        letter: "F",
+        scope: "until_cleared",
+        period_month: "2025-09-01",
+      },
+      periodMonth: "2026-02-01",
+    });
+    expect(standing.overridden).toBe(true);
+    expect(standing.effective_letter).toBe("F");
+  });
+
   it("an override applies even when nothing is scored", () => {
     const grade = resolve({
       scores: {},

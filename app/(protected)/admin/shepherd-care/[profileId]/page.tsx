@@ -47,8 +47,10 @@ import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader
 import {
   fetchLeaderHealthRubric,
   fetchLeaderRubricGrade,
+  currentPeriodMonthIso,
   type LeaderRubricGradeRow,
 } from "@/lib/admin/leader-health-read";
+import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 import { type RubricCriterion } from "@/lib/admin/health-rubric";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
@@ -315,6 +317,30 @@ export default async function AdminShepherdCareDetailPage({
       leaderGrade = gradeRes.data ?? null;
     }
   }
+
+  // Resolve the stored leader override against the current period BEFORE seeding
+  // the editor: a "this_month" override set in an earlier month has expired, so
+  // it must seed as "no override" rather than render active and re-post itself
+  // forward under the current month on the next save.
+  const leaderPeriodMonth = currentPeriodMonthIso();
+  const leaderResolved =
+    ministryYear !== null
+      ? resolveLeaderGrade({
+          rubric: { criteria: leaderRubricCriteria },
+          scores: leaderGrade?.criterion_scores ?? {},
+          override:
+            leaderGrade?.override_letter && leaderGrade?.override_scope
+              ? {
+                  letter: leaderGrade.override_letter,
+                  scope: leaderGrade.override_scope,
+                  period_month:
+                    leaderGrade.override_period_month ?? leaderPeriodMonth,
+                }
+              : null,
+          ministryYear,
+          currentPeriodMonth: leaderPeriodMonth,
+        })
+      : null;
 
   // Group-Health Grade by rubric (#377): for each group this leader leads, load
   // the configured group rubric criteria + the group's grade for the current
@@ -617,8 +643,10 @@ export default async function AdminShepherdCareDetailPage({
         ministryYear={ministryYear}
         criteria={leaderRubricCriteria}
         initialScores={leaderGrade?.criterion_scores ?? {}}
-        initialOverrideLetter={leaderGrade?.override_letter ?? null}
-        initialOverrideScope={leaderGrade?.override_scope ?? null}
+        initialOverrideLetter={
+          leaderResolved?.overridden ? leaderResolved.letter : null
+        }
+        initialOverrideScope={leaderResolved?.override_scope ?? null}
       />
     </section>
   );

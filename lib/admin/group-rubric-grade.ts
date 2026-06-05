@@ -32,6 +32,12 @@ import { ministryYearOf } from "@/lib/admin/ministry-year";
 export type GroupRubricOverride = {
   letter: GroupHealthLetter;
   scope: GradeOverrideScope;
+  // The first-of-month (yyyy-mm-dd) the override was SET for. Consulted only for
+  // "this_month" expiry. Optional: a freshly-set override (the live preview /
+  // the write action) is being set for the current period, so it defaults to the
+  // resolution `periodMonth`; the read path passes the STORED month so an
+  // expired this-month override correctly falls back to the computed letter.
+  period_month?: string;
 };
 
 // Everything needed to resolve a group's rubric grade for a period.
@@ -97,7 +103,7 @@ export function resolveGroupRubricGrade(
       : {
           letter: override.letter,
           scope: override.scope,
-          period_month: periodMonth,
+          period_month: override.period_month ?? periodMonth,
         },
     periodMonth
   );

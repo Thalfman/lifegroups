@@ -95,11 +95,15 @@ begin
       raise exception 'invalid_input';
     end if;
 
-    -- Optional due_date: must parse as a date when present.
+    -- Optional due_date: must parse as a date when present, and is stored in
+    -- canonical YYYY-MM-DD form. A parseable-but-non-ISO string (e.g. 2026-6-1)
+    -- would otherwise be stored verbatim and then dropped by the read-side
+    -- decodeNextStep (which only accepts YYYY-MM-DD), silently hiding the
+    -- armed follow-up from the due-task list.
     v_due_date := nullif(btrim(coalesce(p_next_step ->> 'due_date', '')), '');
     if v_due_date is not null then
       begin
-        perform v_due_date::date;
+        v_due_date := to_char(v_due_date::date, 'YYYY-MM-DD');
       exception when others then
         raise exception 'invalid_input';
       end;

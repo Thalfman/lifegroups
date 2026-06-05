@@ -154,7 +154,9 @@ begin
       if jsonb_typeof(v_val) <> 'number' then
         raise exception 'invalid_input';
       end if;
-      if (v_val)::numeric < 0 or (v_val)::numeric > 100 then
+      -- A jsonb scalar cannot cast straight to numeric; extract its text first
+      -- (mirrors the group-grade RPC's `#>> '{}'` form).
+      if (v_val #>> '{}')::numeric < 0 or (v_val #>> '{}')::numeric > 100 then
         raise exception 'invalid_input';
       end if;
     end loop;

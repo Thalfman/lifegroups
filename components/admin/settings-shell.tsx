@@ -61,6 +61,12 @@ export type SettingsShellData = {
     defaults: string | null;
     groups: string | null;
     overrides: string | null;
+    // #380 / #378: a transient read failure for the multiplication config or the
+    // leader rubric must surface (not silently fall back to default seeds / a
+    // blank rubric), so an admin save can't overwrite config that merely failed
+    // to load.
+    multiplication: string | null;
+    leaderRubric: string | null;
   };
 };
 
@@ -77,7 +83,11 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
     .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
 
   const anyError =
-    data.errors.defaults || data.errors.groups || data.errors.overrides;
+    data.errors.defaults ||
+    data.errors.groups ||
+    data.errors.overrides ||
+    data.errors.multiplication ||
+    data.errors.leaderRubric;
 
   const tabs: SettingsTab[] = [
     {
