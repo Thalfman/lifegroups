@@ -46,6 +46,15 @@ peek. They are different tables with different RLS; do not merge them.
 - Leader-facing RLS moves from dormant to live attack surface and must be
   re-audited before the flag flips (ADR 0009). The private-care-note guarantee
   must continue to hold regardless of flag state.
+- **Check-ins stay frozen.** Today the `leader_surface` flag gates the entire
+  `/leader/**` tree, including the frozen weekly check-in. Re-opening leader
+  login must not re-expose that write path, so the check-in route and
+  `leader_submit_group_checkin` are **decoupled** from `leader_surface` and kept
+  behind their own frozen gate. (Verify-before-flip audit: issue #376.)
+- Opening login is a deliberate guard change: `requireLeader` /
+  `requireLeaderActor` admit no role today, so the flag alone exposes nothing —
+  the guards are widened to `leader`/`co_leader` only when the flag is
+  enabled-and-verified.
 - A new per-person `notes_transparency` grant governs Ministry-Admin read access
   to Care Notes / Prayer Requests; default denied (sealed to author).
 - `staff_viewer` and the rest of the ladder are unaffected.
