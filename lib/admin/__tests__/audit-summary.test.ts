@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AUDIT_ACTION_LABELS,
+  categorizeAuditAction,
   summarizeAuditEvent,
   type AuditSummaryMaps,
 } from "@/lib/admin/audit-summary";
@@ -342,5 +343,70 @@ describe("summarizeAuditEvent — launch planning", () => {
     );
     expect(summary).toContain("Stretch");
     expect(summary.toLowerCase()).toContain("archived");
+  });
+});
+
+describe("categorizeAuditAction", () => {
+  it("buckets role-change actions", () => {
+    expect(categorizeAuditAction("super_admin.update_profile_role")).toBe(
+      "role"
+    );
+    expect(categorizeAuditAction("admin.change_leader_role")).toBe("role");
+  });
+
+  it("buckets invite actions", () => {
+    expect(categorizeAuditAction("super_admin.invite_user")).toBe("invite");
+    expect(categorizeAuditAction("super_admin.create_invite_link")).toBe(
+      "invite"
+    );
+  });
+
+  it("buckets the danger-zone clear/reset/delete/restore actions", () => {
+    for (const action of [
+      "super_admin.clean_slate_wipe",
+      "super_admin.clean_slate_revert",
+      "super_admin.launch_prep",
+      "super_admin.permanent_delete",
+      "super_admin.reset_all",
+      "super_admin.reset_audit_logs",
+      "super_admin.reset_care_attention",
+      "super_admin.reset_health_attention",
+      "super_admin.reset_history_category",
+      "super_admin.restore_tombstone",
+    ]) {
+      expect(categorizeAuditAction(action)).toBe("danger");
+    }
+  });
+
+  it("buckets config/settings actions", () => {
+    expect(categorizeAuditAction("super_admin.set_platform_config")).toBe(
+      "settings"
+    );
+    expect(categorizeAuditAction("super_admin.set_feature_flag")).toBe(
+      "settings"
+    );
+    expect(categorizeAuditAction("super_admin.set_copy")).toBe("settings");
+    expect(categorizeAuditAction("admin.update_metric_defaults")).toBe(
+      "settings"
+    );
+  });
+
+  it("does not miscategorise reset-shaped non-danger actions", () => {
+    // Account password reset is an account action, not a danger-zone purge.
+    expect(categorizeAuditAction("super_admin.request_password_reset")).toBe(
+      "other"
+    );
+    // Resetting metric defaults is a settings action, not a danger purge.
+    expect(categorizeAuditAction("admin.reset_metric_defaults")).toBe(
+      "settings"
+    );
+  });
+
+  it("leaves unrelated actions in the catch-all bucket", () => {
+    expect(categorizeAuditAction("admin.create_member")).toBe("other");
+    expect(categorizeAuditAction("super_admin.set_profile_status")).toBe(
+      "other"
+    );
+    expect(categorizeAuditAction("super_admin.assign_coverage")).toBe("other");
   });
 });

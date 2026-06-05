@@ -3,6 +3,15 @@ import Link from "next/link";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import {
+  AuditWorkspace,
+  type AuditEntry,
+} from "@/components/admin/audit-workspace";
+import {
+  AUDIT_ACTION_LABELS,
+  categorizeAuditAction,
+  summarizeAuditEvent,
+} from "@/lib/admin/audit-summary";
+import {
   SuperAdminConsole,
   type SuperAdminWorkspace,
 } from "@/components/admin/super-admin-console";
@@ -680,7 +689,7 @@ export function SuperAdminConsoleShell({
     {
       id: "audit",
       label: "Audit",
-      node: <AuditWorkspace data={data} />,
+      node: <AuditWorkspacePanel data={data} />,
     },
     {
       id: "danger",
@@ -1434,15 +1443,54 @@ function DiagnosticsWorkspace({
 // Workspace 5 — Audit
 // ---------------------------------------------------------------------------
 
-function AuditWorkspace({ data }: { data: SuperAdminConsoleData }) {
+// Match AuditTrailSection's timestamp format so the filtered list reads
+// identically to the default (unfiltered) list it sits beside.
+function formatAuditTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
+  // The Map-dependent summaries are computed here, server-side, so the client
+  // filter receives only flat, serialisable entries (RSC can't ship the Maps).
+  const entries: AuditEntry[] = data.auditEvents.map((event) => {
+    const actor = event.actor_profile_id
+      ? data.profilesById.get(event.actor_profile_id)
+      : null;
+    return {
+      id: event.id,
+      summary: summarizeAuditEvent(event, {
+        profilesById: data.profilesById,
+        membersById: data.membersById,
+        groupsById: data.groupsById,
+      }),
+      actionLabel: AUDIT_ACTION_LABELS[event.action] ?? event.action,
+      entityType: event.entity_type,
+      actorLabel: actor?.full_name ?? event.actor_name ?? null,
+      timestamp: formatAuditTimestamp(event.created_at),
+      category: categorizeAuditAction(event.action),
+    };
+  });
+
   return (
     <div style={{ minWidth: 0 }}>
-      <AuditTrailSection
-        events={data.auditEvents}
-        profilesById={data.profilesById}
-        membersById={data.membersById}
-        groupsById={data.groupsById}
-        error={data.errors.audit}
+      <AuditWorkspace
+        entries={entries}
+        fullList={
+          <AuditTrailSection
+            events={data.auditEvents}
+            profilesById={data.profilesById}
+            membersById={data.membersById}
+            groupsById={data.groupsById}
+            error={data.errors.audit}
+          />
+        }
       />
     </div>
   );
