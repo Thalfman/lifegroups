@@ -35,4 +35,6 @@ additional_redirect_urls = [
 # link-scanners can't consume the single-use token (see the template comment).
 [auth.email.template.recovery]
 subject = "Reset your password"
-content_path = "./templates/recovery.html"
+# Resolved relative to the project root (the dir containing supabase/), per the
+# Supabase CLI / branching executor — hence the supabase/ prefix.
+content_path = "./supabase/templates/recovery.html"
