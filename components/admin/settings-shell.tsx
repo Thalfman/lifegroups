@@ -31,6 +31,10 @@ export type SettingsShellData = {
   // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
   // Empty when no rubric has been built yet; the editor seeds a blank row.
   groupRubricCriteria: RubricCriterion[];
+  // #378 / ADR 0018: the current Leader-Health Rubric's criteria — the symmetric
+  // per-leader rubric, same editor parameterized to the "leader" kind. Empty
+  // until Julian builds it.
+  leaderRubricCriteria: RubricCriterion[];
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but two facets stay behind the super-admin
   // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
@@ -151,6 +155,26 @@ function ThresholdsPanel({
         />
         <Card>
           <HealthRubricEditor criteria={data.groupRubricCriteria} />
+        </Card>
+      </section>
+
+      {/* #378 / ADR 0018 (pivot slice 5): the Leader-Health Rubric — the
+          symmetric per-leader weighted criteria that roll up to an A–F
+          Leader-Health Grade entered in Care. Same editor, parameterized to the
+          "leader" kind; same weight-to-100 gate. A deliberate FOURTH "health"
+          concept, distinct from Leader Care Status and the Health Pulse. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Leader Health Rubric"
+          title="How a leader is graded"
+          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
+        />
+        <Card>
+          <HealthRubricEditor
+            criteria={data.leaderRubricCriteria}
+            kind="leader"
+            subjectLabel="leader"
+          />
         </Card>
       </section>
 

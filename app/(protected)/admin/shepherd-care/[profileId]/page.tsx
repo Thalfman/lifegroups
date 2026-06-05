@@ -31,6 +31,14 @@ import {
 } from "@/lib/supabase/read-models";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
+import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
+import {
+  currentMinistryYear,
+  fetchLeaderHealthRubric,
+  fetchLeaderRubricGrade,
+  type LeaderRubricGradeRow,
+} from "@/lib/admin/leader-health-read";
+import { type RubricCriterion } from "@/lib/admin/health-rubric";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   ShepherdCareFollowUpsRow,
@@ -270,6 +278,27 @@ export default async function AdminShepherdCareDetailPage({
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
   const today = currentUtcDateIso();
 
+  // Leader-Health Grade (#378): the symmetric per-leader rubric grade, keyed to
+  // the current Ministry Year. Loaded here (admin-only by RLS) for the distinct
+  // "Leader Health" tab below. A separate, surgical read so the existing
+  // loadDetail shape is untouched; failures degrade to an empty editor.
+  const ministryYear = currentMinistryYear();
+  let leaderRubricCriteria: RubricCriterion[] = [];
+  let leaderGrade: LeaderRubricGradeRow | null = null;
+  {
+    const client = await createSupabaseServerClient();
+    if (client) {
+      const [rubricRes, gradeRes] = await Promise.all([
+        fetchLeaderHealthRubric(client),
+        ministryYear !== null
+          ? fetchLeaderRubricGrade(client, profileId, ministryYear)
+          : Promise.resolve({ data: null, error: null as Error | null }),
+      ]);
+      leaderRubricCriteria = rubricRes.data?.criteria ?? [];
+      leaderGrade = gradeRes.data ?? null;
+    }
+  }
+
   const tabRaw = (await searchParams)?.tab;
   const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
 
@@ -502,8 +531,41 @@ export default async function AdminShepherdCareDetailPage({
     </section>
   );
 
+  // Leader Health — the rubric-driven Leader-Health Grade entry, deliberately a
+  // separate tab/card from the Overview's Care Status. The two are distinct
+  // concepts (a graded report card vs a pastoral signal) and must read that way.
+  const leaderHealthPanel = (
+    <section style={cardStyle} aria-label="Leader-Health Grade">
+      <h2 style={sectionHeadingStyle}>Leader-Health Grade</h2>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: "0 0 14px",
+          lineHeight: 1.5,
+        }}
+      >
+        A rubric-driven A–F grade for this leader, scored against the
+        Leader-Health Rubric and kept for the ministry year. This is separate
+        from their Care Status above — it&rsquo;s a report card, not a pastoral
+        signal.
+      </p>
+      <LeaderHealthGradeEditor
+        profileId={profileId}
+        leaderName={detail.profileFullName}
+        ministryYear={ministryYear}
+        criteria={leaderRubricCriteria}
+        initialScores={leaderGrade?.criterion_scores ?? {}}
+        initialOverrideLetter={leaderGrade?.override_letter ?? null}
+        initialOverrideScope={leaderGrade?.override_scope ?? null}
+      />
+    </section>
+  );
+
   const tabs = [
     { key: "overview", label: "Overview", panel: overviewPanel },
+    { key: "leader-health", label: "Leader Health", panel: leaderHealthPanel },
     {
       key: "contact-history",
       label: "Contact History",

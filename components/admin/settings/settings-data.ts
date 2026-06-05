@@ -30,6 +30,9 @@ export type SettingsReads = {
   // #374 Health Rubric: the current group rubric (Ministry-Admin-owned). Bound
   // to the "group" kind here so the seam exposes a zero-arg read like the rest.
   fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
+  // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
+  // "leader" kind. Same shared reader, filtered to the other rubric row.
+  fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
 };
 
 export function supabaseSettingsReads(
@@ -43,6 +46,7 @@ export function supabaseSettingsReads(
       fetchPlatformConfig,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
+    fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
 }
 
@@ -53,6 +57,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groups: [],
     groupMetricSettings: [],
     groupRubricCriteria: [],
+    leaderRubricCriteria: [],
     isSuperAdmin,
     editableCopy: isSuperAdmin ? {} : null,
     errors: {
@@ -75,6 +80,7 @@ export async function buildSettingsData(
     settingsResult,
     platformConfigResult,
     rubricResult,
+    leaderRubricResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -84,6 +90,7 @@ export async function buildSettingsData(
     // The General tab surfaces a pointer to the console for ministry admins.
     isSuperAdmin ? reads.fetchPlatformConfig() : Promise.resolve(null),
     reads.fetchGroupHealthRubric(),
+    reads.fetchLeaderHealthRubric(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
@@ -95,6 +102,9 @@ export async function buildSettingsData(
     groupMetricSettings: settingsResult.data ?? [],
     groupRubricCriteria: decodeRubricCriteria(
       rubricResult.data?.criteria ?? null
+    ),
+    leaderRubricCriteria: decodeRubricCriteria(
+      leaderRubricResult.data?.criteria ?? null
     ),
     isSuperAdmin,
     editableCopy: isSuperAdmin
