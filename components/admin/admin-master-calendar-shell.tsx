@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import {
@@ -88,6 +88,28 @@ const ALL_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
   { value: "off", label: friendlyEventTypeLabel("off") },
   { value: "cancelled", label: friendlyEventTypeLabel("cancelled") },
 ];
+
+// Slugify a label/value into a DOM-safe, human-readable token for checkbox
+// `id`/`value` attributes (#371): "Anderson Life Group" → "anderson-life-group".
+const slugify = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+// Visually-hidden style for a fieldset's <legend> that names the group for
+// assistive tech without duplicating an adjacent visible label (#371).
+const visuallyHidden: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
 
 export function AdminMasterCalendarShell({
   monthIso,
@@ -282,6 +304,18 @@ export function AdminMasterCalendarShell({
     setLeaderFilter("");
   };
 
+  // The Planning area's top-level reset (#371): in addition to the advanced
+  // filters (resetFilters), it also returns the primary quick filter to "All
+  // meetings" so one control restores the default Planning calendar view.
+  const clearAll = () => {
+    resetFilters();
+    setPlanningView("all");
+  };
+
+  // Whether anything narrows the default Planning view — drives the active-
+  // filter summary copy and the disabled state of "Clear filters" (#371).
+  const planningFiltersActive = hasActiveFilters || planningView !== "all";
+
   const onSelect = (o: MasterOccurrence) => {
     setSelectedKey(`${o.groupId}|${o.date}`);
   };
@@ -401,6 +435,21 @@ export function AdminMasterCalendarShell({
         filterBar
       )}
 
+      {planningViews ? (
+        <ActiveFilterSummary
+          planningView={planningView}
+          groups={groups}
+          leaderOptions={leaderOptions}
+          groupFilter={groupFilter}
+          typeFilter={typeFilter}
+          statusFilter={statusFilter}
+          dayFilter={dayFilter}
+          leaderFilter={leaderFilter}
+          active={planningFiltersActive}
+          onClear={clearAll}
+        />
+      ) : null}
+
       {showLegendAlways ? <AdminCalendarLegend /> : null}
 
       {filtered.length === 0 ? (
@@ -448,9 +497,12 @@ export function AdminMasterCalendarShell({
 }
 
 // The opinionated saved-view switcher (#331) — the PRIMARY affordance on
-// /admin/planning. Rendered as a tablist so screen readers announce it as a
-// view chooser and read each view name; the active view's occurrence count
-// rides alongside so the director sees how many meetings the view surfaces.
+// /admin/planning. The quick filters are mutually-exclusive toggle buttons: each
+// exposes its selected state with aria-pressed (#371), so a screen reader
+// announces exactly one as pressed. (A tablist would imply per-tab tabpanels,
+// which these filters don't have; toggle buttons are the accurate model.) The
+// active view's occurrence count rides alongside so the director sees how many
+// meetings the view surfaces.
 function PlanningViewSwitcher({
   value,
   onChange,
@@ -474,8 +526,8 @@ function PlanningViewSwitcher({
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <div
-        role="tablist"
-        aria-label="Planning views"
+        role="group"
+        aria-label="Quick filters"
         style={{
           display: "inline-flex",
           flexWrap: "wrap",
@@ -491,8 +543,7 @@ function PlanningViewSwitcher({
           <button
             key={view.key}
             type="button"
-            role="tab"
-            aria-selected={value === view.key}
+            aria-pressed={value === view.key}
             onClick={() => onChange(view.key)}
             style={itemStyle(value === view.key)}
           >
@@ -512,6 +563,125 @@ function PlanningViewSwitcher({
           ? `${counts.shown} of ${counts.total} in this view`
           : `${counts.total} ${counts.total === 1 ? "meeting" : "meetings"} in this view`}
       </div>
+    </div>
+  );
+}
+
+// A compact, plain-language summary of WHY the current list is filtered (#371),
+// sitting between the filters and the meeting list with a one-tap "Clear
+// filters" reset. Each dimension reads "All <thing>" when unfiltered, or the
+// chosen value(s) when narrowed, so an admin can tell at a glance what the view
+// is showing without re-opening the advanced panel.
+function ActiveFilterSummary({
+  planningView,
+  groups,
+  leaderOptions,
+  groupFilter,
+  typeFilter,
+  statusFilter,
+  dayFilter,
+  leaderFilter,
+  active,
+  onClear,
+}: {
+  planningView: PlanningViewKey;
+  groups: MasterCalendarGroupSummary[];
+  leaderOptions: MasterCalendarLeader[];
+  groupFilter: string[];
+  typeFilter: GroupCalendarEventType[];
+  statusFilter: GroupCalendarEventStatus[];
+  dayFilter: number[];
+  leaderFilter: string;
+  active: boolean;
+  onClear: () => void;
+}) {
+  const parts = useMemo(() => {
+    const segments: string[] = [];
+
+    const viewLabel =
+      PLANNING_VIEWS.find((v) => v.key === planningView)?.label ??
+      "All meetings";
+    segments.push(viewLabel);
+
+    segments.push(
+      groupFilter.length === 0
+        ? "All groups"
+        : `${groupFilter.length} ${groupFilter.length === 1 ? "group" : "groups"}`
+    );
+
+    const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
+    segments.push(
+      typeFilter.length === 0
+        ? "All gathering types"
+        : typeFilter
+            .map((t) => typeLabels.get(t) ?? friendlyEventTypeLabel(t))
+            .join(", ")
+    );
+
+    const statusLabels = new Map(
+      EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
+    );
+    segments.push(
+      statusFilter.length === 0
+        ? "All statuses"
+        : statusFilter.map((s) => statusLabels.get(s) ?? s).join(", ")
+    );
+
+    segments.push(
+      dayFilter.length === 0
+        ? "All meeting days"
+        : dayFilter.map((d) => WEEKDAY_HEADERS[d] ?? `Day ${d}`).join(", ")
+    );
+
+    if (leaderFilter) {
+      const name =
+        leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
+        "Leader";
+      segments.push(name);
+    }
+
+    return segments;
+  }, [
+    planningView,
+    groupFilter,
+    typeFilter,
+    statusFilter,
+    dayFilter,
+    leaderFilter,
+    leaderOptions,
+  ]);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 10,
+        flexWrap: "wrap",
+      }}
+    >
+      <div
+        aria-live="polite"
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: P.ink2,
+          minWidth: 0,
+        }}
+      >
+        <span style={{ color: P.ink3, fontWeight: 600 }}>Showing: </span>
+        {parts.join(" · ")}
+      </div>
+      <PButton
+        type="button"
+        tone="ghost"
+        size="sm"
+        onClick={onClear}
+        disabled={!active}
+      >
+        Clear filters
+      </PButton>
     </div>
   );
 }
@@ -810,18 +980,24 @@ function FilterBar({
         />
         <MultiCheckboxField<GroupCalendarEventType>
           label="Gathering type"
+          name="gathering-type"
+          fieldKey="gathering-type"
           options={ALL_TYPE_OPTIONS}
           value={typeFilter}
           onChange={(next) => setTypeFilter(next)}
         />
         <MultiCheckboxField<GroupCalendarEventStatus>
           label="Status"
+          name="status"
+          fieldKey="status"
           options={EVENT_STATUS_OPTIONS}
           value={statusFilter}
           onChange={(next) => setStatusFilter(next)}
         />
         <MultiCheckboxField<number>
           label="Meeting day"
+          name="meeting-day"
+          fieldKey="meeting-day"
           options={WEEKDAY_HEADERS.map((wd, i) => ({ value: i, label: wd }))}
           value={dayFilter}
           onChange={(next) => setDayFilter(next)}
@@ -939,6 +1115,7 @@ function GroupsDetailsField({
   value: string[];
   onChange: (next: string[]) => void;
 }) {
+  const uid = useId();
   const count = value.length;
   const selectedSet = useMemo(() => new Set(value), [value]);
   const summaryRight = count === 0 ? "All" : `${count} selected`;
@@ -978,7 +1155,7 @@ function GroupsDetailsField({
               fontWeight: 700,
             }}
           >
-            Group
+            Groups
           </span>
           <span
             style={{
@@ -995,59 +1172,66 @@ function GroupsDetailsField({
           </span>
         </div>
       </summary>
-      <div style={{ paddingTop: 8 }}>
-        <BulkActions
-          label="groups"
-          all={options.map((o) => o.value)}
-          value={value}
-          onChange={onChange}
-        />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 6,
-          paddingTop: 8,
-          maxHeight: 220,
-          overflowY: "auto",
-          paddingRight: 2,
-        }}
-      >
-        {options.map((opt) => {
-          const checked = selectedSet.has(opt.value);
-          return (
-            <label
-              key={opt.value}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "4px 10px",
-                borderRadius: 999,
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: checked ? P.terra : P.ink2,
-                background: checked ? P.terraSoft : P.surface,
-                border: `1px solid ${checked ? P.terra : P.line}`,
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) => {
-                  if (e.target.checked) onChange([...value, opt.value]);
-                  else onChange(value.filter((v) => v !== opt.value));
+      <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <legend style={visuallyHidden}>Groups</legend>
+        <div style={{ paddingTop: 8 }}>
+          <BulkActions
+            label="groups"
+            all={options.map((o) => o.value)}
+            value={value}
+            onChange={onChange}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 6,
+            paddingTop: 8,
+            maxHeight: 220,
+            overflowY: "auto",
+            paddingRight: 2,
+          }}
+        >
+          {options.map((opt) => {
+            const checked = selectedSet.has(opt.value);
+            const id = `${uid}group-${slugify(opt.value)}`;
+            return (
+              <label
+                key={opt.value}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontFamily: fontBody,
+                  fontSize: 12,
+                  color: checked ? P.terra : P.ink2,
+                  background: checked ? P.terraSoft : P.surface,
+                  border: `1px solid ${checked ? P.terra : P.line}`,
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
-                style={{ accentColor: P.terra, margin: 0 }}
-              />
-              {opt.label}
-            </label>
-          );
-        })}
-      </div>
+              >
+                <input
+                  id={id}
+                  name="groups"
+                  value={slugify(opt.label)}
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    if (e.target.checked) onChange([...value, opt.value]);
+                    else onChange(value.filter((v) => v !== opt.value));
+                  }}
+                  style={{ accentColor: P.terra, margin: 0 }}
+                />
+                {opt.label}
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
     </details>
   );
 }
@@ -1114,15 +1298,23 @@ function BulkActions<V>({
 
 function MultiCheckboxField<V extends string | number>({
   label,
+  name,
+  fieldKey,
   options,
   value,
   onChange,
 }: {
   label: string;
+  // Form-control `name` shared by every checkbox in the field (e.g. "status").
+  name: string;
+  // Stable per-field token folded into each checkbox `id` so ids stay readable
+  // and don't collide across fields (#371).
+  fieldKey: string;
   options: { value: V; label: string }[];
   value: V[];
   onChange: (next: V[]) => void;
 }) {
+  const uid = useId();
   return (
     <fieldset
       style={{
@@ -1166,6 +1358,7 @@ function MultiCheckboxField<V extends string | number>({
       >
         {options.map((opt) => {
           const checked = value.includes(opt.value);
+          const id = `${uid}${fieldKey}-${slugify(String(opt.value))}`;
           return (
             <label
               key={String(opt.value)}
@@ -1185,6 +1378,9 @@ function MultiCheckboxField<V extends string | number>({
               }}
             >
               <input
+                id={id}
+                name={name}
+                value={slugify(opt.label)}
                 type="checkbox"
                 checked={checked}
                 onChange={(e) => {
