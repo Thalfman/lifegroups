@@ -968,3 +968,19 @@ export function rpcAdminSetHealthRubric(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_health_rubric", args);
 }
+
+// #380 Multiplication Pillars: upsert one group type's pillar config (thresholds
+// + trigger rubric + Ministry-Admin-fed capacity) for a ministry year. The three
+// jsonb payloads are validated in TS first; the RPC re-guards their object shape.
+export function rpcAdminSetMultiplicationConfig(
+  client: AppSupabaseClient,
+  args: {
+    p_group_type: GroupAudienceCategory;
+    p_ministry_year: number;
+    p_thresholds: Record<string, unknown>;
+    p_trigger: Record<string, unknown>;
+    p_fed_capacity: Record<string, unknown>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_multiplication_config", args);
+}
