@@ -3,9 +3,10 @@
 // PRD-SAC6 follow-up: the Danger-Zone "Reset by category" card. Lists each
 // history category with its current row count and a type-to-confirm Reset that
 // clears just that category (capturing a recoverable snapshot first). Each
-// category that has an un-restored snapshot also shows a Revert. Mirrors the
-// Clean Slate card's gating: the submit stays disabled until the exact phrase is
-// typed, and the phrase is re-checked server-side in the action.
+// category that has an un-restored snapshot also shows a Revert in a visually
+// separated recovery panel. Mirrors the Clean Slate card's gating: the submit
+// stays disabled until the exact phrase is typed, and the phrase is re-checked
+// server-side in the action.
 
 import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
@@ -34,7 +35,11 @@ import {
   fieldLabelStyle,
   successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import {
+  DangerCard,
+  DangerPill,
+} from "@/components/admin/danger-zone-card-shell";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Fixed locale + UTC so server and client render the same string (no hydration
 // mismatch). Mirrors the Clean Slate card's snapshot formatter.
@@ -54,44 +59,10 @@ export function HistoryResetCard({
   state: HistoryResetState | null;
 }) {
   return (
-    <div
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
+    <DangerCard
+      title="Reset by category — clear one kind of history"
+      intro="Clear a single category of accumulated history at a time — useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, leaders, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
     >
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
-        Reset by category — clear one kind of history
-      </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.terraTextStrong,
-          lineHeight: 1.55,
-          margin: 0,
-        }}
-      >
-        Clear a single category of accumulated history at a time — useful before
-        launch to remove invalid test data without wiping everything. Each reset
-        captures a recoverable snapshot of just that category before deleting,
-        and is audited. People, groups, leaders, memberships, settings, and
-        other categories are untouched. To clear every category at once, use
-        Clean Slate above instead.
-      </p>
-
       {state === null ? (
         <p
           style={{
@@ -111,7 +82,7 @@ export function HistoryResetCard({
           ))}
         </div>
       )}
-    </div>
+    </DangerCard>
   );
 }
 
@@ -267,11 +238,38 @@ function CategoryResetRow({
           style={{
             display: "grid",
             gap: 8,
-            borderTop: `1px solid ${P.line}`,
-            paddingTop: 10,
+            // Recovery treatment: a sage-accented panel so the undo control
+            // reads as the safety net, distinct from the reset above.
+            background: P.sageSoft,
+            border: `1px solid ${P.sage}`,
+            borderRadius: 8,
+            padding: "10px 12px",
           }}
         >
           <input type="hidden" name="snapshotId" value={snapshot.id} />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontSans,
+                fontSize: 11,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                color: P.sageTextStrong,
+                fontWeight: 700,
+              }}
+            >
+              Recovery
+            </span>
+            <DangerPill label="Reversible" tone="reversible" />
+          </div>
           <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
             Recoverable snapshot: {snapshot.totalRows} row
             {snapshot.totalRows === 1 ? "" : "s"} captured{" "}

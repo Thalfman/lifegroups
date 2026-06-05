@@ -4,7 +4,7 @@
 // card. Pick a curated entity type and a specific row, preflight what blocks the
 // delete (cascade/restrict/no-action dependents named with counts, or the opaque
 // confidential block), then confirm with the PERMANENTLY DELETE phrase. A
-// recovery list re-imports tombstoned rows (#315). Every mutation is re-gated
+// recovery panel re-imports tombstoned rows (#315). Every mutation is re-gated
 // and re-validated server-side in the RPC; the client gating is only UX.
 
 import { useEffect, useMemo, useState } from "react";
@@ -35,7 +35,11 @@ import {
   fieldLabelStyle,
   successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import {
+  DangerCard,
+  DangerSection,
+} from "@/components/admin/danger-zone-card-shell";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -102,162 +106,137 @@ export function PermanentDeleteCard({
     !!selectedId && phraseMatches && report !== null && report.deletable;
 
   return (
-    <div
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
+    <DangerCard
+      title="Permanent deletion"
+      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere — a tombstone is captured first so it can be recovered, and the act is audited. Records with cascade/restrict dependents are refused until those are cleared; confidential records cannot be deleted (disable instead)."
     >
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
+      <DangerSection
+        variant="destructive"
+        label="Delete a record"
+        status={{ label: "Requires confirmation", tone: "confirm" }}
       >
-        Permanent deletion
-      </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.terraTextStrong,
-          lineHeight: 1.55,
-          margin: 0,
-        }}
-      >
-        Physically removes a curated record. This is the bounded exception to
-        archive-everywhere — a tombstone is captured first so it can be
-        recovered, and the act is audited. Records with cascade/restrict
-        dependents are refused until those are cleared; confidential records
-        cannot be deleted (disable instead).
-      </p>
-
-      {/* Target pickers. */}
-      <div style={{ display: "grid", gap: 10 }}>
-        <div>
-          <label htmlFor="perm-delete-type" style={fieldLabelStyle}>
-            Record type
-          </label>
-          <select
-            id="perm-delete-type"
-            value={entityType}
-            onChange={(e) => {
-              setEntityType(e.target.value);
-              setSelectedId("");
-            }}
-            className={fieldInputClass}
-            style={fieldInputStyle}
-          >
-            {targets.map((g) => (
-              <option key={g.entityType} value={g.entityType}>
-                {g.pluralLabel}
+        {/* Target pickers. */}
+        <div style={{ display: "grid", gap: 10 }}>
+          <div>
+            <label htmlFor="perm-delete-type" style={fieldLabelStyle}>
+              Record type
+            </label>
+            <select
+              id="perm-delete-type"
+              value={entityType}
+              onChange={(e) => {
+                setEntityType(e.target.value);
+                setSelectedId("");
+              }}
+              className={fieldInputClass}
+              style={fieldInputStyle}
+            >
+              {targets.map((g) => (
+                <option key={g.entityType} value={g.entityType}>
+                  {g.pluralLabel}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="perm-delete-row" style={fieldLabelStyle}>
+              Record
+            </label>
+            <select
+              id="perm-delete-row"
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className={fieldInputClass}
+              style={fieldInputStyle}
+            >
+              <option value="">
+                Select a {activeGroup?.label ?? "record"}…
               </option>
-            ))}
-          </select>
+              {(activeGroup?.items ?? []).map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label htmlFor="perm-delete-row" style={fieldLabelStyle}>
-            Record
-          </label>
-          <select
-            id="perm-delete-row"
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className={fieldInputClass}
-            style={fieldInputStyle}
-          >
-            <option value="">Select a {activeGroup?.label ?? "record"}…</option>
-            {(activeGroup?.items ?? []).map((it) => (
-              <option key={it.id} value={it.id}>
-                {it.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
 
-      {/* Preflight. */}
-      <form action={preflight.formAction} style={{ display: "grid", gap: 8 }}>
-        <input type="hidden" name="entityType" value={entityType} />
-        <input type="hidden" name="id" value={selectedId} />
-        <div>
-          <PButton
-            type="submit"
-            tone="ghost"
-            size="md"
-            disabled={preflight.pending || !selectedId}
-          >
-            {preflight.pending ? "Checking…" : "Check dependents"}
-          </PButton>
-        </div>
-        <FormStatus state={preflight.state} />
-      </form>
+        {/* Preflight. */}
+        <form action={preflight.formAction} style={{ display: "grid", gap: 8 }}>
+          <input type="hidden" name="entityType" value={entityType} />
+          <input type="hidden" name="id" value={selectedId} />
+          <div>
+            <PButton
+              type="submit"
+              tone="ghost"
+              size="md"
+              disabled={preflight.pending || !selectedId}
+            >
+              {preflight.pending ? "Checking…" : "Check dependents"}
+            </PButton>
+          </div>
+          <FormStatus state={preflight.state} />
+        </form>
 
-      {report ? <PreflightReport report={report} /> : null}
+        {report ? <PreflightReport report={report} /> : null}
 
-      {/* Confirm + delete. */}
-      <form
-        ref={del.formRef}
-        action={del.formAction}
-        style={{ display: "grid", gap: 10 }}
-      >
-        <input type="hidden" name="entityType" value={entityType} />
-        <input type="hidden" name="id" value={selectedId} />
-        <div>
-          <label htmlFor="perm-delete-confirm" style={fieldLabelStyle}>
-            Type {PERMANENT_DELETE_CONFIRM_PHRASE} to confirm
-          </label>
-          <input
-            id="perm-delete-confirm"
-            name="confirm"
-            type="text"
-            autoComplete="off"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder={PERMANENT_DELETE_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={fieldInputStyle}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <PButton
-            type="submit"
-            tone="terra"
-            size="md"
-            disabled={del.pending || !canDelete}
-          >
-            {del.pending ? "Deleting…" : "Permanently delete"}
-          </PButton>
-          {del.state?.ok ? (
-            <span style={successTextStyle}>
-              Deleted. A tombstone was captured for recovery.
-            </span>
+        {/* Confirm + delete. */}
+        <form
+          ref={del.formRef}
+          action={del.formAction}
+          style={{ display: "grid", gap: 10 }}
+        >
+          <input type="hidden" name="entityType" value={entityType} />
+          <input type="hidden" name="id" value={selectedId} />
+          <div>
+            <label htmlFor="perm-delete-confirm" style={fieldLabelStyle}>
+              Type {PERMANENT_DELETE_CONFIRM_PHRASE} to confirm
+            </label>
+            <input
+              id="perm-delete-confirm"
+              name="confirm"
+              type="text"
+              autoComplete="off"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder={PERMANENT_DELETE_CONFIRM_PHRASE}
+              className={fieldInputClass}
+              style={fieldInputStyle}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <PButton
+              type="submit"
+              tone="terra"
+              size="md"
+              disabled={del.pending || !canDelete}
+            >
+              {del.pending ? "Deleting…" : "Permanently delete"}
+            </PButton>
+            {del.state?.ok ? (
+              <span style={successTextStyle}>
+                Deleted. A tombstone was captured for recovery.
+              </span>
+            ) : null}
+          </div>
+          {report !== null && !report.deletable ? (
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink2,
+                margin: 0,
+              }}
+            >
+              This record can&rsquo;t be deleted yet — see the blockers above.
+            </p>
           ) : null}
-        </div>
-        {report !== null && !report.deletable ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
-            This record can&rsquo;t be deleted yet — see the blockers above.
-          </p>
-        ) : null}
-        <FormStatus state={del.state} />
-      </form>
+          <FormStatus state={del.state} />
+        </form>
+      </DangerSection>
 
       <TombstoneRecovery tombstones={tombstones} />
-    </div>
+    </DangerCard>
   );
 }
 
@@ -268,7 +247,7 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
         style={{
           border: `1px solid ${P.line}`,
           borderRadius: 8,
-          background: P.surface,
+          background: P.bgDeep,
           padding: "10px 12px",
           fontFamily: fontBody,
           fontSize: 12.5,
@@ -286,7 +265,7 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
         style={{
           border: `1px solid ${P.line}`,
           borderRadius: 8,
-          background: P.surface,
+          background: P.bgDeep,
           padding: "10px 12px",
           fontFamily: fontBody,
           fontSize: 12.5,
@@ -302,7 +281,7 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
       style={{
         border: `1px solid ${P.line}`,
         borderRadius: 8,
-        background: P.surface,
+        background: P.bgDeep,
         padding: "10px 12px",
         display: "grid",
         gap: 6,
@@ -354,37 +333,16 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
 
 function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
   return (
-    <div
-      style={{
-        borderTop: `1px solid ${P.terra}`,
-        paddingTop: 14,
-        display: "grid",
-        gap: 10,
-      }}
+    <DangerSection
+      variant="recovery"
+      label="Recover a deleted record"
+      status={
+        tombstones.length > 0
+          ? { label: "Reversible", tone: "reversible" }
+          : { label: "No tombstones", tone: "info" }
+      }
+      description="Restore a tombstoned row from its captured snapshot, re-linking the dependents the delete nulled. The tombstone is kept after restoring."
     >
-      <h4
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 15,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
-        Recover a deleted record
-      </h4>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.terraTextStrong,
-          lineHeight: 1.55,
-          margin: 0,
-        }}
-      >
-        Restore a tombstoned row from its captured snapshot, re-linking the
-        dependents the delete nulled. The tombstone is kept after restoring.
-      </p>
       {tombstones.length === 0 ? (
         <p
           style={{
@@ -403,7 +361,7 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
           ))}
         </div>
       )}
-    </div>
+    </DangerSection>
   );
 }
 

@@ -31,7 +31,11 @@ import {
   fieldLabelStyle,
   successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import {
+  DangerCard,
+  DangerSection,
+} from "@/components/admin/danger-zone-card-shell";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // The Home "Needs attention" warning each launch-optics mute flag silences,
 // phrased as the operator sees it on Home (not the flag's "Mute: …" label).
@@ -63,177 +67,155 @@ export function LaunchPrepCard({
     alreadyMuted: resolveFlag(featureFlags, key),
   }));
   const remainingToMute = warnings.filter((w) => !w.alreadyMuted).length;
+  const alreadyReady =
+    !impactUnavailable && historyRows === 0 && remainingToMute === 0;
+
+  const destructiveStatus = impactUnavailable
+    ? ({ label: "Locked", tone: "locked" } as const)
+    : alreadyReady
+      ? ({ label: "Already ready", tone: "ready" } as const)
+      : ({ label: "Requires confirmation", tone: "confirm" } as const);
 
   return (
-    <div
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
+    <DangerCard
+      title="Prepare for launch — clean slate"
+      intro="One step to make the app read as a fresh start on launch day. It clears all accumulated history (attendance, follow-ups, guests, group-health, status history, church-attendance snapshots, and shepherd-care activity) and hides the time-based “Needs attention” warnings that show on Home for brand-new groups. People, groups, leaders, memberships, settings, care profiles & notes, and the audit log are kept. A recoverable snapshot is captured before anything is deleted, and the warnings can be un-hidden anytime from Feature flags."
     >
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
+      <DangerSection
+        variant="destructive"
+        label="Clear history & hide launch warnings"
+        status={destructiveStatus}
       >
-        Prepare for launch — clean slate
-      </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.terraTextStrong,
-          lineHeight: 1.55,
-          margin: 0,
-        }}
-      >
-        One step to make the app read as a fresh start on launch day. It clears
-        all accumulated history (attendance, follow-ups, guests, group-health,
-        status history, church-attendance snapshots, and shepherd-care activity)
-        and hides the time-based &ldquo;Needs attention&rdquo; warnings that
-        show on Home for brand-new groups. People, groups, leaders, memberships,
-        settings, care profiles &amp; notes, and the audit log are kept. A
-        recoverable snapshot is captured before anything is deleted, and the
-        warnings can be un-hidden anytime from Feature flags.
-      </p>
-
-      {/* Impact preview — history that will be cleared. */}
-      {impactUnavailable ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
-          Impact preview unavailable — the history counts couldn&rsquo;t be
-          loaded. Launch prep is disabled until they read successfully.
-        </p>
-      ) : (
-        <div
-          style={{
-            border: `1px solid ${P.line}`,
-            borderRadius: 8,
-            background: P.surface,
-            padding: "10px 12px",
-            display: "grid",
-            gap: 8,
-          }}
-        >
-          <div
+        {/* Impact preview — history that will be cleared. */}
+        {impactUnavailable ? (
+          <p
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              fontFamily: fontSans,
-              fontSize: 12,
+              fontFamily: fontBody,
+              fontSize: 12.5,
               color: P.ink2,
+              margin: 0,
             }}
           >
-            <span>Clear accumulated history</span>
-            <strong style={{ color: P.ink }}>
-              {historyRows} row{historyRows === 1 ? "" : "s"}
-            </strong>
-          </div>
-          <div style={{ display: "grid", gap: 4 }}>
+            Impact preview unavailable — the history counts couldn&rsquo;t be
+            loaded. Launch prep is disabled until they read successfully.
+          </p>
+        ) : (
+          <div
+            style={{
+              border: `1px solid ${P.line}`,
+              borderRadius: 8,
+              background: P.bgDeep,
+              padding: "10px 12px",
+              display: "grid",
+              gap: 8,
+            }}
+          >
             <div
               style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
                 fontFamily: fontSans,
                 fontSize: 12,
                 color: P.ink2,
               }}
             >
-              Hide launch warnings on Home
+              <span>Clear accumulated history</span>
+              <strong style={{ color: P.ink }}>
+                {historyRows} row{historyRows === 1 ? "" : "s"}
+              </strong>
             </div>
-            {warnings.map((w) => (
+            <div style={{ display: "grid", gap: 4 }}>
               <div
-                key={w.key}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
                   fontFamily: fontSans,
                   fontSize: 12,
-                  color: P.ink3,
-                  paddingLeft: 10,
+                  color: P.ink2,
                 }}
               >
-                <span>{w.label}</span>
-                <strong style={{ color: w.alreadyMuted ? P.ink3 : P.ink }}>
-                  {w.alreadyMuted ? "already hidden" : "will hide"}
-                </strong>
+                Hide launch warnings on Home
               </div>
-            ))}
+              {warnings.map((w) => (
+                <div
+                  key={w.key}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    fontFamily: fontSans,
+                    fontSize: 12,
+                    color: P.ink3,
+                    paddingLeft: 10,
+                  }}
+                >
+                  <span>{w.label}</span>
+                  <strong style={{ color: w.alreadyMuted ? P.ink3 : P.ink }}>
+                    {w.alreadyMuted ? "already hidden" : "will hide"}
+                  </strong>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <form action={formAction} style={{ display: "grid", gap: 10 }}>
-        <div>
-          <label htmlFor="launch-prep-confirm" style={fieldLabelStyle}>
-            Type {LAUNCH_PREP_CONFIRM_PHRASE} to confirm
-          </label>
-          <input
-            id="launch-prep-confirm"
-            name="confirm"
-            type="text"
-            autoComplete="off"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder={LAUNCH_PREP_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={fieldInputStyle}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <PButton
-            type="submit"
-            tone="terra"
-            size="md"
-            disabled={pending || !phraseMatches || impactUnavailable}
+        <form action={formAction} style={{ display: "grid", gap: 10 }}>
+          <div>
+            <label htmlFor="launch-prep-confirm" style={fieldLabelStyle}>
+              Type {LAUNCH_PREP_CONFIRM_PHRASE} to confirm
+            </label>
+            <input
+              id="launch-prep-confirm"
+              name="confirm"
+              type="text"
+              autoComplete="off"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder={LAUNCH_PREP_CONFIRM_PHRASE}
+              className={fieldInputClass}
+              style={fieldInputStyle}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <PButton
+              type="submit"
+              tone="terra"
+              size="md"
+              disabled={pending || !phraseMatches || impactUnavailable}
+            >
+              {pending ? "Preparing…" : "Prepare for launch"}
+            </PButton>
+            {state?.ok ? (
+              <span style={successTextStyle}>
+                {state.value.clearedRows > 0
+                  ? `Cleared ${state.value.clearedRows} row${
+                      state.value.clearedRows === 1 ? "" : "s"
+                    } of history`
+                  : "History was already clear"}
+                {" · "}launch warnings hidden.
+                {state.value.snapshotId
+                  ? " A snapshot was saved for recovery."
+                  : ""}
+              </span>
+            ) : null}
+          </div>
+          <FormStatus state={state} />
+        </form>
+
+        {/* When everything is already done, reassure rather than read as broken. */}
+        {alreadyReady ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12.5,
+              color: P.ink2,
+              margin: 0,
+            }}
           >
-            {pending ? "Preparing…" : "Prepare for launch"}
-          </PButton>
-          {state?.ok ? (
-            <span style={successTextStyle}>
-              {state.value.clearedRows > 0
-                ? `Cleared ${state.value.clearedRows} row${
-                    state.value.clearedRows === 1 ? "" : "s"
-                  } of history`
-                : "History was already clear"}
-              {" · "}launch warnings hidden.
-              {state.value.snapshotId
-                ? " A snapshot was saved for recovery."
-                : ""}
-            </span>
-          ) : null}
-        </div>
-        <FormStatus state={state} />
-      </form>
-
-      {/* When everything is already done, reassure rather than read as broken. */}
-      {!impactUnavailable && historyRows === 0 && remainingToMute === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
-          Already launch-ready — there&rsquo;s no history to clear and the
-          launch warnings are already hidden. Running it again is safe.
-        </p>
-      ) : null}
-    </div>
+            Already launch-ready — there&rsquo;s no history to clear and the
+            launch warnings are already hidden. Running it again is safe.
+          </p>
+        ) : null}
+      </DangerSection>
+    </DangerCard>
   );
 }

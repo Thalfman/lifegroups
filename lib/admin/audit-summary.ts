@@ -72,6 +72,30 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.set_current_launch_planning_scenario": "Set current launch scenario",
 };
 
+// Coarse buckets for the Super Admin Console audit filter. "other" covers
+// everything outside the four filterable buckets (it still shows under "All").
+export type AuditCategory = "role" | "invite" | "danger" | "settings" | "other";
+
+// The Super-Admin danger-zone audit actions (clear/reset/delete/restore). Kept
+// as an explicit prefix list so unrelated "reset" actions — request_password_reset
+// (account) and admin.reset_metric_defaults (settings) — don't get miscategorised.
+const DANGER_ACTION_RE =
+  /^super_admin\.(clean_slate|launch_prep|permanent_delete|reset_all|reset_attention|reset_audit|reset_care|reset_health|reset_history|restore_tombstone)/;
+
+const SETTINGS_ACTION_RE =
+  /(platform_config|feature_flag|set_copy|metric_defaults|group_metric_settings)/;
+
+// Bucket an audit action string for the console's category filter. Pure string
+// classification — no I/O — so it's trivially unit-testable and usable both
+// server-side (building the entries) and as the basis for the client filter.
+export function categorizeAuditAction(action: string): AuditCategory {
+  if (action.includes("role")) return "role";
+  if (action.includes("invite")) return "invite";
+  if (DANGER_ACTION_RE.test(action)) return "danger";
+  if (SETTINGS_ACTION_RE.test(action)) return "settings";
+  return "other";
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
