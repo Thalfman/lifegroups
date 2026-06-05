@@ -17,3 +17,14 @@ verify_jwt = true
 # token itself.
 [functions.redeem-invite]
 verify_jwt = false
+
+# Auth is configured in the Supabase dashboard, not here. We intentionally do
+# NOT declare an [auth] block: Supabase Branching tries to apply config.toml
+# auth settings to the ephemeral preview branch, and on the free tier with the
+# default email provider that fails ("Email template modification is not
+# available..."). Production merges ignore config.toml auth entirely.
+#
+# The recovery email template lives at supabase/templates/recovery.html as the
+# canonical source to paste into Auth → Email Templates → Reset Password. The
+# required Redirect URLs (/reset-password, /auth/confirm, /login) and Site URL
+# are set under Auth → URL Configuration.
