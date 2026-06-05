@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ProspectState } from "@/types/enums";
 import { PROSPECT_STATE_LABEL } from "@/lib/admin/prospect-funnel";
+import type { DueFollowUp } from "@/lib/admin/prospect-next-step";
 import type { ProspectBoard as Board } from "@/lib/supabase/prospect-reads";
 import { ProspectCard } from "@/components/admin/plan/prospect-card";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
@@ -32,13 +33,17 @@ export function ProspectBoardView({
   board,
   groupNamesById,
   activeGroups,
+  dueTasks,
 }: {
   board: Board;
   groupNamesById: Record<string, string>;
   activeGroups: PlanGroupOption[];
+  dueTasks: DueFollowUp[];
 }) {
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      <DueTasks dueTasks={dueTasks} />
+
       <div
         className="lg-m-grid-stack"
         style={{
@@ -119,6 +124,112 @@ export function ProspectBoardView({
 
       <JoinedRollup board={board} />
     </div>
+  );
+}
+
+// Due tasks (#379): armed follow-ups that have come due (soonest-due first). A
+// Follow Up with a date surfaces here on/after its date; connect_to_group_leader
+// and undated follow-ups never do. NO messaging provider is wired — the banner
+// makes clear nothing is sent and the mechanism is "to be configured".
+function DueTasks({ dueTasks }: { dueTasks: DueFollowUp[] }) {
+  return (
+    <section
+      style={{
+        border: `1px solid ${P.line}`,
+        borderLeft: "4px solid #c87a3a",
+        borderRadius: 10,
+        background: P.surface,
+        padding: "12px 14px",
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 12,
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: fontSans,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 0.4,
+            textTransform: "uppercase",
+            color: "#8a4f1c",
+            margin: 0,
+          }}
+        >
+          Due tasks ({dueTasks.length})
+        </h2>
+      </div>
+
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 11,
+          color: P.ink3,
+          background: P.surface,
+          border: `1px dashed ${P.line}`,
+          borderRadius: 6,
+          padding: "6px 8px",
+          margin: 0,
+        }}
+      >
+        No messaging provider is wired yet — to be configured. These are armed
+        follow-ups shown as reminders; nothing is sent automatically.
+      </p>
+
+      {dueTasks.length === 0 ? (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink3,
+            margin: "2px 2px",
+          }}
+        >
+          No follow-ups are due.
+        </p>
+      ) : (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          {dueTasks.map((t) => (
+            <li
+              key={t.id}
+              style={{
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink,
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span>
+                {t.full_name}
+                {t.detail ? (
+                  <span style={{ color: P.ink2 }}> — {t.detail}</span>
+                ) : null}
+              </span>
+              <span style={{ color: P.ink2, whiteSpace: "nowrap" }}>
+                due {t.dueDate}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

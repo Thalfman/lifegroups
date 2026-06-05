@@ -3,8 +3,12 @@
 import { useState } from "react";
 import type { ProspectState } from "@/types/enums";
 import { PButton } from "@/components/pastoral/button";
-import { adminTransitionProspect } from "@/app/(protected)/admin/plan/actions";
 import {
+  adminTransitionProspect,
+  adminSetProspectNextStep,
+} from "@/app/(protected)/admin/plan/actions";
+import {
+  fieldInputStyle,
   fieldLabelStyle,
   fieldSelectStyle,
 } from "@/components/admin/forms/field-styles";
@@ -17,6 +21,11 @@ import {
   canTransition,
   stateRequiresGroup,
 } from "@/lib/admin/prospect-funnel";
+import {
+  NEXT_STEP_TYPES,
+  NEXT_STEP_TYPE_LABEL,
+  type NextStepType,
+} from "@/lib/admin/prospect-next-step";
 import type { ProspectBoardEntry } from "@/lib/supabase/prospect-reads";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
@@ -143,6 +152,161 @@ export function ProspectCard({
           <FormStatus state={state} successText="Moved." />
         </form>
       ) : null}
+
+      <NextStepEditor prospect={prospect} />
     </div>
+  );
+}
+
+// The per-Prospect Next Step + Additional Note control (#379). A single current
+// step (type {Connect to Group Leader, Follow Up} + optional due date + detail)
+// and a separate Additional Note are saved together. A Follow Up with a date is
+// "armed" — it surfaces as a due task on/after that date. Connect to Group
+// Leader is back-office only; choosing it changes nothing a Leader sees. NO
+// provider is wired: the "to be configured" note makes clear nothing is sent.
+function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminSetProspectNextStep
+  );
+
+  const [type, setType] = useState<NextStepType | "">(
+    prospect.next_step?.type ?? ""
+  );
+  const isFollowUp = type === "follow_up";
+
+  const sublabelStyle = { ...fieldLabelStyle, marginBottom: 2 } as const;
+  const inputStyle = { ...fieldInputStyle, padding: "8px 10px" } as const;
+
+  return (
+    <details
+      style={{
+        borderTop: `1px solid ${P.line}`,
+        paddingTop: 8,
+        marginTop: 2,
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          fontFamily: fontSans,
+          fontSize: 12,
+          fontWeight: 600,
+          color: P.ink2,
+        }}
+      >
+        Next step
+        {prospect.next_step
+          ? ` · ${NEXT_STEP_TYPE_LABEL[prospect.next_step.type]}${
+              prospect.next_step.dueDate
+                ? ` (due ${prospect.next_step.dueDate})`
+                : ""
+            }`
+          : ""}
+      </summary>
+
+      <form
+        action={formAction}
+        style={{ display: "grid", gap: 6, marginTop: 8 }}
+      >
+        <input type="hidden" name="prospect_id" value={prospect.id} />
+
+        <label htmlFor={`ns-type-${prospect.id}`} style={sublabelStyle}>
+          Next step
+        </label>
+        <select
+          id={`ns-type-${prospect.id}`}
+          name="next_step_type"
+          value={type}
+          onChange={(e) => setType(e.target.value as NextStepType | "")}
+          style={{ ...fieldSelectStyle, padding: "8px 10px" }}
+        >
+          <option value="">No next step</option>
+          {NEXT_STEP_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {NEXT_STEP_TYPE_LABEL[t]}
+            </option>
+          ))}
+        </select>
+
+        {isFollowUp ? (
+          <>
+            <label htmlFor={`ns-due-${prospect.id}`} style={sublabelStyle}>
+              Due date (arms a follow-up)
+            </label>
+            <input
+              id={`ns-due-${prospect.id}`}
+              type="date"
+              name="next_step_due_date"
+              defaultValue={prospect.next_step?.dueDate ?? ""}
+              style={inputStyle}
+            />
+          </>
+        ) : null}
+
+        {type !== "" ? (
+          <>
+            <label htmlFor={`ns-detail-${prospect.id}`} style={sublabelStyle}>
+              Detail (optional)
+            </label>
+            <textarea
+              id={`ns-detail-${prospect.id}`}
+              name="next_step_detail"
+              defaultValue={prospect.next_step?.detail ?? ""}
+              rows={2}
+              maxLength={2000}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </>
+        ) : null}
+
+        <label htmlFor={`ns-note-${prospect.id}`} style={sublabelStyle}>
+          Additional note (separate)
+        </label>
+        <textarea
+          id={`ns-note-${prospect.id}`}
+          name="additional_note"
+          defaultValue={prospect.additional_note ?? ""}
+          rows={2}
+          maxLength={2000}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+
+        {type === "connect_to_group_leader" ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: P.ink3,
+              margin: "2px 0 0",
+            }}
+          >
+            Back-office only — nothing is shown to the group leader.
+          </p>
+        ) : null}
+
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 11,
+            color: P.ink3,
+            background: P.surface,
+            border: `1px dashed ${P.line}`,
+            borderRadius: 6,
+            padding: "6px 8px",
+            margin: "2px 0 0",
+          }}
+        >
+          No messaging provider is wired yet — to be configured. Nothing is
+          sent; a follow-up with a date just appears as a due task.
+        </p>
+
+        <div>
+          <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Save next step"}
+          </PButton>
+        </div>
+        <FormStatus state={state} successText="Saved." />
+      </form>
+    </details>
   );
 }

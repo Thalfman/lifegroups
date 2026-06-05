@@ -553,6 +553,22 @@ export function rpcAdminTransitionProspect(
   return callUuidRpc(client, "admin_transition_prospect", args);
 }
 
+// #379 pivot slice 7: set a Prospect's single current Next Step (type
+// connect_to_group_leader | follow_up + optional due date + detail) and a
+// separate Additional Note. The next_step jsonb shape is validated in the
+// action layer (validateSetProspectNextStepPayload) and re-validated
+// authoritatively in the RPC. No provider is wired — nothing is sent.
+export function rpcAdminSetProspectNextStep(
+  client: AppSupabaseClient,
+  args: {
+    p_prospect_id: string;
+    p_next_step: Record<string, unknown> | null;
+    p_additional_note: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_prospect_next_step", args);
+}
+
 export type AdminCreateFollowUpArgs = {
   p_type: FollowUpType;
   p_title: string;
