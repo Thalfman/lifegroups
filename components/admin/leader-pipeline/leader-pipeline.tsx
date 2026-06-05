@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { PButton, PLinkButton } from "@/components/pastoral/button";
 import {
   adminAdvanceApprenticeStage,
   adminArchiveApprentice,
@@ -209,11 +209,21 @@ function AddApprenticeForm({
   );
   if (availableGroups.length === 0) {
     return (
-      <p
-        style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3, margin: 0 }}
-      >
-        No active groups to add an apprentice to.
-      </p>
+      <div style={{ display: "grid", gap: 8, justifyItems: "start" }}>
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12,
+            color: P.ink3,
+            margin: 0,
+          }}
+        >
+          No active groups to add an apprentice to.
+        </p>
+        <PLinkButton href="/admin/groups" tone="ghost" size="sm">
+          Go to Groups →
+        </PLinkButton>
+      </div>
     );
   }
   return (

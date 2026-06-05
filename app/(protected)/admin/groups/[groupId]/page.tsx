@@ -322,16 +322,9 @@ async function OverviewTab({
         </div>
       </Card>
 
-      <Link
-        href={`/admin/groups/${groupId}/calendar`}
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 13,
-          color: "var(--c-clay)",
-        }}
-      >
+      <TabAction href={`/admin/groups/${groupId}/calendar`}>
         Open the group calendar →
-      </Link>
+      </TabAction>
     </div>
   );
 }
@@ -377,7 +370,12 @@ async function PeopleTab({ groupId }: { groupId: string }) {
               Leaders couldn&apos;t be loaded right now.
             </p>
           ) : leaders.length === 0 ? (
-            <p style={bodyTextStyle}>No leader assigned yet.</p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={bodyTextStyle}>No leader assigned yet.</p>
+              <TabAction href="/admin/people">
+                Assign a leader in People →
+              </TabAction>
+            </div>
           ) : (
             <ul style={listResetStyle}>
               {leaders.map((l) => {
@@ -404,7 +402,12 @@ async function PeopleTab({ groupId }: { groupId: string }) {
               Members couldn&apos;t be loaded right now.
             </p>
           ) : members.length === 0 ? (
-            <p style={bodyTextStyle}>No active members on the roster.</p>
+            <div style={{ display: "grid", gap: 8 }}>
+              <p style={bodyTextStyle}>No active members on the roster.</p>
+              <TabAction href="/admin/people">
+                Add a member in People →
+              </TabAction>
+            </div>
           ) : (
             <ul style={listResetStyle}>
               {members.map((m) => (
@@ -416,6 +419,10 @@ async function PeopleTab({ groupId }: { groupId: string }) {
           )}
         </div>
       </Card>
+
+      <TabAction href="/admin/people">
+        Manage leaders &amp; members in People →
+      </TabAction>
     </div>
   );
 }
@@ -443,7 +450,8 @@ async function HealthTab({ groupId }: { groupId: string }) {
   const health = healthCategory(grade, watchGrade);
   // Fail closed: a failed health/ratings read must not masquerade as a genuine
   // "Not assessed" / "Not rated" grade.
-  const healthError = overviewRes.error || ratingsRes.error || defaultsRes.error;
+  const healthError =
+    overviewRes.error || ratingsRes.error || defaultsRes.error;
   const stale = row?.stale ?? false;
 
   if (healthError) {
@@ -539,7 +547,8 @@ async function AttendanceTab({ groupId }: { groupId: string }) {
       <Card style={{ padding: "16px 18px" }}>
         {sessionsRes.error ? (
           <p role="alert" style={bodyTextStyle}>
-            Attendance history couldn&apos;t be loaded right now — a read failed.
+            Attendance history couldn&apos;t be loaded right now — a read
+            failed.
           </p>
         ) : sessions.length === 0 ? (
           <p style={bodyTextStyle}>No attendance sessions on record.</p>
@@ -566,6 +575,10 @@ async function AttendanceTab({ groupId }: { groupId: string }) {
           </ul>
         )}
       </Card>
+
+      <TabAction href={`/admin/groups/${groupId}/calendar`}>
+        Open the group calendar →
+      </TabAction>
     </div>
   );
 }
@@ -580,57 +593,61 @@ async function FollowUpsTab({ groupId }: { groupId: string }) {
   const followUps = followUpsRes.data ?? [];
 
   return (
-    <Card style={{ padding: "16px 18px" }}>
-      {followUpsRes.error ? (
-        <p role="alert" style={bodyTextStyle}>
-          Follow-ups couldn&apos;t be loaded right now — a read failed. This is
-          not a confirmation that the group has none.
-        </p>
-      ) : followUps.length === 0 ? (
-        <p style={bodyTextStyle}>No open follow-ups for this group.</p>
-      ) : (
-        <ul style={listResetStyle}>
-          {followUps.map((f) => (
-            <li
-              key={f.id}
-              style={{
-                padding: "8px 0",
-                borderTop: "1px solid var(--c-line)",
-                display: "grid",
-                gap: 4,
-              }}
-            >
-              <div
+    <div style={{ display: "grid", gap: 14 }}>
+      <Card style={{ padding: "16px 18px" }}>
+        {followUpsRes.error ? (
+          <p role="alert" style={bodyTextStyle}>
+            Follow-ups couldn&apos;t be loaded right now — a read failed. This
+            is not a confirmation that the group has none.
+          </p>
+        ) : followUps.length === 0 ? (
+          <p style={bodyTextStyle}>No open follow-ups for this group.</p>
+        ) : (
+          <ul style={listResetStyle}>
+            {followUps.map((f) => (
+              <li
+                key={f.id}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  flexWrap: "wrap",
+                  padding: "8px 0",
+                  borderTop: "1px solid var(--c-line)",
+                  display: "grid",
+                  gap: 4,
                 }}
               >
-                <span
+                <div
                   style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: 14,
-                    color: "var(--c-ink)",
-                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
                   }}
                 >
-                  {f.title}
-                </span>
-                <PBadge>{followUpTypeLabel(f.type)}</PBadge>
-                <PBadge>{followUpPriorityLabel(f.priority)}</PBadge>
-              </div>
-              {f.leader_visible_note ? (
-                <span style={{ ...bodyTextStyle, fontSize: 13 }}>
-                  {f.leader_visible_note}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-body)",
+                      fontSize: 14,
+                      color: "var(--c-ink)",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {f.title}
+                  </span>
+                  <PBadge>{followUpTypeLabel(f.type)}</PBadge>
+                  <PBadge>{followUpPriorityLabel(f.priority)}</PBadge>
+                </div>
+                {f.leader_visible_note ? (
+                  <span style={{ ...bodyTextStyle, fontSize: 13 }}>
+                    {f.leader_visible_note}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <TabAction href="/admin/care">Open Care →</TabAction>
+    </div>
   );
 }
 
@@ -732,16 +749,12 @@ async function EventsTab({
           </ul>
         )}
       </Card>
-      <Link
+      <TabAction
         href={`/admin/groups/${groupId}/calendar`}
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 13,
-          color: "var(--c-clay)",
-        }}
+        aria-label={`Open the full calendar for ${group.name}`}
       >
         Open the full calendar for {group.name} →
-      </Link>
+      </TabAction>
     </div>
   );
 }
@@ -764,6 +777,35 @@ function eventTypeLabel(type: ResolvedOccurrence["eventType"]): string {
 }
 
 // --- Small presentational helpers -------------------------------------------
+
+// A small, consistent "go to the canonical workflow" link for a tab. Group
+// detail stays read-only (centralized editing lives on People / Group health /
+// Care / the calendar), so each tab points to where the next task is done
+// rather than turning into an edit screen.
+function TabAction({
+  href,
+  children,
+  "aria-label": ariaLabel,
+}: {
+  href: string;
+  children: React.ReactNode;
+  "aria-label"?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      style={{
+        fontFamily: "var(--font-body)",
+        fontSize: 13,
+        color: "var(--c-clay)",
+        textDecoration: "none",
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
 
 function StatusZone({
   label,

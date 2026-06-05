@@ -250,7 +250,7 @@ export default async function AdminShepherdCareDetailPage({
     return (
       <>
         <PageHeader
-          eyebrow="Leader care"
+          eyebrow="Care"
           title="Leader"
           italic="care"
           lede="Database is not configured in this environment."
@@ -519,7 +519,7 @@ export default async function AdminShepherdCareDetailPage({
   return (
     <>
       <PageHeader
-        eyebrow="Leader care"
+        eyebrow="Care"
         title={detail.profileFullName}
         lede="Care notes here are admin-only. They never appear on leader or member surfaces."
       />
