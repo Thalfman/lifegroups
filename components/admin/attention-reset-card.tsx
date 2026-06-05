@@ -5,7 +5,8 @@
 // type-to-confirm reset that sets an "as-of" baseline so the card drops to zero
 // WITHOUT muting/hiding and WITHOUT deleting history — a true fresh start that
 // re-surfaces naturally as real time passes. Each reset captures a recoverable
-// snapshot first and is audited, mirroring the Reset-by-category card.
+// snapshot first and is audited; the undo controls live in visually separated
+// recovery panels, mirroring the Reset-by-category card.
 
 import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
@@ -39,7 +40,11 @@ import {
   fieldLabelStyle,
   successTextStyle,
 } from "@/components/admin/forms/field-styles";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import {
+  DangerCard,
+  DangerPill,
+} from "@/components/admin/danger-zone-card-shell";
+import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Fixed locale + UTC so server and client render the same string (no hydration
 // mismatch). Mirrors the Reset-by-category card's snapshot formatter.
@@ -63,6 +68,27 @@ const RESET_ACTION = {
   health: superAdminResetHealthAttention,
 } as const;
 
+// A sage-accented recovery panel so the undo controls read as the safety net,
+// distinct from the reset above. Shared by the global revert and the per-entity
+// undo list.
+const recoveryPanelStyle = {
+  display: "grid",
+  gap: 8,
+  background: P.sageSoft,
+  border: `1px solid ${P.sage}`,
+  borderRadius: 8,
+  padding: "10px 12px",
+} as const;
+
+const recoveryLabelStyle = {
+  fontFamily: fontSans,
+  fontSize: 11,
+  letterSpacing: 1,
+  textTransform: "uppercase" as const,
+  color: P.sageTextStrong,
+  fontWeight: 700,
+};
+
 // Impact unit per surface — what a global reset touches.
 function impactLabel(surface: AttentionResetSurface, count: number): string {
   if (surface === "care") {
@@ -77,44 +103,27 @@ export function AttentionResetCard({
   state: AttentionResetState | null;
 }) {
   return (
-    <div
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
+    <DangerCard
+      title="Reset attention — fresh start for the time-based Home cards"
+      intro={
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.terraTextStrong,
+            lineHeight: 1.55,
+            margin: 0,
+          }}
+        >
+          The “overdue or missing health checks” and “leaders needing care”
+          cards are driven by elapsed time, so deleting history never clears
+          them and muting only hides them. A reset records a recoverable “as-of”
+          baseline so the card drops to zero <em>without</em> hiding it — then
+          re-surfaces naturally once real time passes. Unlike the mute flags,
+          this is a genuine fresh start, not a permanent hide.
+        </p>
+      }
     >
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
-        Reset attention — fresh start for the time-based Home cards
-      </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.terraTextStrong,
-          lineHeight: 1.55,
-          margin: 0,
-        }}
-      >
-        The “overdue or missing health checks” and “leaders needing care” cards
-        are driven by elapsed time, so deleting history never clears them and
-        muting only hides them. A reset records a recoverable “as-of” baseline
-        so the card drops to zero <em>without</em> hiding it — then re-surfaces
-        naturally once real time passes. Unlike the mute flags, this is a
-        genuine fresh start, not a permanent hide.
-      </p>
-
       {state === null ? (
         <p
           style={{
@@ -134,7 +143,7 @@ export function AttentionResetCard({
           ))}
         </div>
       )}
-    </div>
+    </DangerCard>
   );
 }
 
@@ -299,15 +308,22 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
         <form
           ref={revert.formRef}
           action={revert.formAction}
-          style={{
-            display: "grid",
-            gap: 8,
-            borderTop: `1px solid ${P.line}`,
-            paddingTop: 10,
-          }}
+          style={recoveryPanelStyle}
         >
           <input type="hidden" name="snapshotId" value={snapshot.id} />
           <input type="hidden" name="surface" value={surface.surface} />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={recoveryLabelStyle}>Recovery</span>
+            <DangerPill label="Reversible" tone="reversible" />
+          </div>
           <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
             Recoverable reset captured {formatSnapshotTime(snapshot.createdAt)}{" "}
             UTC.
@@ -358,17 +374,23 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
       ) : null}
 
       {entitySnapshots.length > 0 ? (
-        <div
-          style={{
-            display: "grid",
-            gap: 8,
-            borderTop: `1px solid ${P.line}`,
-            paddingTop: 10,
-          }}
-        >
+        <div style={recoveryPanelStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={recoveryLabelStyle}>
+              Undo single resets ({entitySnapshots.length})
+            </span>
+            <DangerPill label="Reversible" tone="reversible" />
+          </div>
           <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
-            Undo single resets ({entitySnapshots.length}) — type{" "}
-            {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} once to enable.
+            Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} once to enable.
           </div>
           <input
             aria-label={`Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to enable single-reset undo for ${meta.label}`}
