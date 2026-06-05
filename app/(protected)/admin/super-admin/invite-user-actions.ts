@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireSuperAdminSession } from "@/lib/auth/session";
+import { resolveSiteOrigin } from "@/lib/shared/site-origin";
 import {
   type ActionResult,
   actionFail,
@@ -198,9 +199,25 @@ async function runInvite(
   if (!client)
     return actionFail(["The database is not configured on this deployment."]);
 
+  // Resolve the redirect target here, in the Next.js runtime where the site
+  // URL is configured, and pass it to the Edge Function. The function runs in
+  // Supabase's separate secret store, so relying on its own SITE_URL env left
+  // `redirectTo` undefined — which bounced invitees to the Site URL root and,
+  // for anonymous visitors, on to /login (the sign-in page) instead of the
+  // password-setup page. Omit when the origin can't be resolved so the
+  // function falls back to its env-derived value (prior behavior).
+  const origin = await resolveSiteOrigin();
+  const redirectTo = origin ? `${origin}/reset-password` : undefined;
+
   const { data, error } = await client.functions.invoke<EdgeFnResponse>(
     "invite-user",
-    { body: { ...v.value, delivery } }
+    {
+      body: {
+        ...v.value,
+        delivery,
+        ...(redirectTo ? { redirect_to: redirectTo } : {}),
+      },
+    }
   );
 
   if (error) {

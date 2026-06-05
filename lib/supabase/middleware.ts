@@ -42,6 +42,22 @@ export async function updateSupabaseSession(
   // dynamic Home Hub unchanged. getClaims() above is a local JWT verification,
   // so this gate adds no network round trip.
   if (!claimsData?.claims && request.nextUrl.pathname === "/") {
+    // Safety net for auth email links (invite / password recovery) whose
+    // redirect target wasn't honored, so Supabase sent the verified user to the
+    // Site URL root with the auth `?code=` attached. Without this, the rewrite
+    // below would serve the sign-in page and discard the code, stranding the
+    // invitee. Forward them to /reset-password (which exchanges the code and
+    // shows the password-setup form) with the code preserved.
+    if (request.nextUrl.searchParams.has("code")) {
+      const acceptUrl = request.nextUrl.clone();
+      acceptUrl.pathname = "/reset-password";
+      const redirectResponse = NextResponse.redirect(acceptUrl);
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+      });
+      return redirectResponse;
+    }
+
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     const rewriteResponse = NextResponse.rewrite(loginUrl, { request });

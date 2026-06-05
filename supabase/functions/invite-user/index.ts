@@ -122,6 +122,26 @@ const PHONE_RE = /^(?=[^\d]*\d)[+0-9().\- ]{7,20}$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// The caller (verified super_admin server action) resolves the public site
+// origin and passes the redirect target so this function doesn't depend on its
+// own SITE_URL secret being set. The value becomes a link in an invite email,
+// so constrain it: must be a well-formed http(s) URL whose path is exactly
+// /reset-password. Supabase's Redirect URLs allow-list is the outer guard;
+// this is defense against email-link injection / open redirect. Returns the
+// normalized URL string when valid, otherwise null.
+function validateCallerRedirect(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.trim().length === 0) return null;
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.pathname !== "/reset-password") return null;
+  return url.toString();
+}
+
 function emptyResponse(): ResponseBody {
   return { ok: false, warnings: [], errors: [] };
 }
@@ -620,6 +640,14 @@ Deno.serve(async (req: Request) => {
   const payload = v.value;
   const target_email_domain = emailDomain(payload.email);
 
+  // Prefer the caller-provided redirect (resolved in the Next.js runtime where
+  // the site URL is configured); fall back to this function's own SITE_URL env.
+  const callerRedirect = validateCallerRedirect(
+    (parsed as Record<string, unknown>)?.redirect_to
+  );
+  const resolvedRedirect =
+    callerRedirect ?? (siteUrl ? `${siteUrl}/reset-password` : undefined);
+
   // Auth user resolve / invite.
   let authId: string;
   let authUserState: AuthUserState;
@@ -638,7 +666,7 @@ Deno.serve(async (req: Request) => {
         email: payload.email,
         options: {
           data: { full_name: payload.full_name },
-          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+          redirectTo: resolvedRedirect,
         },
       });
       if (error || !data?.user?.id) {
@@ -667,7 +695,7 @@ Deno.serve(async (req: Request) => {
         payload.email,
         {
           data: { full_name: payload.full_name },
-          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+          redirectTo: resolvedRedirect,
         }
       );
       if (error || !data?.user?.id) {
