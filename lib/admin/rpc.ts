@@ -296,6 +296,23 @@ export function rpcSuperAdminResetAttentionRevert(
   return callUuidRpc(client, "super_admin_reset_attention_revert", args);
 }
 
+// activity-reset: set/replace the single global activity baseline at today
+// (church-local), flooring the Home Recent-activity tiles WITHOUT deleting any
+// domain rows. Returns the baseline date (a jsonb scalar, not a uuid).
+export function rpcSuperAdminResetActivity(
+  client: AppSupabaseClient
+): Promise<JsonRpcResult> {
+  return callJsonRpc(client, "super_admin_reset_activity");
+}
+
+// activity-reset: remove the global activity baseline so the tiles return to
+// all-time counts. Returns true when a baseline was removed.
+export function rpcSuperAdminClearActivityReset(
+  client: AppSupabaseClient
+): Promise<JsonRpcResult> {
+  return callJsonRpc(client, "super_admin_clear_activity_reset");
+}
+
 // ADR 0014 (#312–#316) permanent deletion. The delete RPC snapshots the row +
 // its set-null dependents into a tombstone, writes the paired audit row, and
 // physically removes the row, returning the tombstone id.

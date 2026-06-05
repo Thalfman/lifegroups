@@ -268,6 +268,18 @@ export interface AttentionResetBaselinesRow {
   created_at: Timestamp;
 }
 
+// activity-reset: the single global "as-of" baseline the Home Recent-activity
+// tiles measure from. Admin-readable SELECT RLS (the dashboard honours it); all
+// writes flow through the super_admin_reset_activity /
+// super_admin_clear_activity_reset SECURITY DEFINER RPCs.
+export interface ActivityResetBaselinesRow {
+  id: UUID;
+  scope: "global";
+  baseline_on: DateString;
+  created_by: UUID | null;
+  created_at: Timestamp;
+}
+
 // health-checks-reset: recoverable snapshot store for the attention resets, kept
 // independent of clean_slate_snapshots / history_reset_snapshots so a Clean Slate
 // wipe never blows it away. payload holds the prior baseline rows and (for care)
@@ -665,6 +677,12 @@ export interface Database {
           | "restored_by"
         >;
         Update: Partial<HistoryResetSnapshotsRow>;
+        Relationships: [];
+      };
+      activity_reset_baselines: {
+        Row: ActivityResetBaselinesRow;
+        Insert: InsertOf<ActivityResetBaselinesRow, "id" | "created_at">;
+        Update: Partial<ActivityResetBaselinesRow>;
         Relationships: [];
       };
       attention_reset_baselines: {

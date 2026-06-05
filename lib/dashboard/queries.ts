@@ -26,7 +26,10 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
+import {
+  fetchActivityResetBaseline,
+  fetchAttentionResetBaselines,
+} from "@/lib/supabase/maintenance-reads";
 import {
   buildSurfaceBaselines,
   type AttentionBaselines,
@@ -85,7 +88,10 @@ function describeWeek(meetingWeekIso: string): string {
   });
 }
 
-function addDaysIsoForWeek(iso: string, days: number): string {
+// Add `days` calendar days to a YYYY-MM-DD string (pure date arithmetic over a
+// UTC anchor — no DST drift since it never crosses a wall-clock offset). General
+// helper: week horizons, the due-this-week cutoff, and the activity-reset floor.
+function addDaysIso(iso: string, days: number): string {
   const anchor = new Date(`${iso}T00:00:00Z`);
   anchor.setUTCDate(anchor.getUTCDate() + days);
   return anchor.toISOString().slice(0, 10);
@@ -267,14 +273,29 @@ function buildMultiplicationSummary(
   };
 }
 
+// The later of two ISO date / week-start strings (null = unbounded). Dates are
+// YYYY-MM-DD, so lexicographic order is date order. Used to fold the activity-
+// reset baseline into the period's lower bound: a reset floors EVERY grain at
+// max(period start, baseline), so the band reads zero right after a reset and
+// the chosen period can never reach back before it.
+function laterIso(a: string | null, b: string | null): string | null {
+  if (a == null) return b;
+  if (b == null) return a;
+  return a >= b ? a : b;
+}
+
 // "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
 // already-fetched (gated) group/guest arrays — no extra read — while the three
 // productivity counts come from fetchOverviewActivityCounts and degrade to null
 // if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
-// lexicographic comparison against the half-open [fromIso, toExclusiveIso)
-// window is correct.
+// lexicographic comparison against the half-open [floorIso, toExclusiveIso)
+// window is correct. `floorIso` is the period start already folded with the
+// activity-reset baseline (see laterIso); `baselineOn` is surfaced raw so the
+// Home control can show "since {date}" / offer Undo.
 function buildActivitySummary(
   period: OverviewPeriodRange,
+  floorIso: string | null,
+  baselineOn: string | null,
   groups: readonly { launched_on: string | null }[],
   guests: readonly { first_attended_date: string | null }[],
   activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
@@ -282,7 +303,7 @@ function buildActivitySummary(
   const inRange = (iso: string | null): boolean => {
     if (!iso) return false;
     if (iso >= period.toExclusiveIso) return false;
-    if (period.fromIso && iso < period.fromIso) return false;
+    if (floorIso && iso < floorIso) return false;
     return true;
   };
   const extended = activityRes.error ? null : activityRes.data;
@@ -296,6 +317,7 @@ function buildActivitySummary(
     careTouchpoints: extended ? extended.careTouchpoints : null,
     extendedAvailable: activityRes.error === null,
     error: activityRes.error?.message ?? null,
+    resetBaselineOn: baselineOn,
   };
 }
 
@@ -337,6 +359,7 @@ export type AdminDashboardReads = {
   >;
   fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
   fetchAttentionResetBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
+  fetchActivityResetBaseline: OmitClient<typeof fetchActivityResetBaseline>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -366,6 +389,7 @@ export function supabaseAdminDashboardReads(
     fetchMultiplicationCandidatesForAdmin,
     fetchOverviewActivityCounts,
     fetchAttentionResetBaselines,
+    fetchActivityResetBaseline,
   });
 }
 
@@ -398,7 +422,7 @@ export async function buildAdminDashboardData(
     // the derived rows below can resolve calendar overrides without a
     // per-group round trip. We fetch a one-week window (Mon..Sun) -- the
     // override resolver narrows further.
-    const weekEnd = addDaysIsoForWeek(selectedWeek, 6);
+    const weekEnd = addDaysIso(selectedWeek, 6);
     // Pin "today" once so the shepherd-care summary uses the same
     // calendar day for needs_attention math and the dashboard for any
     // request-bound timing. Derived from the SAME injected `now` that drives
@@ -409,7 +433,7 @@ export async function buildAdminDashboardData(
     // The "this week" horizon the Home card renders: today + 7 days, inclusive
     // of overdue. Computed here so the UNtruncated due-count read below matches
     // the card's `isDueThisWeek` window exactly.
-    const dueThisWeekOnOrBeforeIso = addDaysIsoForWeek(todayIso, 7);
+    const dueThisWeekOnOrBeforeIso = addDaysIso(todayIso, 7);
 
     // Metric defaults feed the shepherd-care directory's `entry.needs_attention`
     // stamp (configured stale-contact window) — without it /admin would use the
@@ -437,7 +461,7 @@ export async function buildAdminDashboardData(
       launchAssumptionsResult,
       leaderPipelineResult,
       multiplicationResult,
-      activityResult,
+      activityBaselineResult,
       metricDefaultsResult,
       attentionBaselinesResult,
     ] = await Promise.all([
@@ -470,10 +494,12 @@ export async function buildAdminDashboardData(
       // card rather than failing the page, so they stay out of firstError.
       reads.fetchLeaderPipelineForAdmin(),
       reads.fetchMultiplicationCandidatesForAdmin(),
-      reads.fetchOverviewActivityCounts({
-        fromIso: period.fromIso,
-        toExclusiveIso: period.toExclusiveIso,
-      }),
+      // activity-reset: the global "as-of" reset date the Recent-activity tiles
+      // floor at. Read here (cheap, admin-readable) so the activity-counts read
+      // in the second wave can be scoped to it; the actual counts read moves
+      // below, where the floor is known. A failure degrades to "no baseline"
+      // (all-time counts), so it stays out of the firstError gate.
+      reads.fetchActivityResetBaseline(),
       reads.fetchMetricDefaults(),
       // health-checks-reset: the reset baselines so both "Needs attention"
       // cards honour a reset. Like the spine reads, a failure degrades to
@@ -513,13 +539,43 @@ export async function buildAdminDashboardData(
             (a) => a.shepherd_profile_id
           )
         );
-    const shepherdDirectoryResult =
-      await reads.fetchShepherdCareDirectoryForAdmin({
+
+    // activity-reset: fold the global reset baseline into the period's lower
+    // bound. A failed baseline read degrades to null (all-time — today's
+    // behaviour). The reset must drop the band to zero immediately, so the reset
+    // DAY itself is excluded: the effective floor is the day AFTER the baseline,
+    // applied inclusively. baseline_on is a church-local date and the tiles span
+    // both date columns (launched_on, first_attended_date) and timestamptz
+    // columns — none of which can distinguish time-of-day against a same-day
+    // floor — so a whole-day exclusion is the one cutoff that zeroes every tile
+    // uniformly (rather than leaving earlier-today rows counted). The activity-
+    // counts read below uses this floor so the SQL tiles measure from the SAME
+    // "as-of" as the TS-side tiles in buildActivitySummary. The raw baseline is
+    // kept separately for display ("Reset {date}" + Undo on Home).
+    const activityBaselineOn = activityBaselineResult.error
+      ? null
+      : (activityBaselineResult.data ?? null);
+    const activityResetFloorIso = activityBaselineOn
+      ? addDaysIso(activityBaselineOn, 1)
+      : null;
+    const activityFloorIso = laterIso(period.fromIso, activityResetFloorIso);
+
+    // Second wave: the shepherd-care directory (depends on the assignments read
+    // above) and the period-scoped activity counts (depend on the reset floor
+    // just computed) are independent, so they run in parallel — no extra round
+    // trip beyond the directory read that was already sequenced here.
+    const [shepherdDirectoryResult, activityResult] = await Promise.all([
+      reads.fetchShepherdCareDirectoryForAdmin({
         todayIso,
         windows: careCadenceWindowsFromDefaults(defaultsForRead),
         delegatedShepherdIds: shepherdDelegatedIds,
         baselines: careBaselines,
-      });
+      }),
+      reads.fetchOverviewActivityCounts({
+        fromIso: activityFloorIso,
+        toExclusiveIso: period.toExclusiveIso,
+      }),
+    ]);
 
     const firstError =
       groupsResult.error ||
@@ -584,6 +640,8 @@ export async function buildAdminDashboardData(
     const multiplication = buildMultiplicationSummary(multiplicationResult);
     const activity = buildActivitySummary(
       period,
+      activityFloorIso,
+      activityBaselineOn,
       groupsResult.data ?? [],
       guestsResult.data ?? [],
       activityResult
@@ -740,7 +798,7 @@ async function buildLeaderGroupDashboard(
   // doesn't show Monday's already-past meeting; the ceiling is the same
   // 8-week horizon used by the calendar fetch so the merge is complete.
   const todayIso = churchTodayIso();
-  const horizonEndIso = addDaysIsoForWeek(todayIso, 8 * 7);
+  const horizonEndIso = addDaysIso(todayIso, 8 * 7);
   const generated = generateOccurrencesInRange(
     {
       meetingDay: group.meeting_day,
@@ -820,7 +878,7 @@ export async function getLeaderDashboardData(
 
   try {
     const todayIso = isoWeekStart(new Date());
-    const horizonEnd = addDaysIsoForWeek(todayIso, 8 * 7);
+    const horizonEnd = addDaysIso(todayIso, 8 * 7);
     const [groupsResult, calendarEventsResult] = await Promise.all([
       fetchGroupsByIds(client, [...options.assignedGroupIds]),
       fetchGroupCalendarEvents(client, {

@@ -247,6 +247,10 @@ export interface OverviewActivitySummary {
   careTouchpoints: number | null;
   extendedAvailable: boolean;
   error: string | null;
+  // activity-reset: the global "as-of" reset date the tiles are floored at, or
+  // null when no reset is in effect. Surfaced so the Home control can show
+  // "since {date}" and offer Undo. The counts above already measure from it.
+  resetBaselineOn: string | null;
 }
 
 export interface AdminDashboardData {

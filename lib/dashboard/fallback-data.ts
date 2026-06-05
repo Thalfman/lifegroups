@@ -124,6 +124,7 @@ const fallbackActivity: OverviewActivitySummary = {
   careTouchpoints: 35,
   extendedAvailable: true,
   error: null,
+  resetBaselineOn: null,
 };
 
 export const ADMIN_FALLBACK: AdminDashboardData = {
