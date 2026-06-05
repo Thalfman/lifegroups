@@ -24,6 +24,12 @@ export const HISTORY_RESET_CONFIRM_PHRASE = "RESET";
 // captured first) + the launch-optics mute flags.
 export const LAUNCH_PREP_CONFIRM_PHRASE = "PREPARE FOR LAUNCH";
 
+// Attention reset (health-checks-reset): the exact phrases the operator must
+// type to reset a duration-derived "Needs attention" card to a clean slate. The
+// revert reuses the shared CLEAN_SLATE_RESTORE_CONFIRM_PHRASE above.
+export const RESET_CARE_ATTENTION_CONFIRM_PHRASE = "RESET CARE";
+export const RESET_HEALTH_ATTENTION_CONFIRM_PHRASE = "RESET HEALTH CHECKS";
+
 // ADR 0014 (#312): the exact phrase the operator must type to permanently
 // delete a curated entity (physical removal, captured to a tombstone).
 export const PERMANENT_DELETE_CONFIRM_PHRASE = "PERMANENTLY DELETE";
@@ -112,4 +118,22 @@ export type LaunchPrepSuccess = {
   clearedRows: number;
   mutedKeys: string[];
   snapshotId: string | null;
+};
+
+// An attention reset / revert echoes the surface it acted on, the scope
+// (whole queue vs a single entity), how many entities were affected, and the
+// recoverable snapshot id captured/restored.
+export type AttentionResetSuccess = {
+  surface: "care" | "health";
+  scope: "global" | "entity";
+  entityId: string | null;
+  affected: number;
+  snapshotId: string;
+};
+
+export type AttentionResetRevertSuccess = {
+  surface: "care" | "health";
+  scope: "global" | "entity";
+  entityId: string | null;
+  snapshotId: string;
 };

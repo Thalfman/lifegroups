@@ -271,6 +271,62 @@ describe("buildAdminGroupModel — off-parity / scheduling gate", () => {
   });
 });
 
+describe("buildAdminGroupModel — health reset baseline (health-checks-reset)", () => {
+  // A weekly group with no session for the selected week is "missing" by
+  // default; a health reset baseline at/after the selected week withholds it.
+  it("suppresses missing when the global baseline week is at/after the selected week", () => {
+    const base = buildModel({ groups: [group()] });
+    expect(base.summary.missingCheckIns).toBe(1);
+    expect(base.healthSummary.counts.missing).toBe(1);
+
+    const reset = buildModel({
+      groups: [group()],
+      healthBaselines: { global: SELECTED_WEEK, byEntityId: new Map() },
+    });
+    expect(reset.summary.missingCheckIns).toBe(0);
+    expect(reset.healthSummary.counts.missing).toBe(0);
+    // Suppression is recorded on the row, and the group falls through to healthy.
+    expect(rowFor(reset, "group-a").healthMissingSuppressed).toBe(true);
+    expect(reset.healthSummary.counts.healthy).toBe(1);
+  });
+
+  it("does NOT suppress missing when the baseline week is earlier than the selected week", () => {
+    const reset = buildModel({
+      groups: [group()],
+      healthBaselines: { global: "2026-05-11", byEntityId: new Map() },
+    });
+    expect(reset.summary.missingCheckIns).toBe(1);
+    expect(reset.healthSummary.counts.missing).toBe(1);
+  });
+
+  it("honours a per-group override over the global baseline", () => {
+    const reset = buildModel({
+      groups: [group({ id: "a" }), group({ id: "b" })],
+      healthBaselines: {
+        global: null,
+        byEntityId: new Map([["a", SELECTED_WEEK]]),
+      },
+    });
+    // Only "a" is suppressed; "b" still reads missing.
+    expect(reset.healthSummary.missing.map((r) => r.groupId)).toEqual(["b"]);
+    expect(reset.summary.missingCheckIns).toBe(1);
+  });
+
+  it("leaves needs_follow_up unaffected by a health baseline", () => {
+    // A pulse flagged for follow-up surfaces as needs_follow_up regardless of a
+    // baseline — the baseline governs only the absence-derived "missing" half.
+    const flagged = group({ id: "flagged" });
+    const updates = [health({ group_id: "flagged", follow_up_needed: true })];
+    const reset = buildModel({
+      groups: [flagged],
+      healthUpdates: updates,
+      healthBaselines: { global: SELECTED_WEEK, byEntityId: new Map() },
+    });
+    expect(reset.healthSummary.counts.needs_follow_up).toBe(1);
+    expect(reset.healthSummary.counts.missing).toBe(0);
+  });
+});
+
 describe("buildAdminGroupModel — latest Health Pulse by week", () => {
   it("keeps the greatest update_week even when an earlier row appears last in the array", () => {
     const earlier = health({

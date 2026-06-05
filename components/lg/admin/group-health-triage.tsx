@@ -37,6 +37,7 @@ import {
   fieldLabelStyle,
 } from "@/components/admin/forms/field-styles";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
+import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { PButton } from "@/components/pastoral/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { dateLabel } from "@/lib/calendar/occurrences";
@@ -147,6 +148,7 @@ export function GroupHealthTriage({
   groupQuestionLabel,
   watchGrade,
   viewerId,
+  isSuperAdmin = false,
 }: {
   rows: GroupHealthOverviewRow[];
   period: string;
@@ -156,6 +158,9 @@ export function GroupHealthTriage({
   watchGrade: GroupHealthLetter;
   // Signed-in profile id, used only to scope this admin's saved filter (#263).
   viewerId?: string | null;
+  // health-checks-reset: gates the super-admin-only per-group "Reset attention"
+  // control inside the editor drawer.
+  isSuperAdmin?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -331,6 +336,7 @@ export function GroupHealthTriage({
         dirtyRef={dirtyRef}
         onRequestClose={requestClose}
         onSaved={forceClose}
+        isSuperAdmin={isSuperAdmin}
       />
     </div>
   );
@@ -344,6 +350,7 @@ function GroupHealthEditorDrawer({
   dirtyRef,
   onRequestClose,
   onSaved,
+  isSuperAdmin,
 }: {
   row: GroupHealthOverviewRow | null;
   period: string;
@@ -352,6 +359,7 @@ function GroupHealthEditorDrawer({
   dirtyRef: MutableRefObject<boolean>;
   onRequestClose: () => void;
   onSaved: () => void;
+  isSuperAdmin: boolean;
 }) {
   return (
     <EditingSurface
@@ -376,6 +384,7 @@ function GroupHealthEditorDrawer({
           groupQuestionLabel={groupQuestionLabel}
           dirtyRef={dirtyRef}
           onSaved={onSaved}
+          isSuperAdmin={isSuperAdmin}
         />
       ) : null}
     </EditingSurface>
@@ -391,12 +400,14 @@ function GroupHealthEditorBody({
   groupQuestionLabel,
   dirtyRef,
   onSaved,
+  isSuperAdmin,
 }: {
   row: GroupHealthOverviewRow;
   spiritualGrowthLabel: string;
   groupQuestionLabel: string;
   dirtyRef: MutableRefObject<boolean>;
   onSaved: () => void;
+  isSuperAdmin: boolean;
 }) {
   const router = useRouter();
   const [dirty, setDirty] = useState(false);
@@ -568,6 +579,48 @@ function GroupHealthEditorBody({
           {ratings.pending ? "Saving…" : "Save rating"}
         </PButton>
       </div>
+
+      {isSuperAdmin ? (
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 14,
+            borderTop: `1px solid ${P.line}`,
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 700,
+              color: P.ink,
+            }}
+          >
+            Reset attention (super admin)
+          </span>
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink2,
+              margin: 0,
+              lineHeight: 1.45,
+            }}
+          >
+            Clear this group from the “overdue or missing health checks” card
+            with a fresh-start baseline and clear any open “needs follow-up”
+            flag — it re-surfaces naturally once a new due week passes without a
+            submission. Recoverable from Super Admin → Danger Zone.
+          </p>
+          <AttentionResetEntityButton
+            surface="health"
+            entityId={row.group_id}
+            entityLabel={row.group_name}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

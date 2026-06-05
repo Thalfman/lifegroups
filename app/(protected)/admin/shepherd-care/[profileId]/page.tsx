@@ -7,6 +7,7 @@ import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-foll
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
+import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -360,6 +361,36 @@ export default async function AdminShepherdCareDetailPage({
           current={detail.care}
           leaderName={detail.profileFullName}
         />
+        {actorRole === "super_admin" ? (
+          <div
+            style={{
+              marginTop: 14,
+              paddingTop: 14,
+              borderTop: `1px solid ${P.line}`,
+            }}
+          >
+            <span style={labelStyle}>Reset attention (super admin)</span>
+            <p
+              style={{
+                fontFamily: fontBody,
+                fontSize: 12,
+                color: P.ink2,
+                margin: "0 0 8px",
+                lineHeight: 1.45,
+              }}
+            >
+              Clear this leader from the care queue with a fresh-start baseline
+              — clears their touchpoint and returns status to “doing well”
+              without deleting contact history. Recoverable from Super Admin →
+              Danger Zone.
+            </p>
+            <AttentionResetEntityButton
+              surface="care"
+              entityId={profileId}
+              entityLabel={detail.profileFullName}
+            />
+          </div>
+        ) : null}
       </section>
     </div>
   );

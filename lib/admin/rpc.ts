@@ -256,6 +256,34 @@ export function rpcSuperAdminResetAuditLogs(
   return callUuidRpc(client, "super_admin_reset_audit_logs", {});
 }
 
+// health-checks-reset: set a leader-care reset baseline (global or per-leader)
+// and clean-slate field-wipe the targeted care profiles. Returns the snapshot
+// id (the action reads counts back from the snapshot row).
+export function rpcSuperAdminResetCareAttention(
+  client: AppSupabaseClient,
+  args: { p_scope: string; p_entity_id: string | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_care_attention", args);
+}
+
+// health-checks-reset: set a health-check reset baseline (global or per-group).
+// No row mutation — "missing" is absence-derived. Returns the snapshot id.
+export function rpcSuperAdminResetHealthAttention(
+  client: AppSupabaseClient,
+  args: { p_scope: string; p_entity_id: string | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_health_attention", args);
+}
+
+// health-checks-reset: revert an attention reset, restoring the prior baseline
+// and (for care) the snapshotted profile field values. Returns the snapshot id.
+export function rpcSuperAdminResetAttentionRevert(
+  client: AppSupabaseClient,
+  args: { p_snapshot_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_attention_revert", args);
+}
+
 // ADR 0014 (#312–#316) permanent deletion. The delete RPC snapshots the row +
 // its set-null dependents into a tombstone, writes the paired audit row, and
 // physically removes the row, returning the tombstone id.

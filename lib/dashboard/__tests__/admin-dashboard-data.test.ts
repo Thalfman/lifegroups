@@ -56,6 +56,7 @@ function emptyReads(
       data: { membersJoined: 0, followUpsCompleted: 0, careTouchpoints: 0 },
       error: null,
     }),
+    fetchAttentionResetBaselines: async () => ({ data: [], error: null }),
     ...overrides,
   };
 }

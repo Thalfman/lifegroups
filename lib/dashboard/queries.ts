@@ -26,6 +26,11 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
+import {
+  buildSurfaceBaselines,
+  type AttentionBaselines,
+} from "@/lib/admin/attention-reset";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
@@ -132,7 +137,8 @@ function buildShepherdCareSummary(
     ReturnType<typeof fetchActiveShepherdCoverageAssignmentsForAdmin>
   >,
   windows: CareCadenceWindows,
-  todayIso: string
+  todayIso: string,
+  baselines: AttentionBaselines
 ): ShepherdCareDashboardSummary {
   // Active over-shepherds (coaches) — the list is fetched with archived rows
   // included, so filter to active. null when that read failed, so a transient
@@ -164,12 +170,13 @@ function buildShepherdCareSummary(
     todayIso,
     assignmentsAvailable,
     windows,
+    baselines,
   });
   const attentionItemsTotal = countAllAttentionItems(
     shepherdDirectoryRes.data,
     assignmentsRes.data ?? [],
     todayIso,
-    { coverageAvailable: assignmentsAvailable, windows }
+    { coverageAvailable: assignmentsAvailable, windows, baselines }
   );
   return {
     totalActiveShepherds: model.summary.totalActiveShepherds,
@@ -329,6 +336,7 @@ export type AdminDashboardReads = {
     typeof fetchMultiplicationCandidatesForAdmin
   >;
   fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
+  fetchAttentionResetBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -357,6 +365,7 @@ export function supabaseAdminDashboardReads(
     fetchLeaderPipelineForAdmin,
     fetchMultiplicationCandidatesForAdmin,
     fetchOverviewActivityCounts,
+    fetchAttentionResetBaselines,
   });
 }
 
@@ -430,6 +439,7 @@ export async function buildAdminDashboardData(
       multiplicationResult,
       activityResult,
       metricDefaultsResult,
+      attentionBaselinesResult,
     ] = await Promise.all([
       reads.fetchAllGroups(),
       reads.fetchActiveGroupCount(),
@@ -465,10 +475,29 @@ export async function buildAdminDashboardData(
         toExclusiveIso: period.toExclusiveIso,
       }),
       reads.fetchMetricDefaults(),
+      // health-checks-reset: the reset baselines so both "Needs attention"
+      // cards honour a reset. Like the spine reads, a failure degrades to
+      // "no baselines" (today's behaviour) rather than failing the page, so it
+      // stays out of firstError below.
+      reads.fetchAttentionResetBaselines(),
     ]);
 
     const defaultsForRead = decodeMetricDefaults(
       metricDefaultsResult.data ?? null
+    );
+
+    // health-checks-reset: split the flat baseline rows into the per-surface
+    // maps the derivations consume. Care floors a last-contact DATE; health
+    // floors a due WEEK, so its baseline is mapped to the ISO week-start to
+    // match `selectedWeek`. A failed read degrades to empty (no suppression).
+    const attentionBaselineRows = attentionBaselinesResult.error
+      ? []
+      : (attentionBaselinesResult.data ?? []);
+    const careBaselines = buildSurfaceBaselines(attentionBaselineRows, "care");
+    const healthBaselines = buildSurfaceBaselines(
+      attentionBaselineRows,
+      "health",
+      isoWeekStart
     );
 
     // Build the shepherd-care directory from the SAME active-coverage set the
@@ -489,6 +518,7 @@ export async function buildAdminDashboardData(
         todayIso,
         windows: careCadenceWindowsFromDefaults(defaultsForRead),
         delegatedShepherdIds: shepherdDelegatedIds,
+        baselines: careBaselines,
       });
 
     const firstError =
@@ -528,6 +558,7 @@ export async function buildAdminDashboardData(
       selectedWeek,
       now,
       activeGroupCount: activeGroupCountResult.data ?? null,
+      healthBaselines,
     });
 
     // Julian admin OS spine summaries. These are the headline cards on
@@ -541,7 +572,8 @@ export async function buildAdminDashboardData(
       overShepherdsResult,
       shepherdAssignmentsResult,
       careCadenceWindowsFromDefaults(defaults),
-      todayIso
+      todayIso,
+      careBaselines
     );
     const launchPlanning = buildLaunchPlanningSnapshot(
       launchAssumptionsResult,

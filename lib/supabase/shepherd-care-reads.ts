@@ -18,6 +18,10 @@ import {
   needsAttentionFromReasons,
 } from "@/lib/admin/shepherd-care-attention";
 import {
+  resolveAttentionBaseline,
+  type AttentionBaselines,
+} from "@/lib/admin/attention-reset";
+import {
   currentUtcDateIso,
   wrapError,
   type ReadClient,
@@ -177,6 +181,9 @@ export function buildCareDirectoryEntries(
     todayIso?: string;
     windows?: CareCadenceWindows;
     delegatedShepherdIds?: ReadonlySet<string>;
+    // health-checks-reset: the care reset baselines, so a freshly-reset leader
+    // reads fresh (the chip drops) without deleting their contact history.
+    baselines?: AttentionBaselines;
   } = {}
 ): ShepherdCareDirectoryEntry[] {
   const careByShepherdId = new Map<string, ShepherdCareDirectorySummary>();
@@ -186,6 +193,7 @@ export function buildCareDirectoryEntries(
   const today = options.todayIso ?? currentUtcDateIso();
   const windows = options.windows ?? BUILT_IN_CARE_CADENCE_WINDOWS;
   const delegatedShepherdIds = options.delegatedShepherdIds;
+  const baselines = options.baselines;
 
   return profiles.map((profile) => {
     const care = careByShepherdId.get(profile.id) ?? null;
@@ -199,7 +207,12 @@ export function buildCareDirectoryEntries(
     return {
       profile,
       care,
-      needs_attention: computeNeedsAttention(care, today, staleDays),
+      needs_attention: computeNeedsAttention(
+        care,
+        today,
+        staleDays,
+        resolveAttentionBaseline(baselines, profile.id)
+      ),
     };
   });
 }
@@ -213,10 +226,11 @@ export function buildCareDirectoryEntries(
 export function computeNeedsAttention(
   care: ShepherdCareDirectorySummary | null,
   todayIso: string,
-  staleDays: number = SHEPHERD_CARE_STALE_DAYS
+  staleDays: number = SHEPHERD_CARE_STALE_DAYS,
+  baselineIso: string | null = null
 ): boolean {
   return needsAttentionFromReasons(
-    detectCareReasons(care, { todayIso, staleDays })
+    detectCareReasons(care, { todayIso, staleDays, baselineIso })
   );
 }
 
@@ -239,6 +253,8 @@ export async function fetchShepherdCareDirectoryForAdmin(
     // conservative longer window), which is also exactly right for callers
     // where every shepherd is delegated by definition.
     delegatedShepherdIds?: ReadonlySet<string>;
+    // health-checks-reset: care reset baselines, threaded into needs_attention.
+    baselines?: AttentionBaselines;
   } = {}
 ): Promise<ReadResult<ShepherdCareDirectoryEntry[]>> {
   const profilesQuery = await client
@@ -293,6 +309,7 @@ export async function fetchShepherdCareDirectoryForAdmin(
       todayIso: options.todayIso,
       windows: options.windows,
       delegatedShepherdIds: options.delegatedShepherdIds,
+      baselines: options.baselines,
     }),
     error: null,
   };

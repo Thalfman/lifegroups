@@ -18,6 +18,10 @@ import {
   REASON_PRIORITY,
   type CareAttentionReason,
 } from "@/lib/admin/shepherd-care-attention";
+import {
+  resolveAttentionBaseline,
+  type AttentionBaselines,
+} from "@/lib/admin/attention-reset";
 
 // Re-exported from the shared attention engine so existing importers (and the
 // __test__ surface below) keep their path.
@@ -137,6 +141,9 @@ export type BuildShepherdCareDashboardModelInput = {
   // Julian Q5: the two per-tier staleness windows. Defaults to the documented
   // 30 / 60 baseline when omitted so existing callers/tests keep working.
   windows?: CareCadenceWindows;
+  // health-checks-reset: care reset baselines, so the triage queue agrees with
+  // the directory chip (both honour a reset). Omit for today's behaviour.
+  baselines?: AttentionBaselines;
   limits?: {
     attention?: number;
     upcoming?: number;
@@ -279,7 +286,8 @@ function detectReasons(
   todayIso: string,
   coverageAvailable: boolean,
   windows: CareCadenceWindows,
-  followUpStats: Map<string, CareFollowUpShepherdStats>
+  followUpStats: Map<string, CareFollowUpShepherdStats>,
+  baselines?: AttentionBaselines
 ): CareAttentionReason[] {
   return detectCareReasons(entry.care, {
     todayIso,
@@ -292,6 +300,7 @@ function detectReasons(
     hasOverdueFollowUp: (followUpStats.get(entry.profile.id)?.overdue ?? 0) > 0,
     noOverShepherd:
       coverageAvailable && !assignedShepherdIds.has(entry.profile.id),
+    baselineIso: resolveAttentionBaseline(baselines, entry.profile.id),
   });
 }
 
@@ -301,7 +310,8 @@ function buildAttentionQueue(
   todayIso: string,
   coverageAvailable: boolean,
   windows: CareCadenceWindows,
-  followUpStats: Map<string, CareFollowUpShepherdStats>
+  followUpStats: Map<string, CareFollowUpShepherdStats>,
+  baselines?: AttentionBaselines
 ): CareAttentionItem[] {
   const items: CareAttentionItem[] = [];
   for (const entry of entries) {
@@ -311,7 +321,8 @@ function buildAttentionQueue(
       todayIso,
       coverageAvailable,
       windows,
-      followUpStats
+      followUpStats,
+      baselines
     );
     if (reasons.length === 0) continue;
     // detectCareReasons already returns reasons sorted by REASON_PRIORITY, so
@@ -352,7 +363,8 @@ function buildSummary(
   todayIso: string,
   coverageAvailable: boolean,
   windows: CareCadenceWindows,
-  followUpTotals: { overdue: number; outstanding: number }
+  followUpTotals: { overdue: number; outstanding: number },
+  baselines?: AttentionBaselines
 ): CareDashboardSummary {
   let needsAttention = 0;
   let overdueTouchpoints = 0;
@@ -369,9 +381,19 @@ function buildSummary(
     ) {
       overdueTouchpoints += 1;
     }
+    // "Not contacted recently" measures staleness from the later of the real
+    // last contact and any reset baseline, so a reset clears this count too
+    // (it must agree with the baseline-aware needs_attention chip above).
+    const baselineIso = resolveAttentionBaseline(baselines, entry.profile.id);
+    const effectiveContact =
+      entry.care?.last_contact_at && baselineIso
+        ? entry.care.last_contact_at >= baselineIso
+          ? entry.care.last_contact_at
+          : baselineIso
+        : (entry.care?.last_contact_at ?? baselineIso ?? null);
     if (
-      entry.care?.last_contact_at &&
-      differenceInDaysIso(todayIso, entry.care.last_contact_at) >
+      effectiveContact &&
+      differenceInDaysIso(todayIso, effectiveContact) >
         staleDaysForEntry(
           entry.profile.id,
           assignedShepherdIds,
@@ -516,7 +538,11 @@ export function buildShepherdCareDashboardModel(
     input.todayIso,
     coverageAvailable,
     windows,
-    { overdue: followUps.totalOverdue, outstanding: followUps.totalOutstanding }
+    {
+      overdue: followUps.totalOverdue,
+      outstanding: followUps.totalOutstanding,
+    },
+    input.baselines
   );
   const fullQueue = buildAttentionQueue(
     input.entries,
@@ -524,7 +550,8 @@ export function buildShepherdCareDashboardModel(
     input.todayIso,
     coverageAvailable,
     windows,
-    followUps.byShepherdId
+    followUps.byShepherdId,
+    input.baselines
   );
 
   return {
@@ -564,6 +591,9 @@ export function countAllAttentionItems(
     coverageAvailable?: boolean;
     windows?: CareCadenceWindows;
     careFollowUps?: CareFollowUpDashboardRow[];
+    // health-checks-reset: care reset baselines, so the total agrees with the
+    // queue + directory chip after a reset.
+    baselines?: AttentionBaselines;
   } = {}
 ): number {
   const coverageAvailable = options.coverageAvailable ?? true;
@@ -584,7 +614,8 @@ export function countAllAttentionItems(
         todayIso,
         coverageAvailable,
         windows,
-        followUpStats
+        followUpStats,
+        options.baselines
       ).length > 0
     ) {
       total += 1;
