@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
 import { PSeal } from "@/components/pastoral/atoms";
-import { PLinkButton } from "@/components/pastoral/button";
+import { PButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./reset-password-form";
 
@@ -24,7 +24,7 @@ function first(value: string | string[] | undefined): string | undefined {
 type View =
   | { kind: "not_configured" }
   | { kind: "form" } // recovery session already established (post /auth/confirm)
-  | { kind: "confirm"; href: string } // valid-looking link → show the button
+  | { kind: "confirm"; fields: Record<string, string> } // valid-looking link → show the button
   | { kind: "invalid" }; // missing/used/expired link → resend CTA
 
 async function resolveView(params: {
@@ -46,20 +46,19 @@ async function resolveView(params: {
 
   if (params.status === "invalid") return { kind: "invalid" };
 
-  // Build the button target that actually consumes the token via verifyOtp /
-  // exchangeCodeForSession on the user's explicit click.
+  // Carry the link params into a form that POSTs to /auth/confirm, which spends
+  // the token via verifyOtp / exchangeCodeForSession on the user's explicit
+  // click. A POST (not a link) means Next can't prefetch it and a scanner's GET
+  // can't reach it — so nothing is consumed before the user acts.
   const next = "/reset-password";
   if (params.tokenHash && params.type) {
-    const qs = new URLSearchParams({
-      token_hash: params.tokenHash,
-      type: params.type,
-      next,
-    });
-    return { kind: "confirm", href: `/auth/confirm?${qs.toString()}` };
+    return {
+      kind: "confirm",
+      fields: { token_hash: params.tokenHash, type: params.type, next },
+    };
   }
   if (params.code) {
-    const qs = new URLSearchParams({ code: params.code, next });
-    return { kind: "confirm", href: `/auth/confirm?${qs.toString()}` };
+    return { kind: "confirm", fields: { code: params.code, next } };
   }
 
   return { kind: "invalid" };
@@ -191,13 +190,18 @@ export default async function ResetPasswordPage({
           {view.kind === "form" ? (
             <ResetPasswordForm />
           ) : view.kind === "confirm" ? (
-            <PLinkButton
-              href={view.href}
-              tone="terra"
-              style={{ width: "100%", padding: "14px", fontSize: 14 }}
-            >
-              Set my new password
-            </PLinkButton>
+            <form method="post" action="/auth/confirm">
+              {Object.entries(view.fields).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
+              <PButton
+                type="submit"
+                tone="terra"
+                style={{ width: "100%", padding: "14px", fontSize: 14 }}
+              >
+                Set my new password
+              </PButton>
+            </form>
           ) : (
             <p
               role="alert"

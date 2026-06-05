@@ -18,23 +18,13 @@ verify_jwt = true
 [functions.redeem-invite]
 verify_jwt = false
 
-# Auth config for the local stack (`supabase start`). The hosted project is
-# configured in the Supabase dashboard; these entries keep local dev in parity
-# so the password-reset flow can be exercised end-to-end locally.
-[auth]
-site_url = "http://127.0.0.1:3000"
-# /reset-password is where recovery emails land (button-gated); /auth/confirm
-# performs verifyOtp; /login is the post-reset destination.
-additional_redirect_urls = [
-  "http://127.0.0.1:3000/reset-password",
-  "http://127.0.0.1:3000/auth/confirm",
-  "http://127.0.0.1:3000/login",
-]
-
-# Recovery email uses a token_hash link to a server-side endpoint so email
-# link-scanners can't consume the single-use token (see the template comment).
-[auth.email.template.recovery]
-subject = "Reset your password"
-# Resolved relative to the project root (the dir containing supabase/), per the
-# Supabase CLI / branching executor — hence the supabase/ prefix.
-content_path = "./supabase/templates/recovery.html"
+# Auth is configured in the Supabase dashboard, not here. We intentionally do
+# NOT declare an [auth] block: Supabase Branching tries to apply config.toml
+# auth settings to the ephemeral preview branch, and on the free tier with the
+# default email provider that fails ("Email template modification is not
+# available..."). Production merges ignore config.toml auth entirely.
+#
+# The recovery email template lives at supabase/templates/recovery.html as the
+# canonical source to paste into Auth → Email Templates → Reset Password. The
+# required Redirect URLs (/reset-password, /auth/confirm, /login) and Site URL
+# are set under Auth → URL Configuration.
