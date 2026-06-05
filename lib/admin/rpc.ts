@@ -968,3 +968,45 @@ export function rpcAdminSetHealthRubric(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_health_rubric", args);
 }
+
+// Pivot slice 9 (#381 / ADR 0017): author-private Care Notes + Prayer Requests
+// + the per-subject transparency toggle. The note/prayer body travels as
+// plaintext text; the RPC derives the author server-side and gates authorship on
+// the over-shepherd coverage predicate. The transparency toggle is Ministry-
+// Admin controlled. DISTINCT from the SC.4 encrypted private care note.
+
+export type AdminWriteCareNoteArgs = {
+  p_subject_profile_id: string;
+  p_body: string;
+};
+
+export function rpcAdminWriteCareNote(
+  client: AppSupabaseClient,
+  args: AdminWriteCareNoteArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_write_care_note", args);
+}
+
+export type AdminWritePrayerRequestArgs = {
+  p_subject_profile_id: string;
+  p_body: string;
+};
+
+export function rpcAdminWritePrayerRequest(
+  client: AppSupabaseClient,
+  args: AdminWritePrayerRequestArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_write_prayer_request", args);
+}
+
+export type SetNoteTransparencyGrantArgs = {
+  p_subject_profile_id: string;
+  p_granted: boolean;
+};
+
+export function rpcSetNoteTransparencyGrant(
+  client: AppSupabaseClient,
+  args: SetNoteTransparencyGrantArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "set_note_transparency_grant", args);
+}

@@ -14,6 +14,7 @@ export * from "./settings";
 export * from "./super-admin";
 export * from "./invite-link";
 export * from "./shepherd-care";
+export * from "./care-notes";
 export * from "./launch-planning";
 export * from "./group-health";
 export * from "./health-rubric";

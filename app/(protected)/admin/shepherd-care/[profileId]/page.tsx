@@ -6,6 +6,7 @@ import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
+import { CareNotesSection } from "@/components/admin/shepherd-care/care-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
@@ -23,6 +24,9 @@ import {
   fetchShepherdCareInteractionsForAdmin,
   fetchShepherdCarePrivateNoteCiphertextForCreator,
   fetchShepherdCareProfileByShepherdId,
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+  fetchNoteTransparencyGrant,
   type ActiveShepherdCoverageAssignmentSummary,
   type LedGroupSummary,
   type OverShepherdListRow,
@@ -33,6 +37,8 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
+  CareNotesRow,
+  PrayerRequestsRow,
   ShepherdCareFollowUpsRow,
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
@@ -502,6 +508,34 @@ export default async function AdminShepherdCareDetailPage({
     </section>
   );
 
+  // Pivot slice 9 (#381 / ADR 0017): the per-person transparency toggle + the
+  // (RLS-filtered) Care Notes + Prayer Requests. The grant gates the ladder's
+  // read, so when it is off the note/prayer reads return nothing by construction
+  // (RLS withholds the rows) — the section explains the sealed state inline. The
+  // grant read is admin-only by RLS; this page is requireAdmin().
+  const careNotesClient = await createSupabaseServerClient();
+  let transparencyGranted = false;
+  let careNotes: CareNotesRow[] = [];
+  let prayerRequests: PrayerRequestsRow[] = [];
+  if (careNotesClient) {
+    const [grantRes, notesRes, prayersRes] = await Promise.all([
+      fetchNoteTransparencyGrant(careNotesClient, profileId),
+      fetchCareNotesForSubject(careNotesClient, profileId),
+      fetchPrayerRequestsForSubject(careNotesClient, profileId),
+    ]);
+    transparencyGranted = grantRes.data?.granted ?? false;
+    careNotes = notesRes.data ?? [];
+    prayerRequests = prayersRes.data ?? [];
+  }
+  const careNotesPanel = (
+    <CareNotesSection
+      subjectProfileId={profileId}
+      granted={transparencyGranted}
+      careNotes={careNotes}
+      prayerRequests={prayerRequests}
+    />
+  );
+
   const tabs = [
     { key: "overview", label: "Overview", panel: overviewPanel },
     {
@@ -513,6 +547,11 @@ export default async function AdminShepherdCareDetailPage({
     ...(notesPanel
       ? [{ key: "notes", label: "Notes", panel: notesPanel }]
       : []),
+    {
+      key: "care-notes",
+      label: "Care notes & prayer",
+      panel: careNotesPanel,
+    },
     { key: "group", label: "Group", panel: groupPanel },
   ];
 

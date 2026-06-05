@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/dashboard/cards";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { LogBroadNoteForm } from "@/components/over-shepherd/log-broad-note-form";
+import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -128,6 +129,27 @@ export default async function OverShepherdShepherdPage({
             }}
           >
             <LogBroadNoteForm shepherdProfileId={profileId} />
+          </section>
+
+          {/* Pivot slice 9 (#381 / ADR 0017): author-private Care Notes +
+              Prayer Requests about this covered Leader. Private to you by
+              default; ministry leadership reads them only when this Leader's
+              transparency toggle is on (controlled in admin Care). */}
+          <section
+            style={{
+              border: `1px solid ${P.line}`,
+              borderRadius: 12,
+              padding: 16,
+              background: P.bg,
+              display: "grid",
+              gap: 18,
+            }}
+          >
+            <CareNoteWriteForm subjectProfileId={profileId} kind="care_note" />
+            <CareNoteWriteForm
+              subjectProfileId={profileId}
+              kind="prayer_request"
+            />
           </section>
 
           {interactions.length === 0 ? (
