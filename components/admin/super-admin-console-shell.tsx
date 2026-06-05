@@ -344,12 +344,25 @@ function PanelTitle({ children }: { children: ReactNode }) {
 function Panel({
   children,
   style,
+  id,
 }: {
   children: ReactNode;
   style?: CSSProperties;
+  // Optional anchor id so a deep link (e.g. #people-import) can scroll to this
+  // panel once its workspace is active. scrollMarginTop keeps it off the edge.
+  id?: string;
 }) {
   return (
-    <div style={{ ...cardStyle, display: "grid", gap: 12, ...style }}>
+    <div
+      id={id}
+      style={{
+        ...cardStyle,
+        display: "grid",
+        gap: 12,
+        ...(id ? { scrollMarginTop: 16 } : null),
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -360,15 +373,26 @@ function CommandCard({
   description,
   status,
   children,
+  id,
 }: {
   title: string;
   description: string;
   status?: { label: string; tone: StatusTone };
   children?: ReactNode;
+  // Optional anchor id so a deep link can scroll to this card once its
+  // workspace is active.
+  id?: string;
 }) {
   return (
     <div
-      style={{ ...cardStyle, display: "grid", gap: 10, alignContent: "start" }}
+      id={id}
+      style={{
+        ...cardStyle,
+        display: "grid",
+        gap: 10,
+        alignContent: "start",
+        ...(id ? { scrollMarginTop: 16 } : null),
+      }}
     >
       <div
         style={{
@@ -712,6 +736,9 @@ export function SuperAdminConsoleShell({
   return (
     <SuperAdminConsole
       statusRow={statusRow}
+      // Rendered above every workspace so a failed read stays visible no matter
+      // which workspace is open (only the active panel mounts).
+      banner={errorCount > 0 ? <ErrorBanner /> : null}
       workspaces={workspaces}
       defaultWorkspaceId="readiness"
       hashAliases={LEGACY_HASH_ALIASES}
@@ -765,7 +792,6 @@ function ReadinessWorkspace({
 }) {
   return (
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
-      {errorCount > 0 ? <ErrorBanner /> : null}
       <WorkspaceHeader
         title="Readiness"
         description="A quick read on whether the platform is ready, and the one thing worth doing next. The rest of the controls live in the workspaces above."
@@ -1014,7 +1040,7 @@ function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
 
 function PeopleImportCard() {
   return (
-    <Panel>
+    <Panel id="people-import">
       <PanelTitle>People import</PanelTitle>
       <p
         style={{
@@ -1062,7 +1088,7 @@ function PeopleImportCard() {
 // Current coverage list (with end controls) + the assign form.
 function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
   return (
-    <Panel>
+    <Panel id="coverage">
       <PanelTitle>Coverage</PanelTitle>
       <p
         style={{
@@ -1173,6 +1199,7 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
 function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
   return (
     <CommandCard
+      id="settings"
       title="Owner settings"
       description="A small saved value you can use to confirm owner settings persist correctly. Saving writes to the owner-only config store with a matching audit entry."
       status={
@@ -1222,7 +1249,7 @@ function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
 function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
   const flags = data.appConfig.featureFlags;
   return (
-    <Panel>
+    <Panel id="features">
       <PanelTitle>Feature flags</PanelTitle>
       <p
         style={{
@@ -1414,6 +1441,7 @@ function DiagnosticsWorkspace({
       />
       <SystemStatusChecklist rows={data.checklist} />
       <section
+        id="test-tools"
         style={{
           border: `1px solid ${P.mustard}`,
           borderRadius: 10,
@@ -1422,6 +1450,7 @@ function DiagnosticsWorkspace({
           padding: "16px 20px",
           display: "grid",
           gap: 12,
+          scrollMarginTop: 16,
         }}
       >
         <div

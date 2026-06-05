@@ -32,11 +32,17 @@ export type SuperAdminWorkspace = {
 
 export function SuperAdminConsole({
   statusRow,
+  banner,
   workspaces,
   defaultWorkspaceId = "readiness",
   hashAliases,
 }: {
   statusRow: ReactNode;
+  // An always-visible slot above the status row (e.g. a load-error banner) so a
+  // failed read stays visible no matter which workspace is open — only the
+  // active workspace panel mounts, so per-workspace banners would hide behind
+  // the wrong tab.
+  banner?: ReactNode;
   workspaces: SuperAdminWorkspace[];
   defaultWorkspaceId?: string;
   // Legacy/deep-link hash → workspace id (e.g. "people-import" → "access"), so
@@ -65,7 +71,19 @@ export function SuperAdminConsole({
       const ids = new Set(workspacesRef.current.map((w) => w.id));
       // A direct workspace-id hash wins; otherwise fall back to a known alias.
       const target = ids.has(raw) ? raw : aliasesRef.current?.[raw];
-      if (target && ids.has(target)) setActiveId(target);
+      if (!target || !ids.has(target)) return;
+      setActiveId(target);
+      // The target workspace panel mounts on the next render, so the element the
+      // hash names (e.g. the import card inside Access) doesn't exist yet. Defer
+      // past the commit with a double rAF, then scroll to it — restoring the old
+      // anchor's land-on-the-section behaviour instead of stopping at the top.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          document
+            .getElementById(raw)
+            ?.scrollIntoView({ block: "start", behavior: "auto" });
+        })
+      );
     }
     applyHash();
     window.addEventListener("hashchange", applyHash);
@@ -103,6 +121,7 @@ export function SuperAdminConsole({
 
   return (
     <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+      {banner}
       {statusRow}
 
       <div
