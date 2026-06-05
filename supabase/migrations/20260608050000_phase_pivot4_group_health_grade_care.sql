@@ -155,6 +155,14 @@ begin
      and p_override_scope not in ('this_month','until_cleared') then
     raise exception 'invalid_input';
   end if;
+  -- The override letter + scope travel together: both null, or both present.
+  -- Rejecting a half-specified override (letter without scope) here means the
+  -- read path — which requires BOTH to treat an override as active — can never
+  -- silently drop a stored letter, and the audit row never records an override
+  -- that takes no effect. Mirrors the leader-grade RPC's paired guard.
+  if (p_override_letter is null) <> (p_override_scope is null) then
+    raise exception 'invalid_input';
+  end if;
 
   select true into v_group_exists from public.groups where id = p_group_id for update;
   if v_group_exists is null then

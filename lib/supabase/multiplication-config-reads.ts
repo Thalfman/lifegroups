@@ -88,6 +88,10 @@ export async function fetchFunnelVolumeByType(
   const { data, error } = await client
     .from("prospects")
     .select(FUNNEL_VOLUME_COLUMNS)
+    // Filter archived (joined / parked-off-board) rows in the DB BEFORE the page
+    // cap, so a church with >FUNNEL_PAGE_LIMIT historical prospects can't push
+    // active ones off the first page and understate the Interest pillar.
+    .eq("archived", false)
     .range(0, FUNNEL_PAGE_LIMIT - 1)
     .returns<FunnelVolumeJoinRow[]>();
 
@@ -161,7 +165,10 @@ type LeaderGradeRow = GradeOverrideFields & { profile_id: string };
 
 type LeaderTypeJoinRow = {
   profile_id: string;
-  group: { audience_category: GroupAudienceCategory | null } | null;
+  group: {
+    audience_category: GroupAudienceCategory | null;
+    lifecycle_status: string | null;
+  } | null;
 };
 
 const GRADE_OVERRIDE_COLUMNS =
@@ -239,7 +246,7 @@ export async function fetchHealthGradesByType(
       .returns<LeaderGradeRow[]>(),
     client
       .from("group_leaders")
-      .select("profile_id, group:groups(audience_category)")
+      .select("profile_id, group:groups(audience_category, lifecycle_status)")
       .eq("active", true)
       .in("role", ["leader", "co_leader"])
       .returns<LeaderTypeJoinRow[]>(),
@@ -264,6 +271,11 @@ export async function fetchHealthGradesByType(
   const leaderTypeByProfile = new Map<string, GroupAudienceCategory>();
   for (const row of leaderTypeRes.data ?? []) {
     const type = row.group?.audience_category ?? null;
+    // A closed group's group_leaders rows can stay active (Care code relies on
+    // that); exclude them so a leader of only a closed group doesn't skew the
+    // type's Leader Health pillar, matching the closed-group drop on the group
+    // side of the rollup.
+    if (row.group?.lifecycle_status === "closed") continue;
     if (type === "men" || type === "women" || type === "mixed") {
       // First active categorised leadership wins (a leader of one type).
       if (!leaderTypeByProfile.has(row.profile_id)) {

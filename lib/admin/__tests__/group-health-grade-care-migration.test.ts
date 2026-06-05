@@ -131,6 +131,13 @@ describe("group-health-grade migration — audited SECURITY DEFINER write path",
     );
   });
 
+  it("rejects a half-specified override (letter + scope must travel together)", () => {
+    const body = functionBody(sql, "admin_set_group_rubric_grade");
+    expect(body).toContain(
+      "(p_override_letter is null) <> (p_override_scope is null)"
+    );
+  });
+
   it("upserts on (group_id, ministry_year)", () => {
     const body = functionBody(sql, "admin_set_group_rubric_grade");
     expect(body).toContain("on conflict (group_id, ministry_year) do update");
