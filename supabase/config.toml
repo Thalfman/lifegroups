@@ -26,5 +26,9 @@ verify_jwt = false
 #
 # The recovery email template lives at supabase/templates/recovery.html as the
 # canonical source to paste into Auth → Email Templates → Reset Password. The
-# required Redirect URLs (/reset-password, /auth/confirm, /login) and Site URL
-# are set under Auth → URL Configuration.
+# invite email template lives at supabase/templates/invite.html — paste it into
+# Auth → Email Templates → "Invite user". Both deliberately use {{ .TokenHash }}
+# + a /reset-password landing link (not the default {{ .ConfirmationURL }}) so a
+# mail scanner's GET can't burn the single-use token and verification works
+# cross-device. The required Redirect URLs (/reset-password, /auth/confirm,
+# /login) and Site URL are set under Auth → URL Configuration.
