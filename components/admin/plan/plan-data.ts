@@ -1,10 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   buildProspectBoard,
+  fetchPlanGroupOptions,
   fetchProspects,
   type ProspectBoard,
 } from "@/lib/supabase/prospect-reads";
-import { fetchAllGroups } from "@/lib/supabase/read-models";
 
 // The Plan / Interest Funnel surface's data. Reads all Prospects + all groups
 // in one batch, then composes the active board + collapsed Joined roll-up
@@ -37,7 +37,7 @@ export async function loadPlanData(): Promise<PlanData> {
 
   const [prospectsResult, groupsResult] = await Promise.all([
     fetchProspects(client),
-    fetchAllGroups(client),
+    fetchPlanGroupOptions(client),
   ]);
 
   const prospects = prospectsResult.data ?? [];

@@ -174,6 +174,14 @@ describe("prospects migration — audited SECURITY DEFINER write path", () => {
     expect(body).toContain("raise exception 'missing_prospect'");
   });
 
+  it("rejects a closed target group on match/join (group_closed)", () => {
+    // The RPC is the trust boundary: a Match/Join must point at a live group,
+    // even via a direct call or a stale form (mirrors the legacy guest RPC).
+    const body = functionBody(sql, "admin_transition_prospect");
+    expect(body).toContain("lifecycle_status");
+    expect(body).toContain("raise exception 'group_closed'");
+  });
+
   it("locks function EXECUTE down to authenticated only", () => {
     assertExecuteLockdown(sql, "admin_create_prospect", "text, text, text");
     assertExecuteLockdown(

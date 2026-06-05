@@ -111,7 +111,7 @@ export function HealthRubricEditor({
       </p>
 
       <div style={{ display: "grid", gap: 12 }}>
-        {rows.map((row) => (
+        {rows.map((row, idx) => (
           <div
             key={row.id}
             className="lg-m-grid-stack"
@@ -156,6 +156,11 @@ export function HealthRubricEditor({
               size="sm"
               onClick={() => remove(row.id)}
               disabled={rows.length <= 1}
+              // Record context so the repeated control isn't a bare "Remove"
+              // (Admin Interaction Model req 4 / a11y accessible-names gate).
+              aria-label={`Remove ${
+                row.label.trim() || `criterion ${idx + 1}`
+              }`}
             >
               Remove
             </PButton>

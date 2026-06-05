@@ -105,6 +105,16 @@ describe("health-rubric migration — audited SECURITY DEFINER write path", () =
     expect(body).toContain("jsonb_typeof(p_criteria) <> 'array'");
   });
 
+  it("re-validates the rubric shape + weight total in the RPC (trust boundary)", () => {
+    // The RPC is the DB trust boundary (execute granted to any authenticated
+    // admin), so it must reject a malformed rubric even if the UI/action did
+    // not run: per-criterion shape (key/label/weight) + weights total 100.
+    const body = functionBody(sql, "admin_set_health_rubric");
+    expect(body).toContain("jsonb_array_elements(p_criteria)");
+    expect(body).toContain("jsonb_typeof(v_elem -> 'weight') <> 'number'");
+    expect(body).toContain("v_total <> 100");
+  });
+
   it("writes a paired audit_events row with action admin.set_health_rubric", () => {
     assertPairedAuditInsert(
       sql,
@@ -137,5 +147,27 @@ describe("health-rubric migration — A–F relaxation (ADR 0018 criterion 2)", 
   it("re-creates the upsert RPC with an A–F letter guard", () => {
     const body = functionBody(sql, "admin_upsert_group_health_assessment");
     expect(body).toContain("p_computed_letter not in ('a','b','c','d','f')");
+  });
+
+  it("keeps the latest (#265) needs_follow_up carry-forward in the upsert RPC", () => {
+    // Widening to F must NOT regress to the older #127 body: a recompute that
+    // creates a new month's row still carries the latest needs_follow_up flag,
+    // so an open follow-up isn't silently cleared.
+    const body = functionBody(sql, "admin_upsert_group_health_assessment");
+    expect(body).toContain("v_carry_follow_up");
+    expect(body).toContain("needs_follow_up");
+  });
+
+  it("widens the ratings RPC letter guard to A–F too", () => {
+    // admin_set_group_health_ratings is the other narrow write to the same
+    // table; it must accept F or an F ratings-save would fail invalid_input.
+    assertSecurityDefiner(sql, "admin_set_group_health_ratings");
+    const body = functionBody(sql, "admin_set_group_health_ratings");
+    expect(body).toContain("p_computed_letter not in ('a','b','c','d','f')");
+    assertExecuteLockdown(
+      sql,
+      "admin_set_group_health_ratings",
+      "uuid, date, smallint, text, smallint, boolean, numeric, integer, numeric, text"
+    );
   });
 });

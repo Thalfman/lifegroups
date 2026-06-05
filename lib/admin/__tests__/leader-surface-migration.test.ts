@@ -87,6 +87,15 @@ describe("verify-before-flip flip — leader_surface.verified = true", () => {
   it("scopes the write to the platform_config keyed row", () => {
     expect(sql.lower).toContain("where setting_key = 'platform_config'");
   });
+
+  it("writes a paired audit_events row for the verify-before-flip change", () => {
+    // This repo treats platform-config / security-flag mutations as
+    // audit-critical; the flip must leave an audit record (system actor, since
+    // a migration has no auth caller) naming the flag it changed.
+    expect(sql.lower).toContain("insert into public.audit_events");
+    expect(sql.lower).toContain("'system.verify_leader_surface_flag'");
+    expect(sql.lower).toContain("'leader_surface'");
+  });
 });
 
 describe("leader-read RLS is group-scoped (cross-group rejection)", () => {

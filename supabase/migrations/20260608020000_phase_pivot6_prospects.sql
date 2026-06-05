@@ -210,12 +210,13 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_actor    uuid;
-  v_from     public.prospect_state;
-  v_cur_grp  uuid;
-  v_grp      uuid;
-  v_archived boolean;
-  v_legal    boolean;
+  v_actor     uuid;
+  v_from      public.prospect_state;
+  v_cur_grp   uuid;
+  v_grp       uuid;
+  v_archived  boolean;
+  v_legal     boolean;
+  v_lifecycle public.group_lifecycle_status;
 begin
   if not public.auth_is_admin() then
     raise exception 'insufficient_privilege';
@@ -252,6 +253,23 @@ begin
   -- Group-required invariant.
   if p_state in ('matched','joined') and v_grp is null then
     raise exception 'group_required';
+  end if;
+
+  -- A Match/Join must point at a LIVE group. The UI only offers active groups,
+  -- but this SECURITY DEFINER RPC is the trust boundary: a direct call, a stale
+  -- form, or a Prospect already carrying a now-closed group must be rejected
+  -- (mirrors the legacy guest-assignment RPC's group_closed guard). A missing
+  -- group resolves to group_required (no usable group); a closed one to
+  -- group_closed.
+  if p_state in ('matched','joined') then
+    select lifecycle_status into v_lifecycle
+      from public.groups where id = v_grp;
+    if v_lifecycle is null then
+      raise exception 'group_required';
+    end if;
+    if v_lifecycle = 'closed'::public.group_lifecycle_status then
+      raise exception 'group_closed';
+    end if;
   end if;
 
   -- Non-group states drop any carried group; joined archives.

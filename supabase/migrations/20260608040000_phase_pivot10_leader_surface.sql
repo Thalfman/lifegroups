@@ -126,6 +126,26 @@ update public.platform_config
    )
  where setting_key = 'platform_config';
 
+-- Audit the verify-before-flip checkpoint in the SAME transaction as the flip.
+-- This repo treats platform-config / security-flag mutations as audit-critical
+-- (the super_admin.set_platform_config RPC always writes a paired audit row), so
+-- the migration that performs the flip records it too. It is a migration-time
+-- system change with no auth caller, so actor_profile_id is null (the column is
+-- nullable); the metadata pins exactly which flag changed and why.
+insert into public.audit_events (actor_profile_id, action, entity_type, entity_id, metadata)
+select
+  null,
+  'system.verify_leader_surface_flag',
+  'platform_config',
+  pc.id,
+  jsonb_build_object(
+    'flag', 'leader_surface',
+    'set', jsonb_build_object('verified', true),
+    'reason', 'verify-before-flip re-audit landed (ADR 0009 / #376); enabled left to the Super Admin switch'
+  )
+from public.platform_config pc
+where pc.setting_key = 'platform_config';
+
 -- ---------------------------------------------------------------------------
 -- 3. Leader-read RLS is group-scoped (verify-before-flip checkpoint)
 -- ---------------------------------------------------------------------------

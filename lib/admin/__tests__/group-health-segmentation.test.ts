@@ -1,19 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { segmentByGrade, rankByGrade } from "@/lib/admin/group-health-segmentation";
+import {
+  segmentByGrade,
+  rankByGrade,
+} from "@/lib/admin/group-health-segmentation";
 
 describe("segmentByGrade — dashboard segmentation", () => {
-  it("buckets groups into A–D segments in grade order", () => {
+  it("buckets groups into A–F segments in grade order", () => {
     const { segments } = segmentByGrade([
       { group_id: "g1", group_name: "Alpha", letter: "C" },
       { group_id: "g2", group_name: "Bravo", letter: "A" },
       { group_id: "g3", group_name: "Charlie", letter: "C" },
     ]);
 
-    expect(segments.map((s) => s.letter)).toEqual(["A", "B", "C", "D"]);
+    // F (ADR 0018, no E) joins the ladder after D as the failing grade.
+    expect(segments.map((s) => s.letter)).toEqual(["A", "B", "C", "D", "F"]);
     expect(segments[0].groups.map((g) => g.group_id)).toEqual(["g2"]);
     expect(segments[1].groups).toEqual([]);
     expect(segments[2].groups.map((g) => g.group_id)).toEqual(["g1", "g3"]);
     expect(segments[3].groups).toEqual([]);
+    expect(segments[4].groups).toEqual([]);
   });
 
   it("keeps ungraded groups out of the ladder, in their own bucket", () => {
@@ -22,7 +27,9 @@ describe("segmentByGrade — dashboard segmentation", () => {
       { group_id: "g2", group_name: "Bravo", letter: null },
     ]);
 
-    expect(segments.flatMap((s) => s.groups).map((g) => g.group_id)).toEqual(["g1"]);
+    expect(segments.flatMap((s) => s.groups).map((g) => g.group_id)).toEqual([
+      "g1",
+    ]);
     expect(unassessed.map((g) => g.group_id)).toEqual(["g2"]);
   });
 

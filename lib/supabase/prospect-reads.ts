@@ -1,4 +1,4 @@
-import type { ProspectState } from "@/types/enums";
+import type { GroupLifecycleStatus, ProspectState } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // Read-model for the Interest Funnel board (#375). Column-allowlisted: the
@@ -42,6 +42,32 @@ export async function fetchProspects(
     .range(0, PROSPECT_PAGE_LIMIT - 1)
     .returns<ProspectBoardEntry[]>();
   if (error) return { data: null, error: wrapError("fetchProspects", error) };
+  return { data: data ?? [], error: null };
+}
+
+// Narrow group-option read for the Plan board's Match/Join picker + roll-up
+// labels. Allowlisted to id / name / lifecycle_status so the Interest Funnel
+// render path never pulls privacy-sensitive group columns (e.g. admin_notes)
+// that the shared fetchAllGroups' select("*") GroupsRow read would. The
+// lifecycle lets the loader offer only live (non-closed) groups as targets.
+export type PlanGroupRow = {
+  id: string;
+  name: string;
+  lifecycle_status: GroupLifecycleStatus;
+};
+
+const PLAN_GROUP_COLUMNS = "id, name, lifecycle_status";
+
+export async function fetchPlanGroupOptions(
+  client: ReadClient
+): Promise<ReadResult<PlanGroupRow[]>> {
+  const { data, error } = await client
+    .from("groups")
+    .select(PLAN_GROUP_COLUMNS)
+    .order("name", { ascending: true })
+    .returns<PlanGroupRow[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchPlanGroupOptions", error) };
   return { data: data ?? [], error: null };
 }
 
