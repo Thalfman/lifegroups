@@ -18,6 +18,7 @@ import {
 import {
   HISTORY_RESET_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+  NOTHING_TO_WIPE_TOKEN,
   type HistoryResetSuccess,
   type HistoryResetRevertSuccess,
 } from "@/lib/admin/danger-zone";
@@ -100,7 +101,24 @@ export async function superAdminResetHistoryCategory(
     client,
     { p_category: category }
   );
-  if (error) return actionFail([mapRpcError(error.message)]);
+  if (error) {
+    // An already-clear category is an idempotent no-op, not a failure: surface
+    // it as a neutral success so a reset with nothing to clear doesn't read as a
+    // red error. Match the raw token, never the mapped sentence, so invalid_category
+    // (a tampered/stale form — a genuine failure) and every other error still fail.
+    if (error.message === NOTHING_TO_WIPE_TOKEN) {
+      revalidatePath(REVALIDATE_PATH);
+      revalidatePath("/admin");
+      return actionOk({
+        category,
+        snapshotId: "",
+        totalRows: 0,
+        rowCounts: {},
+        nothingToClear: true,
+      });
+    }
+    return actionFail([mapRpcError(error.message)]);
+  }
   if (!snapshotId) {
     return actionFail(["The reset did not complete. Please try again."]);
   }

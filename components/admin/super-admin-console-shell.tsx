@@ -19,6 +19,7 @@ import { PasswordResetForm } from "@/components/admin/forms/password-reset-form"
 import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-form";
 import { CoverageEndForm } from "@/components/admin/forms/coverage-end-form";
 import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
+import { ResetAllCard } from "@/components/admin/reset-all-card";
 import { LaunchPrepCard } from "@/components/admin/launch-prep-card";
 import { CleanSlateCard } from "@/components/admin/clean-slate-card";
 import { HistoryResetCard } from "@/components/admin/history-reset-card";
@@ -692,6 +693,11 @@ export function SuperAdminConsoleShell({
           description="Each action below shows a server-loaded impact summary and is gated behind a type-to-confirm phrase, with a paired audit row. Both are reversible (a snapshot / archive is captured before the purge); raw SQL, schema editing, and auth bypass remain unavailable."
           accent={{ label: "Guarded", tone: "blocked" }}
         >
+          <ResetAllCard
+            impact={data.cleanSlateImpact}
+            featureFlags={data.appConfig.featureFlags}
+            attentionState={data.attentionResetState}
+          />
           <LaunchPrepCard
             impact={data.cleanSlateImpact}
             featureFlags={data.appConfig.featureFlags}

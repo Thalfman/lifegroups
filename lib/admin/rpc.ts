@@ -229,6 +229,18 @@ export function rpcSuperAdminLaunchPrep(
   return callUuidRpc(client, "super_admin_launch_prep", {});
 }
 
+// Danger-Zone consolidation: one-click "reset everything to a clean launch
+// state". In one transaction the RPC runs launch prep (mute flags + clean-slate
+// history wipe + category-snapshot purge) and resets the two time-based
+// "Needs attention" cards (care + health) to a global baseline. Returns the
+// history wipe snapshot id, or null when history was already clear (the action
+// reads cleared counts back from the snapshot row).
+export function rpcSuperAdminResetAll(
+  client: AppSupabaseClient
+): Promise<RpcResult> {
+  return callUuidRpc(client, "super_admin_reset_all", {});
+}
+
 // PRD-SAC6 follow-up: per-category history reset. Snapshots + deletes one
 // category's history tables and writes the paired audit row in one transaction,
 // returning the snapshot id (the action reads counts back from the snapshot row).

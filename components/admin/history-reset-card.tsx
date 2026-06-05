@@ -245,11 +245,17 @@ function CategoryResetRow({
           </PButton>
         </div>
         {reset.state?.ok ? (
-          <span style={successTextStyle}>
-            Cleared {reset.state.value.totalRows} row
-            {reset.state.value.totalRows === 1 ? "" : "s"}. A snapshot was saved
-            for recovery.
-          </span>
+          reset.state.value.nothingToClear ? (
+            <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+              Already clear — there was nothing in this category to clear.
+            </span>
+          ) : (
+            <span style={successTextStyle}>
+              Cleared {reset.state.value.totalRows} row
+              {reset.state.value.totalRows === 1 ? "" : "s"}. A snapshot was
+              saved for recovery.
+            </span>
+          )
         ) : null}
         <FormStatus state={reset.state} />
       </form>
