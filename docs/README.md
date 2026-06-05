@@ -1,15 +1,22 @@
 # Documentation Index
 
-The documentation maps to **one North Star**: Julian's systems conversation. Everything
-live below traces to it; everything else has been archived.
+The app is **pivoting to three areas — Care · Plan · Multiply** (2026-06). The
+current direction lives in the pivot ADRs + PRD #371 below; the prior north star
+(Julian's systems conversation, mapped 1:1 to Q1–Q12) is kept as the historical
+record it grew from. Everything off that path has been archived.
 
-> ⭐ **North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
-> — Julian's twelve questions and answers (2026-05-27).
+> 🔄 **Current direction (the pivot):** **ADR
+> [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0019](./adr/0019-multiplication-by-type-and-pillars.md)**
+> and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (sliced
+> into #372–#382). Glossary: [`../CONTEXT.md`](../CONTEXT.md).
 >
-> 📌 **THE PRD:** [`PRD.md`](./PRD.md) — product requirements, mapped 1:1 to Q1–Q12.
+> ⭐ **Original North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
+> — Julian's twelve questions (2026-05-27); re-shaped into Care/Plan/Multiply by the pivot.
 >
-> 🏛️ **THE ADR:** [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md)
-> — architecture decisions, mapped 1:1 to Q1–Q12 (with deep records in
+> 📌 **Prior PRD:** [`PRD.md`](./PRD.md) — requirements mapped 1:1 to Q1–Q12; superseded in framing by PRD #371.
+>
+> 🏛️ **Prior ADR:** [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md)
+> — pre-pivot architecture decisions mapped to Q1–Q12 (deep records in
 > [`adr/0001`](./adr/0001-admin-write-action-runner.md)–[`0003`](./adr/0003-private-care-note-encryption.md)).
 
 ## The North Star and its sources (`julian-inputs/`)
@@ -46,7 +53,7 @@ live below traces to it; everything else has been archived.
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model.                                          |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md)           | Hosting, env vars, Edge Function setup.                             |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints.                           |
-| [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0007).                          |
+| [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0019; the pivot is 0016–0019).   |
 | [`agents/`](./agents/)                                                 | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
 
 ## Archived
