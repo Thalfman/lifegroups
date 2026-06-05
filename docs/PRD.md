@@ -1,9 +1,19 @@
 # PRD — Life Group Operations
 
-> 📌 **This is THE PRD.** It is derived **1:1 from Julian's systems conversation**
+> 🔄 **Superseded in framing by the Care / Plan / Multiply pivot (2026-06).** The
+> app's north star has been re-scoped — see **ADR 0016–0019** and **PRD
+> [#371](https://github.com/Thalfman/lifegroups/issues/371)** (sliced into
+> #372–#382). This document is kept as the **historical 1:1 record** of Julian's
+> original twelve questions and the pre-pivot status of each; it is no longer the
+> current build spec. Where the pivot changes a decision, the ADR wins — e.g.
+> Group Health is now a configurable **A–F** rubric (ADR 0018, not the A–D in
+> Q12 below), Leaders/Over-Shepherds now log in (ADR 0017, not the LDR.1 freeze
+> in Q7), and Launch Planning is reframed as Multiply-by-type (ADR 0019).
+
+> 📌 **The prior PRD.** Derived **1:1 from Julian's systems conversation**
 > ([`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md),
-> 2026-05-27) — the North Star. Every requirement below traces to one of Julian's
-> twelve questions. The matching architecture decisions are in
+> 2026-05-27). Every requirement below traces to one of Julian's twelve
+> questions. The matching pre-pivot architecture decisions are in
 > [`adr/0004-systems-conversation-architecture.md`](./adr/0004-systems-conversation-architecture.md).
 
 ---

@@ -1,72 +1,96 @@
 # Life Group Operations
 
-**Julian's admin operating system for shepherding Life Group leaders and
-planning group launches.** A web app for the ministry's oversight tiers —
-not (currently) for group leaders themselves. Built with Next.js (App
-Router) + TypeScript + Tailwind on top of Supabase (Auth + Postgres + RLS).
+**Julian's admin operating system for shepherding Life Group Leaders and
+planning group launches.** A web app for the ministry's oversight tiers — and,
+with the 2026-06 pivot, the Leaders they care for (ADR 0017). Built with Next.js
+(App Router) + TypeScript + Tailwind on top of Supabase (Auth + Postgres + RLS).
+
+> 🔄 **Pivot in progress (2026-06).** The app is being re-scoped to **three
+> areas — Care · Plan · Multiply** — with the old group-assignment and number
+> surfaces turned off behind Super-Admin flags (turned off, not deleted). The
+> decisions are recorded in **ADR 0016–0019**; the spec is **PRD
+> [#371](https://github.com/Thalfman/lifegroups/issues/371)** and the
+> implementation slices are **#372–#382**. The sections below describe the **new
+> north star** and what exists **today** versus what the pivot adds. The prior
+> "three jobs" framing (Care, Launch Planning, Group Health) is superseded by
+> ADR 0016; the original Q1–Q12 record lives on in
+> [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md).
 
 ## What this app is for
 
-Julian (the Ministry Admin) oversees 60+ Life Group leaders. When asked what
-would make this tool genuinely useful week to week, he named **three jobs**
-(see [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
-Q12). These three jobs are the app's north star — every shipped and planned
-feature serves one of them:
+Julian (the Ministry Admin) oversees 60+ Life Group Leaders. The app's north
+star is **three areas** (ADR 0016) — each the focus of one job:
 
-1. **Know how my leaders are doing** — care status, last contact, what's owed
-   next, and a history per shepherd. → *Shepherd Care (SC.\*)*
-2. **Know what groups need to be launched, and when** — capacity, seasonality,
-   and a multiplication pipeline. → *Launch Planning (LP.\*)*
-3. **Know the health of a Life Group** — a grading rubric for attendance and
-   spiritual growth. → *Group Health (P5)*
+1. **Care** — how my Leaders (and their members) are doing: an Over-Shepherd
+   accordion, Leader Care Status, configurable **A–F** Group- and Leader-Health
+   grades, and author-private **Care Notes** + **Prayer Requests**.
+2. **Plan** — the **Interest Funnel**: people interested in joining a group move
+   **Interested → Matched → Joined** (or park as **Not at this time**), each with
+   a Next Step and armed (provider-deferred) follow-ups.
+3. **Multiply** — whether to launch another group of a **type** (Men's / Women's
+   / Mixed), read from four pillars (Capacity · Interest · Group Health · Leader
+   Health) and a Julian-owned trigger.
 
-Anything outside these three jobs (leader-facing tools, external/comms
-surfaces) is deliberately **deferred** and is **not** required for the app to
-be considered done.
+Leaders **and** Over-Shepherds log in to their own slice of Care (ADR 0017 —
+re-opening the previously frozen Leader surface behind a verified flag). The old
+group-assignment, capacity, roster, calendar, and follow-up surfaces are hidden
+behind Super-Admin nav flags (default off) — **turned off, not deleted**
+(ADR 0016).
 
 ## What "done" looks like
 
 "Done" is **outcome-based, not a feature checklist**: the app is done when it
-does Julian's three jobs *reliably*. Each job below has a done bar and its
-current state. The authoritative requirements, mapped 1:1 to Julian's twelve
-questions, live in the PRD ([`docs/PRD.md`](./docs/PRD.md)) — this section is the
-target those requirements are measured against.
+does Julian's three jobs *reliably* — now framed as the three areas. Each row
+names what the pivot delivers and what exists **today** (the pivot is in flight;
+the running app is still largely the pre-pivot one). The authoritative spec is
+**PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**, sliced into
+issues **#372–#382**.
 
-| # | Job | Done when… | Today |
-|---|---|---|---|
-| 1 | **Leaders' health is visible** | Julian can record care status, log interactions, track the next step he owes each leader, and triage who needs attention — privately. | **Shipped.** Care profiles, interaction log, follow-up task list (SC.1B), over-shepherd coverage, the triage dashboard, and private-to-Julian encrypted notes (SC.4) have all shipped. See PRD Q1–Q8. |
-| 2 | **Launch timing is clear** | Julian can see capacity, forecast group demand by season, and track which groups are ready to multiply and in what year. | **Shipped.** Capacity (=12 + opt-to-stay-open), forecast scenarios, seasonality quick-fills, and the multiplication pipeline have shipped. Remaining: Julian's call on pipeline ownership and reliable church-attendance capture. See PRD Q9–Q11. |
-| 3 | **Group health is gradeable** | Julian can grade a group's health on consistent dimensions (attendance, spiritual growth, …) and see it surfaced. | **The one gap left.** In **discovery** ([`GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./docs/plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)) — Julian is still designing the rubric, so it can't be specced yet. See PRD Q12. |
+| Area | The pivot delivers… | Today |
+|---|---|---|
+| **Care** | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- *and* Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **In flight.** The separate Leader-care, over-shepherd, and (A–D) group-health surfaces and private-to-Julian encrypted notes (SC.\*) exist today. Consolidation + rubrics + notes + logins are slices #373, #374, #376, #377, #378, #381, #382. |
+| **Plan** | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline. | **In flight.** A 7-stage Guests pipeline exists but is frozen (off-nav). The funnel reframe is slices #375 / #379. |
+| **Multiply** | Three boards by group **type** + four pillars + a Julian-owned trigger; Capacity is Julian-fed. | **In flight.** Today's per-group multiplication planner (seeded from Julian's Doc, ADR 0006) exists; the per-type pillar reframe is slice #380. |
 
-**In one line:** jobs 1 and 2 (Q1–Q11) are shipped; job 3's rubric (Q12) is the
-one North-Star item left, blocked on Julian. The open decisions that gate the
-remaining work are listed under "Decisions owed by Julian" in the
-[PRD](./docs/PRD.md#decisions-owed-by-julian).
+**In one line:** the three jobs are unchanged in spirit but re-shaped into Care ·
+Plan · Multiply (ADR 0016), with Leaders/OS now logging in (ADR 0017),
+configurable A–F health rubrics (ADR 0018), and multiplication by type
+(ADR 0019). Implementation is tracked in PRD #371 and slices #372–#382; the
+old number/assignment surfaces are flagged off, not removed.
 
 ## Where to look next
 
+- **🔄 The pivot (current direction):** ADRs
+  [`0016`](./docs/adr/0016-pivot-to-care-plan-multiply.md) (Care/Plan/Multiply),
+  [`0017`](./docs/adr/0017-reopen-leader-os-logins-and-care-notes.md) (Leader/OS
+  logins + Care Notes), [`0018`](./docs/adr/0018-configurable-af-health-rubrics.md)
+  (A–F rubrics), [`0019`](./docs/adr/0019-multiplication-by-type-and-pillars.md)
+  (multiplication by type) — and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**,
+  sliced into **#372–#382**.
+- [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Care Note, Prayer Request,
+  Prospect, Over-Shepherd, Ministry Year, …). Use this vocabulary.
 - [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
-  — ⭐ **the North Star:** Julian's twelve questions and answers. Everything traces here.
-- [`docs/PRD.md`](./docs/PRD.md) — 📌 **THE PRD:** requirements mapped 1:1 to Q1–Q12,
-  with shipped / blocked status for each.
+  — ⭐ **the original North Star:** Julian's twelve questions. The pivot re-shapes
+  these into Care/Plan/Multiply (ADR 0016); the Q&A remains the source of his words.
+- [`docs/PRD.md`](./docs/PRD.md) — the prior 1:1 PRD (Q1–Q12); superseded in framing
+  by PRD #371, kept as the historical record.
 - [`docs/adr/0004-systems-conversation-architecture.md`](./docs/adr/0004-systems-conversation-architecture.md)
-  — 🏛️ **THE ADR:** the architecture decisions, mapped 1:1 to Q1–Q12.
+  — the architecture decisions mapped to Q1–Q12 (pre-pivot).
 - [`docs/README.md`](./docs/README.md) — the documentation index (what's live, what's archived).
-- [`docs/julian-inputs/`](./docs/julian-inputs/README.md) — **source of record**
-  for Julian's own words (the Q&A, the care spreadsheet, the multiplication plan).
-- [`docs/archive/`](./docs/archive/README.md) — everything off the North-Star path
-  (the former blueprint, roadmap, backlog, and historical specs). History, not current truth.
-- [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Shepherd, Over-Shepherd,
-  Ministry Admin, …). Use this vocabulary.
+- [`docs/archive/`](./docs/archive/README.md) — everything off the North-Star path.
+  History, not current truth.
 
 ## The oversight ladder (role model)
 
 The app is an oversight operating system for the ministry's upper tiers. Roles
 form a strict **downward-visibility ladder** — each tier sees what the tier
-below sees, and more (the one deliberate exception is private care notes; see
-[ADR 0002](./docs/adr/0002-oversight-ladder-and-leader-gating.md)):
+below sees, and more. There are **two deliberate exceptions**: the Ministry
+Admin's own **Private Care Note** (hidden even from the Super Admin; ADR
+0002/0003) and the author-private **Care Note** (an OS's or Leader's note,
+readable by Julian only when he grants that person's transparency toggle;
+ADR 0017):
 
-> **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Shepherd**
+> **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Leader**
 
 App-login roles live on `profiles.role` (the `user_role` enum):
 
@@ -75,13 +99,15 @@ App-login roles live on `profiles.role` (the `user_role` enum):
   manually (see Sign-in setup).
 - **`ministry_admin`** (Julian) — all ministry/operational data. Lands on
   `/admin`. This is the primary persona.
-- **`over_shepherd`** — a coach scoped to **only the Shepherds they cover** (via
-  `shepherd_coverage_assignments`). Lands on `/over-shepherd` ("My Shepherds"):
-  a focused, read-scoped care surface, not `/admin`. Cannot see launch planning,
-  the full directory, or platform admin.
-- **`leader` / `co_leader`** (Shepherd) — **gated off.** No login surface for
-  now; routed to `/unauthorized`. The `app/(protected)/leader/**` code remains
-  in the repo, dormant (deferred, not deleted).
+- **`over_shepherd`** — a coach scoped to **only the Leaders they cover** (via
+  `shepherd_coverage_assignments`). Lands on `/over-shepherd`: a focused,
+  coverage-scoped care surface, not `/admin`. The pivot adds author-private
+  **Care Notes** + **Prayer Requests** about their Leaders (ADR 0017, slice #381).
+- **`leader` / `co_leader`** — **being re-opened (ADR 0017).** The Leader surface
+  was frozen (ADR 0002); the pivot re-opens it so a Leader logs in to a care
+  surface over their group's members (Care Notes + Prayer Requests + calendar).
+  The flag flips only after a route + RLS re-audit (verify-before-flip, ADR 0009)
+  and Julian's LDR.1 go-ahead — tracked in #376 / #382. Dormant until then.
 - **`staff_viewer`** — **deprecated.** Retained in the SQL enum for backwards
   compatibility; routed to `/unauthorized`.
 
