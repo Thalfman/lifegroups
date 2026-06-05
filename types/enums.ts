@@ -109,7 +109,24 @@ export type ShepherdCareInteractionType =
   | "meeting"
   | "other";
 export type ShepherdCareFollowUpStatus = "open" | "in_progress" | "done";
-// Group-Health Grade (#127). A–D report-card letter, plus the scope a manual
+// Group-Health Grade (#127). A report-card letter, plus the scope a manual
 // override is held under (#129): cleared at the monthly rollover, or standing.
-export type GroupHealthLetter = "A" | "B" | "C" | "D";
+// The pivot's configurable Health Rubric (ADR 0018) adds `F` so a failing group
+// can be graded — the scale is now A / B / C / D / F (no E).
+export type GroupHealthLetter = "A" | "B" | "C" | "D" | "F";
 export type GroupHealthOverrideScope = "this_month" | "until_cleared";
+// Leader-Health Grade (ADR 0018): the symmetric per-Leader letter grade,
+// computed from the Leader-Health Rubric. Same A / B / C / D / F scale as the
+// Group-Health Grade, about the person rather than the group. The override
+// scope is shared with the group grade (GroupHealthOverrideScope).
+export type LeaderHealthLetter = "A" | "B" | "C" | "D" | "F";
+// Prospect state (ADR 0016): the four colour-coded states a Prospect moves
+// through in the Interest Funnel (the Plan area), superseding guest_pipeline_stage.
+//   interested (yellow) → matched (blue) → joined (green); not_at_this_time (orange)
+// matched/joined require a group; joined archives the Prospect out of the active
+// board into the collapsed Joined roll-up.
+export type ProspectState =
+  | "interested"
+  | "matched"
+  | "joined"
+  | "not_at_this_time";

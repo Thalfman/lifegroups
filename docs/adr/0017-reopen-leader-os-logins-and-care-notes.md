@@ -12,7 +12,7 @@ ADR 0009's **verify-before-flip** rule is unchanged: the Leader-facing routes an
 RLS must be re-audited as part of landing this, and the leader-surface flag only
 enables once that verification marker is set. **LDR.1** is unchanged: the Leader
 surface opens only with Julian's explicit product go-ahead — which this pivot
-*is*, since the pivot is Julian's. Tom holds the switch; Julian holds the
+_is_, since the pivot is Julian's. Tom holds the switch; Julian holds the
 decision; the flag toggles an already-re-verified surface, never a dormant one.
 
 ## What each tier does on login
@@ -33,12 +33,12 @@ A **Care Note** (and a **Prayer Request**) is **private to its author** by
 default — the OS who wrote it, or the Leader who wrote it. The Ministry Admin can
 read a given person's Care Notes only when he flips that person's **transparency
 toggle** on (an inline, per-person pastoral act in Care); when he can, the Super
-Admin can too, by the normal ladder. This is the *second* deliberate hole in the
+Admin can too, by the normal ladder. This is the _second_ deliberate hole in the
 "higher tiers see everything below" ladder, alongside the Private Care Note.
 
 The two are kept distinct: the **Private Care Note** is the Ministry Admin's
-*own* note, hidden even from the Super Admin (ADR 0003); the **Care Note** is an
-*Over-Shepherd's or Leader's* note, hidden from Julian until he is granted the
+_own_ note, hidden even from the Super Admin (ADR 0003); the **Care Note** is an
+_Over-Shepherd's or Leader's_ note, hidden from Julian until he is granted the
 peek. They are different tables with different RLS; do not merge them.
 
 ## Consequences
@@ -58,3 +58,9 @@ peek. They are different tables with different RLS; do not merge them.
 - A new per-person `notes_transparency` grant governs Ministry-Admin read access
   to Care Notes / Prayer Requests; default denied (sealed to author).
 - `staff_viewer` and the rest of the ladder are unaffected.
+- **Leader-calendar past-date rule (#376):** the leader calendar READS the full
+  requested month including past dates — a leader may page back and _see_ prior
+  occurrences as care context — while every calendar row stays RLS-scoped to the
+  leader's group via `auth_is_leader_of()`. The read window is deliberately not
+  clamped to today; write-ability of past dates is governed separately by the
+  grid's `canEdit` and the calendar RPCs, not by the read window.

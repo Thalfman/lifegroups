@@ -5,6 +5,7 @@ import type { ProfilesRow } from "@/types/database";
 import { log } from "@/lib/observability/logger";
 import { isUserRole, type UserRole } from "./roles";
 import { isUuid } from "@/lib/shared/uuid";
+import { readFrozenSurfaceFlagForLeader } from "./leader-surface-flag";
 
 export type AuthUser = { id: string; email: string | null };
 
@@ -217,13 +218,47 @@ export const requireSuperAdmin = () => requireRole(["super_admin"] as const);
 // /leader/* because those guards never list it.
 export const requireOverShepherd = () =>
   requireRole(["over_shepherd"] as const);
-// Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md.
-// Every /leader/* page calls this shared guard, so allowing no role here
-// gates the whole dormant surface in one place: leader / co_leader (and any
-// other role that reaches a leader route) are redirected to /unauthorized,
-// the same no-access treatment. The export is kept
-// so the dormant leader pages still typecheck.
-export const requireLeader = () => requireRole([] as const);
+// Shepherd (leader) surface, re-opened under the verify-before-flip gate (#376,
+// ADR 0017 amending ADR 0002 / under ADR 0009). Every /leader/* page calls this
+// shared guard. It admits an active leader / co_leader ONLY when the
+// `leader_surface` frozen-surface flag resolves enabled+verified — read through
+// the leader-safe read_frozen_surface_flag RPC (the admin-only flag read can't
+// be used from a leader context). The flag alone opens nothing: before this
+// slice the guard admitted ZERO roles, so opening login is this deliberate guard
+// change, not a side effect of the flag. Every OTHER role (admins, over_shepherd)
+// stays no-access — they are redirected to /unauthorized — and a leader is too
+// whenever the surface is not live, so the surface fails closed.
+//
+// Check-ins are NOT covered by this gate: /leader/[groupId]/checkin carries its
+// own independent `check_ins` frozen gate (which stays off), so flipping
+// leader_surface never exposes the check-in route/RPC.
+export async function requireLeader(): Promise<CurrentSession> {
+  const session = await getCurrentSession();
+  switch (session.kind) {
+    case "anonymous":
+      redirect("/login");
+    case "profile_missing":
+      redirect("/unauthorized");
+    case "backend_error":
+      logGuardBackendError("requireLeader", session.stage);
+      redirect("/unauthorized?reason=unavailable");
+    case "authenticated": {
+      if (session.profile.status !== "active") redirect("/unauthorized");
+      // Only leader / co_leader can ever reach the surface; every other role is
+      // no-access regardless of the flag.
+      if (
+        session.profile.role !== "leader" &&
+        session.profile.role !== "co_leader"
+      ) {
+        redirect("/unauthorized");
+      }
+      // ...and only when leader_surface is enabled-and-verified (ADR 0009).
+      const live = await readFrozenSurfaceFlagForLeader("leader_surface");
+      if (!live) redirect("/unauthorized");
+      return session;
+    }
+  }
+}
 
 export type SessionGuardResult =
   | { ok: true; session: CurrentSession }
@@ -289,14 +324,29 @@ export async function requireLeaderActor(): Promise<
     case "authenticated": {
       if (session.profile.status !== "active")
         return { ok: false, error: "Your account isn't active." };
-      // Shepherd (leader) surface gated per
-      // docs/adr/0002-oversight-ladder-and-leader-gating.md. No caller --
-      // including leader / co_leader -- may execute a leader server action;
-      // denial happens here, before any RPC is reached. The dormant
-      // runLeaderWriteAction runner still imports this guard so it typechecks.
+      // Shepherd (leader) surface, re-opened under the verify-before-flip gate
+      // (#376, ADR 0017 / 0009). Admit an active leader / co_leader only when
+      // `leader_surface` resolves enabled+verified (leader-safe RPC). Every
+      // other role, and any leader while the surface is not live, is denied
+      // here before any RPC is reached. Co-Leaders get parity with Leaders.
+      //
+      // This guard backs ONLY non-check-in leader writes (e.g. calendar). The
+      // check-in action stays behind its own `check_ins` frozen gate, so a live
+      // leader_surface does not let leader_submit_group_checkin run.
+      if (
+        session.profile.role !== "leader" &&
+        session.profile.role !== "co_leader"
+      ) {
+        return { ok: false, error: "The leader surface isn't available." };
+      }
+      const live = await readFrozenSurfaceFlagForLeader("leader_surface");
+      if (!live) {
+        return { ok: false, error: "The leader surface isn't available." };
+      }
       return {
-        ok: false,
-        error: "The leader surface isn't available.",
+        ok: true,
+        profileId: session.profile.id,
+        assignedGroupIds: session.assignedGroupIds,
       };
     }
   }

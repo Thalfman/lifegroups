@@ -11,10 +11,11 @@ import {
 // #328 — /admin/care is the canonical Care entry. /admin/shepherd-care (landing)
 // and /admin/follow-ups are thin ALIAS entries that render the same canonical
 // Care shell and return 200, NOT a 302 redirect (ADR 0013). They differ only by
-// which tab opens first. #334 re-keyed the shell to the canonical PRD IA names
-// (dashboard · directory · follow-ups · coverage · recent-interactions); these
-// tests pin two invariants against the NEW keys:
-//   1. The shell honors `initialTab`, so an alias can open on its view.
+// which tab opens first. #334 re-keyed the shell to the PRD IA names; #373 made
+// the Over-Shepherd accordion (`over-shepherds`) the canonical default landing
+// tab. These tests pin two invariants against the current keys:
+//   1. The shell honors `initialTab`, so an alias can open on its view, and the
+//      canonical default is the over-shepherds accordion.
 //   2. The alias page modules import the canonical CarePageView with the
 //      correct initialTab and never call redirect/permanentRedirect — i.e. they
 //      alias-render (200), they don't redirect (3xx).
@@ -24,6 +25,7 @@ function tab(key: CareTabKey, label: string): CareTab {
 }
 
 const TABS: CareTab[] = [
+  tab("over-shepherds", "Over-Shepherds"),
   tab("dashboard", "Dashboard"),
   tab("directory", "Directory"),
   tab("follow-ups", "Follow-ups"),
@@ -45,10 +47,10 @@ function readAlias(relPath: string): string {
   );
 }
 
-describe("CareShell honors initialTab (#328, re-keyed #334)", () => {
-  it("opens on dashboard by default", () => {
+describe("CareShell honors initialTab (#328, re-keyed #334, #373)", () => {
+  it("opens on the over-shepherds accordion by default (#373)", () => {
     const html = renderToStaticMarkup(<CareShell tabs={TABS} />);
-    expect(selectedTabId(html)).toBe("care-tab-dashboard");
+    expect(selectedTabId(html)).toBe("care-tab-over-shepherds");
   });
 
   it("opens on the follow-ups tab when asked", () => {
@@ -134,5 +136,13 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
     expect(CARE_PAGE).toContain("resolveCareInitialTabFromParams");
     // The shell must open on the resolved tab, not the raw default.
     expect(CARE_PAGE).toMatch(/initialTab=\{resolvedTab\}/);
+  });
+
+  // #373 — the canonical Care surface defaults to the Over-Shepherd accordion
+  // and renders it as a tab panel.
+  it("the canonical Care view defaults to the over-shepherds accordion", () => {
+    expect(CARE_PAGE).toMatch(/initialTab = "over-shepherds"/);
+    expect(CARE_PAGE).toContain("<CareAccordion");
+    expect(CARE_PAGE).toContain("buildCareAccordion");
   });
 });

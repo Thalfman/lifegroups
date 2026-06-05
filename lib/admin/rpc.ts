@@ -19,6 +19,7 @@ import type {
   MeetingWeekParity,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
+  ProspectState,
   RoleInGroup,
   ShepherdCareFollowUpStatus,
   ShepherdCareInteractionType,
@@ -529,6 +530,29 @@ export function rpcAdminUpdateGuestPipeline(
   return callUuidRpc(client, "admin_update_guest_pipeline", args);
 }
 
+// #375 Interest Funnel: Prospect create + transition. The transition RPC is the
+// authoritative funnel gate (legal edges + group-required + joined-archives),
+// rejecting with the fixed tokens illegal_transition / group_required /
+// missing_prospect. A null p_group_id carries the current group forward.
+
+export function rpcAdminCreateProspect(
+  client: AppSupabaseClient,
+  args: { p_full_name: string; p_email: string | null; p_phone: string | null }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_prospect", args);
+}
+
+export function rpcAdminTransitionProspect(
+  client: AppSupabaseClient,
+  args: {
+    p_prospect_id: string;
+    p_state: ProspectState;
+    p_group_id: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_transition_prospect", args);
+}
+
 export type AdminCreateFollowUpArgs = {
   p_type: FollowUpType;
   p_title: string;
@@ -930,4 +954,17 @@ export function rpcAdminSetGroupHealthRatings(
   args: AdminSetGroupHealthRatingsArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_group_health_ratings", args);
+}
+
+// #374 / ADR 0018 Health Rubric: upsert the current rubric for a kind
+// (group/leader). p_criteria is the validated {key,label,weight} array; the
+// weight-to-100 check is done in TS first, the RPC re-guards the JSON shape.
+export function rpcAdminSetHealthRubric(
+  client: AppSupabaseClient,
+  args: {
+    p_kind: "group" | "leader";
+    p_criteria: Array<Record<string, unknown>>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_health_rubric", args);
 }

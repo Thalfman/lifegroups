@@ -20,12 +20,17 @@ import {
   type EditableCopyConfig,
 } from "@/lib/admin/editable-copy";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
+import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
+import type { RubricCriterion } from "@/lib/admin/health-rubric";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
   defaultsSource: "live" | "fallback";
   groups: GroupsRow[];
   groupMetricSettings: GroupMetricSettingsRow[];
+  // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
+  // Empty when no rubric has been built yet; the editor seeds a blank row.
+  groupRubricCriteria: RubricCriterion[];
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but two facets stay behind the super-admin
   // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
@@ -134,6 +139,21 @@ function ThresholdsPanel({
 }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
+      {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
+          that roll up to an A–F grade. Owned here in Settings (Ministry-Admin),
+          not the Super Admin Console. Save is gated on the weights totalling
+          100, enforced both in the editor and the audited RPC. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Group Health Rubric"
+          title="How a group is graded"
+          description="Name the criteria a group is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F letter; a manual override can still force the letter."
+        />
+        <Card>
+          <HealthRubricEditor criteria={data.groupRubricCriteria} />
+        </Card>
+      </section>
+
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
           eyebrow="Global metric defaults"

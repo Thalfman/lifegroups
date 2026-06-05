@@ -180,15 +180,17 @@ export function attendanceTrend(
   return { recent_pct: recentPct, prior_pct: priorPct, declining };
 }
 
-// Grade ladder ordering (A best → D worst): the single source of grade order,
+// Grade ladder ordering (A best → F worst): the single source of grade order,
 // reused by the segmentation/ranking helpers and the Watch filter's "at or
-// below the threshold" test. A is index 0, D index 3, so a higher index is a
-// worse grade.
+// below the threshold" test. A is index 0, F the highest index, so a higher
+// index is a worse grade. F (ADR 0018, no E) sits below D so a failing group
+// sorts/triages as worse than D and is caught by any at-or-below threshold.
 export const GROUP_HEALTH_GRADE_LADDER: GroupHealthLetter[] = [
   "A",
   "B",
   "C",
   "D",
+  "F",
 ];
 
 // True when `letter` is at or below `threshold` on the A–D ladder — i.e. the

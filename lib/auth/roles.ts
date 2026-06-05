@@ -52,9 +52,13 @@ export function defaultLandingPathForRole(role: UserRole): string {
   if (isAdminRole(role)) return "/admin";
   // Over-Shepherd lands on its own focused care surface, distinct from /admin.
   if (isOverShepherdRole(role)) return "/over-shepherd";
-  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // leader / co_leader are treated as no-access. They fall through to
-  // /unauthorized rather than landing on /leader.
+  // Shepherd (leader) surface re-opened under the verify-before-flip gate (#376,
+  // ADR 0017 amending ADR 0002 / under ADR 0009). leader / co_leader land on
+  // /leader, whose requireLeader guard admits them only when the leader_surface
+  // flag resolves enabled-and-verified — and redirects them to /unauthorized
+  // otherwise. The landing path is the same either way; the guard, not this
+  // mapping, holds the verify-before-flip gate.
+  if (isLeaderRole(role)) return "/leader";
   return "/unauthorized";
 }
 
@@ -172,9 +176,14 @@ export function navItemsForRole(
     // pointing at the placeholder landing.
     items.push({ href: "/over-shepherd", label: "My Leaders" });
   }
-  // Shepherd (leader) surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // no leader nav entry is emitted for leader / co_leader — they see only the
-  // minimal no-access shell (Home).
+  // Shepherd (leader) surface re-opened under the verify-before-flip gate (#376,
+  // ADR 0017). leader / co_leader get a single focused "Care" entry pointing at
+  // the /leader placeholder landing; the requireLeader guard on that route still
+  // holds the verify-before-flip gate. No check-in entry point is surfaced here
+  // — check-ins stay frozen behind their own gate.
+  if (isLeaderRole(role)) {
+    items.push({ href: "/leader", label: "Care" });
+  }
   return items;
 }
 
@@ -227,6 +236,17 @@ export function navGroupsForRole(
         items: [
           { href: "/over-shepherd", label: "My Leaders", icon: "people" },
         ],
+      },
+    ];
+  }
+  // Leader surface re-opened (#376, ADR 0017): a single focused "Care" sidebar
+  // entry pointing at the /leader placeholder landing. No check-in entry point.
+  if (isLeaderRole(role)) {
+    return [
+      {
+        group: "top",
+        label: "",
+        items: [{ href: "/leader", label: "Care", icon: "heart" }],
       },
     ];
   }

@@ -3,7 +3,9 @@
 import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
+  validateHealthRubricPayload,
   type GroupMetricSettingsPayload,
+  type HealthRubricPayload,
   type MetricDefaultsPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -14,6 +16,7 @@ import {
 } from "@/lib/admin/run-action";
 import {
   rpcAdminResetMetricDefaults,
+  rpcAdminSetHealthRubric,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
 } from "@/lib/admin/rpc";
@@ -223,4 +226,36 @@ export async function adminResetMetricDefaults(
   // Resetting rewrites metric_defaults; bust the cache tag (see above).
   if (result.ok) revalidateTag(METRIC_DEFAULTS_CACHE_TAG);
   return result;
+}
+
+// ----- adminSetHealthRubric (#374 / ADR 0018) -----------------------------
+// The Settings Health Rubric editor (group rubric) posts the criteria array as
+// a JSON string plus the kind; the validator runs the weight-to-100 gate before
+// the audited RPC persists it. Ministry-Admin-owned, so the default
+// requireAdminSession path applies.
+const SET_HEALTH_RUBRIC_SPEC: AdminWriteActionSpec<
+  HealthRubricPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_health_rubric",
+  keys: ["kind", "criteria"],
+  validate: validateHealthRubricPayload,
+  fields: (_actor, value) => ({
+    rubric_kind: value.kind,
+    criteria_count: value.criteria.length,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetHealthRubric(client, {
+      p_kind: value.kind,
+      p_criteria: value.criteria as unknown as Array<Record<string, unknown>>,
+    }),
+  revalidate: () => SETTINGS_REVALIDATE_PATHS,
+  noDataError: "The rubric was not saved. Please try again.",
+};
+
+export async function adminSetHealthRubric(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
 }
