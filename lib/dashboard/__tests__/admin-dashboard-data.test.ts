@@ -355,10 +355,12 @@ describe("buildAdminDashboardData", () => {
     expect(result.data.activity.resetBaselineOn).toBeNull();
   });
 
-  it("floors the activity band at the reset baseline and surfaces the reset date", async () => {
-    // activity-reset: a global "as-of" baseline must floor BOTH the SQL counts
-    // read (its fromIso becomes the baseline) and the TS-side tiles, and the
-    // summary must echo the baseline so Home can show "since {date}" / Undo.
+  it("floors the activity band at the DAY AFTER the reset baseline (reset day excluded)", async () => {
+    // activity-reset: the reset must drop the band to zero immediately, so the
+    // reset DAY itself is excluded — the SQL counts read's fromIso is the day
+    // AFTER the baseline, not the baseline itself (otherwise rows dated earlier
+    // on the reset day still count). The summary echoes the RAW baseline so Home
+    // can show "Reset {date}" / Undo.
     let capturedFrom: string | null | undefined = "unset";
     const result = await buildAdminDashboardData(
       emptyReads({
@@ -378,12 +380,12 @@ describe("buildAdminDashboardData", () => {
           };
         },
       }),
-      { now: NOW } // all-time grain ⇒ the baseline is the only lower bound
+      { now: NOW } // all-time grain ⇒ the reset floor is the only lower bound
     );
 
     expect(result.source).toBe("live");
     if (result.source !== "live") return;
-    expect(capturedFrom).toBe("2026-05-10");
+    expect(capturedFrom).toBe("2026-05-11");
     expect(result.data.activity.resetBaselineOn).toBe("2026-05-10");
   });
 

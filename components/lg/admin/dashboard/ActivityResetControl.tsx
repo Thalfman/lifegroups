@@ -61,7 +61,7 @@ export function ActivityResetControl({
       >
         {baselineOn ? (
           <span style={{ fontFamily: fontSans, fontSize: 11.5, color: P.ink3 }}>
-            Counting since {baselineOn}
+            Reset {baselineOn} · counts climb from the next day
           </span>
         ) : null}
 

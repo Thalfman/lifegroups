@@ -88,7 +88,10 @@ function describeWeek(meetingWeekIso: string): string {
   });
 }
 
-function addDaysIsoForWeek(iso: string, days: number): string {
+// Add `days` calendar days to a YYYY-MM-DD string (pure date arithmetic over a
+// UTC anchor — no DST drift since it never crosses a wall-clock offset). General
+// helper: week horizons, the due-this-week cutoff, and the activity-reset floor.
+function addDaysIso(iso: string, days: number): string {
   const anchor = new Date(`${iso}T00:00:00Z`);
   anchor.setUTCDate(anchor.getUTCDate() + days);
   return anchor.toISOString().slice(0, 10);
@@ -419,7 +422,7 @@ export async function buildAdminDashboardData(
     // the derived rows below can resolve calendar overrides without a
     // per-group round trip. We fetch a one-week window (Mon..Sun) -- the
     // override resolver narrows further.
-    const weekEnd = addDaysIsoForWeek(selectedWeek, 6);
+    const weekEnd = addDaysIso(selectedWeek, 6);
     // Pin "today" once so the shepherd-care summary uses the same
     // calendar day for needs_attention math and the dashboard for any
     // request-bound timing. Derived from the SAME injected `now` that drives
@@ -430,7 +433,7 @@ export async function buildAdminDashboardData(
     // The "this week" horizon the Home card renders: today + 7 days, inclusive
     // of overdue. Computed here so the UNtruncated due-count read below matches
     // the card's `isDueThisWeek` window exactly.
-    const dueThisWeekOnOrBeforeIso = addDaysIsoForWeek(todayIso, 7);
+    const dueThisWeekOnOrBeforeIso = addDaysIso(todayIso, 7);
 
     // Metric defaults feed the shepherd-care directory's `entry.needs_attention`
     // stamp (configured stale-contact window) — without it /admin would use the
@@ -539,14 +542,23 @@ export async function buildAdminDashboardData(
 
     // activity-reset: fold the global reset baseline into the period's lower
     // bound. A failed baseline read degrades to null (all-time — today's
-    // behaviour). The activity-counts read below uses this floor so the SQL
-    // tiles (members joined / follow-ups completed / care touchpoints) measure
-    // from the SAME "as-of" as the TS-side tiles (groups launched / guests
-    // welcomed) in buildActivitySummary.
+    // behaviour). The reset must drop the band to zero immediately, so the reset
+    // DAY itself is excluded: the effective floor is the day AFTER the baseline,
+    // applied inclusively. baseline_on is a church-local date and the tiles span
+    // both date columns (launched_on, first_attended_date) and timestamptz
+    // columns — none of which can distinguish time-of-day against a same-day
+    // floor — so a whole-day exclusion is the one cutoff that zeroes every tile
+    // uniformly (rather than leaving earlier-today rows counted). The activity-
+    // counts read below uses this floor so the SQL tiles measure from the SAME
+    // "as-of" as the TS-side tiles in buildActivitySummary. The raw baseline is
+    // kept separately for display ("Reset {date}" + Undo on Home).
     const activityBaselineOn = activityBaselineResult.error
       ? null
       : (activityBaselineResult.data ?? null);
-    const activityFloorIso = laterIso(period.fromIso, activityBaselineOn);
+    const activityResetFloorIso = activityBaselineOn
+      ? addDaysIso(activityBaselineOn, 1)
+      : null;
+    const activityFloorIso = laterIso(period.fromIso, activityResetFloorIso);
 
     // Second wave: the shepherd-care directory (depends on the assignments read
     // above) and the period-scoped activity counts (depend on the reset floor
@@ -786,7 +798,7 @@ async function buildLeaderGroupDashboard(
   // doesn't show Monday's already-past meeting; the ceiling is the same
   // 8-week horizon used by the calendar fetch so the merge is complete.
   const todayIso = churchTodayIso();
-  const horizonEndIso = addDaysIsoForWeek(todayIso, 8 * 7);
+  const horizonEndIso = addDaysIso(todayIso, 8 * 7);
   const generated = generateOccurrencesInRange(
     {
       meetingDay: group.meeting_day,
@@ -866,7 +878,7 @@ export async function getLeaderDashboardData(
 
   try {
     const todayIso = isoWeekStart(new Date());
-    const horizonEnd = addDaysIsoForWeek(todayIso, 8 * 7);
+    const horizonEnd = addDaysIso(todayIso, 8 * 7);
     const [groupsResult, calendarEventsResult] = await Promise.all([
       fetchGroupsByIds(client, [...options.assignedGroupIds]),
       fetchGroupCalendarEvents(client, {
