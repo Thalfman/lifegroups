@@ -22,6 +22,7 @@ import { PeopleImportForm } from "@/components/admin/forms/people-import-form";
 import { LaunchPrepCard } from "@/components/admin/launch-prep-card";
 import { CleanSlateCard } from "@/components/admin/clean-slate-card";
 import { HistoryResetCard } from "@/components/admin/history-reset-card";
+import { AttentionResetCard } from "@/components/admin/attention-reset-card";
 import { AuditResetCard } from "@/components/admin/audit-reset-card";
 import { PermanentDeleteCard } from "@/components/admin/permanent-delete-card";
 import type {
@@ -32,6 +33,7 @@ import type {
   CleanSlateImpact,
   CleanSlateLatestSnapshot,
   HistoryResetState,
+  AttentionResetState,
 } from "@/lib/supabase/maintenance-reads";
 import {
   SystemStatusChecklist,
@@ -107,6 +109,9 @@ export type SuperAdminConsoleData = {
   // PRD-SAC6 follow-up: per-category history-reset state (counts + recoverable
   // snapshot per category). Null when the read failed / no client.
   historyResetState: HistoryResetState | null;
+  // health-checks-reset: per-surface attention-reset state (baseline + impact +
+  // recoverable snapshot). Null when the read failed / no client.
+  attentionResetState: AttentionResetState | null;
   auditEventCount: number | null;
   // ADR 0014 (#312–#316): curated permanent-deletion targets + recent tombstones
   // for the danger-zone Permanent Deletion card.
@@ -696,6 +701,7 @@ export function SuperAdminConsoleShell({
             snapshot={data.latestCleanSlateSnapshot}
           />
           <HistoryResetCard state={data.historyResetState} />
+          <AttentionResetCard state={data.attentionResetState} />
           <AuditResetCard auditEventCount={data.auditEventCount} />
           <PermanentDeleteCard
             targets={data.permanentDeletionTargets}

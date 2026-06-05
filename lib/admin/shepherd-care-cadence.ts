@@ -39,7 +39,9 @@ export const BUILT_IN_CARE_CADENCE_WINDOWS: CareCadenceWindows = {
  * assignment covers them. `delegated` when an over-shepherd is on the hook;
  * `directly_overseen` (the default) when oversight falls to the Ministry Admin.
  */
-export function coverageTierForShepherd(hasActiveOverShepherd: boolean): CoverageTier {
+export function coverageTierForShepherd(
+  hasActiveOverShepherd: boolean
+): CoverageTier {
   return hasActiveOverShepherd ? "delegated" : "directly_overseen";
 }
 
@@ -48,7 +50,7 @@ export function coverageTierForShepherd(hasActiveOverShepherd: boolean): Coverag
  */
 export function staleWindowDaysForTier(
   tier: CoverageTier,
-  windows: CareCadenceWindows = BUILT_IN_CARE_CADENCE_WINDOWS,
+  windows: CareCadenceWindows = BUILT_IN_CARE_CADENCE_WINDOWS
 ): number {
   return tier === "delegated"
     ? windows.delegatedStaleDays
@@ -77,8 +79,21 @@ export function isCareContactStale(args: {
   todayIso: string;
   tier: CoverageTier;
   windows?: CareCadenceWindows;
+  // health-checks-reset: an "as-of" reset baseline (ISO YYYY-MM-DD) that floors
+  // the effective contact date. The clock is measured from the later of the real
+  // last contact and the baseline, so a freshly-reset shepherd reads fresh even
+  // with a long-ago real contact (or none). Omit for today's behaviour.
+  baselineIso?: string | null;
 }): boolean {
-  if (args.lastAdminContactIso === null) return true;
+  // Effective contact = the later of the real last contact and the baseline.
+  // A null real contact + a baseline means "contacted as of baseline" (fresh).
+  const effective =
+    args.lastAdminContactIso === null
+      ? (args.baselineIso ?? null)
+      : args.baselineIso && args.baselineIso > args.lastAdminContactIso
+        ? args.baselineIso
+        : args.lastAdminContactIso;
+  if (effective === null) return true;
   const window = staleWindowDaysForTier(args.tier, args.windows);
-  return daysBetweenIso(args.todayIso, args.lastAdminContactIso) > window;
+  return daysBetweenIso(args.todayIso, effective) > window;
 }

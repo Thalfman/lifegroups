@@ -12,9 +12,15 @@
 
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import type {
+  AttentionResetBaselinesRow,
+  AttentionResetSnapshotsRow,
   CleanSlateSnapshotsRow,
   HistoryResetSnapshotsRow,
 } from "@/types/database";
+import {
+  ATTENTION_RESET_SURFACES,
+  type AttentionResetSurface,
+} from "@/lib/admin/attention-reset";
 import {
   HISTORY_RESET_CATEGORIES,
   HISTORY_RESET_CATEGORY_KEYS,
@@ -218,6 +224,118 @@ export async function fetchHistoryResetState(
     return { data: { categories }, error: null };
   } catch (error) {
     return { data: null, error: wrapError("fetchHistoryResetState", error) };
+  }
+}
+
+// health-checks-reset: the current attention-reset baselines, read on the admin
+// dashboard path so the "Needs attention" derivations can honour a reset. RLS
+// admits both admin roles to SELECT (the whole admin team's Home agrees). Used
+// by the dashboard read; a failure degrades to "no baselines" (today's
+// behaviour) rather than failing the page.
+export async function fetchAttentionResetBaselines(
+  client: ReadClient
+): Promise<ReadResult<AttentionResetBaselinesRow[]>> {
+  const { data, error } = await client
+    .from("attention_reset_baselines")
+    .select(
+      "id, surface, scope, entity_id, baseline_on, created_by, created_at"
+    );
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAttentionResetBaselines", error),
+    };
+  return { data: (data ?? []) as AttentionResetBaselinesRow[], error: null };
+}
+
+// health-checks-reset: the per-surface reset card state for the Super Admin
+// Console. For each surface: whether a global baseline is currently set (and
+// when), the per-entity override count, the impact preview (how many entities a
+// global reset would touch), and the latest un-restored snapshot it could
+// revert from.
+export type AttentionResetSurfaceState = {
+  surface: AttentionResetSurface;
+  globalBaselineOn: string | null;
+  entityOverrideCount: number;
+  // The number of entities a global reset would touch — leader care profiles
+  // for "care", active groups for "health". A cheap head count; the real proof
+  // a reset worked is Home dropping to zero, not this preview.
+  impactCount: number;
+  snapshot: { id: string; createdAt: string } | null;
+};
+
+export type AttentionResetState = {
+  surfaces: AttentionResetSurfaceState[];
+};
+
+export async function fetchAttentionResetState(
+  client: ReadClient
+): Promise<ReadResult<AttentionResetState>> {
+  try {
+    const [baselinesRes, snapshotRows, careCount, groupCount] =
+      await Promise.all([
+        client
+          .from("attention_reset_baselines")
+          .select("surface, scope, entity_id, baseline_on"),
+        client
+          .from("attention_reset_snapshots")
+          .select("id, created_at, surface, scope")
+          .is("restored_at", null)
+          .eq("scope", "global")
+          .order("created_at", { ascending: false }),
+        client
+          .from("shepherd_care_profiles")
+          .select("id", { count: "exact", head: true })
+          .is("archived_at", null),
+        client
+          .from("groups")
+          .select("id", { count: "exact", head: true })
+          .eq("lifecycle_status", "active"),
+      ]);
+    if (baselinesRes.error) throw baselinesRes.error;
+    if (snapshotRows.error) throw snapshotRows.error;
+
+    const baselines = (baselinesRes.data ?? []) as Pick<
+      AttentionResetBaselinesRow,
+      "surface" | "scope" | "entity_id" | "baseline_on"
+    >[];
+    const snapshots = (snapshotRows.data ?? []) as Pick<
+      AttentionResetSnapshotsRow,
+      "id" | "created_at" | "surface" | "scope"
+    >[];
+    const impactBySurface: Record<AttentionResetSurface, number> = {
+      care: careCount.count ?? 0,
+      health: groupCount.count ?? 0,
+    };
+
+    const surfaces: AttentionResetSurfaceState[] = ATTENTION_RESET_SURFACES.map(
+      (surface) => {
+        const rows = baselines.filter((b) => b.surface === surface);
+        const globalRow = rows.find(
+          (b) => b.scope === "global" && b.entity_id === null
+        );
+        const entityOverrideCount = rows.filter(
+          (b) => b.scope === "entity"
+        ).length;
+        const snapshotRow = snapshots.find((s) => s.surface === surface);
+        return {
+          surface,
+          globalBaselineOn: globalRow ? String(globalRow.baseline_on) : null,
+          entityOverrideCount,
+          impactCount: impactBySurface[surface],
+          snapshot: snapshotRow
+            ? {
+                id: String(snapshotRow.id),
+                createdAt: String(snapshotRow.created_at),
+              }
+            : null,
+        };
+      }
+    );
+
+    return { data: { surfaces }, error: null };
+  } catch (error) {
+    return { data: null, error: wrapError("fetchAttentionResetState", error) };
   }
 }
 

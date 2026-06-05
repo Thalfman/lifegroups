@@ -41,6 +41,10 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { pipelineStageLabel, isActivePipelineStage } from "./labels";
+import {
+  resolveAttentionBaseline,
+  type AttentionBaselines,
+} from "@/lib/admin/attention-reset";
 import { isoWeekStart } from "@/lib/shared/church-time";
 import { formatWeekLabel } from "@/lib/admin/check-ins";
 import {
@@ -152,6 +156,13 @@ export type DerivedGroupRow = {
   dueRelative: string | null;
   isOverdue: boolean;
   isScheduledThisWeek: boolean;
+  // health-checks-reset: the group's effective health reset baseline week
+  // (ISO week-start string) and whether the selected week is at/before it.
+  // When suppressed, the absence-derived "missing" bucket is withheld so a
+  // reset clears the card without deleting attendance history. Optional so
+  // existing DerivedGroupRow fixtures keep compiling (undefined = not reset).
+  healthBaselineWeek?: string | null;
+  healthMissingSuppressed?: boolean;
 };
 
 // Julian admin OS pivot (2026-05): missing_check_in dropped from priority
@@ -242,7 +253,19 @@ function pickHealthBucket(row: DerivedGroupRow): HealthBucket {
   if (row.sessionStatus === "did_not_meet") return "did_not_meet";
   // Off-parity bi-weekly groups aren't expected to meet this week; they
   // fall through to "healthy" rather than "missing".
-  if (isMissingForWeek(row.sessionStatus) && row.isScheduledThisWeek) {
+  //
+  // health-checks-reset: "missing" is ABSENCE-derived (no submission for a due
+  // week), so it can't be cleared by deleting rows. A health reset records an
+  // "as-of" baseline week; the selected week being at/before that baseline
+  // withholds "missing" so the card clears without destroying attendance data.
+  // The baseline governs ONLY this absence-derived half — needs_follow_up
+  // (handled above) is admin/override/pulse-set and is cleared by the existing
+  // per-group override / health_checks history reset, never masked here.
+  if (
+    isMissingForWeek(row.sessionStatus) &&
+    row.isScheduledThisWeek &&
+    !row.healthMissingSuppressed
+  ) {
     return "missing";
   }
   if (isSubmittedForWeek(row.sessionStatus)) return "submitted";
@@ -536,6 +559,12 @@ export interface AdminGroupModelInput {
   // The authoritative active-group count from its own read; falls back to
   // counting active derived rows when the read returned nothing.
   activeGroupCount: number | null;
+  // health-checks-reset: the health reset baselines. The date strings here are
+  // already ISO week-START dates (the read layer converts baseline_on → week
+  // start) so the comparison against selectedWeek stays a pure string compare —
+  // this module never constructs a Date from an input. Omit for today's
+  // behaviour (no group suppressed).
+  healthBaselines?: AttentionBaselines;
 }
 
 export interface AdminGroupModel {
@@ -579,6 +608,7 @@ export function buildAdminGroupModel(
     selectedWeek,
     now,
     activeGroupCount,
+    healthBaselines,
   } = input;
 
   const currentWeek = isoWeekStart(now);
@@ -676,6 +706,12 @@ export function buildAdminGroupModel(
     // and health surfaces don't show "Did not meet · Overdue"
     // simultaneously.
     const isCheckedInThisWeek = !isMissingForWeek(sessionStatus);
+    // health-checks-reset: resolve this group's effective health baseline week
+    // (its own override else the global else null) and suppress "missing" when
+    // the selected week is at/before it.
+    const healthBaselineWeek = resolveAttentionBaseline(healthBaselines, g.id);
+    const healthMissingSuppressed =
+      healthBaselineWeek !== null && selectedWeek <= healthBaselineWeek;
     return {
       group: g,
       override,
@@ -707,6 +743,8 @@ export function buildAdminGroupModel(
       // all count as "checked in").
       isOverdue: dueResult.isOverdue && !isCheckedInThisWeek,
       isScheduledThisWeek: dueResult.isScheduledThisWeek,
+      healthBaselineWeek,
+      healthMissingSuppressed,
     };
   });
 
@@ -723,7 +761,10 @@ export function buildAdminGroupModel(
   // recurrence info; the dashboard surfaces them as healthy until
   // they actually submit a check-in.
   const missingCheckIns = activeRows.filter(
-    (r) => isMissingForWeek(r.sessionStatus) && r.isScheduledThisWeek
+    (r) =>
+      isMissingForWeek(r.sessionStatus) &&
+      r.isScheduledThisWeek &&
+      !r.healthMissingSuppressed
   ).length;
   const needsFollowUp = activeRows.filter(
     (r) =>

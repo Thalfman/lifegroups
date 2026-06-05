@@ -252,6 +252,41 @@ export interface HistoryResetSnapshotsRow {
   restored_by: UUID | null;
 }
 
+// health-checks-reset: the "as-of" reset baselines the duration-derived "Needs
+// attention" cards measure from. Either a single global row per surface
+// (scope='global', entity_id null) or a per-entity override (scope='entity',
+// entity_id = shepherd profile id for care / group id for health). Admin-readable
+// SELECT RLS (the dashboard honours it); all writes flow through the
+// super_admin_reset_* SECURITY DEFINER RPCs.
+export interface AttentionResetBaselinesRow {
+  id: UUID;
+  surface: "care" | "health";
+  scope: "global" | "entity";
+  entity_id: UUID | null;
+  baseline_on: DateString;
+  created_by: UUID | null;
+  created_at: Timestamp;
+}
+
+// health-checks-reset: recoverable snapshot store for the attention resets, kept
+// independent of clean_slate_snapshots / history_reset_snapshots so a Clean Slate
+// wipe never blows it away. payload holds the prior baseline rows and (for care)
+// the prior shepherd_care_profiles field values the reset overwrote.
+export interface AttentionResetSnapshotsRow {
+  id: UUID;
+  created_by: UUID | null;
+  created_at: Timestamp;
+  surface: "care" | "health";
+  scope: "global" | "entity";
+  entity_id: UUID | null;
+  kind: string;
+  payload: Record<string, unknown>;
+  row_counts: Record<string, number>;
+  total_rows: number;
+  restored_at: Timestamp | null;
+  restored_by: UUID | null;
+}
+
 // ADR 0014 (#312): permanent-deletion tombstone. Super-admin-only SELECT RLS;
 // never itself a delete target. Writes only via the super_admin_* SECURITY
 // DEFINER RPCs. row_snapshot is the full deleted row; set_null_dependents is the
@@ -627,6 +662,26 @@ export interface Database {
           | "restored_by"
         >;
         Update: Partial<HistoryResetSnapshotsRow>;
+        Relationships: [];
+      };
+      attention_reset_baselines: {
+        Row: AttentionResetBaselinesRow;
+        Insert: InsertOf<AttentionResetBaselinesRow, "id" | "created_at">;
+        Update: Partial<AttentionResetBaselinesRow>;
+        Relationships: [];
+      };
+      attention_reset_snapshots: {
+        Row: AttentionResetSnapshotsRow;
+        Insert: InsertOf<
+          AttentionResetSnapshotsRow,
+          | "id"
+          | "created_at"
+          | "row_counts"
+          | "total_rows"
+          | "restored_at"
+          | "restored_by"
+        >;
+        Update: Partial<AttentionResetSnapshotsRow>;
         Relationships: [];
       };
       tombstones: {

@@ -80,7 +80,23 @@ export type DetectCareReasonsContext = {
   // available AND the shepherd has no active assignment); omit on paths without
   // coverage context so a transient read failure never implies "no coach".
   noOverShepherd?: boolean;
+  // health-checks-reset: an "as-of" reset baseline (ISO YYYY-MM-DD) that floors
+  // the effective last-contact date. A baseline measures staleness/first-contact
+  // FROM the reset, so a freshly-reset leader reads "contacted as of baseline"
+  // rather than stale or never-contacted. Omit (null) for today's behaviour. It
+  // ONLY governs the two time-derived reasons (no_contact_yet, stale_last_contact);
+  // the admin-set reasons (concern/needs_follow_up/overdue_touchpoint) are cleared
+  // at the data layer by the reset, never masked here.
+  baselineIso?: string | null;
 };
+
+// The later of two ISO YYYY-MM-DD dates (lexicographic compare is date order),
+// treating null as "absent". Returns null only when both are null.
+function laterIso(a: string | null, b: string | null): string | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return a >= b ? a : b;
+}
 
 // The one place that decides which attention reasons a care row raises. The
 // collected reasons are sorted by REASON_PRIORITY before returning, so the
@@ -103,10 +119,17 @@ export function detectCareReasons(
   if (care?.current_status === "needs_follow_up") {
     reasons.push("needs_follow_up_status");
   }
-  if (care === null || care.last_contact_at === null) {
+  // Effective last-contact floor: the later of the real last contact and the
+  // reset baseline. A baseline present means "treat as contacted at baseline",
+  // which both suppresses no_contact_yet and restarts the staleness clock.
+  const effectiveContact = laterIso(
+    care?.last_contact_at ?? null,
+    ctx.baselineIso ?? null
+  );
+  if (effectiveContact === null) {
     reasons.push("no_contact_yet");
   } else if (
-    differenceInDaysIso(ctx.todayIso, care.last_contact_at) > ctx.staleDays
+    differenceInDaysIso(ctx.todayIso, effectiveContact) > ctx.staleDays
   ) {
     reasons.push("stale_last_contact");
   }

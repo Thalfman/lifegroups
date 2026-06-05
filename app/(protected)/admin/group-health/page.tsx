@@ -56,6 +56,7 @@ export default async function GroupHealthPage() {
           groupQuestionLabel={view.groupQuestionLabel}
           watchGrade={view.watchGrade}
           viewerId={session.profile.id}
+          isSuperAdmin={session.profile.role === "super_admin"}
         />
       </PageBody>
     </>
