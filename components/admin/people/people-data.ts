@@ -98,7 +98,13 @@ export async function buildPeopleDirectoryData(
 
   return {
     currentActorProfileId: options.currentActorProfileId,
-    profiles: profilesResult.data ?? [],
+    // super_admin is the platform owner, not a ministry participant — keep them
+    // out of people-facing lists (directory + Leaders tab). Role-based per the
+    // no-hardcoded-names rule. The Super Admin Console roster and role-change
+    // form already exclude super_admin separately.
+    profiles: (profilesResult.data ?? []).filter(
+      (p) => p.role !== "super_admin"
+    ),
     members: membersResult.data ?? [],
     groups: groupsResult.data ?? [],
     groupLeaders: leadersResult.data ?? [],
