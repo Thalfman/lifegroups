@@ -178,11 +178,12 @@ test.describe("master calendar occurrence drawer (#324)", () => {
   });
 });
 
-// Planning opinionated views (#331). The same master-calendar shell with the
-// Planning opt-in: a primary view switcher (This week / Needs coverage /
-// Cancelled-OFF / By leader) as a tablist whose tabs read view names, the
-// advanced filters moved into a collapsible disclosure, and the repeated
-// "Open group calendar" link de-noised to one entry point per group.
+// Planning opinionated views (#331, #371). The same master-calendar shell with
+// the Planning opt-in: a primary quick-filter group (All meetings / This week /
+// Needs coverage / Cancelled-OFF / By leader) of mutually-exclusive toggle
+// buttons that expose aria-pressed, the advanced filters moved into a
+// collapsible disclosure, an active-filter summary + Clear filters control, and
+// the repeated "Open group calendar" link de-noised to one entry point per group.
 test.describe("planning opinionated views (#331)", () => {
   const SURFACE = '[data-a11y-surface="planning-opinionated-views"]';
 
@@ -190,12 +191,12 @@ test.describe("planning opinionated views (#331)", () => {
     await gotoHarness(page);
   });
 
-  test("the opinionated views are present as named primary affordances", async ({
+  test("the quick filters are present as named primary affordances", async ({
     page,
   }) => {
     const switcher = page
       .locator(SURFACE)
-      .getByRole("tablist", { name: "Planning views" });
+      .getByRole("group", { name: "Quick filters" });
     await expect(switcher).toBeVisible();
     for (const view of [
       "This week",
@@ -203,8 +204,35 @@ test.describe("planning opinionated views (#331)", () => {
       "Cancelled / OFF",
       "By leader",
     ]) {
-      await expect(switcher.getByRole("tab", { name: view })).toBeVisible();
+      await expect(switcher.getByRole("button", { name: view })).toBeVisible();
     }
+  });
+
+  test("the active quick filter exposes aria-pressed, one at a time", async ({
+    page,
+  }) => {
+    const switcher = page
+      .locator(SURFACE)
+      .getByRole("group", { name: "Quick filters" });
+    // Default view is "All meetings" → exactly one button is pressed.
+    await expect(
+      switcher.getByRole("button", { name: "All meetings" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(switcher.locator('button[aria-pressed="true"]')).toHaveCount(
+      1
+    );
+
+    // Switching the quick filter moves the pressed state with it.
+    await switcher.getByRole("button", { name: "This week" }).click();
+    await expect(
+      switcher.getByRole("button", { name: "This week" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      switcher.getByRole("button", { name: "All meetings" })
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect(switcher.locator('button[aria-pressed="true"]')).toHaveCount(
+      1
+    );
   });
 
   test("advanced filters live in a collapsible secondary disclosure", async ({
@@ -222,11 +250,66 @@ test.describe("planning opinionated views (#331)", () => {
     await expect(statusField).toBeVisible();
   });
 
+  test("advanced-filter checkboxes are labelled and toggle via their label", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    await surface.getByText("Advanced filters", { exact: true }).click();
+    // The Status checkboxes are real, named form controls — getByRole resolves
+    // them by their visible label, and clicking that label toggles the box.
+    const scheduled = surface.getByRole("checkbox", { name: "Scheduled" });
+    await expect(scheduled).toHaveAttribute("name", "status");
+    await expect(scheduled).not.toBeChecked();
+    await surface
+      .locator("label")
+      .filter({ hasText: "Scheduled" })
+      .first()
+      .click();
+    await expect(scheduled).toBeChecked();
+  });
+
+  test("active-filter summary reflects the current selection", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    // Pristine view: every dimension reads "All …". The summary's leading
+    // "Showing:" is an emphasised span, so target the whole live region.
+    const summary = surface
+      .locator('[aria-live="polite"]')
+      .filter({ hasText: "Showing:" });
+    await expect(summary).toContainText("All meetings");
+    await expect(summary).toContainText("All groups");
+    await expect(summary).toContainText("All statuses");
+
+    // Narrowing the quick filter updates the summary.
+    await surface.getByRole("button", { name: "This week" }).click();
+    await expect(summary).toContainText("This week");
+  });
+
+  test("Clear filters is disabled when pristine and restores the default view", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+    const clear = surface.getByRole("button", { name: "Clear filters" });
+    await expect(clear).toBeDisabled();
+
+    // Engage a quick filter → Clear filters becomes available.
+    await surface.getByRole("button", { name: "Needs coverage" }).click();
+    await expect(clear).toBeEnabled();
+
+    // Clearing returns to the "All meetings" default.
+    await clear.click();
+    await expect(
+      surface.getByRole("button", { name: "All meetings" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(clear).toBeDisabled();
+  });
+
   test("By leader surfaces one calendar link per group, not per occurrence", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("tab", { name: "By leader" }).click();
+    await surface.getByRole("button", { name: "By leader" }).click();
     // Anderson recurs on two May dates; the flat list would render two identical
     // "Open group calendar" links. The de-noised By-leader view collapses that
     // to exactly one per group under each leader.
@@ -239,7 +322,7 @@ test.describe("planning opinionated views (#331)", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("tab", { name: "By leader" }).click();
+    await surface.getByRole("button", { name: "By leader" }).click();
     const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });

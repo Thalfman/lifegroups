@@ -628,12 +628,14 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
-      {/* Planning opinionated views (#331). The same shell with the Planning
-          opt-in: the primary view switcher (This week / Needs coverage /
-          Cancelled-OFF / By leader), the advanced filters in a collapsible
-          disclosure, and de-noised per-group calendar links. axe runs against
-          the switcher (a tablist whose tabs read view names), the disclosure,
-          and the By-leader layout's single per-group link. */}
+      {/* Planning opinionated views (#331, #371). The same shell with the
+          Planning opt-in: the primary quick filters (This week / Needs coverage
+          / Cancelled-OFF / By leader) as mutually-exclusive aria-pressed toggle
+          buttons, the advanced filters in a collapsible disclosure, an
+          active-filter summary + Clear filters control, and de-noised per-group
+          calendar links. axe runs against the quick-filter group, the labelled
+          advanced-filter checkboxes, the disclosure, and the By-leader layout's
+          single per-group link. */}
       <Surface
         id="planning-opinionated-views"
         heading="Planning (opinionated views)"
