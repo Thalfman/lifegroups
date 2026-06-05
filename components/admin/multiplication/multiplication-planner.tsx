@@ -111,6 +111,9 @@ function CandidateEditForm({
     formAction: archiveAction,
     pending: archivePending,
   } = useActionForm<{ id: string }>(adminArchiveMultiplicationCandidate);
+  // Per-candidate field ids so each inline-edit label is programmatically tied
+  // to its control even when several candidates render their edit forms at once.
+  const fid = (name: string) => `mc-edit-${c.candidateId}-${name}`;
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <form action={formAction} style={{ display: "grid", gap: 10 }}>
@@ -120,8 +123,11 @@ function CandidateEditForm({
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
         >
           <div>
-            <label style={fieldLabelStyle}>Target year</label>
+            <label htmlFor={fid("target_year")} style={fieldLabelStyle}>
+              Target year
+            </label>
             <input
+              id={fid("target_year")}
               name="target_year"
               type="number"
               min={2024}
@@ -133,8 +139,11 @@ function CandidateEditForm({
             />
           </div>
           <div>
-            <label style={fieldLabelStyle}>Status</label>
+            <label htmlFor={fid("status")} style={fieldLabelStyle}>
+              Status
+            </label>
             <select
+              id={fid("status")}
               name="status"
               defaultValue={c.status}
               style={fieldSelectStyle}
@@ -152,8 +161,11 @@ function CandidateEditForm({
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
         >
           <div>
-            <label style={fieldLabelStyle}>Successor / leader-designate</label>
+            <label htmlFor={fid("successor_designate")} style={fieldLabelStyle}>
+              Successor / leader-designate
+            </label>
             <input
+              id={fid("successor_designate")}
               name="successor_designate"
               type="text"
               maxLength={120}
@@ -163,8 +175,11 @@ function CandidateEditForm({
             />
           </div>
           <div>
-            <label style={fieldLabelStyle}>Meeting time</label>
+            <label htmlFor={fid("meeting_time")} style={fieldLabelStyle}>
+              Meeting time
+            </label>
             <select
+              id={fid("meeting_time")}
               name="meeting_time"
               defaultValue={c.meetingTime ?? ""}
               style={fieldSelectStyle}
@@ -179,8 +194,11 @@ function CandidateEditForm({
           </div>
         </div>
         <div>
-          <label style={fieldLabelStyle}>Linked apprentice</label>
+          <label htmlFor={fid("leader_pipeline_id")} style={fieldLabelStyle}>
+            Linked apprentice
+          </label>
           <select
+            id={fid("leader_pipeline_id")}
             name="leader_pipeline_id"
             defaultValue={c.leaderPipelineId ?? ""}
             style={fieldSelectStyle}
@@ -221,8 +239,11 @@ function CandidateEditForm({
           Need for a similar-stage group
         </label>
         <div>
-          <label style={fieldLabelStyle}>Notes</label>
+          <label htmlFor={fid("notes")} style={fieldLabelStyle}>
+            Notes
+          </label>
           <input
+            id={fid("notes")}
             name="notes"
             type="text"
             maxLength={2000}
