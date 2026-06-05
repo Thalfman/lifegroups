@@ -12,6 +12,7 @@
 
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import type {
+  ActivityResetBaselinesRow,
   AttentionResetBaselinesRow,
   AttentionResetSnapshotsRow,
   CleanSlateSnapshotsRow,
@@ -371,6 +372,26 @@ export async function fetchAttentionResetState(
   } catch (error) {
     return { data: null, error: wrapError("fetchAttentionResetState", error) };
   }
+}
+
+// activity-reset: the current global activity-reset baseline date (or null),
+// read on the admin dashboard path so the Recent-activity tiles floor at it.
+// Admin-readable, so the whole admin team's Home agrees. A failure degrades to
+// null (all-time counts — today's behaviour) rather than failing the page.
+export async function fetchActivityResetBaseline(
+  client: ReadClient
+): Promise<ReadResult<string | null>> {
+  const { data, error } = await client
+    .from("activity_reset_baselines")
+    .select("baseline_on")
+    .eq("scope", "global")
+    .maybeSingle<Pick<ActivityResetBaselinesRow, "baseline_on">>();
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchActivityResetBaseline", error),
+    };
+  return { data: data?.baseline_on ?? null, error: null };
 }
 
 export async function fetchAuditEventCount(

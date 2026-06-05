@@ -11,6 +11,7 @@ import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ThisWeekCard } from "./ThisWeekCard";
 import { ActivityBand } from "./ActivityBand";
+import { ActivityResetControl } from "./ActivityResetControl";
 import { PeriodSlicer } from "./PeriodSlicer";
 import { CollapsibleOverview } from "./CollapsibleOverview";
 
@@ -54,6 +55,7 @@ export function DashboardClient({
   degraded,
   scopeId,
   mutedKeys,
+  canResetActivity,
 }: {
   data: AdminDashboardData;
   guestsLive: boolean;
@@ -63,6 +65,9 @@ export function DashboardClient({
   scopeId?: string | null;
   // "Needs attention" category keys a Super Admin has muted (launch optics).
   mutedKeys?: string[];
+  // activity-reset: true for a super_admin, gating the Recent-activity reset
+  // control. The server action is hard-gated too; this only hides the affordance.
+  canResetActivity?: boolean;
 }) {
   return (
     <PageBody>
@@ -163,7 +168,22 @@ export function DashboardClient({
             <SectionHeading>
               <span id="home-recent-activity">Recent activity</span>
             </SectionHeading>
-            <PeriodSlicer current={data.activity.grain} />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              {canResetActivity ? (
+                <ActivityResetControl
+                  baselineOn={data.activity.resetBaselineOn}
+                />
+              ) : null}
+              <PeriodSlicer current={data.activity.grain} />
+            </div>
           </div>
           <ActivityBand activity={data.activity} />
         </section>

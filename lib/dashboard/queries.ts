@@ -26,7 +26,10 @@ import {
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
+import {
+  fetchActivityResetBaseline,
+  fetchAttentionResetBaselines,
+} from "@/lib/supabase/maintenance-reads";
 import {
   buildSurfaceBaselines,
   type AttentionBaselines,
@@ -267,14 +270,29 @@ function buildMultiplicationSummary(
   };
 }
 
+// The later of two ISO date / week-start strings (null = unbounded). Dates are
+// YYYY-MM-DD, so lexicographic order is date order. Used to fold the activity-
+// reset baseline into the period's lower bound: a reset floors EVERY grain at
+// max(period start, baseline), so the band reads zero right after a reset and
+// the chosen period can never reach back before it.
+function laterIso(a: string | null, b: string | null): string | null {
+  if (a == null) return b;
+  if (b == null) return a;
+  return a >= b ? a : b;
+}
+
 // "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
 // already-fetched (gated) group/guest arrays — no extra read — while the three
 // productivity counts come from fetchOverviewActivityCounts and degrade to null
 // if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
-// lexicographic comparison against the half-open [fromIso, toExclusiveIso)
-// window is correct.
+// lexicographic comparison against the half-open [floorIso, toExclusiveIso)
+// window is correct. `floorIso` is the period start already folded with the
+// activity-reset baseline (see laterIso); `baselineOn` is surfaced raw so the
+// Home control can show "since {date}" / offer Undo.
 function buildActivitySummary(
   period: OverviewPeriodRange,
+  floorIso: string | null,
+  baselineOn: string | null,
   groups: readonly { launched_on: string | null }[],
   guests: readonly { first_attended_date: string | null }[],
   activityRes: Awaited<ReturnType<typeof fetchOverviewActivityCounts>>
@@ -282,7 +300,7 @@ function buildActivitySummary(
   const inRange = (iso: string | null): boolean => {
     if (!iso) return false;
     if (iso >= period.toExclusiveIso) return false;
-    if (period.fromIso && iso < period.fromIso) return false;
+    if (floorIso && iso < floorIso) return false;
     return true;
   };
   const extended = activityRes.error ? null : activityRes.data;
@@ -296,6 +314,7 @@ function buildActivitySummary(
     careTouchpoints: extended ? extended.careTouchpoints : null,
     extendedAvailable: activityRes.error === null,
     error: activityRes.error?.message ?? null,
+    resetBaselineOn: baselineOn,
   };
 }
 
@@ -337,6 +356,7 @@ export type AdminDashboardReads = {
   >;
   fetchOverviewActivityCounts: OmitClient<typeof fetchOverviewActivityCounts>;
   fetchAttentionResetBaselines: OmitClient<typeof fetchAttentionResetBaselines>;
+  fetchActivityResetBaseline: OmitClient<typeof fetchActivityResetBaseline>;
 };
 
 // The production adapter at the reads seam: binds the live Supabase client to
@@ -366,6 +386,7 @@ export function supabaseAdminDashboardReads(
     fetchMultiplicationCandidatesForAdmin,
     fetchOverviewActivityCounts,
     fetchAttentionResetBaselines,
+    fetchActivityResetBaseline,
   });
 }
 
@@ -437,7 +458,7 @@ export async function buildAdminDashboardData(
       launchAssumptionsResult,
       leaderPipelineResult,
       multiplicationResult,
-      activityResult,
+      activityBaselineResult,
       metricDefaultsResult,
       attentionBaselinesResult,
     ] = await Promise.all([
@@ -470,10 +491,12 @@ export async function buildAdminDashboardData(
       // card rather than failing the page, so they stay out of firstError.
       reads.fetchLeaderPipelineForAdmin(),
       reads.fetchMultiplicationCandidatesForAdmin(),
-      reads.fetchOverviewActivityCounts({
-        fromIso: period.fromIso,
-        toExclusiveIso: period.toExclusiveIso,
-      }),
+      // activity-reset: the global "as-of" reset date the Recent-activity tiles
+      // floor at. Read here (cheap, admin-readable) so the activity-counts read
+      // in the second wave can be scoped to it; the actual counts read moves
+      // below, where the floor is known. A failure degrades to "no baseline"
+      // (all-time counts), so it stays out of the firstError gate.
+      reads.fetchActivityResetBaseline(),
       reads.fetchMetricDefaults(),
       // health-checks-reset: the reset baselines so both "Needs attention"
       // cards honour a reset. Like the spine reads, a failure degrades to
@@ -513,13 +536,34 @@ export async function buildAdminDashboardData(
             (a) => a.shepherd_profile_id
           )
         );
-    const shepherdDirectoryResult =
-      await reads.fetchShepherdCareDirectoryForAdmin({
+
+    // activity-reset: fold the global reset baseline into the period's lower
+    // bound. A failed baseline read degrades to null (all-time — today's
+    // behaviour). The activity-counts read below uses this floor so the SQL
+    // tiles (members joined / follow-ups completed / care touchpoints) measure
+    // from the SAME "as-of" as the TS-side tiles (groups launched / guests
+    // welcomed) in buildActivitySummary.
+    const activityBaselineOn = activityBaselineResult.error
+      ? null
+      : (activityBaselineResult.data ?? null);
+    const activityFloorIso = laterIso(period.fromIso, activityBaselineOn);
+
+    // Second wave: the shepherd-care directory (depends on the assignments read
+    // above) and the period-scoped activity counts (depend on the reset floor
+    // just computed) are independent, so they run in parallel — no extra round
+    // trip beyond the directory read that was already sequenced here.
+    const [shepherdDirectoryResult, activityResult] = await Promise.all([
+      reads.fetchShepherdCareDirectoryForAdmin({
         todayIso,
         windows: careCadenceWindowsFromDefaults(defaultsForRead),
         delegatedShepherdIds: shepherdDelegatedIds,
         baselines: careBaselines,
-      });
+      }),
+      reads.fetchOverviewActivityCounts({
+        fromIso: activityFloorIso,
+        toExclusiveIso: period.toExclusiveIso,
+      }),
+    ]);
 
     const firstError =
       groupsResult.error ||
@@ -584,6 +628,8 @@ export async function buildAdminDashboardData(
     const multiplication = buildMultiplicationSummary(multiplicationResult);
     const activity = buildActivitySummary(
       period,
+      activityFloorIso,
+      activityBaselineOn,
       groupsResult.data ?? [],
       guestsResult.data ?? [],
       activityResult

@@ -57,6 +57,7 @@ function emptyReads(
       error: null,
     }),
     fetchAttentionResetBaselines: async () => ({ data: [], error: null }),
+    fetchActivityResetBaseline: async () => ({ data: null, error: null }),
     ...overrides,
   };
 }
@@ -323,6 +324,102 @@ describe("buildAdminDashboardData", () => {
       unknown: 1,
       excluded: 1,
     });
+  });
+
+  it("leaves the activity floor unbounded (all-time) when no reset baseline is set", async () => {
+    // No baseline + all-time grain ⇒ the counts read is asked for an open lower
+    // bound, and the summary carries no reset date. This is today's behaviour,
+    // preserved.
+    let capturedFrom: string | null | undefined = "unset";
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchActivityResetBaseline: async () => ({ data: null, error: null }),
+        fetchOverviewActivityCounts: async ({ fromIso }) => {
+          capturedFrom = fromIso;
+          return {
+            data: {
+              membersJoined: 0,
+              followUpsCompleted: 0,
+              careTouchpoints: 0,
+            },
+            error: null,
+          };
+        },
+      }),
+      { now: NOW }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(capturedFrom).toBeNull();
+    expect(result.data.activity.resetBaselineOn).toBeNull();
+  });
+
+  it("floors the activity band at the reset baseline and surfaces the reset date", async () => {
+    // activity-reset: a global "as-of" baseline must floor BOTH the SQL counts
+    // read (its fromIso becomes the baseline) and the TS-side tiles, and the
+    // summary must echo the baseline so Home can show "since {date}" / Undo.
+    let capturedFrom: string | null | undefined = "unset";
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchActivityResetBaseline: async () => ({
+          data: "2026-05-10",
+          error: null,
+        }),
+        fetchOverviewActivityCounts: async ({ fromIso }) => {
+          capturedFrom = fromIso;
+          return {
+            data: {
+              membersJoined: 0,
+              followUpsCompleted: 0,
+              careTouchpoints: 0,
+            },
+            error: null,
+          };
+        },
+      }),
+      { now: NOW } // all-time grain ⇒ the baseline is the only lower bound
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(capturedFrom).toBe("2026-05-10");
+    expect(result.data.activity.resetBaselineOn).toBe("2026-05-10");
+  });
+
+  it("takes the later of the period start and the reset baseline for the floor", async () => {
+    // A month grain whose start is AFTER an older baseline must keep the month
+    // start (the chosen period is the narrower window); the band never reaches
+    // back before the period the operator picked.
+    let capturedFrom: string | null | undefined = "unset";
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchActivityResetBaseline: async () => ({
+          data: "2026-04-01", // earlier than the May month-start
+          error: null,
+        }),
+        fetchOverviewActivityCounts: async ({ fromIso }) => {
+          capturedFrom = fromIso;
+          return {
+            data: {
+              membersJoined: 0,
+              followUpsCompleted: 0,
+              careTouchpoints: 0,
+            },
+            error: null,
+          };
+        },
+      }),
+      { now: NOW, grain: "month" }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    // The May (church-local) month-start is later than the April baseline, so it
+    // wins — the floor is the month start, not the older reset date.
+    expect(capturedFrom).toBe("2026-05-01");
+    // The reset is still in effect, so the summary still reports it.
+    expect(result.data.activity.resetBaselineOn).toBe("2026-04-01");
   });
 
   it("keeps the page live but marks activity counts unavailable when that read errors", async () => {

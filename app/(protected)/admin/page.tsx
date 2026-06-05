@@ -56,6 +56,7 @@ export default async function AdminPage({
         degraded={degraded}
         scopeId={session.profile.id}
         mutedKeys={mutedKeys}
+        canResetActivity={session.profile.role === "super_admin"}
       />
     </>
   );

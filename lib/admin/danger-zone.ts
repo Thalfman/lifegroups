@@ -157,6 +157,13 @@ export type AttentionResetRevertSuccess = {
   snapshotId: string;
 };
 
+// activity-reset: the Home Recent-activity reset / clear. The reset echoes the
+// as-of baseline date it set; the clear echoes null (the band returns to
+// all-time). Non-destructive, so there is no snapshot id to carry.
+export type ActivityResetSuccess = {
+  baselineOn: string | null;
+};
+
 // The consolidated "reset everything" step echoes how many history rows were
 // cleared (0 when already clean), which launch warnings were muted, and the
 // recoverable history snapshot id (null when there was no history to snapshot).
