@@ -141,11 +141,32 @@ describe(`attention-reset migration — ${HEALTH_FN}`, () => {
     );
   });
 
-  it("performs NO row mutation (missing is absence-derived)", () => {
+  it("captures the snapshot BEFORE the needs_follow_up field-wipe", () => {
     const body = functionBody(sql, HEALTH_FN);
-    expect(body).not.toContain("update public.shepherd_care_profiles");
+    const snapshotInsert = body.indexOf(
+      "insert into public.attention_reset_snapshots"
+    );
+    const firstWipe = body.indexOf("update public.groups");
+    expect(snapshotInsert).toBeGreaterThan(-1);
+    expect(firstWipe).toBeGreaterThan(-1);
+    expect(snapshotInsert).toBeLessThan(firstWipe);
+  });
+
+  it("clears all three needs_follow_up sources (status, override, pulse flag)", () => {
+    const body = functionBody(sql, HEALTH_FN);
+    expect(body).toContain("update public.groups");
+    expect(body).toContain("health_status = 'healthy'");
+    expect(body).toContain("update public.group_metric_settings");
+    expect(body).toContain("manual_health_status_override = null");
+    expect(body).toContain("update public.group_health_updates");
+    expect(body).toContain("follow_up_needed = false");
+  });
+
+  it("clears the follow-up flags by UPDATE, never DELETE (history is preserved)", () => {
+    const body = functionBody(sql, HEALTH_FN);
+    expect(body).not.toContain("delete from public.group_health_updates");
+    expect(body).not.toContain("delete from public.groups");
     expect(body).not.toContain("delete from public.attendance");
-    expect(body).not.toContain("delete from public.group_health");
   });
 
   it("writes one paired audit row", () => {
@@ -184,11 +205,16 @@ describe(`attention-reset migration — ${REVERT_FN}`, () => {
     expect(body).toContain("restored_at is not null");
   });
 
-  it("restores the prior baselines and the prior care profile fields", () => {
+  it("restores the prior baselines and the prior care + health fields", () => {
     const body = functionBody(sql, REVERT_FN);
     expect(body).toContain("prior_baselines");
     expect(body).toContain("jsonb_populate_recordset");
+    // Care field restore.
     expect(body).toContain("prior_care_profiles");
+    // Health field restore (all three needs_follow_up sources).
+    expect(body).toContain("prior_group_health_status");
+    expect(body).toContain("prior_metric_overrides");
+    expect(body).toContain("prior_pulse_flags");
   });
 
   it("writes one paired audit row", () => {

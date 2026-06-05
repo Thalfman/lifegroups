@@ -32,8 +32,11 @@
 -- derived). The care reset additionally wipes each targeted profile to a clean
 -- slate (status -> doing_well, next_touchpoint_due -> null) but deliberately
 -- NEVER nulls last_contact_at — that would re-arm no_contact_yet and lose real
--- history; the baseline is the contact floor instead. The health reset performs
--- NO row mutation (missing is absence-derived; the baseline alone clears it).
+-- history; the baseline is the contact floor instead. The health baseline clears
+-- the absence-derived "missing" half; the reset ALSO field-wipes the
+-- "needs_follow_up" half (groups.health_status, the per-group manual override,
+-- and the latest pulse follow_up_needed flag) so the whole card reads clear.
+-- Every field-wipe is snapshotted first and restored on revert.
 
 set check_function_bodies = off;
 
@@ -273,7 +276,13 @@ declare
   v_actor uuid;
   v_snapshot_id uuid := gen_random_uuid();
   v_baseline_payload jsonb;
+  v_status_payload jsonb;
+  v_override_payload jsonb;
+  v_pulse_payload jsonb;
   v_today date := current_date;
+  c_status bigint;
+  c_override bigint;
+  c_pulse bigint;
 begin
   if public.auth_role() <> 'super_admin' then
     raise exception 'insufficient_privilege';
@@ -303,15 +312,58 @@ begin
        and (t.entity_id is not distinct from p_entity_id)
   ), '[]'::jsonb);
 
+  -- Capture (read-only, BEFORE mutating) the three sources of the absence-
+  -- INDEPENDENT "needs_follow_up" half of the card so a clean-slate reset clears
+  -- it too: the group's admin-set health_status, the per-group manual override,
+  -- and the latest pulse's follow-up flag. (The "missing" half is governed by the
+  -- baseline, not by rows.) Global targets every non-closed group — exactly the
+  -- set buildHealthSummary partitions.
+  v_status_payload := coalesce((
+    select jsonb_agg(jsonb_build_object('id', g.id, 'health_status', g.health_status))
+      from public.groups g
+     where g.health_status = 'needs_follow_up'
+       and (
+             (p_scope = 'global' and g.lifecycle_status <> 'closed')
+          or (p_scope = 'entity' and g.id = p_entity_id)
+           )
+  ), '[]'::jsonb);
+
+  v_override_payload := coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'group_id', s.group_id,
+             'manual_health_status_override', s.manual_health_status_override
+           ))
+      from public.group_metric_settings s
+     where s.manual_health_status_override = 'needs_follow_up'
+       and (
+             (p_scope = 'global' and s.group_id in (
+                select id from public.groups where lifecycle_status <> 'closed'))
+          or (p_scope = 'entity' and s.group_id = p_entity_id)
+           )
+  ), '[]'::jsonb);
+
+  v_pulse_payload := coalesce((
+    select jsonb_agg(jsonb_build_object('id', u.id))
+      from public.group_health_updates u
+     where u.follow_up_needed = true
+       and (
+             (p_scope = 'global' and u.group_id in (
+                select id from public.groups where lifecycle_status <> 'closed'))
+          or (p_scope = 'entity' and u.group_id = p_entity_id)
+           )
+  ), '[]'::jsonb);
+
+  c_status := jsonb_array_length(v_status_payload);
+  c_override := jsonb_array_length(v_override_payload);
+  c_pulse := jsonb_array_length(v_pulse_payload);
+
   delete from public.attention_reset_snapshots
    where surface = 'health'
      and scope = p_scope
      and (entity_id is not distinct from p_entity_id)
      and restored_at is null;
 
-  -- No row mutation: "missing" is absence-derived, so the baseline alone clears
-  -- the card. total_rows stays 0 — the snapshot exists only to recover the prior
-  -- baseline on revert.
+  -- Snapshot INSERTed before any mutation, so the prior values are recoverable.
   insert into public.attention_reset_snapshots
     (id, created_by, surface, scope, entity_id, kind, payload, row_counts, total_rows)
   values
@@ -319,11 +371,19 @@ begin
      jsonb_build_object(
        'schema_version', 1,
        'surface', 'health',
-       'prior_baselines', v_baseline_payload
+       'prior_baselines', v_baseline_payload,
+       'prior_group_health_status', v_status_payload,
+       'prior_metric_overrides', v_override_payload,
+       'prior_pulse_flags', v_pulse_payload
      ),
-     '{}'::jsonb,
-     0);
+     jsonb_build_object(
+       'health_status', c_status,
+       'metric_overrides', c_override,
+       'pulse_flags', c_pulse
+     ),
+     c_status + c_override + c_pulse);
 
+  -- Replace the baseline at today (governs the absence-derived "missing" half).
   delete from public.attention_reset_baselines
    where surface = 'health'
      and scope = p_scope
@@ -333,11 +393,44 @@ begin
   values
     ('health', p_scope, p_entity_id, v_today, v_actor);
 
+  -- Clean-slate field-wipe of the "needs_follow_up" half: clear the admin-set
+  -- health_status, the per-group manual override, and the latest pulse flag, so
+  -- the card reads fully clear (not just its absence-derived half).
+  update public.groups g
+     set health_status = 'healthy',
+         updated_at = now()
+   where g.health_status = 'needs_follow_up'
+     and (
+           (p_scope = 'global' and g.lifecycle_status <> 'closed')
+        or (p_scope = 'entity' and g.id = p_entity_id)
+         );
+
+  update public.group_metric_settings s
+     set manual_health_status_override = null
+   where s.manual_health_status_override = 'needs_follow_up'
+     and (
+           (p_scope = 'global' and s.group_id in (
+              select id from public.groups where lifecycle_status <> 'closed'))
+        or (p_scope = 'entity' and s.group_id = p_entity_id)
+         );
+
+  update public.group_health_updates u
+     set follow_up_needed = false
+   where u.follow_up_needed = true
+     and (
+           (p_scope = 'global' and u.group_id in (
+              select id from public.groups where lifecycle_status <> 'closed'))
+        or (p_scope = 'entity' and u.group_id = p_entity_id)
+         );
+
   insert into public.audit_events
     (actor_profile_id, action, entity_type, entity_id, metadata)
   values
     (v_actor, 'super_admin.reset_health_attention', 'attention_reset_snapshots', v_snapshot_id,
-     jsonb_build_object('surface', 'health', 'scope', p_scope, 'entity_id', p_entity_id));
+     jsonb_build_object(
+       'surface', 'health', 'scope', p_scope, 'entity_id', p_entity_id,
+       'health_status', c_status, 'metric_overrides', c_override, 'pulse_flags', c_pulse
+     ));
 
   return v_snapshot_id;
 end;
@@ -349,7 +442,7 @@ revoke all     on function public.super_admin_reset_health_attention(text, uuid)
 grant  execute on function public.super_admin_reset_health_attention(text, uuid) to authenticated;
 
 comment on function public.super_admin_reset_health_attention(text, uuid) is
-  'health-checks-reset: super-admin reset of the health-check "Needs attention" card. Sets a health reset baseline (global or per-group) at today, snapshotting the prior baseline first. Performs NO row mutation — "missing" is absence-derived, so the baseline alone withholds it for due weeks at/before the reset. Writes a paired super_admin.reset_health_attention audit row.';
+  'health-checks-reset: super-admin reset of the health-check "Needs attention" card. Sets a health reset baseline (global or per-group) at today (governs the absence-derived "missing" half) and, snapshotting prior values first, clean-slate field-wipes the "needs_follow_up" half: clears groups.health_status=needs_follow_up -> healthy, the per-group manual override, and the latest pulse follow_up_needed flag. Writes a paired super_admin.reset_health_attention audit row.';
 
 -- ---------------------------------------------------------------------------
 -- super_admin_reset_attention_revert(p_snapshot_id)
@@ -424,6 +517,29 @@ begin
              coalesce(v_payload -> 'prior_care_profiles', '[]'::jsonb)
            ) as x(id uuid, current_status text, next_touchpoint_due date)
      where p.id = x.id;
+  -- For health, restore the three "needs_follow_up" sources the field-wipe
+  -- cleared. Only rows that still exist are updated; deleted ones are skipped.
+  elsif v_surface = 'health' then
+    update public.groups g
+       set health_status = (x.health_status)::public.group_health_status,
+           updated_at = now()
+      from jsonb_to_recordset(
+             coalesce(v_payload -> 'prior_group_health_status', '[]'::jsonb)
+           ) as x(id uuid, health_status text)
+     where g.id = x.id;
+    update public.group_metric_settings s
+       set manual_health_status_override =
+             (x.manual_health_status_override)::public.group_health_status
+      from jsonb_to_recordset(
+             coalesce(v_payload -> 'prior_metric_overrides', '[]'::jsonb)
+           ) as x(group_id uuid, manual_health_status_override text)
+     where s.group_id = x.group_id;
+    update public.group_health_updates u
+       set follow_up_needed = true
+      from jsonb_to_recordset(
+             coalesce(v_payload -> 'prior_pulse_flags', '[]'::jsonb)
+           ) as x(id uuid)
+     where u.id = x.id;
   end if;
 
   update public.attention_reset_snapshots

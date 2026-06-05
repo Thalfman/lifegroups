@@ -54,7 +54,7 @@ export const ATTENTION_RESET_SURFACE_META: Record<
   health: {
     label: "Health checks",
     description:
-      "Reset the health-check clock so no group reads as an overdue or missing check right now. Re-surfaces naturally once a new due week passes without a submission.",
+      "Reset the health-check clock so no group reads as an overdue or missing check right now, and clear any open “needs follow-up” flags. Re-surfaces naturally once a new due week passes without a submission.",
   },
 };
 

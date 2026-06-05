@@ -610,9 +610,9 @@ function GroupHealthEditorBody({
             }}
           >
             Clear this group from the “overdue or missing health checks” card
-            with a fresh-start baseline — it re-surfaces naturally once a new
-            due week passes without a submission. Recoverable from Super Admin →
-            Danger Zone.
+            with a fresh-start baseline and clear any open “needs follow-up”
+            flag — it re-surfaces naturally once a new due week passes without a
+            submission. Recoverable from Super Admin → Danger Zone.
           </p>
           <AttentionResetEntityButton
             surface="health"

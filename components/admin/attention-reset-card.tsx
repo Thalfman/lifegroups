@@ -272,7 +272,9 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
               ? `${reset.state.value.affected} care profile${
                   reset.state.value.affected === 1 ? "" : "s"
                 } cleared.`
-              : null}{" "}
+              : `${reset.state.value.affected} follow-up flag${
+                  reset.state.value.affected === 1 ? "" : "s"
+                } cleared.`}{" "}
             A snapshot was saved for recovery.
           </span>
         ) : null}
