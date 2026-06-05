@@ -75,6 +75,16 @@ export default async function LeaderCalendarPage({
   const bounds = monthBounds(monthIso);
   if (!bounds) notFound();
 
+  // Leader-calendar past-date rule (#376 criterion 6, ADR 0017):
+  // READS span the full requested month, INCLUDING past dates. A leader can
+  // page back to a prior month and SEE past occurrences — that read history is
+  // intentional context for caring for the group (it mirrors the read-only
+  // posture admins already have, and the underlying rows are RLS-scoped to the
+  // leader's group via auth_is_leader_of). WRITES are a separate question: past
+  // dates render but editing them is governed by the calendar grid's canEdit /
+  // the RPC's own date checks, not by widening the read window. We deliberately
+  // do NOT clamp fromDate to today, so the past stays visible (read) while the
+  // surface remains group-scoped.
   const [groupResult, eventsResult] = await Promise.all([
     fetchGroupsByIds(client, [groupId]),
     fetchGroupCalendarEvents(client, {
@@ -100,9 +110,13 @@ export default async function LeaderCalendarPage({
       meetingFrequency: group.meeting_frequency,
       meetingWeekParity: group.meeting_week_parity,
     },
-    monthIso,
+    monthIso
   );
-  const resolved = mergeOverrides(generated, toSavedOverrides(events), group.meeting_time);
+  const resolved = mergeOverrides(
+    generated,
+    toSavedOverrides(events),
+    group.meeting_time
+  );
   const scheduleSummary = describeSchedule({
     meetingDay: group.meeting_day,
     meetingTime: group.meeting_time,
@@ -174,7 +188,10 @@ export default async function LeaderCalendarPage({
             Archived
           </Link>
           <span aria-hidden="true" style={{ marginLeft: "auto" }}></span>
-          <Link href="/leader" style={{ color: P.ink2, textDecoration: "none" }}>
+          <Link
+            href="/leader"
+            style={{ color: P.ink2, textDecoration: "none" }}
+          >
             ← Back to dashboard
           </Link>
         </nav>
@@ -218,7 +235,14 @@ export default async function LeaderCalendarPage({
                   {scheduleSummary ?? <ScheduleGap />}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
                 {prevMonth ? (
                   <Link
                     href={`/leader/${groupId}/calendar?month=${prevMonth}`}
@@ -269,7 +293,8 @@ export default async function LeaderCalendarPage({
                   fontStyle: "italic",
                 }}
               >
-                Leader edits are paused while this group is closed. Contact an admin to make changes.
+                Leader edits are paused while this group is closed. Contact an
+                admin to make changes.
               </p>
             ) : null}
           </>
@@ -296,7 +321,8 @@ export default async function LeaderCalendarPage({
                 margin: 0,
               }}
             >
-              Past overrides that were cleared. Restoring re-applies the override on the calendar grid.
+              Past overrides that were cleared. Restoring re-applies the
+              override on the calendar grid.
             </p>
             <CalendarEventList
               events={events}
@@ -322,7 +348,9 @@ export default async function LeaderCalendarPage({
 function ScheduleGap() {
   return (
     <>
-      Schedule incomplete. Contact a ministry admin so they can finish the meeting cadence in group management. Special one-off events can still be added by clicking a date.
+      Schedule incomplete. Contact a ministry admin so they can finish the
+      meeting cadence in group management. Special one-off events can still be
+      added by clicking a date.
     </>
   );
 }

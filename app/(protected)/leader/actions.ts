@@ -6,17 +6,33 @@ import {
   type LeaderCheckinPayload,
 } from "@/lib/leader/validation";
 import { isoWeekStart } from "@/lib/shared/church-time";
-import { type ActionResult } from "@/lib/leader/action-result";
+import { type ActionResult, actionFail } from "@/lib/leader/action-result";
 import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
 import { rpcLeaderSubmitGroupCheckin } from "@/lib/leader/rpc";
+import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 
 const REVALIDATE_LEADER = "/leader";
 
 const CHECKIN_NOT_ASSIGNED =
   "Only an assigned leader or co-leader can submit this check-in.";
+
+const CHECKINS_FROZEN = "Weekly check-ins aren't available right now.";
+
+// Check-ins stay FROZEN, DECOUPLED from leader_surface (#376 criterion 2). The
+// leader_submit_group_checkin RPC writes attendance + group_health_updates and
+// must NOT re-open just because leader_surface is live — it carries its OWN
+// `check_ins` frozen gate (ADR 0002 / 0009), which stays off this slice. Every
+// check-in action calls this before reaching requireLeaderActor / the RPC, so a
+// leader with a live leader_surface still cannot submit a check-in. Read through
+// the leader-safe RPC; fails closed.
+async function checkInsFrozenGate(): Promise<LeaderCheckinActionResult | null> {
+  const live = await readFrozenSurfaceFlagForLeader("check_ins");
+  if (live) return null;
+  return actionFail([CHECKINS_FROZEN]);
+}
 
 function parseAttendanceFormField(raw: FormDataEntryValue | null): unknown {
   if (raw === null) return [];
@@ -78,7 +94,10 @@ const SUBMIT_CHECKIN_SPEC: LeaderWriteActionSpec<
           fields: { target_group_id: value.group_id },
         },
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
-  okFields: (value, id) => ({ checkin_status: value.status, new_session_id: id }),
+  okFields: (value, id) => ({
+    checkin_status: value.status,
+    new_session_id: id,
+  }),
   rpc: (client, value) =>
     rpcLeaderSubmitGroupCheckin(client, {
       p_group_id: value.group_id,
@@ -90,15 +109,20 @@ const SUBMIT_CHECKIN_SPEC: LeaderWriteActionSpec<
       p_follow_up_needed: value.follow_up_needed,
       p_attendance: value.attendance,
     }),
-  revalidate: (value) => [REVALIDATE_LEADER, `/leader/${value.group_id}/checkin`],
+  revalidate: (value) => [
+    REVALIDATE_LEADER,
+    `/leader/${value.group_id}/checkin`,
+  ],
   result: (id) => ({ session_id: id }),
   noDataError: "The check-in didn't save. Please try again.",
 };
 
 export async function leaderSubmitGroupCheckin(
   prev: LeaderCheckinActionResult | undefined,
-  input: FormData | Record<string, unknown>,
+  input: FormData | Record<string, unknown>
 ): Promise<LeaderCheckinActionResult> {
+  const frozen = await checkInsFrozenGate();
+  if (frozen) return frozen;
   return runLeaderWriteAction(SUBMIT_CHECKIN_SPEC, prev, input);
 }
 
@@ -159,8 +183,10 @@ const QUICK_DID_NOT_MEET_SPEC: LeaderWriteActionSpec<
 
 export async function leaderQuickMarkDidNotMeet(
   prev: LeaderCheckinActionResult | undefined,
-  input: FormData | { group_id?: string },
+  input: FormData | { group_id?: string }
 ): Promise<LeaderCheckinActionResult> {
+  const frozen = await checkInsFrozenGate();
+  if (frozen) return frozen;
   return runLeaderWriteAction(QUICK_DID_NOT_MEET_SPEC, prev, input);
 }
 
@@ -173,7 +199,7 @@ export async function leaderQuickMarkDidNotMeet(
 // because it redirects after delegating.
 export async function leaderSubmitCheckinAndReturn(
   _prev: LeaderCheckinActionResult | undefined,
-  formData: FormData,
+  formData: FormData
 ): Promise<LeaderCheckinActionResult> {
   const result = await leaderSubmitGroupCheckin(undefined, formData);
   if (!result.ok) return result;

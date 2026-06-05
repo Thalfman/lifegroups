@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCreateClient } = vi.hoisted(() => ({
+const { mockCreateClient, mockReadFrozenSurfaceFlag } = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
+  // The leader guards consult the leader-safe frozen-surface flag read (#376).
+  // Mock it so the guard's verify-before-flip branch is exercised without a DB.
+  // Defaults to true (leader_surface live) so the "admitted" cases pass; the
+  // frozen cases set it to false explicitly.
+  mockReadFrozenSurfaceFlag: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -14,6 +19,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: mockCreateClient,
+}));
+
+vi.mock("@/lib/auth/leader-surface-flag", () => ({
+  readFrozenSurfaceFlagForLeader: mockReadFrozenSurfaceFlag,
 }));
 
 vi.mock("@/lib/observability/logger", () => ({
@@ -139,6 +148,10 @@ async function loadSession() {
 beforeEach(() => {
   vi.resetModules();
   mockCreateClient.mockReset();
+  // Default: the leader_surface flag resolves live (enabled+verified). Tests
+  // that pin the frozen behavior override this per case.
+  mockReadFrozenSurfaceFlag.mockReset();
+  mockReadFrozenSurfaceFlag.mockResolvedValue(true);
 });
 
 describe("requireRole (page-route guard)", () => {
@@ -324,12 +337,53 @@ describe("requireAdminSession (server-action guard)", () => {
   });
 });
 
-// Shepherd (leader) surface gated per
-// docs/adr/0002-oversight-ladder-and-leader-gating.md: the shared guards now
-// deny every caller before any RPC, so the dormant leader surface is
-// unreachable. These tests pin that no-access behavior.
-describe("requireLeader (page-route guard) -- gated", () => {
-  it("redirects a leader caller to /unauthorized", async () => {
+// Leader surface re-opened under the verify-before-flip gate (#376, ADR 0017 /
+// 0009): the leader guards admit leader / co_leader IFF the leader_surface flag
+// resolves enabled+verified; every other role stays no-access, and a leader is
+// denied while the flag is not live (frozen). These tests pin that behavior with
+// the leader-safe flag read mocked.
+const CO_LEADER_FIXTURE: ProfileFixture = {
+  ...PROFILE_LEADER,
+  id: "99999999-9999-9999-9999-999999999999",
+  auth_user_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  email: "coleader@example.com",
+  role: "co_leader",
+};
+
+describe("requireLeader (page-route guard) -- verify-before-flip", () => {
+  it("admits an active leader when leader_surface is enabled+verified", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(true);
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [{ group_id: GROUP_1_ID }],
+      })
+    );
+    const { requireLeader } = await loadSession();
+    const result = await requireLeader();
+    expect(result.kind).toBe("authenticated");
+    expect(result.profile.role).toBe("leader");
+    expect(result.assignedGroupIds).toEqual([GROUP_1_ID]);
+  });
+
+  it("gives co_leader parity with leader", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(true);
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-coleader", email: "coleader@example.com" },
+        profile: CO_LEADER_FIXTURE,
+        leaderRows: [{ group_id: GROUP_1_ID }],
+      })
+    );
+    const { requireLeader } = await loadSession();
+    const result = await requireLeader();
+    expect(result.kind).toBe("authenticated");
+    expect(result.profile.role).toBe("co_leader");
+  });
+
+  it("redirects a leader to /unauthorized when leader_surface is NOT live (frozen)", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(false);
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },
@@ -343,11 +397,26 @@ describe("requireLeader (page-route guard) -- gated", () => {
     });
   });
 
-  it("redirects an admin caller to /unauthorized too (no role admitted)", async () => {
+  it("redirects an admin caller to /unauthorized even when the flag is live (no role admitted)", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(true);
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-admin", email: "admin@example.com" },
         profile: PROFILE_ADMIN,
+      })
+    );
+    const { requireLeader } = await loadSession();
+    await expect(requireLeader()).rejects.toMatchObject({
+      __redirect: "/unauthorized",
+    });
+  });
+
+  it("redirects an over_shepherd caller to /unauthorized even when the flag is live", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(true);
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-coach", email: "coach@example.com" },
+        profile: PROFILE_OVER_SHEPHERD,
       })
     );
     const { requireLeader } = await loadSession();
@@ -399,8 +468,27 @@ describe("requireOverShepherd (page-route guard)", () => {
   });
 });
 
-describe("requireLeaderActor (server-action guard) -- gated", () => {
-  it("denies a leader caller before any RPC", async () => {
+describe("requireLeaderActor (server-action guard) -- verify-before-flip", () => {
+  it("admits a leader caller when leader_surface is live, returning profile id + groups", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(true);
+    mockCreateClient.mockResolvedValueOnce(
+      makeClient({
+        user: { id: "auth-leader", email: "leader@example.com" },
+        profile: PROFILE_LEADER,
+        leaderRows: [{ group_id: GROUP_1_ID }],
+      })
+    );
+    const { requireLeaderActor } = await loadSession();
+    const r = await requireLeaderActor();
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.profileId).toBe(PROFILE_LEADER_ID);
+      expect(r.assignedGroupIds).toEqual([GROUP_1_ID]);
+    }
+  });
+
+  it("denies a leader caller when leader_surface is NOT live (frozen)", async () => {
+    mockReadFrozenSurfaceFlag.mockResolvedValue(false);
     mockCreateClient.mockResolvedValueOnce(
       makeClient({
         user: { id: "auth-leader", email: "leader@example.com" },

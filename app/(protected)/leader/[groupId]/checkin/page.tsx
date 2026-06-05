@@ -3,7 +3,9 @@ import { PastoralAppShell } from "@/components/pastoral/shell";
 import { UserPill } from "@/components/auth/user-pill";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { CheckInForm } from "@/components/leader/check-in-form";
+import { FrozenSurfaceNotice } from "@/components/admin/frozen-surface-notice";
 import { requireLeader } from "@/lib/auth/session";
+import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -64,6 +66,21 @@ export default async function CheckInPage({
 }) {
   const { groupId } = await params;
   const session = await requireLeader();
+
+  // Check-ins stay FROZEN, DECOUPLED from leader_surface (#376 criterion 2).
+  // The /leader/** tree (and this page's requireLeader guard) is gated on
+  // `leader_surface`, but the check-in surface — this route plus the
+  // leader_submit_group_checkin RPC it writes through — carries its OWN
+  // independent `check_ins` frozen gate (ADR 0002 / 0009). So even when
+  // leader_surface is enabled-and-verified, check-ins do NOT re-open until
+  // `check_ins` is itself enabled-and-verified (it stays off this slice). We
+  // read it through the same leader-safe RPC and show the explicit frozen
+  // notice when it is not live, before any check-in data is loaded.
+  const checkInsLive = await readFrozenSurfaceFlagForLeader("check_ins");
+  if (!checkInsLive) {
+    return <FrozenSurfaceNotice surfaceLabel="Weekly check-ins" />;
+  }
+
   if (!session.assignedGroupIds.includes(groupId)) {
     redirect("/leader");
   }

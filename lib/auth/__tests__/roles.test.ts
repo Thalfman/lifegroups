@@ -64,11 +64,12 @@ describe("defaultLandingPathForRole", () => {
     expect(defaultLandingPathForRole("ministry_admin")).toBe("/admin");
   });
 
-  // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // leader / co_leader are treated as no-access.
-  it("routes leaders to /unauthorized (leader surface gated)", () => {
-    expect(defaultLandingPathForRole("leader")).toBe("/unauthorized");
-    expect(defaultLandingPathForRole("co_leader")).toBe("/unauthorized");
+  // Leader surface re-opened under the verify-before-flip gate (#376, ADR 0017):
+  // leader / co_leader land on /leader; the requireLeader guard on that route
+  // holds the flag gate, not this mapping.
+  it("routes leaders to /leader (verify-before-flip gate lives in the guard)", () => {
+    expect(defaultLandingPathForRole("leader")).toBe("/leader");
+    expect(defaultLandingPathForRole("co_leader")).toBe("/leader");
   });
 
   it("routes over_shepherd to /over-shepherd", () => {
@@ -183,18 +184,22 @@ describe("navItemsForRole", () => {
     }
   });
 
-  // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
-  // no leader nav entry is emitted any more; leaders see only the Home shell.
-  it("gives leaders only the home item (leader nav entry dropped)", () => {
-    const leaderHrefs = navItemsForRole("leader").map((i) => i.href);
-    expect(leaderHrefs).toEqual(["/"]);
-    const coLeaderHrefs = navItemsForRole("co_leader").map((i) => i.href);
-    expect(coLeaderHrefs).toEqual(["/"]);
+  // Leader surface re-opened (#376, ADR 0017): leaders get Home + a single
+  // focused "Care" entry pointing at the /leader placeholder landing.
+  it("gives leaders the home + care items", () => {
+    const leaderItems = navItemsForRole("leader");
+    expect(leaderItems.map((i) => i.href)).toEqual(["/", "/leader"]);
+    expect(leaderItems.map((i) => i.label)).toEqual(["Home", "Care"]);
+    const coLeaderItems = navItemsForRole("co_leader");
+    expect(coLeaderItems.map((i) => i.href)).toEqual(["/", "/leader"]);
   });
 
-  it("emits no /leader nav entry for any role", () => {
+  it("emits a /leader nav entry only for leader roles", () => {
     for (const role of ALL_ROLES) {
-      expect(navItemsForRole(role).map((i) => i.href)).not.toContain("/leader");
+      const hrefs = navItemsForRole(role).map((i) => i.href);
+      expect(hrefs.includes("/leader")).toBe(
+        role === "leader" || role === "co_leader"
+      );
     }
   });
 

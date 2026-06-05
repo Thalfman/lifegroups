@@ -1,23 +1,29 @@
 import type { ReactNode } from "react";
 import { requireLeader } from "@/lib/auth/session";
-import { frozenSurfaceGate } from "@/components/admin/frozen-surface-gate";
 
 export const dynamic = "force-dynamic";
 
-// LDR.1 (ADR 0002): the Leader surface is frozen. #191 / ADR 0009 route it
-// through the default-off `leader_surface` flag and show an explicit frozen
-// signal until the flag is enabled-and-verified. The gate runs requireLeader()
-// first so the existing access gate is never loosened — only authenticated
-// leaders ever reach either the frozen notice or (once re-enabled) the surface.
+// Leader route-group guard (#376, ADR 0017 amending ADR 0002 / under ADR 0009).
+//
+// The whole /leader/** tree is gated by requireLeader(), which now owns the
+// verify-before-flip check: it admits an active leader / co_leader ONLY when the
+// `leader_surface` frozen-surface flag resolves enabled-and-verified, via the
+// leader-SAFE read_frozen_surface_flag RPC. Every other role, and any leader
+// while the surface is not live, is redirected to /unauthorized.
+//
+// This replaces the earlier frozenSurfaceGate(isFrozenSurfaceLive) wrapper:
+// isFrozenSurfaceLive reads the ADMIN-only admin_read_feature_flags RPC, which
+// returns an empty map to a leader, so it could never see leader_surface as live
+// from a leader context. The gate now lives in the guard with a leader-safe read.
+//
+// Check-ins are NOT covered by this gate: /leader/[groupId]/checkin carries its
+// own independent `check_ins` frozen gate (which stays off), so a live
+// leader_surface never re-exposes the check-in route.
 export default async function LeaderLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  return frozenSurfaceGate({
-    guard: requireLeader,
-    flagKey: "leader_surface",
-    surfaceLabel: "The Leader surface",
-    children,
-  });
+  await requireLeader();
+  return <>{children}</>;
 }
