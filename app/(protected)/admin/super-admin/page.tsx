@@ -412,9 +412,8 @@ export default async function AdminSuperAdminPage() {
     <>
       <PageHeader
         eyebrow="Super admin"
-        title="Command"
-        italic="center"
-        lede="Owner and operator control plane for launch readiness, access, diagnostics, test tools, audit, maintenance, and guarded danger actions."
+        title="Super Admin"
+        lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, and guarded danger actions."
       />
       <PageBody>
         <SuperAdminConsoleShell
