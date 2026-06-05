@@ -51,6 +51,9 @@ export type SettingsReads = {
   fetchMultiplicationConfigs: () => ReturnType<
     typeof fetchMultiplicationConfigs
   >;
+  // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
+  // "leader" kind. Same shared reader, filtered to the other rubric row.
+  fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
 };
 
 export function supabaseSettingsReads(
@@ -66,6 +69,7 @@ export function supabaseSettingsReads(
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchMultiplicationConfigs: () =>
       fetchMultiplicationConfigs(client, currentMinistryYear(new Date())),
+    fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
 }
 
@@ -115,6 +119,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       ministryYear: currentMinistryYear(new Date()),
       seeds: buildMultiplicationSeeds(new Map()),
     },
+    leaderRubricCriteria: [],
     isSuperAdmin,
     editableCopy: isSuperAdmin ? {} : null,
     errors: {
@@ -138,6 +143,7 @@ export async function buildSettingsData(
     platformConfigResult,
     rubricResult,
     multiplicationResult,
+    leaderRubricResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -148,6 +154,7 @@ export async function buildSettingsData(
     isSuperAdmin ? reads.fetchPlatformConfig() : Promise.resolve(null),
     reads.fetchGroupHealthRubric(),
     reads.fetchMultiplicationConfigs(),
+    reads.fetchLeaderHealthRubric(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
@@ -182,6 +189,9 @@ export async function buildSettingsData(
       ministryYear: currentMinistryYear(new Date()),
       seeds: buildMultiplicationSeeds(configByType),
     },
+    leaderRubricCriteria: decodeRubricCriteria(
+      leaderRubricResult.data?.criteria ?? null
+    ),
     isSuperAdmin,
     editableCopy: isSuperAdmin
       ? decodeAppConfig(platformConfigResult?.data ?? null).editableCopy

@@ -1000,3 +1000,25 @@ export function rpcAdminSetMultiplicationConfig(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_multiplication_config", args);
 }
+
+// #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's grade
+// for a ministry year. The roll-up + override resolution are done in TS first
+// (lib/admin/leader-rubric-grade.ts); this persists the already-computed letter
+// (+ raw per-criterion scores and any override) through the audited RPC. The
+// override letter + scope travel together (both null, or both set).
+export type AdminSetLeaderRubricGradeArgs = {
+  p_profile_id: string;
+  p_ministry_year: number;
+  p_criterion_scores: Record<string, number>;
+  p_computed_letter: string | null;
+  p_override_letter: string | null;
+  p_override_scope: "this_month" | "until_cleared" | null;
+  p_override_period_month: string | null;
+};
+
+export function rpcAdminSetLeaderRubricGrade(
+  client: AppSupabaseClient,
+  args: AdminSetLeaderRubricGradeArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_leader_rubric_grade", args);
+}

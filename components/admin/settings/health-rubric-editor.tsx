@@ -67,8 +67,18 @@ function deriveKey(draft: DraftCriterion, index: number): string {
 
 export function HealthRubricEditor({
   criteria,
+  // The rubric kind this editor edits. Defaults to "group" so existing callers
+  // (the Group Health Rubric section) are unchanged; the Leader-Health Rubric
+  // section passes "leader". The kind is posted as a hidden field and gates which
+  // health_rubrics row admin_set_health_rubric upserts — one editor, both kinds.
+  kind = "group",
+  // The noun shown in the editor's blurb (e.g. "group" / "leader"), so the same
+  // component reads naturally for either rubric.
+  subjectLabel = "group",
 }: {
   criteria: RubricCriterion[];
+  kind?: "group" | "leader";
+  subjectLabel?: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminSetHealthRubric
@@ -102,12 +112,13 @@ export function HealthRubricEditor({
 
   return (
     <form action={formAction} style={{ display: "grid", gap: 16 }}>
-      <input type="hidden" name="kind" value="group" />
+      <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="criteria" value={criteriaJson} />
 
       <p style={noteStyle}>
-        Build how a group is graded: name each criterion and set its weight. The
-        weights must total {RUBRIC_WEIGHT_TOTAL} before you can save.
+        Build how a {subjectLabel} is graded: name each criterion and set its
+        weight. The weights must total {RUBRIC_WEIGHT_TOTAL} before you can
+        save.
       </p>
 
       <div style={{ display: "grid", gap: 12 }}>
