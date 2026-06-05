@@ -62,28 +62,76 @@ export interface AdminArea {
   href: string;
   label: string;
   icon: string;
+  // Nav-visibility flag key (ADR 0016). Present only on the three default-hidden
+  // tabs (Groups, People, Planning): the area renders in nav ONLY when this flag
+  // resolves on. Areas without a key are always visible. The key must match a
+  // `nav_visibility` flag in lib/admin/feature-flags.ts (NAV_VISIBILITY_FLAGS);
+  // a drift test guards the two from diverging.
+  navFlagKey?: string;
 }
 
-// The six job-oriented areas of the reduced IA (ADR 0013). This is the single
-// source of truth shared by every navigation surface — admin sidebar
-// (adminNavGroups), Home Hub launcher tiles (lib/auth/hub-tiles.ts), and the
-// bottom-nav list (navItemsForRole) — so all three stay consistent by
-// construction. Rendered as a flat list, no section headers.
+// The job-oriented areas of the IA, now the Care/Plan/Multiply pivot set
+// (ADR 0016, superseding ADR 0013's six-area spine). This is the single source
+// of truth shared by every navigation surface — admin sidebar (adminNavGroups),
+// Home Hub launcher tiles (lib/auth/hub-tiles.ts), and the bottom-nav list
+// (navItemsForRole) — so all three stay consistent by construction. Rendered as
+// a flat list, no section headers.
 //
-// Area→job mapping (ADR 0013, amending ADR 0010): Groups→job 3 (group health),
-// Care→job 1 (leader care), Planning→job 2 (launch), Home=cross-job triage,
-// People=shared substrate, Settings=System utility. Care/Planning point at the
-// new landing shells (#298); the frozen routes they will host
-// (shepherd-care, follow-ups, launch-planning, calendar, group-health) keep
-// their paths and still resolve directly (ADR 0008/0009).
+// The default-visible spine is Home · Care · Plan · Multiply · Settings. Three
+// former top-level tabs — Groups, People, Planning — are HIDDEN by default and
+// carry a `navFlagKey`: their routes still resolve by direct URL (ADR 0008/0009)
+// and a Super Admin can re-show any of them by flipping its nav-visibility flag
+// (resolveHiddenNav), at which point it slots back in here before Settings.
+//
+// Area→job mapping (ADR 0016): Care→leader/group care (absorbs Group-Health
+// grading), Plan→the Interest Funnel (the former Guests pipeline aliases here),
+// Multiply→per-type multiplication boards (the former launch-planning/calendar
+// alias here), Home=cross-job triage, Settings=System utility. Plan and Multiply
+// ship as minimal "being built" shells until their feature slices land.
 export const ADMIN_AREAS: readonly AdminArea[] = [
   { href: "/admin", label: "Home", icon: "sun" },
-  { href: "/admin/groups", label: "Groups", icon: "groups" },
   { href: "/admin/care", label: "Care", icon: "heart" },
-  { href: "/admin/people", label: "People", icon: "people" },
-  { href: "/admin/planning", label: "Planning", icon: "compass" },
+  { href: "/admin/plan", label: "Plan", icon: "inbox" },
+  { href: "/admin/multiply", label: "Multiply", icon: "sprout" },
+  {
+    href: "/admin/groups",
+    label: "Groups",
+    icon: "groups",
+    navFlagKey: "nav_show_groups",
+  },
+  {
+    href: "/admin/people",
+    label: "People",
+    icon: "people",
+    navFlagKey: "nav_show_people",
+  },
+  {
+    href: "/admin/planning",
+    label: "Planning",
+    icon: "compass",
+    navFlagKey: "nav_show_planning",
+  },
   { href: "/admin/settings", label: "Settings", icon: "cog" },
 ];
+
+// The set of area hrefs hidden by default (those carrying a nav-visibility flag).
+// Derived from ADMIN_AREAS so it can't drift from the area list. Used as the
+// default `hiddenAreas` for the nav builders below, so a caller that resolves no
+// flag config still gets the pivot default (Groups/People/Planning hidden), and
+// mirrors lib/admin/feature-flags.ts DEFAULT_HIDDEN_NAV_AREAS.
+export const DEFAULT_HIDDEN_ADMIN_AREAS: ReadonlySet<string> = new Set(
+  ADMIN_AREAS.filter((a) => a.navFlagKey).map((a) => a.href)
+);
+
+// Filter ADMIN_AREAS to the areas that should render given a hidden-area set
+// (resolveHiddenNav). An area is dropped when its href is in `hiddenAreas`;
+// always-visible areas (no navFlagKey) are never affected. Defaults to the pivot
+// default so an unspecified caller still hides Groups/People/Planning.
+function visibleAdminAreas(
+  hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
+): AdminArea[] {
+  return ADMIN_AREAS.filter((a) => !hiddenAreas.has(a.href));
+}
 
 // Super Admin is NOT one of the six areas (ADR 0002): it is appended only for
 // super_admin and is otherwise unchanged. It must never be hidden or replaced
@@ -99,10 +147,14 @@ export const SUPER_ADMIN_AREA: AdminArea = {
 // Home Hub at `/` is the pre-admin landing — kept as the lone item for
 // non-admin roles, but it is not one of the six areas.
 export function navItemsForRole(
-  role: UserRole
+  role: UserRole,
+  hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
 ): { href: string; label: string }[] {
   if (isAdminRole(role)) {
-    const items = ADMIN_AREAS.map((a) => ({ href: a.href, label: a.label }));
+    const items = visibleAdminAreas(hiddenAreas).map((a) => ({
+      href: a.href,
+      label: a.label,
+    }));
     if (role === "super_admin") {
       items.push({
         href: SUPER_ADMIN_AREA.href,
@@ -136,15 +188,19 @@ export interface AdminNavGroup {
   items: AdminNavItem[];
 }
 
-export function adminNavGroups(role: UserRole): AdminNavGroup[] {
-  // Six-area spine (ADR 0013): a single flat group with no section header
-  // (empty label) renders the six areas as a flat list, collapsing the former
-  // grouped sidebar (top / Ministry Admin / Manage / System). Super Admin is
-  // appended only for super_admin and is unchanged (ADR 0002). The frozen
-  // surfaces these areas will host (shepherd-care, follow-ups, launch-planning,
-  // calendar, group-health) keep their routes and resolve by direct URL
-  // (ADR 0008/0009).
-  const items: AdminNavItem[] = ADMIN_AREAS.map((a) => ({ ...a }));
+export function adminNavGroups(
+  role: UserRole,
+  hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
+): AdminNavGroup[] {
+  // Care/Plan/Multiply spine (ADR 0016): a single flat group with no section
+  // header (empty label) renders the visible areas as a flat list. Groups,
+  // People, and Planning are filtered out unless a Super Admin has re-shown them
+  // (hiddenAreas, from resolveHiddenNav); their routes still resolve by direct
+  // URL regardless (ADR 0008/0009). Super Admin is appended only for super_admin
+  // and is unchanged (ADR 0002).
+  const items: AdminNavItem[] = visibleAdminAreas(hiddenAreas).map((a) => ({
+    ...a,
+  }));
   if (role === "super_admin") {
     items.push({ ...SUPER_ADMIN_AREA });
   }
@@ -158,8 +214,11 @@ export function adminNavGroups(role: UserRole): AdminNavGroup[] {
 // matching its focused navItemsForRole entry. Any other (no-access) role
 // resolves to an empty sidebar — those callers never reach an lg-shell surface
 // (they redirect to /unauthorized first), so this is only a safe fallback.
-export function navGroupsForRole(role: UserRole): AdminNavGroup[] {
-  if (isAdminRole(role)) return adminNavGroups(role);
+export function navGroupsForRole(
+  role: UserRole,
+  hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
+): AdminNavGroup[] {
+  if (isAdminRole(role)) return adminNavGroups(role, hiddenAreas);
   if (isOverShepherdRole(role)) {
     return [
       {

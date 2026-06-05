@@ -3,28 +3,41 @@ import { hubTilesForRole } from "@/lib/auth/hub-tiles";
 import type { UserRole } from "@/types/enums";
 
 describe("hubTilesForRole", () => {
-  // Six-area spine (ADR 0013): the Home Hub launcher mirrors the six areas in
-  // the same order as the sidebar and bottom nav.
-  it("gives ministry_admin one tile per area in the six-area order", () => {
+  // Care/Plan/Multiply pivot (ADR 0016): the Home Hub launcher mirrors the
+  // default-visible spine in the same order as the sidebar and bottom nav.
+  // Groups/People/Planning are hidden by default.
+  it("gives ministry_admin one tile per visible area in spine order", () => {
     const tiles = hubTilesForRole("ministry_admin");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Home", "/admin"],
-      ["Groups", "/admin/groups"],
       ["Care", "/admin/care"],
-      ["People", "/admin/people"],
-      ["Planning", "/admin/planning"],
+      ["Plan", "/admin/plan"],
+      ["Multiply", "/admin/multiply"],
       ["Settings", "/admin/settings"],
     ]);
   });
 
-  it("gives super_admin the six area tiles plus a Super Admin Console tile last", () => {
+  it("re-shows hidden tabs as tiles when their flag is on (empty hidden set)", () => {
+    const tiles = hubTilesForRole("ministry_admin", new Set());
+    expect(tiles.map((t) => t.href)).toEqual([
+      "/admin",
+      "/admin/care",
+      "/admin/plan",
+      "/admin/multiply",
+      "/admin/groups",
+      "/admin/people",
+      "/admin/planning",
+      "/admin/settings",
+    ]);
+  });
+
+  it("gives super_admin the visible area tiles plus a Super Admin Console tile last", () => {
     const tiles = hubTilesForRole("super_admin");
     expect(tiles.map((t) => [t.label, t.href])).toEqual([
       ["Home", "/admin"],
-      ["Groups", "/admin/groups"],
       ["Care", "/admin/care"],
-      ["People", "/admin/people"],
-      ["Planning", "/admin/planning"],
+      ["Plan", "/admin/plan"],
+      ["Multiply", "/admin/multiply"],
       ["Settings", "/admin/settings"],
       ["Super Admin Console", "/admin/super-admin"],
     ]);

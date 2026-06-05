@@ -21,19 +21,31 @@
 // source of truth for which area a frozen surface belongs to.
 
 // Frozen alias path → the canonical area href that owns it. These alias paths
-// stay directly resolvable (200) per ADR 0013 — this is nav active-state only,
-// no routing changes. Keys are exact, leading-slash, no trailing slash.
+// stay directly resolvable (200) per ADR 0008/0009 — this is nav active-state
+// only, no routing changes. Keys are exact, leading-slash, no trailing slash.
+//
+// Care/Plan/Multiply pivot (ADR 0016): the owning area for each alias must be a
+// still-VISIBLE area, never one of the now-hidden tabs (Groups, People,
+// Planning) — an alias owned by a hidden tab would highlight nothing. So:
+//   * group-health, check-ins, leader-pipeline, shepherd-care, follow-ups → Care
+//     (Care absorbs Group-Health grading and the leader/coverage surfaces).
+//   * launch-planning, calendar → Multiply (the per-type multiplication boards).
+//   * guests → Plan (the Interest Funnel that replaces the Guests pipeline).
 export const NAV_ALIAS_TO_CANONICAL: Readonly<Record<string, string>> = {
   "/admin/shepherd-care": "/admin/care",
-  "/admin/launch-planning": "/admin/planning",
-  "/admin/calendar": "/admin/planning",
   "/admin/follow-ups": "/admin/care",
-  "/admin/leader-pipeline": "/admin/people",
-  "/admin/group-health": "/admin/groups",
-  // Attendance/check-in history lives under Groups in the reduction plan, so the
-  // frozen check-ins surface marks Groups active (ADR 0013 lists it among the
-  // frozen direct URLs that own no nav entry).
-  "/admin/check-ins": "/admin/groups",
+  "/admin/leader-pipeline": "/admin/care",
+  // Group-Health grading and attendance/check-in history both live under Care
+  // now (Care absorbs Group-Health per ADR 0016), so their frozen aliases mark
+  // Care active rather than the hidden Groups tab.
+  "/admin/group-health": "/admin/care",
+  "/admin/check-ins": "/admin/care",
+  // Launch planning + the admin calendar become Multiply's contents.
+  "/admin/launch-planning": "/admin/multiply",
+  "/admin/calendar": "/admin/multiply",
+  // The Guests pipeline is superseded by the Plan Interest Funnel; its frozen
+  // direct-URL alias marks Plan active.
+  "/admin/guests": "/admin/plan",
 };
 
 // Map an arbitrary path to the path used for active-state matching. A frozen

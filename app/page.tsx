@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { hubTilesForRole } from "@/lib/auth/hub-tiles";
+import { isAdminRole } from "@/lib/auth/roles";
+import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { HomeHub } from "@/components/home/home-hub";
@@ -25,7 +27,13 @@ export default async function HomePage({
         // dropping them into the admin operating system. No-access roles
         // resolve to an empty tile set (hubTilesForRole) and still route to
         // /unauthorized rather than seeing an empty hub.
-        const tiles = hubTilesForRole(session.profile.role);
+        // Admins see the Care/Plan/Multiply tile set with their Super-Admin
+        // nav-visibility flags applied (ADR 0016); non-admin roles ignore the
+        // hidden set, so only resolve it (a DB read) for admins.
+        const hiddenNavAreas = isAdminRole(session.profile.role)
+          ? await loadHiddenNavAreas()
+          : undefined;
+        const tiles = hubTilesForRole(session.profile.role, hiddenNavAreas);
         if (tiles.length === 0) redirect("/unauthorized");
         return (
           <LgAppShell
@@ -34,6 +42,7 @@ export default async function HomePage({
               email: session.profile.email,
               role: session.profile.role,
             }}
+            hiddenNavAreas={hiddenNavAreas}
           >
             <PageHeader
               eyebrow="Home"

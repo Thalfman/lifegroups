@@ -12,18 +12,19 @@ import { ADMIN_AREAS } from "@/lib/auth/roles";
 const AREA_HREFS = ADMIN_AREAS.map((a) => a.href);
 
 describe("resolveCanonicalPath", () => {
-  it("resolves each frozen alias to its owning canonical area href", () => {
+  // ADR 0016: every alias is owned by a still-VISIBLE area (Care / Plan /
+  // Multiply), never by a now-hidden tab.
+  it("resolves each frozen alias to its owning visible canonical area href", () => {
     expect(resolveCanonicalPath("/admin/shepherd-care")).toBe("/admin/care");
-    expect(resolveCanonicalPath("/admin/launch-planning")).toBe(
-      "/admin/planning"
-    );
-    expect(resolveCanonicalPath("/admin/calendar")).toBe("/admin/planning");
     expect(resolveCanonicalPath("/admin/follow-ups")).toBe("/admin/care");
-    expect(resolveCanonicalPath("/admin/leader-pipeline")).toBe(
-      "/admin/people"
+    expect(resolveCanonicalPath("/admin/leader-pipeline")).toBe("/admin/care");
+    expect(resolveCanonicalPath("/admin/group-health")).toBe("/admin/care");
+    expect(resolveCanonicalPath("/admin/check-ins")).toBe("/admin/care");
+    expect(resolveCanonicalPath("/admin/launch-planning")).toBe(
+      "/admin/multiply"
     );
-    expect(resolveCanonicalPath("/admin/group-health")).toBe("/admin/groups");
-    expect(resolveCanonicalPath("/admin/check-ins")).toBe("/admin/groups");
+    expect(resolveCanonicalPath("/admin/calendar")).toBe("/admin/multiply");
+    expect(resolveCanonicalPath("/admin/guests")).toBe("/admin/plan");
   });
 
   it("resolves a child route under a frozen alias to the same owning area", () => {
@@ -34,7 +35,7 @@ describe("resolveCanonicalPath", () => {
       "/admin/care"
     );
     expect(resolveCanonicalPath("/admin/check-ins/group-9")).toBe(
-      "/admin/groups"
+      "/admin/care"
     );
   });
 
@@ -80,39 +81,36 @@ describe("isActiveNavHref", () => {
   it("marks a frozen alias active under its owning canonical area", () => {
     expect(isActiveNavHref("/admin/shepherd-care", "/admin/care")).toBe(true);
     expect(isActiveNavHref("/admin/follow-ups", "/admin/care")).toBe(true);
-    expect(isActiveNavHref("/admin/launch-planning", "/admin/planning")).toBe(
+    expect(isActiveNavHref("/admin/leader-pipeline", "/admin/care")).toBe(true);
+    expect(isActiveNavHref("/admin/group-health", "/admin/care")).toBe(true);
+    expect(isActiveNavHref("/admin/check-ins", "/admin/care")).toBe(true);
+    expect(isActiveNavHref("/admin/launch-planning", "/admin/multiply")).toBe(
       true
     );
-    expect(isActiveNavHref("/admin/calendar", "/admin/planning")).toBe(true);
-    expect(isActiveNavHref("/admin/leader-pipeline", "/admin/people")).toBe(
-      true
-    );
-    expect(isActiveNavHref("/admin/group-health", "/admin/groups")).toBe(true);
-    expect(isActiveNavHref("/admin/check-ins", "/admin/groups")).toBe(true);
+    expect(isActiveNavHref("/admin/calendar", "/admin/multiply")).toBe(true);
+    expect(isActiveNavHref("/admin/guests", "/admin/plan")).toBe(true);
   });
 
   it("marks the owning area active for a child route under a frozen alias", () => {
     expect(
       isActiveNavHref("/admin/shepherd-care/over-shepherds", "/admin/care")
     ).toBe(true);
-    expect(isActiveNavHref("/admin/check-ins/group-9", "/admin/groups")).toBe(
+    expect(isActiveNavHref("/admin/check-ins/group-9", "/admin/care")).toBe(
       true
     );
     // ...and not some other area.
     expect(
-      isActiveNavHref("/admin/shepherd-care/over-shepherds", "/admin/groups")
+      isActiveNavHref("/admin/shepherd-care/over-shepherds", "/admin/multiply")
     ).toBe(false);
   });
 
   it("an alias does NOT light an area other than its owner", () => {
-    // shepherd-care belongs to Care, so Groups/People/Planning stay inactive.
-    expect(isActiveNavHref("/admin/shepherd-care", "/admin/groups")).toBe(
+    // shepherd-care belongs to Care, so Plan/Multiply/Settings stay inactive.
+    expect(isActiveNavHref("/admin/shepherd-care", "/admin/plan")).toBe(false);
+    expect(isActiveNavHref("/admin/shepherd-care", "/admin/multiply")).toBe(
       false
     );
-    expect(isActiveNavHref("/admin/shepherd-care", "/admin/people")).toBe(
-      false
-    );
-    expect(isActiveNavHref("/admin/shepherd-care", "/admin/planning")).toBe(
+    expect(isActiveNavHref("/admin/shepherd-care", "/admin/settings")).toBe(
       false
     );
   });

@@ -56,6 +56,7 @@ export function DashboardClient({
   scopeId,
   mutedKeys,
   canResetActivity,
+  hiddenNavAreas,
 }: {
   data: AdminDashboardData;
   guestsLive: boolean;
@@ -68,7 +69,20 @@ export function DashboardClient({
   // activity-reset: true for a super_admin, gating the Recent-activity reset
   // control. The server action is hard-gated too; this only hides the affordance.
   canResetActivity?: boolean;
+  // Top-level area hrefs hidden from nav (ADR 0016). Home must not present stats
+  // for a tab the operator retired, so the Ministry-snapshot overview cards that
+  // drill into a now-hidden surface are dropped here too (the Care/Plan/Multiply
+  // pivot keeps Home coherent on day one, #372). Omitted ⇒ hide nothing.
+  hiddenNavAreas?: readonly string[];
 }) {
+  const hidden = new Set(hiddenNavAreas ?? []);
+  // Launch-planning capacity drills into the Planning tab; the leader pipeline
+  // drills into People. When their tab is hidden, their snapshot card would
+  // report stats for a gone surface, so it drops out with the tab. Leader care
+  // (Care) and health distribution (Group-Health, now absorbed by Care) stay,
+  // and the guest funnel keeps its own frozen-surface gate (`guestsLive`).
+  const showLaunchPlanning = !hidden.has("/admin/planning");
+  const showLeaderPipeline = !hidden.has("/admin/people");
   return (
     <PageBody>
       <div style={{ display: "grid", gap: 22 }}>
@@ -123,10 +137,12 @@ export function DashboardClient({
               }}
             >
               <LeaderCareOverviewCard summary={data.shepherdCare} />
-              <LaunchPlanningOverviewCard
-                snapshot={data.launchPlanning}
-                multiplication={data.multiplication}
-              />
+              {showLaunchPlanning ? (
+                <LaunchPlanningOverviewCard
+                  snapshot={data.launchPlanning}
+                  multiplication={data.multiplication}
+                />
+              ) : null}
             </div>
 
             <div
@@ -143,7 +159,9 @@ export function DashboardClient({
                 total={data.guestPipelineCount}
                 live={guestsLive}
               />
-              <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
+              {showLeaderPipeline ? (
+                <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
+              ) : null}
             </div>
           </CollapsibleOverview>
         </section>

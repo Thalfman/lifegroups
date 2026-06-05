@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_AREAS,
+  DEFAULT_HIDDEN_ADMIN_AREAS,
   adminNavGroups,
   defaultLandingPathForRole,
   isAdminRole,
@@ -7,7 +9,15 @@ import {
   isOverShepherdRole,
   navItemsForRole,
 } from "@/lib/auth/roles";
+import {
+  NAV_VISIBILITY_FLAGS,
+  DEFAULT_HIDDEN_NAV_AREAS,
+} from "@/lib/admin/feature-flags";
 import type { UserRole } from "@/types/enums";
+
+// Re-show every default-hidden tab, so a test can assert the full area set still
+// resolves through the nav builders when a Super Admin has flipped the flags on.
+const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 
 const ALL_ROLES: UserRole[] = [
   "super_admin",
@@ -66,36 +76,88 @@ describe("defaultLandingPathForRole", () => {
   });
 });
 
-// Six-area spine (ADR 0013): Home / Groups / Care / People / Planning /
-// Settings, as a flat list on every nav surface. Super Admin is appended only
-// for super_admin and is not one of the six (ADR 0002).
-const SIX_AREAS = [
+// Care/Plan/Multiply pivot (ADR 0016, superseding ADR 0013): the default-visible
+// spine is Home · Care · Plan · Multiply · Settings, as a flat list on every nav
+// surface. Groups, People, Planning are hidden by default (Super-Admin
+// nav-visibility flags). Super Admin is appended only for super_admin (ADR 0002).
+const VISIBLE_AREAS = [
   "/admin",
-  "/admin/groups",
   "/admin/care",
+  "/admin/plan",
+  "/admin/multiply",
+  "/admin/settings",
+];
+
+// The full area set, in render order, once every hidden tab is re-shown — the
+// hidden three slot in before Settings.
+const ALL_AREAS = [
+  "/admin",
+  "/admin/care",
+  "/admin/plan",
+  "/admin/multiply",
+  "/admin/groups",
   "/admin/people",
   "/admin/planning",
   "/admin/settings",
 ];
 
+describe("ADMIN_AREAS / nav-visibility wiring", () => {
+  it("hides exactly Groups, People, Planning by default", () => {
+    expect([...DEFAULT_HIDDEN_ADMIN_AREAS].sort()).toEqual(
+      ["/admin/groups", "/admin/people", "/admin/planning"].sort()
+    );
+  });
+
+  it("marks every default-hidden area with a nav-visibility flag key, and no others", () => {
+    for (const area of ADMIN_AREAS) {
+      const hidden = DEFAULT_HIDDEN_ADMIN_AREAS.has(area.href);
+      expect(
+        Boolean(area.navFlagKey),
+        `${area.href} flag-key vs hidden mismatch`
+      ).toBe(hidden);
+    }
+  });
+
+  it("keeps each area's navFlagKey in lock-step with the feature-flag registry (no drift)", () => {
+    // The (flagKey → areaHref) the resolver uses must match the (areaHref →
+    // flagKey) the nav carries, or a Super Admin could toggle a flag that moves
+    // no tab — or a tab could hide with no toggle to bring it back.
+    const fromAreas = ADMIN_AREAS.filter((a) => a.navFlagKey)
+      .map((a) => `${a.navFlagKey}:${a.href}`)
+      .sort();
+    const fromFlags = NAV_VISIBILITY_FLAGS.map(
+      (f) => `${f.key}:${f.areaHref}`
+    ).sort();
+    expect(fromAreas).toEqual(fromFlags);
+    // ...and the two modules agree on the default-hidden baseline.
+    expect([...DEFAULT_HIDDEN_ADMIN_AREAS].sort()).toEqual(
+      [...DEFAULT_HIDDEN_NAV_AREAS].sort()
+    );
+  });
+});
+
 describe("navItemsForRole", () => {
-  it("gives admin roles the six areas as a flat list (Home → /admin)", () => {
+  it("gives admin roles the visible spine by default (Home → /admin)", () => {
     const items = navItemsForRole("ministry_admin");
-    expect(items.map((i) => i.href)).toEqual(SIX_AREAS);
+    expect(items.map((i) => i.href)).toEqual(VISIBLE_AREAS);
     expect(items.map((i) => i.label)).toEqual([
       "Home",
-      "Groups",
       "Care",
-      "People",
-      "Planning",
+      "Plan",
+      "Multiply",
       "Settings",
     ]);
+  });
+
+  it("re-shows hidden tabs when their flag is on (empty hidden set)", () => {
+    const items = navItemsForRole("ministry_admin", NOTHING_HIDDEN);
+    expect(items.map((i) => i.href)).toEqual(ALL_AREAS);
   });
 
   it("appends the super-admin entry only for super_admin", () => {
     const superItems = navItemsForRole("super_admin");
     expect(superItems.map((i) => i.href)).toEqual([
-      ...SIX_AREAS,
+      ...VISIBLE_AREAS,
       "/admin/super-admin",
     ]);
     expect(navItemsForRole("ministry_admin").map((i) => i.href)).not.toContain(
@@ -103,10 +165,22 @@ describe("navItemsForRole", () => {
     );
   });
 
-  it("points Care and Planning at the new landing shells", () => {
+  it("points Care, Plan, and Multiply at their landing shells", () => {
     const hrefs = navItemsForRole("ministry_admin").map((i) => i.href);
     expect(hrefs).toContain("/admin/care");
-    expect(hrefs).toContain("/admin/planning");
+    expect(hrefs).toContain("/admin/plan");
+    expect(hrefs).toContain("/admin/multiply");
+  });
+
+  it("hides Groups, People, and Planning from the default nav", () => {
+    const hrefs = navItemsForRole("ministry_admin").map((i) => i.href);
+    for (const hidden of [
+      "/admin/groups",
+      "/admin/people",
+      "/admin/planning",
+    ]) {
+      expect(hrefs).not.toContain(hidden);
+    }
   });
 
   // Shepherd surface gated per docs/adr/0002-oversight-ladder-and-leader-gating.md:
@@ -133,51 +207,60 @@ describe("navItemsForRole", () => {
 });
 
 describe("adminNavGroups", () => {
-  it("renders the six areas as a single flat group with no section header", () => {
+  it("renders the visible spine as a single flat group with no section header", () => {
     const groups = adminNavGroups("ministry_admin");
     // Flat list: one group, empty label so the Sidebar renders no header.
     expect(groups).toHaveLength(1);
     expect(groups[0]!.label).toBe("");
-    expect(groups[0]!.items.map((i) => i.href)).toEqual(SIX_AREAS);
+    expect(groups[0]!.items.map((i) => i.href)).toEqual(VISIBLE_AREAS);
     expect(groups[0]!.items.map((i) => i.label)).toEqual([
       "Home",
-      "Groups",
       "Care",
-      "People",
-      "Planning",
+      "Plan",
+      "Multiply",
       "Settings",
     ]);
+  });
+
+  it("re-shows hidden tabs when their flag is on (empty hidden set)", () => {
+    const hrefs = adminNavGroups("ministry_admin", NOTHING_HIDDEN)
+      .flatMap((g) => g.items)
+      .map((i) => i.href);
+    expect(hrefs).toEqual(ALL_AREAS);
   });
 
   it("appends the super-admin item only for super_admin", () => {
     const superHrefs = adminNavGroups("super_admin")
       .flatMap((g) => g.items)
       .map((i) => i.href);
-    expect(superHrefs).toEqual([...SIX_AREAS, "/admin/super-admin"]);
+    expect(superHrefs).toEqual([...VISIBLE_AREAS, "/admin/super-admin"]);
     const ministryHrefs = adminNavGroups("ministry_admin")
       .flatMap((g) => g.items)
       .map((i) => i.href);
     expect(ministryHrefs).not.toContain("/admin/super-admin");
   });
 
-  it("points Care and Planning at the new landing shells", () => {
+  it("points Care, Plan, and Multiply at their landing shells", () => {
     const items = adminNavGroups("ministry_admin").flatMap((g) => g.items);
     expect(items.find((i) => i.label === "Care")!.href).toBe("/admin/care");
-    expect(items.find((i) => i.label === "Planning")!.href).toBe(
-      "/admin/planning"
+    expect(items.find((i) => i.label === "Plan")!.href).toBe("/admin/plan");
+    expect(items.find((i) => i.label === "Multiply")!.href).toBe(
+      "/admin/multiply"
     );
   });
 
-  // Frozen routes stay reachable by direct URL (ADR 0008/0009): the six-area
-  // spine drops them from the top-level nav but never renames them. They are
-  // intentionally absent from the flat nav now (hosted under areas in later
-  // slices), so assert they are not surfaced as their own top-level entries.
-  it("no longer surfaces the consolidated routes as their own nav entries", () => {
+  // The pivot hides Groups/People/Planning by default and never surfaces the
+  // frozen consolidated routes as their own top-level entries; all of them stay
+  // reachable by direct URL (ADR 0008/0009/0016).
+  it("does not surface the hidden tabs or the consolidated routes as nav entries", () => {
     for (const role of ["super_admin", "ministry_admin"] as const) {
       const hrefs = adminNavGroups(role)
         .flatMap((g) => g.items)
         .map((i) => i.href);
       for (const gone of [
+        "/admin/groups",
+        "/admin/people",
+        "/admin/planning",
         "/admin/shepherd-care",
         "/admin/follow-ups",
         "/admin/launch-planning",

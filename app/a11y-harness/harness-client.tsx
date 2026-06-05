@@ -131,15 +131,17 @@ const GROUP_GRID_OCCURRENCES: ResolvedOccurrence[] = [
   },
 ];
 
-// Active paths exercised by the sidebar-active-state surface (#321): the six
-// canonical area roots plus every frozen alias URL. The alias keys come from
-// the resolver's own map so the harness can't drift from the source of truth.
+// Active paths exercised by the sidebar-active-state surface (#321): the
+// default-VISIBLE area roots (Care/Plan/Multiply pivot, ADR 0016) plus every
+// frozen alias URL. The alias keys come from the resolver's own map so the
+// harness can't drift from the source of truth. The default-hidden tabs
+// (Groups/People/Planning) aren't rendered in the default sidebar, so their
+// roots aren't asserted here — their alias owners (now Care/Multiply/Plan) are.
 const SIDEBAR_ACTIVE_PATHS = [
   "/admin",
-  "/admin/groups",
   "/admin/care",
-  "/admin/people",
-  "/admin/planning",
+  "/admin/plan",
+  "/admin/multiply",
   "/admin/settings",
   ...Object.keys(NAV_ALIAS_TO_CANONICAL),
 ] as const;
