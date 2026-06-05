@@ -1,0 +1,73 @@
+<!--
+  Invite email for Fox Valley Church Life Groups.
+
+  Sent by the "Send invite" flow (invite-user Edge Function ->
+  auth.admin.inviteUserByEmail). This is the canonical source to paste into
+  Supabase Dashboard -> Authentication -> Email Templates -> "Invite user".
+
+  Mirrors recovery.html on purpose: the link points at /reset-password (a
+  landing page that consumes NOTHING on load) and carries {{ .TokenHash }} +
+  type=invite, NOT the default {{ .ConfirmationURL }} verification endpoint.
+  Two reasons, identical to the recovery flow:
+
+    1. Email security scanners (Microsoft Defender Safe Links, common on
+       Outlook/Office 365) prefetch links in incoming mail. The default
+       ConfirmationURL verifies on GET, so a scanner would burn the single-use
+       invite token before the recipient ever clicked -> spurious "link
+       expired". The landing page gates verification behind a button the human
+       clicks (a POST to /auth/confirm), so only a real click spends the token.
+
+    2. {{ .TokenHash }} + type=invite drives the server-side verifyOtp() flow,
+       which works cross-device (no PKCE code_verifier cookie required) and
+       does not depend on the Edge Function's redirectTo being set. The target
+       comes from {{ .SiteURL }} (Auth -> URL Configuration -> Site URL).
+
+  The invitee lands on /reset-password, confirms, verifyOtp establishes their
+  session, and they choose their password (app/reset-password). See
+  app/auth/confirm/route.ts (accepts type=invite) and app/auth/confirm/safe-next.ts.
+-->
+<div
+  style="
+    font-family:
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    color: #2b2622;
+    line-height: 1.55;
+  "
+>
+  <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 12px">
+    You're invited to Fox Valley Church Life Groups
+  </h2>
+  <p style="font-size: 14px; margin: 0 0 20px">
+    You've been invited to the Fox Valley Church Life Groups operating system.
+    Click the button below to set up your password and finish creating your
+    account.
+  </p>
+  <p style="margin: 0 0 24px">
+    <a
+      href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=invite"
+      style="
+        display: inline-block;
+        background: #b5613f;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 12px 22px;
+        border-radius: 999px;
+      "
+    >
+      Set up my account
+    </a>
+  </p>
+  <p style="font-size: 13px; color: #6b635c; margin: 0">
+    This link can be used once and expires after a short time. If you weren't
+    expecting this invitation, you can safely ignore this email.
+  </p>
+</div>
