@@ -9,8 +9,16 @@ import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-no
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
+import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
+import {
+  currentMinistryYear,
+  getGroupRubricGrade,
+  type GroupRubricGradeView,
+} from "@/lib/admin/group-rubric-grade-read";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentByShepherdId,
@@ -270,6 +278,31 @@ export default async function AdminShepherdCareDetailPage({
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
   const today = currentUtcDateIso();
 
+  // Group-Health Grade by rubric (#377): for each group this leader leads, load
+  // the configured group rubric criteria + the group's grade for the current
+  // ministry year so the Group panel can host the per-group grade-entry control.
+  // Off-season (Jun/Jul) has no ministry year, so the control is suppressed then.
+  const ministryYear = currentMinistryYear();
+  const gradeClient =
+    ministryYear !== null && detail.ledGroups.length > 0
+      ? await createSupabaseServerClient()
+      : null;
+  const rubricCriteria =
+    gradeClient !== null
+      ? decodeRubricCriteria(
+          (await fetchHealthRubric(gradeClient, "group")).data?.criteria ?? null
+        )
+      : [];
+  const gradeByGroupId = new Map<string, GroupRubricGradeView>();
+  if (gradeClient !== null && ministryYear !== null) {
+    await Promise.all(
+      detail.ledGroups.map(async (g) => {
+        const res = await getGroupRubricGrade(gradeClient, g.id, ministryYear);
+        if (res.data) gradeByGroupId.set(g.id, res.data);
+      })
+    );
+  }
+
   const tabRaw = (await searchParams)?.tab;
   const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
 
@@ -470,21 +503,41 @@ export default async function AdminShepherdCareDetailPage({
             gap: 10,
           }}
         >
-          {detail.ledGroups.map((g) => (
-            <li key={g.id}>
-              <Link
-                href={`/admin/groups/${g.id}`}
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  textDecoration: "underline",
-                }}
-              >
-                {g.name} →
-              </Link>
-            </li>
-          ))}
+          {detail.ledGroups.map((g) => {
+            const gradeView = gradeByGroupId.get(g.id);
+            return (
+              <li key={g.id} style={{ display: "grid", gap: 8 }}>
+                <Link
+                  href={`/admin/groups/${g.id}`}
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 14,
+                    color: P.ink,
+                    textDecoration: "underline",
+                  }}
+                >
+                  {g.name} →
+                </Link>
+                {ministryYear !== null ? (
+                  <GroupRubricGradeEntry
+                    groupId={g.id}
+                    groupName={g.name}
+                    ministryYear={ministryYear}
+                    criteria={rubricCriteria}
+                    initialScores={gradeView?.criterion_scores ?? {}}
+                    initialOverrideLetter={
+                      gradeView?.grade.overridden
+                        ? gradeView.grade.effective_letter
+                        : null
+                    }
+                    initialOverrideScope={
+                      gradeView?.grade.override_scope ?? null
+                    }
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p

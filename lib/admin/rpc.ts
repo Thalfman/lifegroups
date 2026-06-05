@@ -968,3 +968,25 @@ export function rpcAdminSetHealthRubric(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_health_rubric", args);
 }
+
+// #377 / ADR 0018 Group-Health Grade by rubric: upsert a group's rubric grade
+// for a ministry year (per-criterion 0–100 scores + the computed A–F letter +
+// an optional letter override under this-month / until-cleared scope). The
+// letter is recomputed in TS first via the pure facade
+// (lib/admin/group-rubric-grade.ts); the RPC re-validates score range + letters.
+export type AdminSetGroupRubricGradeArgs = {
+  p_group_id: string;
+  p_ministry_year: number;
+  p_criterion_scores: Record<string, number>;
+  p_computed_letter: string | null;
+  p_override_letter: string | null;
+  p_override_scope: string | null;
+  p_override_period_month: string | null;
+};
+
+export function rpcAdminSetGroupRubricGrade(
+  client: AppSupabaseClient,
+  args: AdminSetGroupRubricGradeArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_rubric_grade", args);
+}
