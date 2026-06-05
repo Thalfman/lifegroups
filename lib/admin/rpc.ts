@@ -931,3 +931,16 @@ export function rpcAdminSetGroupHealthRatings(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_group_health_ratings", args);
 }
+
+// #374 / ADR 0018 Health Rubric: upsert the current rubric for a kind
+// (group/leader). p_criteria is the validated {key,label,weight} array; the
+// weight-to-100 check is done in TS first, the RPC re-guards the JSON shape.
+export function rpcAdminSetHealthRubric(
+  client: AppSupabaseClient,
+  args: {
+    p_kind: "group" | "leader";
+    p_criteria: Array<Record<string, unknown>>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_health_rubric", args);
+}

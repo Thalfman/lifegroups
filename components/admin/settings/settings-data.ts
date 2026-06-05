@@ -13,6 +13,8 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
+import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 
 // The Settings surface's data, as a function of the reads seam (ADR 0015). The
 // editable-copy read is gated on the viewer being a Super Admin (platform_config
@@ -25,15 +27,23 @@ export type SettingsReads = {
   fetchAllGroups: OmitClient<typeof fetchAllGroups>;
   fetchAllGroupMetricSettings: OmitClient<typeof fetchAllGroupMetricSettings>;
   fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
+  // #374 Health Rubric: the current group rubric (Ministry-Admin-owned). Bound
+  // to the "group" kind here so the seam exposes a zero-arg read like the rest.
+  fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
 };
 
-export function supabaseSettingsReads(client: AppSupabaseClient): SettingsReads {
-  return bindReads(client, {
-    fetchMetricDefaults: fetchMetricDefaultsCached,
-    fetchAllGroups,
-    fetchAllGroupMetricSettings,
-    fetchPlatformConfig,
-  });
+export function supabaseSettingsReads(
+  client: AppSupabaseClient
+): SettingsReads {
+  return {
+    ...bindReads(client, {
+      fetchMetricDefaults: fetchMetricDefaultsCached,
+      fetchAllGroups,
+      fetchAllGroupMetricSettings,
+      fetchPlatformConfig,
+    }),
+    fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
+  };
 }
 
 export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
@@ -42,6 +52,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     defaultsSource: "fallback",
     groups: [],
     groupMetricSettings: [],
+    groupRubricCriteria: [],
     isSuperAdmin,
     editableCopy: isSuperAdmin ? {} : null,
     errors: {
@@ -58,16 +69,22 @@ export async function buildSettingsData(
 ): Promise<SettingsShellData> {
   const { isSuperAdmin } = options;
 
-  const [defaultsResult, groupsResult, settingsResult, platformConfigResult] =
-    await Promise.all([
-      reads.fetchMetricDefaults(),
-      reads.fetchAllGroups(),
-      reads.fetchAllGroupMetricSettings(),
-      // platform_config (editable copy) is Super-Admin-only by RLS; only read it
-      // for a super_admin so a ministry_admin doesn't trigger a useless query.
-      // The General tab surfaces a pointer to the console for ministry admins.
-      isSuperAdmin ? reads.fetchPlatformConfig() : Promise.resolve(null),
-    ]);
+  const [
+    defaultsResult,
+    groupsResult,
+    settingsResult,
+    platformConfigResult,
+    rubricResult,
+  ] = await Promise.all([
+    reads.fetchMetricDefaults(),
+    reads.fetchAllGroups(),
+    reads.fetchAllGroupMetricSettings(),
+    // platform_config (editable copy) is Super-Admin-only by RLS; only read it
+    // for a super_admin so a ministry_admin doesn't trigger a useless query.
+    // The General tab surfaces a pointer to the console for ministry admins.
+    isSuperAdmin ? reads.fetchPlatformConfig() : Promise.resolve(null),
+    reads.fetchGroupHealthRubric(),
+  ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
@@ -76,6 +93,9 @@ export async function buildSettingsData(
     defaultsSource: defaultsResult.data ? "live" : "fallback",
     groups: groupsResult.data ?? [],
     groupMetricSettings: settingsResult.data ?? [],
+    groupRubricCriteria: decodeRubricCriteria(
+      rubricResult.data?.criteria ?? null
+    ),
     isSuperAdmin,
     editableCopy: isSuperAdmin
       ? decodeAppConfig(platformConfigResult?.data ?? null).editableCopy

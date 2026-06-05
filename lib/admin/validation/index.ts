@@ -15,4 +15,5 @@ export * from "./invite-link";
 export * from "./shepherd-care";
 export * from "./launch-planning";
 export * from "./group-health";
+export * from "./health-rubric";
 export * from "./leader-pipeline";
