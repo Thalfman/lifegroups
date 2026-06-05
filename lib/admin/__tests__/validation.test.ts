@@ -27,6 +27,9 @@ import {
   validateUpdateShepherdCareFollowUpPayload,
   validateUpdateShepherdCareFollowUpStatusPayload,
   validateUpsertShepherdCareProfilePayload,
+  validateWriteCareNotePayload,
+  validateWritePrayerRequestPayload,
+  validateSetNoteTransparencyGrantPayload,
 } from "@/lib/admin/validation";
 
 const UUID_A = "11111111-1111-1111-1111-111111111111";
@@ -1601,6 +1604,89 @@ describe("validateSetGroupCapacityTargetPayload (Capacity & Multiplication #185)
     expect(
       validateSetGroupCapacityTargetPayload({ group_id: UUID_A, target: "501" })
         .ok
+    ).toBe(false);
+  });
+});
+
+// Pivot slice 9 (#381 / ADR 0017): Care Notes + Prayer Requests + transparency.
+describe("validateWriteCareNotePayload / validateWritePrayerRequestPayload (#381)", () => {
+  it("accepts a subject uuid + a trimmed body", () => {
+    const r = validateWriteCareNotePayload({
+      subject_profile_id: UUID_A,
+      body: "  Praying for them through a hard season.  ",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.subject_profile_id).toBe(UUID_A);
+      expect(r.value.body).toBe("Praying for them through a hard season.");
+    }
+  });
+
+  it("rejects a missing/whitespace body and a bad subject id", () => {
+    expect(
+      validateWriteCareNotePayload({ subject_profile_id: UUID_A, body: "   " })
+        .ok
+    ).toBe(false);
+    expect(
+      validateWriteCareNotePayload({ subject_profile_id: "nope", body: "hi" })
+        .ok
+    ).toBe(false);
+  });
+
+  it("rejects an over-long body (max 4000)", () => {
+    const r = validateWriteCareNotePayload({
+      subject_profile_id: UUID_A,
+      body: "x".repeat(4001),
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("prayer-request validator shares the same contract", () => {
+    const r = validateWritePrayerRequestPayload({
+      subject_profile_id: UUID_A,
+      body: "Healing.",
+    });
+    expect(r.ok).toBe(true);
+    expect(
+      validateWritePrayerRequestPayload({
+        subject_profile_id: UUID_A,
+        body: "",
+      }).ok
+    ).toBe(false);
+  });
+});
+
+describe("validateSetNoteTransparencyGrantPayload (#381)", () => {
+  it("reads the boolean grant flag and normalizes the subject id", () => {
+    const on = validateSetNoteTransparencyGrantPayload({
+      subject_profile_id: UUID_A,
+      granted: "true",
+    });
+    expect(on.ok).toBe(true);
+    if (on.ok) expect(on.value.granted).toBe(true);
+
+    const off = validateSetNoteTransparencyGrantPayload({
+      subject_profile_id: UUID_A,
+      granted: "false",
+    });
+    expect(off.ok).toBe(true);
+    if (off.ok) expect(off.value.granted).toBe(false);
+  });
+
+  it("defaults an absent grant flag to false (denied)", () => {
+    const r = validateSetNoteTransparencyGrantPayload({
+      subject_profile_id: UUID_A,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.granted).toBe(false);
+  });
+
+  it("rejects a bad subject id", () => {
+    expect(
+      validateSetNoteTransparencyGrantPayload({
+        subject_profile_id: "nope",
+        granted: true,
+      }).ok
     ).toBe(false);
   });
 });
