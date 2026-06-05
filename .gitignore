@@ -20,3 +20,6 @@ tsconfig.tsbuildinfo
 # Local-only dev helpers (do not commit real auth user UUIDs).
 supabase/dev/link_test_users.sql
 supabase/dev/link_super_admin.sql
+
+# Claude Code agent worktrees (transient, isolated)
+.claude/worktrees/
