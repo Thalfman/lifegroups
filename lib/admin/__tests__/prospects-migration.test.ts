@@ -110,13 +110,22 @@ describe("prospects migration — guests → prospects data migration", () => {
   it("inserts from guests with the stage mapping", () => {
     expect(sql.lower).toContain("insert into public.prospects");
     expect(sql.lower).toContain("from public.guests");
-    // The mapping cases (mirrors mapGuestStageToProspectState).
-    expect(sql.lower).toContain("when 'assigned' then 'matched'");
-    expect(sql.lower).toContain("when 'placed'   then 'joined'");
-    expect(sql.lower).toContain("when 'not_now'  then 'not_at_this_time'");
-    // assigned/placed carry assigned_group_id; placed sets archived.
+    // The mapping cases (mirrors mapGuestStageToProspectState), guarded so a
+    // group-less assigned/placed guest can't violate the group-required CHECK.
+    expect(sql.lower).toContain(
+      "when g.pipeline_stage = 'assigned' and g.assigned_group_id is not null then 'matched'"
+    );
+    expect(sql.lower).toContain(
+      "when g.pipeline_stage = 'placed'   and g.assigned_group_id is not null then 'joined'"
+    );
+    expect(sql.lower).toContain(
+      "when g.pipeline_stage = 'not_now'  then 'not_at_this_time'"
+    );
+    // assigned/placed carry assigned_group_id; placed-with-a-group sets archived.
     expect(sql.lower).toContain("then g.assigned_group_id");
-    expect(sql.lower).toContain("(g.pipeline_stage = 'placed') as archived");
+    expect(sql.lower).toContain(
+      "(g.pipeline_stage = 'placed' and g.assigned_group_id is not null) as archived"
+    );
   });
 
   it("leaves the guests table intact (frozen alias, never dropped)", () => {

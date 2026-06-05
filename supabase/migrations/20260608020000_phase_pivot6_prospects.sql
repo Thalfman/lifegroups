@@ -103,17 +103,21 @@ select
   g.full_name,
   g.email,
   g.phone,
-  case g.pipeline_stage
-    when 'assigned' then 'matched'::public.prospect_state
-    when 'placed'   then 'joined'::public.prospect_state
-    when 'not_now'  then 'not_at_this_time'::public.prospect_state
+  -- assigned/placed only become matched/joined when they actually carry a group
+  -- (the prospects_group_required_for_matched_joined CHECK). A group-less
+  -- assigned/placed guest — e.g. a guest staged 'assigned' before a group was
+  -- chosen — falls back to interested rather than failing the whole data load.
+  case
+    when g.pipeline_stage = 'assigned' and g.assigned_group_id is not null then 'matched'::public.prospect_state
+    when g.pipeline_stage = 'placed'   and g.assigned_group_id is not null then 'joined'::public.prospect_state
+    when g.pipeline_stage = 'not_now'  then 'not_at_this_time'::public.prospect_state
     else 'interested'::public.prospect_state
   end as state,
   case
     when g.pipeline_stage in ('assigned','placed') then g.assigned_group_id
     else null
   end as group_id,
-  (g.pipeline_stage = 'placed') as archived,
+  (g.pipeline_stage = 'placed' and g.assigned_group_id is not null) as archived,
   null::uuid,
   null::uuid,
   g.created_at,
