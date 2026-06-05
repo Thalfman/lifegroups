@@ -283,6 +283,9 @@ export interface AttentionResetSnapshotsRow {
   payload: Record<string, unknown>;
   row_counts: Record<string, number>;
   total_rows: number;
+  // Set when a newer reset for the same surface/scope/entity replaces this one
+  // (retained for audit/recovery, not surfaced as the active recoverable row).
+  superseded_at: Timestamp | null;
   restored_at: Timestamp | null;
   restored_by: UUID | null;
 }
@@ -678,6 +681,7 @@ export interface Database {
           | "created_at"
           | "row_counts"
           | "total_rows"
+          | "superseded_at"
           | "restored_at"
           | "restored_by"
         >;

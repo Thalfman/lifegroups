@@ -71,15 +71,23 @@ export const EMPTY_ATTENTION_BASELINES: AttentionBaselines = {
   byEntityId: new Map(),
 };
 
-// Resolve the effective baseline for one entity: its own override if present,
-// else the surface's global baseline, else null. Null means "no baseline" —
-// today's behaviour, fully backward-compatible.
+// Resolve the effective baseline for one entity: the LATER of its per-entity
+// override and the surface's global baseline (null when neither is set). Taking
+// the later date — rather than always preferring the entity row — means a fresh
+// "whole queue" global reset still clears an entity that carries an older
+// per-entity reset, instead of being shadowed by that stale override. Null means
+// "no baseline" — today's behaviour, fully backward-compatible. (Dates are ISO
+// YYYY-MM-DD / week-start strings, so lexicographic order is date order.)
 export function resolveAttentionBaseline(
   baselines: AttentionBaselines | null | undefined,
   entityId: string
 ): string | null {
   if (!baselines) return null;
-  return baselines.byEntityId.get(entityId) ?? baselines.global;
+  const entity = baselines.byEntityId.get(entityId) ?? null;
+  const global = baselines.global;
+  if (entity === null) return global;
+  if (global === null) return entity;
+  return entity >= global ? entity : global;
 }
 
 // One stored baseline row, narrowed to the fields the split needs. Structurally

@@ -106,6 +106,25 @@ describe(`attention-reset migration — ${CARE_FN}`, () => {
     expect(body).toContain("next_touchpoint_due = null");
   });
 
+  it("uses the church-local date for the baseline, not current_date", () => {
+    const body = functionBody(sql, CARE_FN);
+    expect(body).toContain("at time zone 'america/chicago'");
+    // The v_today assignment must not fall back to the session (UTC) date.
+    expect(body).not.toContain(":= current_date");
+  });
+
+  it("scopes a global reset to active leader/co_leader care rows", () => {
+    const body = functionBody(sql, CARE_FN);
+    expect(body).toContain("role in ('leader', 'co_leader')");
+    expect(body).toContain("status = 'active'");
+  });
+
+  it("retains (supersedes) prior snapshots instead of deleting them", () => {
+    const body = functionBody(sql, CARE_FN);
+    expect(body).toContain("superseded_at = now()");
+    expect(body).not.toContain("delete from public.attention_reset_snapshots");
+  });
+
   it("NEVER assigns last_contact_at (the baseline is the contact floor)", () => {
     // Mentioning it in a comment is fine; the invariant is that the field-wipe
     // never writes to it (which would re-arm no_contact_yet / lose history).
@@ -167,6 +186,17 @@ describe(`attention-reset migration — ${HEALTH_FN}`, () => {
     expect(body).not.toContain("delete from public.group_health_updates");
     expect(body).not.toContain("delete from public.groups");
     expect(body).not.toContain("delete from public.attendance");
+  });
+
+  it("clears only the latest pulse row per group (not older history)", () => {
+    expect(functionBody(sql, HEALTH_FN)).toContain("distinct on (u.group_id)");
+  });
+
+  it("uses the church-local date and retains prior snapshots", () => {
+    const body = functionBody(sql, HEALTH_FN);
+    expect(body).toContain("at time zone 'america/chicago'");
+    expect(body).toContain("superseded_at = now()");
+    expect(body).not.toContain("delete from public.attention_reset_snapshots");
   });
 
   it("writes one paired audit row", () => {

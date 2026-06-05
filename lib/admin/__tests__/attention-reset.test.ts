@@ -18,13 +18,28 @@ import { isCareContactStale } from "@/lib/admin/shepherd-care-cadence";
 // behaviour, so they are pinned here without a DB.
 
 describe("resolveAttentionBaseline", () => {
-  it("prefers the entity override, then the global, then null", () => {
+  it("returns the later of the entity override and the global baseline", () => {
     const baselines = {
       global: "2026-06-01",
       byEntityId: new Map([["leader-1", "2026-06-05"]]),
     };
+    // Entity is newer → entity wins.
     expect(resolveAttentionBaseline(baselines, "leader-1")).toBe("2026-06-05");
+    // No entity row → global.
     expect(resolveAttentionBaseline(baselines, "leader-2")).toBe("2026-06-01");
+  });
+
+  it("lets a newer global reset override a stale entity baseline", () => {
+    // A fresh whole-queue reset (global) must clear an entity that carries an
+    // older per-entity reset — otherwise the stale override would shadow it.
+    const baselines = {
+      global: "2026-06-10",
+      byEntityId: new Map([["leader-1", "2026-05-01"]]),
+    };
+    expect(resolveAttentionBaseline(baselines, "leader-1")).toBe("2026-06-10");
+  });
+
+  it("returns null when neither baseline is set", () => {
     expect(
       resolveAttentionBaseline({ global: null, byEntityId: new Map() }, "x")
     ).toBeNull();

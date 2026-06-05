@@ -33,6 +33,12 @@ import {
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { fetchAttentionResetBaselines } from "@/lib/supabase/maintenance-reads";
+import {
+  buildSurfaceBaselines,
+  EMPTY_ATTENTION_BASELINES,
+  type AttentionBaselines,
+} from "@/lib/admin/attention-reset";
 import {
   careCadenceWindowsFromDefaults,
   decodeMetricDefaults,
@@ -94,6 +100,9 @@ type CareData = {
   completedFollowUps: CareFollowUpCompletedRow[];
   groupLeaders: { profile_id: string; group_id: string }[];
   windows: CareCadenceWindows;
+  // health-checks-reset: the care reset baselines, so /admin/care agrees with
+  // Home after a reset (and with the per-leader "cleared from the queue" action).
+  baselines: AttentionBaselines;
   error: string | null;
 };
 
@@ -109,6 +118,7 @@ function emptyCareData(error: string): CareData {
     completedFollowUps: [],
     groupLeaders: [],
     windows: careCadenceWindowsFromDefaults(decodeMetricDefaults(null)),
+    baselines: EMPTY_ATTENTION_BASELINES,
     error,
   };
 }
@@ -130,6 +140,7 @@ async function loadCareData(todayIso: string): Promise<CareData> {
     completedRes,
     metricDefaultsRes,
     groupLeadersRes,
+    attentionBaselinesRes,
   ] = await Promise.all([
     fetchOverShepherdsForAdmin(client, { includeArchived: true }),
     fetchActiveShepherdCoverageAssignmentsForAdmin(client),
@@ -138,6 +149,7 @@ async function loadCareData(todayIso: string): Promise<CareData> {
     fetchRecentlyCompletedCareFollowUpsForAdmin(client, { limit: 50 }),
     fetchMetricDefaultsCached(client),
     fetchAllGroupLeaders(client, { activeOnly: true }),
+    fetchAttentionResetBaselines(client),
   ]);
 
   const windows = careCadenceWindowsFromDefaults(
@@ -146,11 +158,18 @@ async function loadCareData(todayIso: string): Promise<CareData> {
   const delegatedShepherdIds = assignmentsRes.error
     ? undefined
     : new Set((assignmentsRes.data ?? []).map((a) => a.shepherd_profile_id));
+  // A failed baselines read degrades to "no baselines" (today's behaviour),
+  // never fails the page.
+  const baselines = buildSurfaceBaselines(
+    attentionBaselinesRes.data ?? [],
+    "care"
+  );
 
   const directory = await fetchShepherdCareDirectoryForAdmin(client, {
     todayIso,
     windows,
     delegatedShepherdIds,
+    baselines,
   });
   if (directory.error) return emptyCareData(directory.error.message);
 
@@ -170,6 +189,7 @@ async function loadCareData(todayIso: string): Promise<CareData> {
       .filter((r) => r.role === "leader" || r.role === "co_leader")
       .map((r) => ({ profile_id: r.profile_id, group_id: r.group_id })),
     windows,
+    baselines,
     error:
       overShepherdsRes.error?.message ??
       assignmentsRes.error?.message ??
@@ -253,6 +273,7 @@ export async function loadCarePageData(): Promise<{
     todayIso: today,
     assignmentsAvailable: care.assignmentsAvailable,
     windows: care.windows,
+    baselines: care.baselines,
   });
   const totalAttention = countAllAttentionItems(
     care.entries,
@@ -262,6 +283,7 @@ export async function loadCarePageData(): Promise<{
       coverageAvailable: care.assignmentsAvailable,
       windows: care.windows,
       careFollowUps: care.outstandingFollowUps,
+      baselines: care.baselines,
     }
   );
 

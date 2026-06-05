@@ -102,6 +102,11 @@ create table if not exists public.attention_reset_snapshots (
   payload jsonb not null,
   row_counts jsonb not null default '{}'::jsonb,
   total_rows bigint not null default 0,
+  -- Set when a newer reset for the same surface/scope/entity replaces this one.
+  -- Superseded snapshots are RETAINED (not deleted) so the prior reset stays
+  -- auditable and its payload recoverable; they are simply not surfaced as the
+  -- active recoverable snapshot in the console.
+  superseded_at timestamptz,
   restored_at timestamptz,
   restored_by uuid references public.profiles(id)
 );
@@ -138,7 +143,10 @@ declare
   v_baseline_payload jsonb;
   v_profile_payload jsonb;
   v_affected bigint := 0;
-  v_today date := current_date;
+  -- Church-local date (CHURCH_TIMEZONE, lib/shared/church-time) so the reset's
+  -- "today" matches the dashboard/action clock — current_date would be the
+  -- session's (UTC) date and could land on the wrong day/ISO week near midnight.
+  v_today date := (now() at time zone 'America/Chicago')::date;
 begin
   if public.auth_role() <> 'super_admin' then
     raise exception 'insufficient_privilege';
@@ -174,6 +182,12 @@ begin
        and (t.entity_id is not distinct from p_entity_id)
   ), '[]'::jsonb);
 
+  -- Snapshot ONLY the rows the field-wipe will actually change: the global scope
+  -- targets active leader/co_leader care rows (exactly the set the Home/Care
+  -- queues are built from — deactivating a leader leaves the care row unarchived,
+  -- so archived_at alone would over-reach), and only rows not already at the
+  -- default. Capturing exactly the changed set means a later revert can't restore
+  -- a stale row the reset never touched.
   v_profile_payload := coalesce((
     select jsonb_agg(jsonb_build_object(
              'id', p.id,
@@ -181,27 +195,29 @@ begin
              'next_touchpoint_due', p.next_touchpoint_due
            ))
       from public.shepherd_care_profiles p
-     where (p_scope = 'global' and p.archived_at is null)
-        or (p_scope = 'entity' and p.shepherd_profile_id = p_entity_id)
+     where (
+             (p_scope = 'global'
+                and p.archived_at is null
+                and p.shepherd_profile_id in (
+                  select id from public.profiles
+                   where role in ('leader', 'co_leader') and status = 'active'))
+          or (p_scope = 'entity' and p.shepherd_profile_id = p_entity_id)
+           )
+       and (p.current_status <> 'doing_well' or p.next_touchpoint_due is not null)
   ), '[]'::jsonb);
 
-  -- The clean-slate field-wipe touches only rows not already at the default, so
-  -- the count + snapshot reflect exactly what changes. Counted before the
-  -- update so the snapshot is INSERTed before any mutation.
-  select count(*) into v_affected
-    from public.shepherd_care_profiles p
-   where (
-           (p_scope = 'global' and p.archived_at is null)
-        or (p_scope = 'entity' and p.shepherd_profile_id = p_entity_id)
-         )
-     and (p.current_status <> 'doing_well' or p.next_touchpoint_due is not null);
+  v_affected := jsonb_array_length(v_profile_payload);
 
-  -- Keep at most one un-restored snapshot per surface/scope/entity.
-  delete from public.attention_reset_snapshots
+  -- Retain (don't delete) any prior un-restored snapshot for this
+  -- surface/scope/entity: mark it superseded so its audit row + recovery payload
+  -- survive, while the console surfaces only the fresh one.
+  update public.attention_reset_snapshots
+     set superseded_at = now()
    where surface = 'care'
      and scope = p_scope
      and (entity_id is not distinct from p_entity_id)
-     and restored_at is null;
+     and restored_at is null
+     and superseded_at is null;
 
   insert into public.attention_reset_snapshots
     (id, created_by, surface, scope, entity_id, kind, payload, row_counts, total_rows)
@@ -228,13 +244,18 @@ begin
 
   -- Clean-slate field-wipe: clear the admin-set signals the baseline can't mask
   -- (concern/needs_follow_up status, scheduled touchpoint). last_contact_at is
-  -- deliberately preserved — the baseline is the contact floor.
+  -- deliberately preserved — the baseline is the contact floor. Same predicate as
+  -- the snapshot above, so what is changed is exactly what was captured.
   update public.shepherd_care_profiles p
      set current_status = 'doing_well',
          next_touchpoint_due = null,
          updated_at = now()
    where (
-           (p_scope = 'global' and p.archived_at is null)
+           (p_scope = 'global'
+              and p.archived_at is null
+              and p.shepherd_profile_id in (
+                select id from public.profiles
+                 where role in ('leader', 'co_leader') and status = 'active'))
         or (p_scope = 'entity' and p.shepherd_profile_id = p_entity_id)
          )
      and (p.current_status <> 'doing_well' or p.next_touchpoint_due is not null);
@@ -279,7 +300,9 @@ declare
   v_status_payload jsonb;
   v_override_payload jsonb;
   v_pulse_payload jsonb;
-  v_today date := current_date;
+  -- Church-local date (see the care RPC) so the baseline week matches the
+  -- dashboard's ISO week.
+  v_today date := (now() at time zone 'America/Chicago')::date;
   c_status bigint;
   c_override bigint;
   c_pulse bigint;
@@ -315,7 +338,7 @@ begin
   -- Capture (read-only, BEFORE mutating) the three sources of the absence-
   -- INDEPENDENT "needs_follow_up" half of the card so a clean-slate reset clears
   -- it too: the group's admin-set health_status, the per-group manual override,
-  -- and the latest pulse's follow-up flag. (The "missing" half is governed by the
+  -- and the LATEST pulse's follow-up flag. (The "missing" half is governed by the
   -- baseline, not by rows.) Global targets every non-closed group — exactly the
   -- set buildHealthSummary partitions.
   v_status_payload := coalesce((
@@ -342,26 +365,37 @@ begin
            )
   ), '[]'::jsonb);
 
+  -- Only the LATEST pulse row per group feeds the card (the dashboard keeps the
+  -- greatest update_week), so clear/snapshot just that row — never older Health
+  -- Pulse history that isn't contributing to the current card.
   v_pulse_payload := coalesce((
-    select jsonb_agg(jsonb_build_object('id', u.id))
-      from public.group_health_updates u
-     where u.follow_up_needed = true
-       and (
-             (p_scope = 'global' and u.group_id in (
-                select id from public.groups where lifecycle_status <> 'closed'))
-          or (p_scope = 'entity' and u.group_id = p_entity_id)
-           )
+    select jsonb_agg(jsonb_build_object('id', l.id))
+      from (
+        select distinct on (u.group_id) u.id, u.follow_up_needed
+          from public.group_health_updates u
+         where (
+                 (p_scope = 'global' and u.group_id in (
+                    select id from public.groups where lifecycle_status <> 'closed'))
+              or (p_scope = 'entity' and u.group_id = p_entity_id)
+               )
+         order by u.group_id, u.update_week desc
+      ) l
+     where l.follow_up_needed = true
   ), '[]'::jsonb);
 
   c_status := jsonb_array_length(v_status_payload);
   c_override := jsonb_array_length(v_override_payload);
   c_pulse := jsonb_array_length(v_pulse_payload);
 
-  delete from public.attention_reset_snapshots
+  -- Retain (don't delete) any prior un-restored snapshot — mark it superseded so
+  -- its audit row + recovery payload survive.
+  update public.attention_reset_snapshots
+     set superseded_at = now()
    where surface = 'health'
      and scope = p_scope
      and (entity_id is not distinct from p_entity_id)
-     and restored_at is null;
+     and restored_at is null
+     and superseded_at is null;
 
   -- Snapshot INSERTed before any mutation, so the prior values are recoverable.
   insert into public.attention_reset_snapshots
@@ -414,14 +448,12 @@ begin
         or (p_scope = 'entity' and s.group_id = p_entity_id)
          );
 
+  -- Clear exactly the latest-pulse rows captured above (never older history).
   update public.group_health_updates u
      set follow_up_needed = false
-   where u.follow_up_needed = true
-     and (
-           (p_scope = 'global' and u.group_id in (
-              select id from public.groups where lifecycle_status <> 'closed'))
-        or (p_scope = 'entity' and u.group_id = p_entity_id)
-         );
+   where u.id in (
+     select (x ->> 'id')::uuid from jsonb_array_elements(v_pulse_payload) x
+   );
 
   insert into public.audit_events
     (actor_profile_id, action, entity_type, entity_id, metadata)

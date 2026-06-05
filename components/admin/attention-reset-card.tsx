@@ -146,20 +146,34 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
     superAdminResetAttentionRevert,
     { resetOnSuccess: true }
   );
+  // A single useActionForm shared by every per-entity revert row below, gated by
+  // one RESTORE input for the surface (typing it once enables all rows).
+  const entityRevert = useActionForm<AttentionResetRevertSuccess>(
+    superAdminResetAttentionRevert,
+    { resetOnSuccess: true }
+  );
   const [confirm, setConfirm] = useState("");
   const [restoreConfirm, setRestoreConfirm] = useState("");
+  const [entityRestoreConfirm, setEntityRestoreConfirm] = useState("");
 
   const revertOk = revert.state?.ok;
   useEffect(() => {
     if (revertOk) setRestoreConfirm("");
   }, [revertOk]);
+  const entityRevertOk = entityRevert.state?.ok;
+  useEffect(() => {
+    if (entityRevertOk) setEntityRestoreConfirm("");
+  }, [entityRevertOk]);
 
   const meta = ATTENTION_RESET_SURFACE_META[surface.surface];
   const phrase = CONFIRM_PHRASE[surface.surface];
   const phraseMatches = confirm.trim() === phrase;
   const restoreMatches =
     restoreConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
+  const entityRestoreMatches =
+    entityRestoreConfirm.trim() === CLEAN_SLATE_RESTORE_CONFIRM_PHRASE;
   const snapshot = surface.snapshot;
+  const entitySnapshots = surface.entitySnapshots;
 
   return (
     <div
@@ -341,6 +355,72 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
           ) : null}
           <FormStatus state={revert.state} />
         </form>
+      ) : null}
+
+      {entitySnapshots.length > 0 ? (
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            borderTop: `1px solid ${P.line}`,
+            paddingTop: 10,
+          }}
+        >
+          <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+            Undo single resets ({entitySnapshots.length}) — type{" "}
+            {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} once to enable.
+          </div>
+          <input
+            aria-label={`Type ${CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to enable single-reset undo for ${meta.label}`}
+            name="entity-restore-confirm"
+            type="text"
+            autoComplete="off"
+            value={entityRestoreConfirm}
+            onChange={(e) => setEntityRestoreConfirm(e.target.value)}
+            placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
+            className={fieldInputClass}
+            style={{ ...fieldInputStyle, maxWidth: 220 }}
+          />
+          {entitySnapshots.map((es) => (
+            <form
+              key={es.id}
+              action={entityRevert.formAction}
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+              }}
+            >
+              <input type="hidden" name="snapshotId" value={es.id} />
+              <input type="hidden" name="surface" value={surface.surface} />
+              <input
+                type="hidden"
+                name="confirm"
+                value={entityRestoreConfirm}
+              />
+              <span
+                style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
+              >
+                {es.entityId.slice(0, 8)}… · {formatSnapshotTime(es.createdAt)}{" "}
+                UTC
+              </span>
+              <PButton
+                type="submit"
+                tone="ghost"
+                size="sm"
+                disabled={entityRevert.pending || !entityRestoreMatches}
+              >
+                {entityRevert.pending ? "Restoring…" : "Revert"}
+              </PButton>
+            </form>
+          ))}
+          {entityRevert.state?.ok ? (
+            <span style={successTextStyle}>Single reset reverted.</span>
+          ) : null}
+          <FormStatus state={entityRevert.state} />
+        </div>
       ) : null}
     </div>
   );

@@ -253,6 +253,14 @@ export async function fetchAttentionResetBaselines(
 // when), the per-entity override count, the impact preview (how many entities a
 // global reset would touch), and the latest un-restored snapshot it could
 // revert from.
+// A recoverable per-entity reset snapshot, surfaced so its revert is reachable
+// from the console (the per-item reset advertises Danger-Zone undo).
+export type AttentionResetEntitySnapshot = {
+  id: string;
+  entityId: string;
+  createdAt: string;
+};
+
 export type AttentionResetSurfaceState = {
   surface: AttentionResetSurface;
   globalBaselineOn: string | null;
@@ -261,7 +269,11 @@ export type AttentionResetSurfaceState = {
   // for "care", active groups for "health". A cheap head count; the real proof
   // a reset worked is Home dropping to zero, not this preview.
   impactCount: number;
+  // The active (un-restored, un-superseded) global reset snapshot, if any.
   snapshot: { id: string; createdAt: string } | null;
+  // Active per-entity reset snapshots, so each single-leader/single-group reset
+  // is revertable from the console (latest per entity, capped).
+  entitySnapshots: AttentionResetEntitySnapshot[];
 };
 
 export type AttentionResetState = {
@@ -279,9 +291,9 @@ export async function fetchAttentionResetState(
           .select("surface, scope, entity_id, baseline_on"),
         client
           .from("attention_reset_snapshots")
-          .select("id, created_at, surface, scope")
+          .select("id, created_at, surface, scope, entity_id")
           .is("restored_at", null)
-          .eq("scope", "global")
+          .is("superseded_at", null)
           .order("created_at", { ascending: false }),
         client
           .from("shepherd_care_profiles")
@@ -301,12 +313,15 @@ export async function fetchAttentionResetState(
     >[];
     const snapshots = (snapshotRows.data ?? []) as Pick<
       AttentionResetSnapshotsRow,
-      "id" | "created_at" | "surface" | "scope"
+      "id" | "created_at" | "surface" | "scope" | "entity_id"
     >[];
     const impactBySurface: Record<AttentionResetSurface, number> = {
       care: careCount.count ?? 0,
       health: groupCount.count ?? 0,
     };
+    // Cap the per-surface entity-snapshot list so the console stays bounded even
+    // after many single resets; rows are newest-first from the query.
+    const ENTITY_SNAPSHOT_CAP = 25;
 
     const surfaces: AttentionResetSurfaceState[] = ATTENTION_RESET_SURFACES.map(
       (surface) => {
@@ -317,18 +332,37 @@ export async function fetchAttentionResetState(
         const entityOverrideCount = rows.filter(
           (b) => b.scope === "entity"
         ).length;
-        const snapshotRow = snapshots.find((s) => s.surface === surface);
+        const surfaceSnapshots = snapshots.filter((s) => s.surface === surface);
+        const globalSnapshot = surfaceSnapshots.find(
+          (s) => s.scope === "global"
+        );
+        // Latest active snapshot per entity (rows are already newest-first).
+        const seenEntities = new Set<string>();
+        const entitySnapshots: AttentionResetEntitySnapshot[] = [];
+        for (const s of surfaceSnapshots) {
+          if (s.scope !== "entity" || !s.entity_id) continue;
+          const entityId = String(s.entity_id);
+          if (seenEntities.has(entityId)) continue;
+          seenEntities.add(entityId);
+          entitySnapshots.push({
+            id: String(s.id),
+            entityId,
+            createdAt: String(s.created_at),
+          });
+          if (entitySnapshots.length >= ENTITY_SNAPSHOT_CAP) break;
+        }
         return {
           surface,
           globalBaselineOn: globalRow ? String(globalRow.baseline_on) : null,
           entityOverrideCount,
           impactCount: impactBySurface[surface],
-          snapshot: snapshotRow
+          snapshot: globalSnapshot
             ? {
-                id: String(snapshotRow.id),
-                createdAt: String(snapshotRow.created_at),
+                id: String(globalSnapshot.id),
+                createdAt: String(globalSnapshot.created_at),
               }
             : null,
+          entitySnapshots,
         };
       }
     );

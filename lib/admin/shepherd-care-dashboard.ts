@@ -363,7 +363,8 @@ function buildSummary(
   todayIso: string,
   coverageAvailable: boolean,
   windows: CareCadenceWindows,
-  followUpTotals: { overdue: number; outstanding: number }
+  followUpTotals: { overdue: number; outstanding: number },
+  baselines?: AttentionBaselines
 ): CareDashboardSummary {
   let needsAttention = 0;
   let overdueTouchpoints = 0;
@@ -380,9 +381,19 @@ function buildSummary(
     ) {
       overdueTouchpoints += 1;
     }
+    // "Not contacted recently" measures staleness from the later of the real
+    // last contact and any reset baseline, so a reset clears this count too
+    // (it must agree with the baseline-aware needs_attention chip above).
+    const baselineIso = resolveAttentionBaseline(baselines, entry.profile.id);
+    const effectiveContact =
+      entry.care?.last_contact_at && baselineIso
+        ? entry.care.last_contact_at >= baselineIso
+          ? entry.care.last_contact_at
+          : baselineIso
+        : (entry.care?.last_contact_at ?? baselineIso ?? null);
     if (
-      entry.care?.last_contact_at &&
-      differenceInDaysIso(todayIso, entry.care.last_contact_at) >
+      effectiveContact &&
+      differenceInDaysIso(todayIso, effectiveContact) >
         staleDaysForEntry(
           entry.profile.id,
           assignedShepherdIds,
@@ -527,7 +538,11 @@ export function buildShepherdCareDashboardModel(
     input.todayIso,
     coverageAvailable,
     windows,
-    { overdue: followUps.totalOverdue, outstanding: followUps.totalOutstanding }
+    {
+      overdue: followUps.totalOverdue,
+      outstanding: followUps.totalOutstanding,
+    },
+    input.baselines
   );
   const fullQueue = buildAttentionQueue(
     input.entries,
