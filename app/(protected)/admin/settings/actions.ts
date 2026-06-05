@@ -4,9 +4,11 @@ import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
   validateHealthRubricPayload,
+  validateMultiplicationConfigPayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
+  type MultiplicationConfigPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -17,6 +19,7 @@ import {
 import {
   rpcAdminResetMetricDefaults,
   rpcAdminSetHealthRubric,
+  rpcAdminSetMultiplicationConfig,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
 } from "@/lib/admin/rpc";
@@ -258,4 +261,52 @@ export async function adminSetHealthRubric(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
+}
+
+// ----- adminSetMultiplicationConfig (#380) --------------------------------
+// The Settings Multiply-pillars editor posts one group type's config for a
+// ministry year: the group_type, ministry_year, and three JSON payloads
+// (thresholds, trigger, fed capacity). The validator decodes + normalizes them
+// before the audited RPC persists them. Ministry-Admin-owned, so the default
+// requireAdminSession path applies. Revalidates the Multiply boards as well as
+// Settings (the boards read this config).
+const MULTIPLICATION_CONFIG_REVALIDATE_PATHS = [
+  "/admin/settings",
+  "/admin/multiply",
+] as const;
+
+const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
+  MultiplicationConfigPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_multiplication_config",
+  keys: [
+    "group_type",
+    "ministry_year",
+    "thresholds",
+    "trigger",
+    "fed_capacity",
+  ],
+  validate: validateMultiplicationConfigPayload,
+  fields: (_actor, value) => ({
+    group_type: value.groupType,
+    ministry_year: value.ministryYear,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetMultiplicationConfig(client, {
+      p_group_type: value.groupType,
+      p_ministry_year: value.ministryYear,
+      p_thresholds: value.thresholds as unknown as Record<string, unknown>,
+      p_trigger: value.trigger as unknown as Record<string, unknown>,
+      p_fed_capacity: value.fedCapacity as unknown as Record<string, unknown>,
+    }),
+  revalidate: () => MULTIPLICATION_CONFIG_REVALIDATE_PATHS,
+  noDataError: "The multiplication config was not saved. Please try again.",
+};
+
+export async function adminSetMultiplicationConfig(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_MULTIPLICATION_CONFIG_SPEC, prev, input);
 }

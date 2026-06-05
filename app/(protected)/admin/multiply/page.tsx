@@ -1,24 +1,49 @@
 import { requireAdmin } from "@/lib/auth/session";
-import { AreaPlaceholder } from "@/components/admin/area-placeholder";
+import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { P, fontBody } from "@/lib/pastoral";
+import { loadMultiplyData } from "@/components/admin/multiply/multiply-data";
+import { MultiplyBoards } from "@/components/admin/multiply/multiply-boards";
 
-// Multiply area (ADR 0016 / 0019, #372). Multiply is the per-group-type
-// multiplication read — three boards (Men's / Women's / Mixed), each scored by
-// four pillars (Capacity, Interest, Group Health, Leader Health) plus a
-// Julian-owned trigger. The former Launch Planning + admin Calendar stay
-// direct-URL aliases (NAV_ALIAS_TO_CANONICAL marks Multiply active for them).
-// This slice ships only the nav entry + a minimal "being built" shell; the
-// boards land in #380.
+// Multiply area (ADR 0016 / 0019, #380). Three boards by group type (Men's /
+// Women's / Mixed), each scored by four pillars (Capacity, Interest, Group
+// Health, Leader Health) and a Julian-owned trigger that produces a "ready to
+// multiply this type" signal — by type, not by a single blended letter. Capacity
+// is fed by the Ministry Admin in Settings; Interest derives from the Interest
+// Funnel; the two health pillars roll up the ministry-year grades (showing "—"
+// until the parallel grade slices #377/#378 land). A full group can raise its own
+// "multiply this one" flag from the Capacity input.
 export const dynamic = "force-dynamic";
 
 export default async function AdminMultiplyPage() {
   await requireAdmin();
+  const data = await loadMultiplyData();
+
   return (
-    <AreaPlaceholder
-      eyebrow="Multiply"
-      title="When to"
-      italic="multiply"
-      lede="A read on which group types are ready to multiply — by type, not by individual group."
-      building="The per-type multiplication boards are being built here — four pillars per type and the trigger that tells you when a type is ready. Launch planning and the calendar still live at their existing URLs in the meantime."
-    />
+    <>
+      <PageHeader
+        eyebrow="Multiply"
+        title="When to"
+        italic="multiply"
+        lede="A read on which group types are ready to multiply — by type, not by individual group. Capacity is set in Settings; Interest comes from the funnel; the health pillars fill in as grades arrive."
+      />
+      <PageBody>
+        {data.error ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 14,
+              color: P.terraTextStrong,
+            }}
+          >
+            {data.error}
+          </p>
+        ) : (
+          <MultiplyBoards
+            boards={data.boards}
+            ministryYear={data.ministryYear}
+          />
+        )}
+      </PageBody>
+    </>
   );
 }

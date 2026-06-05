@@ -22,6 +22,10 @@ import {
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
+import {
+  MultiplicationConfigEditor,
+  type MultiplicationConfigSeed,
+} from "@/components/admin/settings/multiplication-config-editor";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -31,6 +35,13 @@ export type SettingsShellData = {
   // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
   // Empty when no rubric has been built yet; the editor seeds a blank row.
   groupRubricCriteria: RubricCriterion[];
+  // #380 Multiplication Pillars: the per-type config seeds (Capacity feed +
+  // trigger rubric) for the current ministry year, plus the year itself. Optional
+  // so the shell tolerates a build that hasn't wired this read yet.
+  multiplicationConfig?: {
+    ministryYear: number;
+    seeds: MultiplicationConfigSeed[];
+  };
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but two facets stay behind the super-admin
   // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
@@ -153,6 +164,26 @@ function ThresholdsPanel({
           <HealthRubricEditor criteria={data.groupRubricCriteria} />
         </Card>
       </section>
+
+      {/* #380 Multiplication Pillars: the Ministry-Admin-fed Capacity per type +
+          the trigger rubric that decides when a type is ready to multiply. Feeds
+          the Multiply boards directly; capacity here is the fed source, never
+          in-app counts. */}
+      {data.multiplicationConfig ? (
+        <section style={{ display: "grid", gap: 18 }}>
+          <SectionHeader
+            eyebrow="Multiplication pillars"
+            title="When a group type is ready to multiply"
+            description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+          />
+          <Card>
+            <MultiplicationConfigEditor
+              seeds={data.multiplicationConfig.seeds}
+              ministryYear={data.multiplicationConfig.ministryYear}
+            />
+          </Card>
+        </section>
+      ) : null}
 
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
