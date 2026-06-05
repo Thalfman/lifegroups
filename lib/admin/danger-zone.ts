@@ -30,6 +30,19 @@ export const LAUNCH_PREP_CONFIRM_PHRASE = "PREPARE FOR LAUNCH";
 export const RESET_CARE_ATTENTION_CONFIRM_PHRASE = "RESET CARE";
 export const RESET_HEALTH_ATTENTION_CONFIRM_PHRASE = "RESET HEALTH CHECKS";
 
+// One top-level "reset everything to a clean launch state" composition: clears
+// all history, hides the launch warnings, AND resets the time-based attention
+// cards, in one guarded step. The granular cards below stay available for fine
+// control (and for recovery — each piece reverts from its own card).
+export const RESET_ALL_CONFIRM_PHRASE = "RESET EVERYTHING";
+
+// The exact token the history-clearing RPCs raise when there is nothing to
+// clear. This is an idempotent no-op, NOT a failure — the actions match this
+// token to surface it as a neutral "already clean" success instead of a red
+// error. Matched against the raw RPC error message (never the mapped sentence)
+// so only this specific no-op is reclassified; every other token stays an error.
+export const NOTHING_TO_WIPE_TOKEN = "nothing_to_wipe";
+
 // ADR 0014 (#312): the exact phrase the operator must type to permanently
 // delete a curated entity (physical removal, captured to a tombstone).
 export const PERMANENT_DELETE_CONFIRM_PHRASE = "PERMANENTLY DELETE";
@@ -85,6 +98,9 @@ export type CleanSlateWipeSuccess = {
   snapshotId: string;
   totalRows: number;
   rowCounts: Record<string, number>;
+  // True when the wipe was a no-op because history was already clear. The card
+  // renders this as a neutral "already clean" line rather than a red error.
+  nothingToClear?: boolean;
 };
 
 // Both restore paths report the same shape: how many rows went back, per table.
@@ -102,6 +118,9 @@ export type HistoryResetSuccess = {
   snapshotId: string;
   totalRows: number;
   rowCounts: Record<string, number>;
+  // True when the reset was a no-op because this category was already clear.
+  // The card renders this as a neutral "already clean" line, not a red error.
+  nothingToClear?: boolean;
 };
 
 export type HistoryResetRevertSuccess = HistoryResetSuccess;
@@ -136,4 +155,15 @@ export type AttentionResetRevertSuccess = {
   scope: "global" | "entity";
   entityId: string | null;
   snapshotId: string;
+};
+
+// The consolidated "reset everything" step echoes how many history rows were
+// cleared (0 when already clean), which launch warnings were muted, and the
+// recoverable history snapshot id (null when there was no history to snapshot).
+// The care/health attention cards are reset to a global baseline as part of the
+// same step; each remains separately revertable from its own card below.
+export type ResetAllSuccess = {
+  clearedRows: number;
+  mutedKeys: string[];
+  snapshotId: string | null;
 };

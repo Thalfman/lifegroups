@@ -213,11 +213,19 @@ export function CleanSlateCard({
             {pending ? "Clearing…" : "Clear history"}
           </PButton>
           {state?.ok ? (
-            <span style={successTextStyle}>
-              Cleared {state.value.totalRows} row
-              {state.value.totalRows === 1 ? "" : "s"}. A snapshot was saved for
-              recovery.
-            </span>
+            state.value.nothingToClear ? (
+              <span
+                style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2 }}
+              >
+                Already clear — there was no accumulated history to clear.
+              </span>
+            ) : (
+              <span style={successTextStyle}>
+                Cleared {state.value.totalRows} row
+                {state.value.totalRows === 1 ? "" : "s"}. A snapshot was saved
+                for recovery.
+              </span>
+            )
           ) : null}
         </div>
         <FormStatus state={state} />

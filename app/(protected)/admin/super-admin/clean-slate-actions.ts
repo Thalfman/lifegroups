@@ -19,6 +19,7 @@ import {
 import {
   CLEAN_SLATE_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
+  NOTHING_TO_WIPE_TOKEN,
   type CleanSlateWipeSuccess,
   type CleanSlateRevertSuccess,
   type CleanSlateImportSuccess,
@@ -87,7 +88,25 @@ export async function superAdminCleanSlateWipe(
   if (!client) return actionFail(["Database is not configured."]);
 
   const { data: snapshotId, error } = await rpcSuperAdminCleanSlateWipe(client);
-  if (error) return actionFail([mapRpcError(error.message)]);
+  if (error) {
+    // An already-clear history is an idempotent no-op, not a failure: surface it
+    // as a neutral success so a reset with nothing to clear doesn't read as a
+    // red error. Match the raw token, never the mapped sentence, so every other
+    // error (incl. a genuine failure) still fails. This can be reached from the
+    // race window where the impact preview was non-empty but history was cleared
+    // (another tab / a prior action) before this submit landed.
+    if (error.message === NOTHING_TO_WIPE_TOKEN) {
+      revalidatePath(REVALIDATE_PATH);
+      revalidatePath("/admin");
+      return actionOk({
+        snapshotId: "",
+        totalRows: 0,
+        rowCounts: {},
+        nothingToClear: true,
+      });
+    }
+    return actionFail([mapRpcError(error.message)]);
+  }
   if (!snapshotId) {
     return actionFail(["The wipe did not complete. Please try again."]);
   }
