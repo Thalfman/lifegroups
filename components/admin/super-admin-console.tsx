@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -33,16 +34,43 @@ export function SuperAdminConsole({
   statusRow,
   workspaces,
   defaultWorkspaceId = "readiness",
+  hashAliases,
 }: {
   statusRow: ReactNode;
   workspaces: SuperAdminWorkspace[];
   defaultWorkspaceId?: string;
+  // Legacy/deep-link hash → workspace id (e.g. "people-import" → "access"), so
+  // an existing `/admin/super-admin#people-import` link still opens the right
+  // workspace instead of landing on the default with a dead anchor.
+  hashAliases?: Record<string, string>;
 }) {
   const initial = workspaces.some((w) => w.id === defaultWorkspaceId)
     ? defaultWorkspaceId
     : (workspaces[0]?.id ?? "");
   const [activeId, setActiveId] = useState(initial);
   const tabRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+
+  // Read the latest workspaces/aliases from refs so the hash listener can stay a
+  // mount-once effect: it must apply the URL hash on load and on hashchange, but
+  // never re-snap the operator's manual tab choice on an unrelated re-render.
+  const workspacesRef = useRef(workspaces);
+  workspacesRef.current = workspaces;
+  const aliasesRef = useRef(hashAliases);
+  aliasesRef.current = hashAliases;
+
+  useEffect(() => {
+    function applyHash() {
+      const raw = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (!raw) return;
+      const ids = new Set(workspacesRef.current.map((w) => w.id));
+      // A direct workspace-id hash wins; otherwise fall back to a known alias.
+      const target = ids.has(raw) ? raw : aliasesRef.current?.[raw];
+      if (target && ids.has(target)) setActiveId(target);
+    }
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
 
   function focusTab(id: string) {
     setActiveId(id);

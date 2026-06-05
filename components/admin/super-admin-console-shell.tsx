@@ -486,6 +486,16 @@ function computeNextAction(input: {
       tone: "warning",
     };
   }
+  // Any remaining non-good test-account status (e.g. "Unknown" when the status
+  // check didn't return a clear answer) must not read as launch-ready, since we
+  // can't confirm the known-password accounts are off.
+  if (testAccountsSummary.tone !== "good") {
+    return {
+      title: "Confirm test-account status",
+      body: "Couldn’t confirm whether known-password test accounts are disabled. Check Diagnostics → Test tools before launch.",
+      tone: "warning",
+    };
+  }
   if (checklistWarningCount > 0) {
     return {
       title: "Finish readiness setup",
@@ -704,9 +714,25 @@ export function SuperAdminConsoleShell({
       statusRow={statusRow}
       workspaces={workspaces}
       defaultWorkspaceId="readiness"
+      hashAliases={LEGACY_HASH_ALIASES}
     />
   );
 }
+
+// The old console used 11 in-page anchors; the six-workspace console folds those
+// into workspaces. Map the legacy section ids to the workspace that now holds
+// them so existing deep links (e.g. Settings' "Open import" →
+// /admin/super-admin#people-import) keep landing on the right panel.
+const LEGACY_HASH_ALIASES: Record<string, string> = {
+  overview: "readiness",
+  "people-import": "access",
+  coverage: "access",
+  features: "config",
+  settings: "config",
+  "test-tools": "diagnostics",
+  maintenance: "diagnostics",
+  "danger-zone": "danger",
+};
 
 const statusRowGridStyle: CSSProperties = {
   display: "grid",
@@ -1457,6 +1483,23 @@ function formatAuditTimestamp(iso: string): string {
 }
 
 function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
+  const auditSection = (
+    <AuditTrailSection
+      events={data.auditEvents}
+      profilesById={data.profilesById}
+      membersById={data.membersById}
+      groupsById={data.groupsById}
+      error={data.errors.audit}
+    />
+  );
+
+  // On an audit read failure there are no events to filter and the section
+  // surfaces the error itself — render it directly (no filter UI) so a filter
+  // interaction can't mask the failure behind a misleading "no matches" state.
+  if (data.errors.audit) {
+    return <div style={{ minWidth: 0 }}>{auditSection}</div>;
+  }
+
   // The Map-dependent summaries are computed here, server-side, so the client
   // filter receives only flat, serialisable entries (RSC can't ship the Maps).
   const entries: AuditEntry[] = data.auditEvents.map((event) => {
@@ -1480,18 +1523,7 @@ function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
 
   return (
     <div style={{ minWidth: 0 }}>
-      <AuditWorkspace
-        entries={entries}
-        fullList={
-          <AuditTrailSection
-            events={data.auditEvents}
-            profilesById={data.profilesById}
-            membersById={data.membersById}
-            groupsById={data.groupsById}
-            error={data.errors.audit}
-          />
-        }
-      />
+      <AuditWorkspace entries={entries} fullList={auditSection} />
     </div>
   );
 }
