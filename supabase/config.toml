@@ -17,3 +17,22 @@ verify_jwt = true
 # token itself.
 [functions.redeem-invite]
 verify_jwt = false
+
+# Auth config for the local stack (`supabase start`). The hosted project is
+# configured in the Supabase dashboard; these entries keep local dev in parity
+# so the password-reset flow can be exercised end-to-end locally.
+[auth]
+site_url = "http://127.0.0.1:3000"
+# /reset-password is where recovery emails land (button-gated); /auth/confirm
+# performs verifyOtp; /login is the post-reset destination.
+additional_redirect_urls = [
+  "http://127.0.0.1:3000/reset-password",
+  "http://127.0.0.1:3000/auth/confirm",
+  "http://127.0.0.1:3000/login",
+]
+
+# Recovery email uses a token_hash link to a server-side endpoint so email
+# link-scanners can't consume the single-use token (see the template comment).
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./templates/recovery.html"

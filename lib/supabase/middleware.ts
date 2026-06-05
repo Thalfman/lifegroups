@@ -44,11 +44,15 @@ export async function updateSupabaseSession(
   if (!claimsData?.claims && request.nextUrl.pathname === "/") {
     // Safety net for auth email links (invite / password recovery) whose
     // redirect target wasn't honored, so Supabase sent the verified user to the
-    // Site URL root with the auth `?code=` attached. Without this, the rewrite
-    // below would serve the sign-in page and discard the code, stranding the
-    // invitee. Forward them to /reset-password (which exchanges the code and
-    // shows the password-setup form) with the code preserved.
-    if (request.nextUrl.searchParams.has("code")) {
+    // Site URL root with the auth params attached (`?code=` for the legacy PKCE
+    // flow, or `?token_hash=&type=` for the token_hash flow). Without this, the
+    // rewrite below would serve the sign-in page and discard them, stranding the
+    // user. Forward to /reset-password (which gates verification behind a button
+    // and shows the password-setup form) with the query string preserved.
+    if (
+      request.nextUrl.searchParams.has("code") ||
+      request.nextUrl.searchParams.has("token_hash")
+    ) {
       const acceptUrl = request.nextUrl.clone();
       acceptUrl.pathname = "/reset-password";
       const redirectResponse = NextResponse.redirect(acceptUrl);

@@ -1,37 +1,68 @@
 import Link from "next/link";
 import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
 import { PSeal } from "@/components/pastoral/atoms";
+import { PLinkButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<{ code?: string | string[] }>;
+type SearchParams = Promise<{
+  code?: string | string[];
+  token_hash?: string | string[];
+  type?: string | string[];
+  status?: string | string[];
+}>;
 
-// Supabase password-recovery emails send the user to this page with a
-// `?code=...` PKCE param. We exchange it for a recovery session here so
-// the form's server action sees an authenticated user. PKCE codes are
-// single-use, so we check for an existing session first — that keeps a
-// refresh (with the still-present ?code= in the URL) from invalidating
-// a session we already established.
-async function maybeExchangeCode(code: string | undefined): Promise<string | null> {
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+// What the page should render. The single-use recovery token is NOT consumed
+// here — that happens in /auth/confirm only when the user clicks the button
+// below, so an email-provider link scanner's GET of this page burns nothing.
+type View =
+  | { kind: "not_configured" }
+  | { kind: "form" } // recovery session already established (post /auth/confirm)
+  | { kind: "confirm"; href: string } // valid-looking link → show the button
+  | { kind: "invalid" }; // missing/used/expired link → resend CTA
+
+async function resolveView(params: {
+  code?: string;
+  tokenHash?: string;
+  type?: string;
+  status?: string;
+}): Promise<View> {
   const client = await createSupabaseServerClient();
-  if (!client) return "Password reset is not configured on this deployment.";
+  if (!client) return { kind: "not_configured" };
 
+  // A recovery session set by /auth/confirm means we can show the form. We
+  // check this first so a refresh after confirming doesn't fall back to the
+  // (now-consumed) link state.
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (user) return null;
+  if (user) return { kind: "form" };
 
-  if (!code) {
-    return "No reset code provided. Request a new link from Forgot password.";
+  if (params.status === "invalid") return { kind: "invalid" };
+
+  // Build the button target that actually consumes the token via verifyOtp /
+  // exchangeCodeForSession on the user's explicit click.
+  const next = "/reset-password";
+  if (params.tokenHash && params.type) {
+    const qs = new URLSearchParams({
+      token_hash: params.tokenHash,
+      type: params.type,
+      next,
+    });
+    return { kind: "confirm", href: `/auth/confirm?${qs.toString()}` };
+  }
+  if (params.code) {
+    const qs = new URLSearchParams({ code: params.code, next });
+    return { kind: "confirm", href: `/auth/confirm?${qs.toString()}` };
   }
 
-  const { error } = await client.auth.exchangeCodeForSession(code);
-  if (error) {
-    return "Your reset link has expired or was already used. Request a new one from Forgot password.";
-  }
-  return null;
+  return { kind: "invalid" };
 }
 
 export default async function ResetPasswordPage({
@@ -40,9 +71,12 @@ export default async function ResetPasswordPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const codeRaw = params.code;
-  const code = Array.isArray(codeRaw) ? codeRaw[0] : codeRaw;
-  const exchangeError = await maybeExchangeCode(code);
+  const view = await resolveView({
+    code: first(params.code),
+    tokenHash: first(params.token_hash),
+    type: first(params.type),
+    status: first(params.status),
+  });
 
   return (
     <div
@@ -127,7 +161,13 @@ export default async function ResetPasswordPage({
               color: P.ink,
             }}
           >
-            Set a new password
+            {view.kind === "form"
+              ? "Set a new password"
+              : view.kind === "confirm"
+                ? "Confirm it's you"
+                : view.kind === "not_configured"
+                  ? "Reset password"
+                  : "Link expired or already used"}
           </h1>
           <p
             style={{
@@ -139,11 +179,26 @@ export default async function ResetPasswordPage({
               lineHeight: 1.55,
             }}
           >
-            Choose a new password for your account. Must be at least 8
-            characters.
+            {view.kind === "form"
+              ? "Choose a new password for your account. Must be at least 8 characters."
+              : view.kind === "confirm"
+                ? "For your security, confirm below to continue resetting your password. Reset links can only be used once."
+                : view.kind === "not_configured"
+                  ? "Password reset is not available on this deployment right now."
+                  : "Reset links can only be used once and expire after a short time. Request a fresh one and use it right away."}
           </p>
 
-          {exchangeError ? (
+          {view.kind === "form" ? (
+            <ResetPasswordForm />
+          ) : view.kind === "confirm" ? (
+            <PLinkButton
+              href={view.href}
+              tone="terra"
+              style={{ width: "100%", padding: "14px", fontSize: 14 }}
+            >
+              Set my new password
+            </PLinkButton>
+          ) : (
             <p
               role="alert"
               style={{
@@ -159,7 +214,9 @@ export default async function ResetPasswordPage({
                 lineHeight: 1.5,
               }}
             >
-              {exchangeError}{" "}
+              {view.kind === "not_configured"
+                ? "Password reset is not configured on this deployment."
+                : "This reset link is invalid, was already used, or has expired."}{" "}
               <Link
                 href="/forgot-password"
                 style={{
@@ -172,8 +229,6 @@ export default async function ResetPasswordPage({
               </Link>
               .
             </p>
-          ) : (
-            <ResetPasswordForm />
           )}
         </div>
       </main>

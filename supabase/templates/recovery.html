@@ -1,0 +1,59 @@
+<!--
+  Password-recovery email for Fox Valley Church Life Groups.
+
+  The link points at /reset-password (a landing page that consumes NOTHING on
+  load) rather than directly at the verification endpoint. Email security
+  scanners (e.g. Microsoft Defender Safe Links, common on Outlook/Office 365)
+  prefetch links in incoming mail; if the link verified the token on GET, the
+  scanner would burn the single-use token before the recipient ever clicked,
+  producing a spurious "link expired" error. The landing page gates the actual
+  verification behind a button the human clicks, so only a real click consumes
+  the token. See app/reset-password/page.tsx and app/auth/confirm/route.ts.
+
+  {{ .TokenHash }} + type=recovery drives the server-side verifyOtp() flow,
+  which works cross-device (no PKCE code_verifier cookie required).
+-->
+<div
+  style="
+    font-family:
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    color: #2b2622;
+    line-height: 1.55;
+  "
+>
+  <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 12px">
+    Reset your password
+  </h2>
+  <p style="font-size: 14px; margin: 0 0 20px">
+    We received a request to reset the password for your Fox Valley Church Life
+    Groups account. Click the button below to choose a new password.
+  </p>
+  <p style="margin: 0 0 24px">
+    <a
+      href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery"
+      style="
+        display: inline-block;
+        background: #b5613f;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 12px 22px;
+        border-radius: 999px;
+      "
+    >
+      Reset password
+    </a>
+  </p>
+  <p style="font-size: 13px; color: #6b635c; margin: 0">
+    This link can be used once and expires after a short time. If you didn't
+    request a password reset, you can safely ignore this email.
+  </p>
+</div>
