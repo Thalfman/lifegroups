@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPeopleDirectoryData,
   buildPeopleNeedsContact,
   buildPeoplePipelineData,
   type PeopleReads,
@@ -27,6 +28,36 @@ function emptyReads(overrides: Partial<PeopleReads> = {}): PeopleReads {
     ...overrides,
   };
 }
+
+describe("buildPeopleDirectoryData", () => {
+  it("excludes super_admin profiles and keeps other roles", async () => {
+    const profiles = [
+      { id: "p1", role: "super_admin" },
+      { id: "p2", role: "ministry_admin" },
+      { id: "p3", role: "leader" },
+    ];
+    const result = await buildPeopleDirectoryData(
+      emptyReads({
+        fetchProfilesForAdmin: async () => ok(profiles as never),
+      }),
+      { currentActorProfileId: "p2" }
+    );
+
+    expect(result.profiles.map((p) => p.id)).toEqual(["p2", "p3"]);
+  });
+
+  it("returns an empty profiles list when all profiles are super_admin", async () => {
+    const result = await buildPeopleDirectoryData(
+      emptyReads({
+        fetchProfilesForAdmin: async () =>
+          ok([{ id: "p1", role: "super_admin" }] as never),
+      }),
+      { currentActorProfileId: "p1" }
+    );
+
+    expect(result.profiles).toHaveLength(0);
+  });
+});
 
 describe("buildPeoplePipelineData", () => {
   it("offers only active groups, sorted by name", async () => {
