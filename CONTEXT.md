@@ -56,6 +56,24 @@ escapes the oversight ladder: not visible to other tiers — and, by intent,
 not to the Super Admin either.
 _Avoid_: Encrypted note, secret note.
 
+**Care Note**:
+An author-private pastoral note written _down_ the ladder: an Over-Shepherd
+records Care Notes about their Leaders, and a Leader records them about their
+group members. Sealed to its author by default. The Ministry Admin can read a
+given person's Care Notes only when he flips that person's transparency toggle
+on — and when he can, the Super Admin can too (the normal ladder). Distinct
+from the Private Care Note, which is the Ministry Admin's _own_ note and is
+hidden even from the Super Admin.
+_Avoid_: Private Care Note (that is Julian's own note, scoped differently),
+shepherd note, member note.
+
+**Prayer Request**:
+A request for prayer recorded against a person (a Leader, by their
+Over-Shepherd; a member, by their Leader). A list distinct from the Care Note
+log — it can carry its own state over time (e.g. answered) — but it follows the
+same author-private visibility and Ministry-Admin transparency toggle.
+_Avoid_: Prayer note, Care Note (that is the separate running log).
+
 ### Deletion concepts
 
 **Archive**:
@@ -101,15 +119,77 @@ into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`); it is
 instead. Treated like "Admin OS": an internal-only name.
 _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
 
+### Interest funnel concepts
+
+**Interest Funnel**:
+The pipeline of people interested in joining a Life Group — the app's **Plan**
+area. Replaces the former Guests pipeline. A Prospect moves through four states
+toward joining, or parks.
+_Avoid_: Guests pipeline, guest funnel, lead pipeline.
+
+**Prospect**:
+A person interested in joining a Life Group, tracked in the Interest Funnel.
+Named distinctly from the **Interested** state so the person and their status
+don't share a word.
+_Avoid_: Guest, lead, inquirer, interested person.
+
+**Prospect state**:
+The four colour-coded states a Prospect moves through:
+
+- **Interested** (yellow) — wants to join; no group chosen yet.
+- **Matched** (blue) — matched to a specific group and its Leader; follow-up
+  under way.
+- **Joined** (green) — has joined the matched group; **archived out of the
+  active funnel** into a collapsed "Joined" roll-up (no roster row, no count).
+- **Not at this time** (orange) — parked; not joining right now.
+
+_Avoid_: Solidified (the earlier word for Matched/Joined), placed, assigned,
+contacted.
+
 ### Health concepts
 
-Three different "health" ideas live in the system and are easy to conflate.
-They answer different questions about different subjects.
+Four different "health" ideas live in the system and are easy to conflate.
+They answer different questions about different subjects. Two are computed
+letter grades (Group-Health Grade, Leader-Health Grade), each from its own
+configurable rubric; one is a pastoral signal (Leader Care Status); one is a
+leader self-report (Health Pulse).
 
 **Group-Health Grade**:
-A computed grade of how a Life _Group itself_ is doing (Q12) — Julian's
-"grade them" concept. Distinct from how the group's Leader is doing.
+A letter grade (A / B / C / D / F) for how a Life _Group itself_ is doing —
+Julian's "grade them" concept, distinct from how the group's Leader is doing.
+Computed from a configurable Health Rubric and updated _fluidly_ as the Ministry
+Admin edits the inputs; a manual override can still force the letter. Tracked
+within the current Ministry Year.
 _Avoid_: Health score, group status, group health (when you mean the grade).
+
+**Health Rubric**:
+The Ministry-Admin-configured definition of _what_ the Group-Health Grade
+measures: a set of weighted criteria (e.g. Attendance, Unity, Growth, plus any
+custom ones) whose weightings total 100. Julian owns and edits it; changing an
+input re-grades the group. The rubric the discovery doc deferred is now this
+configurable engine, not a hardcoded formula.
+_Avoid_: Scorecard, formula, weighting (when you mean the whole rubric).
+
+**Ministry Year**:
+The ministry's annual cycle, **August through May** (summer is off). The window
+the Group-Health Grade and Leader-Health Grade are tracked within, and the
+period the Multiplication pillars assess.
+_Avoid_: School year, fiscal year, season, term.
+
+**Leader-Health Grade**:
+A letter grade (A / B / C / D / F) for how a _Leader themselves_ is doing,
+computed from its own configurable Leader-Health Rubric (criteria + weightings
+totalling 100), fluid as inputs change, tracked within the Ministry Year.
+Symmetric with the Group-Health Grade but about the person, not the group.
+Distinct from **Leader Care Status** (the pastoral "is there an issue, what's
+the next step" signal) and from **Health Pulse** (the leader's own self-report).
+_Avoid_: Leader health (lowercase, ambiguous), Leader Care Status, leader score.
+
+**Leader-Health Rubric**:
+The Ministry-Admin-configured definition of what the Leader-Health Grade
+measures — weighted criteria totalling 100 — the leader-facing twin of the
+Health Rubric. Julian owns and edits it.
+_Avoid_: Scorecard, care rubric.
 
 **Leader Care Status**:
 How a _Leader_ is doing from the Ministry Admin's pastoral view — an
@@ -122,6 +202,29 @@ A _Leader's own_ self-reported weekly sentiment about their group. A
 subjective leader-entered input — not the computed Group-Health Grade.
 _Avoid_: Group health, health status (when you mean the grade).
 
+### Multiplication concepts
+
+**Multiplication**:
+The app's third area — deciding when to launch another group, assessed by
+**group type** (the Audience: Men's, Women's, Mixed), not by individual group.
+Three boards, one per type. Capacity can still flag a single full group to
+multiply on its own — the one place an individual group is the unit.
+_Avoid_: Launch planning (the superseded framing), split.
+
+**Multiplication Pillar**:
+One of the four computed A–F signals assessed per group type: **Capacity**,
+**Interest** (from the Interest Funnel), **Group Health** (roll-up of that
+type's Group-Health Grades), and **Leader Health** (roll-up of that type's
+Leader-Health Grades), each over the Ministry Year. There is no single overall
+multiplication letter — the pillars stand on their own.
+_Avoid_: Metric, score, criterion (that word belongs to a rubric's inputs).
+
+**Multiplication Trigger**:
+The Ministry-Admin-configured rule over the pillar grades that signals "multiply
+this type" — e.g. a threshold each pillar must clear. Julian owns the trigger
+rubric; the app surfaces the signal, it does not decide for him.
+_Avoid_: Alert, threshold (when you mean the whole configured trigger).
+
 ### Surfaces
 
 **Home Hub**:
@@ -133,8 +236,10 @@ _Avoid_: Dashboard (ambiguous with the admin metrics surface), home page.
 
 **Admin OS**:
 The working surface a Ministry Admin / Super Admin operates in after leaving the
-Home Hub — the sidebar-shell app at `/admin` and its tabs (Leader care, Launch
-planning, etc.). In the UI it is **labelled "Ministry Admin"** (the landing
+Home Hub — the sidebar-shell app at `/admin` and its tabs. Post-pivot those tabs
+are **Home · Care · Plan · Multiply · Settings** (ADR 0016); the former Groups,
+Planning, People, Calendar, and Follow-ups tabs are hidden behind Super-Admin
+nav-visibility flags, default off. In the UI it is **labelled "Ministry Admin"** (the landing
 title and the sidebar section header), not "Admin OS" — the canonical decision
 recorded in the PRD (#175); the rename itself ships with that implementation.
 This deliberately overloads "Ministry Admin": it names both the _role_ (the
@@ -145,16 +250,18 @@ _Avoid_: Admin OS (as a user-facing label), Admin (ambiguous), admin panel,
 dashboard.
 
 **Settings**:
-The Ministry-Admin configuration surface — ministry/pastoral knobs (thresholds,
-care cadence, group-health weights) and the Julian-owned pastoral copy
-(group-health question wording + care-status labels; see ADR 0007). Visible to
-Ministry Admin and Super Admin.
+The Ministry-Admin configuration surface — ministry/pastoral knobs and all
+Julian-owned pastoral copy and rubrics: the Health Rubric, the Leader-Health
+Rubric, the Multiplication Trigger, and his per-type Capacity feed (ADR
+0007/0018/0019). Visible to Ministry Admin and Super Admin. The per-person Care
+Note transparency toggle is _not_ here — it lives inline on each person in Care.
 _Avoid_: Admin settings, config (ambiguous with the Super Admin Console).
 
 **Super Admin Console**:
-The platform/app configuration surface — feature flags, user & access
-management, and platform-level editable copy. Super Admin only; the Ministry
-Admin never sees it. Julian-owned pastoral copy (the group-health questions and
+The platform/app configuration surface — feature flags (including the
+nav-visibility flags that hide the old tabs and the Leader/Over-Shepherd login
+enablement, ADR 0016/0017), user & access management, and platform-level
+editable copy. Super Admin only; the Ministry Admin never sees it. Julian-owned pastoral copy (the group-health questions and
 care-status labels) is **not** edited here — it stays in Settings so Julian keeps
 ownership of his own wording (ADR 0007, PRD Q2).
 _Avoid_: Settings (that is the ministry surface), admin panel.
