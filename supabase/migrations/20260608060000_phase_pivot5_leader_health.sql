@@ -190,6 +190,20 @@ begin
     raise exception 'missing_profile';
   end if;
 
+  -- The target must actually be an active leader/co-leader of some group. The UI
+  -- already filters to active leaders, but this audited SECURITY DEFINER RPC is
+  -- the trust boundary: without this a stale client or direct caller could grade
+  -- an admin or inactive user, whose Leader-Health letter would then skew the
+  -- Multiply rollup. Mirrors the active leader→type read in the rollup.
+  if not exists (
+    select 1 from public.group_leaders
+     where profile_id = p_profile_id
+       and active
+       and role in ('leader','co_leader')
+  ) then
+    raise exception 'not_a_leader';
+  end if;
+
   -- Snapshot the prior row (if any) for the audit before/after pair.
   select jsonb_build_object(
            'criterion_scores', criterion_scores,

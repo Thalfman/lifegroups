@@ -1,155 +1,137 @@
 import { describe, expect, it } from "vitest";
 
-import { tallyHealthGrades } from "@/lib/supabase/multiplication-config-reads";
-import type { GroupAudienceCategory } from "@/types/enums";
+import {
+  effectiveGradeLetter,
+  tallyHealthGrades,
+} from "@/lib/supabase/multiplication-config-reads";
+import type { Rubric } from "@/lib/admin/health-rubric";
+import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 
-// Pure bucketing for the Multiply Group/Leader Health pillars (#377/#378 → #380).
-// Proves: bucketing by type, effective-letter resolution (this-month override
-// expiry vs until-cleared standing), and the exclusions (closed group, ungraded
-// row, leader with no active categorised leadership).
+// Group/Leader Health rollup for the Multiply boards (#377/#378 → #380).
+//   - effectiveGradeLetter: recompute from stored scores against the CURRENT
+//     rubric (so the board agrees with the grade editor after a rubric edit),
+//     then apply override expiry.
+//   - tallyHealthGrades: bucket resolved grades by type, fanning a multi-type
+//     leader into every type they lead.
 
 const SEP = "2025-09-01";
 const OCT = "2025-10-01";
 
-function groupRow(
-  type: GroupAudienceCategory | null,
-  fields: {
-    computed_letter?: "A" | "B" | "C" | "D" | "F" | null;
-    override_letter?: "A" | "B" | "C" | "D" | "F" | null;
-    override_scope?: "this_month" | "until_cleared" | null;
-    override_period_month?: string | null;
-    lifecycle_status?: string | null;
-  }
+// A one-criterion rubric: the score IS the numeric, banded 90/80/70/60.
+const RUBRIC: Rubric = { criteria: [{ key: "c1", label: "C1", weight: 100 }] };
+
+const noOverride = {
+  override_letter: null,
+  override_scope: null,
+  override_period_month: null,
+} as const;
+
+describe("effectiveGradeLetter — recompute from scores", () => {
+  it("bands the live score against the current rubric", () => {
+    expect(effectiveGradeLetter(RUBRIC, { c1: 95 }, noOverride, SEP)).toBe("A");
+    expect(effectiveGradeLetter(RUBRIC, { c1: 72 }, noOverride, SEP)).toBe("C");
+    expect(effectiveGradeLetter(RUBRIC, { c1: 40 }, noOverride, SEP)).toBe("F");
+  });
+
+  it("returns null when nothing is scored and no override is active", () => {
+    expect(effectiveGradeLetter(RUBRIC, {}, noOverride, SEP)).toBeNull();
+  });
+
+  it("ignores scores for criteria no longer in the rubric", () => {
+    // A grade saved against an old criterion 'gone' now reads as unscored.
+    expect(effectiveGradeLetter(RUBRIC, { gone: 95 }, noOverride, SEP)).toBeNull();
+  });
+});
+
+describe("effectiveGradeLetter — override expiry", () => {
+  it("an until_cleared override stands over the computed letter", () => {
+    expect(
+      effectiveGradeLetter(
+        RUBRIC,
+        { c1: 95 },
+        {
+          override_letter: "F",
+          override_scope: "until_cleared",
+          override_period_month: SEP,
+        },
+        OCT
+      )
+    ).toBe("F");
+  });
+
+  it("an expired this_month override falls back to the computed letter", () => {
+    expect(
+      effectiveGradeLetter(
+        RUBRIC,
+        { c1: 95 },
+        {
+          override_letter: "F",
+          override_scope: "this_month",
+          override_period_month: SEP,
+        },
+        OCT
+      )
+    ).toBe("A");
+  });
+
+  it("a live this_month override wins for its month", () => {
+    expect(
+      effectiveGradeLetter(
+        RUBRIC,
+        { c1: 95 },
+        {
+          override_letter: "F",
+          override_scope: "this_month",
+          override_period_month: SEP,
+        },
+        SEP
+      )
+    ).toBe("F");
+  });
+});
+
+function leader(
+  types: GroupAudienceCategory[],
+  letter: GroupHealthLetter | null
 ) {
-  return {
-    computed_letter: fields.computed_letter ?? null,
-    override_letter: fields.override_letter ?? null,
-    override_scope: fields.override_scope ?? null,
-    override_period_month: fields.override_period_month ?? null,
-    group:
-      type === null
-        ? null
-        : {
-            audience_category: type,
-            lifecycle_status: fields.lifecycle_status ?? "active",
-          },
-  };
+  return { types: new Set(types), letter };
 }
 
-function leaderRow(
-  profile_id: string,
-  computed_letter: "A" | "B" | "C" | "D" | "F" | null
-) {
-  return {
-    profile_id,
-    computed_letter,
-    override_letter: null,
-    override_scope: null,
-    override_period_month: null,
-  };
-}
-
-describe("tallyHealthGrades — bucketing by type", () => {
-  it("buckets group + leader grades under their type", () => {
+describe("tallyHealthGrades — bucketing", () => {
+  it("buckets group grades by type, dropping closed + ungraded rows", () => {
     const out = tallyHealthGrades(
       [
-        groupRow("men", { computed_letter: "A" }),
-        groupRow("men", { computed_letter: "C" }),
-        groupRow("women", { computed_letter: "B" }),
+        { type: "men", isClosed: false, letter: "A" },
+        { type: "men", isClosed: false, letter: "C" },
+        { type: "men", isClosed: true, letter: "A" }, // closed → dropped
+        { type: "men", isClosed: false, letter: null }, // ungraded → dropped
+        { type: null, isClosed: false, letter: "B" }, // no type → dropped
+        { type: "women", isClosed: false, letter: "B" },
       ],
-      [leaderRow("p1", "A"), leaderRow("p2", "D")],
-      new Map<string, GroupAudienceCategory>([
-        ["p1", "men"],
-        ["p2", "women"],
-      ]),
-      SEP
+      []
     );
     expect(out.men.groupGrades).toEqual(["A", "C"]);
     expect(out.women.groupGrades).toEqual(["B"]);
     expect(out.mixed.groupGrades).toEqual([]);
-    expect(out.men.leaderGrades).toEqual(["A"]);
-    expect(out.women.leaderGrades).toEqual(["D"]);
-  });
-});
-
-describe("tallyHealthGrades — effective letter resolution", () => {
-  it("an until_cleared override stands and feeds the pillar", () => {
-    const out = tallyHealthGrades(
-      [
-        groupRow("men", {
-          computed_letter: "B",
-          override_letter: "F",
-          override_scope: "until_cleared",
-          override_period_month: SEP,
-        }),
-      ],
-      [],
-      new Map(),
-      OCT
-    );
-    expect(out.men.groupGrades).toEqual(["F"]);
   });
 
-  it("an expired this_month override falls back to the computed letter", () => {
+  it("fans a multi-type leader into every type they lead", () => {
     const out = tallyHealthGrades(
-      [
-        groupRow("men", {
-          computed_letter: "B",
-          override_letter: "A",
-          override_scope: "this_month",
-          override_period_month: SEP,
-        }),
-      ],
       [],
-      new Map(),
-      OCT
+      [leader(["men", "mixed"], "B"), leader(["women"], "A")]
     );
-    expect(out.men.groupGrades).toEqual(["B"]);
+    expect(out.men.leaderGrades).toEqual(["B"]);
+    expect(out.mixed.leaderGrades).toEqual(["B"]);
+    expect(out.women.leaderGrades).toEqual(["A"]);
   });
 
-  it("a live this_month override feeds the pillar", () => {
-    const out = tallyHealthGrades(
-      [
-        groupRow("men", {
-          computed_letter: "B",
-          override_letter: "A",
-          override_scope: "this_month",
-          override_period_month: SEP,
-        }),
-      ],
-      [],
-      new Map(),
-      SEP
-    );
-    expect(out.men.groupGrades).toEqual(["A"]);
-  });
-});
-
-describe("tallyHealthGrades — exclusions", () => {
-  it("drops closed groups, ungraded rows, and uncategorised groups", () => {
-    const out = tallyHealthGrades(
-      [
-        groupRow("men", { computed_letter: "A", lifecycle_status: "closed" }),
-        groupRow("men", { computed_letter: null }), // ungraded
-        groupRow(null, { computed_letter: "A" }), // no group / type
-        groupRow("men", { computed_letter: "B" }), // the only survivor
-      ],
-      [],
-      new Map(),
-      SEP
-    );
-    expect(out.men.groupGrades).toEqual(["B"]);
-  });
-
-  it("drops a leader with no active categorised leadership", () => {
+  it("drops a leader with no type or no letter", () => {
     const out = tallyHealthGrades(
       [],
-      [leaderRow("p1", "A"), leaderRow("orphan", "B")],
-      new Map<string, GroupAudienceCategory>([["p1", "mixed"]]),
-      SEP
+      [leader([], "A"), leader(["men"], null)]
     );
-    expect(out.mixed.leaderGrades).toEqual(["A"]);
     expect(out.men.leaderGrades).toEqual([]);
     expect(out.women.leaderGrades).toEqual([]);
+    expect(out.mixed.leaderGrades).toEqual([]);
   });
 });

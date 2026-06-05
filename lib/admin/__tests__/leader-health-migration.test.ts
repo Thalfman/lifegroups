@@ -134,6 +134,13 @@ describe("leader-health migration — audited SECURITY DEFINER write path", () =
     expect(body).toContain("raise exception 'missing_profile'");
   });
 
+  it("rejects a target that is not an active leader/co-leader", () => {
+    const body = functionBody(sql, "admin_set_leader_rubric_grade");
+    expect(body).toContain("from public.group_leaders");
+    expect(body).toContain("role in ('leader','co_leader')");
+    expect(body).toContain("raise exception 'not_a_leader'");
+  });
+
   it("upserts on the (profile, ministry year) conflict target", () => {
     const body = functionBody(sql, "admin_set_leader_rubric_grade");
     expect(body).toContain("on conflict (profile_id, ministry_year) do update");
