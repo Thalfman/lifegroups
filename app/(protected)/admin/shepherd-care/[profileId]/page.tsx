@@ -9,8 +9,16 @@ import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-no
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
+import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
+import {
+  currentMinistryYear,
+  getGroupRubricGrade,
+  type GroupRubricGradeView,
+} from "@/lib/admin/group-rubric-grade-read";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentByShepherdId,
@@ -33,7 +41,6 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
 import {
-  currentMinistryYear,
   fetchLeaderHealthRubric,
   fetchLeaderRubricGrade,
   type LeaderRubricGradeRow,
@@ -278,11 +285,15 @@ export default async function AdminShepherdCareDetailPage({
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
   const today = currentUtcDateIso();
 
+  // Current Ministry Year, shared by the Leader-Health Grade (#378) and the
+  // per-group Group-Health Grade (#377) reads below. Off-season (Jun/Jul) has no
+  // ministry year, so the grade controls are suppressed then.
+  const ministryYear = currentMinistryYear();
+
   // Leader-Health Grade (#378): the symmetric per-leader rubric grade, keyed to
   // the current Ministry Year. Loaded here (admin-only by RLS) for the distinct
   // "Leader Health" tab below. A separate, surgical read so the existing
   // loadDetail shape is untouched; failures degrade to an empty editor.
-  const ministryYear = currentMinistryYear();
   let leaderRubricCriteria: RubricCriterion[] = [];
   let leaderGrade: LeaderRubricGradeRow | null = null;
   {
@@ -297,6 +308,29 @@ export default async function AdminShepherdCareDetailPage({
       leaderRubricCriteria = rubricRes.data?.criteria ?? [];
       leaderGrade = gradeRes.data ?? null;
     }
+  }
+
+  // Group-Health Grade by rubric (#377): for each group this leader leads, load
+  // the configured group rubric criteria + the group's grade for the current
+  // ministry year so the Group panel can host the per-group grade-entry control.
+  const gradeClient =
+    ministryYear !== null && detail.ledGroups.length > 0
+      ? await createSupabaseServerClient()
+      : null;
+  const rubricCriteria =
+    gradeClient !== null
+      ? decodeRubricCriteria(
+          (await fetchHealthRubric(gradeClient, "group")).data?.criteria ?? null
+        )
+      : [];
+  const gradeByGroupId = new Map<string, GroupRubricGradeView>();
+  if (gradeClient !== null && ministryYear !== null) {
+    await Promise.all(
+      detail.ledGroups.map(async (g) => {
+        const res = await getGroupRubricGrade(gradeClient, g.id, ministryYear);
+        if (res.data) gradeByGroupId.set(g.id, res.data);
+      })
+    );
   }
 
   const tabRaw = (await searchParams)?.tab;
@@ -499,21 +533,41 @@ export default async function AdminShepherdCareDetailPage({
             gap: 10,
           }}
         >
-          {detail.ledGroups.map((g) => (
-            <li key={g.id}>
-              <Link
-                href={`/admin/groups/${g.id}`}
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  textDecoration: "underline",
-                }}
-              >
-                {g.name} →
-              </Link>
-            </li>
-          ))}
+          {detail.ledGroups.map((g) => {
+            const gradeView = gradeByGroupId.get(g.id);
+            return (
+              <li key={g.id} style={{ display: "grid", gap: 8 }}>
+                <Link
+                  href={`/admin/groups/${g.id}`}
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 14,
+                    color: P.ink,
+                    textDecoration: "underline",
+                  }}
+                >
+                  {g.name} →
+                </Link>
+                {ministryYear !== null ? (
+                  <GroupRubricGradeEntry
+                    groupId={g.id}
+                    groupName={g.name}
+                    ministryYear={ministryYear}
+                    criteria={rubricCriteria}
+                    initialScores={gradeView?.criterion_scores ?? {}}
+                    initialOverrideLetter={
+                      gradeView?.grade.overridden
+                        ? gradeView.grade.effective_letter
+                        : null
+                    }
+                    initialOverrideScope={
+                      gradeView?.grade.override_scope ?? null
+                    }
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p

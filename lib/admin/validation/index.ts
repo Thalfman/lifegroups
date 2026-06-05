@@ -19,4 +19,5 @@ export * from "./group-health";
 export * from "./health-rubric";
 export * from "./multiplication-pillars";
 export * from "./leader-health";
+export * from "./group-rubric-grade";
 export * from "./leader-pipeline";
