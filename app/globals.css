@@ -289,6 +289,14 @@
     white-space: nowrap !important;
   }
 
+  /* Workspace switcher wraps to fill the row on mobile instead of clipping. */
+  .lg-super-admin-workspace-tabs {
+    width: 100% !important;
+  }
+  .lg-super-admin-workspace-tabs > button {
+    flex: 1 1 auto !important;
+  }
+
   /* New LG shell: sidebar collapses to drawer on mobile */
   .lg-shell-sidebar {
     display: none !important;
