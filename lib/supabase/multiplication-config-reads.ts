@@ -1,5 +1,9 @@
-import type { GroupAudienceCategory } from "@/types/enums";
+import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import {
+  resolveGrade,
+  type GradeOverrideScope,
+} from "@/lib/admin/group-health-override";
 
 // Multiplication Pillars config + funnel-volume read model (#380). Two reads feed
 // the Multiply boards:
@@ -106,4 +110,175 @@ export function tallyFunnelVolume(
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Group/Leader Health grade roll-up per group type (#377/#378 → #380).
+// ---------------------------------------------------------------------------
+//
+// The Multiply boards' Group Health and Leader Health pillars roll up that type's
+// rubric grades over the Ministry Year. We read the persisted grades (#377/#378),
+// resolve each to its EFFECTIVE letter (applying the this-month/until-cleared
+// override expiry via the shared resolver — never the possibly-stale stored
+// computed letter alone), bucket them by group type, and hand the A–F arrays to
+// the pure pillar resolver. A type with no grades yet yields an empty array, so
+// computePillars renders that pillar "—".
+
+// The override-resolution slice of a grade row, shared by both grade tables.
+type GradeOverrideFields = {
+  computed_letter: GroupHealthLetter | null;
+  override_letter: GroupHealthLetter | null;
+  override_scope: GradeOverrideScope | null;
+  override_period_month: string | null;
+};
+
+// Resolve a grade row to its effective A–F letter for the period, or null when
+// nothing is graded (no computed letter and no active override).
+function effectiveGradeLetter(
+  row: GradeOverrideFields,
+  periodMonthIso: string
+): GroupHealthLetter | null {
+  const override =
+    row.override_letter && row.override_scope
+      ? {
+          letter: row.override_letter,
+          scope: row.override_scope,
+          period_month: row.override_period_month ?? periodMonthIso,
+        }
+      : null;
+  return resolveGrade(row.computed_letter, override, periodMonthIso)
+    .effective_letter;
+}
+
+type GroupGradeJoinRow = GradeOverrideFields & {
+  group: {
+    audience_category: GroupAudienceCategory | null;
+    lifecycle_status: string | null;
+  } | null;
+};
+
+type LeaderGradeRow = GradeOverrideFields & { profile_id: string };
+
+type LeaderTypeJoinRow = {
+  profile_id: string;
+  group: { audience_category: GroupAudienceCategory | null } | null;
+};
+
+const GRADE_OVERRIDE_COLUMNS =
+  "computed_letter, override_letter, override_scope, override_period_month";
+
+// The per-type effective A–F letter arrays feeding the two health pillars.
+export type HealthGradesByType = Record<
+  GroupAudienceCategory,
+  { groupGrades: GroupHealthLetter[]; leaderGrades: GroupHealthLetter[] }
+>;
+
+export const EMPTY_HEALTH_GRADES: HealthGradesByType = {
+  men: { groupGrades: [], leaderGrades: [] },
+  women: { groupGrades: [], leaderGrades: [] },
+  mixed: { groupGrades: [], leaderGrades: [] },
+};
+
+// Pure bucketer (exported for testing): drop the closed groups and the ungraded
+// rows, resolve each surviving row to its effective letter, and bucket group
+// grades by their group's type and leader grades by the type of the group the
+// leader actively leads. Leaders not actively leading a categorised group, and
+// grades on closed/uncategorised groups, contribute to no type.
+export function tallyHealthGrades(
+  groupRows: GroupGradeJoinRow[],
+  leaderRows: LeaderGradeRow[],
+  leaderTypeByProfile: ReadonlyMap<string, GroupAudienceCategory>,
+  periodMonthIso: string
+): HealthGradesByType {
+  const out: HealthGradesByType = {
+    men: { groupGrades: [], leaderGrades: [] },
+    women: { groupGrades: [], leaderGrades: [] },
+    mixed: { groupGrades: [], leaderGrades: [] },
+  };
+
+  for (const row of groupRows) {
+    const type = row.group?.audience_category ?? null;
+    if (type !== "men" && type !== "women" && type !== "mixed") continue;
+    // A closed group is no longer part of the type's live multiplication picture.
+    if (row.group?.lifecycle_status === "closed") continue;
+    const letter = effectiveGradeLetter(row, periodMonthIso);
+    if (letter) out[type].groupGrades.push(letter);
+  }
+
+  for (const row of leaderRows) {
+    const type = leaderTypeByProfile.get(row.profile_id);
+    if (!type) continue;
+    const letter = effectiveGradeLetter(row, periodMonthIso);
+    if (letter) out[type].leaderGrades.push(letter);
+  }
+
+  return out;
+}
+
+// Read + resolve the per-type Group/Leader Health grade arrays for a ministry
+// year. Three scoped reads (group grades + their group's type, leader grades,
+// and the active leader→type map), then a pure bucket. A read failure surfaces
+// as an error so the board can note it rather than silently grade on partial data.
+export async function fetchHealthGradesByType(
+  client: ReadClient,
+  ministryYear: number,
+  periodMonthIso: string
+): Promise<ReadResult<HealthGradesByType>> {
+  const [groupRes, leaderRes, leaderTypeRes] = await Promise.all([
+    client
+      .from("group_rubric_grades")
+      .select(
+        `${GRADE_OVERRIDE_COLUMNS}, group:groups(audience_category, lifecycle_status)`
+      )
+      .eq("ministry_year", ministryYear)
+      .returns<GroupGradeJoinRow[]>(),
+    client
+      .from("leader_rubric_grades")
+      .select(`profile_id, ${GRADE_OVERRIDE_COLUMNS}`)
+      .eq("ministry_year", ministryYear)
+      .returns<LeaderGradeRow[]>(),
+    client
+      .from("group_leaders")
+      .select("profile_id, group:groups(audience_category)")
+      .eq("active", true)
+      .in("role", ["leader", "co_leader"])
+      .returns<LeaderTypeJoinRow[]>(),
+  ]);
+
+  if (groupRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchHealthGradesByType/group", groupRes.error),
+    };
+  if (leaderRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchHealthGradesByType/leader", leaderRes.error),
+    };
+  if (leaderTypeRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchHealthGradesByType/leaderType", leaderTypeRes.error),
+    };
+
+  const leaderTypeByProfile = new Map<string, GroupAudienceCategory>();
+  for (const row of leaderTypeRes.data ?? []) {
+    const type = row.group?.audience_category ?? null;
+    if (type === "men" || type === "women" || type === "mixed") {
+      // First active categorised leadership wins (a leader of one type).
+      if (!leaderTypeByProfile.has(row.profile_id)) {
+        leaderTypeByProfile.set(row.profile_id, type);
+      }
+    }
+  }
+
+  return {
+    data: tallyHealthGrades(
+      groupRes.data ?? [],
+      leaderRes.data ?? [],
+      leaderTypeByProfile,
+      periodMonthIso
+    ),
+    error: null,
+  };
 }

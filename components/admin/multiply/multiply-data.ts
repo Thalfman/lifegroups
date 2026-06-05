@@ -18,17 +18,22 @@ import {
 } from "@/lib/admin/multiplication-pillars";
 import {
   EMPTY_FUNNEL_VOLUME,
+  EMPTY_HEALTH_GRADES,
   fetchFunnelVolumeByType,
+  fetchHealthGradesByType,
   fetchMultiplicationConfigs,
   type FunnelVolumeByType,
+  type HealthGradesByType,
 } from "@/lib/supabase/multiplication-config-reads";
+import type { HealthLetter } from "@/lib/admin/multiplication-pillars";
 
 // The Multiply surface's data (#380): three boards by group type, each with its
 // four pillar A–F grades, its trigger/multiply signal, the individual-group flag,
 // and the editable config that fed it. The pillar + trigger math is the pure
-// resolver; this loader supplies its inputs (the fed config + the funnel volume)
-// and feeds EMPTY grade arrays for the two health pillars until the parallel
-// grade-storage slices (#377/#378) land — so the health pillars render "—".
+// resolver; this loader supplies its inputs — the fed config, the funnel volume,
+// and the per-type Group/Leader Health grades rolled up from #377/#378 over the
+// Ministry Year. A type with no grades yet yields empty arrays, so its health
+// pillars render "—".
 
 export const MULTIPLY_TYPES: readonly GroupAudienceCategory[] = [
   "men",
@@ -80,9 +85,10 @@ const DEFAULT_TRIGGER: TriggerRubric = {
 
 const EMPTY_FED_CAPACITY: FedCapacity = { headroom: null, fullGroupCount: 0 };
 
-// Compose one type's board from its (possibly absent) config + funnel volume.
-// Pure — exported for testing. Health grade arrays are empty here (the parallel
-// slices feed them later), so the health pillars resolve to null ("—").
+// Compose one type's board from its (possibly absent) config, funnel volume, and
+// the type's rolled-up Group/Leader Health grades (#377/#378). Pure — exported
+// for testing. Empty grade arrays resolve the corresponding health pillar to null
+// ("—"), so a type with no grades yet still renders.
 export function buildTypeBoard(
   type: GroupAudienceCategory,
   config: {
@@ -91,7 +97,11 @@ export function buildTypeBoard(
     fedCapacity: FedCapacity;
   } | null,
   funnelVolume: number,
-  ministryYear: number
+  ministryYear: number,
+  grades: { groupGrades: HealthLetter[]; leaderGrades: HealthLetter[] } = {
+    groupGrades: [],
+    leaderGrades: [],
+  }
 ): TypeBoard {
   const thresholds = config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS;
   const trigger = config?.trigger ?? DEFAULT_TRIGGER;
@@ -100,9 +110,8 @@ export function buildTypeBoard(
   const pillars = computePillars(
     {
       funnelVolume,
-      // Empty until #377/#378 land; the health pillars render "—".
-      groupGrades: [],
-      leaderGrades: [],
+      groupGrades: grades.groupGrades,
+      leaderGrades: grades.leaderGrades,
       fedCapacity,
     },
     thresholds,
@@ -136,12 +145,22 @@ export async function loadMultiplyData(
   const client = await createSupabaseServerClient();
   if (!client) return { ...EMPTY_MULTIPLY_DATA, ministryYear };
 
-  const [configsResult, volumeResult] = await Promise.all([
+  // First-of-month ISO — the period the grade overrides resolve their this-month
+  // expiry against (the rolled-up health pillars read effective letters).
+  const periodMonthIso = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const [configsResult, volumeResult, gradesResult] = await Promise.all([
     fetchMultiplicationConfigs(client, ministryYear),
     fetchFunnelVolumeByType(client),
+    fetchHealthGradesByType(client, ministryYear, periodMonthIso),
   ]);
 
   const volume: FunnelVolumeByType = volumeResult.data ?? EMPTY_FUNNEL_VOLUME;
+  const grades: HealthGradesByType = gradesResult.data ?? EMPTY_HEALTH_GRADES;
 
   // Index the config rows by type, decoding each jsonb payload at the boundary.
   const configByType = new Map<
@@ -165,13 +184,18 @@ export async function loadMultiplyData(
       type,
       configByType.get(type) ?? null,
       volume[type],
-      ministryYear
+      ministryYear,
+      grades[type]
     )
   );
 
   return {
     ministryYear,
     boards,
-    error: configsResult.error?.message ?? volumeResult.error?.message ?? null,
+    error:
+      configsResult.error?.message ??
+      volumeResult.error?.message ??
+      gradesResult.error?.message ??
+      null,
   };
 }
