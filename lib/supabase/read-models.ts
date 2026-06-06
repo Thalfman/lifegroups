@@ -97,6 +97,41 @@ export async function fetchGroupsByIds(
   return { data: data ?? [], error: null };
 }
 
+// Leader-safe group read: an ALLOWLISTED projection that excludes admin-only
+// columns (notably `admin_notes`, see AGENTS.md — admin notes must never reach a
+// leader route). The leader surfaces (dashboard, care, calendar) read their own
+// groups via the group RLS `auth_is_leader_of(id)` arm, so a plain `select("*")`
+// (fetchGroupsByIds) would pull admin_notes into a leader context. Leaders only
+// ever need identity + schedule, so this returns exactly those columns.
+export type LeaderSafeGroupRow = Pick<
+  GroupsRow,
+  | "id"
+  | "name"
+  | "lifecycle_status"
+  | "meeting_day"
+  | "meeting_time"
+  | "meeting_frequency"
+  | "meeting_week_parity"
+>;
+
+const LEADER_SAFE_GROUP_COLUMNS =
+  "id, name, lifecycle_status, meeting_day, meeting_time, meeting_frequency, meeting_week_parity";
+
+export async function fetchLeaderGroupsByIds(
+  client: ReadClient,
+  ids: string[]
+): Promise<ReadResult<LeaderSafeGroupRow[]>> {
+  if (ids.length === 0) return { data: [], error: null };
+  const { data, error } = await client
+    .from("groups")
+    .select(LEADER_SAFE_GROUP_COLUMNS)
+    .in("id", ids)
+    .order("name", { ascending: true });
+  if (error)
+    return { data: null, error: wrapError("fetchLeaderGroupsByIds", error) };
+  return { data: (data ?? []) as LeaderSafeGroupRow[], error: null };
+}
+
 export async function fetchActiveGroupCount(
   client: ReadClient
 ): Promise<ReadResult<number>> {
@@ -1456,10 +1491,10 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
 // ---------------------------------------------------------------------------
 
 const CARE_NOTE_COLUMNS =
-  "id, author_profile_id, subject_profile_id, body, created_at, updated_at";
+  "id, author_profile_id, subject_profile_id, subject_group_id, body, created_at, updated_at";
 
 const PRAYER_REQUEST_COLUMNS =
-  "id, author_profile_id, subject_profile_id, body, status, created_at, updated_at";
+  "id, author_profile_id, subject_profile_id, subject_group_id, body, status, created_at, updated_at";
 
 const NOTE_TRANSPARENCY_GRANT_COLUMNS =
   "id, subject_profile_id, granted, set_by, created_at, updated_at";
@@ -1493,6 +1528,88 @@ export async function fetchPrayerRequestsForSubject(
     return {
       data: null,
       error: wrapError("fetchPrayerRequestsForSubject", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
+// Pivot slice 11 (#382 / ADR 0020): a leader's GROUP-scoped care notes / prayer
+// requests, newest first. RLS scopes the rows: a leader reads their own
+// (author) rows for the group; the oversight ladder reads them only when that
+// leader's transparency toggle is on. The group filter is belt-and-suspenders
+// on top of RLS so the leader surface only ever asks for one group at a time.
+export async function fetchGroupCareNotes(
+  client: ReadClient,
+  groupId: string
+): Promise<ReadResult<CareNotesRow[]>> {
+  if (!isUuid(groupId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .eq("subject_group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return { data: null, error: wrapError("fetchGroupCareNotes", error) };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchGroupPrayerRequests(
+  client: ReadClient,
+  groupId: string
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  if (!isUuid(groupId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .eq("subject_group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupPrayerRequests", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
+// Pivot slice 11 (#382 / ADR 0020): the GROUP notes a leader AUTHORED, newest
+// first — the admin peek path for the leader-detail view. RLS gates these on the
+// AUTHOR's transparency grant (the leader is the author of a group note), so the
+// oversight ladder reads them only when that leader's toggle is on; off = the
+// query returns nothing by construction. Filtered to group-subject rows so this
+// never returns the OS-authored, subject-keyed notes.
+export async function fetchAuthoredGroupCareNotes(
+  client: ReadClient,
+  authorProfileId: string
+): Promise<ReadResult<CareNotesRow[]>> {
+  if (!isUuid(authorProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .eq("author_profile_id", authorProfileId)
+    .not("subject_group_id", "is", null)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAuthoredGroupCareNotes", error),
+    };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchAuthoredGroupPrayerRequests(
+  client: ReadClient,
+  authorProfileId: string
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  if (!isUuid(authorProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .eq("author_profile_id", authorProfileId)
+    .not("subject_group_id", "is", null)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAuthoredGroupPrayerRequests", error),
     };
   return { data: (data ?? []) as PrayerRequestsRow[], error: null };
 }

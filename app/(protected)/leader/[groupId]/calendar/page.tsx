@@ -14,7 +14,7 @@ import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchGroupCalendarEvents,
-  fetchGroupsByIds,
+  fetchLeaderGroupsByIds,
 } from "@/lib/supabase/read-models";
 import {
   generateMonthOccurrences,
@@ -25,7 +25,7 @@ import {
   toSavedOverrides,
 } from "@/lib/calendar/occurrences";
 import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
-import type { GroupsRow } from "@/types/database";
+import type { LeaderSafeGroupRow } from "@/lib/supabase/read-models";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   leaderArchiveCalendarEvent,
@@ -86,7 +86,7 @@ export default async function LeaderCalendarPage({
   // do NOT clamp fromDate to today, so the past stays visible (read) while the
   // surface remains group-scoped.
   const [groupResult, eventsResult] = await Promise.all([
-    fetchGroupsByIds(client, [groupId]),
+    fetchLeaderGroupsByIds(client, [groupId]),
     fetchGroupCalendarEvents(client, {
       groupId,
       fromDate: bounds.firstIso,
@@ -96,7 +96,7 @@ export default async function LeaderCalendarPage({
   ]);
 
   if (groupResult.error) throw groupResult.error;
-  const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
+  const group = (groupResult.data ?? [])[0] as LeaderSafeGroupRow | undefined;
   if (!group) notFound();
   if (eventsResult.error) throw eventsResult.error;
 
