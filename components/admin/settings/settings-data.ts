@@ -127,6 +127,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       groups: "The database is not configured in this environment.",
       overrides: "The database is not configured in this environment.",
       multiplication: "The database is not configured in this environment.",
+      groupRubric: "The database is not configured in this environment.",
       leaderRubric: "The database is not configured in this environment.",
     },
   };
@@ -203,6 +204,7 @@ export async function buildSettingsData(
       groups: groupsResult.error?.message ?? null,
       overrides: settingsResult.error?.message ?? null,
       multiplication: multiplicationResult.error?.message ?? null,
+      groupRubric: rubricResult.error?.message ?? null,
       leaderRubric: leaderRubricResult.error?.message ?? null,
     },
   };

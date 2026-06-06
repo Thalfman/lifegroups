@@ -26,9 +26,10 @@ export function OverShepherdCreateForm() {
       style={{ display: "grid", gap: 12 }}
     >
       <p style={formNoteStyle}>
-        Add an over-shepherd. They do not need an app login — these records
-        exist only so Julian can track coverage. Notes are admin-only and never
-        appear in audit summaries.
+        Add an over-shepherd to the coverage roster. The email you enter is how
+        their login links to this record once they&rsquo;re invited, so they see
+        only the leaders they cover. Notes are admin-only and never appear in
+        audit summaries.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div>
@@ -76,7 +77,7 @@ export function OverShepherdCreateForm() {
             rows={3}
             maxLength={2000}
             style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
-            placeholder="Anything Julian wants to remember about this over-shepherd."
+            placeholder="Anything worth remembering about this over-shepherd."
           />
         </div>
         <div>

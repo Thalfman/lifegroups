@@ -3,6 +3,8 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { hubTilesForRole } from "@/lib/auth/hub-tiles";
 import { isAdminRole } from "@/lib/auth/roles";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { loadHubStats, type HubStat } from "@/lib/home/hub-stats";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { HomeHub } from "@/components/home/home-hub";
@@ -29,10 +31,25 @@ export default async function HomePage({
         // /unauthorized rather than seeing an empty hub.
         // Admins see the Care/Plan/Multiply tile set with their Super-Admin
         // nav-visibility flags applied (ADR 0016); non-admin roles ignore the
-        // hidden set, so only resolve it (a DB read) for admins.
-        const hiddenNavAreas = isAdminRole(session.profile.role)
-          ? await loadHiddenNavAreas()
-          : undefined;
+        // hidden set, so only resolve it (a DB read) for admins. Admins also get
+        // a small band of at-a-glance live stats above the tiles (CONTEXT.md);
+        // both resolve in one parallel round. The stats reader is resilient —
+        // a failed read just omits its figure, never a warning — so the hub
+        // still renders cleanly if a stat can't load.
+        const isAdmin = isAdminRole(session.profile.role);
+        let hiddenNavAreas:
+          | Awaited<ReturnType<typeof loadHiddenNavAreas>>
+          | undefined;
+        let hubStats: HubStat[] = [];
+        if (isAdmin) {
+          const client = await createSupabaseServerClient();
+          const [hidden, stats] = await Promise.all([
+            loadHiddenNavAreas(),
+            client ? loadHubStats(client) : Promise.resolve<HubStat[]>([]),
+          ]);
+          hiddenNavAreas = hidden;
+          hubStats = stats;
+        }
         const tiles = hubTilesForRole(session.profile.role, hiddenNavAreas);
         if (tiles.length === 0) redirect("/unauthorized");
         return (
@@ -47,10 +64,14 @@ export default async function HomePage({
             <PageHeader
               eyebrow="Home"
               title={`Welcome, ${session.profile.full_name}`}
-              lede="Jump into your work."
+              lede={
+                isAdmin
+                  ? "Your ministry at a glance — then jump into Care, Plan, or Multiply."
+                  : "Jump into your work."
+              }
             />
             <PageBody>
-              <HomeHub tiles={tiles} />
+              <HomeHub tiles={tiles} stats={hubStats} />
             </PageBody>
           </LgAppShell>
         );

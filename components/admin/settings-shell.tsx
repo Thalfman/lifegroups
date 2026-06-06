@@ -61,11 +61,15 @@ export type SettingsShellData = {
     defaults: string | null;
     groups: string | null;
     overrides: string | null;
-    // #380 / #378: a transient read failure for the multiplication config or the
-    // leader rubric must surface (not silently fall back to default seeds / a
-    // blank rubric), so an admin save can't overwrite config that merely failed
-    // to load.
+    // #380 / #378 / #374: a transient read failure for the multiplication config
+    // or either health rubric must surface (not silently fall back to default
+    // seeds / a blank rubric), so an admin save can't overwrite config that
+    // merely failed to load. It also lets a section that can't load — e.g. on an
+    // environment whose pivot tables aren't migrated yet — render a calm
+    // "not set up yet" placeholder in place of its editor, rather than tripping a
+    // page-wide error banner.
     multiplication: string | null;
+    groupRubric: string | null;
     leaderRubric: string | null;
   };
 };
@@ -82,23 +86,27 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
     .filter((row) => row.group !== null)
     .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
 
-  const anyError =
-    data.errors.defaults ||
-    data.errors.groups ||
-    data.errors.overrides ||
-    data.errors.multiplication ||
-    data.errors.leaderRubric;
-
+  // Settings is organized around the Care/Plan/Multiply spine (ADR 0016): Care
+  // owns the rubrics + pastoral wording that grade and label leaders/groups,
+  // Multiply owns the per-type pillar config, and the older dashboard-warning
+  // number knobs are demoted to their own Thresholds tab. Plan carries no
+  // configuration today, so it has no tab.
   const tabs: SettingsTab[] = [
     {
-      id: "general",
-      label: "General",
+      id: "care",
+      label: "Care",
       panel: (
-        <GeneralPanel
+        <CarePanel
+          data={data}
           isSuperAdmin={data.isSuperAdmin}
           editableCopy={data.editableCopy}
         />
       ),
+    },
+    {
+      id: "multiply",
+      label: "Multiply",
+      panel: <MultiplyPanel data={data} />,
     },
     {
       id: "thresholds",
@@ -112,26 +120,14 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
       ),
     },
     {
-      id: "notifications",
-      label: "Notifications",
-      panel: <NotificationsPanel />,
-    },
-    {
-      id: "imports",
-      label: "Imports",
-      panel: <ImportsPanel isSuperAdmin={data.isSuperAdmin} />,
+      id: "system",
+      label: "System",
+      panel: <SystemPanel isSuperAdmin={data.isSuperAdmin} />,
     },
   ];
 
   return (
     <div style={{ display: "grid", gap: 28 }}>
-      {anyError ? (
-        <div role="alert" style={alertStyle}>
-          Some sections couldn&rsquo;t load. The page below shows what we did
-          get; retry in a moment or check the database connection.
-        </div>
-      ) : null}
-
       {data.defaultsSource === "fallback" ? (
         <div style={infoStyle}>
           Showing built-in defaults — the live <code>metric_defaults</code> row
@@ -140,16 +136,117 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         </div>
       ) : null}
 
-      {/* Thresholds is the default tab: it carries the metric defaults an
-          operator changes most, and the Settings a11y spec inspects those
-          fields on load. */}
-      <SettingsTabs tabs={tabs} defaultTabId="thresholds" />
+      {/* Care is the default tab: it carries the rubrics and pastoral wording
+          that define how leaders and groups are graded — the heart of what
+          Settings configures now (ADR 0016). A section whose data failed to load
+          (e.g. an environment without the pivot tables) softens to a calm
+          "not set up yet" placeholder rather than tripping a page-wide error. */}
+      <SettingsTabs tabs={tabs} defaultTabId="care" />
     </div>
   );
 }
 
-// Thresholds tab (#304): care stale-contact days, capacity warnings, and health
-// thresholds grouped together — these all live in the single MetricDefaultsForm
+// Care tab: the rubrics and pastoral wording that define how leaders and groups
+// are graded and labelled — the configuration at the heart of Care (ADR 0016).
+// The two A–F Health Rubrics (group + leader; #374/#378, ADR 0018) and Julian's
+// pastoral copy (group-health questions + care-status labels, ADR 0007) live
+// here. A rubric whose read failed — e.g. on an environment whose pivot tables
+// aren't migrated yet — softens to a calm "not set up yet" placeholder instead
+// of an editor that couldn't save.
+function CarePanel({
+  data,
+  isSuperAdmin,
+  editableCopy,
+}: {
+  data: SettingsShellData;
+  isSuperAdmin: boolean;
+  editableCopy: EditableCopyConfig | null;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
+      {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
+          that roll up to an A–F grade. Owned here in Settings (Ministry-Admin),
+          not the Super Admin Console. Save is gated on the weights totalling
+          100, enforced both in the editor and the audited RPC. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Group Health Rubric"
+          title="How a group is graded"
+          description="Name the criteria a group is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F letter; a manual override can still force the letter."
+        />
+        {data.errors.groupRubric ? (
+          <NotConfigured subject="The Group Health Rubric" />
+        ) : (
+          <Card>
+            <HealthRubricEditor criteria={data.groupRubricCriteria} />
+          </Card>
+        )}
+      </section>
+
+      {/* #378 / ADR 0018 (pivot slice 5): the Leader-Health Rubric — the
+          symmetric per-leader weighted criteria that roll up to an A–F
+          Leader-Health Grade entered in Care. Same editor, parameterized to the
+          "leader" kind; same weight-to-100 gate. A deliberate FOURTH "health"
+          concept, distinct from Leader Care Status and the Health Pulse. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Leader Health Rubric"
+          title="How a leader is graded"
+          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
+        />
+        {data.errors.leaderRubric ? (
+          <NotConfigured subject="The Leader Health Rubric" />
+        ) : (
+          <Card>
+            <HealthRubricEditor
+              criteria={data.leaderRubricCriteria}
+              kind="leader"
+              subjectLabel="leader"
+            />
+          </Card>
+        )}
+      </section>
+
+      <PastoralWordingPanel
+        isSuperAdmin={isSuperAdmin}
+        editableCopy={editableCopy}
+      />
+    </div>
+  );
+}
+
+// Multiply tab (#380): the per-type Multiplication Pillars — Julian's fed
+// Capacity per type plus the trigger rubric that decides when a group type is
+// ready to multiply. Feeds the Multiply boards directly; capacity here is the
+// fed source, never in-app counts. Softens to a placeholder when its config
+// couldn't load.
+function MultiplyPanel({ data }: { data: SettingsShellData }) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Multiplication pillars"
+          title="When a group type is ready to multiply"
+          description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+        />
+        {data.errors.multiplication || !data.multiplicationConfig ? (
+          <NotConfigured subject="The Multiplication pillars" />
+        ) : (
+          <Card>
+            <MultiplicationConfigEditor
+              seeds={data.multiplicationConfig.seeds}
+              ministryYear={data.multiplicationConfig.ministryYear}
+            />
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// Thresholds tab: the older dashboard-warning number knobs — capacity, attendance
+// health, and leader-care cadence — that still drive the metric warnings on the
+// (flagged-off) number surfaces. They all live in the single MetricDefaultsForm
 // (primary defaults always visible; capacity/attendance/group-health thresholds
 // behind the Advanced thresholds disclosure). The rarely-used per-group
 // overrides stay demoted into their own collapsed disclosure below.
@@ -164,60 +261,6 @@ function ThresholdsPanel({
 }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
-      {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
-          that roll up to an A–F grade. Owned here in Settings (Ministry-Admin),
-          not the Super Admin Console. Save is gated on the weights totalling
-          100, enforced both in the editor and the audited RPC. */}
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Group Health Rubric"
-          title="How a group is graded"
-          description="Name the criteria a group is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F letter; a manual override can still force the letter."
-        />
-        <Card>
-          <HealthRubricEditor criteria={data.groupRubricCriteria} />
-        </Card>
-      </section>
-
-      {/* #380 Multiplication Pillars: the Ministry-Admin-fed Capacity per type +
-          the trigger rubric that decides when a type is ready to multiply. Feeds
-          the Multiply boards directly; capacity here is the fed source, never
-          in-app counts. */}
-      {data.multiplicationConfig ? (
-        <section style={{ display: "grid", gap: 18 }}>
-          <SectionHeader
-            eyebrow="Multiplication pillars"
-            title="When a group type is ready to multiply"
-            description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
-          />
-          <Card>
-            <MultiplicationConfigEditor
-              seeds={data.multiplicationConfig.seeds}
-              ministryYear={data.multiplicationConfig.ministryYear}
-            />
-          </Card>
-        </section>
-      ) : null}
-      {/* #378 / ADR 0018 (pivot slice 5): the Leader-Health Rubric — the
-          symmetric per-leader weighted criteria that roll up to an A–F
-          Leader-Health Grade entered in Care. Same editor, parameterized to the
-          "leader" kind; same weight-to-100 gate. A deliberate FOURTH "health"
-          concept, distinct from Leader Care Status and the Health Pulse. */}
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Leader Health Rubric"
-          title="How a leader is graded"
-          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
-        />
-        <Card>
-          <HealthRubricEditor
-            criteria={data.leaderRubricCriteria}
-            kind="leader"
-            subjectLabel="leader"
-          />
-        </Card>
-      </section>
-
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
           eyebrow="Global metric defaults"
@@ -318,13 +361,13 @@ function ThresholdsPanel({
   );
 }
 
-// General tab (#304): basic ministry/app defaults. Owns the Julian pastoral copy
-// per ADR 0007 — the two Group-Health question wordings and the five care-status
-// labels. Editing those writes the Super-Admin-only platform_config via a
-// super-admin RPC, so the editor renders only for the super_admin; a
-// ministry_admin sees a clear pointer to the Super Admin Console rather than a
-// write path that the RLS would reject anyway (no data-model change).
-function GeneralPanel({
+// Pastoral wording section, owned by Care (ADR 0007/0016). The Julian-owned
+// copy — the two Group-Health question wordings and the five care-status labels.
+// Editing those writes the Super-Admin-only platform_config via a super-admin
+// RPC, so the editor renders only for the super_admin; a ministry_admin sees a
+// clear pointer to the Super Admin Console rather than a write path that the RLS
+// would reject anyway (no data-model change).
+function PastoralWordingPanel({
   isSuperAdmin,
   editableCopy,
 }: {
@@ -399,30 +442,13 @@ function GeneralPanel({
   );
 }
 
-// Notifications tab (#304): no notification/reminder settings exist yet, so we
-// show an honest empty state rather than fabricating controls.
-function NotificationsPanel() {
-  return (
-    <div style={{ display: "grid", gap: 18 }}>
-      <SectionHeader
-        eyebrow="Notifications"
-        title="Reminder & email preferences"
-        description="Where reminder and email preferences will live once they ship."
-      />
-      <Empty
-        title="No notification settings yet"
-        description="There aren't any reminder or email preferences to configure right now. This tab is reserved for them so they land in a predictable place."
-      />
-    </div>
-  );
-}
-
-// Imports tab (#304): a navigation/discoverability surface only. Bulk people
-// import is a security-critical write path gated by requireSuperAdminSession()
-// in the Super Admin Console — that boundary is unchanged. This tab deep-links
-// to that surface for the super_admin and explains the gate to a ministry_admin;
-// it introduces NO normal-admin write path.
-function ImportsPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+// System tab: utility pointers that aren't part of Care/Plan/Multiply config.
+// Bulk people import is a security-critical write path gated by
+// requireSuperAdminSession() in the Super Admin Console — that boundary is
+// unchanged. This tab deep-links to that surface for the super_admin and
+// explains the gate to a ministry_admin; it introduces NO normal-admin write
+// path. Future reminder/email preferences will also land here.
+function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <SectionHeader
@@ -617,6 +643,21 @@ function Empty({ title, description }: { title: string; description: string }) {
   );
 }
 
+// A calm placeholder for a configuration section whose data couldn't load —
+// typically because the feature's tables aren't provisioned in this environment
+// yet (the pivot is mid-migration). It reads as "coming soon," not "broken": no
+// alarm colour, no retry instruction, and crucially no editable controls that
+// would silently fail to save. This is the UI-only softening that replaces the
+// old page-wide "Some sections couldn't load" error banner.
+function NotConfigured({ subject }: { subject: string }) {
+  return (
+    <Empty
+      title="Not set up yet"
+      description={`${subject} isn't configured in this environment yet. It will appear here once it's ready.`}
+    />
+  );
+}
+
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 const copyRowStyle = {
@@ -669,16 +710,6 @@ const summaryCountStyle = {
   fontSize: 12,
   fontWeight: 400,
   color: P.ink3,
-} as const;
-
-const alertStyle = {
-  background: P.terraSoft,
-  border: `1px solid ${P.terra}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: "#7d3621",
 } as const;
 
 const infoStyle = {

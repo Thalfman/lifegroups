@@ -110,6 +110,20 @@ async function sharedGridGroup(
   }, ids);
 }
 
+// Post-pivot (ADR 0016) the metric defaults + per-group overrides live on the
+// Thresholds tab, while Care is the default landing tab. Tests that inspect
+// those threshold controls open the Thresholds tab first (only the active panel
+// is mounted, by design).
+async function openThresholdsTab(page: Page): Promise<void> {
+  await page
+    .locator(`${SETTINGS} [role="tab"]`, { hasText: "Thresholds" })
+    .click();
+  // Wait for a defaults field to mount so subsequent inspection is stable.
+  await expect(
+    page.locator(`${SETTINGS} #default_group_capacity`)
+  ).toBeVisible();
+}
+
 test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   test.beforeEach(async ({ page }) => {
     await gotoHarness(page);
@@ -131,6 +145,10 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   test("advanced thresholds and per-group overrides are collapsed by default", async ({
     page,
   }) => {
+    // The metric defaults + overrides now live on the Thresholds tab (Care is the
+    // default landing tab post-pivot), so open it before inspecting its
+    // disclosures.
+    await openThresholdsTab(page);
     // Progressive disclosure: the rarely-touched thresholds and the per-group
     // overrides block must NOT be expanded on load.
     const advancedClosed = await page
@@ -149,8 +167,10 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   test("every visible input carries a visible, associated label", async ({
     page,
   }) => {
-    // Reveal every control: open both disclosures and pick a group so the
-    // per-group override form mounts, then assert each one is labelled.
+    // Reveal every control: open the Thresholds tab, open both disclosures and
+    // pick a group so the per-group override form mounts, then assert each one
+    // is labelled.
+    await openThresholdsTab(page);
     await page
       .locator(SETTINGS)
       .locator("summary", { hasText: "Advanced thresholds" })
@@ -186,6 +206,8 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   });
 
   test("related threshold fields stay grouped", async ({ page }) => {
+    // The metric defaults live on the Thresholds tab post-pivot; open it first.
+    await openThresholdsTab(page);
     // req 5 grouping: the primary defaults (capacity + the two care-cadence
     // windows) share one grouping container on the always-visible path.
     const primary = await sharedGridGroup(page, [
@@ -240,51 +262,31 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toBe(true);
   });
 
-  test("presents the General / Thresholds / Notifications / Imports tabs (issue 304)", async ({
+  test("presents the Care / Multiply / Thresholds / System tabs (pivot, ADR 0016)", async ({
     page,
   }) => {
     const tabs = page.locator(`${SETTINGS} [role="tab"]`);
-    await expect(tabs).toHaveText([
-      "General",
-      "Thresholds",
-      "Notifications",
-      "Imports",
-    ]);
-    // Thresholds is the default selected tab — its metric defaults are the most
-    // touched controls, so the surface lands on them.
+    await expect(tabs).toHaveText(["Care", "Multiply", "Thresholds", "System"]);
+    // Care is the default selected tab — the rubrics and pastoral wording it
+    // carries are the heart of what Settings configures now, so the surface
+    // lands on them rather than on the older threshold knobs.
     await expect(
-      page.locator(`${SETTINGS} [role="tab"]`, { hasText: "Thresholds" })
+      page.locator(`${SETTINGS} [role="tab"]`, { hasText: "Care" })
     ).toHaveAttribute("aria-selected", "true");
-    await expect(
-      page.locator(`${SETTINGS} #shepherd_care_stale_days_direct`)
-    ).toBeVisible();
+    await expect(page.locator(`${SETTINGS} [role="tabpanel"]`)).toContainText(
+      "How a group is graded"
+    );
   });
 
-  test("Notifications tab shows an honest empty state, not fabricated controls (issue 304)", async ({
+  test("System tab is a deep-link only — no bulk-import write controls (pivot, ADR 0016)", async ({
     page,
   }) => {
     await page
-      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Notifications" })
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "System" })
       .click();
     const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
-    await expect(panel).toContainText("No notification settings yet");
-    // No editable inputs are fabricated on this empty tab.
-    expect(
-      await panel
-        .locator('input:not([type="hidden"]), select, textarea')
-        .count()
-    ).toBe(0);
-  });
-
-  test("Imports tab is a deep-link only — no bulk-import write controls (issue 304)", async ({
-    page,
-  }) => {
-    await page
-      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Imports" })
-      .click();
-    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
-    // The tab surfaces the capability and links into the Super Admin Console;
-    // it does NOT render a file/upload control or any import write form.
+    // The tab surfaces the bulk-import capability and links into the Super Admin
+    // Console; it does NOT render a file/upload control or any import write form.
     await expect(
       panel.locator('a[href^="/admin/super-admin"]').first()
     ).toBeVisible();
@@ -295,24 +297,26 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   test("tabs are keyboard navigable with arrow keys (issue 304)", async ({
     page,
   }) => {
-    const thresholds = page.locator(`${SETTINGS} [role="tab"]`, {
-      hasText: "Thresholds",
+    const care = page.locator(`${SETTINGS} [role="tab"]`, {
+      hasText: "Care",
     });
-    await thresholds.focus();
+    await care.focus();
     await page.keyboard.press("ArrowRight");
-    // Arrow-right moves selection to the next tab (Notifications) and focuses it.
-    const notifications = page.locator(`${SETTINGS} [role="tab"]`, {
-      hasText: "Notifications",
+    // Arrow-right moves selection to the next tab (Multiply) and focuses it.
+    const multiply = page.locator(`${SETTINGS} [role="tab"]`, {
+      hasText: "Multiply",
     });
-    await expect(notifications).toHaveAttribute("aria-selected", "true");
-    await expect(notifications).toBeFocused();
+    await expect(multiply).toHaveAttribute("aria-selected", "true");
+    await expect(multiply).toBeFocused();
   });
 
   test("axe finds no critical or serious violations on settings", async ({
     page,
   }) => {
-    // Expand the disclosures and mount the override form so axe scans the full
-    // control tree, not just the primary-path defaults.
+    // Open the Thresholds tab, then expand the disclosures and mount the override
+    // form so axe scans the full control tree, not just the primary-path
+    // defaults.
+    await openThresholdsTab(page);
     await page
       .locator(SETTINGS)
       .locator("summary", { hasText: "Advanced thresholds" })
