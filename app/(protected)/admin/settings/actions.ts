@@ -263,10 +263,11 @@ export async function adminSetHealthRubric(
   return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
 }
 
-// ----- adminSetMultiplicationConfig (#380) --------------------------------
+// ----- adminSetMultiplicationConfig (#380, updated #401) -------------------
 // The Settings Multiply-pillars editor posts one group type's config for a
-// ministry year: the group_type, ministry_year, and three JSON payloads
-// (thresholds, trigger, fed capacity). The validator decodes + normalizes them
+// ministry year: the group_type, ministry_year, and two JSON payloads
+// (thresholds, trigger). #401 retired the fed-capacity payload — capacity is now a
+// derived per-cell issue, no longer fed. The validator decodes + normalizes them
 // before the audited RPC persists them. Ministry-Admin-owned, so the default
 // requireAdminSession path applies. Revalidates the Multiply boards as well as
 // Settings (the boards read this config).
@@ -280,13 +281,7 @@ const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
   { id: string }
 > = {
   name: "admin.settings.set_multiplication_config",
-  keys: [
-    "group_type",
-    "ministry_year",
-    "thresholds",
-    "trigger",
-    "fed_capacity",
-  ],
+  keys: ["group_type", "ministry_year", "thresholds", "trigger"],
   validate: validateMultiplicationConfigPayload,
   fields: (_actor, value) => ({
     group_type: value.groupType,
@@ -298,7 +293,6 @@ const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
       p_ministry_year: value.ministryYear,
       p_thresholds: value.thresholds as unknown as Record<string, unknown>,
       p_trigger: value.trigger as unknown as Record<string, unknown>,
-      p_fed_capacity: value.fedCapacity as unknown as Record<string, unknown>,
     }),
   revalidate: () => MULTIPLICATION_CONFIG_REVALIDATE_PATHS,
   noDataError: "The multiplication config was not saved. Please try again.",

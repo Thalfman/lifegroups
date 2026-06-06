@@ -985,9 +985,10 @@ export function rpcAdminSetHealthRubric(
   return callUuidRpc(client, "admin_set_health_rubric", args);
 }
 
-// #380 Multiplication Pillars: upsert one group type's pillar config (thresholds
-// + trigger rubric + Ministry-Admin-fed capacity) for a ministry year. The three
-// jsonb payloads are validated in TS first; the RPC re-guards their object shape.
+// #380 Multiplication Pillars (updated #401): upsert one group type's pillar
+// config (thresholds + trigger rubric) for a ministry year. #401 retired the
+// fed-capacity payload — capacity is now a derived per-cell issue. The two jsonb
+// payloads are validated in TS first; the RPC re-guards their object shape.
 export function rpcAdminSetMultiplicationConfig(
   client: AppSupabaseClient,
   args: {
@@ -995,7 +996,6 @@ export function rpcAdminSetMultiplicationConfig(
     p_ministry_year: number;
     p_thresholds: Record<string, unknown>;
     p_trigger: Record<string, unknown>;
-    p_fed_capacity: Record<string, unknown>;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_multiplication_config", args);

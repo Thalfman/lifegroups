@@ -1,21 +1,21 @@
 import type { ValidationResult } from "./shared";
 import { isRecord } from "./shared";
 import {
-  decodeFedCapacity,
   decodePillarThresholds,
   decodeTriggerRubric,
-  type FedCapacity,
   type PillarThresholds,
   type TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
 
-// Multiplication Pillars config write-validation contract (#380). The Settings
-// editor posts one group type's config: the group_type, the ministry_year, and
-// three JSON payloads (thresholds, trigger, fed capacity), each as a JSON string
-// (form submission) or an object (tests). This validator parses + decodes them
-// through the pure trust-boundary decoders, so the client and server reject
-// identically. The SECURITY DEFINER RPC stays the authoritative gate; this keeps
-// malformed input off the wire and supplies friendlier messages.
+// Multiplication Pillars config write-validation contract (#380, updated #401).
+// The Settings editor posts one group type's config: the group_type, the
+// ministry_year, and two JSON payloads (thresholds, trigger), each as a JSON
+// string (form submission) or an object (tests). #401 retired the fed-capacity
+// payload — capacity is now a derived per-cell issue, so it is no longer posted or
+// validated. This validator parses + decodes through the pure trust-boundary
+// decoders, so the client and server reject identically. The SECURITY DEFINER RPC
+// stays the authoritative gate; this keeps malformed input off the wire and
+// supplies friendlier messages.
 
 const GROUP_TYPES = new Set(["men", "women", "mixed"]);
 
@@ -24,7 +24,6 @@ export type MultiplicationConfigPayload = {
   ministryYear: number;
   thresholds: PillarThresholds;
   trigger: TriggerRubric;
-  fedCapacity: FedCapacity;
 };
 
 // Parse a JSON payload field from either a JSON string or an already-parsed
@@ -81,15 +80,11 @@ export function validateMultiplicationConfigPayload(
   if (triggerRaw === undefined) {
     errors.push("trigger must be a JSON object.");
   }
-  const fedCapacityRaw = parseJsonObject(input.fed_capacity);
-  if (fedCapacityRaw === undefined) {
-    errors.push("fed_capacity must be a JSON object.");
-  }
 
   if (errors.length > 0) return { ok: false, errors };
 
   // Decode through the pure trust-boundary decoders, which normalize every field
-  // to a sane value (default bands, A–F-only minimums, null/0 capacity).
+  // to a sane value (default bands, A–F-only minimums).
   return {
     ok: true,
     value: {
@@ -97,7 +92,6 @@ export function validateMultiplicationConfigPayload(
       ministryYear: ministryYear as number,
       thresholds: decodePillarThresholds(thresholdsRaw),
       trigger: decodeTriggerRubric(triggerRaw),
-      fedCapacity: decodeFedCapacity(fedCapacityRaw),
     },
   };
 }

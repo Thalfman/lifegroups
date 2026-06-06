@@ -194,7 +194,7 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Multiplication pillars"
           title="When a group type is ready to multiply"
-          description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+          description="Set the trigger — the pillar grades a type must clear before it counts as ready to multiply. Capacity is a derived per-cell issue (a group over 12, or only one group to join), not fed here."
         />
         {data.errors.multiplication || !data.multiplicationConfig ? (
           <NotConfigured subject="The Multiplication pillars" />

@@ -16,10 +16,8 @@ import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { fetchMultiplicationConfigs } from "@/lib/supabase/multiplication-config-reads";
 import {
   BUILT_IN_PILLAR_THRESHOLDS,
-  decodeFedCapacity,
   decodePillarThresholds,
   decodeTriggerRubric,
-  type FedCapacity,
   type PillarThresholds,
   type TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
@@ -73,28 +71,21 @@ export function supabaseSettingsReads(
 // the default in multiply-data.ts.
 const DEFAULT_TRIGGER: TriggerRubric = {
   conditions: {
-    capacity: { op: "atLeast", letter: "B" },
     interest: { op: "atLeast", letter: "C" },
   },
   requireHealthGrades: false,
 };
 
-const EMPTY_FED_CAPACITY: FedCapacity = {
-  headroom: null,
-  fullGroupCount: 0,
-  options: [],
-};
-
 // Build the per-type editor seeds for the Settings Multiply-config editor from
 // the decoded config rows (indexed by type). Each type gets its stored config or
-// a built-in fallback, so all three types are always editable.
+// a built-in fallback, so all three types are always editable. #401: capacity is
+// no longer fed here — it is a derived per-cell issue, so no fedCapacity seed.
 function buildMultiplicationSeeds(
   configByType: Map<
     string,
     {
       thresholds: PillarThresholds;
       trigger: TriggerRubric;
-      fedCapacity: FedCapacity;
     }
   >
 ): MultiplicationConfigSeed[] {
@@ -105,7 +96,6 @@ function buildMultiplicationSeeds(
       label: MULTIPLY_TYPE_LABEL[type],
       thresholds: config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS,
       trigger: config?.trigger ?? DEFAULT_TRIGGER,
-      fedCapacity: config?.fedCapacity ?? EMPTY_FED_CAPACITY,
     };
   });
 }
@@ -159,20 +149,19 @@ export async function buildSettingsData(
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
   // #380: index the per-type config rows, decoding each jsonb payload, and build
-  // the editor seeds (all three types, with built-in fallbacks).
+  // the editor seeds (all three types, with built-in fallbacks). #401: fed
+  // capacity is no longer decoded — it was retired in favour of the derived issue.
   const configByType = new Map<
     string,
     {
       thresholds: PillarThresholds;
       trigger: TriggerRubric;
-      fedCapacity: FedCapacity;
     }
   >();
   for (const row of multiplicationResult.data ?? []) {
     configByType.set(row.group_type, {
       thresholds: decodePillarThresholds(row.thresholds),
       trigger: decodeTriggerRubric(row.trigger_rubric),
-      fedCapacity: decodeFedCapacity(row.fed_capacity),
     });
   }
 

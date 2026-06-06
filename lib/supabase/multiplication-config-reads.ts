@@ -12,22 +12,26 @@ import {
   type RubricScores,
 } from "@/lib/admin/health-rubric";
 
-// Multiplication Pillars config + funnel-volume read model (#380). Two reads feed
-// the Multiply boards:
+// Multiplication Pillars config + funnel-volume read model (#380, updated #401).
+// Reads that feed the Multiply boards:
 //   1. fetchMultiplicationConfigs — the per-(type, ministry-year) config rows
-//      (thresholds + trigger + fed capacity), column-allowlisted. RLS already
-//      restricts SELECT to admins (belt-and-braces, matching the health-rubric
-//      reads idiom).
+//      (thresholds + trigger), column-allowlisted. RLS already restricts SELECT
+//      to admins (belt-and-braces, matching the health-rubric reads idiom). The
+//      fed-capacity column was retired in #401 — capacity is now derived.
 //   2. fetchFunnelVolumeByType — the Interest Funnel VOLUME per group type,
 //      derived from active prospects whose matched/joined group is of that type.
+//   3. fetchCellActiveGroupSizes — per-CELL active group member counts (#401),
+//      the input to the derived per-cell capacity ISSUE resolver.
 //
-// The config row's three jsonb columns are decoded into typed config at the trust
+// The config row's two jsonb columns are decoded into typed config at the trust
 // boundary (lib/admin/multiplication-pillars.ts); the row type here stays raw.
 
+// #401: `fed_capacity` is removed from the allowlist — the column was dropped by
+// the retire-fed-capacity migration and capacity is now a derived per-cell issue.
 export const MULTIPLICATION_CONFIG_COLUMNS =
-  "id, group_type, ministry_year, thresholds, trigger_rubric, fed_capacity, updated_at";
+  "id, group_type, ministry_year, thresholds, trigger_rubric, updated_at";
 
-// One persisted config row, as read through the allowlist. The three jsonb fields
+// One persisted config row, as read through the allowlist. The two jsonb fields
 // are raw; the caller decodes them with decodePillarThresholds / etc.
 export type MultiplicationConfigRow = {
   id: string;
@@ -35,7 +39,6 @@ export type MultiplicationConfigRow = {
   ministry_year: number;
   thresholds: unknown;
   trigger_rubric: unknown;
-  fed_capacity: unknown;
   updated_at: string;
 };
 
@@ -121,6 +124,159 @@ export function tallyFunnelVolume(
     }
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Per-CELL active group sizes (#401) — input to the derived capacity ISSUE.
+// ---------------------------------------------------------------------------
+//
+// A "cell" = (audience_category ∈ {men,women,mixed}) × (category_id →
+// group_categories). The derived capacity issue (lib/admin/cell-capacity.ts) is
+// computed per cell from the ACTIVE member counts of the groups in it. This read
+// returns, per cell, the array of active group sizes; the surface rolls those up.
+//
+// `groups.category_id` (the group → cell FK) is being added by the parallel cell
+// model slice (#400). Until it lands, a group's category_id reads as null and so
+// belongs to no category cell — its sizes are bucketed under a `null` category
+// key, which the type-level rollup still folds in. The read stays column-
+// allowlisted (reads seam, ADR 0015): we project exactly the cell-keying columns
+// + the per-group active membership, never select("*").
+//
+// We read groups + group_memberships and aggregate PURELY (the count idiom mirrors
+// lib/admin/capacity-board.ts `buildCapacityBoardModel`: a group's member count is
+// its number of group_memberships rows with status='active').
+
+// One active-group row for the cell read: its id + the two cell-keying columns.
+// `category_id` is allowlisted ahead of the #400 column landing; a missing/null
+// value means the group is in no category cell.
+type CellGroupRow = {
+  id: string;
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+  lifecycle_status: string | null;
+};
+
+type CellMembershipRow = {
+  group_id: string;
+  status: string | null;
+};
+
+const CELL_GROUP_COLUMNS =
+  "id, audience_category, category_id, lifecycle_status";
+const CELL_MEMBERSHIP_COLUMNS = "group_id, status";
+const CELL_PAGE_LIMIT = 10000;
+
+// A cell key: audience type + category id (null when the group has no category).
+export type CellKey = {
+  audience: GroupAudienceCategory;
+  categoryId: string | null;
+};
+
+// The per-cell active group sizes: keyed by a stable `${audience}::${categoryId}`
+// string so callers can index without juggling tuples. Each value is the array of
+// ACTIVE member counts of the active groups in that cell.
+export type CellActiveGroupSizes = {
+  // Stable key → the cell's active group sizes.
+  byCell: Map<string, number[]>;
+  // The same key → its decomposed parts, for callers that need the audience/cat.
+  keys: Map<string, CellKey>;
+};
+
+// Build the stable cell key string. Exported so the surface and tests agree.
+export function cellKeyString(
+  audience: GroupAudienceCategory,
+  categoryId: string | null
+): string {
+  return `${audience}::${categoryId ?? ""}`;
+}
+
+// Pure aggregator (exported for testing): bucket each ACTIVE group's active member
+// count under its cell. Only active groups with a real audience category form a
+// cell; a group's size is its count of active memberships (0 when it has none).
+export function tallyCellActiveGroupSizes(
+  groups: readonly CellGroupRow[],
+  memberships: readonly CellMembershipRow[]
+): CellActiveGroupSizes {
+  // Active-membership count per group id (the capacity-board count idiom).
+  const activeCountByGroup = new Map<string, number>();
+  for (const m of memberships) {
+    if (m.status !== "active") continue;
+    activeCountByGroup.set(
+      m.group_id,
+      (activeCountByGroup.get(m.group_id) ?? 0) + 1
+    );
+  }
+
+  const byCell = new Map<string, number[]>();
+  const keys = new Map<string, CellKey>();
+  for (const g of groups) {
+    if (g.lifecycle_status !== "active") continue;
+    const audience = g.audience_category;
+    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+      continue;
+    }
+    const categoryId = g.category_id ?? null;
+    const key = cellKeyString(audience, categoryId);
+    const size = activeCountByGroup.get(g.id) ?? 0;
+    const list = byCell.get(key);
+    if (list) {
+      list.push(size);
+    } else {
+      byCell.set(key, [size]);
+      keys.set(key, { audience, categoryId });
+    }
+  }
+
+  return { byCell, keys };
+}
+
+export const EMPTY_CELL_ACTIVE_GROUP_SIZES: CellActiveGroupSizes = {
+  byCell: new Map(),
+  keys: new Map(),
+};
+
+// Read the per-cell active group sizes: active groups (id + cell-keying columns)
+// and their active memberships, then aggregate purely. A read failure surfaces as
+// an error so the board notes it rather than grading capacity on partial data.
+export async function fetchCellActiveGroupSizes(
+  client: ReadClient
+): Promise<ReadResult<CellActiveGroupSizes>> {
+  const [groupsRes, membershipsRes] = await Promise.all([
+    client
+      .from("groups")
+      .select(CELL_GROUP_COLUMNS)
+      .eq("lifecycle_status", "active")
+      .range(0, CELL_PAGE_LIMIT - 1)
+      .returns<CellGroupRow[]>(),
+    client
+      .from("group_memberships")
+      .select(CELL_MEMBERSHIP_COLUMNS)
+      .eq("status", "active")
+      .range(0, CELL_PAGE_LIMIT - 1)
+      .returns<CellMembershipRow[]>(),
+  ]);
+
+  if (groupsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCellActiveGroupSizes/groups", groupsRes.error),
+    };
+  if (membershipsRes.error)
+    return {
+      data: null,
+      error: wrapError(
+        "fetchCellActiveGroupSizes/memberships",
+        membershipsRes.error
+      ),
+    };
+
+  return {
+    data: tallyCellActiveGroupSizes(
+      groupsRes.data ?? [],
+      membershipsRes.data ?? []
+    ),
+    error: null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -348,16 +504,18 @@ export async function fetchHealthGradesByType(
     leaderTypesByProfile.set(row.profile_id, set);
   }
 
-  const groupGrades: ResolvedGroupGrade[] = (groupRes.data ?? []).map((row) => ({
-    type: row.group?.audience_category ?? null,
-    isClosed: row.group?.lifecycle_status === "closed",
-    letter: effectiveGradeLetter(
-      groupRubric,
-      decodeScores(row.criterion_scores),
-      row,
-      periodMonthIso
-    ),
-  }));
+  const groupGrades: ResolvedGroupGrade[] = (groupRes.data ?? []).map(
+    (row) => ({
+      type: row.group?.audience_category ?? null,
+      isClosed: row.group?.lifecycle_status === "closed",
+      letter: effectiveGradeLetter(
+        groupRubric,
+        decodeScores(row.criterion_scores),
+        row,
+        periodMonthIso
+      ),
+    })
+  );
 
   const leaderGrades: ResolvedLeaderGrade[] = (leaderRes.data ?? []).map(
     (row) => ({
