@@ -128,3 +128,36 @@ null` (the one non-blocking exception below); `cascade` stays a blocker.**
   Permanent deletion (this hatch). CONTEXT.md disambiguates both, plus Tombstone.
 - The archive-everywhere model is intact; this is the single, audited, bounded
   exception to it.
+
+## Amendment — 2026-06-06 (#388): author-private Care Notes are opaque too
+
+The original opaque `super_admin_confidential_block` covered only the SC.4
+Private Care Note (ADR 0002/0003). The Care · Plan · Multiply pivot added a
+second sealed-by-default class of pastoral writing — **author-private Care Notes
+and Prayer Requests** (#381 / #382, ADR 0017 / ADR 0020), visible only to the
+author unless that leader's transparency toggle is on. Their subject/author FKs
+are `on delete cascade` (subjects) / `on delete restrict` (authors), so
+`super_admin_collect_dependents` bucketed them as named **blockers** and the
+permanent-delete preflight leaked their **count/existence** to the Super Admin
+regardless of the toggle — across both profile targets (`subject_profile_id` /
+`author_profile_id`) and group targets (`subject_group_id`). Only the count +
+existence leaked; RLS still sealed every body.
+
+**Decision:** extend `super_admin_confidential_block` so any target holding these
+notes is reported **opaquely** (`confidential: true`, no per-table counts),
+exactly like SC.4 — chosen over the alternative of suppressing the count while
+allowing the delete. A profile is sealed when it is the **subject _or_ author**
+of any `care_notes` / `prayer_requests` row (both leak vectors); a group is
+sealed when it is the **subject** (`subject_group_id`) of one. The block
+short-circuits before `collect_dependents` runs, so the count never reaches the
+report.
+
+This does **not** change deletability: these cascade/restrict FKs already made
+such a target undeletable via `has_blocking_dependents`, so the only change is
+swapping a count-leaking block for an opaque one. The alternative — dropping them
+from the blocker list to let the delete proceed — was rejected because the
+`on delete cascade` would then silently destroy author-private pastoral content
+that the tombstone (which snapshots only set-null dependents) could never
+recover; "no delete RPC for these notes today" is the accepted, deliberate
+posture (seal and disable, never erase). Implemented in
+`20260609000000_phase_sad7_confidential_block_care_notes.sql`.

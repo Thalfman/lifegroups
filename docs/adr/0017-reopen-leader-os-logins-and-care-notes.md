@@ -59,6 +59,12 @@ peek. They are different tables with different RLS; do not merge them.
   enabled-and-verified.
 - A new per-person `notes_transparency` grant governs Ministry-Admin read access
   to Care Notes / Prayer Requests; default denied (sealed to author).
+- **Permanent-delete opacity (#388, ADR 0014):** the author-private Care Note /
+  Prayer Request is a second sealed class alongside the SC.4 Private Care Note,
+  so it gets the same opaque treatment in the super-admin permanent-delete
+  preflight. A profile is sealed when it is the **subject or author** of any such
+  note; the delete is reported as `confidential` with no count, never naming the
+  `care_notes` / `prayer_requests` dependents.
 - `staff_viewer` and the rest of the ladder are unaffected.
 - **Leader-calendar past-date rule (#376):** the leader calendar READS the full
   requested month including past dates — a leader may page back and _see_ prior
