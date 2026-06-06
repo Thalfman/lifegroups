@@ -58,3 +58,9 @@ transparency toggle) stands unchanged.
   is the record that group-scoped was the chosen, narrower shape.
 - ADR 0017's "per member" wording is superseded by this ADR for the Leader tier;
   the Over-Shepherd tier (notes about Leaders, subject = a profile) is unchanged.
+- **Permanent-delete opacity (#388, ADR 0014):** because a group note's
+  `subject_group_id` is `on delete cascade`, the super-admin permanent-delete
+  preflight would have leaked the count/existence of a group's leader notes when
+  deleting that group. ADR 0014's `super_admin_confidential_block` now seals a
+  group holding any `care_notes` / `prayer_requests` row, so the delete is
+  reported opaquely (no count) — consistent with the SC.4 Private Care Note.
