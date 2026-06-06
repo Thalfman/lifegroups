@@ -32,10 +32,10 @@ import {
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import { decodeMetricDefaults } from "@/lib/admin/metrics";
 import {
-  currentPeriodMonthIso,
   fetchGroupHealthRatings,
   getGroupHealthOverviewForGroup,
 } from "@/lib/admin/group-health-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
   capacityCategoryLabel,
   followUpPriorityLabel,

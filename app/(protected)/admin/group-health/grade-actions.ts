@@ -14,7 +14,7 @@ import { rpcAdminSetGroupRubricGrade } from "@/lib/admin/rpc";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
-import { currentGradePeriodMonthIso } from "@/lib/admin/group-rubric-grade-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 
 // Group-Health Grade entry in Care (#377 / ADR 0018, Pivot slice 4). The grader
 // posts per-criterion 0–100 scores + an optional letter override for a group's
@@ -50,7 +50,7 @@ const SET_GRADE_SPEC: AdminWriteActionSpec<
       return { data: null, error: { message: "rubric_read_failed" } };
     const criteria = decodeRubricCriteria(rubricRes.data?.criteria ?? null);
 
-    const periodMonth = currentGradePeriodMonthIso();
+    const periodMonth = currentPeriodMonthIso();
     const resolved = resolveGroupRubricGrade({
       rubric: { criteria },
       scores: value.criterion_scores,

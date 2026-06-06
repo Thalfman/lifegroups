@@ -1,10 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
-import {
-  currentPeriodMonthIso,
-  listGroupHealthOverview,
-} from "@/lib/admin/group-health-read";
+import { listGroupHealthOverview } from "@/lib/admin/group-health-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import { resolveGroupGradeBoard } from "@/lib/admin/group-health-grades";
 import { fetchPlatformConfig } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";

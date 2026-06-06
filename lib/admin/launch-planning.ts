@@ -21,6 +21,7 @@ import type {
 } from "@/types/database";
 import type { LeaderReadinessStage } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
+import { jsonInt, jsonIntOrNull, jsonNumber } from "@/lib/admin/jsonb-decode";
 import {
   effectiveCapacity,
   isExcludedFromCapacityMetrics,
@@ -75,29 +76,6 @@ export const BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS: LaunchPlanningAssumptions = {
   target_launch_year: null,
 };
 
-function readJsonInt(
-  source: Record<string, unknown> | null,
-  key: string,
-  fallback: number
-): number {
-  if (!source) return fallback;
-  const raw = source[key];
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
-    return raw;
-  return fallback;
-}
-
-function readJsonNumber(
-  source: Record<string, unknown> | null,
-  key: string,
-  fallback: number
-): number {
-  if (!source) return fallback;
-  const raw = source[key];
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  return fallback;
-}
-
 function readJsonNullableString(
   source: Record<string, unknown> | null,
   key: string,
@@ -107,19 +85,6 @@ function readJsonNullableString(
   const raw = source[key];
   if (raw === null) return null;
   if (typeof raw === "string") return raw;
-  return fallback;
-}
-
-function readJsonIntOrNull(
-  source: Record<string, unknown> | null,
-  key: string,
-  fallback: number | null
-): number | null {
-  if (!source) return fallback;
-  const raw = source[key];
-  if (raw === null) return null;
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
-    return raw;
   return fallback;
 }
 
@@ -143,12 +108,12 @@ export function decodeLaunchPlanningAssumptions(
       : BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.average_group_size;
 
   return {
-    current_church_attendance: readJsonInt(
+    current_church_attendance: jsonInt(
       source,
       "current_church_attendance",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.current_church_attendance
     ),
-    expected_growth: readJsonInt(
+    expected_growth: jsonInt(
       source,
       "expected_growth",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth
@@ -158,22 +123,22 @@ export function decodeLaunchPlanningAssumptions(
       "expected_growth_date",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.expected_growth_date
     ),
-    target_group_participation_pct: readJsonNumber(
+    target_group_participation_pct: jsonNumber(
       source,
       "target_group_participation_pct",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_group_participation_pct
     ),
-    average_group_size: readJsonInt(
+    average_group_size: jsonInt(
       source,
       "average_group_size",
       fallbackAverageGroupSize
     ),
-    launch_buffer_pct: readJsonNumber(
+    launch_buffer_pct: jsonNumber(
       source,
       "launch_buffer_pct",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.launch_buffer_pct
     ),
-    leaders_per_new_group: readJsonInt(
+    leaders_per_new_group: jsonInt(
       source,
       "leaders_per_new_group",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.leaders_per_new_group
@@ -183,17 +148,17 @@ export function decodeLaunchPlanningAssumptions(
       "notes",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.notes
     ),
-    planned_launch_count: readJsonInt(
+    planned_launch_count: jsonInt(
       source,
       "planned_launch_count",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.planned_launch_count
     ),
-    target_launch_month: readJsonIntOrNull(
+    target_launch_month: jsonIntOrNull(
       source,
       "target_launch_month",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_month
     ),
-    target_launch_year: readJsonIntOrNull(
+    target_launch_year: jsonIntOrNull(
       source,
       "target_launch_year",
       BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS.target_launch_year

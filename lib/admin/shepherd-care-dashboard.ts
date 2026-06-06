@@ -22,6 +22,7 @@ import {
   resolveAttentionBaseline,
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
+import { formatDueLabel, laterIso } from "@/lib/admin/care-temporal";
 
 // Re-exported from the shared attention engine so existing importers (and the
 // __test__ surface below) keep their path.
@@ -173,15 +174,6 @@ function coverageHref(value: string): string {
         kind: "over_shepherd",
         overShepherdId: value,
       });
-}
-
-function relativeDayLabel(daysFromToday: number): string {
-  if (daysFromToday === 0) return "Due today";
-  if (daysFromToday < 0) {
-    const abs = Math.abs(daysFromToday);
-    return abs === 1 ? "Overdue 1 day" : `Overdue ${abs} days`;
-  }
-  return daysFromToday === 1 ? "Due tomorrow" : `Due in ${daysFromToday} days`;
 }
 
 // Join the outstanding-follow-up feed (keyed by care_profile_id) to the
@@ -383,14 +375,12 @@ function buildSummary(
     }
     // "Not contacted recently" measures staleness from the later of the real
     // last contact and any reset baseline, so a reset clears this count too
-    // (it must agree with the baseline-aware needs_attention chip above).
-    const baselineIso = resolveAttentionBaseline(baselines, entry.profile.id);
-    const effectiveContact =
-      entry.care?.last_contact_at && baselineIso
-        ? entry.care.last_contact_at >= baselineIso
-          ? entry.care.last_contact_at
-          : baselineIso
-        : (entry.care?.last_contact_at ?? baselineIso ?? null);
+    // (it must agree with the baseline-aware needs_attention chip above). The
+    // same floor the attention engine applies — laterIso is the shared rule.
+    const effectiveContact = laterIso(
+      entry.care?.last_contact_at ?? null,
+      resolveAttentionBaseline(baselines, entry.profile.id)
+    );
     if (
       effectiveContact &&
       differenceInDaysIso(todayIso, effectiveContact) >
@@ -468,7 +458,7 @@ function buildUpcomingTouchpoints(
       shepherdName: entry.profile.full_name,
       dueOn: due,
       daysFromToday,
-      relativeLabel: relativeDayLabel(daysFromToday),
+      relativeLabel: formatDueLabel(daysFromToday),
       href: shepherdHref(entry.profile.id),
     });
   }
