@@ -14,8 +14,6 @@ import {
 } from "@/components/admin/forms/action-form";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type {
-  CapacityOption,
-  FedCapacity,
   HealthLetter,
   PillarCondition,
   PillarKey,
@@ -23,19 +21,18 @@ import type {
   TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
 
-// Settings Multiplication-config editor (#380). Lets Julian feed the per-type
-// Capacity (the Ministry-Admin number that drives the Capacity pillar + the
-// individual-group full-count flag) plus two offerable capacity options, and
-// configure the trigger rubric — the per-pillar CONDITION (at least / at most /
-// between) that produces the "ready to multiply this type" signal. The condition
-// is directional because health is not monotonic: high or low can each be the
-// signal Julian wants. One type is edited at a time; the editor posts the
-// group_type, ministry_year, and the three JSON payloads the audited RPC persists.
+// Settings Multiplication-config editor (#380, updated #401). Lets Julian
+// configure the per-type trigger rubric — the per-pillar CONDITION (at least / at
+// most / between) that produces the "ready to multiply this type" signal. The
+// condition is directional because health is not monotonic: high or low can each
+// be the signal Julian wants. Capacity is no longer fed here — it is a DERIVED
+// per-cell issue (over-capacity OR thin availability), so the old fed headroom /
+// full-group count / offerings inputs and the overflow pillar are gone. One type
+// is edited at a time; the editor posts the group_type, ministry_year, and the
+// two JSON payloads (thresholds, trigger) the audited RPC persists.
 
 const LETTERS: HealthLetter[] = ["A", "B", "C", "D", "F"];
 const TRIGGER_PILLARS: { key: PillarKey; label: string }[] = [
-  { key: "capacity", label: "Capacity" },
-  { key: "overflow", label: "Overflowing groups" },
   { key: "interest", label: "Interest" },
   { key: "groupHealth", label: "Group Health" },
   { key: "leaderHealth", label: "Leader Health" },
@@ -53,7 +50,6 @@ export type MultiplicationConfigSeed = {
   label: string;
   thresholds: PillarThresholds;
   trigger: TriggerRubric;
-  fedCapacity: FedCapacity;
 };
 
 // One pillar's editable trigger row: its direction ("off" excludes it) plus the
@@ -84,16 +80,6 @@ function seedTriggerSelection(trigger: TriggerRubric): TriggerSelection {
   return out;
 }
 
-// Up to two capacity-option rows, seeded from the stored options (padded to 2).
-type OptionRow = { label: string; capacity: string };
-function seedOptionRows(options: CapacityOption[]): [OptionRow, OptionRow] {
-  const row = (o: CapacityOption | undefined): OptionRow => ({
-    label: o?.label ?? "",
-    capacity: o?.capacity != null ? String(o.capacity) : "",
-  });
-  return [row(options[0]), row(options[1])];
-}
-
 export function MultiplicationConfigEditor({
   seeds,
   ministryYear,
@@ -110,20 +96,11 @@ export function MultiplicationConfigEditor({
   );
   const seed = seeds.find((s) => s.type === activeType) ?? seeds[0] ?? null;
 
-  const [headroom, setHeadroom] = useState<string>(
-    seed?.fedCapacity.headroom != null ? String(seed.fedCapacity.headroom) : ""
-  );
-  const [fullGroupCount, setFullGroupCount] = useState<string>(
-    String(seed?.fedCapacity.fullGroupCount ?? 0)
-  );
   const [requireHealth, setRequireHealth] = useState<boolean>(
     seed?.trigger.requireHealthGrades ?? false
   );
   const [triggerSel, setTriggerSel] = useState<TriggerSelection>(() =>
     seedTriggerSelection(seed?.trigger ?? { conditions: {} })
-  );
-  const [optionRows, setOptionRows] = useState<[OptionRow, OptionRow]>(() =>
-    seedOptionRows(seed?.fedCapacity.options ?? [])
   );
 
   // When the operator switches type, reset the editable fields from that type's
@@ -131,18 +108,13 @@ export function MultiplicationConfigEditor({
   const switchType = (next: GroupAudienceCategory) => {
     setActiveType(next);
     const s = seeds.find((x) => x.type === next);
-    setHeadroom(
-      s?.fedCapacity.headroom != null ? String(s.fedCapacity.headroom) : ""
-    );
-    setFullGroupCount(String(s?.fedCapacity.fullGroupCount ?? 0));
     setRequireHealth(s?.trigger.requireHealthGrades ?? false);
     setTriggerSel(seedTriggerSelection(s?.trigger ?? { conditions: {} }));
-    setOptionRows(seedOptionRows(s?.fedCapacity.options ?? []));
   };
 
   // The thresholds aren't edited here (the numeric pillar bands keep their seeded
   // / built-in values); carry them through unchanged so a save doesn't reset
-  // them. Capacity + trigger are what Julian sets on this surface.
+  // them. The trigger is what Julian sets on this surface.
   const thresholdsJson = JSON.stringify(seed?.thresholds ?? {});
 
   // Build the per-pillar conditions from the editable rows, dropping "off"
@@ -161,29 +133,12 @@ export function MultiplicationConfigEditor({
     requireHealthGrades: requireHealth,
   });
 
-  const headroomNum = headroom.trim() === "" ? null : Number(headroom);
-  // Serialize the two capacity options, dropping a wholly-empty row.
-  const options: CapacityOption[] = [];
-  for (const row of optionRows) {
-    const capNum = row.capacity.trim() === "" ? null : Number(row.capacity);
-    const capacity = capNum != null && Number.isFinite(capNum) ? capNum : null;
-    if (row.label.trim() === "" && capacity === null) continue;
-    options.push({ label: row.label.trim(), capacity });
-  }
-  const fedCapacityJson = JSON.stringify({
-    headroom:
-      headroomNum != null && Number.isFinite(headroomNum) ? headroomNum : null,
-    fullGroupCount: Number(fullGroupCount) || 0,
-    options,
-  });
-
   return (
     <form action={formAction} style={{ display: "grid", gap: 16 }}>
       <input type="hidden" name="group_type" value={activeType} />
       <input type="hidden" name="ministry_year" value={ministryYear} />
       <input type="hidden" name="thresholds" value={thresholdsJson} />
       <input type="hidden" name="trigger" value={triggerJson} />
-      <input type="hidden" name="fed_capacity" value={fedCapacityJson} />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {seeds.map((s) => (
@@ -201,125 +156,11 @@ export function MultiplicationConfigEditor({
       </div>
 
       <p style={noteStyle}>
-        Capacity is fed here per type — it is not derived from in-app counts.
-        The full-group count grades the Overflow pillar and raises an individual
-        &ldquo;multiply this one&rdquo; flag. The two capacity options are the
-        offerings you can present to anyone interested. The trigger sets, per
-        pillar, the direction a grade must satisfy to count as ready — health is
-        not black-and-white, so high or low can each be your signal. Ministry
-        year {ministryYear}–{ministryYear + 1}.
+        Capacity is a derived per-cell issue (a group over 12, or only one group
+        to join) — it is no longer fed here. The trigger sets, per pillar, the
+        direction a grade must satisfy to count as ready. Ministry year{" "}
+        {ministryYear}–{ministryYear + 1}.
       </p>
-
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 12,
-        }}
-      >
-        <div>
-          <label htmlFor="mc-headroom" style={fieldLabelStyle}>
-            Capacity headroom (fed)
-          </label>
-          <input
-            id="mc-headroom"
-            type="number"
-            inputMode="numeric"
-            value={headroom}
-            placeholder="e.g. 4"
-            onChange={(e) => setHeadroom(e.target.value)}
-            style={fieldInputStyle}
-          />
-        </div>
-        <div>
-          <label htmlFor="mc-full" style={fieldLabelStyle}>
-            Full groups of this type
-          </label>
-          <input
-            id="mc-full"
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={fullGroupCount}
-            onChange={(e) => setFullGroupCount(e.target.value)}
-            style={fieldInputStyle}
-          />
-        </div>
-      </div>
-
-      <fieldset
-        style={{
-          border: `1px solid ${P.line}`,
-          borderRadius: 10,
-          padding: "12px 14px",
-          display: "grid",
-          gap: 10,
-        }}
-      >
-        <legend
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            padding: "0 6px",
-          }}
-        >
-          Capacity options — up to two offerings for anyone interested
-        </legend>
-        {optionRows.map((row, i) => (
-          <div
-            key={i}
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr",
-              gap: 12,
-            }}
-          >
-            <div>
-              <label htmlFor={`mc-opt-label-${i}`} style={fieldLabelStyle}>
-                Option {i + 1} label
-              </label>
-              <input
-                id={`mc-opt-label-${i}`}
-                type="text"
-                value={row.label}
-                placeholder={i === 0 ? "e.g. Standard" : "e.g. Larger"}
-                onChange={(e) =>
-                  setOptionRows((rows) => {
-                    const next = [...rows] as [OptionRow, OptionRow];
-                    next[i] = { ...next[i], label: e.target.value };
-                    return next;
-                  })
-                }
-                style={fieldInputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor={`mc-opt-cap-${i}`} style={fieldLabelStyle}>
-                Capacity
-              </label>
-              <input
-                id={`mc-opt-cap-${i}`}
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={row.capacity}
-                placeholder="e.g. 12"
-                onChange={(e) =>
-                  setOptionRows((rows) => {
-                    const next = [...rows] as [OptionRow, OptionRow];
-                    next[i] = { ...next[i], capacity: e.target.value };
-                    return next;
-                  })
-                }
-                style={fieldInputStyle}
-              />
-            </div>
-          </div>
-        ))}
-      </fieldset>
 
       <fieldset
         style={{
