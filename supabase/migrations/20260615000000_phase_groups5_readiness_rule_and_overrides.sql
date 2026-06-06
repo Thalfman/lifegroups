@@ -216,10 +216,16 @@ begin
      and category_id = p_category_id
    for update;
 
+  -- Upsert the cell's overrides. A brand-new row is created INACTIVE (active =
+  -- false) so this RPC never implicitly APPLIES a category to a top type — that
+  -- is admin_set_category_type_cell's job + audit trail. On conflict only
+  -- trigger_overrides (+ updated_by) change, so an already-active cell keeps its
+  -- active flag; overrides on a not-yet-applied cell sit dormant until it is
+  -- applied (the readiness reads only surface active cells).
   insert into public.category_type_targets (
-    audience_category, category_id, trigger_overrides, created_by, updated_by
+    audience_category, category_id, active, trigger_overrides, created_by, updated_by
   )
-  values (p_audience_category, p_category_id, p_overrides, v_actor, v_actor)
+  values (p_audience_category, p_category_id, false, p_overrides, v_actor, v_actor)
   on conflict (audience_category, category_id) do update
      set trigger_overrides = excluded.trigger_overrides,
          updated_by        = v_actor

@@ -100,6 +100,24 @@ describe("readiness-rule migration — per-cell overrides RPC", () => {
     );
   });
 
+  it("never implicitly applies a cell — inserts active=false and leaves active untouched on conflict", () => {
+    const body = functionBody(sql, "admin_set_cell_trigger_overrides");
+    // A brand-new cell row is created INACTIVE so this RPC can't bypass
+    // admin_set_category_type_cell's apply/audit path by defaulting active=true.
+    expect(body).toContain(
+      "values (p_audience_category, p_category_id, false, p_overrides"
+    );
+    // The conflict-update touches only trigger_overrides (+ updated_by); it must
+    // not reactivate or change the cell's active flag. Slice the do-update SET
+    // clause itself (between `do update` and the `returning`) so prose comments
+    // mentioning "active" elsewhere in the body don't enter the assertion.
+    const doUpdate = body.slice(
+      body.indexOf("do update"),
+      body.indexOf("returning id into v_id")
+    );
+    expect(doUpdate).not.toContain("active");
+  });
+
   it("writes a paired audit_events row for the overrides write", () => {
     assertPairedAuditInsert(
       sql,

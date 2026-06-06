@@ -269,16 +269,21 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
       {/* #402 / PRD §2.4: the recast readiness trigger. The global rule reads each
           pillar in its natural unit — interest ≥ N people, capacity required/not,
           health ≥ A–F letter (no overflow pillar) — and each active cell can
-          override any pillar. Softens to a placeholder when the rule read failed.
-          The per-cell display of the resulting readiness signal lands with the
-          Multiply grid (#403); here we own the editing. */}
+          override any pillar. The per-cell override ROWS are built from the catalog
+          + target-cell reads, so a failure there (errors.groupCategories) softens
+          this editor too — otherwise it would render with the global rule but its
+          override rows silently dropped, inviting a save from a surface that lost
+          them. The per-cell display of the resulting readiness signal lands with
+          the Multiply grid (#403); here we own the editing. */}
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
           eyebrow="Readiness rule"
           title="When a cell is ready to multiply"
           description="Mark each pillar required or not and set its threshold. A cell is ready when every required pillar clears; override the rule per cell below."
         />
-        {data.errors.readiness || !data.readiness ? (
+        {data.errors.readiness ||
+        data.errors.groupCategories ||
+        !data.readiness ? (
           <NotConfigured subject="The readiness rule" />
         ) : (
           <Card>

@@ -96,6 +96,10 @@ export function ReadinessRuleEditor({
   rule: ReadinessRule;
   cells: ReadinessCellSeed[];
 }) {
+  // A stable serialization of the saved global rule, mixed into each override
+  // row's key so the rows re-seed their inherited values when the rule changes.
+  const globalRuleKey = JSON.stringify(rule);
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <GlobalRuleForm ministryYear={ministryYear} rule={rule} />
@@ -111,7 +115,14 @@ export function ReadinessRuleEditor({
           <div style={{ display: "grid", gap: 10 }}>
             {cells.map((cell) => (
               <CellOverrideRow
-                key={`${cell.audienceCategory}:${cell.categoryId}`}
+                // The global rule is part of the key: a row INHERITS the global
+                // rule for any pillar it doesn't override, and CellOverrideRow
+                // seeds those inherited values into state once (useState). When the
+                // saved global rule changes (a global save revalidates Settings and
+                // passes a new rule), remounting via the key re-seeds the inherited
+                // controls from the fresh rule, so an inherited pillar can't carry
+                // a stale global threshold into a later override save.
+                key={`${cell.audienceCategory}:${cell.categoryId}:${globalRuleKey}`}
                 cell={cell}
                 globalRule={rule}
               />
