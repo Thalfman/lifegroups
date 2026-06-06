@@ -16,6 +16,8 @@ import {
   fetchProfilesForAdmin,
 } from "@/lib/supabase/read-models";
 import { fetchShepherdCareDirectoryForAdmin } from "@/lib/supabase/shepherd-care-reads";
+import { fetchCategoriesForAudience } from "@/lib/supabase/group-categories-reads";
+import { EMPTY_CATEGORIES_BY_AUDIENCE } from "@/components/admin/forms/group-category-options";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   BUILT_IN_METRIC_DEFAULTS,
@@ -45,6 +47,8 @@ export type GroupManagementReads = {
     typeof fetchShepherdCareDirectoryForAdmin
   >;
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
+  // #398: the category-picker options per top type for the create/edit forms.
+  fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
 };
 
 export function supabaseGroupManagementReads(
@@ -62,6 +66,7 @@ export function supabaseGroupManagementReads(
     fetchOpenFollowUps,
     fetchShepherdCareDirectory: fetchShepherdCareDirectoryForAdmin,
     fetchAttendanceSessions,
+    fetchCategoriesForAudience,
   });
 }
 
@@ -76,6 +81,7 @@ export const EMPTY_GROUP_MANAGEMENT_DATA: GroupManagementData = {
   groupMetricSettings: [],
   healthGradesByGroupId: {},
   healthSignalsByGroupId: {},
+  categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
   errors: {
     groups: "The database is not configured in this environment.",
     leaders: "The database is not configured in this environment.",
@@ -132,6 +138,21 @@ export async function buildGroupManagementData(
     // never member records — reusing the canonical care directory read.
     reads.fetchShepherdCareDirectory(),
   ]);
+
+  // #398: the category-picker options per top type, for the create/edit forms.
+  // Independent of the assembly above; a read failure degrades to an empty list
+  // for that type (the picker then only offers Uncategorized) rather than
+  // blocking the page.
+  const [menCats, womenCats, mixedCats] = await Promise.all([
+    reads.fetchCategoriesForAudience("men"),
+    reads.fetchCategoriesForAudience("women"),
+    reads.fetchCategoriesForAudience("mixed"),
+  ]);
+  const categoriesByAudience = {
+    men: (menCats.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    women: (womenCats.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    mixed: (mixedCats.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+  };
 
   const latestWeek = latestWeekResult.data ?? null;
   const sessionsResult = latestWeek
@@ -202,6 +223,7 @@ export async function buildGroupManagementData(
     groupMetricSettings: settingsResult.data ?? [],
     healthGradesByGroupId,
     healthSignalsByGroupId,
+    categoriesByAudience,
     errors: {
       groups: groupsResult.error?.message ?? null,
       leaders: leadersResult.error?.message ?? null,

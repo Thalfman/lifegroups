@@ -59,7 +59,9 @@ export type CandidateSeedRow = {
 // memberships, so the Doc's snapshot is provenance only). Ambiguity markers
 // and source caveats are layered on in later slices. Returns null when there
 // is nothing to preserve, so existing-null notes semantics are unchanged.
-export function buildCandidateNotes(entry: MultiplicationSeedEntry): string | null {
+export function buildCandidateNotes(
+  entry: MultiplicationSeedEntry
+): string | null {
   const parts: string[] = [];
 
   if (entry.memberCount != null) {
@@ -67,7 +69,9 @@ export function buildCandidateNotes(entry: MultiplicationSeedEntry): string | nu
   }
 
   if (entry.uncertain) {
-    parts.push("Doc marked this entry `(?)` — unconfirmed; verify with Julian.");
+    parts.push(
+      "Doc marked this entry `(?)` — unconfirmed; verify with Julian."
+    );
   }
 
   // Caveat strings are already self-framed ("Doc note: …", "Doc bracket: …",
@@ -118,56 +122,303 @@ export function buildSeedRows(entries: MultiplicationSeedEntry[]): {
 const WOMENS_COUNT_CAVEAT =
   "Section reconciliation: the Doc's women's header says \"6 groups\" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.";
 const MIXED_COUNT_CAVEAT =
-  "Section reconciliation: the Doc's mixed header says \"18 groups\"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).";
+  'Section reconciliation: the Doc\'s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).';
 const RETIREMENT_HEDGE_CAVEAT =
   'Doc bracket header hedge: "Retirement (some or most of them)".';
 
 export const MULTIPLICATION_SEED_ENTRIES: MultiplicationSeedEntry[] = [
   // --- Men's ---
-  { leader: "George Kelly", audience: "men", lifeStage: "multi_generational", memberCount: 9, successor: null, meetingTime: null, caveats: ['Doc bracket: Men\'s "50\'s – 60\'s".'] },
-  { leader: "Tim Boberg", audience: "men", lifeStage: "multi_generational", memberCount: 13, successor: null, meetingTime: null, caveats: ['Doc bracket: Men\'s "60\'s – 70\'s".'] },
-  { leader: "Nate Baron", audience: "men", lifeStage: "multi_generational", memberCount: 10, successor: "Tony L.", meetingTime: null },
-  { leader: "Mike Irizarry", audience: "men", lifeStage: "multi_generational", memberCount: 15, successor: "Jon H.", meetingTime: null },
-  { leader: "George Diamond", audience: "men", lifeStage: "multi_generational", memberCount: 6, successor: null, meetingTime: null },
+  {
+    leader: "George Kelly",
+    audience: "men",
+    lifeStage: "multi_generational",
+    memberCount: 9,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Men's \"50's – 60's\"."],
+  },
+  {
+    leader: "Tim Boberg",
+    audience: "men",
+    lifeStage: "multi_generational",
+    memberCount: 13,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Men's \"60's – 70's\"."],
+  },
+  {
+    leader: "Nate Baron",
+    audience: "men",
+    lifeStage: "multi_generational",
+    memberCount: 10,
+    successor: "Tony L.",
+    meetingTime: null,
+  },
+  {
+    leader: "Mike Irizarry",
+    audience: "men",
+    lifeStage: "multi_generational",
+    memberCount: 15,
+    successor: "Jon H.",
+    meetingTime: null,
+  },
+  {
+    leader: "George Diamond",
+    audience: "men",
+    lifeStage: "multi_generational",
+    memberCount: 6,
+    successor: null,
+    meetingTime: null,
+  },
 
   // --- Women's (header "6 groups" vs seven listed — caveat on each) ---
-  { leader: "Stephanie Hichox", audience: "women", lifeStage: "young_families", memberCount: 15, successor: null, meetingTime: null, uncertain: true, caveats: ['Doc bracket: Women\'s "30\'s – 40\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Diana Johnson", audience: "women", lifeStage: "multi_generational", memberCount: 15, successor: "Cindy Kessaris", meetingTime: null, caveats: ['Doc bracket: Women\'s "50\'s – 60\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Christine Mathias", audience: "women", lifeStage: "multi_generational", memberCount: 12, successor: null, meetingTime: null, caveats: ['Doc bracket: Women\'s "50\'s – 60\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Gail Blair", audience: "women", lifeStage: "multi_generational", memberCount: 4, successor: null, meetingTime: null, caveats: ['Doc bracket: Women\'s "60\'s – 70\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Donna Lawrence", audience: "women", lifeStage: "multi_generational", memberCount: 13, successor: null, meetingTime: null, caveats: ['Doc bracket: Women\'s "60\'s – 70\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Judi Tripp", audience: "women", lifeStage: "multi_generational", memberCount: 9, successor: null, meetingTime: null, caveats: ['Doc bracket: Women\'s "60\'s – 70\'s".', WOMENS_COUNT_CAVEAT] },
-  { leader: "Sandra Lea", audience: "women", lifeStage: "spanish_speaking", memberCount: null, successor: null, meetingTime: null, uncertain: true, caveats: [WOMENS_COUNT_CAVEAT] },
+  {
+    leader: "Stephanie Hichox",
+    audience: "women",
+    lifeStage: "young_families",
+    memberCount: 15,
+    successor: null,
+    meetingTime: null,
+    uncertain: true,
+    caveats: ["Doc bracket: Women's \"30's – 40's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Diana Johnson",
+    audience: "women",
+    lifeStage: "multi_generational",
+    memberCount: 15,
+    successor: "Cindy Kessaris",
+    meetingTime: null,
+    caveats: ["Doc bracket: Women's \"50's – 60's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Christine Mathias",
+    audience: "women",
+    lifeStage: "multi_generational",
+    memberCount: 12,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Women's \"50's – 60's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Gail Blair",
+    audience: "women",
+    lifeStage: "multi_generational",
+    memberCount: 4,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Women's \"60's – 70's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Donna Lawrence",
+    audience: "women",
+    lifeStage: "multi_generational",
+    memberCount: 13,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Women's \"60's – 70's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Judi Tripp",
+    audience: "women",
+    lifeStage: "multi_generational",
+    memberCount: 9,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc bracket: Women's \"60's – 70's\".", WOMENS_COUNT_CAVEAT],
+  },
+  {
+    leader: "Sandra Lea",
+    audience: "women",
+    lifeStage: "spanish_speaking",
+    memberCount: null,
+    successor: null,
+    meetingTime: null,
+    uncertain: true,
+    caveats: [WOMENS_COUNT_CAVEAT],
+  },
 
   // --- Mixed (header "18 groups") ---
-  { leader: "Keith and Joy Krispin", audience: "mixed", lifeStage: "young_professionals", memberCount: 17, successor: null, meetingTime: null },
-  { leader: "Mike and Mary Jo Beasley", audience: "mixed", lifeStage: "young_professionals", memberCount: null, successor: null, meetingTime: null, uncertain: true, caveats: ["Doc note: on the same source line as the Krispins.", MIXED_COUNT_CAVEAT] },
-  { leader: "Caleb and Kate Senyshyn", audience: "mixed", lifeStage: "young_professionals", memberCount: 8, successor: null, meetingTime: null },
+  {
+    leader: "Keith and Joy Krispin",
+    audience: "mixed",
+    lifeStage: "young_professionals",
+    memberCount: 17,
+    successor: null,
+    meetingTime: null,
+  },
+  {
+    leader: "Mike and Mary Jo Beasley",
+    audience: "mixed",
+    lifeStage: "young_professionals",
+    memberCount: null,
+    successor: null,
+    meetingTime: null,
+    uncertain: true,
+    caveats: [
+      "Doc note: on the same source line as the Krispins.",
+      MIXED_COUNT_CAVEAT,
+    ],
+  },
+  {
+    leader: "Caleb and Kate Senyshyn",
+    audience: "mixed",
+    lifeStage: "young_professionals",
+    memberCount: 8,
+    successor: null,
+    meetingTime: null,
+  },
 
-  { leader: "Ben and Gracie Bertsche", audience: "mixed", lifeStage: "young_families", memberCount: 12, successor: null, meetingTime: null },
-  { leader: "Julian and Paula Guevara", audience: "mixed", lifeStage: "young_families", memberCount: 8, successor: null, meetingTime: null, caveats: ["Doc note: (closing in August)."] },
+  {
+    leader: "Ben and Gracie Bertsche",
+    audience: "mixed",
+    lifeStage: "young_families",
+    memberCount: 12,
+    successor: null,
+    meetingTime: null,
+  },
+  {
+    leader: "Julian and Paula Guevara",
+    audience: "mixed",
+    lifeStage: "young_families",
+    memberCount: 8,
+    successor: null,
+    meetingTime: null,
+    caveats: ["Doc note: (closing in August)."],
+  },
 
-  { leader: "Calvin and Julianne Braker", audience: "mixed", lifeStage: "families_with_kids", memberCount: 14, successor: null, meetingTime: null },
-  { leader: "David and Megan Cahill", audience: "mixed", lifeStage: "families_with_kids", memberCount: 12, successor: "Gonzalez", meetingTime: null },
-  { leader: "Andre and Lindsey Patrick", audience: "mixed", lifeStage: "families_with_kids", memberCount: 12, successor: "Marshalls", meetingTime: null },
+  {
+    leader: "Calvin and Julianne Braker",
+    audience: "mixed",
+    lifeStage: "families_with_kids",
+    memberCount: 14,
+    successor: null,
+    meetingTime: null,
+  },
+  {
+    leader: "David and Megan Cahill",
+    audience: "mixed",
+    lifeStage: "families_with_kids",
+    memberCount: 12,
+    successor: "Gonzalez",
+    meetingTime: null,
+  },
+  {
+    leader: "Andre and Lindsey Patrick",
+    audience: "mixed",
+    lifeStage: "families_with_kids",
+    memberCount: 12,
+    successor: "Marshalls",
+    meetingTime: null,
+  },
 
   // "Families with young professional kids" has no exact life_stage enum value;
   // mapped to the closest (families_with_adult_kids) with the original label
   // preserved verbatim so the remap is visible, not silent.
-  { leader: "Dennis Rens", audience: "mixed", lifeStage: "families_with_adult_kids", memberCount: 15, successor: null, meetingTime: null, uncertain: true, caveats: ['Doc bracket: "Families with young professional kids" (no exact life-stage value; mapped to families_with_adult_kids).'] },
+  {
+    leader: "Dennis Rens",
+    audience: "mixed",
+    lifeStage: "families_with_adult_kids",
+    memberCount: 15,
+    successor: null,
+    meetingTime: null,
+    uncertain: true,
+    caveats: [
+      'Doc bracket: "Families with young professional kids" (no exact life-stage value; mapped to families_with_adult_kids).',
+    ],
+  },
 
-  { leader: "Ron and Carole Lanier", audience: "mixed", lifeStage: "families_with_adult_kids", memberCount: 10, successor: null, meetingTime: null },
-  { leader: "Keith and Mary Lee", audience: "mixed", lifeStage: "families_with_adult_kids", memberCount: 10, successor: null, meetingTime: null },
+  {
+    leader: "Ron and Carole Lanier",
+    audience: "mixed",
+    lifeStage: "families_with_adult_kids",
+    memberCount: 10,
+    successor: null,
+    meetingTime: null,
+  },
+  {
+    leader: "Keith and Mary Lee",
+    audience: "mixed",
+    lifeStage: "families_with_adult_kids",
+    memberCount: 10,
+    successor: null,
+    meetingTime: null,
+  },
 
-  { leader: "Tim and Sou Boberg", audience: "mixed", lifeStage: "retirement", memberCount: 12, successor: null, meetingTime: "during_the_day", caveats: [RETIREMENT_HEDGE_CAVEAT] },
-  { leader: "Carol Dembkowski", audience: "mixed", lifeStage: "retirement", memberCount: 8, successor: null, meetingTime: "evening", caveats: [RETIREMENT_HEDGE_CAVEAT] },
-  { leader: "Phil and Karen Dickert", audience: "mixed", lifeStage: "retirement", memberCount: 12, successor: null, meetingTime: "during_the_day", caveats: [RETIREMENT_HEDGE_CAVEAT] },
-  { leader: "Jere and Jana Miller", audience: "mixed", lifeStage: "retirement", memberCount: 12, successor: null, meetingTime: "during_the_day", caveats: ["Doc note: (Vietmeier's?) — ambiguous successor/over-shepherd, unconfirmed.", RETIREMENT_HEDGE_CAVEAT] },
-  { leader: "Phil and Karen Thatcher", audience: "mixed", lifeStage: "retirement", memberCount: 13, successor: null, meetingTime: "evening", caveats: [RETIREMENT_HEDGE_CAVEAT] },
-  { leader: "Ray and Julie Herrick", audience: "mixed", lifeStage: "retirement", memberCount: 12, successor: null, meetingTime: "during_the_day", caveats: [RETIREMENT_HEDGE_CAVEAT] },
+  {
+    leader: "Tim and Sou Boberg",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 12,
+    successor: null,
+    meetingTime: "during_the_day",
+    caveats: [RETIREMENT_HEDGE_CAVEAT],
+  },
+  {
+    leader: "Carol Dembkowski",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 8,
+    successor: null,
+    meetingTime: "evening",
+    caveats: [RETIREMENT_HEDGE_CAVEAT],
+  },
+  {
+    leader: "Phil and Karen Dickert",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 12,
+    successor: null,
+    meetingTime: "during_the_day",
+    caveats: [RETIREMENT_HEDGE_CAVEAT],
+  },
+  {
+    leader: "Jere and Jana Miller",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 12,
+    successor: null,
+    meetingTime: "during_the_day",
+    caveats: [
+      "Doc note: (Vietmeier's?) — ambiguous successor/over-shepherd, unconfirmed.",
+      RETIREMENT_HEDGE_CAVEAT,
+    ],
+  },
+  {
+    leader: "Phil and Karen Thatcher",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 13,
+    successor: null,
+    meetingTime: "evening",
+    caveats: [RETIREMENT_HEDGE_CAVEAT],
+  },
+  {
+    leader: "Ray and Julie Herrick",
+    audience: "mixed",
+    lifeStage: "retirement",
+    memberCount: 12,
+    successor: null,
+    meetingTime: "during_the_day",
+    caveats: [RETIREMENT_HEDGE_CAVEAT],
+  },
 
-  { leader: "Chris/Sydney Anderson", audience: "mixed", lifeStage: "multi_generational", memberCount: 6, successor: null, meetingTime: null },
-  { leader: "Phil and Sandy Leman", audience: "mixed", lifeStage: "multi_generational", memberCount: 12, successor: null, meetingTime: null },
+  {
+    leader: "Chris/Sydney Anderson",
+    audience: "mixed",
+    lifeStage: "multi_generational",
+    memberCount: 6,
+    successor: null,
+    meetingTime: null,
+  },
+  {
+    leader: "Phil and Sandy Leman",
+    audience: "mixed",
+    lifeStage: "multi_generational",
+    memberCount: 12,
+    successor: null,
+    meetingTime: null,
+  },
 ];
 
 // SQL string literal: single quotes doubled, or `null` when absent. Keeps the
@@ -178,7 +429,9 @@ function sqlText(value: string | null): string {
 }
 
 function sqlMeetingTime(value: MultiplicationMeetingTime | null): string {
-  return value == null ? "null" : `'${value}'::public.multiplication_meeting_time`;
+  return value == null
+    ? "null"
+    : `'${value}'::public.multiplication_meeting_time`;
 }
 
 // Render an idempotent SQL seed for the planner, runnable like
@@ -189,7 +442,9 @@ function sqlMeetingTime(value: MultiplicationMeetingTime | null): string {
 //     candidate, honouring the one-active-per-group invariant and never
 //     creating a duplicate active candidate on re-run.
 // No hard deletes; archived candidates are left untouched.
-export function renderMultiplicationSeedSql(entries: MultiplicationSeedEntry[]): string {
+export function renderMultiplicationSeedSql(
+  entries: MultiplicationSeedEntry[]
+): string {
   const { groups, candidates } = buildSeedRows(entries);
 
   const blocks = entries.map((entry, i) => {
@@ -197,10 +452,14 @@ export function renderMultiplicationSeedSql(entries: MultiplicationSeedEntry[]):
     const candidate = candidates[i];
     const name = sqlText(group.name);
 
+    // #398: life_stage was retired as the segmentation source — groups now carry
+    // a free-form category_id, tagged by an admin in-app (no 1:1 backfill from
+    // the Doc's life-stage brackets). The seed therefore inserts each group as
+    // Uncategorized; the Doc's life-stage bracket is preserved only as the block
+    // comment below for provenance.
     const groupInsert =
-      `insert into public.groups (name, audience_category, life_stage)\n` +
-      `select ${name}, '${group.audienceCategory}'::public.group_audience_category, ` +
-      `'${group.lifeStage}'::public.group_life_stage\n` +
+      `insert into public.groups (name, audience_category)\n` +
+      `select ${name}, '${group.audienceCategory}'::public.group_audience_category\n` +
       `where not exists (select 1 from public.groups where name = ${name});`;
 
     const candidateInsert =

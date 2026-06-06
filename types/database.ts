@@ -44,7 +44,10 @@ export interface GroupsRow {
   lifecycle_status: E.GroupLifecycleStatus;
   health_status: E.GroupHealthStatus;
   audience_category: E.GroupAudienceCategory | null;
-  life_stage: E.GroupLifeStage | null;
+  // #398: the catalog category this group carries under its audience_category —
+  // the group's cell. null = Uncategorized. Replaces the retired life_stage
+  // column as the single segmentation source.
+  category_id: string | null;
   launched_on: DateString | null;
   pause_reason: string | null;
   pause_start_date: DateString | null;

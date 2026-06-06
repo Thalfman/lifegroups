@@ -27,6 +27,7 @@ function emptyReads(
     fetchOpenFollowUps: async () => ok([]),
     fetchShepherdCareDirectory: async () => ok([]),
     fetchAttendanceSessions: async () => ok([]),
+    fetchCategoriesForAudience: async () => ok([]),
     ...overrides,
   };
 }

@@ -15,8 +15,8 @@
 -- in-app (ADR 0006 / R4).
 
 -- George Kelly (men / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'George Kelly', 'men'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'George Kelly', 'men'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'George Kelly');
 
 insert into public.multiplication_candidates (
@@ -33,8 +33,8 @@ where g.name = 'George Kelly'
   );
 
 -- Tim Boberg (men / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Tim Boberg', 'men'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Tim Boberg', 'men'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Tim Boberg');
 
 insert into public.multiplication_candidates (
@@ -51,8 +51,8 @@ where g.name = 'Tim Boberg'
   );
 
 -- Nate Baron (men / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Nate Baron', 'men'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Nate Baron', 'men'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Nate Baron');
 
 insert into public.multiplication_candidates (
@@ -69,8 +69,8 @@ where g.name = 'Nate Baron'
   );
 
 -- Mike Irizarry (men / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Mike Irizarry', 'men'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Mike Irizarry', 'men'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Mike Irizarry');
 
 insert into public.multiplication_candidates (
@@ -87,8 +87,8 @@ where g.name = 'Mike Irizarry'
   );
 
 -- George Diamond (men / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'George Diamond', 'men'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'George Diamond', 'men'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'George Diamond');
 
 insert into public.multiplication_candidates (
@@ -105,8 +105,8 @@ where g.name = 'George Diamond'
   );
 
 -- Stephanie Hichox (women / young_families)
-insert into public.groups (name, audience_category, life_stage)
-select 'Stephanie Hichox', 'women'::public.group_audience_category, 'young_families'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Stephanie Hichox', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Stephanie Hichox');
 
 insert into public.multiplication_candidates (
@@ -123,8 +123,8 @@ where g.name = 'Stephanie Hichox'
   );
 
 -- Diana Johnson (women / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Diana Johnson', 'women'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Diana Johnson', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Diana Johnson');
 
 insert into public.multiplication_candidates (
@@ -141,8 +141,8 @@ where g.name = 'Diana Johnson'
   );
 
 -- Christine Mathias (women / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Christine Mathias', 'women'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Christine Mathias', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Christine Mathias');
 
 insert into public.multiplication_candidates (
@@ -159,8 +159,8 @@ where g.name = 'Christine Mathias'
   );
 
 -- Gail Blair (women / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Gail Blair', 'women'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Gail Blair', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Gail Blair');
 
 insert into public.multiplication_candidates (
@@ -177,8 +177,8 @@ where g.name = 'Gail Blair'
   );
 
 -- Donna Lawrence (women / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Donna Lawrence', 'women'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Donna Lawrence', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Donna Lawrence');
 
 insert into public.multiplication_candidates (
@@ -195,8 +195,8 @@ where g.name = 'Donna Lawrence'
   );
 
 -- Judi Tripp (women / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Judi Tripp', 'women'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Judi Tripp', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Judi Tripp');
 
 insert into public.multiplication_candidates (
@@ -213,8 +213,8 @@ where g.name = 'Judi Tripp'
   );
 
 -- Sandra Lea (women / spanish_speaking)
-insert into public.groups (name, audience_category, life_stage)
-select 'Sandra Lea', 'women'::public.group_audience_category, 'spanish_speaking'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Sandra Lea', 'women'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Sandra Lea');
 
 insert into public.multiplication_candidates (
@@ -231,8 +231,8 @@ where g.name = 'Sandra Lea'
   );
 
 -- Keith and Joy Krispin (mixed / young_professionals)
-insert into public.groups (name, audience_category, life_stage)
-select 'Keith and Joy Krispin', 'mixed'::public.group_audience_category, 'young_professionals'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Keith and Joy Krispin', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Keith and Joy Krispin');
 
 insert into public.multiplication_candidates (
@@ -249,8 +249,8 @@ where g.name = 'Keith and Joy Krispin'
   );
 
 -- Mike and Mary Jo Beasley (mixed / young_professionals)
-insert into public.groups (name, audience_category, life_stage)
-select 'Mike and Mary Jo Beasley', 'mixed'::public.group_audience_category, 'young_professionals'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Mike and Mary Jo Beasley', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Mike and Mary Jo Beasley');
 
 insert into public.multiplication_candidates (
@@ -267,8 +267,8 @@ where g.name = 'Mike and Mary Jo Beasley'
   );
 
 -- Caleb and Kate Senyshyn (mixed / young_professionals)
-insert into public.groups (name, audience_category, life_stage)
-select 'Caleb and Kate Senyshyn', 'mixed'::public.group_audience_category, 'young_professionals'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Caleb and Kate Senyshyn', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Caleb and Kate Senyshyn');
 
 insert into public.multiplication_candidates (
@@ -285,8 +285,8 @@ where g.name = 'Caleb and Kate Senyshyn'
   );
 
 -- Ben and Gracie Bertsche (mixed / young_families)
-insert into public.groups (name, audience_category, life_stage)
-select 'Ben and Gracie Bertsche', 'mixed'::public.group_audience_category, 'young_families'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Ben and Gracie Bertsche', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Ben and Gracie Bertsche');
 
 insert into public.multiplication_candidates (
@@ -303,8 +303,8 @@ where g.name = 'Ben and Gracie Bertsche'
   );
 
 -- Julian and Paula Guevara (mixed / young_families)
-insert into public.groups (name, audience_category, life_stage)
-select 'Julian and Paula Guevara', 'mixed'::public.group_audience_category, 'young_families'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Julian and Paula Guevara', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Julian and Paula Guevara');
 
 insert into public.multiplication_candidates (
@@ -321,8 +321,8 @@ where g.name = 'Julian and Paula Guevara'
   );
 
 -- Calvin and Julianne Braker (mixed / families_with_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'Calvin and Julianne Braker', 'mixed'::public.group_audience_category, 'families_with_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Calvin and Julianne Braker', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Calvin and Julianne Braker');
 
 insert into public.multiplication_candidates (
@@ -339,8 +339,8 @@ where g.name = 'Calvin and Julianne Braker'
   );
 
 -- David and Megan Cahill (mixed / families_with_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'David and Megan Cahill', 'mixed'::public.group_audience_category, 'families_with_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'David and Megan Cahill', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'David and Megan Cahill');
 
 insert into public.multiplication_candidates (
@@ -357,8 +357,8 @@ where g.name = 'David and Megan Cahill'
   );
 
 -- Andre and Lindsey Patrick (mixed / families_with_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'Andre and Lindsey Patrick', 'mixed'::public.group_audience_category, 'families_with_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Andre and Lindsey Patrick', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Andre and Lindsey Patrick');
 
 insert into public.multiplication_candidates (
@@ -375,8 +375,8 @@ where g.name = 'Andre and Lindsey Patrick'
   );
 
 -- Dennis Rens (mixed / families_with_adult_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'Dennis Rens', 'mixed'::public.group_audience_category, 'families_with_adult_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Dennis Rens', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Dennis Rens');
 
 insert into public.multiplication_candidates (
@@ -393,8 +393,8 @@ where g.name = 'Dennis Rens'
   );
 
 -- Ron and Carole Lanier (mixed / families_with_adult_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'Ron and Carole Lanier', 'mixed'::public.group_audience_category, 'families_with_adult_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Ron and Carole Lanier', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Ron and Carole Lanier');
 
 insert into public.multiplication_candidates (
@@ -411,8 +411,8 @@ where g.name = 'Ron and Carole Lanier'
   );
 
 -- Keith and Mary Lee (mixed / families_with_adult_kids)
-insert into public.groups (name, audience_category, life_stage)
-select 'Keith and Mary Lee', 'mixed'::public.group_audience_category, 'families_with_adult_kids'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Keith and Mary Lee', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Keith and Mary Lee');
 
 insert into public.multiplication_candidates (
@@ -429,8 +429,8 @@ where g.name = 'Keith and Mary Lee'
   );
 
 -- Tim and Sou Boberg (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Tim and Sou Boberg', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Tim and Sou Boberg', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Tim and Sou Boberg');
 
 insert into public.multiplication_candidates (
@@ -447,8 +447,8 @@ where g.name = 'Tim and Sou Boberg'
   );
 
 -- Carol Dembkowski (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Carol Dembkowski', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Carol Dembkowski', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Carol Dembkowski');
 
 insert into public.multiplication_candidates (
@@ -465,8 +465,8 @@ where g.name = 'Carol Dembkowski'
   );
 
 -- Phil and Karen Dickert (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Phil and Karen Dickert', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Phil and Karen Dickert', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Phil and Karen Dickert');
 
 insert into public.multiplication_candidates (
@@ -483,8 +483,8 @@ where g.name = 'Phil and Karen Dickert'
   );
 
 -- Jere and Jana Miller (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Jere and Jana Miller', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Jere and Jana Miller', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Jere and Jana Miller');
 
 insert into public.multiplication_candidates (
@@ -501,8 +501,8 @@ where g.name = 'Jere and Jana Miller'
   );
 
 -- Phil and Karen Thatcher (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Phil and Karen Thatcher', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Phil and Karen Thatcher', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Phil and Karen Thatcher');
 
 insert into public.multiplication_candidates (
@@ -519,8 +519,8 @@ where g.name = 'Phil and Karen Thatcher'
   );
 
 -- Ray and Julie Herrick (mixed / retirement)
-insert into public.groups (name, audience_category, life_stage)
-select 'Ray and Julie Herrick', 'mixed'::public.group_audience_category, 'retirement'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Ray and Julie Herrick', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Ray and Julie Herrick');
 
 insert into public.multiplication_candidates (
@@ -537,8 +537,8 @@ where g.name = 'Ray and Julie Herrick'
   );
 
 -- Chris/Sydney Anderson (mixed / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Chris/Sydney Anderson', 'mixed'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Chris/Sydney Anderson', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Chris/Sydney Anderson');
 
 insert into public.multiplication_candidates (
@@ -555,8 +555,8 @@ where g.name = 'Chris/Sydney Anderson'
   );
 
 -- Phil and Sandy Leman (mixed / multi_generational)
-insert into public.groups (name, audience_category, life_stage)
-select 'Phil and Sandy Leman', 'mixed'::public.group_audience_category, 'multi_generational'::public.group_life_stage
+insert into public.groups (name, audience_category)
+select 'Phil and Sandy Leman', 'mixed'::public.group_audience_category
 where not exists (select 1 from public.groups where name = 'Phil and Sandy Leman');
 
 insert into public.multiplication_candidates (

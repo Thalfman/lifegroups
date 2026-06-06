@@ -12,7 +12,6 @@ import type {
   GroupAudienceCategory,
   GroupCalendarEventStatus,
   GroupCalendarEventType,
-  GroupLifeStage,
   GuestPipelineStage,
   LeaderReadinessStage,
   MeetingFrequency,
@@ -90,7 +89,9 @@ export type GroupRpcArgs = {
   p_meeting_frequency: MeetingFrequency;
   p_meeting_week_parity: MeetingWeekParity | null;
   p_audience_category: GroupAudienceCategory | null;
-  p_life_stage: GroupLifeStage | null;
+  // #398: the group's category id (its cell). null = Uncategorized. Replaces
+  // the retired p_life_stage argument.
+  p_category_id: string | null;
   p_launched_on: string | null;
 };
 

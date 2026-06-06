@@ -15,8 +15,13 @@ import {
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
 import type { GroupsRow } from "@/types/database";
-import type { MeetingFrequency } from "@/types/enums";
+import type { GroupAudienceCategory, MeetingFrequency } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
+import {
+  EMPTY_CATEGORIES_BY_AUDIENCE,
+  optionsForAudience,
+  type CategoriesByAudience,
+} from "./group-category-options";
 
 function isoTimeForInput(value: string | null): string {
   if (!value) return "";
@@ -38,18 +43,25 @@ export function GroupEditForm({
   onSaved,
   onDirty,
   onPendingChange,
+  // #398: category-picker options grouped by top type (see create form).
+  categoriesByAudience = EMPTY_CATEGORIES_BY_AUDIENCE,
 }: {
   group: GroupsRow;
   onCancel?: () => void;
   onSaved?: () => void;
   onDirty?: () => void;
   onPendingChange?: (pending: boolean) => void;
+  categoriesByAudience?: CategoriesByAudience;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateGroup
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>(
     group.meeting_frequency
+  );
+  // #398: the live audience selection drives the category picker's options.
+  const [audience, setAudience] = useState<GroupAudienceCategory | "">(
+    group.audience_category ?? ""
   );
 
   // Notify the drawer once the update lands so it can close and refresh the
@@ -244,7 +256,10 @@ export function GroupEditForm({
           <select
             id={`edit-audience_category-${group.id}`}
             name="audience_category"
-            defaultValue={group.audience_category ?? ""}
+            value={audience}
+            onChange={(e) =>
+              setAudience(e.target.value as GroupAudienceCategory | "")
+            }
             style={fieldSelectStyle}
           >
             <option value="">Unset</option>
@@ -255,27 +270,32 @@ export function GroupEditForm({
         </div>
         <div>
           <label
-            htmlFor={`edit-life_stage-${group.id}`}
+            htmlFor={`edit-category_id-${group.id}`}
             style={fieldLabelStyle}
           >
-            Life stage
+            Category
           </label>
           <select
-            id={`edit-life_stage-${group.id}`}
-            name="life_stage"
-            defaultValue={group.life_stage ?? ""}
+            id={`edit-category_id-${group.id}`}
+            name="category_id"
+            // Keyed by audience so a top-type change resets the picker to the
+            // new type's categories. Defaults to the group's current category
+            // only while the audience is unchanged; otherwise "" = Uncategorized.
+            key={audience}
+            defaultValue={
+              audience === (group.audience_category ?? "")
+                ? (group.category_id ?? "")
+                : ""
+            }
+            disabled={!audience}
             style={fieldSelectStyle}
           >
-            <option value="">Unset</option>
-            <option value="young_professionals">Young professionals</option>
-            <option value="young_families">Young families</option>
-            <option value="families_with_kids">Families with kids/teens</option>
-            <option value="families_with_adult_kids">
-              Families with adult kids
-            </option>
-            <option value="retirement">Retirement</option>
-            <option value="multi_generational">Multi-generational</option>
-            <option value="spanish_speaking">Spanish speaking</option>
+            <option value="">Uncategorized</option>
+            {optionsForAudience(categoriesByAudience, audience).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
           </select>
         </div>
         <div>

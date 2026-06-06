@@ -33,7 +33,7 @@ const GROUP_KEYS = [
   "address_optional",
   "capacity",
   "audience_category",
-  "life_stage",
+  "category_id",
   "launched_on",
 ] as const;
 
@@ -49,14 +49,17 @@ function payloadToRpcArgs(payload: GroupWritablePayload): GroupRpcArgs {
     p_meeting_frequency: payload.meeting_frequency,
     p_meeting_week_parity: payload.meeting_week_parity,
     p_audience_category: payload.audience_category ?? null,
-    p_life_stage: payload.life_stage ?? null,
+    p_category_id: payload.category_id ?? null,
     p_launched_on: payload.launched_on ?? null,
   };
 }
 
 // ----- adminCreateGroup ----------------------------------------------------
 
-const CREATE_GROUP_SPEC: AdminWriteActionSpec<GroupWritablePayload, { id: string }> = {
+const CREATE_GROUP_SPEC: AdminWriteActionSpec<
+  GroupWritablePayload,
+  { id: string }
+> = {
   name: "admin.groups.create",
   keys: GROUP_KEYS,
   validate: validateCreateGroupPayload,
@@ -68,7 +71,7 @@ const CREATE_GROUP_SPEC: AdminWriteActionSpec<GroupWritablePayload, { id: string
 
 export async function adminCreateGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<GroupWritablePayload>,
+  input: ActionInput<GroupWritablePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_GROUP_SPEC, prev, input);
 }
@@ -79,7 +82,10 @@ type UpdateGroupPayload = GroupWritablePayload & { group_id: string };
 
 const UPDATE_GROUP_KEYS = ["group_id", ...GROUP_KEYS] as const;
 
-const UPDATE_GROUP_SPEC: AdminWriteActionSpec<UpdateGroupPayload, { id: string }> = {
+const UPDATE_GROUP_SPEC: AdminWriteActionSpec<
+  UpdateGroupPayload,
+  { id: string }
+> = {
   name: "admin.groups.update",
   keys: UPDATE_GROUP_KEYS,
   validate: validateUpdateGroupPayload,
@@ -95,7 +101,7 @@ const UPDATE_GROUP_SPEC: AdminWriteActionSpec<UpdateGroupPayload, { id: string }
 
 export async function adminUpdateGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpdateGroupPayload>,
+  input: ActionInput<UpdateGroupPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_GROUP_SPEC, prev, input);
 }
@@ -111,33 +117,36 @@ const CLOSE_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
   keys: GROUP_ID_KEYS,
   validate: validateGroupIdPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
-  rpc: (client, value) => rpcAdminCloseGroup(client, { p_group_id: value.group_id }),
+  rpc: (client, value) =>
+    rpcAdminCloseGroup(client, { p_group_id: value.group_id }),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The group was not closed. Please try again.",
 };
 
 export async function adminCloseGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<GroupIdPayload>,
+  input: ActionInput<GroupIdPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CLOSE_GROUP_SPEC, prev, input);
 }
 
 // ----- adminReopenGroup ----------------------------------------------------
 
-const REOPEN_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
-  name: "admin.groups.reopen",
-  keys: GROUP_ID_KEYS,
-  validate: validateGroupIdPayload,
-  fields: (_actor, value) => ({ target_group_id: value.group_id }),
-  rpc: (client, value) => rpcAdminReopenGroup(client, { p_group_id: value.group_id }),
-  revalidate: () => REVALIDATE_PATH,
-  noDataError: "The group was not reopened. Please try again.",
-};
+const REOPEN_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> =
+  {
+    name: "admin.groups.reopen",
+    keys: GROUP_ID_KEYS,
+    validate: validateGroupIdPayload,
+    fields: (_actor, value) => ({ target_group_id: value.group_id }),
+    rpc: (client, value) =>
+      rpcAdminReopenGroup(client, { p_group_id: value.group_id }),
+    revalidate: () => REVALIDATE_PATH,
+    noDataError: "The group was not reopened. Please try again.",
+  };
 
 export async function adminReopenGroup(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<GroupIdPayload>,
+  input: ActionInput<GroupIdPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(REOPEN_GROUP_SPEC, prev, input);
 }

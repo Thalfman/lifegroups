@@ -1,4 +1,8 @@
 import { GroupsDirectory } from "@/components/admin/groups-directory";
+import {
+  EMPTY_CATEGORIES_BY_AUDIENCE,
+  type CategoriesByAudience,
+} from "@/components/admin/forms/group-category-options";
 import { P, fontBody } from "@/lib/pastoral";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupHealthLetter } from "@/types/enums";
@@ -45,6 +49,10 @@ export type GroupManagementData = {
   // and leader-care concern reads. These drive the Needs Health Check (missing
   // required ratings) and Needs Attention (union of concerns) tabs per plan §4.
   healthSignalsByGroupId: Record<string, GroupHealthSignals>;
+  // #398: category-picker options grouped by top type, for the group create/edit
+  // forms. Each list is the live categories applied (active cell) to that
+  // audience. Empty when the catalog read failed or nothing is applied yet.
+  categoriesByAudience: CategoriesByAudience;
   errors: {
     groups: string | null;
     leaders: string | null;
@@ -105,6 +113,9 @@ export function GroupManagementShell({
         healthSignalsByGroupId={data.healthSignalsByGroupId}
         watchGrade={data.metricDefaults.group_health_watch_grade}
         viewerId={viewerId}
+        categoriesByAudience={
+          data.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
+        }
       />
     </div>
   );

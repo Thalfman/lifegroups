@@ -64,3 +64,49 @@ export async function fetchCategoryTypeCells(
     return { data: null, error: wrapError("category_type_targets", error) };
   return { data: data ?? [], error: null };
 }
+
+// #398: the category-picker options for a group of a given top type. A category
+// is offered for an audience_category only when it has an ACTIVE cell under that
+// top type (the cell is what "applies" the category to the type, wave-1). Live
+// (non-archived) categories only — an archived category's cells must never be
+// offerable. Returns {id, label}, alphabetical, so the group create/edit form's
+// picker is filtered to exactly the categories applied to that group's type.
+//
+// Two allowlisted reads (never select("*")): the active cells for the type, then
+// the live catalog rows for those category ids. Pairing them in TS keeps each
+// read column-pinned and drops any cell whose category is archived/absent.
+export async function fetchCategoriesForAudience(
+  client: ReadClient,
+  audienceCategory: GroupAudienceCategory
+): Promise<ReadResult<GroupCategoryRow[]>> {
+  const cellsRes = await client
+    .from("category_type_targets")
+    .select(CATEGORY_TYPE_CELL_COLUMNS)
+    .eq("audience_category", audienceCategory)
+    .eq("active", true)
+    .returns<CategoryTypeCellRow[]>();
+  if (cellsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCategoriesForAudience/cells", cellsRes.error),
+    };
+
+  const activeCategoryIds = [
+    ...new Set((cellsRes.data ?? []).map((c) => c.category_id)),
+  ];
+  if (activeCategoryIds.length === 0) return { data: [], error: null };
+
+  const catalogRes = await client
+    .from("group_categories")
+    .select(GROUP_CATEGORY_COLUMNS)
+    .is("archived_at", null)
+    .in("id", activeCategoryIds)
+    .order("label", { ascending: true })
+    .returns<GroupCategoryRow[]>();
+  if (catalogRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCategoriesForAudience/catalog", catalogRes.error),
+    };
+  return { data: catalogRes.data ?? [], error: null };
+}

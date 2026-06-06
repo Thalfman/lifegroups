@@ -14,7 +14,6 @@
 
 import type {
   GroupAudienceCategory,
-  GroupLifeStage,
   LeaderReadinessStage,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
@@ -124,24 +123,24 @@ export const AUDIENCE_LABEL: Record<GroupAudienceCategory, string> = {
   mixed: "Mixed / couples",
 };
 
-export const LIFE_STAGE_LABEL: Record<GroupLifeStage, string> = {
-  young_professionals: "Young professionals",
-  young_families: "Young families",
-  families_with_kids: "Families with kids/teens",
-  families_with_adult_kids: "Families with adult kids",
-  retirement: "Retirement",
-  multi_generational: "Multi-generational",
-  spanish_speaking: "Spanish speaking",
-};
+// #398: the visible bucket for groups that carry no category (category_id null)
+// — and the fallback when a group has no audience either. Untagged groups are
+// never dropped from the segmentation surface; they collect here so an admin can
+// see and tag them.
+export const UNCATEGORIZED_SEGMENT = "Uncategorized";
 
-// A human-readable segment key for grouping candidates: audience × life stage.
+// #398: a human-readable segment key for grouping by cell — audience × category
+// label (the free-form catalog label, e.g. "20-30s"). Replaces the old audience
+// × life_stage key. A group with no category resolves to the Uncategorized
+// bucket; a group with a category but no audience still reads its label.
 export function segmentLabel(
   audience: GroupAudienceCategory | null,
-  lifeStage: GroupLifeStage | null
+  categoryLabel: string | null
 ): string {
-  const a = audience ? AUDIENCE_LABEL[audience] : "Not categorized";
-  const s = lifeStage ? LIFE_STAGE_LABEL[lifeStage] : null;
-  return s ? `${a} · ${s}` : a;
+  const label = categoryLabel?.trim() || null;
+  if (!audience && !label) return UNCATEGORIZED_SEGMENT;
+  const a = audience ? AUDIENCE_LABEL[audience] : UNCATEGORIZED_SEGMENT;
+  return label ? `${a} · ${label}` : a;
 }
 
 // The per-candidate facts the planner surface renders: the group identity, the
@@ -173,11 +172,12 @@ export type CandidateView = {
 
 export type SegmentGroup = { segment: string; candidates: CandidateView[] };
 
-// Julian #145: turn the read model's enriched candidate entries into the
-// segmented, readiness-scored view the planner renders. Grouped by audience ×
-// life stage (the Doc's gender-category × age-bracket shape) and sorted by
-// segment label so the layout is stable and scannable. Pure — readiness is
-// computed against the supplied `todayIso`.
+// Julian #145 / #398: turn the read model's enriched candidate entries into the
+// segmented, readiness-scored view the planner renders. Grouped by cell —
+// audience × category label (#398 replaces the old life_stage axis) — and sorted
+// by segment label so the layout is stable and scannable. Untagged groups bucket
+// under "Uncategorized" (segmentLabel) so they are never dropped. Pure —
+// readiness is computed against the supplied `todayIso`.
 export function buildPlannerSegments(
   entries: MultiplicationCandidateEntry[],
   todayIso: string
@@ -186,7 +186,7 @@ export function buildPlannerSegments(
   for (const entry of entries) {
     const segment = segmentLabel(
       entry.group?.audience_category ?? null,
-      entry.group?.life_stage ?? null
+      entry.group?.category_label ?? null
     );
     const view: CandidateView = {
       candidateId: entry.candidate.id,
@@ -265,4 +265,41 @@ export function summarizeTargetYears(
       if (b.year === null) return -1;
       return a.year - b.year;
     });
+}
+
+// #398: the minimal group facts the segmentation surface buckets by cell. A
+// group carries an audience (top type) and a free-form category label (resolved
+// from category_id → group_categories.label). A null label = Uncategorized.
+export type SegmentableGroup = {
+  id: string;
+  name: string;
+  audienceCategory: GroupAudienceCategory | null;
+  categoryLabel: string | null;
+};
+
+export type GroupSegmentBucket = {
+  segment: string;
+  groups: SegmentableGroup[];
+};
+
+// #398: bucket groups into cells (audience × category label) for the
+// segmentation surface, with untagged groups collected under a visible
+// "Uncategorized" bucket so they are never lost. Pure + unit-tested. Cells sort
+// alphabetically, but the Uncategorized bucket always sorts LAST so the cells an
+// admin has built read first and the to-be-tagged remainder reads as the tail.
+export function bucketGroupsBySegment(
+  groups: readonly SegmentableGroup[]
+): GroupSegmentBucket[] {
+  const buckets = new Map<string, GroupSegmentBucket>();
+  for (const g of groups) {
+    const segment = segmentLabel(g.audienceCategory, g.categoryLabel);
+    const bucket = buckets.get(segment);
+    if (bucket) bucket.groups.push(g);
+    else buckets.set(segment, { segment, groups: [g] });
+  }
+  return [...buckets.values()].sort((a, b) => {
+    if (a.segment === UNCATEGORIZED_SEGMENT) return 1;
+    if (b.segment === UNCATEGORIZED_SEGMENT) return -1;
+    return a.segment.localeCompare(b.segment);
+  });
 }

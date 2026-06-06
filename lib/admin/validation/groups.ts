@@ -1,6 +1,5 @@
 import type {
   GroupAudienceCategory,
-  GroupLifeStage,
   MeetingFrequency,
   MeetingWeekParity,
 } from "@/types/enums";
@@ -78,28 +77,12 @@ const GROUP_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> = new Set([
   "mixed",
 ]);
 
-const GROUP_LIFE_STAGES: ReadonlySet<GroupLifeStage> = new Set([
-  "young_professionals",
-  "young_families",
-  "families_with_kids",
-  "families_with_adult_kids",
-  "retirement",
-  "multi_generational",
-  "spanish_speaking",
-]);
-
 function isGroupAudienceCategory(
   value: unknown
 ): value is GroupAudienceCategory {
   return (
     typeof value === "string" &&
     GROUP_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
-  );
-}
-
-function isGroupLifeStage(value: unknown): value is GroupLifeStage {
-  return (
-    typeof value === "string" && GROUP_LIFE_STAGES.has(value as GroupLifeStage)
   );
 }
 
@@ -128,7 +111,10 @@ export type GroupWritablePayload = {
   address_optional?: string;
   capacity?: number;
   audience_category?: GroupAudienceCategory | null;
-  life_stage?: GroupLifeStage | null;
+  // #398: the catalog category id this group carries — its cell under the top
+  // type. undefined = leave unset / clear on update; null is normalised away by
+  // readOptionalString (an empty select submits "" → Uncategorized).
+  category_id?: string | null;
   launched_on?: string | null;
 };
 
@@ -206,12 +192,16 @@ function validateGroupWritablePayload(
     else audienceCategory = audienceRaw;
   }
 
-  const lifeStageRaw = readOptionalString(input.life_stage);
-  let lifeStage: GroupLifeStage | undefined;
-  if (lifeStageRaw !== undefined) {
-    if (!isGroupLifeStage(lifeStageRaw))
-      errors.push("Life stage is not a valid value.");
-    else lifeStage = lifeStageRaw;
+  // #398: the group's category (its cell). An empty select submits "" which
+  // readOptionalString collapses to undefined → "leave unset / Uncategorized".
+  // A non-empty value must be a uuid (the catalog id); the RPC re-checks it is
+  // a live category. The picker is filtered to the group's top type client-side,
+  // so we only enforce the uuid shape here.
+  const categoryRaw = readOptionalString(input.category_id);
+  let categoryId: string | undefined;
+  if (categoryRaw !== undefined) {
+    if (!isUuid(categoryRaw)) errors.push("Category is not a valid value.");
+    else categoryId = normalizeUuid(categoryRaw);
   }
 
   const launchedOnRaw = readOptionalString(input.launched_on);
@@ -237,7 +227,7 @@ function validateGroupWritablePayload(
   if (capacity !== undefined) value.capacity = capacity;
   if (audienceCategory !== undefined)
     value.audience_category = audienceCategory;
-  if (lifeStage !== undefined) value.life_stage = lifeStage;
+  if (categoryId !== undefined) value.category_id = categoryId;
   if (launchedOn !== undefined) value.launched_on = launchedOn;
   return { ok: true, value };
 }

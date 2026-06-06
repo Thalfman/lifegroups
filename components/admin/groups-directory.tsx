@@ -79,6 +79,10 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 import type { AttendanceSessionStatus } from "@/types/enums";
+import {
+  EMPTY_CATEGORIES_BY_AUDIENCE,
+  type CategoriesByAudience,
+} from "@/components/admin/forms/group-category-options";
 
 // Each of the four independent status categories carries its own badge tone.
 // They are shown as four separate chips — never combined into one (issue #300).
@@ -129,6 +133,10 @@ type GroupsDirectoryProps = {
   // Signed-in profile id, used only to scope this browser's saved card⇄table
   // view preference per admin (#325). Null falls back to a shared bucket.
   viewerId?: string | null;
+  // #398: category-picker options grouped by top type, for the create/edit
+  // forms in the editing drawer. Each list is the categories applied (active
+  // cell) to that audience.
+  categoriesByAudience?: CategoriesByAudience;
 };
 
 // The card⇄table view mode. SSR + first client paint always render "cards"
@@ -681,6 +689,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
       <GroupEditorDrawer
         editor={editor}
         defaultCapacity={props.metricDefaults.default_group_capacity}
+        categoriesByAudience={
+          props.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
+        }
         onDirty={markDirty}
         onPendingChange={reportPending}
         onRequestClose={requestClose}
@@ -1326,6 +1337,7 @@ function GroupsTable({
 function GroupEditorDrawer({
   editor,
   defaultCapacity,
+  categoriesByAudience,
   onDirty,
   onPendingChange,
   onRequestClose,
@@ -1333,6 +1345,7 @@ function GroupEditorDrawer({
 }: {
   editor: GroupEditorState | null;
   defaultCapacity: number | null;
+  categoriesByAudience: CategoriesByAudience;
   onDirty: () => void;
   onPendingChange: (pending: boolean) => void;
   onRequestClose: () => void;
@@ -1359,6 +1372,7 @@ function GroupEditorDrawer({
         <div style={{ display: "grid", gap: 18 }} key={editor.group.id}>
           <GroupEditForm
             group={editor.group}
+            categoriesByAudience={categoriesByAudience}
             onCancel={onRequestClose}
             onDirty={onDirty}
             onPendingChange={onPendingChange}
@@ -1373,6 +1387,7 @@ function GroupEditorDrawer({
       ) : editor?.mode === "create" ? (
         <GroupCreateForm
           defaultCapacity={defaultCapacity}
+          categoriesByAudience={categoriesByAudience}
           onCancel={onRequestClose}
           onDirty={onDirty}
           onPendingChange={onPendingChange}

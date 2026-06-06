@@ -61,7 +61,7 @@ function group(overrides: Partial<GroupsRow>): GroupsRow {
     lifecycle_status: overrides.lifecycle_status ?? "active",
     health_status: "healthy",
     audience_category: overrides.audience_category ?? null,
-    life_stage: overrides.life_stage ?? null,
+    category_id: overrides.category_id ?? null,
     launched_on: overrides.launched_on ?? null,
     pause_reason: null,
     pause_start_date: null,
