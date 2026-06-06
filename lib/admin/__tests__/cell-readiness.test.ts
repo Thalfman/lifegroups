@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   BUILT_IN_READINESS_RULE,
   decodeCellOverride,
+  decodePerTypeRule,
   decodeReadinessRule,
   evaluateCellReadiness,
   resolveCellRule,
+  resolveReadinessRule,
   type CellReadinessInputs,
   type CellReadinessOverride,
+  type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 
@@ -282,6 +285,125 @@ describe("resolveCellRule — per-cell override precedence", () => {
       capacity: { required: false },
     });
     expect(evaluateCellReadiness(lenient, cellInputs).ready).toBe(true);
+  });
+});
+
+describe("resolveReadinessRule — three-tier cascade (#410 / ADR 0021)", () => {
+  // A global rule with a distinct value in every pillar, so a pillar that falls
+  // through to global is recognisable from one set at a higher tier.
+  const global: ReadinessRule = {
+    interest: { required: true, min: 3 },
+    capacity: { required: true },
+    groupHealth: { required: false, min: "C" },
+    leaderHealth: { required: false, min: "C" },
+  };
+
+  it("ALL INHERIT: empty per-type + empty cell ⇒ the global rule verbatim", () => {
+    expect(resolveReadinessRule(global, {}, {})).toEqual(global);
+  });
+
+  it("TYPE ONLY: a per-type pillar overrides global; the rest inherit global", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+    };
+    const resolved = resolveReadinessRule(global, perType, {});
+    // The per-type interest wins…
+    expect(resolved.interest).toEqual({ required: true, min: 5 });
+    // …and every other pillar falls through to the global rule.
+    expect(resolved.capacity).toEqual(global.capacity);
+    expect(resolved.groupHealth).toEqual(global.groupHealth);
+    expect(resolved.leaderHealth).toEqual(global.leaderHealth);
+  });
+
+  it("CELL OVERRIDES TYPE: a cell pillar beats the per-type pillar for that pillar", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+    };
+    const cell: CellReadinessOverride = {
+      interest: { required: true, min: 8 },
+    };
+    const resolved = resolveReadinessRule(global, perType, cell);
+    // Cell (8) wins over per-type (5) wins over global (3).
+    expect(resolved.interest).toEqual({ required: true, min: 8 });
+  });
+
+  it("MIXED PILLARS: each pillar resolves at its own tier independently", () => {
+    const perType: PerTypeReadinessRule = {
+      // per-type raises interest and demands capacity stays required…
+      interest: { required: true, min: 5 },
+      groupHealth: { required: true, min: "B" },
+    };
+    const cell: CellReadinessOverride = {
+      // …the cell overrides only interest and leaderHealth.
+      interest: { required: true, min: 8 },
+      leaderHealth: { required: true, min: "A" },
+    };
+    const resolved = resolveReadinessRule(global, perType, cell);
+    expect(resolved).toEqual({
+      interest: { required: true, min: 8 }, // cell
+      capacity: { required: true }, // global (untouched at every tier)
+      groupHealth: { required: true, min: "B" }, // per-type
+      leaderHealth: { required: true, min: "A" }, // cell
+    });
+  });
+
+  it("a per-type threshold flips a cell's verdict that has no override", () => {
+    const cellInputs = inputs({ interestCount: 3, capacityIssue: false });
+    // Global interest ≥ 3 → ready when there is no per-type rule.
+    expect(
+      evaluateCellReadiness(resolveReadinessRule(global, {}, {}), cellInputs)
+        .ready
+    ).toBe(true);
+    // A per-type interest ≥ 5 makes the same 3-prospect cell NOT ready…
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+    };
+    expect(
+      evaluateCellReadiness(
+        resolveReadinessRule(global, perType, {}),
+        cellInputs
+      ).ready
+    ).toBe(false);
+    // …unless the cell overrides interest back down to ≥ 3.
+    expect(
+      evaluateCellReadiness(
+        resolveReadinessRule(global, perType, {
+          interest: { required: true, min: 3 },
+        }),
+        cellInputs
+      ).ready
+    ).toBe(true);
+  });
+
+  it("resolveCellRule is the two-tier shorthand (no per-type rule)", () => {
+    const override: CellReadinessOverride = {
+      interest: { required: true, min: 9 },
+    };
+    expect(resolveCellRule(global, override)).toEqual(
+      resolveReadinessRule(global, {}, override)
+    );
+  });
+});
+
+describe("decodePerTypeRule — trust boundary (per-type partial)", () => {
+  it("returns an empty rule for a non-object / empty payload (inherit all)", () => {
+    expect(decodePerTypeRule(null)).toEqual({});
+    expect(decodePerTypeRule({})).toEqual({});
+  });
+
+  it("includes ONLY the pillars present in the payload (absent = inherit global)", () => {
+    const rule = decodePerTypeRule({
+      interest: { required: true, min: 5 },
+    });
+    expect(rule).toEqual({ interest: { required: true, min: 5 } });
+    expect(rule).not.toHaveProperty("capacity");
+    expect(rule).not.toHaveProperty("groupHealth");
+    expect(rule).not.toHaveProperty("leaderHealth");
+  });
+
+  it("decodes a present-but-malformed fragment defensively while keeping it overridden", () => {
+    const rule = decodePerTypeRule({ groupHealth: { min: "Z" } });
+    expect(rule.groupHealth).toEqual({ required: false, min: "C" });
   });
 });
 

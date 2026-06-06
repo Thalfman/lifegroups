@@ -61,6 +61,13 @@ export type ReadinessRule = {
 // empty override `{}` means "this cell follows the global rule for every pillar".
 export type CellReadinessOverride = Partial<ReadinessRule>;
 
+// A per-TYPE (Audience) rule — the MIDDLE tier of the three-tier cascade
+// (global → per-type → per-cell, #410 / ADR 0021). Structurally identical to a
+// per-cell override: a PARTIAL of the global rule where a present pillar overrides
+// it for every cell of that Audience, and an absent pillar inherits the global
+// one. An empty `{}` means "this type follows the global rule for every pillar".
+export type PerTypeReadinessRule = Partial<ReadinessRule>;
+
 // The per-cell inputs in natural units. Interest is the cell's interested-prospect
 // headcount (#399); capacityIssue is the cell's derived capacity issue (#401);
 // the two health letters are the cell's rolled-up A–F grades (null = "—",
@@ -112,19 +119,34 @@ const READINESS_PILLARS: readonly ReadinessPillarKey[] = [
   "leaderHealth",
 ];
 
+// Resolve a cell's EFFECTIVE rule down the THREE-TIER cascade (#410 / ADR 0021),
+// PER PILLAR: a per-cell override wins; else the per-type (Audience) rule; else
+// the global rule. Each tier above per-cell is a PARTIAL, so a pillar absent from
+// both the cell override and the per-type rule falls through to the global rule.
+// Pure — returns a fresh rule, mutating none of its inputs.
+export function resolveReadinessRule(
+  global: ReadinessRule,
+  perType: PerTypeReadinessRule,
+  cell: CellReadinessOverride
+): ReadinessRule {
+  return {
+    interest: cell.interest ?? perType.interest ?? global.interest,
+    capacity: cell.capacity ?? perType.capacity ?? global.capacity,
+    groupHealth: cell.groupHealth ?? perType.groupHealth ?? global.groupHealth,
+    leaderHealth:
+      cell.leaderHealth ?? perType.leaderHealth ?? global.leaderHealth,
+  };
+}
+
 // Resolve a cell's EFFECTIVE rule by laying its override over the global rule,
 // per pillar: a pillar present in the override wins; an absent pillar inherits the
-// global one. Pure — returns a fresh rule, mutating neither input.
+// global one. The two-tier shorthand for resolveReadinessRule with no per-type
+// rule (every pillar inherits straight from global). Pure.
 export function resolveCellRule(
   global: ReadinessRule,
   override: CellReadinessOverride
 ): ReadinessRule {
-  return {
-    interest: override.interest ?? global.interest,
-    capacity: override.capacity ?? global.capacity,
-    groupHealth: override.groupHealth ?? global.groupHealth,
-    leaderHealth: override.leaderHealth ?? global.leaderHealth,
-  };
+  return resolveReadinessRule(global, {}, override);
 }
 
 // Whether an A–F letter is AT LEAST as good as a minimum. The ladder is best→worst
@@ -303,4 +325,13 @@ export function decodeCellOverride(raw: unknown): CellReadinessOverride {
     );
   }
   return out;
+}
+
+// Decode a stored per-TYPE rule jsonb into a PerTypeReadinessRule (#410 / ADR
+// 0021). The per-type tier is structurally identical to a per-cell override — a
+// partial of the global rule where only PRESENT pillars override and absent ones
+// inherit — so it shares decodeCellOverride's trust-boundary shaping; this alias
+// names the cascade tier at the read seam.
+export function decodePerTypeRule(raw: unknown): PerTypeReadinessRule {
+  return decodeCellOverride(raw);
 }

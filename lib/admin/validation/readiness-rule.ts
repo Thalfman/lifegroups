@@ -3,8 +3,10 @@ import type { ValidationResult } from "./shared";
 import { isNonEmptyString, isRecord, normalizeUuid } from "./shared";
 import {
   decodeCellOverride,
+  decodePerTypeRule,
   decodeReadinessRule,
   type CellReadinessOverride,
+  type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 
@@ -78,6 +80,57 @@ export function validateReadinessRulePayload(
     value: {
       ministryYear: ministryYear as number,
       rule: decodeReadinessRule(ruleRaw),
+    },
+  };
+}
+
+export type AudienceReadinessRulePayload = {
+  ministryYear: number;
+  audienceCategory: "men" | "women" | "mixed";
+  rule: PerTypeReadinessRule;
+};
+
+// The per-TYPE readiness rule write (#410 / ADR 0021) — the MIDDLE tier of the
+// cascade. Posts { ministry_year, audience_category, rule }, where rule is a
+// PARTIAL of the global rule (present pillar overrides, absent inherits; an empty
+// `{}` clears it back to the global rule). Decodes through decodePerTypeRule so
+// only validly-shaped pillars survive; the SECURITY DEFINER RPC stays the gate.
+export function validateAudienceReadinessRulePayload(
+  input: unknown
+): ValidationResult<AudienceReadinessRulePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const errors: string[] = [];
+
+  const ministryYear = parseYear(input.ministry_year);
+  if (
+    ministryYear === undefined ||
+    ministryYear < 2000 ||
+    ministryYear > 3000
+  ) {
+    errors.push("ministry_year must be a four-digit year.");
+  }
+
+  const audienceCategory =
+    typeof input.audience_category === "string" ? input.audience_category : "";
+  if (!isAudienceCategory(audienceCategory)) {
+    errors.push("The top type must be 'men', 'women', or 'mixed'.");
+  }
+
+  const ruleRaw = parseJsonObject(input.rule);
+  if (ruleRaw === undefined) {
+    errors.push("rule must be a JSON object.");
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      ministryYear: ministryYear as number,
+      audienceCategory: audienceCategory as "men" | "women" | "mixed",
+      rule: decodePerTypeRule(ruleRaw),
     },
   };
 }

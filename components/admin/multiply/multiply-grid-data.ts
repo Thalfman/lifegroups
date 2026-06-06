@@ -8,9 +8,15 @@ import {
 import {
   BUILT_IN_READINESS_RULE,
   decodeCellOverride,
+  decodePerTypeRule,
   decodeReadinessRule,
+  type PerTypeReadinessRule,
 } from "@/lib/admin/cell-readiness";
-import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
+import {
+  fetchAudienceReadinessRules,
+  fetchReadinessRule,
+} from "@/lib/supabase/readiness-reads";
+import type { GroupAudienceCategory } from "@/types/enums";
 import {
   fetchGroupCategories,
   fetchCategoryTypeTargetCells,
@@ -79,6 +85,7 @@ export async function loadMultiplyGridData(
     targetCellsResult,
     groupLifecycleResult,
     readinessResult,
+    perTypeReadinessResult,
     interestResult,
     cellSizesResult,
     cellHealthResult,
@@ -87,6 +94,7 @@ export async function loadMultiplyGridData(
     fetchCategoryTypeTargetCells(client),
     fetchGroupCellLifecycleRows(client),
     fetchReadinessRule(client, ministryYear),
+    fetchAudienceReadinessRules(client, ministryYear),
     fetchCellInterestCounts(client),
     fetchCellActiveGroupSizes(client),
     fetchCellHealthGrades(client, ministryYear, periodMonthIso),
@@ -101,6 +109,17 @@ export async function loadMultiplyGridData(
   const globalRule = decodeReadinessRule(
     readinessResult.data?.rule ?? BUILT_IN_READINESS_RULE
   );
+
+  // The MIDDLE tier of the cascade (#410 / ADR 0021), keyed by top type. A type
+  // with no row inherits the global rule for every pillar (the additive default —
+  // the per-type tier is empty until a rule is set), so the map starts empty and
+  // only seeded types carry a partial.
+  const perTypeRules: Partial<
+    Record<GroupAudienceCategory, PerTypeReadinessRule>
+  > = {};
+  for (const row of perTypeReadinessResult.data ?? []) {
+    perTypeRules[row.audience_category] = decodePerTypeRule(row.rule);
+  }
 
   // Coverage X per active cell ("have"), via the pure coverage resolver. Only live
   // categories' cells are considered (an archived category's stale cell is dropped,
@@ -159,13 +178,15 @@ export async function loadMultiplyGridData(
     grid: buildMultiplyGrid(
       categories.map((c) => ({ id: c.id, label: c.label })),
       cells,
-      globalRule
+      globalRule,
+      perTypeRules
     ),
     error:
       categoriesResult.error?.message ??
       targetCellsResult.error?.message ??
       groupLifecycleResult.error?.message ??
       readinessResult.error?.message ??
+      perTypeReadinessResult.error?.message ??
       interestResult.error?.message ??
       cellSizesResult.error?.message ??
       cellHealthResult.error?.message ??
