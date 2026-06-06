@@ -66,7 +66,7 @@ export function CoverageAssignmentForm({
           <p style={formNoteStyle}>
             {currentOverShepherdId
               ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
-              : "Assign an over-shepherd to cover this leader. The over-shepherd will not see anything in the app; this is for Julian's tracking only."}
+              : "Assign an over-shepherd to cover this leader. When the over-shepherd signs in, this leader appears among the ones they cover."}
           </p>
           <div className="lg-m-grid-stack" style={formGridStyle}>
             <div>

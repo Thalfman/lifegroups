@@ -15,8 +15,7 @@ export default async function AdminSettingsPage() {
       <PageHeader
         eyebrow="Settings"
         title="Settings"
-        italic="& thresholds"
-        lede="Set the defaults the dashboard uses to flag warnings, then apply per-group overrides when a group needs its own thresholds."
+        lede="Configure what drives Care and Multiply — the health rubrics, pastoral wording, and the per-type multiplication pillars. Dashboard thresholds and system utilities live here too."
       />
       <PageBody>
         <SettingsShell data={data} />

@@ -468,6 +468,7 @@ const SETTINGS_DATA: SettingsShellData = {
     groups: null,
     overrides: null,
     multiplication: null,
+    groupRubric: null,
     leaderRubric: null,
   },
 };
@@ -805,7 +806,7 @@ export function A11yHarnessClient() {
 
       <Surface
         id="settings"
-        heading="Settings (defaults, thresholds, overrides)"
+        heading="Settings (rubrics, thresholds, overrides)"
       >
         <SettingsShell data={SETTINGS_DATA} />
       </Surface>
