@@ -264,7 +264,7 @@ export async function loadCarePageData(): Promise<{
             <SectionHeader
               eyebrow="Shepherd care"
               title="Care follow-ups"
-              description="Care follow-ups due soon or overdue, plus the ones recently completed. Each links into the leader's detail page where the work happens."
+              description="Care follow-ups due soon, overdue, or recently completed."
             />
             <div style={{ display: "grid", gap: 24 }}>
               <div style={{ display: "grid", gap: 10 }}>
@@ -352,7 +352,7 @@ export async function CarePageView({
         eyebrow="Care"
         title="How your leaders"
         italic="are doing"
-        lede="Your leaders' care in one place — grouped by over-shepherd. Open a pane to see who they cover, then a leader for their care status and detail. The dashboard, directory, follow-ups, coverage, and recent interactions stay a tab away. Care notes stay admin-only and never leave the leader's detail page."
+        lede="Your leaders' care in one place, grouped by over-shepherd."
       />
       <PageBody>
         {/* Page-level so a failed care read is visible from every tab, not just
