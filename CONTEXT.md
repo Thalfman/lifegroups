@@ -239,9 +239,12 @@ overflow (the retired pillar).
 Capacity is **derived, not fed** (#401). With a universal cap of **12** members
 per group, a cell has a capacity issue when **either** facet trips: **Facet A —
 over-capacity** (any active group in the cell has > 12 members) or **Facet B —
-thin availability** (≤ 1 _joinable_ group, i.e. an active group under 12). The
-old fed headroom / full-group-count / "offerings" inputs on `multiplication_config`
-are retired.
+thin availability** (≤ 1 _joinable_ group, i.e. an active group under 12). An
+**active cell with no active groups** still counts — it has no joinable group, so
+Facet B trips. Capacity is **required by default** in the trigger, so a required
+capacity issue **blocks readiness** (it is not merely a side banner). The old fed
+headroom / full-group-count / "offerings" inputs on `multiplication_config` are
+retired.
 _Avoid_: Headroom, offerings, fed capacity, overflow (all retired).
 
 **Target & Coverage** (`have X of Y`):

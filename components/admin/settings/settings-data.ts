@@ -102,6 +102,8 @@ const DEFAULT_TRIGGER: TriggerRubric = {
     interest: { op: "atLeast", letter: "C" },
   },
   requireHealthGrades: false,
+  // Capacity gates readiness by default (PRD §2.4 / §4.1).
+  requireCapacity: true,
 };
 
 // Build the per-type editor seeds for the Settings Multiply-config editor from

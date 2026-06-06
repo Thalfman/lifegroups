@@ -93,6 +93,8 @@ const DEFAULT_TRIGGER: TriggerRubric = {
     interest: { op: "atLeast", letter: "C" },
   },
   requireHealthGrades: false,
+  // Capacity gates readiness by default (PRD §2.4 / §4.1).
+  requireCapacity: true,
 };
 
 // Collect a type's per-cell active group sizes from the cell-sizes read: every
@@ -140,12 +142,16 @@ export function buildTypeBoard(
     ministryYear
   );
 
+  // The derived capacity issue feeds the readiness trigger (PRD §2.4), not just
+  // the side banner: a required capacity issue holds the type back.
+  const capacityIssue = rollUpTypeCapacityIssue(cellSizes);
+
   return {
     type,
     label: MULTIPLY_TYPE_LABEL[type],
     pillars,
-    signal: evaluateTrigger(trigger, pillars),
-    capacityIssue: rollUpTypeCapacityIssue(cellSizes),
+    signal: evaluateTrigger(trigger, pillars, capacityIssue),
+    capacityIssue,
     thresholds,
     trigger,
     funnelVolume,

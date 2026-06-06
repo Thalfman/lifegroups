@@ -1,5 +1,8 @@
 import { P, fontDisplay, fontBody, fontMono } from "@/lib/pastoral";
-import type { PillarKey } from "@/lib/admin/multiplication-pillars";
+import type {
+  PillarKey,
+  TriggerBlocker,
+} from "@/lib/admin/multiplication-pillars";
 import type { TypeBoard } from "./multiply-data";
 
 // Presentational Multiply boards (#380, updated #401): three type boards, each
@@ -25,6 +28,13 @@ const PILLAR_LABEL: Record<PillarKey, string> = {
   interest: "Interest",
   groupHealth: "Group Health",
   leaderHealth: "Leader Health",
+};
+
+// Blocker labels extend the pillar labels with the derived capacity issue, which
+// can hold a type back when capacity is required but isn't a graded pillar.
+const BLOCKER_LABEL: Record<TriggerBlocker, string> = {
+  ...PILLAR_LABEL,
+  capacity: "Capacity",
 };
 
 function letterColor(letter: string | null): string {
@@ -105,7 +115,7 @@ function SignalBadge({ ready }: { ready: boolean }) {
 
 function BoardCard({ board }: { board: TypeBoard }) {
   const blockerLabels = board.signal.blockers
-    .map((b) => PILLAR_LABEL[b])
+    .map((b) => BLOCKER_LABEL[b])
     .join(", ");
 
   const cap = board.capacityIssue;

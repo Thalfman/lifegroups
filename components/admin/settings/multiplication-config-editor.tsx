@@ -99,6 +99,11 @@ export function MultiplicationConfigEditor({
   const [requireHealth, setRequireHealth] = useState<boolean>(
     seed?.trigger.requireHealthGrades ?? false
   );
+  // Capacity gates readiness by default (PRD §2.4); seed it on for a config that
+  // predates the flag, so an existing row keeps capacity required unless turned off.
+  const [requireCapacity, setRequireCapacity] = useState<boolean>(
+    seed?.trigger.requireCapacity ?? true
+  );
   const [triggerSel, setTriggerSel] = useState<TriggerSelection>(() =>
     seedTriggerSelection(seed?.trigger ?? { conditions: {} })
   );
@@ -109,6 +114,7 @@ export function MultiplicationConfigEditor({
     setActiveType(next);
     const s = seeds.find((x) => x.type === next);
     setRequireHealth(s?.trigger.requireHealthGrades ?? false);
+    setRequireCapacity(s?.trigger.requireCapacity ?? true);
     setTriggerSel(seedTriggerSelection(s?.trigger ?? { conditions: {} }));
   };
 
@@ -131,6 +137,7 @@ export function MultiplicationConfigEditor({
   const triggerJson = JSON.stringify({
     conditions,
     requireHealthGrades: requireHealth,
+    requireCapacity,
   });
 
   return (
@@ -275,6 +282,24 @@ export function MultiplicationConfigEditor({
           />
           Require health grades to exist (an ungraded health pillar blocks
           ready)
+        </label>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={requireCapacity}
+            onChange={(e) => setRequireCapacity(e.target.checked)}
+          />
+          Require capacity (a cell that is over-capacity or has only one group
+          to join blocks ready)
         </label>
       </fieldset>
 

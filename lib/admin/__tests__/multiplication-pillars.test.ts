@@ -231,6 +231,62 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
   });
 });
 
+describe("evaluateTrigger — capacity gates readiness (PRD §2.4)", () => {
+  const tuned: PillarThresholds = { interest: BANDS };
+  const cleared = () => computePillars(inputs({ funnelVolume: 4 }), tuned);
+  const interestAtLeastB: TriggerRubric = {
+    conditions: { interest: { op: "atLeast", letter: "B" } },
+  };
+
+  it("blocks ready when capacity is required (the default) and an issue is present", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
+    });
+    expect(signal.ready).toBe(false);
+    expect(signal.blockers).toContain("capacity");
+  });
+
+  it("treats capacity as required when the flag is omitted (PRD default)", () => {
+    // No requireCapacity field at all — still gates on the issue.
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
+    });
+    expect(signal.ready).toBe(false);
+  });
+
+  it("stays ready when capacity is required but there is no issue", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: false,
+    });
+    expect(signal.ready).toBe(true);
+    expect(signal.blockers).not.toContain("capacity");
+  });
+
+  it("ignores capacity entirely when requireCapacity is false", () => {
+    const signal = evaluateTrigger(
+      { ...interestAtLeastB, requireCapacity: false },
+      cleared(),
+      { isIssue: true }
+    );
+    expect(signal.ready).toBe(true);
+    expect(signal.blockers).not.toContain("capacity");
+  });
+
+  it("does not gate on capacity when no capacity issue is supplied", () => {
+    // Omitting the capacity arg leaves capacity out of the gate (back-compat).
+    const signal = evaluateTrigger(interestAtLeastB, cleared());
+    expect(signal.ready).toBe(true);
+  });
+
+  it("keeps capacity out of the per-pillar outcomes — it surfaces only as a blocker", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
+    });
+    expect(signal.outcomes.map((o) => o.pillar)).not.toContain("capacity");
+    expect(signal.blockers).toEqual(["capacity"]);
+  });
+});
+
 describe("Directional trigger conditions — health is not monotonic", () => {
   const tuned: PillarThresholds = {
     interest: BANDS,
@@ -325,5 +381,20 @@ describe("decodeTriggerRubric — current shape + legacy fallback", () => {
       },
     });
     expect(trigger.conditions).toEqual({});
+  });
+
+  it("defaults requireCapacity to true, and reads an explicit false", () => {
+    // Capacity gates by default (PRD §2.4 / §4.1) for a row that omits the flag.
+    expect(decodeTriggerRubric({ conditions: {} }).requireCapacity).toBe(true);
+    // A non-boolean is ignored and falls back to the required default.
+    expect(
+      decodeTriggerRubric({ conditions: {}, requireCapacity: "no" })
+        .requireCapacity
+    ).toBe(true);
+    // An explicit false turns the capacity gate off.
+    expect(
+      decodeTriggerRubric({ conditions: {}, requireCapacity: false })
+        .requireCapacity
+    ).toBe(false);
   });
 });

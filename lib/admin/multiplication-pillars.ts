@@ -190,10 +190,21 @@ export type PillarCondition =
 // (which can be "—") mandatory: when true, a null health pillar fails the
 // trigger; when false, an ungraded health pillar is skipped (not yet a blocker)
 // so a type isn't held back purely for lack of grades.
+//
+// `requireCapacity` folds the DERIVED per-cell capacity ISSUE into readiness (PRD
+// §2.4: "capacity required/not"). When true (the default), a capacity issue —
+// over-capacity OR thin availability in any considered cell — blocks the trigger;
+// when false, capacity is shown alongside the pillars but does not gate ready.
+// Capacity is not a graded A–F pillar, so it lives here as a boolean, not in
+// `conditions`.
 export type TriggerRubric = {
   conditions: Partial<Record<PillarKey, PillarCondition>>;
   requireHealthGrades?: boolean;
+  requireCapacity?: boolean;
 };
+
+// What can hold a type back: a graded pillar, or the derived capacity issue.
+export type TriggerBlocker = PillarKey | "capacity";
 
 // The per-pillar outcome the trigger evaluated, so the UI can show WHY a type is
 // or isn't ready (which pillars cleared, which fell short, which were skipped).
@@ -209,13 +220,15 @@ export type PillarTriggerOutcome = {
 
 export type MultiplySignal = {
   // The headline: is this type ready to multiply? True only when every required
-  // pillar cleared its minimum.
+  // pillar cleared its minimum AND (if required) capacity has no issue.
   ready: boolean;
   // Per-pillar detail for the "why" breakdown. Pillars absent from the trigger
-  // are omitted entirely.
+  // are omitted entirely. Capacity is not a graded pillar, so it never appears
+  // here — only in `blockers` when a required capacity issue holds the type back.
   outcomes: PillarTriggerOutcome[];
-  // The pillars that fell short (failed), for a quick blocker summary.
-  blockers: PillarKey[];
+  // What fell short, for a quick blocker summary — failed pillars plus
+  // "capacity" when a required capacity issue blocks ready.
+  blockers: TriggerBlocker[];
 };
 
 // Whether `actual` satisfies a pillar `condition` on the A–F ladder. The ladder
@@ -253,21 +266,27 @@ function isHealthPillar(pillar: PillarKey): boolean {
   return pillar === "groupHealth" || pillar === "leaderHealth";
 }
 
-// Evaluate the trigger over a type's pillar grades. Ready iff every required
-// pillar clears its minimum. A null (ungraded) health pillar fails when
-// `requireHealthGrades` is set, otherwise it is skipped (counts as neither a
-// clear nor a blocker) — so a fresh ministry with no grades isn't permanently
-// blocked, but Julian can demand grades before declaring a type ready. There is
-// NO blended overall letter: this is the only roll-up of the pillars.
+// Evaluate the trigger over a type's pillar grades and (optionally) its derived
+// capacity issue. Ready iff every required pillar clears its minimum AND, when
+// capacity is required, there is no capacity issue. A null (ungraded) health
+// pillar fails when `requireHealthGrades` is set, otherwise it is skipped (counts
+// as neither a clear nor a blocker) — so a fresh ministry with no grades isn't
+// permanently blocked, but Julian can demand grades before declaring a type ready.
+// Capacity defaults to REQUIRED (PRD §2.4): pass the rolled-up capacity issue so a
+// required issue blocks ready; omit it (or set requireCapacity false) to leave
+// capacity out of the gate. There is NO blended overall letter: this is the only
+// roll-up of the pillars.
 export function evaluateTrigger(
   trigger: TriggerRubric,
-  pillars: PillarGrades
+  pillars: PillarGrades,
+  capacity?: { isIssue: boolean }
 ): MultiplySignal {
   const outcomes: PillarTriggerOutcome[] = [];
-  const blockers: PillarKey[] = [];
+  const blockers: TriggerBlocker[] = [];
   let ready = true;
 
   const requireHealth = trigger.requireHealthGrades ?? false;
+  const requireCapacity = trigger.requireCapacity ?? true;
 
   for (const key of Object.keys(trigger.conditions) as PillarKey[]) {
     const condition = trigger.conditions[key];
@@ -293,6 +312,13 @@ export function evaluateTrigger(
       blockers.push(key);
       ready = false;
     }
+  }
+
+  // Capacity is a derived issue, not a graded pillar: when it is required and the
+  // rolled-up issue is present, it blocks ready (PRD §2.4 "capacity required/not").
+  if (requireCapacity && capacity?.isIssue) {
+    blockers.push("capacity");
+    ready = false;
   }
 
   return { ready, outcomes, blockers };
@@ -383,5 +409,11 @@ export function decodeTriggerRubric(raw: unknown): TriggerRubric {
     isRecord(raw) && typeof raw.requireHealthGrades === "boolean"
       ? raw.requireHealthGrades
       : false;
-  return { conditions, requireHealthGrades };
+  // Capacity defaults to REQUIRED (PRD §2.4 / §4.1): a stored row that predates the
+  // flag, or omits it, still gates on capacity unless it was explicitly turned off.
+  const requireCapacity =
+    isRecord(raw) && typeof raw.requireCapacity === "boolean"
+      ? raw.requireCapacity
+      : true;
+  return { conditions, requireHealthGrades, requireCapacity };
 }

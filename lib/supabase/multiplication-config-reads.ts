@@ -132,20 +132,25 @@ export async function fetchFunnelVolumeByType(
 // computed per cell from the ACTIVE member counts of the groups in it. This read
 // returns, per cell, the array of active group sizes; the surface rolls those up.
 //
-// `groups.category_id` (the group → cell FK) is being added by the parallel cell
-// model slice (#400). Until it lands, a group's category_id reads as null and so
-// belongs to no category cell — its sizes are bucketed under a `null` category
-// key, which the type-level rollup still folds in. The read stays column-
-// allowlisted (reads seam, ADR 0015): we project exactly the cell-keying columns
-// + the per-group active membership, never select("*").
+// The CONSIDERED cells are the ACTIVE `category_type_targets` cells, NOT whatever
+// cells happen to have groups. This matters two ways (PRD §2.3/§2.4):
+//   * an active cell with NO active groups must still appear (seeded `[]`) so its
+//     thin-availability facet can trip — otherwise it would vanish from the
+//     rollup and the banner could read "no issue" for a cell with nothing to join;
+//   * an UNCATEGORIZED active group (null category_id) belongs to no category cell
+//     and must never synthesize one, which would otherwise produce a false issue.
+// The read stays column-allowlisted (reads seam, ADR 0015): we project exactly the
+// cell-keying columns + the per-group active membership, never select("*").
 //
 // We read groups + group_memberships and aggregate PURELY (the count idiom mirrors
 // lib/admin/capacity-board.ts `buildCapacityBoardModel`: a group's member count is
-// its number of group_memberships rows with status='active').
+// its number of group_memberships rows with status='active'). All three reads are
+// PAGED through to completion — a church with more active memberships (or groups)
+// than one PostgREST page would otherwise silently truncate the counts, under-
+// reading group sizes and mis-grading capacity.
 
-// One active-group row for the cell read: its id + the two cell-keying columns.
-// `category_id` is allowlisted ahead of the #400 column landing; a missing/null
-// value means the group is in no category cell.
+// One active-group row for the cell read: its id + the two cell-keying columns. A
+// null `category_id` means the group is uncategorized and so in no category cell.
 type CellGroupRow = {
   id: string;
   audience_category: GroupAudienceCategory | null;
@@ -158,10 +163,22 @@ type CellMembershipRow = {
   status: string | null;
 };
 
+// One ACTIVE cell row from category_type_targets — the cell-keying columns only.
+// These seed the considered cells; target_count and the rest are not needed here.
+type ActiveCellRow = {
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+};
+
 const CELL_GROUP_COLUMNS =
   "id, audience_category, category_id, lifecycle_status";
 const CELL_MEMBERSHIP_COLUMNS = "group_id, status";
-const CELL_PAGE_LIMIT = 10000;
+const ACTIVE_CELL_COLUMNS = "audience_category, category_id";
+
+// Page size for the cell reads. We page through until a short page rather than
+// trusting a single fixed window, so the derived capacity is never computed from a
+// truncated set of memberships/groups.
+const CELL_PAGE_SIZE = 1000;
 
 // A cell key: audience type + category id (null when the group has no category).
 export type CellKey = {
@@ -188,11 +205,17 @@ export function cellKeyString(
 }
 
 // Pure aggregator (exported for testing): bucket each ACTIVE group's active member
-// count under its cell. Only active groups with a real audience category form a
-// cell; a group's size is its count of active memberships (0 when it has none).
+// count under its cell, with EVERY active cell pre-seeded to an empty list. The
+// considered cells are the ACTIVE `category_type_targets` cells (`activeCells`),
+// not whatever cells happen to have groups — so an active cell with no active
+// groups still appears (seeded `[]`, tripping thin availability) and an
+// uncategorized group (null category_id) never synthesizes a cell. A group's size
+// is its count of active memberships (0 when it has none); a group whose cell is
+// not an active target is outside the matrix and dropped.
 export function tallyCellActiveGroupSizes(
   groups: readonly CellGroupRow[],
-  memberships: readonly CellMembershipRow[]
+  memberships: readonly CellMembershipRow[],
+  activeCells: readonly CellKey[]
 ): CellActiveGroupSizes {
   // Active-membership count per group id (the capacity-board count idiom).
   const activeCountByGroup = new Map<string, number>();
@@ -204,24 +227,39 @@ export function tallyCellActiveGroupSizes(
     );
   }
 
+  // Seed every ACTIVE cell with an empty size list so a configured cell with no
+  // active groups still appears in the rollup (and trips Facet B) rather than
+  // vanishing. A null-category or non-audience cell row is ignored defensively.
   const byCell = new Map<string, number[]>();
   const keys = new Map<string, CellKey>();
+  for (const cell of activeCells) {
+    const audience = cell.audience;
+    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+      continue;
+    }
+    if (cell.categoryId == null) continue;
+    const key = cellKeyString(audience, cell.categoryId);
+    if (!byCell.has(key)) {
+      byCell.set(key, []);
+      keys.set(key, { audience, categoryId: cell.categoryId });
+    }
+  }
+
   for (const g of groups) {
     if (g.lifecycle_status !== "active") continue;
     const audience = g.audience_category;
     if (audience !== "men" && audience !== "women" && audience !== "mixed") {
       continue;
     }
-    const categoryId = g.category_id ?? null;
-    const key = cellKeyString(audience, categoryId);
-    const size = activeCountByGroup.get(g.id) ?? 0;
+    // An uncategorized group (null category_id) is in no category cell, so it
+    // never feeds a cell's capacity (PRD §2.3 / §2.4).
+    if (g.category_id == null) continue;
+    const key = cellKeyString(audience, g.category_id);
+    // Only ACTIVE cells are considered: a group whose cell isn't an active target
+    // is outside the capacity matrix and is dropped.
     const list = byCell.get(key);
-    if (list) {
-      list.push(size);
-    } else {
-      byCell.set(key, [size]);
-      keys.set(key, { audience, categoryId });
-    }
+    if (!list) continue;
+    list.push(activeCountByGroup.get(g.id) ?? 0);
   }
 
   return { byCell, keys };
@@ -232,25 +270,59 @@ export const EMPTY_CELL_ACTIVE_GROUP_SIZES: CellActiveGroupSizes = {
   keys: new Map(),
 };
 
-// Read the per-cell active group sizes: active groups (id + cell-keying columns)
-// and their active memberships, then aggregate purely. A read failure surfaces as
-// an error so the board notes it rather than grading capacity on partial data.
+// Page a single PostgREST read through to completion: re-issues the query with a
+// sliding `range` window until a short page comes back, so the caller never grades
+// on a truncated set. The factory rebuilds the (single-use) query per page.
+async function fetchAllPages<T>(
+  fetchPage: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<{ data: T[] | null; error: unknown }> {
+  const all: T[] = [];
+  for (let from = 0; ; from += CELL_PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + CELL_PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    const page = data ?? [];
+    all.push(...page);
+    if (page.length < CELL_PAGE_SIZE) break;
+  }
+  return { data: all, error: null };
+}
+
+// Read the per-cell active group sizes: the ACTIVE cells (to seed the considered
+// set), active groups (id + cell-keying columns), and their active memberships,
+// then aggregate purely. All three reads page through to completion so capacity is
+// never derived from a truncated set. A read failure surfaces as an error so the
+// board notes it rather than grading capacity on partial data.
 export async function fetchCellActiveGroupSizes(
   client: ReadClient
 ): Promise<ReadResult<CellActiveGroupSizes>> {
-  const [groupsRes, membershipsRes] = await Promise.all([
-    client
-      .from("groups")
-      .select(CELL_GROUP_COLUMNS)
-      .eq("lifecycle_status", "active")
-      .range(0, CELL_PAGE_LIMIT - 1)
-      .returns<CellGroupRow[]>(),
-    client
-      .from("group_memberships")
-      .select(CELL_MEMBERSHIP_COLUMNS)
-      .eq("status", "active")
-      .range(0, CELL_PAGE_LIMIT - 1)
-      .returns<CellMembershipRow[]>(),
+  const [groupsRes, membershipsRes, cellsRes] = await Promise.all([
+    fetchAllPages<CellGroupRow>((from, to) =>
+      client
+        .from("groups")
+        .select(CELL_GROUP_COLUMNS)
+        .eq("lifecycle_status", "active")
+        .range(from, to)
+        .returns<CellGroupRow[]>()
+    ),
+    fetchAllPages<CellMembershipRow>((from, to) =>
+      client
+        .from("group_memberships")
+        .select(CELL_MEMBERSHIP_COLUMNS)
+        .eq("status", "active")
+        .range(from, to)
+        .returns<CellMembershipRow[]>()
+    ),
+    fetchAllPages<ActiveCellRow>((from, to) =>
+      client
+        .from("category_type_targets")
+        .select(ACTIVE_CELL_COLUMNS)
+        .eq("active", true)
+        .range(from, to)
+        .returns<ActiveCellRow[]>()
+    ),
   ]);
 
   if (groupsRes.error)
@@ -266,11 +338,29 @@ export async function fetchCellActiveGroupSizes(
         membershipsRes.error
       ),
     };
+  if (cellsRes.error)
+    return {
+      data: null,
+      error: wrapError("fetchCellActiveGroupSizes/cells", cellsRes.error),
+    };
+
+  // The considered cells: active category_type_targets rows with a real audience
+  // and category. The pure tally seeds these and buckets only into them.
+  const activeCells: CellKey[] = [];
+  for (const cell of cellsRes.data ?? []) {
+    const audience = cell.audience_category;
+    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+      continue;
+    }
+    if (cell.category_id == null) continue;
+    activeCells.push({ audience, categoryId: cell.category_id });
+  }
 
   return {
     data: tallyCellActiveGroupSizes(
       groupsRes.data ?? [],
-      membershipsRes.data ?? []
+      membershipsRes.data ?? [],
+      activeCells
     ),
     error: null,
   };
