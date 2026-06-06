@@ -159,7 +159,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Group Health Rubric"
           title="How a group is graded"
-          description="Name the criteria a group is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F letter; a manual override can still force the letter."
+          description="Name the criteria and set each weight; they must total 100."
         />
         {data.errors.groupRubric ? (
           <NotConfigured subject="The Group Health Rubric" />
@@ -179,7 +179,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Leader Health Rubric"
           title="How a leader is graded"
-          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
+          description="Name the criteria and set each weight; they must total 100. Distinct from a leader's Care Status."
         />
         {data.errors.leaderRubric ? (
           <NotConfigured subject="The Leader Health Rubric" />
@@ -237,7 +237,7 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Multiplication pillars"
           title="When a group type is ready to multiply"
-          description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+          description="Feed each type's capacity and set the trigger that marks it ready to multiply."
         />
         {data.errors.multiplication || !data.multiplicationConfig ? (
           <NotConfigured subject="The Multiplication pillars" />
@@ -275,7 +275,7 @@ function ThresholdsPanel({
         <SectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Set the ministry-wide defaults the dashboard uses for capacity, attendance health, and leader-care cadence. Per-group overrides below take precedence when needed."
+          description="Ministry-wide defaults for capacity, attendance health, and leader-care cadence."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
@@ -304,8 +304,7 @@ function ThresholdsPanel({
               <strong style={{ color: P.ink, fontWeight: 600 }}>
                 Need a clean slate?
               </strong>{" "}
-              Reset the baseline thresholds back to the ministry defaults.
-              You&rsquo;ll be asked to confirm first.
+              Reset the thresholds to the ministry defaults.
             </div>
             <ResetMetricDefaultsButton />
           </div>
@@ -332,7 +331,7 @@ function ThresholdsPanel({
             <SectionHeader
               eyebrow="Group-specific overrides"
               title="Per-group adjustments"
-              description="Override capacity or attendance thresholds for a single group, pin a manual health label, or exclude a launch group from capacity warnings."
+              description="Override thresholds or health labels for a single group."
             />
             <Card>
               <GroupMetricOverridesForm
@@ -346,7 +345,7 @@ function ThresholdsPanel({
             <SectionHeader
               eyebrow="Currently overridden"
               title="Groups with active overrides"
-              description="Each line shows the overrides currently in effect. Clear them to fall back to the global defaults."
+              description="Clear an override to fall back to the global defaults."
             />
             {overrideRows.length === 0 ? (
               <Empty
@@ -383,7 +382,7 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <SectionHeader
         eyebrow="Imports"
         title="Bulk people import"
-        description="Import tools for getting people into the system in bulk."
+        description="Tools for loading people in bulk."
       />
       <Card>
         <p
@@ -395,11 +394,10 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             lineHeight: 1.55,
           }}
         >
-          Bulk people import is a guarded write path and stays in the Super
-          Admin Console.{" "}
+          Bulk import stays in the Super Admin Console.{" "}
           {isSuperAdmin
             ? "Open the console to run an import."
-            : "Only the super admin can run an import; ask them if you need people loaded in bulk."}
+            : "Only the super admin can run one."}
         </p>
         {isSuperAdmin ? (
           <PLinkButton
