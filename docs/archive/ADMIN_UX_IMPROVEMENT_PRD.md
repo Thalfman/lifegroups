@@ -5,7 +5,7 @@
 > polish. It is derived from a read-only audit of the repository at HEAD and a June 2026 live
 > UX review, and it is written to be **sliced into PRs**, ordered by risk. It builds **on top
 > of** the already-shipped IA consolidation ([`adr/0013`](../adr/0013-six-area-navigation-spine.md)),
-> the [Admin Interaction Model PRD](./ADMIN_INTERACTION_MODEL_PRD.md), and the
+> the [Admin Interaction Model PRD](../plans/ADMIN_INTERACTION_MODEL_PRD.md), and the
 > [Surface Simplification PRD](./SURFACE_SIMPLIFICATION_PRD.md) — it does not re-litigate them.
 >
 > **Scope boundary.** In scope: nav accessibility, admin scan-speed (a dense Groups view),

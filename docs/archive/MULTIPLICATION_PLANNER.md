@@ -1,6 +1,6 @@
 # Multiplication Planner — PRD
 
-> ⚠️ **Superseded by [`CAPACITY_AND_MULTIPLICATION_PRD.md`](./CAPACITY_AND_MULTIPLICATION_PRD.md)**
+> ⚠️ **Superseded by [`CAPACITY_AND_MULTIPLICATION_PRD.md`](../plans/CAPACITY_AND_MULTIPLICATION_PRD.md)**
 > (2026-05-31). That PRD folds this "replace the Google Doc" spec into the wider,
 > integrated capacity + leader-pipeline + multiplication workspace Julian asked
 > for. This doc remains as the narrower build history for the dedicated planner
