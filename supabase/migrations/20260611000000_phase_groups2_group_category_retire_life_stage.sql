@@ -239,22 +239,6 @@ begin
     raise exception 'invalid_input';
   end if;
 
-  -- A non-null category must name an ACTIVE cell for this top type — same gate
-  -- as create. An edit can't move a group into an unapplied/archived cell the
-  -- matrix doesn't expose, which would corrupt segmentation. Joining the live
-  -- catalog also enforces the category is non-archived.
-  if p_category_id is not null and not exists (
-    select 1
-      from public.category_type_targets ctt
-      join public.group_categories gc on gc.id = ctt.category_id
-     where ctt.category_id = p_category_id
-       and ctt.audience_category = p_audience_category::text
-       and ctt.active
-       and gc.archived_at is null
-  ) then
-    raise exception 'inactive_cell';
-  end if;
-
   select jsonb_build_object(
            'name', name,
            'description', description,
@@ -276,6 +260,29 @@ begin
 
   if v_before is null then
     raise exception 'missing_group';
+  end if;
+
+  -- A non-null category must name an ACTIVE cell for this top type — but the
+  -- gate fires only when the resulting (audience × category) CELL actually
+  -- CHANGES. An unchanged tag is left untouched, so a group already tagged into
+  -- a cell that was later un-applied or archived stays fully editable (its other
+  -- fields still save); only a fresh/changed assignment is held to a live,
+  -- active cell, matching create. Joining the live catalog enforces non-archived.
+  if p_category_id is not null
+     and (
+       p_category_id is distinct from (v_before->>'category_id')::uuid
+       or p_audience_category::text is distinct from (v_before->>'audience_category')
+     )
+     and not exists (
+       select 1
+         from public.category_type_targets ctt
+         join public.group_categories gc on gc.id = ctt.category_id
+        where ctt.category_id = p_category_id
+          and ctt.audience_category = p_audience_category::text
+          and ctt.active
+          and gc.archived_at is null
+     ) then
+    raise exception 'inactive_cell';
   end if;
 
   update public.groups

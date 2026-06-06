@@ -78,6 +78,20 @@ export function GroupEditForm({
 
   const showParity = frequency === "biweekly";
 
+  // #398 review: the group's current category may not appear in the active-cell
+  // options — its cell was later un-applied/archived, or the options read
+  // failed. While the audience is unchanged, keep that current tag as a
+  // selectable (and pre-selected) option so saving an unrelated edit can't
+  // silently clear it. The update RPC accepts an unchanged category, so this
+  // round-trips cleanly; a top-type change intentionally resets the picker.
+  const audienceUnchanged = audience === (group.audience_category ?? "");
+  const currentCategoryId = group.category_id ?? "";
+  const activeOptions = optionsForAudience(categoriesByAudience, audience);
+  const currentCategoryMissing =
+    audienceUnchanged &&
+    currentCategoryId !== "" &&
+    !activeOptions.some((c) => c.id === currentCategoryId);
+
   return (
     <form
       action={formAction}
@@ -291,7 +305,12 @@ export function GroupEditForm({
             style={fieldSelectStyle}
           >
             <option value="">Uncategorized</option>
-            {optionsForAudience(categoriesByAudience, audience).map((c) => (
+            {currentCategoryMissing ? (
+              <option value={currentCategoryId}>
+                Keep current category (no longer applied)
+              </option>
+            ) : null}
+            {activeOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
               </option>

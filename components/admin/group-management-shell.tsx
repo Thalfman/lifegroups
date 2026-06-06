@@ -64,6 +64,10 @@ export type GroupManagementData = {
     // empty, so every group would otherwise read as "Not assessed" with no
     // warning — surface the failure rather than silently misclassifying.
     health: string | null;
+    // #398 review: the create/edit category-picker option reads. When they fail
+    // the picker degrades to no categories; surfaced so an admin sees that
+    // rather than unknowingly editing with an empty picker.
+    categoryOptions: string | null;
   };
 };
 
@@ -84,7 +88,8 @@ export function GroupManagementShell({
     data.errors.memberships ||
     data.errors.sessions ||
     data.errors.settings ||
-    data.errors.health;
+    data.errors.health ||
+    data.errors.categoryOptions;
 
   return (
     <div style={{ display: "grid", gap: 36 }}>

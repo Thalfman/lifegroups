@@ -16,7 +16,8 @@ export default async function AdminPlanPage() {
   await requireAdmin();
   const data = await loadPlanData();
 
-  const error = data.errors.prospects ?? data.errors.groups;
+  const error =
+    data.errors.prospects ?? data.errors.groups ?? data.errors.categoryOptions;
 
   return (
     <>

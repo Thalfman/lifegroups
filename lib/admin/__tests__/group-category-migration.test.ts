@@ -121,6 +121,25 @@ describe("group-category migration — recreated write RPCs", () => {
     });
   }
 
+  it("admin_update_group only gates the cell when the (audience × category) pair changes", () => {
+    // Lenient edit path: an UNCHANGED tag is left untouched so a group already
+    // sitting in a cell that was later un-applied/archived stays editable; only
+    // a new/changed cell is held to an active cell.
+    const body = functionBody(sql, "admin_update_group");
+    expect(body).toContain(
+      "p_category_id is distinct from (v_before->>'category_id')::uuid"
+    );
+    expect(body).toContain(
+      "p_audience_category::text is distinct from (v_before->>'audience_category')"
+    );
+  });
+
+  it("admin_create_group gates the cell unconditionally (no change-guard)", () => {
+    // A new group can never be created into an inactive cell.
+    const body = functionBody(sql, "admin_create_group");
+    expect(body).not.toContain("is distinct from");
+  });
+
   it("drops the prior life_stage-signature overloads so only one signature remains", () => {
     expect(sql.lower).toContain(
       "drop function if exists public.admin_create_group("

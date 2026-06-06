@@ -90,6 +90,7 @@ export const EMPTY_GROUP_MANAGEMENT_DATA: GroupManagementData = {
     sessions: "The database is not configured in this environment.",
     settings: "The database is not configured in this environment.",
     health: "The database is not configured in this environment.",
+    categoryOptions: "The database is not configured in this environment.",
   },
 };
 
@@ -153,6 +154,15 @@ export async function buildGroupManagementData(
     women: (womenCats.data ?? []).map((c) => ({ id: c.id, label: c.label })),
     mixed: (mixedCats.data ?? []).map((c) => ({ id: c.id, label: c.label })),
   };
+  // Surface a category-option read failure (rather than silently leaving a type
+  // with an empty picker). The edit form still preserves a group's current
+  // category as a selectable option, so a degraded read can't clear an existing
+  // tag on save — but the admin is warned the picker is incomplete.
+  const categoryOptionsError =
+    menCats.error?.message ??
+    womenCats.error?.message ??
+    mixedCats.error?.message ??
+    null;
 
   const latestWeek = latestWeekResult.data ?? null;
   const sessionsResult = latestWeek
@@ -235,6 +245,7 @@ export async function buildGroupManagementData(
         null,
       settings: settingsResult.error?.message ?? null,
       health: healthOverview.error?.message ?? null,
+      categoryOptions: categoryOptionsError,
     },
   };
 }

@@ -96,10 +96,11 @@ const INTEREST_VOLUME_COLUMNS =
 const INTEREST_PAGE_LIMIT = 10000;
 
 // Per-type interest volume from the prospects' desired cells. Filters archived
-// rows in the DB before the page cap (so a church with >INTEREST_PAGE_LIMIT
-// historical prospects can't push interested ones off the first page and
-// understate the pillar), then tallies purely. Only interested-state prospects
-// with a fully-named desired cell count (enforced in tallyInterestVolumeByType).
+// rows AND rows with no desired cell in the DB before the page cap, so a church
+// with >INTEREST_PAGE_LIMIT historical or cell-less prospects can't push the
+// countable interested ones off the first page and understate the pillar. Only
+// interested-state prospects with a fully-named desired cell count (also
+// re-enforced in tallyInterestVolumeByType).
 export async function fetchFunnelVolumeByType(
   client: ReadClient
 ): Promise<ReadResult<FunnelVolumeByType>> {
@@ -108,6 +109,8 @@ export async function fetchFunnelVolumeByType(
     .select(INTEREST_VOLUME_COLUMNS)
     .eq("archived", false)
     .eq("state", "interested")
+    .not("desired_audience_category", "is", null)
+    .not("desired_category_id", "is", null)
     .range(0, INTEREST_PAGE_LIMIT - 1)
     .returns<InterestProspectRow[]>();
 

@@ -33,7 +33,14 @@ export type PlanData = {
   // categories with an ACTIVE cell for that type. The category select filters to
   // the chosen top type's list.
   categoryOptionsByAudience: CategoryOptionsByAudience;
-  errors: { prospects: string | null; groups: string | null };
+  errors: {
+    prospects: string | null;
+    groups: string | null;
+    // #399 review: the intake category-option read. Surfaced (not silently
+    // emptied) so an admin sees when the picker has degraded to no cells rather
+    // than unknowingly adding prospects with no desired cell.
+    categoryOptions: string | null;
+  };
 };
 
 export const EMPTY_PLAN_DATA: PlanData = {
@@ -45,6 +52,7 @@ export const EMPTY_PLAN_DATA: PlanData = {
   errors: {
     prospects: "The database is not configured in this environment.",
     groups: "The database is not configured in this environment.",
+    categoryOptions: "The database is not configured in this environment.",
   },
 };
 
@@ -88,13 +96,15 @@ export async function loadPlanData(): Promise<PlanData> {
     groupNamesById,
     dueTasks,
     // A category-options read failure softens to no options rather than blocking
-    // the funnel — the prospect can still be added without naming a cell.
+    // the funnel — the prospect can still be added without naming a cell — but
+    // the error is surfaced below so the degradation isn't silent.
     categoryOptionsByAudience:
       categoryOptionsResult.data ?? EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
     errors: {
       prospects:
         prospectsResult.error?.message ?? dueTasksResult.error?.message ?? null,
       groups: groupsResult.error?.message ?? null,
+      categoryOptions: categoryOptionsResult.error?.message ?? null,
     },
   };
 }
