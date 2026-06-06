@@ -248,8 +248,8 @@ export function MultiplyBoards({
         style={{ margin: 0, fontFamily: fontBody, fontSize: 13, color: P.ink2 }}
       >
         Ministry year {ministryYear}–{ministryYear + 1}. Each type is graded on
-        four pillars; a configurable trigger over those pillars — not a blended
-        letter — says when a type is ready to multiply.
+        four pillars; a configurable trigger says when it&rsquo;s ready to
+        multiply.
       </p>
       <div
         style={{

@@ -24,7 +24,7 @@ export default async function AdminMultiplyPage() {
         eyebrow="Multiply"
         title="When to"
         italic="multiply"
-        lede="A read on which group types are ready to multiply — by type, not by individual group. Capacity is set in Settings; Interest comes from the funnel; the health pillars fill in as grades arrive."
+        lede="Which group types are ready to multiply — by type, not by individual group."
       />
       <PageBody>
         {data.error ? (
