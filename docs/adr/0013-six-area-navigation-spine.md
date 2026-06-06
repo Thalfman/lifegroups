@@ -3,7 +3,7 @@
 The Ministry Admin navigation is collapsing onto six job-oriented areas —
 **Home, Groups, Care, People, Planning, Settings** — rendered as a flat list on
 every navigation surface (admin sidebar, Home Hub launcher tiles, bottom nav).
-This is the foundation of the UI/UX reduction (`docs/REDUCTIONPLAN.md` §1–§2,
+This is the foundation of the UI/UX reduction (`docs/archive/REDUCTIONPLAN.md` §1–§2,
 §14). It amends ADR 0010, whose surface-budget rule requires every
 user-reachable surface to "map to exactly one job", because two of the new
 areas (Home, People) deliberately do not map to a single job. This ADR records

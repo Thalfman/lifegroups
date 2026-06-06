@@ -1,6 +1,6 @@
 # Multiplication Planner — PRD
 
-> ⚠️ **Superseded by [`CAPACITY_AND_MULTIPLICATION_PRD.md`](./CAPACITY_AND_MULTIPLICATION_PRD.md)**
+> ⚠️ **Superseded by [`CAPACITY_AND_MULTIPLICATION_PRD.md`](../plans/CAPACITY_AND_MULTIPLICATION_PRD.md)**
 > (2026-05-31). That PRD folds this "replace the Google Doc" spec into the wider,
 > integrated capacity + leader-pipeline + multiplication workspace Julian asked
 > for. This doc remains as the narrower build history for the dedicated planner
@@ -33,17 +33,18 @@ close the small field gaps.
 
 ## What already exists (reuse, do not rebuild)
 
-| Capability | Where | State |
-|---|---|---|
-| Candidate records (target year, status, notes, manual flags) | `multiplication_candidates` (migration `20260528160000`) | ✅ |
-| Readiness vs. Julian's 5 criteria | `lib/admin/multiplication.ts` | ✅ |
-| Audience × life-stage segmentation | `groups.audience_category` / `groups.life_stage` (migration `20260528150000`) | ✅ |
-| Add / edit / archive candidate UI + audited writes | `components/admin/launch-planning/multiplication-pipeline-panel.tsx`, `app/(protected)/admin/launch-planning/actions.ts` | ✅ |
-| Live member counts | from `group_memberships` | ✅ |
+| Capability                                                   | Where                                                                                                                    | State |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ----- |
+| Candidate records (target year, status, notes, manual flags) | `multiplication_candidates` (migration `20260528160000`)                                                                 | ✅    |
+| Readiness vs. Julian's 5 criteria                            | `lib/admin/multiplication.ts`                                                                                            | ✅    |
+| Audience × life-stage segmentation                           | `groups.audience_category` / `groups.life_stage` (migration `20260528150000`)                                            | ✅    |
+| Add / edit / archive candidate UI + audited writes           | `components/admin/launch-planning/multiplication-pipeline-panel.tsx`, `app/(protected)/admin/launch-planning/actions.ts` | ✅    |
+| Live member counts                                           | from `group_memberships`                                                                                                 | ✅    |
 
 ## Requirements
 
 ### R1 — A dedicated Multiplication tab 🟡
+
 Promote the pipeline from a Launch-Planning panel to its own admin surface
 (`/admin/launch-planning/multiplication` or a top-level nav item — build-slice
 call), reachable from the admin nav (`lib/auth/roles.ts`). Cleaner and more
@@ -51,6 +52,7 @@ scannable than the Doc: grouped by audience × life stage, with target-year and
 readiness visible at a glance, inline-editable.
 
 ### R2 — Seed from the Doc 🆕
+
 Load the ~30 named groups + segments from
 [`LG_MULTIPLICATION_PLAN_2026.md`](../julian-inputs/LG_MULTIPLICATION_PLAN_2026.md)
 so Julian opens a **populated** planner. Carry the Doc's `(?)` markers and the
@@ -60,6 +62,7 @@ and → `multiplication_candidates`. **Real-people data** goes into a seed file;
 this is consistent with the names already committed in the markdown source.
 
 ### R3 — Capture the missing Doc fields 🆕
+
 - **Successor / leader-designate** — the Doc's second `(Name)`; the apprentice
   intended to carry the multiplied group. Net-new field on
   `multiplication_candidates`. Distinct from the derived co-shepherd-tenure
@@ -68,6 +71,7 @@ this is consistent with the names already committed in the markdown source.
   table-vs-candidate placement is a build-slice call.
 
 ### R4 — Target year as in-app data, not a paper decision 🟡
+
 The 2026/2027 split is genuinely unresolvable from the Doc (ADR 0006). Julian
 sets each group's `target_year` **in the planner** (the field exists); the
 planner should make the split easy to see and set (e.g. group/filter by target

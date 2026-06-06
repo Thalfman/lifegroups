@@ -14,10 +14,10 @@
 >
 > Vocabulary follows [`CONTEXT.md`](../../CONTEXT.md). Product scope follows
 > [`PRD.md`](../PRD.md) and the existing audit
-> [`plans/CONCEPT_RECONCILIATION.md`](./CONCEPT_RECONCILIATION.md). Where a
+> [`plans/CONCEPT_RECONCILIATION.md`](../plans/CONCEPT_RECONCILIATION.md). Where a
 > requirement touches a decision, the ADR is cited inline.
 
------
+---
 
 ## Bottom line
 
@@ -43,7 +43,7 @@ evidenced below.
 [`PRD.md`](../PRD.md) records that the app began as a broad, Leader-inclusive
 group-operations platform and was inverted into Julian’s admin operating system,
 and that the original concept still lingers in code, schema, and copy. The proof
-already exists in [`plans/CONCEPT_RECONCILIATION.md`](./CONCEPT_RECONCILIATION.md):
+already exists in [`plans/CONCEPT_RECONCILIATION.md`](../plans/CONCEPT_RECONCILIATION.md):
 half-finished Shepherd-to-Leader renames, a dead `staff_viewer` role, and frozen
 surfaces that are dropped from nav but still resolve by URL. A per-tab read found
 one more instance the audit had not catalogued: the in-scope Follow-ups surface
@@ -71,7 +71,7 @@ surface, so the merge is a design problem, not a plumbing one.
 
 The terms Shepherd, Leader, Coach, and Over-Shepherd refer to overlapping ideas
 depending on which file is read.
-[`plans/CONCEPT_RECONCILIATION.md`](./CONCEPT_RECONCILIATION.md) already lists
+[`plans/CONCEPT_RECONCILIATION.md`](../plans/CONCEPT_RECONCILIATION.md) already lists
 specific live strings that contradict the `CONTEXT.md` glossary, including “coach”
 in empty states and “My Shepherds” back-links on pages whose titles read “My
 Leaders.” The same role reading three ways makes a clean app feel incoherent.
@@ -120,9 +120,9 @@ removed or gated behind a default-off flag rather than silently reachable, when
 only one shell system remains, and when the surface-budget rule is recorded as an
 ADR.
 
------
+---
 
-*Status legend:* 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a
+_Status legend:_ 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a
 Julian or Tom sign-off before build. Each requirement is sized to become one
 GitHub issue or a small epic.
 
@@ -220,7 +220,7 @@ must map to exactly one of the three jobs and must name the surface it replaces,
 it does not ship. This is the rule that prevents re-bloat, and it is the hook the
 later simplification PRD will extend with usability criteria.
 
------
+---
 
 ## Recommended issue-slicing order
 

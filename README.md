@@ -5,10 +5,12 @@ planning group launches.** A web app for the ministry's oversight tiers — and,
 with the 2026-06 pivot, the Leaders they care for (ADR 0017). Built with Next.js
 (App Router) + TypeScript + Tailwind on top of Supabase (Auth + Postgres + RLS).
 
+**🌐 Live app:** <https://fvclifegroups.vercel.app/>
+
 > 🔄 **Pivot in progress (2026-06).** The app is being re-scoped to **three
 > areas — Care · Plan · Multiply** — with the old group-assignment and number
 > surfaces turned off behind Super-Admin flags (turned off, not deleted). The
-> decisions are recorded in **ADR 0016–0019**; the spec is **PRD
+> decisions are recorded in **ADR 0016–0020**; the spec is **PRD
 > [#371](https://github.com/Thalfman/lifegroups/issues/371)** and the
 > implementation slices are **#372–#382**. The sections below describe the **new
 > north star** and what exists **today** versus what the pivot adds. The prior
@@ -40,17 +42,17 @@ behind Super-Admin nav flags (default off) — **turned off, not deleted**
 ## What "done" looks like
 
 "Done" is **outcome-based, not a feature checklist**: the app is done when it
-does Julian's three jobs *reliably* — now framed as the three areas. Each row
+does Julian's three jobs _reliably_ — now framed as the three areas. Each row
 names what the pivot delivers and what exists **today** (the pivot is in flight;
 the running app is still largely the pre-pivot one). The authoritative spec is
 **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**, sliced into
 issues **#372–#382**.
 
-| Area | The pivot delivers… | Today |
-|---|---|---|
-| **Care** | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- *and* Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **In flight.** The separate Leader-care, over-shepherd, and (A–D) group-health surfaces and private-to-Julian encrypted notes (SC.\*) exist today. Consolidation + rubrics + notes + logins are slices #373, #374, #376, #377, #378, #381, #382. |
-| **Plan** | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline. | **In flight.** A 7-stage Guests pipeline exists but is frozen (off-nav). The funnel reframe is slices #375 / #379. |
-| **Multiply** | Three boards by group **type** + four pillars + a Julian-owned trigger; Capacity is Julian-fed. | **In flight.** Today's per-group multiplication planner (seeded from Julian's Doc, ADR 0006) exists; the per-type pillar reframe is slice #380. |
+| Area         | The pivot delivers…                                                                                                                                                                                        | Today                                                                                                                                                                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Care**     | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- _and_ Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **In flight.** The separate Leader-care, over-shepherd, and (A–D) group-health surfaces and private-to-Julian encrypted notes (SC.\*) exist today. Consolidation + rubrics + notes + logins are slices #373, #374, #376, #377, #378, #381, #382. |
+| **Plan**     | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline.                                             | **In flight.** A 7-stage Guests pipeline exists but is frozen (off-nav). The funnel reframe is slices #375 / #379.                                                                                                                               |
+| **Multiply** | Three boards by group **type** + four pillars + a Julian-owned trigger; Capacity is Julian-fed.                                                                                                            | **In flight.** Today's per-group multiplication planner (seeded from Julian's Doc, ADR 0006) exists; the per-type pillar reframe is slice #380.                                                                                                  |
 
 **In one line:** the three jobs are unchanged in spirit but re-shaped into Care ·
 Plan · Multiply (ADR 0016), with Leaders/OS now logging in (ADR 0017),
@@ -65,7 +67,9 @@ old number/assignment surfaces are flagged off, not removed.
   [`0017`](./docs/adr/0017-reopen-leader-os-logins-and-care-notes.md) (Leader/OS
   logins + Care Notes), [`0018`](./docs/adr/0018-configurable-af-health-rubrics.md)
   (A–F rubrics), [`0019`](./docs/adr/0019-multiplication-by-type-and-pillars.md)
-  (multiplication by type) — and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**,
+  (multiplication by type), [`0020`](./docs/adr/0020-leader-care-note-is-group-scoped.md)
+  (Leader Care Note is group-scoped, amending 0017) — and
+  **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**,
   sliced into **#372–#382**.
 - [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Care Note, Prayer Request,
   Prospect, Over-Shepherd, Ministry Year, …). Use this vocabulary.
@@ -117,7 +121,7 @@ Two clarifications:
   records in the `members` table, linked to groups via `group_memberships`.
   They never sign in.
 - **`group_memberships.role`** is a separate enum (`role_in_group`:
-  `member | leader | co_leader`) describing a person's role *within a group*,
+  `member | leader | co_leader`) describing a person's role _within a group_,
   not their app-login role.
 
 ## Routes

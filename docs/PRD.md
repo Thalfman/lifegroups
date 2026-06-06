@@ -238,4 +238,4 @@ pipeline, so it is being unified rather than treated as closed.
    the Google Doc **by adoption, not by decree**, and the 2026/2027 split becomes in-app
    data Julian sets per group, not a paper decision
    ([ADR 0006](./adr/0006-multiplication-planner-supersedes-google-doc.md); build spec
-   [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md)).
+   [`archive/MULTIPLICATION_PLANNER.md`](./archive/MULTIPLICATION_PLANNER.md)).

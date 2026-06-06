@@ -6,7 +6,7 @@ current direction lives in the pivot ADRs + PRD #371 below; the prior north star
 record it grew from. Everything off that path has been archived.
 
 > 🔄 **Current direction (the pivot):** **ADR
-> [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0019](./adr/0019-multiplication-by-type-and-pillars.md)**
+> [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0020](./adr/0020-leader-care-note-is-group-scoped.md)**
 > and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (sliced
 > into #372–#382). Glossary: [`../CONTEXT.md`](../CONTEXT.md).
 >
@@ -37,13 +37,14 @@ record it grew from. Everything off that path has been archived.
 
 ## Referenced plans (linked from the conversation)
 
-| Doc                                                                                      | What it is                                                                                                                    |
-| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md)           | Shepherd-care detail (Q1–Q8).                                                                                                 |
-| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)     | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007).                                                 |
-| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md) | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the planner spec below.      |
-| [`plans/ADMIN_INTERACTION_MODEL_PRD.md`](./plans/ADMIN_INTERACTION_MODEL_PRD.md)         | Admin interaction model for progressive disclosure, density reduction, and accessible list-to-detail editing across `/admin`. |
-| [`plans/MULTIPLICATION_PLANNER.md`](./plans/MULTIPLICATION_PLANNER.md)                   | Multiplication planner build spec (Q11) — replaces the Google Doc (ADR 0006). **Superseded** by the capacity PRD above.       |
+| Doc                                                                                          | What it is                                                                                                                    |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [`plans/SHEPHERD_CARE_TRACKER_PLAN.md`](./plans/SHEPHERD_CARE_TRACKER_PLAN.md)               | Shepherd-care detail (Q1–Q8).                                                                                                 |
+| [`plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md`](./plans/GROUP_HEALTH_RUBRIC_DISCOVERY.md)         | Group-health rubric (Q12) — locked; ships with placeholder labels (ADR 0007).                                                 |
+| [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)     | 📌 Capacity + leader-pipeline + multiplication, as one integrated workspace (Q9–Q11). Supersedes the planner spec below.      |
+| [`plans/ADMIN_INTERACTION_MODEL_PRD.md`](./plans/ADMIN_INTERACTION_MODEL_PRD.md)             | Admin interaction model for progressive disclosure, density reduction, and accessible list-to-detail editing across `/admin`. |
+| [`plans/CONCEPT_RECONCILIATION.md`](./plans/CONCEPT_RECONCILIATION.md)                       | 🧹 Backlog/audit of where the pre-pivot "broad platform" concept still lingers in code, schema, and copy. Not a build spec.   |
+| [`plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md`](./plans/FRESH_SLATE_AND_ADMIN_COCKPIT_PRD.md) | Proposed (design-only) — Super-Admin "Danger Zone" power tools + admin landing-page ergonomics. Not yet built.                |
 
 ## Engineering reference
 
@@ -53,7 +54,7 @@ record it grew from. Everything off that path has been archived.
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model.                                          |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md)           | Hosting, env vars, Edge Function setup.                             |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints.                           |
-| [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0019; the pivot is 0016–0019).   |
+| [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0020; the pivot is 0016–0020).  |
 | [`agents/`](./agents/)                                                 | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
 
 ## Archived
