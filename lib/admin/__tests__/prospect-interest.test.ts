@@ -5,7 +5,6 @@ import {
   cellInterestKey,
   interestForCell,
   tallyCellInterest,
-  tallyInterestVolumeByType,
   type InterestProspectRow,
 } from "@/lib/admin/prospect-interest";
 
@@ -193,45 +192,5 @@ describe("tallyCellInterest — per-cell headcount", () => {
       row({ desired_category_id: null }), // excluded
     ]);
     expect(interestForCell(tally, "men", MEN_2030)).toBe(2);
-  });
-});
-
-describe("tallyInterestVolumeByType — per-type roll-up for the Multiply boards", () => {
-  it("rolls cells up to their top type", () => {
-    const volume = tallyInterestVolumeByType([
-      row({}),
-      row({ desired_category_id: "20303030-0000-0000-0000-0000000000aa" }),
-      row({
-        desired_audience_category: "women",
-        desired_category_id: WOMEN_2030,
-      }),
-    ]);
-    expect(volume).toEqual({ men: 2, women: 1, mixed: 0 });
-  });
-
-  it("only interested, non-archived prospects contribute to a type", () => {
-    const volume = tallyInterestVolumeByType([
-      row({}), // men +1
-      row({ state: "matched" }), // excluded
-      row({ state: "joined", archived: true }), // excluded
-      row({ state: "not_at_this_time" }), // excluded
-      row({ archived: true }), // excluded
-      row({ desired_audience_category: null, desired_category_id: null }), // excluded
-    ]);
-    expect(volume).toEqual({ men: 1, women: 0, mixed: 0 });
-  });
-
-  it("equals the sum of the per-cell tally over a type's cells", () => {
-    const rows = [
-      row({}),
-      row({}),
-      row({ desired_category_id: "20303030-0000-0000-0000-0000000000aa" }),
-    ];
-    const cellTally = tallyCellInterest(rows);
-    const volume = tallyInterestVolumeByType(rows);
-    const menSum = Object.entries(cellTally)
-      .filter(([k]) => k.startsWith("men:"))
-      .reduce((sum, [, n]) => sum + n, 0);
-    expect(volume.men).toBe(menSum);
   });
 });
