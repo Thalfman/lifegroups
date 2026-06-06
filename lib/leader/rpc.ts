@@ -12,7 +12,10 @@ import { callUuidRpc, type UuidRpcResult } from "@/lib/shared/rpc";
 
 type RpcResult = UuidRpcResult;
 
-export type LeaderCheckinStatus = "submitted" | "did_not_meet" | "planned_pause";
+export type LeaderCheckinStatus =
+  | "submitted"
+  | "did_not_meet"
+  | "planned_pause";
 export type LeaderHealthPulse = "healthy" | "watch" | "needs_follow_up";
 export type LeaderAttendanceStatus = "present" | "absent" | "excused";
 
@@ -34,7 +37,7 @@ export type LeaderSubmitGroupCheckinArgs = {
 
 export function rpcLeaderSubmitGroupCheckin(
   client: AppSupabaseClient,
-  args: LeaderSubmitGroupCheckinArgs,
+  args: LeaderSubmitGroupCheckinArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_submit_group_checkin", args);
 }
@@ -49,7 +52,7 @@ export type LeaderUpdateFollowUpStatusArgs = {
 
 export function rpcLeaderUpdateFollowUpStatus(
   client: AppSupabaseClient,
-  args: LeaderUpdateFollowUpStatusArgs,
+  args: LeaderUpdateFollowUpStatusArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_update_follow_up_status", args);
 }
@@ -69,7 +72,7 @@ export type LeaderCreateGroupCalendarEventArgs = {
 
 export function rpcLeaderCreateGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: LeaderCreateGroupCalendarEventArgs,
+  args: LeaderCreateGroupCalendarEventArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_create_group_calendar_event", args);
 }
@@ -87,21 +90,43 @@ export type LeaderUpdateGroupCalendarEventArgs = {
 
 export function rpcLeaderUpdateGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: LeaderUpdateGroupCalendarEventArgs,
+  args: LeaderUpdateGroupCalendarEventArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_update_group_calendar_event", args);
 }
 
 export function rpcLeaderArchiveGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: { p_event_id: string },
+  args: { p_event_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_archive_group_calendar_event", args);
 }
 
 export function rpcLeaderRestoreGroupCalendarEvent(
   client: AppSupabaseClient,
-  args: { p_event_id: string },
+  args: { p_event_id: string }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "leader_restore_group_calendar_event", args);
+}
+
+// Pivot slice 11 (#382 / ADR 0020): a leader's group-scoped Care Note /
+// Prayer Request. Author = the leader; subject = the group. The RPC enforces
+// auth_is_leader_of(group) and writes the paired, body-free audit row.
+export type LeaderWriteGroupNoteArgs = {
+  p_group_id: string;
+  p_body: string;
+};
+
+export function rpcLeaderWriteGroupCareNote(
+  client: AppSupabaseClient,
+  args: LeaderWriteGroupNoteArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "leader_write_group_care_note", args);
+}
+
+export function rpcLeaderWriteGroupPrayerRequest(
+  client: AppSupabaseClient,
+  args: LeaderWriteGroupNoteArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "leader_write_group_prayer_request", args);
 }

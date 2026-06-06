@@ -507,10 +507,15 @@ export interface NoteTransparencyGrantsRow {
   updated_at: Timestamp;
 }
 
+// Pivot slice 11 (#382 / ADR 0020): the subject is EITHER a leader profile (an
+// Over-Shepherd note about a leader) OR a group (a leader note about their
+// group). Exactly one of subject_profile_id / subject_group_id is set, enforced
+// by the care_notes_one_subject / prayer_requests_one_subject DB checks.
 export interface CareNotesRow {
   id: UUID;
   author_profile_id: UUID;
-  subject_profile_id: UUID;
+  subject_profile_id: UUID | null;
+  subject_group_id: UUID | null;
   body: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -519,7 +524,8 @@ export interface CareNotesRow {
 export interface PrayerRequestsRow {
   id: UUID;
   author_profile_id: UUID;
-  subject_profile_id: UUID;
+  subject_profile_id: UUID | null;
+  subject_group_id: UUID | null;
   body: string;
   status: "open" | "answered" | "archived";
   created_at: Timestamp;
@@ -1253,6 +1259,14 @@ export interface Database {
       };
       set_note_transparency_grant: {
         Args: { p_subject_profile_id: UUID; p_granted: boolean };
+        Returns: UUID;
+      };
+      leader_write_group_care_note: {
+        Args: { p_group_id: UUID; p_body: string };
+        Returns: UUID;
+      };
+      leader_write_group_prayer_request: {
+        Args: { p_group_id: UUID; p_body: string };
         Returns: UUID;
       };
       admin_update_shepherd_care_follow_up_status: {

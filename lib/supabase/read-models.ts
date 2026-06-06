@@ -1456,10 +1456,10 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
 // ---------------------------------------------------------------------------
 
 const CARE_NOTE_COLUMNS =
-  "id, author_profile_id, subject_profile_id, body, created_at, updated_at";
+  "id, author_profile_id, subject_profile_id, subject_group_id, body, created_at, updated_at";
 
 const PRAYER_REQUEST_COLUMNS =
-  "id, author_profile_id, subject_profile_id, body, status, created_at, updated_at";
+  "id, author_profile_id, subject_profile_id, subject_group_id, body, status, created_at, updated_at";
 
 const NOTE_TRANSPARENCY_GRANT_COLUMNS =
   "id, subject_profile_id, granted, set_by, created_at, updated_at";
@@ -1493,6 +1493,44 @@ export async function fetchPrayerRequestsForSubject(
     return {
       data: null,
       error: wrapError("fetchPrayerRequestsForSubject", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
+// Pivot slice 11 (#382 / ADR 0020): a leader's GROUP-scoped care notes / prayer
+// requests, newest first. RLS scopes the rows: a leader reads their own
+// (author) rows for the group; the oversight ladder reads them only when that
+// leader's transparency toggle is on. The group filter is belt-and-suspenders
+// on top of RLS so the leader surface only ever asks for one group at a time.
+export async function fetchGroupCareNotes(
+  client: ReadClient,
+  groupId: string
+): Promise<ReadResult<CareNotesRow[]>> {
+  if (!isUuid(groupId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .eq("subject_group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return { data: null, error: wrapError("fetchGroupCareNotes", error) };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchGroupPrayerRequests(
+  client: ReadClient,
+  groupId: string
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  if (!isUuid(groupId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .eq("subject_group_id", groupId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchGroupPrayerRequests", error),
     };
   return { data: (data ?? []) as PrayerRequestsRow[], error: null };
 }

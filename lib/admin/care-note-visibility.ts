@@ -27,9 +27,20 @@
 //
 // The author always reads their own note regardless of role or grant. Everyone
 // else is sealed unless they are on the oversight ladder (Ministry Admin OR
-// Super Admin) AND the subject person's transparency toggle is ON. Peers — any
-// other Over-Shepherd, Leader, or Co-Leader who is not the author — never read,
-// in either grant state. Anything not explicitly granted is denied.
+// Super Admin) AND the relevant transparency toggle is ON. Peers — any other
+// Over-Shepherd, Leader, or Co-Leader who is not the author — never read, in
+// either grant state. Anything not explicitly granted is denied.
+//
+// Which toggle is "relevant" is always the LEADER's, but the leader sits in a
+// different slot depending on the note type (Pivot slice 11, #382 / ADR 0020):
+//   * Over-Shepherd note about a leader — the leader is the SUBJECT, so the
+//     caller loads the grant for note.subjectProfileId.
+//   * Leader's group note — the leader is the AUTHOR (the subject is a group,
+//     not a profile), so the caller loads the grant for note.authorProfileId.
+// Either way this resolver takes the already-resolved grant; the RLS policy in
+// 20260608100000_phase_pivot11_leader_group_notes.sql ORs the two arms so each
+// note is gated by exactly that leader's toggle. This pure function is unchanged
+// by the group-note case: given the applicable grant, it resolves the boolean.
 
 import type { UserRole } from "@/types/enums";
 

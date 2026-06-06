@@ -19,13 +19,15 @@ decision; the flag toggles an already-re-verified surface, never a dormant one.
 
 - **Over-Shepherd** — the Care accordion scoped to their covered Leaders; writes
   Care Notes and Prayer Requests about those Leaders.
-- **Leader / Co-Leader** — a care surface over their group's existing roster
-  (members shown as people to care for, **not** as counts); writes Care Notes and
-  Prayer Requests per member; sees their group calendar. The roster is kept
-  current by Julian's own methods; the assignment/number UI stays hidden
-  (ADR 0016). Co-Leaders get the same surface as Leaders. The "Connect to Group
-  Leader" funnel step is back-office only — nothing about a Prospect surfaces to
-  the Leader.
+- **Leader / Co-Leader** — a care surface over their group: writes Care Notes and
+  Prayer Requests about the group, and sees their group calendar. The
+  assignment/number UI stays hidden (ADR 0016). Co-Leaders get the same surface as
+  Leaders. The "Connect to Group Leader" funnel step is back-office only — nothing
+  about a Prospect surfaces to the Leader. **(Amended by ADR 0020:** the Leader's
+  Care Note / Prayer Request is scoped to the **group**, not per member — members
+  are a non-login table and the per-person transparency toggle has no per-member
+  home, so a group note gated by the authoring Leader's toggle is the chosen
+  shape.**)**
 
 ## The Care Note: a second deliberate exception to the ladder
 
