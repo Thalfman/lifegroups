@@ -100,10 +100,26 @@ comment on column public.prayer_requests.subject_group_id is
 --    toggle:
 --      * OS note  -> subject_profile_id is the leader  -> subject-grant arm.
 --      * Group note -> author_profile_id is the leader -> author-grant arm.
---    The arms don't cross-contaminate: only leaders/co_leaders can hold a grant
---    (set_note_transparency_grant enforces that), and in each note type exactly
---    one of {subject, author} is that leader. The author always reads their own
---    row regardless of grant; peers/other tiers match neither arm.
+--
+--    Each arm is SCOPED to its own note type by a not-null guard on the
+--    discriminating subject column, so the two never cross:
+--      * the subject arm only fires for profile-subject rows
+--        (subject_profile_id is not null);
+--      * the author arm only fires for group-subject rows
+--        (subject_group_id is not null).
+--    Without the author-arm's `subject_group_id is not null` guard, a stale grant
+--    would leak the WRONG notes: if a leader with transparency ON is later
+--    converted to over_shepherd/ministry_admin (their grant row is NOT removed by
+--    super_admin_update_profile_role), the profile-subject notes they then AUTHOR
+--    about some OTHER leader would match `author_profile_id`-grant and become
+--    admin-readable even when that other leader's own toggle is OFF — breaking the
+--    sealed-by-default guarantee. The not-null guard binds the author arm to group
+--    notes only, where the author IS the gating leader.
+--
+--    Only leaders/co_leaders can hold a grant (set_note_transparency_grant
+--    enforces that), and the XOR check guarantees exactly one of {subject, group}
+--    is set per row. The author always reads their own row regardless of grant;
+--    peers/other tiers match neither arm.
 -- ---------------------------------------------------------------------------
 
 drop policy if exists care_notes_author_or_granted_select on public.care_notes;
@@ -115,17 +131,23 @@ create policy care_notes_author_or_granted_select
     or (
       public.auth_is_admin()
       and (
-        exists (
-          select 1
-            from public.note_transparency_grants g
-           where g.subject_profile_id = care_notes.subject_profile_id
-             and g.granted
+        (
+          care_notes.subject_profile_id is not null
+          and exists (
+            select 1
+              from public.note_transparency_grants g
+             where g.subject_profile_id = care_notes.subject_profile_id
+               and g.granted
+          )
         )
-        or exists (
-          select 1
-            from public.note_transparency_grants g
-           where g.subject_profile_id = care_notes.author_profile_id
-             and g.granted
+        or (
+          care_notes.subject_group_id is not null
+          and exists (
+            select 1
+              from public.note_transparency_grants g
+             where g.subject_profile_id = care_notes.author_profile_id
+               and g.granted
+          )
         )
       )
     )
@@ -140,17 +162,23 @@ create policy prayer_requests_author_or_granted_select
     or (
       public.auth_is_admin()
       and (
-        exists (
-          select 1
-            from public.note_transparency_grants g
-           where g.subject_profile_id = prayer_requests.subject_profile_id
-             and g.granted
+        (
+          prayer_requests.subject_profile_id is not null
+          and exists (
+            select 1
+              from public.note_transparency_grants g
+             where g.subject_profile_id = prayer_requests.subject_profile_id
+               and g.granted
+          )
         )
-        or exists (
-          select 1
-            from public.note_transparency_grants g
-           where g.subject_profile_id = prayer_requests.author_profile_id
-             and g.granted
+        or (
+          prayer_requests.subject_group_id is not null
+          and exists (
+            select 1
+              from public.note_transparency_grants g
+             where g.subject_profile_id = prayer_requests.author_profile_id
+               and g.granted
+          )
         )
       )
     )

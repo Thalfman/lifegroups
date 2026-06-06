@@ -109,6 +109,20 @@ describe("pivot11 leader group-notes migration — ladder read keeps subject AND
       );
     });
 
+    it(`${table}: scopes the SUBJECT arm to profile-subject rows`, () => {
+      expect(selectPolicy(table)).toContain(
+        `${table}.subject_profile_id is not null`
+      );
+    });
+
+    it(`${table}: scopes the AUTHOR arm to group-subject rows (no stale-grant cross-leak)`, () => {
+      // Without this guard, a stale grant on a former leader (now over_shepherd)
+      // would expose the profile-subject notes they author about OTHER leaders.
+      expect(selectPolicy(table)).toContain(
+        `${table}.subject_group_id is not null`
+      );
+    });
+
     it(`${table}: every grant arm requires the toggle to be ON (g.granted)`, () => {
       const policy = selectPolicy(table);
       const grantedChecks = [...policy.matchAll(/and g\.granted/g)];

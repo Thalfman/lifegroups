@@ -37,7 +37,12 @@ transparency toggle) stands unchanged.
   note's _subject_). A Leader's group note is gated by that Leader's toggle (the
   Leader is the note's _author_). The RLS SELECT policy keeps the subject-grant
   arm and adds an author-grant arm; both key on the **Leader's**
-  `note_transparency_grant`. The author always reads their own note; peers never.
+  `note_transparency_grant`. Each arm is **scoped to its own note type** by a
+  not-null guard (subject arm → `subject_profile_id is not null`; author arm →
+  `subject_group_id is not null`) so a stale grant cannot cross-leak: without it,
+  a leader converted to over-shepherd (whose grant row lingers) could expose the
+  profile-subject notes they later author about _another_ leader. The author
+  always reads their own note; peers never.
 - Writes still flow only through narrow SECURITY DEFINER RPCs
   (`leader_write_group_care_note`, `leader_write_group_prayer_request`) that gate
   authorship on `auth_is_leader_of(group)` and write a paired, body-free audit
