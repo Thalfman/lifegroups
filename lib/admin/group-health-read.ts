@@ -25,6 +25,7 @@ import {
   type ReadResult,
 } from "@/lib/supabase/read-models";
 import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 
 // Read side for the group-health tracer (#127). Admin-only data; these run
 // behind the admin layout guard and the table's admin-only RLS. Reads go
@@ -43,13 +44,6 @@ export type { ReadResult } from "@/lib/supabase/read-models";
 function wrapError(prefix: string, err: unknown): Error {
   if (err instanceof Error) return new Error(`${prefix}: ${err.message}`);
   return new Error(`${prefix}: ${String(err)}`);
-}
-
-// First day of the current month, UTC. The assessment period key.
-export function currentPeriodMonthIso(now: Date = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
 }
 
 // Build the live rubric from the audited settings: the admin-tuned weights /

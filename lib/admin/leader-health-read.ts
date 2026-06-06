@@ -8,27 +8,15 @@ import type {
 import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { decodeRubricCriteria, type Rubric } from "@/lib/admin/health-rubric";
-import { ministryYearOf } from "@/lib/admin/ministry-year";
 
 // Read side for the Leader-Health Grade (#378 / ADR 0018, pivot slice 5).
 // Admin-only data; these run behind the admin layout guard and the tables'
 // admin-only RLS. The rubric read reuses the shared health_rubrics reader
 // filtered to kind='leader' (no second read path); the grade read pulls the one
 // persisted leader_rubric_grades row for a (leader, ministry year).
-
-// The current Ministry Year (its August-start calendar year), or null in the
-// Jun/Jul off-season. The Leader-Health Grade is keyed to this.
-export function currentMinistryYear(now: Date = new Date()): number | null {
-  return ministryYearOf(now).year;
-}
-
-// First-of-month ISO (YYYY-MM-DD), UTC — the period an override's "this_month"
-// expiry is judged against, shared with the group grade's period key.
-export function currentPeriodMonthIso(now: Date = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
-}
+//
+// The current-period helpers (currentPeriodMonthIso / currentMinistryYear) live
+// in lib/admin/ministry-year.ts — the one home for the shared period key.
 
 // Fetch the current Leader-Health Rubric (the kind='leader' row), decoded into
 // the engine's Rubric shape. A missing row decodes to an empty rubric — a fresh

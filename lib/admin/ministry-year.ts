@@ -46,3 +46,21 @@ export function isInMinistryYear(date: Date, year: number): boolean {
   const located = ministryYearOf(date);
   return located.year === year;
 }
+
+// First-of-month ISO (YYYY-MM-DD), UTC — the assessment period key the health
+// grades resolve FOR. An override's "this_month" expiry pivots on this, and its
+// month locates the Ministry Year. The one home for the period key the group-
+// and leader-health read paths share (previously copied in each).
+export function currentPeriodMonthIso(now: Date = new Date()): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10);
+}
+
+// The current Ministry Year (its August-start calendar year), or null in the
+// Jun/Jul off-season. Health grades are keyed to this. (The Multiply boards use
+// their own off-season-clamping variant in multiply-data.ts — different
+// contract, deliberately separate.)
+export function currentMinistryYear(now: Date = new Date()): number | null {
+  return ministryYearOf(now).year;
+}

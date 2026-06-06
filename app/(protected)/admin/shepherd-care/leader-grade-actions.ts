@@ -12,10 +12,8 @@ import {
 } from "@/lib/admin/validation";
 import { rpcAdminSetLeaderRubricGrade } from "@/lib/admin/rpc";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
-import {
-  currentPeriodMonthIso,
-  fetchLeaderHealthRubric,
-} from "@/lib/admin/leader-health-read";
+import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 
 // Leader-Health Grade write action (#378 / ADR 0018, pivot slice 5). The Care
 // grade-entry editor posts the per-criterion scores + ministry year + optional

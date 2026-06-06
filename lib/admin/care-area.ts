@@ -6,6 +6,7 @@ import {
   type ShepherdCareRecentInteractionRow,
 } from "@/lib/supabase/read-models";
 import type { CareAttentionItem } from "@/lib/admin/shepherd-care-dashboard";
+import { formatDueLabel } from "@/lib/admin/care-temporal";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import {
@@ -92,13 +93,7 @@ function daysFromToday(dueIso: string, todayIso: string): number {
 }
 
 function dueLabelFor(dueIso: string, todayIso: string): string {
-  const days = daysFromToday(dueIso, todayIso);
-  if (days === 0) return "Due today";
-  if (days < 0) {
-    const abs = Math.abs(days);
-    return abs === 1 ? "Overdue 1 day" : `Overdue ${abs} days`;
-  }
-  return days === 1 ? "Due tomorrow" : `Due in ${days} days`;
+  return formatDueLabel(daysFromToday(dueIso, todayIso));
 }
 
 function dueToneFor(

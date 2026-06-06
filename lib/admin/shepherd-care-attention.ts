@@ -15,6 +15,7 @@
 // read-core (which imports nothing but a type, so this stays acyclic).
 
 import { differenceInDaysIso } from "@/lib/supabase/read-core";
+import { laterIso } from "@/lib/admin/care-temporal";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 
 // Only the care fields the attention predicate reads. ShepherdCareDirectorySummary
@@ -89,14 +90,6 @@ export type DetectCareReasonsContext = {
   // at the data layer by the reset, never masked here.
   baselineIso?: string | null;
 };
-
-// The later of two ISO YYYY-MM-DD dates (lexicographic compare is date order),
-// treating null as "absent". Returns null only when both are null.
-function laterIso(a: string | null, b: string | null): string | null {
-  if (a === null) return b;
-  if (b === null) return a;
-  return a >= b ? a : b;
-}
 
 // The one place that decides which attention reasons a care row raises. The
 // collected reasons are sorted by REASON_PRIORITY before returning, so the

@@ -8,7 +8,7 @@ import type {
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { wrapError, type ReadResult } from "@/lib/supabase/read-core";
-import { ministryYearOf } from "@/lib/admin/ministry-year";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
   resolveGroupRubricGrade,
   type GroupRubricGrade,
@@ -23,20 +23,6 @@ import {
 // The grade table is not in the generated supabase schema types, so its select
 // is cast in this one place — the same trust seam the other group-health reads
 // (lib/admin/group-health-read.ts) and admin RPCs use.
-
-// First day of the current month, UTC — the period the grade resolves FOR (the
-// override's this-month expiry pivots on it; its month locates the ministry year).
-export function currentGradePeriodMonthIso(now: Date = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
-}
-
-// The current Ministry Year (Aug–May), or null in the Jun/Jul off-season. The
-// grade is keyed to this year (ADR 0018).
-export function currentMinistryYear(now: Date = new Date()): number | null {
-  return ministryYearOf(now).year;
-}
 
 const GRADE_COLUMNS =
   "group_id, ministry_year, criterion_scores, computed_letter, " +
@@ -76,7 +62,7 @@ export async function getGroupRubricGrade(
   client: AppSupabaseClient,
   groupId: string,
   ministryYear: number,
-  periodMonthIso: string = currentGradePeriodMonthIso()
+  periodMonthIso: string = currentPeriodMonthIso()
 ): Promise<ReadResult<GroupRubricGradeView>> {
   const rubricRes = await fetchHealthRubric(client, "group");
   if (rubricRes.error)

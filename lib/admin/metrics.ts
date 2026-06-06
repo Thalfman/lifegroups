@@ -18,6 +18,7 @@ import type {
 } from "@/types/database";
 import type { GroupHealthLetter, GroupHealthStatus } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
+import { jsonInt, jsonIntOrNull } from "@/lib/admin/jsonb-decode";
 import type { CareCadenceWindows } from "@/lib/admin/shepherd-care-cadence";
 
 // ---------------------------------------------------------------------------
@@ -83,73 +84,48 @@ function readJsonGrade(
   return fallback;
 }
 
-function readJsonInt(
-  source: Record<string, unknown> | null | undefined,
-  key: string,
-  fallback: number
-): number {
-  if (!source) return fallback;
-  const raw = source[key];
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
-    return raw;
-  return fallback;
-}
-
-function readJsonIntOrNull(
-  source: Record<string, unknown> | null | undefined,
-  key: string,
-  fallback: number | null
-): number | null {
-  if (!source) return fallback;
-  const raw = source[key];
-  if (raw === null) return null;
-  if (typeof raw === "number" && Number.isFinite(raw) && Number.isInteger(raw))
-    return raw;
-  return fallback;
-}
-
 export function decodeMetricDefaults(
   row: AppSettingsRow | null
 ): MetricDefaults {
   const raw = row?.setting_value;
   const source: Record<string, unknown> | null = isRecord(raw) ? raw : null;
   return {
-    default_group_capacity: readJsonIntOrNull(
+    default_group_capacity: jsonIntOrNull(
       source,
       "default_group_capacity",
       BUILT_IN_METRIC_DEFAULTS.default_group_capacity
     ),
-    capacity_warning_threshold_pct: readJsonInt(
+    capacity_warning_threshold_pct: jsonInt(
       source,
       "capacity_warning_threshold_pct",
       BUILT_IN_METRIC_DEFAULTS.capacity_warning_threshold_pct
     ),
-    capacity_full_threshold_pct: readJsonInt(
+    capacity_full_threshold_pct: jsonInt(
       source,
       "capacity_full_threshold_pct",
       BUILT_IN_METRIC_DEFAULTS.capacity_full_threshold_pct
     ),
-    missed_checkin_warning_weeks: readJsonInt(
+    missed_checkin_warning_weeks: jsonInt(
       source,
       "missed_checkin_warning_weeks",
       BUILT_IN_METRIC_DEFAULTS.missed_checkin_warning_weeks
     ),
-    default_healthy_attendance_pct: readJsonInt(
+    default_healthy_attendance_pct: jsonInt(
       source,
       "default_healthy_attendance_pct",
       BUILT_IN_METRIC_DEFAULTS.default_healthy_attendance_pct
     ),
-    check_in_due_offset_hours: readJsonInt(
+    check_in_due_offset_hours: jsonInt(
       source,
       "check_in_due_offset_hours",
       BUILT_IN_METRIC_DEFAULTS.check_in_due_offset_hours
     ),
-    shepherd_care_stale_days_direct: readJsonInt(
+    shepherd_care_stale_days_direct: jsonInt(
       source,
       "shepherd_care_stale_days_direct",
       BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_direct
     ),
-    shepherd_care_stale_days_delegated: readJsonInt(
+    shepherd_care_stale_days_delegated: jsonInt(
       source,
       "shepherd_care_stale_days_delegated",
       BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated
@@ -159,7 +135,7 @@ export function decodeMetricDefaults(
       "group_health_watch_grade",
       BUILT_IN_METRIC_DEFAULTS.group_health_watch_grade
     ),
-    group_health_attendance_decline_margin_pct: readJsonInt(
+    group_health_attendance_decline_margin_pct: jsonInt(
       source,
       "group_health_attendance_decline_margin_pct",
       BUILT_IN_METRIC_DEFAULTS.group_health_attendance_decline_margin_pct

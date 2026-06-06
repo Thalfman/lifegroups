@@ -19,10 +19,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import {
-  currentMinistryYear,
   getGroupRubricGrade,
   type GroupRubricGradeView,
 } from "@/lib/admin/group-rubric-grade-read";
+import {
+  currentMinistryYear,
+  currentPeriodMonthIso,
+} from "@/lib/admin/ministry-year";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentByShepherdId,
@@ -53,7 +56,6 @@ import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader
 import {
   fetchLeaderHealthRubric,
   fetchLeaderRubricGrade,
-  currentPeriodMonthIso,
   type LeaderRubricGradeRow,
 } from "@/lib/admin/leader-health-read";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";

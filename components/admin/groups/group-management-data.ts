@@ -21,10 +21,8 @@ import {
   BUILT_IN_METRIC_DEFAULTS,
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
-import {
-  currentPeriodMonthIso,
-  listGroupHealthOverview,
-} from "@/lib/admin/group-health-read";
+import { listGroupHealthOverview } from "@/lib/admin/group-health-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import type { GroupHealthLetter } from "@/types/enums";
 
 // The Groups surface's data, as a pure function of the reads seam (ADR 0015).
@@ -173,7 +171,8 @@ export async function buildGroupManagementData(
         row.group_question_score === null,
       // Follow-up concern: either an open generic follow-up tied to the group,
       // or the director's group-health "needs follow-up" flag (#265).
-      hasOpenFollowUp: followUpGroupIds.has(row.group_id) || row.needs_follow_up,
+      hasOpenFollowUp:
+        followUpGroupIds.has(row.group_id) || row.needs_follow_up,
       hasCareConcern: careConcernGroupIds.has(row.group_id),
     };
   }
@@ -209,7 +208,9 @@ export async function buildGroupManagementData(
       profiles: profilesResult.error?.message ?? null,
       memberships: membershipsResult.error?.message ?? null,
       sessions:
-        latestWeekResult.error?.message ?? sessionsResult.error?.message ?? null,
+        latestWeekResult.error?.message ??
+        sessionsResult.error?.message ??
+        null,
       settings: settingsResult.error?.message ?? null,
       health: healthOverview.error?.message ?? null,
     },

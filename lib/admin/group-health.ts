@@ -15,6 +15,7 @@
 
 import type { GroupHealthLetter } from "@/types/enums";
 import { isRecord } from "@/lib/admin/validation";
+import { jsonNumber } from "@/lib/admin/jsonb-decode";
 
 // ---------------------------------------------------------------------------
 // Rubric configuration (tunable; defaults documented in the rubric).
@@ -334,12 +335,12 @@ export function decodeGroupHealthRubric(raw: unknown): GroupHealthRubricConfig {
   if (!source) return { ...BUILT_IN_GROUP_HEALTH_RUBRIC };
 
   return {
-    attendance_window_weeks: readNumber(
+    attendance_window_weeks: jsonNumber(
       source,
       "attendance_window_weeks",
       BUILT_IN_GROUP_HEALTH_RUBRIC.attendance_window_weeks
     ),
-    healthy_attendance_pct: readNumber(
+    healthy_attendance_pct: jsonNumber(
       source,
       "healthy_attendance_pct",
       BUILT_IN_GROUP_HEALTH_RUBRIC.healthy_attendance_pct
@@ -354,13 +355,13 @@ function decodeWeights(raw: unknown): GroupHealthDimensionWeights {
   const def = BUILT_IN_GROUP_HEALTH_RUBRIC.weights;
   if (!source) return { ...def };
   const tuned = {
-    attendance: readNumber(source, "attendance", def.attendance),
-    spiritual_growth: readNumber(
+    attendance: jsonNumber(source, "attendance", def.attendance),
+    spiritual_growth: jsonNumber(
       source,
       "spiritual_growth",
       def.spiritual_growth
     ),
-    group_question: readNumber(source, "group_question", def.group_question),
+    group_question: jsonNumber(source, "group_question", def.group_question),
   };
   // Every weight must be non-negative and at least one positive, or computeGrade
   // has no usable total and grades to null. Reject the set wholesale otherwise.
@@ -380,25 +381,13 @@ function decodeCutLines(raw: unknown): GroupHealthCutLines {
   const def = BUILT_IN_GROUP_HEALTH_RUBRIC.cut_lines;
   if (!source) return { ...def };
   const tuned = {
-    a: readNumber(source, "a", def.a),
-    b: readNumber(source, "b", def.b),
-    c: readNumber(source, "c", def.c),
+    a: jsonNumber(source, "a", def.a),
+    b: jsonNumber(source, "b", def.b),
+    c: jsonNumber(source, "c", def.c),
   };
   // The letter ladder only works on a strictly descending set (a > b > c).
   // A tuned set that isn't is rejected wholesale rather than graded on — a
   // half-applied ladder would silently mis-letter every group.
   if (!(tuned.a > tuned.b && tuned.b > tuned.c)) return { ...def };
   return tuned;
-}
-
-// A finite number under `key`, or the fallback when absent/invalid. Mirrors
-// metrics.ts readJsonInt but accepts non-integers (cut-lines/weights may be
-// fractional as the rubric is tuned).
-function readNumber(
-  source: Record<string, unknown>,
-  key: string,
-  fallback: number
-): number {
-  const value = source[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }

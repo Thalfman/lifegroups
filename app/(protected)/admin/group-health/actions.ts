@@ -24,11 +24,11 @@ import {
 } from "@/lib/admin/group-health";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  currentPeriodMonthIso,
   fetchGroupAttendanceWeeks,
   fetchGroupHealthRatings,
   fetchGroupHealthRubric,
 } from "@/lib/admin/group-health-read";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 
 // Shared recompute: read the configured rubric and the group's rolling
 // attendance, fold them with the supplied 1–5 ratings into the composite grade.
