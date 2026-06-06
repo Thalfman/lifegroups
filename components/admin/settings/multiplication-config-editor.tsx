@@ -14,28 +14,38 @@ import {
 } from "@/components/admin/forms/action-form";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type {
+  CapacityOption,
   FedCapacity,
   HealthLetter,
+  PillarCondition,
+  PillarKey,
   PillarThresholds,
   TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
 
 // Settings Multiplication-config editor (#380). Lets Julian feed the per-type
 // Capacity (the Ministry-Admin number that drives the Capacity pillar + the
-// individual-group full-count flag) and configure the trigger rubric (the
-// per-pillar minimum letters that produce the "ready to multiply this type"
-// signal). One type is edited at a time; the editor posts the group_type,
-// ministry_year, and the three JSON payloads the audited RPC persists.
+// individual-group full-count flag) plus two offerable capacity options, and
+// configure the trigger rubric — the per-pillar CONDITION (at least / at most /
+// between) that produces the "ready to multiply this type" signal. The condition
+// is directional because health is not monotonic: high or low can each be the
+// signal Julian wants. One type is edited at a time; the editor posts the
+// group_type, ministry_year, and the three JSON payloads the audited RPC persists.
 
 const LETTERS: HealthLetter[] = ["A", "B", "C", "D", "F"];
-const TRIGGER_PILLARS: {
-  key: "capacity" | "interest" | "groupHealth" | "leaderHealth";
-  label: string;
-}[] = [
+const TRIGGER_PILLARS: { key: PillarKey; label: string }[] = [
   { key: "capacity", label: "Capacity" },
+  { key: "overflow", label: "Overflowing groups" },
   { key: "interest", label: "Interest" },
   { key: "groupHealth", label: "Group Health" },
   { key: "leaderHealth", label: "Leader Health" },
+];
+
+const DIRECTIONS: { value: "off" | PillarCondition["op"]; label: string }[] = [
+  { value: "off", label: "Not required" },
+  { value: "atLeast", label: "At least" },
+  { value: "atMost", label: "At most" },
+  { value: "between", label: "Between" },
 ];
 
 export type MultiplicationConfigSeed = {
@@ -46,16 +56,42 @@ export type MultiplicationConfigSeed = {
   fedCapacity: FedCapacity;
 };
 
-// "off" means the pillar is not part of the trigger; any other value is its
-// minimum letter.
-type TriggerSelection = Record<string, HealthLetter | "off">;
+// One pillar's editable trigger row: its direction ("off" excludes it) plus the
+// primary letter and — for "between" — the worse-bound letter.
+type TriggerRow = {
+  op: "off" | PillarCondition["op"];
+  letter: HealthLetter;
+  worst: HealthLetter;
+};
+type TriggerSelection = Record<string, TriggerRow>;
 
 function seedTriggerSelection(trigger: TriggerRubric): TriggerSelection {
   const out: TriggerSelection = {};
   for (const p of TRIGGER_PILLARS) {
-    out[p.key] = trigger.minimums[p.key] ?? "off";
+    const condition = trigger.conditions[p.key];
+    if (!condition) {
+      out[p.key] = { op: "off", letter: "B", worst: "D" };
+    } else if (condition.op === "between") {
+      out[p.key] = {
+        op: "between",
+        letter: condition.best,
+        worst: condition.worst,
+      };
+    } else {
+      out[p.key] = { op: condition.op, letter: condition.letter, worst: "D" };
+    }
   }
   return out;
+}
+
+// Up to two capacity-option rows, seeded from the stored options (padded to 2).
+type OptionRow = { label: string; capacity: string };
+function seedOptionRows(options: CapacityOption[]): [OptionRow, OptionRow] {
+  const row = (o: CapacityOption | undefined): OptionRow => ({
+    label: o?.label ?? "",
+    capacity: o?.capacity != null ? String(o.capacity) : "",
+  });
+  return [row(options[0]), row(options[1])];
 }
 
 export function MultiplicationConfigEditor({
@@ -84,7 +120,10 @@ export function MultiplicationConfigEditor({
     seed?.trigger.requireHealthGrades ?? false
   );
   const [triggerSel, setTriggerSel] = useState<TriggerSelection>(() =>
-    seedTriggerSelection(seed?.trigger ?? { minimums: {} })
+    seedTriggerSelection(seed?.trigger ?? { conditions: {} })
+  );
+  const [optionRows, setOptionRows] = useState<[OptionRow, OptionRow]>(() =>
+    seedOptionRows(seed?.fedCapacity.options ?? [])
   );
 
   // When the operator switches type, reset the editable fields from that type's
@@ -97,7 +136,8 @@ export function MultiplicationConfigEditor({
     );
     setFullGroupCount(String(s?.fedCapacity.fullGroupCount ?? 0));
     setRequireHealth(s?.trigger.requireHealthGrades ?? false);
-    setTriggerSel(seedTriggerSelection(s?.trigger ?? { minimums: {} }));
+    setTriggerSel(seedTriggerSelection(s?.trigger ?? { conditions: {} }));
+    setOptionRows(seedOptionRows(s?.fedCapacity.options ?? []));
   };
 
   // The thresholds aren't edited here (the numeric pillar bands keep their seeded
@@ -105,21 +145,36 @@ export function MultiplicationConfigEditor({
   // them. Capacity + trigger are what Julian sets on this surface.
   const thresholdsJson = JSON.stringify(seed?.thresholds ?? {});
 
-  const minimums: Record<string, HealthLetter> = {};
+  // Build the per-pillar conditions from the editable rows, dropping "off"
+  // pillars. "between" carries both bounds; the others a single letter.
+  const conditions: Partial<Record<PillarKey, PillarCondition>> = {};
   for (const p of TRIGGER_PILLARS) {
-    const v = triggerSel[p.key];
-    if (v !== "off") minimums[p.key] = v;
+    const row = triggerSel[p.key];
+    if (!row || row.op === "off") continue;
+    conditions[p.key] =
+      row.op === "between"
+        ? { op: "between", best: row.letter, worst: row.worst }
+        : { op: row.op, letter: row.letter };
   }
   const triggerJson = JSON.stringify({
-    minimums,
+    conditions,
     requireHealthGrades: requireHealth,
   });
 
   const headroomNum = headroom.trim() === "" ? null : Number(headroom);
+  // Serialize the two capacity options, dropping a wholly-empty row.
+  const options: CapacityOption[] = [];
+  for (const row of optionRows) {
+    const capNum = row.capacity.trim() === "" ? null : Number(row.capacity);
+    const capacity = capNum != null && Number.isFinite(capNum) ? capNum : null;
+    if (row.label.trim() === "" && capacity === null) continue;
+    options.push({ label: row.label.trim(), capacity });
+  }
   const fedCapacityJson = JSON.stringify({
     headroom:
       headroomNum != null && Number.isFinite(headroomNum) ? headroomNum : null,
     fullGroupCount: Number(fullGroupCount) || 0,
+    options,
   });
 
   return (
@@ -147,9 +202,12 @@ export function MultiplicationConfigEditor({
 
       <p style={noteStyle}>
         Capacity is fed here per type — it is not derived from in-app counts.
-        The full-group count raises an individual &ldquo;multiply this
-        one&rdquo; flag. The trigger sets the minimum pillar grades a type must
-        clear to be ready. Ministry year {ministryYear}–{ministryYear + 1}.
+        The full-group count grades the Overflow pillar and raises an individual
+        &ldquo;multiply this one&rdquo; flag. The two capacity options are the
+        offerings you can present to anyone interested. The trigger sets, per
+        pillar, the direction a grade must satisfy to count as ready — health is
+        not black-and-white, so high or low can each be your signal. Ministry
+        year {ministryYear}–{ministryYear + 1}.
       </p>
 
       <div
@@ -207,41 +265,158 @@ export function MultiplicationConfigEditor({
             padding: "0 6px",
           }}
         >
-          Trigger — minimum grade each pillar must clear
+          Capacity options — up to two offerings for anyone interested
         </legend>
-        {TRIGGER_PILLARS.map((p) => (
+        {optionRows.map((row, i) => (
           <div
-            key={p.key}
+            key={i}
+            className="lg-m-grid-stack"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              display: "grid",
+              gridTemplateColumns: "2fr 1fr",
               gap: 12,
             }}
           >
-            <label htmlFor={`mc-trig-${p.key}`} style={fieldLabelStyle}>
-              {p.label}
-            </label>
-            <select
-              id={`mc-trig-${p.key}`}
-              value={triggerSel[p.key]}
-              onChange={(e) =>
-                setTriggerSel((s) => ({
-                  ...s,
-                  [p.key]: e.target.value as HealthLetter | "off",
-                }))
-              }
-              style={{ ...fieldInputStyle, width: 140 }}
-            >
-              <option value="off">Not required</option>
-              {LETTERS.map((l) => (
-                <option key={l} value={l}>
-                  At least {l}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label htmlFor={`mc-opt-label-${i}`} style={fieldLabelStyle}>
+                Option {i + 1} label
+              </label>
+              <input
+                id={`mc-opt-label-${i}`}
+                type="text"
+                value={row.label}
+                placeholder={i === 0 ? "e.g. Standard" : "e.g. Larger"}
+                onChange={(e) =>
+                  setOptionRows((rows) => {
+                    const next = [...rows] as [OptionRow, OptionRow];
+                    next[i] = { ...next[i], label: e.target.value };
+                    return next;
+                  })
+                }
+                style={fieldInputStyle}
+              />
+            </div>
+            <div>
+              <label htmlFor={`mc-opt-cap-${i}`} style={fieldLabelStyle}>
+                Capacity
+              </label>
+              <input
+                id={`mc-opt-cap-${i}`}
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={row.capacity}
+                placeholder="e.g. 12"
+                onChange={(e) =>
+                  setOptionRows((rows) => {
+                    const next = [...rows] as [OptionRow, OptionRow];
+                    next[i] = { ...next[i], capacity: e.target.value };
+                    return next;
+                  })
+                }
+                style={fieldInputStyle}
+              />
+            </div>
           </div>
         ))}
+      </fieldset>
+
+      <fieldset
+        style={{
+          border: `1px solid ${P.line}`,
+          borderRadius: 10,
+          padding: "12px 14px",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <legend
+          style={{
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+            padding: "0 6px",
+          }}
+        >
+          Trigger — the condition each pillar must satisfy
+        </legend>
+        {TRIGGER_PILLARS.map((p) => {
+          const row = triggerSel[p.key];
+          const update = (patch: Partial<TriggerRow>) =>
+            setTriggerSel((s) => ({
+              ...s,
+              [p.key]: { ...s[p.key], ...patch },
+            }));
+          return (
+            <div
+              key={p.key}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <label htmlFor={`mc-trig-${p.key}`} style={fieldLabelStyle}>
+                {p.label}
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <select
+                  id={`mc-trig-${p.key}`}
+                  value={row.op}
+                  onChange={(e) =>
+                    update({ op: e.target.value as TriggerRow["op"] })
+                  }
+                  style={{ ...fieldInputStyle, width: 120 }}
+                >
+                  {DIRECTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+                {row.op !== "off" && (
+                  <select
+                    aria-label={`${p.label} ${
+                      row.op === "between" ? "best grade" : "grade"
+                    }`}
+                    value={row.letter}
+                    onChange={(e) =>
+                      update({ letter: e.target.value as HealthLetter })
+                    }
+                    style={{ ...fieldInputStyle, width: 70 }}
+                  >
+                    {LETTERS.map((l) => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {row.op === "between" && (
+                  <>
+                    <span style={{ ...noteStyle, fontSize: 12 }}>to</span>
+                    <select
+                      aria-label={`${p.label} worst grade`}
+                      value={row.worst}
+                      onChange={(e) =>
+                        update({ worst: e.target.value as HealthLetter })
+                      }
+                      style={{ ...fieldInputStyle, width: 70 }}
+                    >
+                      {LETTERS.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
         <label
           style={{
             display: "flex",

@@ -9,6 +9,11 @@ import type { TypeBoard } from "./multiply-data";
 
 const PILLAR_ORDER: { key: PillarKey; label: string; hint: string }[] = [
   { key: "capacity", label: "Capacity", hint: "Ministry-Admin fed, per type" },
+  {
+    key: "overflow",
+    label: "Overflowing groups",
+    hint: "Capacity (additional)",
+  },
   { key: "interest", label: "Interest", hint: "from the Interest Funnel" },
   { key: "groupHealth", label: "Group Health", hint: "ministry-year roll-up" },
   {
@@ -20,6 +25,7 @@ const PILLAR_ORDER: { key: PillarKey; label: string; hint: string }[] = [
 
 const PILLAR_LABEL: Record<PillarKey, string> = {
   capacity: "Capacity",
+  overflow: "Overflowing groups",
   interest: "Interest",
   groupHealth: "Group Health",
   leaderHealth: "Leader Health",
@@ -156,6 +162,28 @@ function BoardCard({ board }: { board: TypeBoard }) {
           />
         ))}
       </div>
+
+      {board.fedCapacity.options.length > 0 && (
+        <p
+          style={{
+            margin: 0,
+            fontFamily: fontBody,
+            fontSize: 13,
+            color: P.ink2,
+          }}
+        >
+          Offered options:{" "}
+          {board.fedCapacity.options
+            .map(
+              (o) =>
+                `${o.label || "Option"}${
+                  o.capacity != null ? ` (cap ${o.capacity})` : ""
+                }`
+            )
+            .join(", ")}
+          .
+        </p>
+      )}
 
       {!board.signal.ready && board.signal.blockers.length > 0 && (
         <p

@@ -77,11 +77,18 @@ export function supabaseSettingsReads(
 // fresh ministry sees a sensible "ready?" answer rather than a blank one. Mirrors
 // the default in multiply-data.ts.
 const DEFAULT_TRIGGER: TriggerRubric = {
-  minimums: { capacity: "B", interest: "C" },
+  conditions: {
+    capacity: { op: "atLeast", letter: "B" },
+    interest: { op: "atLeast", letter: "C" },
+  },
   requireHealthGrades: false,
 };
 
-const EMPTY_FED_CAPACITY: FedCapacity = { headroom: null, fullGroupCount: 0 };
+const EMPTY_FED_CAPACITY: FedCapacity = {
+  headroom: null,
+  fullGroupCount: 0,
+  options: [],
+};
 
 // Build the per-type editor seeds for the Settings Multiply-config editor from
 // the decoded config rows (indexed by type). Each type gets its stored config or
