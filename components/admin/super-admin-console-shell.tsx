@@ -27,7 +27,6 @@ import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
 import { InviteLinkForm } from "@/components/admin/forms/invite-link-form";
 import { PlatformConfigTracerForm } from "@/components/admin/forms/platform-config-tracer-form";
 import { FeatureFlagToggleForm } from "@/components/admin/forms/feature-flag-toggle-form";
-import { EditableCopyForm } from "@/components/admin/forms/editable-copy-form";
 import { ProfileStatusForm } from "@/components/admin/forms/profile-status-form";
 import { PasswordResetForm } from "@/components/admin/forms/password-reset-form";
 import { CoverageAssignForm } from "@/components/admin/forms/coverage-assign-form";
@@ -59,10 +58,6 @@ import {
   FEATURE_FLAG_DEFINITIONS,
   resolveFlag,
 } from "@/lib/admin/feature-flags";
-import {
-  EDITABLE_COPY_DEFINITIONS,
-  resolveCopy,
-} from "@/lib/admin/editable-copy";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
@@ -1191,7 +1186,6 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
           </Link>
         </CommandCard>
       </div>
-      <EditableCopyCard data={data} />
     </div>
   );
 }
@@ -1366,69 +1360,6 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
             </div>
           );
         })}
-      </div>
-    </Panel>
-  );
-}
-
-// Editable-copy list as a compact label + value/save table.
-function EditableCopyCard({ data }: { data: SuperAdminConsoleData }) {
-  const copy = data.appConfig.editableCopy;
-  return (
-    <Panel>
-      <PanelTitle>Editable copy</PanelTitle>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
-        Configurable strings. Clearing a value falls back to the built-in
-        placeholder.
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gap: 1,
-          background: P.line2,
-          border: `1px solid ${P.line}`,
-          borderRadius: 8,
-          overflow: "hidden",
-        }}
-      >
-        {EDITABLE_COPY_DEFINITIONS.map((def) => (
-          <div
-            key={def.key}
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              gap: 12,
-              alignItems: "center",
-              background: P.surface,
-              padding: "10px 14px",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: fontSans,
-                fontSize: 13,
-                fontWeight: 600,
-                color: P.ink,
-                minWidth: 0,
-              }}
-            >
-              {def.label}
-            </div>
-            <EditableCopyForm
-              copyKey={def.key}
-              currentValue={resolveCopy(copy, def.key)}
-            />
-          </div>
-        ))}
       </div>
     </Panel>
   );

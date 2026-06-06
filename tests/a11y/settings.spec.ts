@@ -267,9 +267,9 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
   }) => {
     const tabs = page.locator(`${SETTINGS} [role="tab"]`);
     await expect(tabs).toHaveText(["Care", "Multiply", "Thresholds", "System"]);
-    // Care is the default selected tab — the rubrics and pastoral wording it
-    // carries are the heart of what Settings configures now, so the surface
-    // lands on them rather than on the older threshold knobs.
+    // Care is the default selected tab — the rubrics it carries are the heart of
+    // what Settings configures now, so the surface lands on them rather than on
+    // the older threshold knobs.
     await expect(
       page.locator(`${SETTINGS} [role="tab"]`, { hasText: "Care" })
     ).toHaveAttribute("aria-selected", "true");

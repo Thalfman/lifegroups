@@ -3,22 +3,15 @@ import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-for
 import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
 import { ResetMetricDefaultsButton } from "@/components/admin/forms/reset-metric-defaults-button";
-import { EditableCopyForm } from "@/components/admin/forms/editable-copy-form";
 import {
   SettingsTabs,
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
 import { PLinkButton } from "@/components/pastoral/button";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
 import type { MetricDefaults } from "@/lib/admin/metrics";
-import {
-  EDITABLE_COPY_DEFINITIONS,
-  GROUP_HEALTH_COPY_KEYS,
-  resolveCopy,
-  type EditableCopyConfig,
-} from "@/lib/admin/editable-copy";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
@@ -47,16 +40,11 @@ export type SettingsShellData = {
   // until Julian builds it.
   leaderRubricCriteria: RubricCriterion[];
   // Issue #304: whether the viewer is the super_admin. Settings is a
-  // ministry-admin surface, but two facets stay behind the super-admin
-  // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
-  // platform_config) and bulk people import (requireSuperAdminSession). For a
-  // ministry_admin these tabs surface the capability and deep-link to the
-  // Super Admin Console rather than exposing a write path here.
+  // ministry-admin surface, but bulk people import stays behind the super-admin
+  // boundary (requireSuperAdminSession). For a ministry_admin the System tab
+  // surfaces that capability and deep-links to the Super Admin Console rather
+  // than exposing a write path here.
   isSuperAdmin: boolean;
-  // Decoded editable copy (group-health question wording + care-status labels)
-  // per ADR 0007. Only populated for the super_admin, whose RLS lets the page
-  // read platform_config; null for a ministry_admin (who can't read it).
-  editableCopy: EditableCopyConfig | null;
   errors: {
     defaults: string | null;
     groups: string | null;
@@ -87,21 +75,15 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
     .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
 
   // Settings is organized around the Care/Plan/Multiply spine (ADR 0016): Care
-  // owns the rubrics + pastoral wording that grade and label leaders/groups,
-  // Multiply owns the per-type pillar config, and the older dashboard-warning
-  // number knobs are demoted to their own Thresholds tab. Plan carries no
-  // configuration today, so it has no tab.
+  // owns the rubrics that grade leaders/groups, Multiply owns the per-type
+  // pillar config, and the older dashboard-warning number knobs are demoted to
+  // their own Thresholds tab. Plan carries no configuration today, so it has no
+  // tab.
   const tabs: SettingsTab[] = [
     {
       id: "care",
       label: "Care",
-      panel: (
-        <CarePanel
-          data={data}
-          isSuperAdmin={data.isSuperAdmin}
-          editableCopy={data.editableCopy}
-        />
-      ),
+      panel: <CarePanel data={data} />,
     },
     {
       id: "multiply",
@@ -136,32 +118,22 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
         </div>
       ) : null}
 
-      {/* Care is the default tab: it carries the rubrics and pastoral wording
-          that define how leaders and groups are graded — the heart of what
-          Settings configures now (ADR 0016). A section whose data failed to load
-          (e.g. an environment without the pivot tables) softens to a calm
-          "not set up yet" placeholder rather than tripping a page-wide error. */}
+      {/* Care is the default tab: it carries the rubrics that define how leaders
+          and groups are graded — the heart of what Settings configures now (ADR
+          0016). A section whose data failed to load (e.g. an environment without
+          the pivot tables) softens to a calm "not set up yet" placeholder rather
+          than tripping a page-wide error. */}
       <SettingsTabs tabs={tabs} defaultTabId="care" />
     </div>
   );
 }
 
-// Care tab: the rubrics and pastoral wording that define how leaders and groups
-// are graded and labelled — the configuration at the heart of Care (ADR 0016).
-// The two A–F Health Rubrics (group + leader; #374/#378, ADR 0018) and Julian's
-// pastoral copy (group-health questions + care-status labels, ADR 0007) live
-// here. A rubric whose read failed — e.g. on an environment whose pivot tables
-// aren't migrated yet — softens to a calm "not set up yet" placeholder instead
-// of an editor that couldn't save.
-function CarePanel({
-  data,
-  isSuperAdmin,
-  editableCopy,
-}: {
-  data: SettingsShellData;
-  isSuperAdmin: boolean;
-  editableCopy: EditableCopyConfig | null;
-}) {
+// Care tab: the rubrics that define how leaders and groups are graded — the
+// configuration at the heart of Care (ADR 0016). The two A–F Health Rubrics
+// (group + leader; #374/#378, ADR 0018) live here. A rubric whose read failed —
+// e.g. on an environment whose pivot tables aren't migrated yet — softens to a
+// calm "not set up yet" placeholder instead of an editor that couldn't save.
+function CarePanel({ data }: { data: SettingsShellData }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
       {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
@@ -206,11 +178,6 @@ function CarePanel({
           </Card>
         )}
       </section>
-
-      <PastoralWordingPanel
-        isSuperAdmin={isSuperAdmin}
-        editableCopy={editableCopy}
-      />
     </div>
   );
 }
@@ -357,87 +324,6 @@ function ThresholdsPanel({
           </section>
         </div>
       </details>
-    </div>
-  );
-}
-
-// Pastoral wording section, owned by Care (ADR 0007/0016). The Julian-owned
-// copy — the two Group-Health question wordings and the five care-status labels.
-// Editing those writes the Super-Admin-only platform_config via a super-admin
-// RPC, so the editor renders only for the super_admin; a ministry_admin sees a
-// clear pointer to the Super Admin Console rather than a write path that the RLS
-// would reject anyway (no data-model change).
-function PastoralWordingPanel({
-  isSuperAdmin,
-  editableCopy,
-}: {
-  isSuperAdmin: boolean;
-  editableCopy: EditableCopyConfig | null;
-}) {
-  return (
-    <div style={{ display: "grid", gap: 36 }}>
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Pastoral wording"
-          title="Group-health questions & care-status labels"
-          description="The wording leaders see on the group-health check-in and the labels used across the care dashboard. Keep them in the ministry's own voice."
-        />
-        {isSuperAdmin ? (
-          <Card>
-            <div style={{ display: "grid", gap: 10 }}>
-              {EDITABLE_COPY_DEFINITIONS.map((def) => {
-                const isGroupHealth =
-                  def.key === GROUP_HEALTH_COPY_KEYS.spiritualGrowth ||
-                  def.key === GROUP_HEALTH_COPY_KEYS.groupQuestion;
-                const inputId = `copy-${def.key.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-                return (
-                  <div
-                    key={def.key}
-                    className="lg-m-grid-stack"
-                    style={copyRowStyle}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <label htmlFor={inputId} style={copyLabelStyle}>
-                        {def.label}
-                      </label>
-                      <div style={copyTagStyle}>
-                        {isGroupHealth
-                          ? "Group-health question"
-                          : "Care-status label"}
-                      </div>
-                    </div>
-                    <EditableCopyForm
-                      copyKey={def.key}
-                      inputId={inputId}
-                      currentValue={resolveCopy(editableCopy ?? {}, def.key)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        ) : (
-          <Card>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                margin: "0 0 14px",
-                lineHeight: 1.55,
-              }}
-            >
-              The group-health question wording and care-status labels are
-              edited in the Super Admin Console. Ask the super admin to adjust
-              them there; the changes take effect everywhere these labels
-              appear.
-            </p>
-            <PLinkButton href="/admin/super-admin" tone="ghost" size="sm">
-              Open Super Admin Console →
-            </PLinkButton>
-          </Card>
-        )}
-      </section>
     </div>
   );
 }
@@ -659,32 +545,6 @@ function NotConfigured({ subject }: { subject: string }) {
 }
 
 const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
-
-const copyRowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 14,
-  border: `1px solid ${P.line}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  flexWrap: "wrap" as const,
-} as const;
-
-const copyLabelStyle = {
-  display: "block",
-  fontFamily: fontSans,
-  fontSize: 13,
-  fontWeight: 600,
-  color: P.ink,
-  marginBottom: 4,
-} as const;
-
-const copyTagStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-} as const;
 
 const detailsStyle = {
   border: `1px solid ${P.line}`,
