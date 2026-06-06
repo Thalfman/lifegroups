@@ -138,9 +138,14 @@ export function segmentLabel(
   categoryLabel: string | null
 ): string {
   const label = categoryLabel?.trim() || null;
-  if (!audience && !label) return UNCATEGORIZED_SEGMENT;
+  // A cell is audience × category. Without a category there is no cell, so an
+  // untagged group — including every existing group after the no-backfill
+  // migration — buckets under Uncategorized regardless of its audience, rather
+  // than masquerading as an audience-only segment. A label without an audience
+  // still reads, landing in the Uncategorized family.
+  if (!label) return UNCATEGORIZED_SEGMENT;
   const a = audience ? AUDIENCE_LABEL[audience] : UNCATEGORIZED_SEGMENT;
-  return label ? `${a} · ${label}` : a;
+  return `${a} · ${label}`;
 }
 
 // The per-candidate facts the planner surface renders: the group identity, the

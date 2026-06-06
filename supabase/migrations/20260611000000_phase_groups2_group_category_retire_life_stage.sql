@@ -106,13 +106,22 @@ begin
     raise exception 'invalid_input';
   end if;
 
-  -- A non-null category must reference a LIVE (non-archived) catalog category,
-  -- so a group can never be tagged with an archived or unknown category.
+  -- A non-null category must name an ACTIVE cell for this top type — the same
+  -- applied (audience_category × category) the Settings matrix exposes and the
+  -- form picker offers. Joining the live catalog also enforces the category is
+  -- non-archived. This blocks a stale or tampered form persisting a group into
+  -- an unapplied/archived cell (which the picker never offers), corrupting the
+  -- segmentation, coverage and readiness the cell feeds downstream.
   if p_category_id is not null and not exists (
-    select 1 from public.group_categories
-     where id = p_category_id and archived_at is null
+    select 1
+      from public.category_type_targets ctt
+      join public.group_categories gc on gc.id = ctt.category_id
+     where ctt.category_id = p_category_id
+       and ctt.audience_category = p_audience_category::text
+       and ctt.active
+       and gc.archived_at is null
   ) then
-    raise exception 'missing_category';
+    raise exception 'inactive_cell';
   end if;
 
   insert into public.groups (
@@ -230,12 +239,20 @@ begin
     raise exception 'invalid_input';
   end if;
 
-  -- A non-null category must reference a LIVE (non-archived) catalog category.
+  -- A non-null category must name an ACTIVE cell for this top type — same gate
+  -- as create. An edit can't move a group into an unapplied/archived cell the
+  -- matrix doesn't expose, which would corrupt segmentation. Joining the live
+  -- catalog also enforces the category is non-archived.
   if p_category_id is not null and not exists (
-    select 1 from public.group_categories
-     where id = p_category_id and archived_at is null
+    select 1
+      from public.category_type_targets ctt
+      join public.group_categories gc on gc.id = ctt.category_id
+     where ctt.category_id = p_category_id
+       and ctt.audience_category = p_audience_category::text
+       and ctt.active
+       and gc.archived_at is null
   ) then
-    raise exception 'missing_category';
+    raise exception 'inactive_cell';
   end if;
 
   select jsonb_build_object(

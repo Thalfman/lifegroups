@@ -111,6 +111,31 @@ begin
   end if;
   v_category := p_desired_category_id;
 
+  -- The desired cell is both-or-neither: a named cell needs a top type AND a
+  -- category. A half-set pair (only one coordinate) is not a real cell and is
+  -- rejected, matching the validator and the per-cell tally's "both present"
+  -- rule so a partial cell can never be stored.
+  if (v_audience is null) <> (v_category is null) then
+    raise exception 'invalid_input';
+  end if;
+
+  -- When a desired cell is named, it must be an ACTIVE cell for that top type —
+  -- the same applied (audience × category) the Settings matrix exposes and the
+  -- intake picker offers. This keeps hidden/inactive/archived cells (which a
+  -- stale or tampered form could post) out of the per-cell interest tally.
+  -- Joining the live catalog also enforces the category is non-archived.
+  if v_audience is not null and not exists (
+    select 1
+      from public.category_type_targets ctt
+      join public.group_categories gc on gc.id = ctt.category_id
+     where ctt.category_id = v_category
+       and ctt.audience_category = v_audience
+       and ctt.active
+       and gc.archived_at is null
+  ) then
+    raise exception 'inactive_cell';
+  end if;
+
   insert into public.prospects (
     full_name, email, phone, state,
     desired_audience_category, desired_category_id,

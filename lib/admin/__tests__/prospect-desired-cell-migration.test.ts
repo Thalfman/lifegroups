@@ -80,6 +80,24 @@ describe("prospect desired-cell migration — extended create RPC", () => {
     expect(body).toContain("raise exception 'invalid_input'");
   });
 
+  it("rejects a half-set desired cell (both-or-neither)", () => {
+    const body = functionBody(sql, "admin_create_prospect");
+    // Exactly one coordinate present is not a real cell — rejected before insert.
+    expect(body).toContain("(v_audience is null) <> (v_category is null)");
+    expect(body).toContain("raise exception 'invalid_input'");
+  });
+
+  it("rejects a desired cell that isn't an active cell for the top type", () => {
+    const body = functionBody(sql, "admin_create_prospect");
+    // A named cell must be an active (audience × category) cell joined to the
+    // live catalog, so hidden/inactive/archived cells stay out of the tally.
+    expect(body).toContain("public.category_type_targets ctt");
+    expect(body).toContain("ctt.audience_category = v_audience");
+    expect(body).toContain("ctt.active");
+    expect(body).toContain("archived_at is null");
+    expect(body).toContain("raise exception 'inactive_cell'");
+  });
+
   it("stores the desired cell on the inserted prospect", () => {
     const body = functionBody(sql, "admin_create_prospect");
     expect(body).toContain("desired_audience_category");

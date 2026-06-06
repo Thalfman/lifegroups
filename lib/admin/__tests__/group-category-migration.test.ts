@@ -98,10 +98,18 @@ describe("group-category migration — recreated write RPCs", () => {
       expect(body).toContain("public.auth_profile_id()");
     });
 
-    it(`${fn} rejects a non-live category_id`, () => {
+    it(`${fn} rejects a category that isn't an active cell for the top type`, () => {
       const body = functionBody(sql, fn);
+      // The gate joins category_type_targets to the live catalog and requires an
+      // active cell for (audience_category × category), so an unapplied or
+      // archived cell can't be persisted.
+      expect(body).toContain("public.category_type_targets ctt");
+      expect(body).toContain(
+        "ctt.audience_category = p_audience_category::text"
+      );
+      expect(body).toContain("ctt.active");
       expect(body).toContain("archived_at is null");
-      expect(body).toContain("raise exception 'missing_category'");
+      expect(body).toContain("raise exception 'inactive_cell'");
     });
 
     it(`${fn} writes a paired audit_events row`, () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateProspect } from "@/app/(protected)/admin/plan/actions";
 import {
@@ -44,6 +44,18 @@ export function ProspectCreateForm({
   // submitted.
   const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
+
+  // useActionForm resets the <form> element on success, but these two selects
+  // are controlled by React state, so reset them too. Otherwise the next
+  // prospect (entered with only a name) would resubmit the previous prospect's
+  // desired cell and be miscounted into it. Depends on `state` (a fresh object
+  // each submit) so a back-to-back success clears again, mirroring the group
+  // forms' reset effect.
+  useEffect(() => {
+    if (!state?.ok) return;
+    setAudience("");
+    setCategoryId("");
+  }, [state]);
 
   const categoryOptions =
     audience === "" ? [] : categoryOptionsByAudience[audience];

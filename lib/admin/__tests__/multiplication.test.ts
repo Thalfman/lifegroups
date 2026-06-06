@@ -5,6 +5,7 @@ import {
   filterSegmentsByYear,
   segmentLabel,
   summarizeTargetYears,
+  UNCATEGORIZED_SEGMENT,
   wholeYearsBetween,
 } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
@@ -141,7 +142,9 @@ describe("segmentLabel (#398: audience × category label)", () => {
     expect(segmentLabel("mixed", "Retirement")).toBe(
       "Mixed / couples · Retirement"
     );
-    expect(segmentLabel("men", null)).toBe("Men");
+    // A group with an audience but NO category has no cell, so it buckets under
+    // Uncategorized rather than masquerading as an audience-only segment.
+    expect(segmentLabel("men", null)).toBe("Uncategorized");
     // No audience and no category → the visible Uncategorized bucket.
     expect(segmentLabel(null, null)).toBe("Uncategorized");
     // A category but no audience still reads its label under Uncategorized.
@@ -214,12 +217,14 @@ describe("buildPlannerSegments", () => {
     expect(segments[0].candidates[0].groupName).toBe("Unknown group");
   });
 
-  it("buckets a group with an audience but no category under '<type>' (Uncategorized within type)", () => {
+  it("buckets a group with an audience but no category under Uncategorized", () => {
     const segments = buildPlannerSegments(
       [entry({ id: "1", audience: "men", categoryLabel: null })],
       TODAY
     );
-    expect(segments[0].segment).toBe("Men");
+    // No category means no cell, so it collects in the visible Uncategorized
+    // bucket admins use to find groups still needing a tag — not a "Men" segment.
+    expect(segments[0].segment).toBe(UNCATEGORIZED_SEGMENT);
   });
 });
 
