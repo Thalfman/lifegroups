@@ -83,17 +83,20 @@ export async function fetchCategoryTypeCells(
 //      needed for #400, so they are deliberately not read here.
 
 export const CATEGORY_TYPE_TARGET_COLUMNS =
-  "id, audience_category, category_id, active, target_count";
+  "id, audience_category, category_id, active, target_count, trigger_overrides";
 
-// One cell row with its target_count, as read through the allowlist. Mirrors
-// CategoryTypeCellRow but carries the target (Y) the coverage readout reads
-// against. trigger_overrides is still deliberately NOT read — a later slice.
+// One cell row with its target_count AND trigger_overrides, as read through the
+// allowlist. Carries the target (Y) the coverage readout reads against (#400) and
+// the per-cell readiness overrides (#402) — a partial of the global rule, decoded
+// at the trust boundary (lib/admin/cell-readiness.ts decodeCellOverride); the raw
+// jsonb stays unknown here. The coverage builder simply ignores trigger_overrides.
 export type CategoryTypeTargetRow = {
   id: string;
   audience_category: GroupAudienceCategory;
   category_id: string;
   active: boolean;
   target_count: number;
+  trigger_overrides: unknown;
 };
 
 // Fetch every cell row with its target_count. The coverage builder keeps only the

@@ -20,8 +20,13 @@ import {
   type MultiplicationConfigSeed,
 } from "@/components/admin/settings/multiplication-config-editor";
 import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
+import {
+  ReadinessRuleEditor,
+  type ReadinessCellSeed,
+} from "@/components/admin/settings/readiness-rule-editor";
 import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
 import type { CellCoverage } from "@/lib/admin/cell-coverage";
+import type { ReadinessRule } from "@/lib/admin/cell-readiness";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -52,6 +57,15 @@ export type SettingsShellData = {
   // matrix cell by audience + category) and the dedicated coverage panel. Empty
   // when no cell is active or the reads failed (see errors.groupCategories).
   cellCoverage: CellCoverage[];
+  // #402 Settings > Groups: the recast readiness trigger — the GLOBAL rule (each
+  // pillar in its natural unit) plus one override row per active cell. Optional so
+  // the shell tolerates a build that hasn't wired this read yet; softens to a
+  // placeholder on errors.readiness.
+  readiness?: {
+    ministryYear: number;
+    rule: ReadinessRule;
+    cells: ReadinessCellSeed[];
+  };
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but bulk people import stays behind the super-admin
   // boundary (requireSuperAdminSession). For a ministry_admin the System tab
@@ -75,6 +89,9 @@ export type SettingsShellData = {
     // #396: a single transient-read failure key for the Groups tab's catalog +
     // cell reads, so an unmigrated environment softens to a placeholder.
     groupCategories: string | null;
+    // #402: a readiness-rule read failure key, so the readiness editor softens to
+    // a placeholder rather than saving over a rule that merely failed to load.
+    readiness: string | null;
   };
 };
 
@@ -248,6 +265,31 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
           </Card>
         </section>
       ) : null}
+
+      {/* #402 / PRD §2.4: the recast readiness trigger. The global rule reads each
+          pillar in its natural unit — interest ≥ N people, capacity required/not,
+          health ≥ A–F letter (no overflow pillar) — and each active cell can
+          override any pillar. Softens to a placeholder when the rule read failed.
+          The per-cell display of the resulting readiness signal lands with the
+          Multiply grid (#403); here we own the editing. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Readiness rule"
+          title="When a cell is ready to multiply"
+          description="Mark each pillar required or not and set its threshold. A cell is ready when every required pillar clears; override the rule per cell below."
+        />
+        {data.errors.readiness || !data.readiness ? (
+          <NotConfigured subject="The readiness rule" />
+        ) : (
+          <Card>
+            <ReadinessRuleEditor
+              ministryYear={data.readiness.ministryYear}
+              rule={data.readiness.rule}
+              cells={data.readiness.cells}
+            />
+          </Card>
+        )}
+      </section>
     </div>
   );
 }

@@ -1010,6 +1010,34 @@ export function rpcAdminSetMultiplicationConfig(
   return callUuidRpc(client, "admin_set_multiplication_config", args);
 }
 
+// #402 / PRD §2.4 per-cell readiness rule: upsert the GLOBAL readiness rule for a
+// ministry year (interest/capacity/group+leader health in natural units). The rule
+// jsonb is validated in TS first; the RPC re-guards its object shape.
+export function rpcAdminSetReadinessRule(
+  client: AppSupabaseClient,
+  args: {
+    p_ministry_year: number;
+    p_rule: Record<string, unknown>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_readiness_rule", args);
+}
+
+// #402 / PRD §2.4: set a cell's trigger overrides (a partial of the global rule;
+// absent pillars inherit). Upserts category_type_targets.trigger_overrides on the
+// same (audience_category, category_id) conflict target as the cell apply RPC. An
+// empty `{}` clears the cell's overrides back to the global rule.
+export function rpcAdminSetCellTriggerOverrides(
+  client: AppSupabaseClient,
+  args: {
+    p_category_id: string;
+    p_audience_category: GroupAudienceCategory;
+    p_overrides: Record<string, unknown>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_cell_trigger_overrides", args);
+}
+
 // #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's grade
 // for a ministry year. The roll-up + override resolution are done in TS first
 // (lib/admin/leader-rubric-grade.ts); this persists the already-computed letter

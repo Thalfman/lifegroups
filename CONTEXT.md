@@ -255,11 +255,18 @@ count) and **Y = target_count**. Targets are **tracking only** — they never fe
 the multiply trigger.
 \_Avoid*: Quota, goal, capacity (the target is a group _count_, not a member cap).
 
-**Multiplication Trigger**:
-The Ministry-Admin-configured rule over the pillars that signals "multiply this
-type" — each pillar required or not, with a threshold in its natural unit. Julian
-owns the trigger; the app surfaces the signal, it does not decide for him.
-_Avoid_: Alert, threshold (when you mean the whole configured trigger).
+**Multiplication Trigger** (readiness rule):
+The Ministry-Admin-configured rule over the pillars that signals a cell is ready
+to multiply — each pillar **required or not**, with a threshold in its natural
+unit (Interest ≥ N people, Capacity required/not, Group/Leader Health ≥ a letter).
+The rule is **global with per-cell overrides** (#402): one global rule per ministry
+year (`multiplication_readiness_rule`), and any cell may override a pillar wholesale
+(`category_type_targets.trigger_overrides`; an absent pillar inherits the global
+rule). A cell reads **ready** when every _required_ pillar clears; not-required
+pillars are ignored. Julian owns the rule; the app surfaces the signal, it does not
+decide for him. (The interim per-type Multiply boards still read the older per-type
+`multiplication_config` trigger until they become the per-cell grid in #403.)
+_Avoid_: Alert, threshold (when you mean the whole configured rule); overflow.
 
 ### Surfaces
 

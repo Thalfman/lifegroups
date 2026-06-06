@@ -14,6 +14,7 @@ import {
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { fetchMultiplicationConfigs } from "@/lib/supabase/multiplication-config-reads";
+import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
 import {
   BUILT_IN_PILLAR_THRESHOLDS,
   decodePillarThresholds,
@@ -21,6 +22,13 @@ import {
   type PillarThresholds,
   type TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
+import {
+  BUILT_IN_READINESS_RULE,
+  decodeCellOverride,
+  decodeReadinessRule,
+  type ReadinessRule,
+} from "@/lib/admin/cell-readiness";
+import type { ReadinessCellSeed } from "@/components/admin/settings/readiness-rule-editor";
 import {
   MULTIPLY_TYPES,
   MULTIPLY_TYPE_LABEL,
@@ -59,6 +67,11 @@ export type SettingsReads = {
   fetchMultiplicationConfigs: () => ReturnType<
     typeof fetchMultiplicationConfigs
   >;
+  // #402 Settings > Groups: the GLOBAL per-cell readiness rule for the current
+  // ministry year. Bound to the year so the seam stays zero-arg; the per-cell
+  // overrides come from fetchCategoryTypeTargetCells (which now reads
+  // trigger_overrides).
+  fetchReadinessRule: () => ReturnType<typeof fetchReadinessRule>;
   // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
   // "leader" kind. Same shared reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
@@ -90,6 +103,8 @@ export function supabaseSettingsReads(
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchMultiplicationConfigs: () =>
       fetchMultiplicationConfigs(client, currentMinistryYear(new Date())),
+    fetchReadinessRule: () =>
+      fetchReadinessRule(client, currentMinistryYear(new Date())),
     fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
 }
@@ -158,6 +173,32 @@ function buildSettingsCellCoverage(
   return sortByLargestShortfall(buildCellCoverage(cells, groups));
 }
 
+// #402 / PRD §2.4: assemble the per-cell override seeds for the readiness editor.
+// Every ACTIVE cell whose category is live becomes a row, its label resolved from
+// the catalog and its stored trigger_overrides jsonb decoded to a typed override
+// (empty = inherits the global rule). Mirrors buildSettingsCellCoverage's
+// active-cell + live-category filter so the readiness rows and the coverage rows
+// agree on which cells are live.
+function buildReadinessCells(
+  categories: { id: string; label: string }[],
+  targetCells: CategoryTypeTargetRow[]
+): ReadinessCellSeed[] {
+  const labelById = new Map(categories.map((c) => [c.id, c.label]));
+  return targetCells
+    .filter((cell) => cell.active && labelById.has(cell.category_id))
+    .map((cell) => ({
+      audienceCategory: cell.audience_category,
+      categoryId: cell.category_id,
+      label: labelById.get(cell.category_id) ?? "",
+      override: decodeCellOverride(cell.trigger_overrides),
+    }))
+    .sort(
+      (a, b) =>
+        a.label.localeCompare(b.label) ||
+        a.audienceCategory.localeCompare(b.audienceCategory)
+    );
+}
+
 export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
   return {
     defaults: BUILT_IN_METRIC_DEFAULTS,
@@ -172,6 +213,11 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     leaderRubricCriteria: [],
     categoryMatrix: { rows: [] },
     cellCoverage: [],
+    readiness: {
+      ministryYear: currentMinistryYear(new Date()),
+      rule: BUILT_IN_READINESS_RULE,
+      cells: [],
+    },
     isSuperAdmin,
     errors: {
       defaults: "The database is not configured in this environment.",
@@ -181,6 +227,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       groupRubric: "The database is not configured in this environment.",
       leaderRubric: "The database is not configured in this environment.",
       groupCategories: "The database is not configured in this environment.",
+      readiness: "The database is not configured in this environment.",
     },
   };
 }
@@ -202,6 +249,7 @@ export async function buildSettingsData(
     cellsResult,
     targetCellsResult,
     groupCellLifecycleResult,
+    readinessResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -213,6 +261,7 @@ export async function buildSettingsData(
     reads.fetchCategoryTypeCells(),
     reads.fetchCategoryTypeTargetCells(),
     reads.fetchGroupCellLifecycleRows(),
+    reads.fetchReadinessRule(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
@@ -264,6 +313,17 @@ export async function buildSettingsData(
       targetCellsResult.data ?? [],
       groupCellLifecycleResult.data ?? []
     ),
+    // #402 / PRD §2.4: the GLOBAL readiness rule (decoded, built-in fallback) plus
+    // one override row per active, live-category cell. A pure function of the rule
+    // read + the catalog + the target cells (which now carry trigger_overrides).
+    readiness: {
+      ministryYear: currentMinistryYear(new Date()),
+      rule: decodeReadinessRule(readinessResult.data?.rule ?? null),
+      cells: buildReadinessCells(
+        categoriesResult.data ?? [],
+        targetCellsResult.data ?? []
+      ),
+    },
     isSuperAdmin,
     errors: {
       defaults: defaultsResult.error?.message ?? null,
@@ -280,6 +340,11 @@ export async function buildSettingsData(
         targetCellsResult.error?.message ??
         groupCellLifecycleResult.error?.message ??
         null,
+      // #402: a readiness-rule read failure surfaces on its own key so the editor
+      // softens to a placeholder rather than letting an admin save over a rule
+      // that merely failed to load. The per-cell override rows also depend on the
+      // catalog + target reads, so those failures fold into groupCategories above.
+      readiness: readinessResult.error?.message ?? null,
     },
   };
 }

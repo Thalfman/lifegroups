@@ -24,6 +24,8 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchAllGroupMetricSettings: async () => ok([]),
     fetchGroupHealthRubric: async () => ok(null),
     fetchMultiplicationConfigs: async () => ok([]),
+    // #402: the global readiness rule defaults to absent (built-in rule in use).
+    fetchReadinessRule: async () => ok(null),
     fetchLeaderHealthRubric: async () => ok(null),
     fetchGroupCategories: async () => ok([]),
     fetchCategoryTypeCells: async () => ok([]),
@@ -130,6 +132,7 @@ describe("buildSettingsData — Groups tab coverage (#400)", () => {
               category_id: CAT,
               active: true,
               target_count: 3,
+              trigger_overrides: {},
             },
             {
               id: "cell-women",
@@ -137,6 +140,7 @@ describe("buildSettingsData — Groups tab coverage (#400)", () => {
               category_id: CAT,
               active: true,
               target_count: 2,
+              trigger_overrides: {},
             },
           ]),
         fetchGroupCellLifecycleRows: async () =>
@@ -195,11 +199,94 @@ describe("buildSettingsData — Groups tab coverage (#400)", () => {
               category_id: CAT,
               active: false,
               target_count: 5,
+              trigger_overrides: {},
             },
           ]),
       }),
       { isSuperAdmin: false }
     );
     expect(data.cellCoverage).toEqual([]);
+  });
+});
+
+describe("buildSettingsData — Groups tab readiness rule (#402)", () => {
+  it("falls back to the built-in rule when no global rule is stored", async () => {
+    const data = await buildSettingsData(emptyReads(), { isSuperAdmin: false });
+    expect(data.errors.readiness).toBeNull();
+    // PRD §4.1 defaults: interest required at a small N, capacity required.
+    expect(data.readiness?.rule.interest).toEqual({ required: true, min: 3 });
+    expect(data.readiness?.rule.capacity).toEqual({ required: true });
+    expect(data.readiness?.cells).toEqual([]);
+  });
+
+  it("decodes the stored global rule", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchReadinessRule: async () =>
+          ok({
+            id: "rule-1",
+            ministry_year: 2026,
+            rule: {
+              interest: { required: true, min: 5 },
+              capacity: { required: false },
+              groupHealth: { required: true, min: "B" },
+              leaderHealth: { required: false, min: "C" },
+            },
+            updated_at: "2026-06-06",
+          }),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.readiness?.rule.interest).toEqual({ required: true, min: 5 });
+    expect(data.readiness?.rule.capacity).toEqual({ required: false });
+    expect(data.readiness?.rule.groupHealth).toEqual({
+      required: true,
+      min: "B",
+    });
+  });
+
+  it("builds one override row per ACTIVE, live-category cell and decodes its overrides", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchGroupCategories: async () =>
+          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
+        fetchCategoryTypeTargetCells: async () =>
+          ok([
+            {
+              id: "cell-men",
+              audience_category: "men",
+              category_id: CAT,
+              active: true,
+              target_count: 0,
+              trigger_overrides: { interest: { required: true, min: 7 } },
+            },
+            // An INACTIVE cell is excluded from the override rows.
+            {
+              id: "cell-women",
+              audience_category: "women",
+              category_id: CAT,
+              active: false,
+              target_count: 0,
+              trigger_overrides: {},
+            },
+          ]),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.readiness?.cells).toHaveLength(1);
+    const cell = data.readiness?.cells[0];
+    expect(cell?.audienceCategory).toBe("men");
+    expect(cell?.label).toBe("20-30s");
+    expect(cell?.override).toEqual({ interest: { required: true, min: 7 } });
+  });
+
+  it("surfaces a readiness-rule read failure on errors.readiness", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchReadinessRule: async () => fail("rule boom"),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.errors.readiness).toBe("rule boom");
   });
 });
