@@ -5,6 +5,8 @@ planning group launches.** A web app for the ministry's oversight tiers — and,
 with the 2026-06 pivot, the Leaders they care for (ADR 0017). Built with Next.js
 (App Router) + TypeScript + Tailwind on top of Supabase (Auth + Postgres + RLS).
 
+**🌐 Live app:** <https://fvclifegroups.vercel.app/>
+
 > 🔄 **Pivot in progress (2026-06).** The app is being re-scoped to **three
 > areas — Care · Plan · Multiply** — with the old group-assignment and number
 > surfaces turned off behind Super-Admin flags (turned off, not deleted). The
