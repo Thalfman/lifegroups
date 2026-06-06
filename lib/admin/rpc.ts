@@ -1133,3 +1133,17 @@ export function rpcAdminSetCategoryTypeCell(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_category_type_cell", args);
 }
+
+// #400 / PRD §2.3: set a cell's target group count. Upserts the cell row's
+// target_count on the same (audience_category, category_id) conflict target as
+// the cell apply RPC. Tracking only — does NOT feed the multiply trigger.
+export function rpcAdminSetCategoryTypeTargetCount(
+  client: AppSupabaseClient,
+  args: {
+    p_category_id: string;
+    p_audience_category: GroupAudienceCategory;
+    p_count: number;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_category_type_target_count", args);
+}

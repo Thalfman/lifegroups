@@ -21,6 +21,7 @@ import {
 } from "@/components/admin/settings/multiplication-config-editor";
 import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
 import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
+import type { CellCoverage } from "@/lib/admin/cell-coverage";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -46,6 +47,11 @@ export type SettingsShellData = {
   // from the catalog + cell reads; empty rows when the catalog is empty (fresh
   // ministry) or the reads failed (see errors.groupCategories).
   categoryMatrix: CategoryMatrix;
+  // #400 Settings > Groups: per-active-cell coverage ("have X of Y"), already
+  // sorted by largest shortfall. Feeds both the inline readout (matched to its
+  // matrix cell by audience + category) and the dedicated coverage panel. Empty
+  // when no cell is active or the reads failed (see errors.groupCategories).
+  cellCoverage: CellCoverage[];
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but bulk people import stays behind the super-admin
   // boundary (requireSuperAdminSession). For a ministry_admin the System tab
@@ -217,13 +223,117 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
           <NotConfigured subject="Group categories" />
         ) : (
           <Card>
-            <GroupsCatalogEditor matrix={data.categoryMatrix} />
+            <GroupsCatalogEditor
+              matrix={data.categoryMatrix}
+              cellCoverage={data.cellCoverage}
+            />
           </Card>
         )}
       </section>
+
+      {/* #400 / PRD §2.3: the dedicated coverage panel. Every ACTIVE cell with its
+          gap (target − have), sorted by largest shortfall so the cells most short
+          of their target read first. Targets are tracking only — this is a
+          read-only readout, not a trigger. Hidden when no cell is active yet (or
+          the reads failed, which the placeholder above already covers). */}
+      {!data.errors.groupCategories && data.cellCoverage.length > 0 ? (
+        <section style={{ display: "grid", gap: 18 }}>
+          <SectionHeader
+            eyebrow="Coverage"
+            title="Where groups are short of target"
+            description="Each active cell's current count against its target, largest shortfall first. Counts active and launching groups only."
+          />
+          <Card>
+            <CellCoveragePanel rows={data.cellCoverage} />
+          </Card>
+        </section>
+      ) : null}
     </div>
   );
 }
+
+// #400: the dedicated coverage panel — a read-only table of every active cell's
+// "have X of Y" with its gap, already sorted by largest shortfall upstream. A
+// cell that has met (or exceeded) its target reads gap 0 / "On target".
+function CellCoveragePanel({ rows }: { rows: CellCoverage[] }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={coverageTableStyle}>
+        <thead>
+          <tr>
+            <th style={{ ...coverageThStyle, textAlign: "left" }} scope="col">
+              Cell
+            </th>
+            <th style={coverageThStyle} scope="col">
+              Have
+            </th>
+            <th style={coverageThStyle} scope="col">
+              Target
+            </th>
+            <th style={coverageThStyle} scope="col">
+              Gap
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.audienceCategory}:${row.categoryId}`}>
+              <td style={{ ...coverageTdStyle, textAlign: "left" }}>
+                <span style={{ fontWeight: 500, color: P.ink }}>
+                  {row.label}
+                </span>
+                <span style={{ color: P.ink3 }}>
+                  {" "}
+                  · {COVERAGE_TYPE_LABEL[row.audienceCategory]}
+                </span>
+              </td>
+              <td style={coverageTdStyle}>{row.have}</td>
+              <td style={coverageTdStyle}>{row.target}</td>
+              <td style={coverageTdStyle}>
+                {row.gap === 0 ? (
+                  <span style={{ color: P.ink3 }}>On target</span>
+                ) : (
+                  <strong style={{ color: P.ink }}>−{row.gap}</strong>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const COVERAGE_TYPE_LABEL: Record<"men" | "women" | "mixed", string> = {
+  men: "Men's",
+  women: "Women's",
+  mixed: "Mixed",
+};
+
+const coverageTableStyle = {
+  width: "100%",
+  borderCollapse: "collapse" as const,
+  fontFamily: fontBody,
+  fontSize: 13,
+} as const;
+
+const coverageThStyle = {
+  fontFamily: fontBody,
+  fontSize: 12,
+  fontWeight: 600,
+  color: P.ink3,
+  textAlign: "center" as const,
+  padding: "8px 12px",
+  borderBottom: `1px solid ${P.line}`,
+  whiteSpace: "nowrap" as const,
+} as const;
+
+const coverageTdStyle = {
+  padding: "10px 12px",
+  borderBottom: `1px solid ${P.line}`,
+  textAlign: "center" as const,
+  color: P.ink2,
+} as const;
 
 // Multiply tab (#380): the per-type Multiplication Pillars — Julian's fed
 // Capacity per type plus the trigger rubric that decides when a group type is

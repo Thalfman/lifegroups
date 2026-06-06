@@ -9,6 +9,7 @@ import {
   validateRenameGroupCategoryPayload,
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
+  validateSetCategoryTypeTargetCountPayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
@@ -17,6 +18,7 @@ import {
   type RenameGroupCategoryPayload,
   type ArchiveGroupCategoryPayload,
   type SetCategoryTypeCellPayload,
+  type SetCategoryTypeTargetCountPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -34,6 +36,7 @@ import {
   rpcAdminRenameGroupCategory,
   rpcAdminArchiveGroupCategory,
   rpcAdminSetCategoryTypeCell,
+  rpcAdminSetCategoryTypeTargetCount,
 } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
@@ -427,4 +430,36 @@ export async function adminSetCategoryTypeCell(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_CATEGORY_TYPE_CELL_SPEC, prev, input);
+}
+
+// #400 / PRD §2.3: set a cell's target group count (the "have X of Y" Y). Same
+// audited-RPC pattern as the cell apply; tracking only, so it shares the Groups
+// revalidate paths but feeds no trigger.
+const SET_CATEGORY_TYPE_TARGET_COUNT_SPEC: AdminWriteActionSpec<
+  SetCategoryTypeTargetCountPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_category_type_target_count",
+  keys: ["category_id", "audience_category", "target_count"],
+  validate: validateSetCategoryTypeTargetCountPayload,
+  fields: (_actor, value) => ({
+    target_category_id: value.categoryId,
+    audience_category: value.audienceCategory,
+    target_count: value.count,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetCategoryTypeTargetCount(client, {
+      p_category_id: value.categoryId,
+      p_audience_category: value.audienceCategory,
+      p_count: value.count,
+    }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The target was not saved. Please try again.",
+};
+
+export async function adminSetCategoryTypeTargetCount(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
 }

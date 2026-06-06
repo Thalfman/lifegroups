@@ -4,6 +4,7 @@ import {
   validateRenameGroupCategoryPayload,
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
+  validateSetCategoryTypeTargetCountPayload,
 } from "@/lib/admin/validation";
 
 const UUID = "11111111-1111-1111-1111-111111111111";
@@ -128,6 +129,89 @@ describe("validateSetCategoryTypeCellPayload", () => {
       validateSetCategoryTypeCellPayload({
         audience_category: "men",
         active: true,
+      }).ok
+    ).toBe(false);
+  });
+});
+
+// #400 / PRD §2.3: the per-cell target_count write validator.
+describe("validateSetCategoryTypeTargetCountPayload", () => {
+  it("accepts a non-negative count from a form post (string)", () => {
+    const r = validateSetCategoryTypeTargetCountPayload({
+      category_id: UUID.toUpperCase(),
+      audience_category: "men",
+      target_count: "2",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.value).toEqual({
+        categoryId: UUID,
+        audienceCategory: "men",
+        count: 2,
+      });
+  });
+
+  it("accepts 0 as a valid target", () => {
+    const r = validateSetCategoryTypeTargetCountPayload({
+      category_id: UUID,
+      audience_category: "women",
+      target_count: 0,
+    });
+    expect(r.ok && r.value.count).toBe(0);
+  });
+
+  it("rejects a negative count", () => {
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        category_id: UUID,
+        audience_category: "men",
+        target_count: "-1",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects a non-integer / unparseable count", () => {
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        category_id: UUID,
+        audience_category: "men",
+        target_count: "two",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        category_id: UUID,
+        audience_category: "men",
+        target_count: "1.5",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects an empty target (the admin must type a number)", () => {
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        category_id: UUID,
+        audience_category: "men",
+        target_count: "",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects an unknown top type", () => {
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        category_id: UUID,
+        audience_category: "couples",
+        target_count: "2",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects a missing category id", () => {
+    expect(
+      validateSetCategoryTypeTargetCountPayload({
+        audience_category: "men",
+        target_count: "2",
       }).ok
     ).toBe(false);
   });

@@ -482,6 +482,27 @@ const SETTINGS_DATA: SettingsShellData = {
       },
     ],
   },
+  // #400 Settings > Groups: coverage rows for the two active cat-1 cells, so the
+  // inline "currently X / target Y" readouts + the dedicated coverage panel are
+  // in the tree for the a11y scan. Sorted by largest shortfall (men first).
+  cellCoverage: [
+    {
+      audienceCategory: "men",
+      categoryId: "cat-1",
+      label: "20-30s",
+      have: 1,
+      target: 3,
+      gap: 2,
+    },
+    {
+      audienceCategory: "women",
+      categoryId: "cat-1",
+      label: "20-30s",
+      have: 2,
+      target: 2,
+      gap: 0,
+    },
+  ],
   // Issue #304: render the super_admin variant so the super-admin-only System
   // tab affordances are in the tree for the a11y scan.
   isSuperAdmin: true,
