@@ -143,3 +143,23 @@ above) and are kept for implementation history only.
 - `CLAUDE_DESIGN_EXTRACTION.md` — handoff notes from the Claude Design
   HTML prototype bundle; the visual system has shipped.
 - `LAUNCH_POLISH_QA.md` — Phase 5A.0.1 launch polish QA; closed.
+
+### Pre-pivot planning PRDs (superseded by the pivot)
+
+Audit/planning docs that fed the IA-reduction work and the Care/Plan/Multiply
+pivot. The decisions they argued toward now live in the pivot ADRs
+([`../adr/0016`](../adr/0016-pivot-to-care-plan-multiply.md)–[`0020`](../adr/0020-leader-care-note-is-group-scoped.md))
+and PRD #371; these are kept for the reasoning that got there.
+
+- `REDUCTIONPLAN.md` — UI/UX reduction plan proposing a six-item nav
+  (Home/Groups/Care/People/Planning/Settings); the foundation of ADR 0013,
+  reshaped by the pivot's Home/Care/Plan/Multiply/Settings nav (ADR 0016).
+- `IA_CONSOLIDATION_PRD.md` — information-architecture consolidation PRD;
+  shipped as the six-area spine (ADR 0013), then reshaped by ADR 0016.
+- `SURFACE_SIMPLIFICATION_PRD.md` — surface-simplification audit at commit
+  `c335a8a`, predating the pivot.
+- `ADMIN_UX_IMPROVEMENT_PRD.md` — admin scan-speed / IA / a11y PRD built on
+  ADR 0013 and the two PRDs above; superseded in framing by ADR 0016.
+- `MULTIPLICATION_PLANNER.md` — the narrower "replace the Google Doc"
+  planner spec (ADR 0006); superseded by
+  [`../plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](../plans/CAPACITY_AND_MULTIPLICATION_PRD.md).

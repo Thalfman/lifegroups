@@ -33,18 +33,18 @@ Super Admin is intentionally out of scope.
 
 # 2. Navigation Mapping
 
-| Current Area | Move To | Reason |
-|---|---|---|
-| Dashboard | Home | Home should show what needs attention now. |
-| Groups & lifecycle | Groups | Group setup, lifecycle, and status belong together. |
-| Group Health | Groups | Health is part of group status, not a separate top-level concept. |
-| Leader Care | Care | Leader contact and care activity belong with follow-ups. |
-| Follow-ups | Care | Follow-ups are part of care work. |
-| People | People | Directory and person management belong together. |
-| Leader Pipeline | People | Apprentices are people, not a separate planning area. |
-| Launch Planning | Planning | Launches and capacity are future-facing planning work. |
-| Ministry Calendar | Planning | Calendar is also future-facing planning work. |
-| Settings & thresholds | Settings | Configuration should stay separate and quiet. |
+| Current Area          | Move To  | Reason                                                            |
+| --------------------- | -------- | ----------------------------------------------------------------- |
+| Dashboard             | Home     | Home should show what needs attention now.                        |
+| Groups & lifecycle    | Groups   | Group setup, lifecycle, and status belong together.               |
+| Group Health          | Groups   | Health is part of group status, not a separate top-level concept. |
+| Leader Care           | Care     | Leader contact and care activity belong with follow-ups.          |
+| Follow-ups            | Care     | Follow-ups are part of care work.                                 |
+| People                | People   | Directory and person management belong together.                  |
+| Leader Pipeline       | People   | Apprentices are people, not a separate planning area.             |
+| Launch Planning       | Planning | Launches and capacity are future-facing planning work.            |
+| Ministry Calendar     | Planning | Calendar is also future-facing planning work.                     |
+| Settings & thresholds | Settings | Configuration should stay separate and quiet.                     |
 
 ---
 
@@ -76,14 +76,15 @@ Generic action labels like `Open ->` make the page less clear.
 
 ## Home Structure
 
-| Section | Content | Primary Actions |
-|---|---|---|
-| Needs Attention | Leaders needing contact, groups needing health checks, overdue follow-ups | `View care`, `Review groups`, `Open follow-ups` |
-| This Week | Upcoming meetings, due follow-ups, launch milestones | `View planning` |
-| Ministry Snapshot | Active groups, people in groups, capacity, group health summary | `View groups` |
-| Recent Activity | Recent care notes, completed follow-ups, group updates | `View activity` |
+| Section           | Content                                                                   | Primary Actions                                 |
+| ----------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
+| Needs Attention   | Leaders needing contact, groups needing health checks, overdue follow-ups | `View care`, `Review groups`, `Open follow-ups` |
+| This Week         | Upcoming meetings, due follow-ups, launch milestones                      | `View planning`                                 |
+| Ministry Snapshot | Active groups, people in groups, capacity, group health summary           | `View groups`                                   |
+| Recent Activity   | Recent care notes, completed follow-ups, group updates                    | `View activity`                                 |
 
 > Notes on Recent Activity:
+>
 > - There is no separate Activity page (no `/admin/activity` route exists). `View activity` should scroll to or expand Home's own Recent Activity section, or link to the relevant item's surface (group, follow-up). It is not a link to a new top-level area.
 > - Recent Activity may show only metadata, links, and counts (for example "care logged for X", "follow-up completed"). It must not render private-note, admin-summary, or interaction-note bodies — those stay on the guarded `/admin/shepherd-care` surface and never leave it.
 
@@ -91,13 +92,13 @@ Generic action labels like `Open ->` make the page less clear.
 
 Replace vague labels with specific labels:
 
-| Current | Replace With |
-|---|---|
+| Current   | Replace With          |
+| --------- | --------------------- |
 | `Open ->` | `Review group health` |
-| `Open ->` | `Contact leaders` |
-| `Open ->` | `Open follow-ups` |
-| `Open ->` | `View launch plan` |
-| `Open ->` | `Review group setup` |
+| `Open ->` | `Contact leaders`     |
+| `Open ->` | `Open follow-ups`     |
+| `Open ->` | `View launch plan`    |
+| `Open ->` | `Review group setup`  |
 
 ---
 
@@ -132,15 +133,15 @@ The app also uses combined labels like `Active Healthy`, which can hide whether 
 
 ## Merge Into Groups
 
-| Current Concept | New Location |
-|---|---|
-| Group list | Groups |
-| Group lifecycle | Groups |
-| Group setup gaps | Groups |
-| Group health | Groups |
-| Health check editor | Group detail |
-| Attendance/capacity | Group detail |
-| Group-related follow-ups | Group detail or Care |
+| Current Concept               | New Location             |
+| ----------------------------- | ------------------------ |
+| Group list                    | Groups                   |
+| Group lifecycle               | Groups                   |
+| Group setup gaps              | Groups                   |
+| Group health                  | Groups                   |
+| Health check editor           | Group detail             |
+| Attendance/capacity           | Group detail             |
+| Group-related follow-ups      | Group detail or Care     |
 | Group-related calendar events | Group detail or Planning |
 
 ## Groups Tabs
@@ -155,26 +156,26 @@ Use these tabs:
 
 ## Groups Tab Definitions
 
-| Tab | Shows |
-|---|---|
-| All Groups | Every active group by default, with filters available. |
-| Needs Setup | Groups missing leader, meeting details, capacity, or other setup info. |
-| Needs Health Check | Groups that are not assessed or missing required ratings. |
-| Needs Attention | Groups with health, capacity, follow-up, or care concerns. |
-| Archived | Archived or inactive groups. |
+| Tab                | Shows                                                                  |
+| ------------------ | ---------------------------------------------------------------------- |
+| All Groups         | Every active group by default, with filters available.                 |
+| Needs Setup        | Groups missing leader, meeting details, capacity, or other setup info. |
+| Needs Health Check | Groups that are not assessed or missing required ratings.              |
+| Needs Attention    | Groups with health, capacity, follow-up, or care concerns.             |
+| Archived           | Archived or inactive groups.                                           |
 
 ## Group Card Structure
 
 Each group card should have separate visual zones:
 
-| Zone | Content |
-|---|---|
-| Header | Group name and lifecycle status |
-| Setup | Leader assignment and setup completeness |
-| Health | Health status |
-| Capacity | Current size vs capacity |
-| Meeting | Day, time, and location |
-| Actions | Primary action: `View group` |
+| Zone     | Content                                  |
+| -------- | ---------------------------------------- |
+| Header   | Group name and lifecycle status          |
+| Setup    | Leader assignment and setup completeness |
+| Health   | Health status                            |
+| Capacity | Current size vs capacity                 |
+| Meeting  | Day, time, and location                  |
+| Actions  | Primary action: `View group`             |
 
 ## Avoid Combined Status Labels
 
@@ -229,14 +230,14 @@ Inside a group detail page, use these tabs:
 
 ## Group Detail Tab Definitions
 
-| Tab | Contains |
-|---|---|
-| Overview | Summary, lifecycle, leader, meeting details, setup status, next recommended action. |
-| People | Leaders, co-leaders, members, apprentices connected to the group. |
-| Health | Health check status, ratings, missing ratings, health history. |
-| Attendance | Attendance history, capacity, trends. |
-| Follow-ups | Follow-ups related to this group. |
-| Events | Group-related calendar events. |
+| Tab        | Contains                                                                            |
+| ---------- | ----------------------------------------------------------------------------------- |
+| Overview   | Summary, lifecycle, leader, meeting details, setup status, next recommended action. |
+| People     | Leaders, co-leaders, members, apprentices connected to the group.                   |
+| Health     | Health check status, ratings, missing ratings, health history.                      |
+| Attendance | Attendance history, capacity, trends.                                               |
+| Follow-ups | Follow-ups related to this group.                                                   |
+| Events     | Group-related calendar events.                                                      |
 
 > Boundary note: Attendance/health data comes from the check-in flow, which is currently frozen — `attendance_sessions` and `group_health_updates` stop receiving new data and `/admin/check-ins` stays behind the frozen-surface gate (ADR 0002, ADR 0009). Treat the `Attendance` tab as historical/read-only (or hidden) unless check-ins are re-enabled via the runtime flags described in ADR 0009, so admins are not shown stale or broken attendance trends as if live.
 
@@ -264,20 +265,21 @@ A user should not need to check multiple top-level pages to understand who needs
 - Use clear action labels like `Log contact`, `Create follow-up`, and `Mark complete`.
 
 > Boundary notes (this is navigation consolidation only, not a data or route merge):
+>
 > - "Care" is the user-facing nav label/area only. The existing `/admin/shepherd-care` route path and filenames stay frozen, per ADR `0008` — renaming touches RLS/RPC/audit-sensitive care code for no functional payoff. Any actual route migration needs its own ADR.
 > - Care follow-ups stay on the dedicated shepherd-care tables (`shepherd_care_follow_ups`), kept separate from the leader-readable generic `follow_ups` table because care content is more sensitive and generic follow-ups have reachable leader read paths. Generic and care follow-ups may cross-link as counts/links only — generic surfaces must not read care-note content.
 
 ## Merge Into Care
 
-| Current Concept | New Location |
-|---|---|
-| Leader Care | Care |
-| Leader contact queue | Care |
-| Follow-ups | Care |
-| Due follow-ups | Care |
-| Care history | Care |
-| Logged calls/notes | Care |
-| Completed follow-ups | Care |
+| Current Concept      | New Location |
+| -------------------- | ------------ |
+| Leader Care          | Care         |
+| Leader contact queue | Care         |
+| Follow-ups           | Care         |
+| Due follow-ups       | Care         |
+| Care history         | Care         |
+| Logged calls/notes   | Care         |
+| Completed follow-ups | Care         |
 
 ## Care Tabs
 
@@ -291,26 +293,26 @@ Use these tabs:
 
 ## Care Tab Definitions
 
-| Tab | Shows |
-|---|---|
+| Tab           | Shows                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Needs Contact | Leaders / co-leaders who need outreach. (Care is per-leader per `docs/PRD.md`; do not pull members or other non-leader people into shepherd-care unless a separate member-care model is defined.) |
-| Follow-ups | Open follow-up tasks. |
-| Due Soon | Follow-ups due soon or overdue. |
-| Recent Care | Recently logged calls, notes, meetings, or care activity. |
-| Completed | Completed follow-ups and finished care tasks. |
+| Follow-ups    | Open follow-up tasks.                                                                                                                                                                             |
+| Due Soon      | Follow-ups due soon or overdue.                                                                                                                                                                   |
+| Recent Care   | Recently logged calls, notes, meetings, or care activity.                                                                                                                                         |
+| Completed     | Completed follow-ups and finished care tasks.                                                                                                                                                     |
 
 ## Care Item Structure
 
 Each care item should show:
 
-| Field | Example |
-|---|---|
-| Person | `Test Co-Leader` |
-| Reason | `No recent contact` |
-| Related group | `Anderson Life Group` |
-| Due date | `Due today` |
-| Owner | `Assigned to Tom` |
-| Action | `Log contact` or `View follow-up` |
+| Field         | Example                           |
+| ------------- | --------------------------------- |
+| Person        | `Test Co-Leader`                  |
+| Reason        | `No recent contact`               |
+| Related group | `Anderson Life Group`             |
+| Due date      | `Due today`                       |
+| Owner         | `Assigned to Tom`                 |
+| Action        | `Log contact` or `View follow-up` |
 
 ## Care Action Labels
 
@@ -340,13 +342,13 @@ Inside a leader care profile, use these tabs:
 
 ## Leader Detail Tab Definitions
 
-| Tab | Contains |
-|---|---|
-| Overview | Leader summary, assigned group, care status, next action. |
-| Contact History | Calls, notes, texts, meetings, and care touchpoints. |
-| Follow-ups | Open and completed tasks for this leader. |
-| Notes | Longer pastoral/admin notes. |
-| Group | Link and summary for the leader’s group. |
+| Tab             | Contains                                                  |
+| --------------- | --------------------------------------------------------- |
+| Overview        | Leader summary, assigned group, care status, next action. |
+| Contact History | Calls, notes, texts, meetings, and care touchpoints.      |
+| Follow-ups      | Open and completed tasks for this leader.                 |
+| Notes           | Longer pastoral/admin notes.                              |
+| Group           | Link and summary for the leader’s group.                  |
 
 > Boundary note: The `Notes` tab is ministry-admin / private-note-only. It must not surface private pastoral notes on over-shepherd or leader-facing care surfaces (for example `/over-shepherd/[profileId]`). Over-shepherds can never read private notes per `docs/adr/0002-oversight-ladder-and-leader-gating.md`. This consolidation is a UI layout change only and must preserve that existing boundary.
 
@@ -378,14 +380,14 @@ This makes the app feel more modular and technical than necessary.
 
 ## Merge Into People
 
-| Current Concept | New Location |
-|---|---|
-| Directory | People |
-| Add person | People |
-| Assignments | People |
-| Leader Pipeline | People |
-| Apprentices | People |
-| Login/member filters | People |
+| Current Concept      | New Location |
+| -------------------- | ------------ |
+| Directory            | People       |
+| Add person           | People       |
+| Assignments          | People       |
+| Leader Pipeline      | People       |
+| Apprentices          | People       |
+| Login/member filters | People       |
 
 ## People Tabs
 
@@ -399,13 +401,13 @@ Use these tabs:
 
 ## People Tab Definitions
 
-| Tab | Shows |
-|---|---|
-| Directory | Everyone. |
-| Leaders | Current leaders and co-leaders. |
-| Members | Group members. |
+| Tab         | Shows                             |
+| ----------- | --------------------------------- |
+| Directory   | Everyone.                         |
+| Leaders     | Current leaders and co-leaders.   |
+| Members     | Group members.                    |
 | Apprentices | Leader pipeline / future leaders. |
-| Add Person | Add a new person. |
+| Add Person  | Add a new person.                 |
 
 ## Rename Leader Pipeline
 
@@ -427,14 +429,14 @@ Reason:
 
 Each person row should show:
 
-| Field | Example |
-|---|---|
-| Name | `Test Co-Leader` |
-| Role | `Leader` or `Member` |
-| Group | `Anderson Life Group` |
-| Status | `Active` |
+| Field                  | Example                                  |
+| ---------------------- | ---------------------------------------- |
+| Name                   | `Test Co-Leader`                         |
+| Role                   | `Leader` or `Member`                     |
+| Group                  | `Anderson Life Group`                    |
+| Status                 | `Active`                                 |
 | Contact/Care indicator | `Needs contact` or `No current concerns` |
-| Action | `View person` |
+| Action                 | `View person`                            |
 
 ## Person Detail Tabs
 
@@ -448,13 +450,13 @@ Inside a person detail page, use these tabs:
 
 ## Person Detail Tab Definitions
 
-| Tab | Contains |
-|---|---|
-| Overview | Name, role, status, contact info. |
-| Group | Current group assignment and group role. |
-| Care | Related care history and follow-ups. |
-| Activity | Recent group/admin activity. |
-| Access | Login and role details, shown only to users with permission. |
+| Tab      | Contains                                                     |
+| -------- | ------------------------------------------------------------ |
+| Overview | Name, role, status, contact info.                            |
+| Group    | Current group assignment and group role.                     |
+| Care     | Related care history and follow-ups.                         |
+| Activity | Recent group/admin activity.                                 |
+| Access   | Login and role details, shown only to users with permission. |
 
 > Boundary note: The `Access` tab applies only to app-login (auth-backed) profiles. Members are non-login participant records and never sign in, so member detail pages must not show an `Access` tab or offer any account or role-management affordances. Keep this restriction even though the `Person Detail` layout is shared across the People area.
 
@@ -487,14 +489,14 @@ Launch Planning also contains multiple planning concepts that can feel heavy as 
 
 ## Merge Into Planning
 
-| Current Concept | New Location |
-|---|---|
-| Launch Planning | Planning |
-| Ministry Calendar | Planning |
-| Forecast | Planning |
-| Scenarios | Planning |
-| Capacity planning | Planning |
-| Group multiplication | Planning |
+| Current Concept      | New Location |
+| -------------------- | ------------ |
+| Launch Planning      | Planning     |
+| Ministry Calendar    | Planning     |
+| Forecast             | Planning     |
+| Scenarios            | Planning     |
+| Capacity planning    | Planning     |
+| Group multiplication | Planning     |
 
 ## Planning Tabs
 
@@ -508,21 +510,21 @@ Use these tabs:
 
 ## Planning Tab Definitions
 
-| Tab | Shows |
-|---|---|
-| Calendar | Upcoming ministry and group events. |
-| Launches | Upcoming group launches and launch plans. |
-| Capacity | Current and forecasted group capacity. |
-| Scenarios | What-if planning. |
-| Multiplication | Group multiplication planning. |
+| Tab            | Shows                                     |
+| -------------- | ----------------------------------------- |
+| Calendar       | Upcoming ministry and group events.       |
+| Launches       | Upcoming group launches and launch plans. |
+| Capacity       | Current and forecasted group capacity.    |
+| Scenarios      | What-if planning.                         |
+| Multiplication | Group multiplication planning.            |
 
 ## Rename Launch Planning Tabs
 
-| Current Tab | New Tab |
-|---|---|
-| Overview | Launches |
-| Forecast | Capacity |
-| Scenarios | Scenarios |
+| Current Tab               | New Tab        |
+| ------------------------- | -------------- |
+| Overview                  | Launches       |
+| Forecast                  | Capacity       |
+| Scenarios                 | Scenarios      |
 | Groups and multiplication | Multiplication |
 
 ## Calendar UI Direction
@@ -564,12 +566,12 @@ Use these tabs:
 
 ## Settings Tab Definitions
 
-| Tab | Shows |
-|---|---|
-| General | Basic ministry/app defaults. |
-| Thresholds | Care stale days, capacity warnings, health thresholds. |
-| Notifications | Reminder/email preferences, if present later. |
-| Imports | Import tools, only if normal admins need them. |
+| Tab           | Shows                                                  |
+| ------------- | ------------------------------------------------------ |
+| General       | Basic ministry/app defaults.                           |
+| Thresholds    | Care stale days, capacity warnings, health thresholds. |
+| Notifications | Reminder/email preferences, if present later.          |
+| Imports       | Import tools, only if normal admins need them.         |
 
 > Boundary note: Bulk people import is currently a security-critical write path gated by `requireSuperAdminSession()` in the Super Admin Console. This `Imports` tab is a navigation/discoverability idea only and must not move imports out from behind Super Admin. Imports remain super-admin-only unless a separate, explicit authorization decision changes that boundary.
 
@@ -789,14 +791,14 @@ Generic labels make users work harder because they have to infer where the actio
 
 ## Actionable Changes
 
-| Avoid | Use |
-|---|---|
-| `Open ->` | `Review group health` |
-| `Open` | `View group` |
-| `Manage` | `Edit group` |
-| `Update` | `Save changes` |
-| `Leader Pipeline` | `Apprentices` |
-| `Group Health` | `Health` inside Groups |
+| Avoid             | Use                      |
+| ----------------- | ------------------------ |
+| `Open ->`         | `Review group health`    |
+| `Open`            | `View group`             |
+| `Manage`          | `Edit group`             |
+| `Update`          | `Save changes`           |
+| `Leader Pipeline` | `Apprentices`            |
+| `Group Health`    | `Health` inside Groups   |
 | `Launch Planning` | `Planning` or `Launches` |
 
 ## Button Rules

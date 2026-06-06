@@ -17,7 +17,7 @@
 > [`plans/CONCEPT_RECONCILIATION.md`](./CONCEPT_RECONCILIATION.md). Where a
 > requirement touches a decision, the ADR is cited inline.
 
------
+---
 
 ## Bottom line
 
@@ -120,9 +120,9 @@ removed or gated behind a default-off flag rather than silently reachable, when
 only one shell system remains, and when the surface-budget rule is recorded as an
 ADR.
 
------
+---
 
-*Status legend:* 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a
+_Status legend:_ 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a
 Julian or Tom sign-off before build. Each requirement is sized to become one
 GitHub issue or a small epic.
 
@@ -220,7 +220,7 @@ must map to exactly one of the three jobs and must name the surface it replaces,
 it does not ship. This is the rule that prevents re-bloat, and it is the hook the
 later simplification PRD will extend with usability criteria.
 
------
+---
 
 ## Recommended issue-slicing order
 

@@ -8,7 +8,7 @@
 > repository at HEAD `c335a8a`, and every claim traces to a file. It is written to be
 > **sliced into GitHub issues**: each requirement is independently shippable and ordered
 > by dependency and risk.
-> 
+>
 > **Scope boundary.** In scope: per-surface density and progressive disclosure, one
 > primary action per surface, first-run and empty states, and the simpler models the
 > audit calls for, including the schema changes some require. Out of scope: surface count
@@ -16,13 +16,13 @@
 > the owner has excluded; the frozen `shepherd_care_*` schema and route paths; shared
 > infrastructure primitives; and the visual layer. The full exclusions are under
 > Non-goals, and the widened scope is re-checked against them before sign-off.
-> 
+>
 > This PRD follows [`plans/IA_CONSOLIDATION_PRD.md`](./IA_CONSOLIDATION_PRD.md) and
 > extends the gate in [`adr/0010-surface-budget.md`](../adr/0010-surface-budget.md).
 > Product scope follows the three jobs in [`PRD.md`](../PRD.md). Vocabulary follows
 > [`CONTEXT.md`](../../CONTEXT.md), which this PRD also amends.
 
------
+---
 
 ## Bottom line
 
@@ -66,7 +66,7 @@ the surface exists for actually requires?
 The standing test for the whole app is whether a non-technical ministry user can complete
 each surface’s job without a glossary.
 
------
+---
 
 ## Complexity audit, surface by surface
 
@@ -181,7 +181,7 @@ one field, `check_in_due_day_of_week`, is dead by the model’s own comment. Own
 Evidence: `components/admin/settings-shell.tsx`, `lib/admin/metrics.ts` (the `MetricDefaults` type
 and the legacy-field comment).
 
------
+---
 
 ## Goals and non-goals
 
@@ -227,9 +227,9 @@ Across all surfaces, every flagged surface has one obvious primary action and a 
 empty state, ADR 0010 carries the principle as a gate, Super Admin behaves exactly as today, and the
 navigation, surface count, frozen schema and routes, shared primitives, and visual layer are unchanged.
 
------
+---
 
-*Status legend:* 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a Julian or Tom
+_Status legend:_ 🟢 zero-risk mechanical · 🟡 structural, reversible · 🔴 needs a Julian or Tom
 sign-off before build · ✅ a 🔴 gate that has since been signed off and is cleared to build (see the
 Sign-off section). Each requirement is sized to become one GitHub issue or a small epic, and
 every 🔴 item carries a recommended default so sign-off is a yes, not fresh analysis.
@@ -240,7 +240,7 @@ every 🔴 item carries a recommended default so sign-off is a yes, not fresh an
 First load shows only the at-a-glance capacity answer and one primary action; the rest moves behind
 named tabs. Recommended default tabs: Overview, Forecast, Scenarios, and Groups and multiplication.
 Evidence: `components/admin/launch-planning/summary-cards.tsx`,
-`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). *Sign-off: ✅ four tabs confirmed (2026-06-01).*
+`app/(protected)/admin/launch-planning/page.tsx` (lines 400 to 511). _Sign-off: ✅ four tabs confirmed (2026-06-01)._
 
 **L2: Name one primary action. 🟡**
 Recommended default: **Plan a launch**, creating a scenario from current inputs via
@@ -262,14 +262,14 @@ edit control. **Owner sign-off (2026-06-01): single-number surface approved, but
 history is retained — they simply stop being what the forecast and headline read from.** This makes L4 a
 surface + source-of-truth change with **no schema migration and no table drop**, but it does carry one
 **one-time data backfill** (seeding an existing settings value), described next. **Preserve the existing
-denominator:** today the percentage headline divides current participants by the *latest snapshot's*
+denominator:** today the percentage headline divides current participants by the _latest snapshot's_
 attendance count (`page.tsx` `participationPct(... churchAttendanceLatest.attendanceCount)`), while
 `decodeLaunchPlanningAssumptions` falls back to the built-in default (100) when the assumption was never
 set. **Backfill rule — key off snapshot presence, not "unset".** The assumptions row is seeded with
 `current_church_attendance: 100` on first run (`20260518190000_phase_lp1_launch_planning.sql`), so an
 "unset" value is indistinguishable from a real 100; do **not** gate the backfill on a missing key. Instead,
 at switch-over, for every church that has **at least one `church_attendance_snapshots` row**, set
-`current_church_attendance` to its latest snapshot's `attendance_count` — that count *is* the denominator
+`current_church_attendance` to its latest snapshot's `attendance_count` — that count _is_ the denominator
 the headline shows today, so this preserves the displayed percentage exactly. Churches with no snapshots
 keep their current assumption (the headline shows no percentage for them today regardless). **Audit the
 backfill:** writes to `launch_planning_assumptions` are audited — `admin_update_launch_planning_assumptions`
@@ -281,7 +281,7 @@ single-source-of-truth rule intact. **ADR 0008 intersection: none**; the table i
 outside the frozen `shepherd_care_*` surface. Evidence:
 `supabase/migrations/20260528140000_julian_p2_church_attendance.sql`,
 `components/admin/launch-planning/church-attendance-card.tsx`, `lib/admin/launch-planning.ts`.
-*Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept); denominator preserved via a one-time backfill.*
+_Sign-off: ✅ single-number model confirmed; history retained (table/RPC kept); denominator preserved via a one-time backfill._
 
 **L5: Trim the forecast and scenario inputs and state them as percentages. ✅ (was 🔴; signed off 2026-06-01) Structural at the UI boundary.**
 Reduce the default forecast to the two inputs that need a ministry-specific answer, current church
@@ -292,7 +292,7 @@ which repeats the decimal inputs. Keep storage as a ratio so no schema migration
 the UI boundary using the existing `pctValue` helper and its inverse. Evidence:
 `components/admin/launch-planning/assumptions-form.tsx`,
 `components/admin/launch-planning/scenario-form.tsx` (the duplicate decimal inputs),
-`lib/admin/launch-planning.ts`. *Sign-off: ✅ the two required inputs and the silent defaults confirmed (2026-06-01).*
+`lib/admin/launch-planning.ts`. _Sign-off: ✅ the two required inputs and the silent defaults confirmed (2026-06-01)._
 
 ## F: Follow-ups
 
@@ -314,8 +314,8 @@ care-status touch, and an optional follow-up, demoting the rest. This is surface
 `shepherd_care_*` schema and route path stay frozen per ADR 0008. Evidence:
 `components/admin/shepherd-care/view-toggle.tsx`,
 `components/admin/shepherd-care/care-attention-queue.tsx`,
-`components/admin/shepherd-care/log-interaction-form.tsx` (ten controls). *Sign-off: confirm which
-interaction fields stay in the primary form, recommended as outcome, status, and follow-up.*
+`components/admin/shepherd-care/log-interaction-form.tsx` (ten controls). _Sign-off: confirm which
+interaction fields stay in the primary form, recommended as outcome, status, and follow-up._
 
 ## G: Groups
 
@@ -326,14 +326,14 @@ Recommended default: rename, not remove, since the audience and life-stage group
 and replace “Unsegmented” with **Not categorized**. No migration. Amend CONTEXT.md with **Audience** and
 **Stage of life**, and record **Segment** as internal only, as the glossary already treats “Admin OS”.
 Evidence: `lib/admin/multiplication.ts`, `components/admin/capacity-board/capacity-board.tsx`, `CONTEXT.md`.
-*Sign-off: confirm the four labels and the glossary additions.*
+_Sign-off: confirm the four labels and the glossary additions._
 
 **G2: Replace the bi-weekly parity vocabulary. 🟡**
 Relabel the “Bi-weekly parity” field and its “calendar week number” hint in plain language. Recommended
 default: ask “Which weeks does it meet?” with options worded as **1st and 3rd** and **2nd and 4th**, or as
 **Odd weeks** and **Even weeks** with a one-line plain explanation, on both the create and edit forms. No
 migration; the stored value is unchanged. Evidence: `components/admin/forms/group-create-form.tsx`,
-`components/admin/forms/group-edit-form.tsx`. *Sign-off: confirm the replacement wording.*
+`components/admin/forms/group-edit-form.tsx`. _Sign-off: confirm the replacement wording._
 
 **G3: Default group capacity instead of leaving it Unknown. ✅ (was 🔴; signed off 2026-06-01)**
 Default a new group’s capacity to the ministry default capacity rather than “Unknown”, so an operator sets
@@ -343,7 +343,7 @@ This changes how untagged groups count in the capacity totals, which is why it i
 change is required; it is a default and a display change. Evidence:
 `app/(protected)/admin/groups/page.tsx` (“Capacity stays Unknown”),
 `components/admin/forms/group-create-form.tsx`, `lib/admin/metrics.ts` (`default_group_capacity`).
-*Sign-off: ✅ confirmed (2026-06-01) — groups default to the ministry capacity and this feeds the capacity math.*
+_Sign-off: ✅ confirmed (2026-06-01) — groups default to the ministry capacity and this feeds the capacity math._
 
 **G4: Collapse the create form to its essentials. 🟡**
 Show only the fields a group needs first, recommended as name and meeting day and time, and move audience,
@@ -358,7 +358,7 @@ capacity and attendance thresholds, the check-in offset, and the missed-check-in
 thresholds” disclosure with their current defaults; demote per-group overrides and the active-overrides list
 into a collapsed section; and remove the dead `check_in_due_day_of_week` field. No migration for the trim;
 dropping the dead column is an optional follow-up. Evidence: `components/admin/settings-shell.tsx`,
-`lib/admin/metrics.ts`. *Sign-off: ✅ primary-path settings and the field removal confirmed (2026-06-01).*
+`lib/admin/metrics.ts`. _Sign-off: ✅ primary-path settings and the field removal confirmed (2026-06-01)._
 
 ## H: Group health
 
@@ -367,8 +367,8 @@ Replace the per-row “Recompute” button with ministry language, recommended a
 or remove it if the live-on-read recompute already persists what is needed, and consider moving the per-row
 rating inputs behind an expand control so the table reads first. No model or schema change; grades already
 recompute on read. Evidence: `app/(protected)/admin/group-health/page.tsx` (the manual Recompute form beside
-the “recomputed live on read” note). *Sign-off: confirm the recompute label, or that the manual action can
-be removed.*
+the “recomputed live on read” note). _Sign-off: confirm the recompute label, or that the manual action can
+be removed._
 
 ## B: Surface-budget principle extension
 
@@ -380,7 +380,7 @@ not require precision a default could supply; and its labels use ministry vocabu
 rather than restating it. Recommended default: amend in place, so the budget stays one document. Evidence:
 `docs/adr/0010-surface-budget.md`.
 
------
+---
 
 ## Open questions
 
