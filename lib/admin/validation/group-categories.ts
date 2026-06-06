@@ -1,5 +1,10 @@
 import type { ValidationResult } from "./shared";
-import { isNonEmptyString, isRecord, normalizeUuid } from "./shared";
+import {
+  isNonEmptyString,
+  isRecord,
+  normalizeUuid,
+  readOptionalInteger,
+} from "./shared";
 
 // Group Category catalog + cell-matrix write-validation contracts (#396). The
 // Settings > Groups editor posts free-form catalog CRUD (create / rename /
@@ -134,6 +139,59 @@ export function validateSetCategoryTypeCellPayload(
       categoryId,
       audienceCategory: audienceCategory as "men" | "women" | "mixed",
       active: active as boolean,
+    },
+  };
+}
+
+// #400 / PRD §2.3: set a cell's target group count. The Settings > Groups inline
+// readout posts the category, the top type, and the new non-negative count. The
+// RPC re-checks non-negative + live-category, but we keep an obviously-malformed
+// or negative count off the wire with a friendlier message.
+export type SetCategoryTypeTargetCountPayload = {
+  categoryId: string;
+  audienceCategory: "men" | "women" | "mixed";
+  count: number;
+};
+
+export function validateSetCategoryTypeTargetCountPayload(
+  input: unknown
+): ValidationResult<SetCategoryTypeTargetCountPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  const errors: string[] = [];
+  const categoryId = isNonEmptyString(input.category_id)
+    ? normalizeUuid(input.category_id.trim())
+    : "";
+  if (!isNonEmptyString(categoryId)) {
+    errors.push("A category id is required.");
+  }
+
+  const audienceCategory =
+    typeof input.audience_category === "string" ? input.audience_category : "";
+  if (!AUDIENCE_CATEGORIES.has(audienceCategory)) {
+    errors.push("The top type must be 'men', 'women', or 'mixed'.");
+  }
+
+  // The target is a required non-negative integer. An empty field reads as a
+  // missing target rather than 0 — the admin must type a number to set one.
+  const parsed = readOptionalInteger(input.target_count);
+  let count = -1;
+  if (parsed === undefined || parsed === "invalid") {
+    errors.push("The target must be a whole number.");
+  } else if (parsed < 0) {
+    errors.push("The target can't be negative.");
+  } else {
+    count = parsed;
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      categoryId,
+      audienceCategory: audienceCategory as "men" | "women" | "mixed",
+      count,
     },
   };
 }

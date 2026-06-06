@@ -4,36 +4,46 @@ import { ministryYearOf } from "@/lib/admin/ministry-year";
 import {
   BUILT_IN_PILLAR_THRESHOLDS,
   computePillars,
-  decodeFedCapacity,
   decodePillarThresholds,
   decodeTriggerRubric,
   evaluateTrigger,
-  flagIndividualGroupMultiply,
-  type FedCapacity,
   type MultiplySignal,
   type PillarGrades,
   type PillarThresholds,
   type TriggerRubric,
-  type IndividualMultiplyFlag,
 } from "@/lib/admin/multiplication-pillars";
 import {
+  NO_TYPE_CAPACITY_ISSUE,
+  rollUpTypeCapacityIssue,
+  type TypeCapacityIssue,
+} from "@/lib/admin/cell-capacity";
+import {
+  EMPTY_CELL_ACTIVE_GROUP_SIZES,
   EMPTY_FUNNEL_VOLUME,
   EMPTY_HEALTH_GRADES,
+  fetchCellActiveGroupSizes,
   fetchFunnelVolumeByType,
   fetchHealthGradesByType,
   fetchMultiplicationConfigs,
+  type CellActiveGroupSizes,
   type FunnelVolumeByType,
   type HealthGradesByType,
 } from "@/lib/supabase/multiplication-config-reads";
 import type { HealthLetter } from "@/lib/admin/multiplication-pillars";
 
-// The Multiply surface's data (#380): three boards by group type, each with its
-// four pillar A–F grades, its trigger/multiply signal, the individual-group flag,
-// and the editable config that fed it. The pillar + trigger math is the pure
-// resolver; this loader supplies its inputs — the fed config, the funnel volume,
-// and the per-type Group/Leader Health grades rolled up from #377/#378 over the
-// Ministry Year. A type with no grades yet yields empty arrays, so its health
-// pillars render "—".
+// The Multiply surface's data (#380, updated #401): three boards by group type,
+// each with its A–F pillar grades (Interest, Group Health, Leader Health), its
+// trigger/multiply signal, the DERIVED per-cell capacity ISSUE rolled up to the
+// type, and the editable config that fed it. The pillar + trigger math is the pure
+// resolver; this loader supplies its inputs — the config, the funnel volume, the
+// per-type Group/Leader Health grades, and the per-cell active group sizes.
+//
+// Capacity is no longer fed. It is a derived, multi-faceted ISSUE computed per
+// CELL (lib/admin/cell-capacity.ts) and rolled up here to the type level (a type
+// has an issue when ANY of its active cells trips). NOTE: the full Multiply matrix
+// grid (rows = categories × cols = types) is a LATER slice (#403), where this
+// per-cell signal moves onto the individual grid cell; this type-level rollup is
+// the interim surface for the existing per-type boards.
 
 export const MULTIPLY_TYPES: readonly GroupAudienceCategory[] = [
   "men",
@@ -53,11 +63,11 @@ export type TypeBoard = {
   label: string;
   pillars: PillarGrades;
   signal: MultiplySignal;
-  individualFlag: IndividualMultiplyFlag;
+  // The derived per-cell capacity issue rolled up to this type (#401).
+  capacityIssue: TypeCapacityIssue;
   // The config that fed this board, surfaced so the Settings editor can prefill.
   thresholds: PillarThresholds;
   trigger: TriggerRubric;
-  fedCapacity: FedCapacity;
   // The funnel volume that drove the Interest pillar (shown for transparency).
   funnelVolume: number;
   // True when no config row exists yet for this type/year (built-ins in use).
@@ -80,60 +90,70 @@ export function currentMinistryYear(now: Date): number {
 
 const DEFAULT_TRIGGER: TriggerRubric = {
   conditions: {
-    capacity: { op: "atLeast", letter: "B" },
     interest: { op: "atLeast", letter: "C" },
   },
   requireHealthGrades: false,
+  // Capacity gates readiness by default (PRD §2.4 / §4.1).
+  requireCapacity: true,
 };
 
-const EMPTY_FED_CAPACITY: FedCapacity = {
-  headroom: null,
-  fullGroupCount: 0,
-  options: [],
-};
+// Collect a type's per-cell active group sizes from the cell-sizes read: every
+// cell whose audience matches this type, as a list of size-arrays for the rollup.
+function typeCellSizes(
+  type: GroupAudienceCategory,
+  cellSizes: CellActiveGroupSizes
+): number[][] {
+  const cells: number[][] = [];
+  for (const [key, sizes] of cellSizes.byCell) {
+    if (cellSizes.keys.get(key)?.audience === type) cells.push(sizes);
+  }
+  return cells;
+}
 
-// Compose one type's board from its (possibly absent) config, funnel volume, and
-// the type's rolled-up Group/Leader Health grades (#377/#378). Pure — exported
-// for testing. Empty grade arrays resolve the corresponding health pillar to null
+// Compose one type's board from its (possibly absent) config, funnel volume, the
+// type's rolled-up Group/Leader Health grades (#377/#378), and the type's per-cell
+// active group sizes for the derived capacity issue (#401). Pure — exported for
+// testing. Empty grade arrays resolve the corresponding health pillar to null
 // ("—"), so a type with no grades yet still renders.
 export function buildTypeBoard(
   type: GroupAudienceCategory,
   config: {
     thresholds: PillarThresholds;
     trigger: TriggerRubric;
-    fedCapacity: FedCapacity;
   } | null,
   funnelVolume: number,
   ministryYear: number,
   grades: { groupGrades: HealthLetter[]; leaderGrades: HealthLetter[] } = {
     groupGrades: [],
     leaderGrades: [],
-  }
+  },
+  cellSizes: number[][] = []
 ): TypeBoard {
   const thresholds = config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS;
   const trigger = config?.trigger ?? DEFAULT_TRIGGER;
-  const fedCapacity = config?.fedCapacity ?? EMPTY_FED_CAPACITY;
 
   const pillars = computePillars(
     {
       funnelVolume,
       groupGrades: grades.groupGrades,
       leaderGrades: grades.leaderGrades,
-      fedCapacity,
     },
     thresholds,
     ministryYear
   );
 
+  // The derived capacity issue feeds the readiness trigger (PRD §2.4), not just
+  // the side banner: a required capacity issue holds the type back.
+  const capacityIssue = rollUpTypeCapacityIssue(cellSizes);
+
   return {
     type,
     label: MULTIPLY_TYPE_LABEL[type],
     pillars,
-    signal: evaluateTrigger(trigger, pillars),
-    individualFlag: flagIndividualGroupMultiply(fedCapacity),
+    signal: evaluateTrigger(trigger, pillars, capacityIssue),
+    capacityIssue,
     thresholds,
     trigger,
-    fedCapacity,
     funnelVolume,
     usingDefaults: config === null,
   };
@@ -160,14 +180,18 @@ export async function loadMultiplyData(
     .toISOString()
     .slice(0, 10);
 
-  const [configsResult, volumeResult, gradesResult] = await Promise.all([
-    fetchMultiplicationConfigs(client, ministryYear),
-    fetchFunnelVolumeByType(client),
-    fetchHealthGradesByType(client, ministryYear, periodMonthIso),
-  ]);
+  const [configsResult, volumeResult, gradesResult, cellSizesResult] =
+    await Promise.all([
+      fetchMultiplicationConfigs(client, ministryYear),
+      fetchFunnelVolumeByType(client),
+      fetchHealthGradesByType(client, ministryYear, periodMonthIso),
+      fetchCellActiveGroupSizes(client),
+    ]);
 
   const volume: FunnelVolumeByType = volumeResult.data ?? EMPTY_FUNNEL_VOLUME;
   const grades: HealthGradesByType = gradesResult.data ?? EMPTY_HEALTH_GRADES;
+  const cellSizes: CellActiveGroupSizes =
+    cellSizesResult.data ?? EMPTY_CELL_ACTIVE_GROUP_SIZES;
 
   // Index the config rows by type, decoding each jsonb payload at the boundary.
   const configByType = new Map<
@@ -175,14 +199,12 @@ export async function loadMultiplyData(
     {
       thresholds: PillarThresholds;
       trigger: TriggerRubric;
-      fedCapacity: FedCapacity;
     }
   >();
   for (const row of configsResult.data ?? []) {
     configByType.set(row.group_type, {
       thresholds: decodePillarThresholds(row.thresholds),
       trigger: decodeTriggerRubric(row.trigger_rubric),
-      fedCapacity: decodeFedCapacity(row.fed_capacity),
     });
   }
 
@@ -192,7 +214,8 @@ export async function loadMultiplyData(
       configByType.get(type) ?? null,
       volume[type],
       ministryYear,
-      grades[type]
+      grades[type],
+      typeCellSizes(type, cellSizes)
     )
   );
 
@@ -203,6 +226,7 @@ export async function loadMultiplyData(
       configsResult.error?.message ??
       volumeResult.error?.message ??
       gradesResult.error?.message ??
+      cellSizesResult.error?.message ??
       null,
   };
 }

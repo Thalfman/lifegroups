@@ -2,13 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   BUILT_IN_PILLAR_THRESHOLDS,
   computePillars,
-  decodeFedCapacity,
   decodeTriggerRubric,
   evaluateTrigger,
-  flagIndividualGroupMultiply,
   gradeNumericPillar,
   rollUpGrades,
-  type FedCapacity,
   type HealthLetter,
   type PillarBands,
   type PillarInputs,
@@ -16,24 +13,19 @@ import {
   type TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
 
-// Pure-resolver tests for the Multiply pillars + trigger (#380). No DB: each rule
-// is exercised with bare objects — per-pillar A–F grading from inputs +
-// thresholds, the Ministry-Year health roll-ups, capacity-from-feed (not
-// counts), trigger evaluation, the individual-group flag, and the empty-grades
-// "—" (null) path.
+// Pure-resolver tests for the Multiply pillars + trigger (#380, updated #401). No
+// DB: each rule is exercised with bare objects — per-pillar A–F grading from
+// inputs + thresholds, the Ministry-Year health roll-ups, trigger evaluation, and
+// the empty-grades "—" (null) path. Capacity is no longer an A–F pillar here — it
+// is the derived per-cell issue (lib/admin/cell-capacity.ts), tested separately.
 
 const BANDS: PillarBands = { a: 4, b: 3, c: 2, d: 1 };
-
-function fed(over: Partial<FedCapacity> = {}): FedCapacity {
-  return { headroom: 0, fullGroupCount: 0, options: [], ...over };
-}
 
 function inputs(over: Partial<PillarInputs> = {}): PillarInputs {
   return {
     funnelVolume: 0,
     groupGrades: [],
     leaderGrades: [],
-    fedCapacity: fed(),
     ...over,
   };
 }
@@ -92,23 +84,7 @@ describe("rollUpGrades — Ministry-Year health roll-up", () => {
   });
 });
 
-describe("computePillars — four pillars per type", () => {
-  it("grades capacity from the FED headroom (not in-app counts) + thresholds", () => {
-    const grades = computePillars(
-      inputs({ fedCapacity: fed({ headroom: 4 }) }),
-      BUILT_IN_PILLAR_THRESHOLDS
-    );
-    expect(grades.capacity).toBe("A");
-  });
-
-  it("grades capacity F when the admin has fed nothing (headroom null)", () => {
-    const grades = computePillars(
-      inputs({ fedCapacity: fed({ headroom: null }) }),
-      BUILT_IN_PILLAR_THRESHOLDS
-    );
-    expect(grades.capacity).toBe("F");
-  });
-
+describe("computePillars — A–F pillars per type", () => {
   it("derives Interest from the funnel volume + thresholds", () => {
     expect(
       computePillars(inputs({ funnelVolume: 5 }), BUILT_IN_PILLAR_THRESHOLDS)
@@ -122,6 +98,12 @@ describe("computePillars — four pillars per type", () => {
       computePillars(inputs({ funnelVolume: 0 }), BUILT_IN_PILLAR_THRESHOLDS)
         .interest
     ).toBe("F");
+  });
+
+  it("no longer grades a capacity pillar (capacity is the derived per-cell issue)", () => {
+    const grades = computePillars(inputs(), BUILT_IN_PILLAR_THRESHOLDS);
+    expect(grades).not.toHaveProperty("capacity");
+    expect(grades).not.toHaveProperty("overflow");
   });
 
   it("shows '—' (null) for both health pillars until grades exist", () => {
@@ -154,18 +136,13 @@ describe("computePillars — four pillars per type", () => {
   });
 
   it("uses the default thresholds when none are supplied", () => {
-    const grades = computePillars(
-      inputs({ funnelVolume: 3, fedCapacity: fed({ headroom: 2 }) })
-    );
+    const grades = computePillars(inputs({ funnelVolume: 3 }));
     expect(grades.interest).toBe("B");
-    expect(grades.capacity).toBe("C");
   });
 });
 
 describe("evaluateTrigger — configurable multiply signal (no blended letter)", () => {
   const tuned: PillarThresholds = {
-    capacity: BANDS,
-    overflow: BANDS,
     interest: BANDS,
   };
 
@@ -173,7 +150,6 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
     const pillars = computePillars(
       inputs({
         funnelVolume: 4,
-        fedCapacity: fed({ headroom: 4 }),
         groupGrades: ["A"],
         leaderGrades: ["A"],
       }),
@@ -181,7 +157,6 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
     );
     const trigger: TriggerRubric = {
       conditions: {
-        capacity: { op: "atLeast", letter: "B" },
         interest: { op: "atLeast", letter: "B" },
         groupHealth: { op: "atLeast", letter: "C" },
         leaderHealth: { op: "atLeast", letter: "C" },
@@ -194,44 +169,33 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
   });
 
   it("is not ready and names the blocker when a pillar falls short", () => {
-    const pillars = computePillars(
-      inputs({ funnelVolume: 1, fedCapacity: fed({ headroom: 4 }) }),
-      tuned
-    );
+    const pillars = computePillars(inputs({ funnelVolume: 1 }), tuned);
     const trigger: TriggerRubric = {
       conditions: {
-        capacity: { op: "atLeast", letter: "B" },
         interest: { op: "atLeast", letter: "B" },
       },
     };
     const signal = evaluateTrigger(trigger, pillars);
     expect(signal.ready).toBe(false);
     expect(signal.blockers).toContain("interest");
-    expect(signal.blockers).not.toContain("capacity");
   });
 
   it("ignores pillars not named in the trigger", () => {
-    const pillars = computePillars(
-      inputs({ funnelVolume: 0, fedCapacity: fed({ headroom: 4 }) }),
-      tuned
-    );
-    // Only capacity is in the trigger; the F interest pillar is irrelevant.
+    const pillars = computePillars(inputs({ funnelVolume: 4 }), tuned);
+    // Only interest is in the trigger; the ungraded health pillars are irrelevant.
     const signal = evaluateTrigger(
-      { conditions: { capacity: { op: "atLeast", letter: "B" } } },
+      { conditions: { interest: { op: "atLeast", letter: "B" } } },
       pillars
     );
     expect(signal.ready).toBe(true);
-    expect(signal.outcomes.map((o) => o.pillar)).toEqual(["capacity"]);
+    expect(signal.outcomes.map((o) => o.pillar)).toEqual(["interest"]);
   });
 
   it("skips an ungraded health pillar when requireHealthGrades is off", () => {
-    const pillars = computePillars(
-      inputs({ funnelVolume: 4, fedCapacity: fed({ headroom: 4 }) }),
-      tuned
-    );
+    const pillars = computePillars(inputs({ funnelVolume: 4 }), tuned);
     const trigger: TriggerRubric = {
       conditions: {
-        capacity: { op: "atLeast", letter: "B" },
+        interest: { op: "atLeast", letter: "B" },
         groupHealth: { op: "atLeast", letter: "B" },
       },
       requireHealthGrades: false,
@@ -245,10 +209,7 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
   });
 
   it("fails an ungraded health pillar when requireHealthGrades is on", () => {
-    const pillars = computePillars(
-      inputs({ funnelVolume: 4, fedCapacity: fed({ headroom: 4 }) }),
-      tuned
-    );
+    const pillars = computePillars(inputs({ funnelVolume: 4 }), tuned);
     const trigger: TriggerRubric = {
       conditions: { groupHealth: { op: "atLeast", letter: "B" } },
       requireHealthGrades: true,
@@ -270,120 +231,64 @@ describe("evaluateTrigger — configurable multiply signal (no blended letter)",
   });
 });
 
-describe("flagIndividualGroupMultiply — capacity-fed per-group flag", () => {
-  it("flags when one or more groups of the type are full", () => {
-    expect(flagIndividualGroupMultiply(fed({ fullGroupCount: 1 }))).toEqual({
-      flagged: true,
-      fullGroupCount: 1,
+describe("evaluateTrigger — capacity gates readiness (PRD §2.4)", () => {
+  const tuned: PillarThresholds = { interest: BANDS };
+  const cleared = () => computePillars(inputs({ funnelVolume: 4 }), tuned);
+  const interestAtLeastB: TriggerRubric = {
+    conditions: { interest: { op: "atLeast", letter: "B" } },
+  };
+
+  it("blocks ready when capacity is required (the default) and an issue is present", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
     });
-  });
-
-  it("does not flag when no group is full", () => {
-    expect(flagIndividualGroupMultiply(fed({ fullGroupCount: 0 }))).toEqual({
-      flagged: false,
-      fullGroupCount: 0,
-    });
-  });
-
-  it("is driven purely by the fed count, never by headroom or in-app counts", () => {
-    // A type with healthy headroom can still have a single full group flagged.
-    const flag = flagIndividualGroupMultiply(
-      fed({ headroom: 10, fullGroupCount: 2 })
-    );
-    expect(flag.flagged).toBe(true);
-    expect(flag.fullGroupCount).toBe(2);
-  });
-
-  it("sanitizes a negative / fractional / non-finite fed count to a safe integer", () => {
-    expect(
-      flagIndividualGroupMultiply(fed({ fullGroupCount: -3 })).flagged
-    ).toBe(false);
-    expect(
-      flagIndividualGroupMultiply(fed({ fullGroupCount: 2.9 })).fullGroupCount
-    ).toBe(2);
-    expect(
-      flagIndividualGroupMultiply(fed({ fullGroupCount: Number.NaN })).flagged
-    ).toBe(false);
-  });
-});
-
-describe("Overflow pillar — graded magnitude of full groups", () => {
-  it("grades the full-group count against the overflow bands", () => {
-    // Built-in overflow bands are { a: 3, b: 2, c: 1, d: 1 }.
-    expect(
-      computePillars(inputs({ fedCapacity: fed({ fullGroupCount: 3 }) }))
-        .overflow
-    ).toBe("A");
-    expect(
-      computePillars(inputs({ fedCapacity: fed({ fullGroupCount: 1 }) }))
-        .overflow
-    ).toBe("C");
-    expect(
-      computePillars(inputs({ fedCapacity: fed({ fullGroupCount: 0 }) }))
-        .overflow
-    ).toBe("F");
-  });
-
-  it("can gate the trigger as its own pillar, separate from Capacity", () => {
-    const pillars = computePillars(
-      inputs({ fedCapacity: fed({ headroom: 4, fullGroupCount: 0 }) }),
-      { capacity: BANDS, overflow: BANDS, interest: BANDS }
-    );
-    // Capacity is an A (headroom 4) but Overflow is an F (no full groups).
-    const signal = evaluateTrigger(
-      { conditions: { overflow: { op: "atLeast", letter: "C" } } },
-      pillars
-    );
     expect(signal.ready).toBe(false);
-    expect(signal.blockers).toEqual(["overflow"]);
-  });
-});
-
-describe("Capacity options — two offerable targets feed the pillar", () => {
-  it("falls back to the largest option capacity when no headroom is fed", () => {
-    const grades = computePillars(
-      inputs({
-        fedCapacity: fed({
-          headroom: null,
-          options: [
-            { label: "Standard", capacity: 2 },
-            { label: "Larger", capacity: 4 },
-          ],
-        }),
-      }),
-      BUILT_IN_PILLAR_THRESHOLDS
-    );
-    // Largest option capacity is 4 ⇒ A on the built-in capacity bands.
-    expect(grades.capacity).toBe("A");
+    expect(signal.blockers).toContain("capacity");
   });
 
-  it("prefers an explicit fed headroom over the options", () => {
-    const grades = computePillars(
-      inputs({
-        fedCapacity: fed({
-          headroom: 1,
-          options: [{ label: "Larger", capacity: 4 }],
-        }),
-      }),
-      BUILT_IN_PILLAR_THRESHOLDS
-    );
-    // Headroom 1 wins over the option's 4 ⇒ D.
-    expect(grades.capacity).toBe("D");
+  it("treats capacity as required when the flag is omitted (PRD default)", () => {
+    // No requireCapacity field at all — still gates on the issue.
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
+    });
+    expect(signal.ready).toBe(false);
   });
 
-  it("grades F when neither headroom nor any option capacity is set", () => {
-    const grades = computePillars(
-      inputs({ fedCapacity: fed({ headroom: null, options: [] }) }),
-      BUILT_IN_PILLAR_THRESHOLDS
+  it("stays ready when capacity is required but there is no issue", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: false,
+    });
+    expect(signal.ready).toBe(true);
+    expect(signal.blockers).not.toContain("capacity");
+  });
+
+  it("ignores capacity entirely when requireCapacity is false", () => {
+    const signal = evaluateTrigger(
+      { ...interestAtLeastB, requireCapacity: false },
+      cleared(),
+      { isIssue: true }
     );
-    expect(grades.capacity).toBe("F");
+    expect(signal.ready).toBe(true);
+    expect(signal.blockers).not.toContain("capacity");
+  });
+
+  it("does not gate on capacity when no capacity issue is supplied", () => {
+    // Omitting the capacity arg leaves capacity out of the gate (back-compat).
+    const signal = evaluateTrigger(interestAtLeastB, cleared());
+    expect(signal.ready).toBe(true);
+  });
+
+  it("keeps capacity out of the per-pillar outcomes — it surfaces only as a blocker", () => {
+    const signal = evaluateTrigger(interestAtLeastB, cleared(), {
+      isIssue: true,
+    });
+    expect(signal.outcomes.map((o) => o.pillar)).not.toContain("capacity");
+    expect(signal.blockers).toEqual(["capacity"]);
   });
 });
 
 describe("Directional trigger conditions — health is not monotonic", () => {
   const tuned: PillarThresholds = {
-    capacity: BANDS,
-    overflow: BANDS,
     interest: BANDS,
   };
 
@@ -434,13 +339,13 @@ describe("decodeTriggerRubric — current shape + legacy fallback", () => {
   it("decodes the current 'conditions' shape across all ops", () => {
     const trigger = decodeTriggerRubric({
       conditions: {
-        capacity: { op: "atLeast", letter: "B" },
+        interest: { op: "atLeast", letter: "B" },
         leaderHealth: { op: "atMost", letter: "C" },
         groupHealth: { op: "between", best: "B", worst: "D" },
       },
       requireHealthGrades: true,
     });
-    expect(trigger.conditions.capacity).toEqual({ op: "atLeast", letter: "B" });
+    expect(trigger.conditions.interest).toEqual({ op: "atLeast", letter: "B" });
     expect(trigger.conditions.leaderHealth).toEqual({
       op: "atMost",
       letter: "C",
@@ -455,46 +360,41 @@ describe("decodeTriggerRubric — current shape + legacy fallback", () => {
 
   it("lifts a legacy 'minimums' map to 'atLeast' conditions (no backfill needed)", () => {
     const trigger = decodeTriggerRubric({
-      minimums: { capacity: "B", interest: "C" },
+      minimums: { interest: "C", groupHealth: "B" },
       requireHealthGrades: false,
     });
-    expect(trigger.conditions.capacity).toEqual({ op: "atLeast", letter: "B" });
     expect(trigger.conditions.interest).toEqual({ op: "atLeast", letter: "C" });
+    expect(trigger.conditions.groupHealth).toEqual({
+      op: "atLeast",
+      letter: "B",
+    });
   });
 
-  it("drops unknown pillars and invalid letters", () => {
+  it("drops unknown pillars, invalid letters, and the retired capacity/overflow pillars", () => {
     const trigger = decodeTriggerRubric({
       conditions: {
-        capacity: { op: "atLeast", letter: "Z" },
+        interest: { op: "atLeast", letter: "Z" },
         bogus: { op: "atLeast", letter: "A" },
+        // capacity + overflow are no longer trigger pillars (#401) — dropped.
+        capacity: { op: "atLeast", letter: "B" },
+        overflow: { op: "atLeast", letter: "B" },
       },
     });
     expect(trigger.conditions).toEqual({});
   });
-});
 
-describe("decodeFedCapacity — options decode", () => {
-  it("decodes up to two options, dropping wholly-empty rows and clamping to two", () => {
-    const decoded = decodeFedCapacity({
-      headroom: 3,
-      fullGroupCount: 1,
-      options: [
-        { label: "Standard", capacity: 12 },
-        { label: "", capacity: null },
-        { label: "Larger", capacity: 16 },
-        { label: "Third", capacity: 20 },
-      ],
-    });
-    expect(decoded.headroom).toBe(3);
-    expect(decoded.fullGroupCount).toBe(1);
-    expect(decoded.options).toEqual([
-      { label: "Standard", capacity: 12 },
-      { label: "Larger", capacity: 16 },
-    ]);
-  });
-
-  it("defaults options to [] when the field is missing or not an array", () => {
-    expect(decodeFedCapacity({ headroom: 1 }).options).toEqual([]);
-    expect(decodeFedCapacity({ options: "nope" }).options).toEqual([]);
+  it("defaults requireCapacity to true, and reads an explicit false", () => {
+    // Capacity gates by default (PRD §2.4 / §4.1) for a row that omits the flag.
+    expect(decodeTriggerRubric({ conditions: {} }).requireCapacity).toBe(true);
+    // A non-boolean is ignored and falls back to the required default.
+    expect(
+      decodeTriggerRubric({ conditions: {}, requireCapacity: "no" })
+        .requireCapacity
+    ).toBe(true);
+    // An explicit false turns the capacity gate off.
+    expect(
+      decodeTriggerRubric({ conditions: {}, requireCapacity: false })
+        .requireCapacity
+    ).toBe(false);
   });
 });

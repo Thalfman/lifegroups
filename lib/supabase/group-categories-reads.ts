@@ -1,4 +1,7 @@
-import type { GroupAudienceCategory } from "@/types/enums";
+import type {
+  GroupAudienceCategory,
+  GroupLifecycleStatus,
+} from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // Group Category catalog + cell-matrix read models (#396 / ADR 0015). Two
@@ -62,6 +65,84 @@ export async function fetchCategoryTypeCells(
 
   if (error)
     return { data: null, error: wrapError("category_type_targets", error) };
+  return { data: data ?? [], error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Per-cell target_count + coverage reads (#400 / PRD §2.3).
+// ---------------------------------------------------------------------------
+//
+// The cell coverage surface ("have X of Y") needs two new allowlisted reads,
+// kept separate from fetchCategoryTypeCells so its existing callers (the matrix
+// builder, which has no need for target_count) keep their pinned column set:
+//   1. fetchCategoryTypeTargetCells — every cell row WITH its target_count, so
+//      the coverage builder reads Y per cell.
+//   2. fetchGroupCellLifecycleRows — every non-closed group with a category, as
+//      {audience_category, category_id, lifecycle_status}, so the coverage
+//      builder counts X (active + launching) per cell. Member counts are NOT
+//      needed for #400, so they are deliberately not read here.
+
+export const CATEGORY_TYPE_TARGET_COLUMNS =
+  "id, audience_category, category_id, active, target_count";
+
+// One cell row with its target_count, as read through the allowlist. Mirrors
+// CategoryTypeCellRow but carries the target (Y) the coverage readout reads
+// against. trigger_overrides is still deliberately NOT read — a later slice.
+export type CategoryTypeTargetRow = {
+  id: string;
+  audience_category: GroupAudienceCategory;
+  category_id: string;
+  active: boolean;
+  target_count: number;
+};
+
+// Fetch every cell row with its target_count. The coverage builder keeps only the
+// ACTIVE cells (a cell is active when active=true) and pairs them against the
+// group lifecycle rows below.
+export async function fetchCategoryTypeTargetCells(
+  client: ReadClient
+): Promise<ReadResult<CategoryTypeTargetRow[]>> {
+  const { data, error } = await client
+    .from("category_type_targets")
+    .select(CATEGORY_TYPE_TARGET_COLUMNS)
+    .returns<CategoryTypeTargetRow[]>();
+
+  if (error)
+    return {
+      data: null,
+      error: wrapError("category_type_targets/targets", error),
+    };
+  return { data: data ?? [], error: null };
+}
+
+export const GROUP_CELL_LIFECYCLE_COLUMNS =
+  "audience_category, category_id, lifecycle_status";
+
+// One group's cell membership + lifecycle, as read through the allowlist — the
+// fact the coverage count (X) needs. A NULL category_id (Uncategorized) is filtered
+// out in SQL: such a group is in no category cell (PRD §2.3). A closed group is
+// likewise filtered in SQL — only non-closed groups can count toward coverage.
+export type GroupCellLifecycleRow = {
+  audience_category: GroupAudienceCategory | null;
+  category_id: string;
+  lifecycle_status: GroupLifecycleStatus;
+};
+
+// Fetch every non-closed group that carries a category, as its cell + lifecycle.
+// The active+launching rule (which lifecycle states count toward X) is applied
+// purely in lib/admin/cell-coverage.ts, so it stays unit-testable without a DB.
+export async function fetchGroupCellLifecycleRows(
+  client: ReadClient
+): Promise<ReadResult<GroupCellLifecycleRow[]>> {
+  const { data, error } = await client
+    .from("groups")
+    .select(GROUP_CELL_LIFECYCLE_COLUMNS)
+    .not("category_id", "is", null)
+    .neq("lifecycle_status", "closed")
+    .returns<GroupCellLifecycleRow[]>();
+
+  if (error)
+    return { data: null, error: wrapError("groups/cell-lifecycle", error) };
   return { data: data ?? [], error: null };
 }
 

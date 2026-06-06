@@ -16,10 +16,8 @@ import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { fetchMultiplicationConfigs } from "@/lib/supabase/multiplication-config-reads";
 import {
   BUILT_IN_PILLAR_THRESHOLDS,
-  decodeFedCapacity,
   decodePillarThresholds,
   decodeTriggerRubric,
-  type FedCapacity,
   type PillarThresholds,
   type TriggerRubric,
 } from "@/lib/admin/multiplication-pillars";
@@ -31,9 +29,18 @@ import {
 import type { MultiplicationConfigSeed } from "@/components/admin/settings/multiplication-config-editor";
 import {
   fetchCategoryTypeCells,
+  fetchCategoryTypeTargetCells,
   fetchGroupCategories,
+  fetchGroupCellLifecycleRows,
+  type CategoryTypeTargetRow,
+  type GroupCellLifecycleRow,
 } from "@/lib/supabase/group-categories-reads";
 import { buildCategoryMatrix } from "@/lib/admin/group-category-matrix";
+import {
+  buildCellCoverage,
+  sortByLargestShortfall,
+  type CellCoverage,
+} from "@/lib/admin/cell-coverage";
 
 // The Settings surface's data, as a function of the reads seam (ADR 0015). The
 // build function takes `isSuperAdmin` only to record it on the shell data (the
@@ -60,6 +67,11 @@ export type SettingsReads = {
   // from these two reads.
   fetchGroupCategories: OmitClient<typeof fetchGroupCategories>;
   fetchCategoryTypeCells: OmitClient<typeof fetchCategoryTypeCells>;
+  // #400 Settings > Groups: per-cell coverage ("have X of Y"). The cell rows WITH
+  // their target_count (Y) and every non-closed group's cell + lifecycle (X) feed
+  // the pure buildCellCoverage resolver.
+  fetchCategoryTypeTargetCells: OmitClient<typeof fetchCategoryTypeTargetCells>;
+  fetchGroupCellLifecycleRows: OmitClient<typeof fetchGroupCellLifecycleRows>;
 };
 
 export function supabaseSettingsReads(
@@ -72,6 +84,8 @@ export function supabaseSettingsReads(
       fetchAllGroupMetricSettings,
       fetchGroupCategories,
       fetchCategoryTypeCells,
+      fetchCategoryTypeTargetCells,
+      fetchGroupCellLifecycleRows,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchMultiplicationConfigs: () =>
@@ -85,28 +99,23 @@ export function supabaseSettingsReads(
 // the default in multiply-data.ts.
 const DEFAULT_TRIGGER: TriggerRubric = {
   conditions: {
-    capacity: { op: "atLeast", letter: "B" },
     interest: { op: "atLeast", letter: "C" },
   },
   requireHealthGrades: false,
-};
-
-const EMPTY_FED_CAPACITY: FedCapacity = {
-  headroom: null,
-  fullGroupCount: 0,
-  options: [],
+  // Capacity gates readiness by default (PRD §2.4 / §4.1).
+  requireCapacity: true,
 };
 
 // Build the per-type editor seeds for the Settings Multiply-config editor from
 // the decoded config rows (indexed by type). Each type gets its stored config or
-// a built-in fallback, so all three types are always editable.
+// a built-in fallback, so all three types are always editable. #401: capacity is
+// no longer fed here — it is a derived per-cell issue, so no fedCapacity seed.
 function buildMultiplicationSeeds(
   configByType: Map<
     string,
     {
       thresholds: PillarThresholds;
       trigger: TriggerRubric;
-      fedCapacity: FedCapacity;
     }
   >
 ): MultiplicationConfigSeed[] {
@@ -117,9 +126,36 @@ function buildMultiplicationSeeds(
       label: MULTIPLY_TYPE_LABEL[type],
       thresholds: config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS,
       trigger: config?.trigger ?? DEFAULT_TRIGGER,
-      fedCapacity: config?.fedCapacity ?? EMPTY_FED_CAPACITY,
     };
   });
+}
+
+// #400: assemble the per-cell coverage rows ("have X of Y"), sorted by largest
+// shortfall for the dedicated panel. Resolves each cell's label from the live
+// catalog and drops cells whose category isn't live (an archived category's
+// stale cell never surfaces), then defers the active-cell filter + count to the
+// pure buildCellCoverage resolver.
+function buildSettingsCellCoverage(
+  categories: { id: string; label: string }[],
+  targetCells: CategoryTypeTargetRow[],
+  groupRows: GroupCellLifecycleRow[]
+): CellCoverage[] {
+  const labelById = new Map(categories.map((c) => [c.id, c.label]));
+  const cells = targetCells
+    .filter((cell) => labelById.has(cell.category_id))
+    .map((cell) => ({
+      audienceCategory: cell.audience_category,
+      categoryId: cell.category_id,
+      label: labelById.get(cell.category_id) ?? "",
+      active: cell.active,
+      target: cell.target_count,
+    }));
+  const groups = groupRows.map((row) => ({
+    audienceCategory: row.audience_category,
+    categoryId: row.category_id,
+    lifecycleStatus: row.lifecycle_status,
+  }));
+  return sortByLargestShortfall(buildCellCoverage(cells, groups));
 }
 
 export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
@@ -135,6 +171,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     },
     leaderRubricCriteria: [],
     categoryMatrix: { rows: [] },
+    cellCoverage: [],
     isSuperAdmin,
     errors: {
       defaults: "The database is not configured in this environment.",
@@ -163,6 +200,8 @@ export async function buildSettingsData(
     leaderRubricResult,
     categoriesResult,
     cellsResult,
+    targetCellsResult,
+    groupCellLifecycleResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -172,25 +211,26 @@ export async function buildSettingsData(
     reads.fetchLeaderHealthRubric(),
     reads.fetchGroupCategories(),
     reads.fetchCategoryTypeCells(),
+    reads.fetchCategoryTypeTargetCells(),
+    reads.fetchGroupCellLifecycleRows(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
   // #380: index the per-type config rows, decoding each jsonb payload, and build
-  // the editor seeds (all three types, with built-in fallbacks).
+  // the editor seeds (all three types, with built-in fallbacks). #401: fed
+  // capacity is no longer decoded — it was retired in favour of the derived issue.
   const configByType = new Map<
     string,
     {
       thresholds: PillarThresholds;
       trigger: TriggerRubric;
-      fedCapacity: FedCapacity;
     }
   >();
   for (const row of multiplicationResult.data ?? []) {
     configByType.set(row.group_type, {
       thresholds: decodePillarThresholds(row.thresholds),
       trigger: decodeTriggerRubric(row.trigger_rubric),
-      fedCapacity: decodeFedCapacity(row.fed_capacity),
     });
   }
 
@@ -216,6 +256,14 @@ export async function buildSettingsData(
       categoriesResult.data ?? [],
       cellsResult.data ?? []
     ),
+    // #400: per-active-cell coverage ("have X of Y"), sorted by largest shortfall
+    // for the dedicated panel. A pure function of the catalog, the target cells,
+    // and the group lifecycle rows; the inline readout reads the same rows.
+    cellCoverage: buildSettingsCellCoverage(
+      categoriesResult.data ?? [],
+      targetCellsResult.data ?? [],
+      groupCellLifecycleResult.data ?? []
+    ),
     isSuperAdmin,
     errors: {
       defaults: defaultsResult.error?.message ?? null,
@@ -224,8 +272,14 @@ export async function buildSettingsData(
       multiplication: multiplicationResult.error?.message ?? null,
       groupRubric: rubricResult.error?.message ?? null,
       leaderRubric: leaderRubricResult.error?.message ?? null,
+      // #400 folds the coverage reads into the same Groups-tab error key: a
+      // failed target/lifecycle read softens the whole tab to the placeholder.
       groupCategories:
-        categoriesResult.error?.message ?? cellsResult.error?.message ?? null,
+        categoriesResult.error?.message ??
+        cellsResult.error?.message ??
+        targetCellsResult.error?.message ??
+        groupCellLifecycleResult.error?.message ??
+        null,
     },
   };
 }

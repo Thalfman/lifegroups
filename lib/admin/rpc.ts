@@ -994,9 +994,10 @@ export function rpcAdminSetHealthRubric(
   return callUuidRpc(client, "admin_set_health_rubric", args);
 }
 
-// #380 Multiplication Pillars: upsert one group type's pillar config (thresholds
-// + trigger rubric + Ministry-Admin-fed capacity) for a ministry year. The three
-// jsonb payloads are validated in TS first; the RPC re-guards their object shape.
+// #380 Multiplication Pillars (updated #401): upsert one group type's pillar
+// config (thresholds + trigger rubric) for a ministry year. #401 retired the
+// fed-capacity payload — capacity is now a derived per-cell issue. The two jsonb
+// payloads are validated in TS first; the RPC re-guards their object shape.
 export function rpcAdminSetMultiplicationConfig(
   client: AppSupabaseClient,
   args: {
@@ -1004,7 +1005,6 @@ export function rpcAdminSetMultiplicationConfig(
     p_ministry_year: number;
     p_thresholds: Record<string, unknown>;
     p_trigger: Record<string, unknown>;
-    p_fed_capacity: Record<string, unknown>;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_multiplication_config", args);
@@ -1132,4 +1132,18 @@ export function rpcAdminSetCategoryTypeCell(
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_category_type_cell", args);
+}
+
+// #400 / PRD §2.3: set a cell's target group count. Upserts the cell row's
+// target_count on the same (audience_category, category_id) conflict target as
+// the cell apply RPC. Tracking only — does NOT feed the multiply trigger.
+export function rpcAdminSetCategoryTypeTargetCount(
+  client: AppSupabaseClient,
+  args: {
+    p_category_id: string;
+    p_audience_category: GroupAudienceCategory;
+    p_count: number;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_category_type_target_count", args);
 }

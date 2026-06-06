@@ -9,6 +9,7 @@ import {
   validateRenameGroupCategoryPayload,
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
+  validateSetCategoryTypeTargetCountPayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
@@ -17,6 +18,7 @@ import {
   type RenameGroupCategoryPayload,
   type ArchiveGroupCategoryPayload,
   type SetCategoryTypeCellPayload,
+  type SetCategoryTypeTargetCountPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -34,6 +36,7 @@ import {
   rpcAdminRenameGroupCategory,
   rpcAdminArchiveGroupCategory,
   rpcAdminSetCategoryTypeCell,
+  rpcAdminSetCategoryTypeTargetCount,
 } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
@@ -275,10 +278,11 @@ export async function adminSetHealthRubric(
   return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
 }
 
-// ----- adminSetMultiplicationConfig (#380) --------------------------------
+// ----- adminSetMultiplicationConfig (#380, updated #401) -------------------
 // The Settings Multiply-pillars editor posts one group type's config for a
-// ministry year: the group_type, ministry_year, and three JSON payloads
-// (thresholds, trigger, fed capacity). The validator decodes + normalizes them
+// ministry year: the group_type, ministry_year, and two JSON payloads
+// (thresholds, trigger). #401 retired the fed-capacity payload — capacity is now a
+// derived per-cell issue, no longer fed. The validator decodes + normalizes them
 // before the audited RPC persists them. Ministry-Admin-owned, so the default
 // requireAdminSession path applies. Revalidates the Multiply boards as well as
 // Settings (the boards read this config).
@@ -292,13 +296,7 @@ const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
   { id: string }
 > = {
   name: "admin.settings.set_multiplication_config",
-  keys: [
-    "group_type",
-    "ministry_year",
-    "thresholds",
-    "trigger",
-    "fed_capacity",
-  ],
+  keys: ["group_type", "ministry_year", "thresholds", "trigger"],
   validate: validateMultiplicationConfigPayload,
   fields: (_actor, value) => ({
     group_type: value.groupType,
@@ -310,7 +308,6 @@ const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
       p_ministry_year: value.ministryYear,
       p_thresholds: value.thresholds as unknown as Record<string, unknown>,
       p_trigger: value.trigger as unknown as Record<string, unknown>,
-      p_fed_capacity: value.fedCapacity as unknown as Record<string, unknown>,
     }),
   revalidate: () => MULTIPLICATION_CONFIG_REVALIDATE_PATHS,
   noDataError: "The multiplication config was not saved. Please try again.",
@@ -427,4 +424,36 @@ export async function adminSetCategoryTypeCell(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_CATEGORY_TYPE_CELL_SPEC, prev, input);
+}
+
+// #400 / PRD §2.3: set a cell's target group count (the "have X of Y" Y). Same
+// audited-RPC pattern as the cell apply; tracking only, so it shares the Groups
+// revalidate paths but feeds no trigger.
+const SET_CATEGORY_TYPE_TARGET_COUNT_SPEC: AdminWriteActionSpec<
+  SetCategoryTypeTargetCountPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_category_type_target_count",
+  keys: ["category_id", "audience_category", "target_count"],
+  validate: validateSetCategoryTypeTargetCountPayload,
+  fields: (_actor, value) => ({
+    target_category_id: value.categoryId,
+    audience_category: value.audienceCategory,
+    target_count: value.count,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetCategoryTypeTargetCount(client, {
+      p_category_id: value.categoryId,
+      p_audience_category: value.audienceCategory,
+      p_count: value.count,
+    }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The target was not saved. Please try again.",
+};
+
+export async function adminSetCategoryTypeTargetCount(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
 }

@@ -1,23 +1,26 @@
 // Multiplication Pillars — pure resolver (#380 / ADR 0016, 0019). No I/O, no
 // Supabase. The Multiply area shows three boards by group type (men / women /
-// mixed); each board grades four PILLARS — Capacity, Interest, Group Health,
-// Leader Health — to an A–F letter, and a Julian-configured TRIGGER RUBRIC over
-// those pillars produces a single "ready to multiply this type" signal. There is
-// deliberately NO blended overall letter: the pillars stay separate and the
-// trigger is the only roll-up.
+// mixed); each board grades pillars — Interest, Group Health, Leader Health — to
+// an A–F letter, and a Julian-configured TRIGGER RUBRIC over those pillars
+// produces a single "ready to multiply this type" signal. There is deliberately
+// NO blended overall letter: the pillars stay separate and the trigger is the
+// only roll-up.
+//
+// CAPACITY is no longer one of these A–F pillars. As of #401 (PRD §2.4 + §4) it
+// is a DERIVED, multi-faceted ISSUE computed PER CELL from group sizes (see
+// lib/admin/cell-capacity.ts) — never a hand-fed numeric graded to A–F. The old
+// `overflow` pillar (full-group magnitude) and the fed-capacity "offerings" were
+// folded into / retired by that change. This file therefore grades only the three
+// remaining A–F pillars; the capacity issue is surfaced alongside them by the
+// board loader.
 //
 // The math lives here so every rule is isolation-testable with bare objects:
-//   * Capacity is fed by the Ministry Admin per type in Settings (NOT derived
-//     from in-app counts) — a fed numeric + thresholds → A–F.
 //   * Interest derives from the Interest Funnel VOLUME for that type — a count +
 //     thresholds → A–F.
 //   * Group Health / Leader Health roll up that type's supplied grades over the
-//     Ministry Year, yielding null ("—") until any grade exists. Grade storage
-//     lands in parallel slices (#377/#378); this resolver takes the grades as
-//     plain A–F arrays so the board ships and shows "—" when none are fed.
-//
-// A single full group can independently raise a "multiply this one" flag from
-// the Capacity input — see flagIndividualGroupMultiply.
+//     Ministry Year, yielding null ("—") until any grade exists. The resolver
+//     takes the grades as plain A–F arrays so the board ships and shows "—" when
+//     none are fed.
 
 import { HEALTH_GRADE_LADDER } from "@/lib/admin/health-rubric";
 import type { GroupHealthLetter } from "@/types/enums";
@@ -26,35 +29,27 @@ import type { GroupHealthLetter } from "@/types/enums";
 // type so the Multiply pillars and the Health rubric share one A–F vocabulary.
 export type HealthLetter = GroupHealthLetter;
 
-// The pillar identities. Capacity, Overflow + Interest are always computable from
-// a fed number; the two health pillars roll up supplied grades and may be null.
-// Overflow ("Capacity (additional): groups overflowing") grades the magnitude of
-// full groups of the type — a separate signal from the per-group multiply flag.
-export type PillarKey =
-  | "capacity"
-  | "overflow"
-  | "interest"
-  | "groupHealth"
-  | "leaderHealth";
+// The pillar identities. Interest is always computable from a fed number; the two
+// health pillars roll up supplied grades and may be null. Capacity is NOT here —
+// it is the derived per-cell issue (lib/admin/cell-capacity.ts), surfaced as its
+// own boolean signal, not graded A–F.
+export type PillarKey = "interest" | "groupHealth" | "leaderHealth";
 
 // The graded board for one group type: each pillar's A–F letter, or null where
 // the health pillars have no grades yet (rendered as "—").
 export type PillarGrades = {
-  capacity: HealthLetter;
-  overflow: HealthLetter;
   interest: HealthLetter;
   groupHealth: HealthLetter | null;
   leaderHealth: HealthLetter | null;
 };
 
 // ---------------------------------------------------------------------------
-// Thresholds: the A–F cut-lines for the two numeric pillars (Capacity, Interest).
+// Thresholds: the A–F cut-lines for the numeric pillar (Interest).
 // ---------------------------------------------------------------------------
 
 // Inclusive lower bounds for each letter, best → worst. A value at or above `a`
 // is an A, at or above `b` a B, and so on; anything below `d` is an F. Higher
-// inputs are healthier (more room before full / more interest volume), so the
-// floors descend A ≥ B ≥ C ≥ D.
+// inputs are healthier (more interest volume), so the floors descend A ≥ B ≥ C ≥ D.
 export type PillarBands = {
   a: number;
   b: number;
@@ -62,41 +57,11 @@ export type PillarBands = {
   d: number;
 };
 
-// A type's full threshold configuration: one band set per numeric pillar
-// (Capacity, Overflow, Interest). The health pillars are graded from supplied
-// letters, not bands, so they need none.
+// A type's full threshold configuration: one band set for the numeric pillar
+// (Interest). The health pillars are graded from supplied letters, not bands, so
+// they need none; capacity is a derived issue, not a banded grade.
 export type PillarThresholds = {
-  capacity: PillarBands;
-  overflow: PillarBands;
   interest: PillarBands;
-};
-
-// One customizable life-group capacity option Julian can offer for a type. The
-// `label` names the offering (e.g. "Standard", "Larger"); `capacity` is its
-// target size (null when not set). Up to two per type.
-export type CapacityOption = {
-  label: string;
-  capacity: number | null;
-};
-
-// The fed Capacity input for a type. `headroom` is the Ministry-Admin number
-// that drives the pillar (e.g. open seats / groups of slack before the type is
-// full); `fullGroupCount` lets a single full group raise an individual flag.
-export type FedCapacity = {
-  // The Ministry-Admin-fed capacity headroom for this type. Graded against the
-  // capacity bands. Higher = more room. Null when the admin has not fed a value
-  // — then the Capacity pillar falls back to the largest configured capacity
-  // option (see computePillars); only with neither does it grade at the floor (F).
-  headroom: number | null;
-  // How many individual groups of this type are at/over full. A single full
-  // group can raise a per-group "multiply this one" flag (acceptance #4),
-  // independent of the type-level trigger; the magnitude also grades the
-  // Overflow pillar.
-  fullGroupCount: number;
-  // Up to two customizable life-group capacity options Julian can offer anyone
-  // interested in this type. The largest option's capacity also feeds the
-  // Capacity pillar when no explicit headroom is fed.
-  options: CapacityOption[];
 };
 
 // The plain inputs the resolver grades. Grade arrays are A–F letters as the
@@ -111,17 +76,11 @@ export type PillarInputs = {
   groupGrades: HealthLetter[];
   // This type's leader-health grades within the Ministry Year (A–F). Empty ⇒ "—".
   leaderGrades: HealthLetter[];
-  // The Ministry-Admin-fed capacity for this type.
-  fedCapacity: FedCapacity;
 };
 
-// Built-in default bands. Capacity/Interest default to a simple 4/3/2/1 ladder
-// (e.g. "4+ open seats is an A"); Overflow defaults lower (more overflowing
-// groups = a stronger multiply signal, so 3+ full groups is an A). Julian tunes
-// these per type in Settings.
+// Built-in default bands. Interest defaults to a simple 4/3/2/1 ladder (e.g. "4+
+// active prospects is an A"). Julian tunes these per type in Settings.
 export const BUILT_IN_PILLAR_THRESHOLDS: PillarThresholds = {
-  capacity: { a: 4, b: 3, c: 2, d: 1 },
-  overflow: { a: 3, b: 2, c: 1, d: 1 },
   interest: { a: 4, b: 3, c: 2, d: 1 },
 };
 
@@ -130,8 +89,8 @@ export const BUILT_IN_PILLAR_THRESHOLDS: PillarThresholds = {
 // ---------------------------------------------------------------------------
 
 // Band a numeric value to an A–F letter against descending floors. A null/
-// non-finite value grades to F (the worst letter) — an unfed capacity or a
-// zero-volume funnel is the weakest signal, never a free pass.
+// non-finite value grades to F (the worst letter) — a zero-volume funnel is the
+// weakest signal, never a free pass.
 export function gradeNumericPillar(
   value: number | null,
   bands: PillarBands
@@ -180,13 +139,13 @@ export function rollUpGrades(grades: HealthLetter[]): HealthLetter | null {
 }
 
 // ---------------------------------------------------------------------------
-// computePillars — the four-pillar resolver for one type.
+// computePillars — the A–F pillar resolver for one type.
 // ---------------------------------------------------------------------------
 
-// Grade all four pillars for one group type. Capacity comes from the fed input
-// + thresholds (never from in-app counts); Interest from the funnel volume +
-// thresholds; the two health pillars from the supplied grades, restricted to the
-// Ministry Year, null when empty.
+// Grade the A–F pillars for one group type. Interest comes from the funnel volume
+// + thresholds; the two health pillars from the supplied grades, restricted to the
+// Ministry Year, null when empty. Capacity is NOT graded here — it is the derived
+// per-cell issue (lib/admin/cell-capacity.ts).
 //
 // `ministryYear` is accepted to keep the signature aligned with the issue's
 // contract and to document that the supplied grade arrays are the Ministry-Year
@@ -203,45 +162,21 @@ export function computePillars(
   // is handed, so the math does not branch on it. Referenced to keep it a real
   // parameter without an unused-var lint exception.
   void ministryYear;
-  // The Capacity pillar grades the fed headroom; when no headroom is fed it falls
-  // back to the largest configured capacity option, so the two offerable targets
-  // genuinely feed the pillar. Only with neither does it grade at the floor (F).
-  const capacityInput =
-    inputs.fedCapacity.headroom ??
-    maxOptionCapacity(inputs.fedCapacity.options);
   return {
-    capacity: gradeNumericPillar(capacityInput, thresholds.capacity),
-    overflow: gradeNumericPillar(
-      inputs.fedCapacity.fullGroupCount,
-      thresholds.overflow
-    ),
     interest: gradeNumericPillar(inputs.funnelVolume, thresholds.interest),
     groupHealth: rollUpGrades(inputs.groupGrades),
     leaderHealth: rollUpGrades(inputs.leaderGrades),
   };
 }
 
-// The largest capacity among a type's offered options, or null when none is set.
-// Lets the Capacity pillar fall back to the offered targets when no explicit
-// headroom is fed.
-function maxOptionCapacity(options: CapacityOption[]): number | null {
-  let max: number | null = null;
-  for (const opt of options) {
-    if (typeof opt.capacity === "number" && Number.isFinite(opt.capacity)) {
-      max = max === null ? opt.capacity : Math.max(max, opt.capacity);
-    }
-  }
-  return max;
-}
-
 // ---------------------------------------------------------------------------
 // Trigger rubric: thresholds the pillars must clear for the multiply signal.
 // ---------------------------------------------------------------------------
 
-// A per-pillar condition the trigger fires on. Health (and capacity/interest)
-// are NOT monotonic: high health can warrant multiplying OR holding, and low
-// health can warrant splitting OR staying put. So each pillar's condition names a
-// DIRECTION, not just a minimum:
+// A per-pillar condition the trigger fires on. Health (and interest) are NOT
+// monotonic: high health can warrant multiplying OR holding, and low health can
+// warrant splitting OR staying put. So each pillar's condition names a DIRECTION,
+// not just a minimum:
 //   * atLeast — clears when the grade is at least that good (the legacy "min").
 //   * atMost  — clears when the grade is at most that good (fires on LOW).
 //   * between — clears when the grade falls within a band [best, worst].
@@ -255,10 +190,21 @@ export type PillarCondition =
 // (which can be "—") mandatory: when true, a null health pillar fails the
 // trigger; when false, an ungraded health pillar is skipped (not yet a blocker)
 // so a type isn't held back purely for lack of grades.
+//
+// `requireCapacity` folds the DERIVED per-cell capacity ISSUE into readiness (PRD
+// §2.4: "capacity required/not"). When true (the default), a capacity issue —
+// over-capacity OR thin availability in any considered cell — blocks the trigger;
+// when false, capacity is shown alongside the pillars but does not gate ready.
+// Capacity is not a graded A–F pillar, so it lives here as a boolean, not in
+// `conditions`.
 export type TriggerRubric = {
   conditions: Partial<Record<PillarKey, PillarCondition>>;
   requireHealthGrades?: boolean;
+  requireCapacity?: boolean;
 };
+
+// What can hold a type back: a graded pillar, or the derived capacity issue.
+export type TriggerBlocker = PillarKey | "capacity";
 
 // The per-pillar outcome the trigger evaluated, so the UI can show WHY a type is
 // or isn't ready (which pillars cleared, which fell short, which were skipped).
@@ -274,13 +220,15 @@ export type PillarTriggerOutcome = {
 
 export type MultiplySignal = {
   // The headline: is this type ready to multiply? True only when every required
-  // pillar cleared its minimum.
+  // pillar cleared its minimum AND (if required) capacity has no issue.
   ready: boolean;
   // Per-pillar detail for the "why" breakdown. Pillars absent from the trigger
-  // are omitted entirely.
+  // are omitted entirely. Capacity is not a graded pillar, so it never appears
+  // here — only in `blockers` when a required capacity issue holds the type back.
   outcomes: PillarTriggerOutcome[];
-  // The pillars that fell short (failed), for a quick blocker summary.
-  blockers: PillarKey[];
+  // What fell short, for a quick blocker summary — failed pillars plus
+  // "capacity" when a required capacity issue blocks ready.
+  blockers: TriggerBlocker[];
 };
 
 // Whether `actual` satisfies a pillar `condition` on the A–F ladder. The ladder
@@ -318,21 +266,27 @@ function isHealthPillar(pillar: PillarKey): boolean {
   return pillar === "groupHealth" || pillar === "leaderHealth";
 }
 
-// Evaluate the trigger over a type's pillar grades. Ready iff every required
-// pillar clears its minimum. A null (ungraded) health pillar fails when
-// `requireHealthGrades` is set, otherwise it is skipped (counts as neither a
-// clear nor a blocker) — so a fresh ministry with no grades isn't permanently
-// blocked, but Julian can demand grades before declaring a type ready. There is
-// NO blended overall letter: this is the only roll-up of the pillars.
+// Evaluate the trigger over a type's pillar grades and (optionally) its derived
+// capacity issue. Ready iff every required pillar clears its minimum AND, when
+// capacity is required, there is no capacity issue. A null (ungraded) health
+// pillar fails when `requireHealthGrades` is set, otherwise it is skipped (counts
+// as neither a clear nor a blocker) — so a fresh ministry with no grades isn't
+// permanently blocked, but Julian can demand grades before declaring a type ready.
+// Capacity defaults to REQUIRED (PRD §2.4): pass the rolled-up capacity issue so a
+// required issue blocks ready; omit it (or set requireCapacity false) to leave
+// capacity out of the gate. There is NO blended overall letter: this is the only
+// roll-up of the pillars.
 export function evaluateTrigger(
   trigger: TriggerRubric,
-  pillars: PillarGrades
+  pillars: PillarGrades,
+  capacity?: { isIssue: boolean }
 ): MultiplySignal {
   const outcomes: PillarTriggerOutcome[] = [];
-  const blockers: PillarKey[] = [];
+  const blockers: TriggerBlocker[] = [];
   let ready = true;
 
   const requireHealth = trigger.requireHealthGrades ?? false;
+  const requireCapacity = trigger.requireCapacity ?? true;
 
   for (const key of Object.keys(trigger.conditions) as PillarKey[]) {
     const condition = trigger.conditions[key];
@@ -360,31 +314,14 @@ export function evaluateTrigger(
     }
   }
 
+  // Capacity is a derived issue, not a graded pillar: when it is required and the
+  // rolled-up issue is present, it blocks ready (PRD §2.4 "capacity required/not").
+  if (requireCapacity && capacity?.isIssue) {
+    blockers.push("capacity");
+    ready = false;
+  }
+
   return { ready, outcomes, blockers };
-}
-
-// ---------------------------------------------------------------------------
-// Individual-group multiply flag (acceptance #4).
-// ---------------------------------------------------------------------------
-
-// A single full group can raise its own "multiply this one" flag from the
-// Capacity input, independent of whether the TYPE is ready. The flag fires when
-// the fed capacity reports one or more full groups of this type.
-export type IndividualMultiplyFlag = {
-  flagged: boolean;
-  // How many individual groups of the type are at/over full (the source count).
-  fullGroupCount: number;
-};
-
-// Raise the individual-group flag from a type's fed capacity. Pure: the flag is
-// purely a function of the fed full-group count, never of in-app member counts.
-export function flagIndividualGroupMultiply(
-  fedCapacity: FedCapacity
-): IndividualMultiplyFlag {
-  const count = Number.isFinite(fedCapacity.fullGroupCount)
-    ? Math.max(0, Math.trunc(fedCapacity.fullGroupCount))
-    : 0;
-  return { flagged: count > 0, fullGroupCount: count };
 }
 
 // ---------------------------------------------------------------------------
@@ -412,23 +349,16 @@ function decodeBands(raw: unknown, fallback: PillarBands): PillarBands {
 }
 
 // Decode the stored `thresholds` jsonb into PillarThresholds, defaulting each
-// missing band set to the built-in.
+// missing band set to the built-in. Any stored `capacity`/`overflow` band keys
+// are no longer read (#401): capacity is a derived issue, overflow was retired.
 export function decodePillarThresholds(raw: unknown): PillarThresholds {
   if (!isRecord(raw)) return BUILT_IN_PILLAR_THRESHOLDS;
   return {
-    capacity: decodeBands(raw.capacity, BUILT_IN_PILLAR_THRESHOLDS.capacity),
-    overflow: decodeBands(raw.overflow, BUILT_IN_PILLAR_THRESHOLDS.overflow),
     interest: decodeBands(raw.interest, BUILT_IN_PILLAR_THRESHOLDS.interest),
   };
 }
 
-const PILLAR_KEYS: PillarKey[] = [
-  "capacity",
-  "overflow",
-  "interest",
-  "groupHealth",
-  "leaderHealth",
-];
+const PILLAR_KEYS: PillarKey[] = ["interest", "groupHealth", "leaderHealth"];
 
 function isLetter(value: unknown): value is HealthLetter {
   return (
@@ -458,7 +388,9 @@ function decodeCondition(raw: unknown): PillarCondition | undefined {
 // Decode the stored `trigger_rubric` jsonb into a TriggerRubric. Reads the
 // current `conditions` map; falls back to the legacy `minimums` map (each lifted
 // to an "atLeast" condition) so pre-existing config rows keep working with no
-// backfill. Only known pillars with a valid condition survive.
+// backfill. Only known pillars with a valid condition survive — any stored
+// `capacity`/`overflow` condition is silently dropped (#401: those are no longer
+// trigger pillars).
 export function decodeTriggerRubric(raw: unknown): TriggerRubric {
   const conditions: Partial<Record<PillarKey, PillarCondition>> = {};
   const source =
@@ -477,47 +409,11 @@ export function decodeTriggerRubric(raw: unknown): TriggerRubric {
     isRecord(raw) && typeof raw.requireHealthGrades === "boolean"
       ? raw.requireHealthGrades
       : false;
-  return { conditions, requireHealthGrades };
-}
-
-// Decode the stored capacity options jsonb array into at most two clean options,
-// dropping malformed entries. A missing/invalid label becomes "" and a
-// missing/invalid capacity becomes null.
-function decodeCapacityOptions(raw: unknown): CapacityOption[] {
-  if (!Array.isArray(raw)) return [];
-  const out: CapacityOption[] = [];
-  for (const entry of raw) {
-    if (out.length >= 2) break;
-    if (!isRecord(entry)) continue;
-    const label = typeof entry.label === "string" ? entry.label : "";
-    const capacity =
-      typeof entry.capacity === "number" && Number.isFinite(entry.capacity)
-        ? entry.capacity
-        : null;
-    // Skip a wholly-empty option (no label and no capacity).
-    if (label.trim() === "" && capacity === null) continue;
-    out.push({ label, capacity });
-  }
-  return out;
-}
-
-// Decode the stored `fed_capacity` jsonb into FedCapacity. A missing/invalid
-// headroom decodes to null (then the Capacity pillar falls back to the largest
-// option); a missing full-group count to 0; missing options to [].
-export function decodeFedCapacity(raw: unknown): FedCapacity {
-  if (!isRecord(raw)) return { headroom: null, fullGroupCount: 0, options: [] };
-  const headroom =
-    typeof raw.headroom === "number" && Number.isFinite(raw.headroom)
-      ? raw.headroom
-      : null;
-  const fullGroupCount =
-    typeof raw.fullGroupCount === "number" &&
-    Number.isFinite(raw.fullGroupCount)
-      ? Math.max(0, Math.trunc(raw.fullGroupCount))
-      : 0;
-  return {
-    headroom,
-    fullGroupCount,
-    options: decodeCapacityOptions(raw.options),
-  };
+  // Capacity defaults to REQUIRED (PRD §2.4 / §4.1): a stored row that predates the
+  // flag, or omits it, still gates on capacity unless it was explicitly turned off.
+  const requireCapacity =
+    isRecord(raw) && typeof raw.requireCapacity === "boolean"
+      ? raw.requireCapacity
+      : true;
+  return { conditions, requireHealthGrades, requireCapacity };
 }

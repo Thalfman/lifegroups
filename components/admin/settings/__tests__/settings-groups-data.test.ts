@@ -27,6 +27,9 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchLeaderHealthRubric: async () => ok(null),
     fetchGroupCategories: async () => ok([]),
     fetchCategoryTypeCells: async () => ok([]),
+    // #400: per-cell coverage reads default to empty.
+    fetchCategoryTypeTargetCells: async () => ok([]),
+    fetchGroupCellLifecycleRows: async () => ok([]),
     ...overrides,
   };
 }
@@ -110,5 +113,93 @@ describe("buildSettingsData — Groups tab (#396)", () => {
       { isSuperAdmin: false }
     );
     expect(data.errors.groupCategories).toBe("cells boom");
+  });
+});
+
+describe("buildSettingsData — Groups tab coverage (#400)", () => {
+  it("builds per-active-cell coverage (have X of Y), sorted by largest shortfall", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchGroupCategories: async () =>
+          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
+        fetchCategoryTypeTargetCells: async () =>
+          ok([
+            {
+              id: "cell-men",
+              audience_category: "men",
+              category_id: CAT,
+              active: true,
+              target_count: 3,
+            },
+            {
+              id: "cell-women",
+              audience_category: "women",
+              category_id: CAT,
+              active: true,
+              target_count: 2,
+            },
+          ]),
+        fetchGroupCellLifecycleRows: async () =>
+          ok([
+            // Men: one active + one launching = have 2, target 3 → gap 1.
+            {
+              audience_category: "men",
+              category_id: CAT,
+              lifecycle_status: "active",
+            },
+            {
+              audience_category: "men",
+              category_id: CAT,
+              lifecycle_status: "launching_soon",
+            },
+            // A planned_pause group does NOT count.
+            {
+              audience_category: "men",
+              category_id: CAT,
+              lifecycle_status: "planned_pause",
+            },
+            // Women: have 0, target 2 → gap 2 (largest shortfall, sorts first).
+          ]),
+      }),
+      { isSuperAdmin: false }
+    );
+
+    expect(data.cellCoverage.map((c) => c.audienceCategory)).toEqual([
+      "women",
+      "men",
+    ]);
+    expect(data.cellCoverage[0]).toMatchObject({
+      audienceCategory: "women",
+      have: 0,
+      target: 2,
+      gap: 2,
+    });
+    expect(data.cellCoverage[1]).toMatchObject({
+      audienceCategory: "men",
+      have: 2,
+      target: 3,
+      gap: 1,
+    });
+  });
+
+  it("drops an inactive cell from coverage and resolves the label from the catalog", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchGroupCategories: async () =>
+          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
+        fetchCategoryTypeTargetCells: async () =>
+          ok([
+            {
+              id: "cell-mixed",
+              audience_category: "mixed",
+              category_id: CAT,
+              active: false,
+              target_count: 5,
+            },
+          ]),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.cellCoverage).toEqual([]);
   });
 });

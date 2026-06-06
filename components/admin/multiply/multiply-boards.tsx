@@ -1,19 +1,20 @@
 import { P, fontDisplay, fontBody, fontMono } from "@/lib/pastoral";
-import type { PillarKey } from "@/lib/admin/multiplication-pillars";
+import type {
+  PillarKey,
+  TriggerBlocker,
+} from "@/lib/admin/multiplication-pillars";
 import type { TypeBoard } from "./multiply-data";
 
-// Presentational Multiply boards (#380): three type boards, each showing the four
-// pillar A–F values (health pillars show "—" until grades exist), the per-type
-// trigger/multiply signal (NO blended overall letter), and the individual-group
-// multiply flag raised from the Capacity input. Server component, pure render.
+// Presentational Multiply boards (#380, updated #401): three type boards, each
+// showing the A–F pillar values (Interest, Group Health, Leader Health — health
+// pillars show "—" until grades exist), the per-type trigger/multiply signal (NO
+// blended overall letter), and the DERIVED capacity ISSUE rolled up from the
+// type's cells. Capacity is no longer a fed A–F pillar — it is a per-cell issue
+// (over-capacity OR thin availability); in #403 it moves onto the individual grid
+// cell, so this type-level banner is the interim surface. Server component, pure
+// render.
 
 const PILLAR_ORDER: { key: PillarKey; label: string; hint: string }[] = [
-  { key: "capacity", label: "Capacity", hint: "Ministry-Admin fed, per type" },
-  {
-    key: "overflow",
-    label: "Overflowing groups",
-    hint: "Capacity (additional)",
-  },
   { key: "interest", label: "Interest", hint: "from the Interest Funnel" },
   { key: "groupHealth", label: "Group Health", hint: "ministry-year roll-up" },
   {
@@ -24,11 +25,16 @@ const PILLAR_ORDER: { key: PillarKey; label: string; hint: string }[] = [
 ];
 
 const PILLAR_LABEL: Record<PillarKey, string> = {
-  capacity: "Capacity",
-  overflow: "Overflowing groups",
   interest: "Interest",
   groupHealth: "Group Health",
   leaderHealth: "Leader Health",
+};
+
+// Blocker labels extend the pillar labels with the derived capacity issue, which
+// can hold a type back when capacity is required but isn't a graded pillar.
+const BLOCKER_LABEL: Record<TriggerBlocker, string> = {
+  ...PILLAR_LABEL,
+  capacity: "Capacity",
 };
 
 function letterColor(letter: string | null): string {
@@ -109,8 +115,10 @@ function SignalBadge({ ready }: { ready: boolean }) {
 
 function BoardCard({ board }: { board: TypeBoard }) {
   const blockerLabels = board.signal.blockers
-    .map((b) => PILLAR_LABEL[b])
+    .map((b) => BLOCKER_LABEL[b])
     .join(", ");
+
+  const cap = board.capacityIssue;
 
   return (
     <section
@@ -163,25 +171,24 @@ function BoardCard({ board }: { board: TypeBoard }) {
         ))}
       </div>
 
-      {board.fedCapacity.options.length > 0 && (
+      {/* Derived capacity issue (#401), rolled up from the type's cells. In #403
+          this moves onto the individual grid cell. */}
+      {cap.isIssue && (
         <p
           style={{
             margin: 0,
             fontFamily: fontBody,
             fontSize: 13,
-            color: P.ink2,
+            color: P.terraTextStrong,
+            background: P.terraSoft,
+            border: `1px solid ${P.terra}`,
+            borderRadius: 8,
+            padding: "8px 12px",
           }}
         >
-          Offered options:{" "}
-          {board.fedCapacity.options
-            .map(
-              (o) =>
-                `${o.label || "Option"}${
-                  o.capacity != null ? ` (cap ${o.capacity})` : ""
-                }`
-            )
-            .join(", ")}
-          .
+          Capacity issue in {cap.affectedCellCount} of {cap.cellCount} cell
+          {cap.cellCount === 1 ? "" : "s"} — a group is over capacity or there
+          is only one group to join.
         </p>
       )}
 
@@ -195,25 +202,6 @@ function BoardCard({ board }: { board: TypeBoard }) {
           }}
         >
           Held back by: {blockerLabels}.
-        </p>
-      )}
-
-      {board.individualFlag.flagged && (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.terraTextStrong,
-            background: P.terraSoft,
-            border: `1px solid ${P.terra}`,
-            borderRadius: 8,
-            padding: "8px 12px",
-          }}
-        >
-          {board.individualFlag.fullGroupCount === 1
-            ? "1 group of this type is full — flag it to multiply on its own."
-            : `${board.individualFlag.fullGroupCount} groups of this type are full — flag them to multiply on their own.`}
         </p>
       )}
 
@@ -248,8 +236,9 @@ export function MultiplyBoards({
         style={{ margin: 0, fontFamily: fontBody, fontSize: 13, color: P.ink2 }}
       >
         Ministry year {ministryYear}–{ministryYear + 1}. Each type is graded on
-        four pillars; a configurable trigger says when it&rsquo;s ready to
-        multiply.
+        its pillars; a configurable trigger over those pillars — not a blended
+        letter — says when a type is ready to multiply. Capacity is a derived
+        per-cell issue, not a fed grade.
       </p>
       <div
         style={{

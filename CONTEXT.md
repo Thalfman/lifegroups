@@ -123,6 +123,15 @@ falls into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`,
 Category, or Group type instead. Treated like "Admin OS": an internal-only name.
 _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
 
+**Cell**:
+The live unit of the groups overhaul: one `category_type_targets` row =
+(Audience × Category). A cell is **active** when the category is applied to that
+top type. Each active cell carries its own **target group count**, derived
+**coverage**, derived **capacity issue**, per-cell **interest**, and readiness
+signal. A category not applied to a type has no active cell there (blank on the
+Multiply grid).
+_Avoid_: Tile, slot, segment (the internal umbrella name, not this row).
+
 ### Interest funnel concepts
 
 **Interest Funnel**:
@@ -209,24 +218,47 @@ _Avoid_: Group health, health status (when you mean the grade).
 ### Multiplication concepts
 
 **Multiplication**:
-The app's third area — deciding when to launch another group, assessed by
-**group type** (the Audience: Men's, Women's, Mixed), not by individual group.
-Three boards, one per type. Capacity can still flag a single full group to
-multiply on its own — the one place an individual group is the unit.
+The app's third area — deciding when to launch another group. Assessed per
+**cell** (Audience × Category); the per-type boards roll their cells up. The
+unit moves onto the Multiply grid (rows = categories, columns = the three types)
+in a later slice.
 _Avoid_: Launch planning (the superseded framing), split.
 
 **Multiplication Pillar**:
-One of the four computed A–F signals assessed per group type: **Capacity**,
-**Interest** (from the Interest Funnel), **Group Health** (roll-up of that
-type's Group-Health Grades), and **Leader Health** (roll-up of that type's
-Leader-Health Grades), each over the Ministry Year. There is no single overall
-multiplication letter — the pillars stand on their own.
-_Avoid_: Metric, score, criterion (that word belongs to a rubric's inputs).
+A computed readiness signal assessed per cell, each in its **natural unit** (not
+all A–F): **Interest** (a count of `interested` prospects whose desired cell
+matches), **Capacity** (a derived issue / no-issue — see Derived Capacity),
+**Group Health** and **Leader Health** (A–F roll-ups of that cell's grades over
+the Ministry Year). The standalone **overflow** pillar was dropped (#401), folded
+into Capacity Facet A. There is no single overall multiplication letter — the
+pillars stand on their own.
+_Avoid_: Metric, score, criterion (that word belongs to a rubric's inputs);
+overflow (the retired pillar).
+
+**Derived Capacity** (capacity issue):
+Capacity is **derived, not fed** (#401). With a universal cap of **12** members
+per group, a cell has a capacity issue when **either** facet trips: **Facet A —
+over-capacity** (any active group in the cell has > 12 members) or **Facet B —
+thin availability** (≤ 1 _joinable_ group, i.e. an active group under 12). An
+**active cell with no active groups** still counts — it has no joinable group, so
+Facet B trips. Capacity is **required by default** in the trigger, so a required
+capacity issue **blocks readiness** (it is not merely a side banner). The old fed
+headroom / full-group-count / "offerings" inputs on `multiplication_config` are
+retired.
+_Avoid_: Headroom, offerings, fed capacity, overflow (all retired).
+
+**Target & Coverage** (`have X of Y`):
+A per-cell **target group count** the admin sets ("40-50s Men should have 2"),
+read against **coverage** `have X of Y`, where **X = active + actively-launching**
+groups in the cell (`lifecycle_status` ∈ active, launching*soon; mere plans do not
+count) and **Y = target_count**. Targets are **tracking only** — they never feed
+the multiply trigger.
+\_Avoid*: Quota, goal, capacity (the target is a group _count_, not a member cap).
 
 **Multiplication Trigger**:
-The Ministry-Admin-configured rule over the pillar grades that signals "multiply
-this type" — e.g. a threshold each pillar must clear. Julian owns the trigger
-rubric; the app surfaces the signal, it does not decide for him.
+The Ministry-Admin-configured rule over the pillars that signals "multiply this
+type" — each pillar required or not, with a threshold in its natural unit. Julian
+owns the trigger; the app surfaces the signal, it does not decide for him.
 _Avoid_: Alert, threshold (when you mean the whole configured trigger).
 
 ### Surfaces
