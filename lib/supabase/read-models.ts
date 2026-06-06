@@ -2,10 +2,7 @@ import type {
   AppSettingsRow,
   AttendanceRecordsRow,
   AttendanceSessionsRow,
-  AuditEventsRow,
-  CareNotesRow,
   ChurchAttendanceSnapshotsRow,
-  FollowUpsRow,
   GroupCalendarEventsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
@@ -17,13 +14,10 @@ import type {
   LeaderPipelineRow,
   MembersRow,
   MultiplicationCandidatesRow,
-  NoteTransparencyGrantsRow,
   PlatformConfigRow,
-  PrayerRequestsRow,
   ProfilesRow,
 } from "@/types/database";
 import type {
-  FollowUpStatus,
   GroupAudienceCategory,
   GuestPipelineStage,
   LeaderReadinessStage,
@@ -40,6 +34,12 @@ import {
   type ReadClient,
   type ReadResult,
 } from "./read-core";
+// fetchOpenFollowUps is a leader-safe dashboard reader that still lives here; it
+// uses the follow-up column allowlist + row type that now live in follow-up-reads.
+import {
+  LEADER_FOLLOW_UP_COLUMNS,
+  type LeaderFollowUpRow,
+} from "./follow-up-reads";
 
 // Shared low-level read primitives live in ./read-core so the shepherd-care
 // slice and the rest of read-models can both use them without an import cycle.
@@ -52,6 +52,13 @@ export type { ReadResult, ReadClient };
 // module. Re-exported wholesale so every name that used to be importable from
 // read-models stays importable from here.
 export * from "./shepherd-care-reads";
+
+// The Care Note / Prayer Request reads (#381) and the follow-up reads (Phase
+// 5C.0) live in their own focused modules. Re-exported wholesale so every name
+// stays importable from read-models unchanged — this barrel is now a thinner
+// re-export of focused read modules rather than their sole home.
+export * from "./care-note-reads";
+export * from "./follow-up-reads";
 
 // Trust-boundary guards for settings rows. Validate the discriminating
 // fields before letting a Supabase response be treated as the typed row;
@@ -1203,235 +1210,6 @@ export async function fetchGroupMetricSettings(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5C.0 — Guest pipeline + follow-up read models.
-// ---------------------------------------------------------------------------
-
-/**
- * Leader-safe follow_ups column list. `admin_private_note` is intentionally
- * **omitted** here so leader read paths never return it, even though the
- * table-level RLS SELECT policy currently exposes the column to any caller
- * with row access. This constant is the **defensive privacy boundary** for
- * the `/leader` surface.
- *
- * Privacy contract (Phase 5C.0 / 5C.1):
- *  - Every leader-facing query against `follow_ups` MUST select via this
- *    constant (or a narrower allowlist), never `select("*")`.
- *  - Every leader-facing helper MUST return `LeaderFollowUpRow` (which omits
- *    `admin_private_note` at the type level — see below).
- *  - Column-level RLS / a leader-safe Postgres view is documented as a
- *    future hardening item in `docs/PHASE_5C_1_PRIVACY_HARDENING.md`. Until
- *    that lands, this allowlist + type omission is the boundary.
- *
- * If you change this list, update `LeaderFollowUpRow` and re-run the
- * verification grep in `docs/PHASE_5C_1_VERIFICATION.md`.
- */
-export const LEADER_FOLLOW_UP_COLUMNS =
-  "id, type, title, related_group_id, related_member_id, related_guest_id, " +
-  "assigned_to, priority, due_date, status, leader_visible_note, " +
-  "created_at, updated_at, completed_at";
-
-/**
- * Leader-safe row type for `follow_ups`. The `Omit<..., "admin_private_note">`
- * is the compile-time half of the privacy boundary documented above; the
- * `LEADER_FOLLOW_UP_COLUMNS` allowlist is the runtime half. Any helper that
- * fetches follow-ups for a leader-facing page MUST return this type.
- */
-export type LeaderFollowUpRow = Omit<FollowUpsRow, "admin_private_note">;
-
-/**
- * **Admin-only** follow-ups reader. Returns the full row including
- * `admin_private_note` and is intended for `/admin/follow-ups` and other
- * admin server contexts only.
- *
- * Do **not** call from any leader code path (`app/(protected)/leader/`,
- * `components/leader/`, `lib/leader/`). Leader paths must use
- * {@link fetchFollowUpsForLeader} which selects through
- * {@link LEADER_FOLLOW_UP_COLUMNS} and returns {@link LeaderFollowUpRow}.
- */
-/**
- * Admin follow-ups column allowlist. Unlike {@link LEADER_FOLLOW_UP_COLUMNS}
- * this one **deliberately includes `admin_private_note`** — it is the
- * admin-only surface. Spelling the columns out (rather than `select("*")`)
- * keeps the admin-private exposure explicit at the read seam and stops
- * audit / future schema columns leaking into the page.
- */
-const ADMIN_FOLLOW_UP_COLUMNS =
-  "id, type, title, related_group_id, related_member_id, related_guest_id, " +
-  "assigned_to, priority, due_date, status, leader_visible_note, " +
-  "admin_private_note, created_at";
-
-/**
- * Domain read-model for the `/admin/follow-ups` directory. Includes the
- * admin-only `admin_private_note` by design; see {@link ADMIN_FOLLOW_UP_COLUMNS}.
- */
-export type AdminFollowUpEntry = Pick<
-  FollowUpsRow,
-  | "id"
-  | "type"
-  | "title"
-  | "related_group_id"
-  | "related_member_id"
-  | "related_guest_id"
-  | "assigned_to"
-  | "priority"
-  | "due_date"
-  | "status"
-  | "leader_visible_note"
-  | "admin_private_note"
-  | "created_at"
->;
-
-export async function fetchFollowUpsForAdmin(
-  client: ReadClient,
-  options: { statuses?: FollowUpStatus[]; limit?: number } = {}
-): Promise<ReadResult<AdminFollowUpEntry[]>> {
-  let query = client
-    .from("follow_ups")
-    .select(ADMIN_FOLLOW_UP_COLUMNS)
-    .order("priority", { ascending: false })
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  if (options.statuses && options.statuses.length > 0) {
-    query = query.in("status", options.statuses);
-  }
-  if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query
-    .range(0, 9999)
-    .returns<AdminFollowUpEntry[]>();
-  if (error)
-    return { data: null, error: wrapError("fetchFollowUpsForAdmin", error) };
-  return { data: data ?? [], error: null };
-}
-
-/**
- * Leader-safe follow-ups reader. Selects via {@link LEADER_FOLLOW_UP_COLUMNS}
- * (which omits `admin_private_note`) and returns {@link LeaderFollowUpRow}.
- * Visibility: rows where `assigned_to = profileId` OR `related_group_id` is
- * in the caller's active leader/co_leader assignments. The OR clause is
- * enforced both here (in the PostgREST `or(...)` predicate) and at the RLS
- * layer by the Phase 4 `follow_ups_leader_read` policy.
- */
-export async function fetchFollowUpsForLeader(
-  client: ReadClient,
-  options: { profileId: string; assignedGroupIds: readonly string[] }
-): Promise<ReadResult<LeaderFollowUpRow[]>> {
-  const { profileId, assignedGroupIds } = options;
-  // Build an OR clause: assigned_to = me, OR related_group_id IN my groups.
-  // We always include the assigned_to predicate; the group clause is added
-  // only when there is at least one assigned group, so leaders with zero
-  // assignments still see follow-ups owned personally.
-  const orParts = [`assigned_to.eq.${profileId}`];
-  if (assignedGroupIds.length > 0) {
-    // PostgREST `in.(uuid,uuid,...)` -- uuids are safe identifiers, no quoting needed.
-    orParts.push(`related_group_id.in.(${assignedGroupIds.join(",")})`);
-  }
-  const { data, error } = await client
-    .from("follow_ups")
-    .select(LEADER_FOLLOW_UP_COLUMNS)
-    .or(orParts.join(","))
-    .order("priority", { ascending: false })
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .returns<LeaderFollowUpRow[]>();
-  if (error)
-    return { data: null, error: wrapError("fetchFollowUpsForLeader", error) };
-  return { data: data ?? [], error: null };
-}
-
-// Counts open + in_progress follow-ups per guest. Single query, grouped
-// client-side so the guest list stays free of N+1 round trips.
-export async function fetchGuestFollowUpCounts(
-  client: ReadClient,
-  guestIds: string[]
-): Promise<ReadResult<Map<string, number>>> {
-  if (guestIds.length === 0) return { data: new Map(), error: null };
-  const { data, error } = await client
-    .from("follow_ups")
-    .select("related_guest_id, status")
-    .in("related_guest_id", guestIds)
-    .in("status", ["open", "in_progress"])
-    .returns<{ related_guest_id: string | null; status: FollowUpStatus }[]>();
-  if (error)
-    return { data: null, error: wrapError("fetchGuestFollowUpCounts", error) };
-  const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    if (!row.related_guest_id) continue;
-    counts.set(
-      row.related_guest_id,
-      (counts.get(row.related_guest_id) ?? 0) + 1
-    );
-  }
-  return { data: counts, error: null };
-}
-
-// Returns { id, full_name } for guests the caller can see via RLS. Leaders
-// only see guests tied to a group they lead; admins see all. The UI uses
-// the returned set to render guest names on follow-up cards safely (any
-// guest id missing from the set is rendered as "Guest" without a name).
-export async function fetchGuestNamesByIds(
-  client: ReadClient,
-  guestIds: string[]
-): Promise<ReadResult<Map<string, string>>> {
-  if (guestIds.length === 0) return { data: new Map(), error: null };
-  const { data, error } = await client
-    .from("guests")
-    .select("id, full_name")
-    .in("id", guestIds)
-    .returns<{ id: string; full_name: string }[]>();
-  if (error)
-    return { data: null, error: wrapError("fetchGuestNamesByIds", error) };
-  return {
-    data: new Map((data ?? []).map((r) => [r.id, r.full_name])),
-    error: null,
-  };
-}
-
-export async function fetchRecentAuditEvents(
-  client: ReadClient,
-  options: { limit?: number; actionsLike?: string | string[] } = {}
-): Promise<ReadResult<AuditEventsRow[]>> {
-  const limit = options.limit ?? 25;
-  let query = client
-    .from("audit_events")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (options.actionsLike) {
-    if (Array.isArray(options.actionsLike)) {
-      // PostgREST OR syntax. Each pattern becomes `action.like."<value>"`
-      // and they're joined by commas. The value must be wrapped in double
-      // quotes when it contains a `.` (or `,`, `(`, `)`, `:`) because the
-      // PostgREST grammar uses unquoted dots as `column.operator.value`
-      // separators -- without quotes, a pattern like `admin.%` is parsed
-      // as four tokens and rejected at the API boundary.
-      // Reject patterns that themselves contain `"`, `,`, or `(` so we
-      // don't end up constructing a malformed filter expression.
-      for (const pat of options.actionsLike) {
-        if (/["(),]/.test(pat)) {
-          return {
-            data: null,
-            error: wrapError(
-              "fetchRecentAuditEvents",
-              new Error(`unsafe actionsLike pattern: ${pat}`)
-            ),
-          };
-        }
-      }
-      const orExpr = options.actionsLike
-        .map((pat) => `action.like."${pat}"`)
-        .join(",");
-      query = query.or(orExpr);
-    } else {
-      query = query.like("action", options.actionsLike);
-    }
-  }
-  const { data, error } = await query;
-  if (error)
-    return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
-  return { data: data ?? [], error: null };
-}
-
-// ---------------------------------------------------------------------------
 // LP.1 — launch planning assumptions
 // ---------------------------------------------------------------------------
 //
@@ -1586,162 +1364,4 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
     };
   }
   return { data: raw, error: null };
-}
-
-// ---------------------------------------------------------------------------
-// Pivot slice 9 (#381 / ADR 0017) — Care Notes + Prayer Requests + the
-// per-subject transparency grant reads.
-//
-// Column-allowlisted reads (never select("*")). RLS is the real boundary: the
-// author reads their own rows, and the oversight ladder reads a subject's rows
-// only when that subject has an active transparency grant — so these readers
-// return whatever the caller's RLS admits. The transparency-grant reader is
-// admin-only by RLS and powers the inline Care toggle's current state.
-// ---------------------------------------------------------------------------
-
-const CARE_NOTE_COLUMNS =
-  "id, author_profile_id, subject_profile_id, subject_group_id, body, created_at, updated_at";
-
-const PRAYER_REQUEST_COLUMNS =
-  "id, author_profile_id, subject_profile_id, subject_group_id, body, status, created_at, updated_at";
-
-const NOTE_TRANSPARENCY_GRANT_COLUMNS =
-  "id, subject_profile_id, granted, set_by, created_at, updated_at";
-
-export async function fetchCareNotesForSubject(
-  client: ReadClient,
-  subjectProfileId: string
-): Promise<ReadResult<CareNotesRow[]>> {
-  if (!isUuid(subjectProfileId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
-    .eq("subject_profile_id", subjectProfileId)
-    .order("created_at", { ascending: false });
-  if (error)
-    return { data: null, error: wrapError("fetchCareNotesForSubject", error) };
-  return { data: (data ?? []) as CareNotesRow[], error: null };
-}
-
-export async function fetchPrayerRequestsForSubject(
-  client: ReadClient,
-  subjectProfileId: string
-): Promise<ReadResult<PrayerRequestsRow[]>> {
-  if (!isUuid(subjectProfileId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
-    .eq("subject_profile_id", subjectProfileId)
-    .order("created_at", { ascending: false });
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchPrayerRequestsForSubject", error),
-    };
-  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
-}
-
-// Pivot slice 11 (#382 / ADR 0020): a leader's GROUP-scoped care notes / prayer
-// requests, newest first. RLS scopes the rows: a leader reads their own
-// (author) rows for the group; the oversight ladder reads them only when that
-// leader's transparency toggle is on. The group filter is belt-and-suspenders
-// on top of RLS so the leader surface only ever asks for one group at a time.
-export async function fetchGroupCareNotes(
-  client: ReadClient,
-  groupId: string
-): Promise<ReadResult<CareNotesRow[]>> {
-  if (!isUuid(groupId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
-    .eq("subject_group_id", groupId)
-    .order("created_at", { ascending: false });
-  if (error)
-    return { data: null, error: wrapError("fetchGroupCareNotes", error) };
-  return { data: (data ?? []) as CareNotesRow[], error: null };
-}
-
-export async function fetchGroupPrayerRequests(
-  client: ReadClient,
-  groupId: string
-): Promise<ReadResult<PrayerRequestsRow[]>> {
-  if (!isUuid(groupId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
-    .eq("subject_group_id", groupId)
-    .order("created_at", { ascending: false });
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchGroupPrayerRequests", error),
-    };
-  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
-}
-
-// Pivot slice 11 (#382 / ADR 0020): the GROUP notes a leader AUTHORED, newest
-// first — the admin peek path for the leader-detail view. RLS gates these on the
-// AUTHOR's transparency grant (the leader is the author of a group note), so the
-// oversight ladder reads them only when that leader's toggle is on; off = the
-// query returns nothing by construction. Filtered to group-subject rows so this
-// never returns the OS-authored, subject-keyed notes.
-export async function fetchAuthoredGroupCareNotes(
-  client: ReadClient,
-  authorProfileId: string
-): Promise<ReadResult<CareNotesRow[]>> {
-  if (!isUuid(authorProfileId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("care_notes")
-    .select(CARE_NOTE_COLUMNS)
-    .eq("author_profile_id", authorProfileId)
-    .not("subject_group_id", "is", null)
-    .order("created_at", { ascending: false });
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchAuthoredGroupCareNotes", error),
-    };
-  return { data: (data ?? []) as CareNotesRow[], error: null };
-}
-
-export async function fetchAuthoredGroupPrayerRequests(
-  client: ReadClient,
-  authorProfileId: string
-): Promise<ReadResult<PrayerRequestsRow[]>> {
-  if (!isUuid(authorProfileId)) return { data: [], error: null };
-  const { data, error } = await client
-    .from("prayer_requests")
-    .select(PRAYER_REQUEST_COLUMNS)
-    .eq("author_profile_id", authorProfileId)
-    .not("subject_group_id", "is", null)
-    .order("created_at", { ascending: false });
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchAuthoredGroupPrayerRequests", error),
-    };
-  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
-}
-
-// The per-subject transparency grant (admin-only by RLS). Returns null when no
-// grant row exists — the toggle defaults to DENIED (sealed) in that case.
-export async function fetchNoteTransparencyGrant(
-  client: ReadClient,
-  subjectProfileId: string
-): Promise<ReadResult<NoteTransparencyGrantsRow | null>> {
-  if (!isUuid(subjectProfileId)) return { data: null, error: null };
-  const { data, error } = await client
-    .from("note_transparency_grants")
-    .select(NOTE_TRANSPARENCY_GRANT_COLUMNS)
-    .eq("subject_profile_id", subjectProfileId)
-    .maybeSingle();
-  if (error)
-    return {
-      data: null,
-      error: wrapError("fetchNoteTransparencyGrant", error),
-    };
-  return {
-    data: (data as NoteTransparencyGrantsRow | null) ?? null,
-    error: null,
-  };
 }

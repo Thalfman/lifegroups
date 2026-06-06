@@ -1,4 +1,5 @@
 import type { GroupAudienceCategory } from "@/types/enums";
+import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 
 // The Settings > Groups type×category matrix (#396 / PRD §2.1), as a pure data
 // structure built from the catalog + the cell rows. Rows = categories, columns =
@@ -7,13 +8,8 @@ import type { GroupAudienceCategory } from "@/types/enums";
 // builds on. Keeping this a pure function of its two inputs makes the assembly
 // testable with no database (ADR 0015).
 
-// The three top types, in display order. Mirrors MULTIPLY_TYPES but kept local
-// so this pure module has no surface dependency.
-export const MATRIX_TYPES: readonly GroupAudienceCategory[] = [
-  "men",
-  "women",
-  "mixed",
-];
+// The three top types, in display order — the canonical Audience vocabulary.
+export const MATRIX_TYPES = AUDIENCE_CATEGORIES;
 
 export type MatrixCategoryInput = {
   id: string;

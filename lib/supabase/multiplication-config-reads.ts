@@ -1,5 +1,7 @@
 import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
+import { isAudienceCategory } from "@/lib/admin/audience";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -216,15 +218,8 @@ export function tallyCellActiveGroupSizes(
   memberships: readonly CellMembershipRow[],
   activeCells: readonly CellKey[]
 ): CellActiveGroupSizes {
-  // Active-membership count per group id (the capacity-board count idiom).
-  const activeCountByGroup = new Map<string, number>();
-  for (const m of memberships) {
-    if (m.status !== "active") continue;
-    activeCountByGroup.set(
-      m.group_id,
-      (activeCountByGroup.get(m.group_id) ?? 0) + 1
-    );
-  }
+  // Active-membership count per group id (the shared capacity-input rule).
+  const activeCountByGroup = countActiveMembersByGroup(memberships);
 
   // Seed every ACTIVE cell with an empty size list so a configured cell with no
   // active groups still appears in the rollup (and trips Facet B) rather than
@@ -233,7 +228,7 @@ export function tallyCellActiveGroupSizes(
   const keys = new Map<string, CellKey>();
   for (const cell of activeCells) {
     const audience = cell.audience;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     if (cell.categoryId == null) continue;
@@ -247,7 +242,7 @@ export function tallyCellActiveGroupSizes(
   for (const g of groups) {
     if (g.lifecycle_status !== "active") continue;
     const audience = g.audience_category;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     // An uncategorized group (null category_id) is in no category cell, so it
@@ -348,7 +343,7 @@ export async function fetchCellActiveGroupSizes(
   const activeCells: CellKey[] = [];
   for (const cell of cellsRes.data ?? []) {
     const audience = cell.audience_category;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     if (cell.category_id == null) continue;

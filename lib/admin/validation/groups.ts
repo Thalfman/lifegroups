@@ -4,6 +4,7 @@ import type {
   MeetingWeekParity,
 } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
+import { isAudienceCategory } from "@/lib/admin/audience";
 import type { ValidationResult } from "./shared";
 import {
   isRecord,
@@ -70,21 +71,6 @@ const MEETING_WEEK_PARITIES: ReadonlySet<MeetingWeekParity> = new Set([
   "odd",
   "even",
 ]);
-
-const GROUP_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> = new Set([
-  "men",
-  "women",
-  "mixed",
-]);
-
-function isGroupAudienceCategory(
-  value: unknown
-): value is GroupAudienceCategory {
-  return (
-    typeof value === "string" &&
-    GROUP_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
-  );
-}
 
 function isMeetingFrequency(value: unknown): value is MeetingFrequency {
   return (
@@ -187,7 +173,7 @@ function validateGroupWritablePayload(
   const audienceRaw = readOptionalString(input.audience_category);
   let audienceCategory: GroupAudienceCategory | undefined;
   if (audienceRaw !== undefined) {
-    if (!isGroupAudienceCategory(audienceRaw))
+    if (!isAudienceCategory(audienceRaw))
       errors.push("Audience category must be men, women, or mixed.");
     else audienceCategory = audienceRaw;
   }

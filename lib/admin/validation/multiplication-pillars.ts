@@ -1,3 +1,4 @@
+import { isAudienceCategory } from "@/lib/admin/audience";
 import type { ValidationResult } from "./shared";
 import { isRecord } from "./shared";
 import {
@@ -16,8 +17,6 @@ import {
 // decoders, so the client and server reject identically. The SECURITY DEFINER RPC
 // stays the authoritative gate; this keeps malformed input off the wire and
 // supplies friendlier messages.
-
-const GROUP_TYPES = new Set(["men", "women", "mixed"]);
 
 export type MultiplicationConfigPayload = {
   groupType: "men" | "women" | "mixed";
@@ -59,7 +58,7 @@ export function validateMultiplicationConfigPayload(
 
   const groupType =
     typeof input.group_type === "string" ? input.group_type : "";
-  if (!GROUP_TYPES.has(groupType)) {
+  if (!isAudienceCategory(groupType)) {
     errors.push("group_type must be 'men', 'women', or 'mixed'.");
   }
 

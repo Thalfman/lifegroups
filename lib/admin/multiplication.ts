@@ -19,6 +19,10 @@ import type {
   MultiplicationMeetingTime,
 } from "@/types/enums";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
+import { AUDIENCE_LABEL } from "@/lib/admin/audience";
+
+// Re-exported from the canonical Audience leaf so existing importers keep working.
+export { AUDIENCE_LABEL };
 
 export const MULTIPLICATION_MIN_MEMBERS = 12;
 export const MULTIPLICATION_MIN_YEARS_ACTIVE = 3;
@@ -115,12 +119,6 @@ export const CANDIDATE_STATUS_LABEL: Record<
   planned: "Planned",
   launched: "Launched",
   deferred: "Deferred",
-};
-
-export const AUDIENCE_LABEL: Record<GroupAudienceCategory, string> = {
-  men: "Men",
-  women: "Women",
-  mixed: "Mixed / couples",
 };
 
 // #398: the visible bucket for groups that carry no category (category_id null)

@@ -28,6 +28,10 @@ import {
   type MetricDefaults,
 } from "@/lib/admin/metrics";
 import { apprenticeReadyBy } from "@/lib/admin/leader-pipeline";
+import {
+  countActiveMembersByGroup,
+  indexOverridesByGroup,
+} from "@/lib/admin/group-capacity-inputs";
 
 // ---------------------------------------------------------------------------
 // Assumptions: typed shape + defaults + decoder
@@ -248,17 +252,8 @@ export function buildLaunchPlanningInputs(args: {
   memberships: readonly MembershipForInputs[];
   metricDefaults: MetricDefaults;
 }): LaunchPlanningInputs {
-  const overridesByGroup = new Map<string, OverrideForInputs>();
-  for (const o of args.overrides) overridesByGroup.set(o.group_id, o);
-
-  const activeMembershipCounts = new Map<string, number>();
-  for (const m of args.memberships) {
-    if (m.status !== "active") continue;
-    activeMembershipCounts.set(
-      m.group_id,
-      (activeMembershipCounts.get(m.group_id) ?? 0) + 1
-    );
-  }
+  const overridesByGroup = indexOverridesByGroup(args.overrides);
+  const activeMembershipCounts = countActiveMembersByGroup(args.memberships);
 
   let activeGroupCount = 0;
   let excludedActiveGroupCount = 0;
