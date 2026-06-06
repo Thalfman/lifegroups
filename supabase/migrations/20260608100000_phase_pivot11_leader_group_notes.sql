@@ -240,6 +240,15 @@ begin
 
   -- Defense-in-depth: the group must exist. (auth_is_leader_of already requires
   -- an active group_leaders row, so this only guards a dangling id.)
+  --
+  -- DELIBERATELY no lifecycle_status / group_closed gate (unlike the leader
+  -- calendar RPCs). Care Notes + Prayer Requests are PASTORAL, not operational:
+  -- a group often closes while care continues (wind-down, members transitioning,
+  -- follow-up), so a leader may keep recording care/prayer about a closed group.
+  -- The write stays author-private, RLS-scoped, and audited, so allowing it
+  -- widens no boundary; to truly cut a leader off, an admin deactivates the
+  -- group_leaders assignment (which the close path intentionally leaves active)
+  -- or the profile.
   select id into v_group_id from public.groups where id = p_group_id limit 1;
   if v_group_id is null then
     raise exception 'missing_group';
