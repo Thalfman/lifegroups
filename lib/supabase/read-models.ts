@@ -1535,6 +1535,50 @@ export async function fetchGroupPrayerRequests(
   return { data: (data ?? []) as PrayerRequestsRow[], error: null };
 }
 
+// Pivot slice 11 (#382 / ADR 0020): the GROUP notes a leader AUTHORED, newest
+// first — the admin peek path for the leader-detail view. RLS gates these on the
+// AUTHOR's transparency grant (the leader is the author of a group note), so the
+// oversight ladder reads them only when that leader's toggle is on; off = the
+// query returns nothing by construction. Filtered to group-subject rows so this
+// never returns the OS-authored, subject-keyed notes.
+export async function fetchAuthoredGroupCareNotes(
+  client: ReadClient,
+  authorProfileId: string
+): Promise<ReadResult<CareNotesRow[]>> {
+  if (!isUuid(authorProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .eq("author_profile_id", authorProfileId)
+    .not("subject_group_id", "is", null)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAuthoredGroupCareNotes", error),
+    };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchAuthoredGroupPrayerRequests(
+  client: ReadClient,
+  authorProfileId: string
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  if (!isUuid(authorProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .eq("author_profile_id", authorProfileId)
+    .not("subject_group_id", "is", null)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAuthoredGroupPrayerRequests", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
 // The per-subject transparency grant (admin-only by RLS). Returns null when no
 // grant row exists — the toggle defaults to DENIED (sealed) in that case.
 export async function fetchNoteTransparencyGrant(

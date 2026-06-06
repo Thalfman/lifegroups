@@ -45,7 +45,15 @@ const metaStyle = {
   marginTop: 6,
 };
 
-function NoteCard({ body, createdAt }: { body: string; createdAt: string }) {
+function NoteCard({
+  body,
+  createdAt,
+  context,
+}: {
+  body: string;
+  createdAt: string;
+  context?: string;
+}) {
   return (
     <li
       style={{
@@ -56,8 +64,105 @@ function NoteCard({ body, createdAt }: { body: string; createdAt: string }) {
       }}
     >
       <p style={bodyStyle}>{body}</p>
-      <p style={metaStyle}>Recorded {formatIsoDateOr(createdAt, "—")}</p>
+      <p style={metaStyle}>
+        {context ? `${context} · ` : ""}
+        Recorded {formatIsoDateOr(createdAt, "—")}
+      </p>
     </li>
+  );
+}
+
+// Pivot slice 11 (#382 / ADR 0020): a Care Note / Prayer Request this leader
+// wrote ABOUT one of their groups. Carries the group name for context.
+export type AuthoredGroupNote = {
+  id: string;
+  body: string;
+  created_at: string;
+  groupName: string;
+};
+
+function AuthoredGroupNotes({
+  careNotes,
+  prayerRequests,
+}: {
+  careNotes: AuthoredGroupNote[];
+  prayerRequests: AuthoredGroupNote[];
+}) {
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${P.line}`,
+        paddingTop: 16,
+        display: "grid",
+        gap: 16,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: 0,
+        }}
+      >
+        Notes this leader wrote about their own group(s). Same toggle gates them
+        — they&apos;re sealed to the leader until it&apos;s on.
+      </p>
+      <div>
+        <span style={labelStyle}>About their group ({careNotes.length})</span>
+        {careNotes.length === 0 ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink3,
+              margin: 0,
+            }}
+          >
+            No group care notes yet.
+          </p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0 }}>
+            {careNotes.map((n) => (
+              <NoteCard
+                key={n.id}
+                body={n.body}
+                createdAt={n.created_at}
+                context={n.groupName}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <span style={labelStyle}>
+          Prayer for their group ({prayerRequests.length})
+        </span>
+        {prayerRequests.length === 0 ? (
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink3,
+              margin: 0,
+            }}
+          >
+            No group prayer requests yet.
+          </p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0 }}>
+            {prayerRequests.map((r) => (
+              <NoteCard
+                key={r.id}
+                body={r.body}
+                createdAt={r.created_at}
+                context={r.groupName}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -66,12 +171,20 @@ export function CareNotesSection({
   granted,
   careNotes,
   prayerRequests,
+  authoredGroupCareNotes = [],
+  authoredGroupPrayerRequests = [],
 }: {
   subjectProfileId: string;
   granted: boolean;
   careNotes: CareNotesRow[];
   prayerRequests: PrayerRequestsRow[];
+  // Pivot slice 11 (#382 / ADR 0020): notes this leader authored about their
+  // group(s). Same per-leader toggle gates them; default empty (sealed).
+  authoredGroupCareNotes?: AuthoredGroupNote[];
+  authoredGroupPrayerRequests?: AuthoredGroupNote[];
 }) {
+  const hasAuthoredGroupNotes =
+    authoredGroupCareNotes.length > 0 || authoredGroupPrayerRequests.length > 0;
   return (
     <section style={{ ...cardStyle, display: "grid", gap: 16 }}>
       <div>
@@ -94,8 +207,9 @@ export function CareNotesSection({
             margin: 0,
           }}
         >
-          Over-shepherds write these privately. Leadership can read them only
-          when this person&apos;s transparency toggle is on.
+          Over-shepherds write notes about this leader; this leader writes notes
+          about their group. Both are private to their author &mdash; leadership
+          can read them only when this person&apos;s transparency toggle is on.
         </p>
       </div>
 
@@ -162,6 +276,12 @@ export function CareNotesSection({
               </ul>
             )}
           </div>
+          {hasAuthoredGroupNotes ? (
+            <AuthoredGroupNotes
+              careNotes={authoredGroupCareNotes}
+              prayerRequests={authoredGroupPrayerRequests}
+            />
+          ) : null}
         </>
       )}
     </section>

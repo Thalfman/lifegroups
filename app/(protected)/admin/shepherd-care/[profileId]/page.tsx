@@ -6,7 +6,10 @@ import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
-import { CareNotesSection } from "@/components/admin/shepherd-care/care-notes-section";
+import {
+  CareNotesSection,
+  type AuthoredGroupNote,
+} from "@/components/admin/shepherd-care/care-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
@@ -34,6 +37,9 @@ import {
   fetchShepherdCareProfileByShepherdId,
   fetchCareNotesForSubject,
   fetchPrayerRequestsForSubject,
+  fetchAuthoredGroupCareNotes,
+  fetchAuthoredGroupPrayerRequests,
+  fetchGroupsByIds,
   fetchNoteTransparencyGrant,
   type ActiveShepherdCoverageAssignmentSummary,
   type LedGroupSummary,
@@ -365,9 +371,7 @@ export default async function AdminShepherdCareDetailPage({
       ? await createSupabaseServerClient()
       : null;
   const groupRubricRes =
-    gradeClient !== null
-      ? await fetchHealthRubric(gradeClient, "group")
-      : null;
+    gradeClient !== null ? await fetchHealthRubric(gradeClient, "group") : null;
   const rubricCriteria = decodeRubricCriteria(
     groupRubricRes?.data?.criteria ?? null
   );
@@ -697,15 +701,55 @@ export default async function AdminShepherdCareDetailPage({
   let transparencyGranted = false;
   let careNotes: CareNotesRow[] = [];
   let prayerRequests: PrayerRequestsRow[] = [];
+  // Pivot slice 11 (#382 / ADR 0020): the GROUP notes this leader authored. RLS
+  // gates them on the SAME per-leader grant (the leader is their author), so they
+  // come back only when the toggle is on — sealed by default, exactly like the
+  // OS-authored notes about this leader above.
+  let authoredGroupCareNotes: AuthoredGroupNote[] = [];
+  let authoredGroupPrayerRequests: AuthoredGroupNote[] = [];
   if (careNotesClient) {
-    const [grantRes, notesRes, prayersRes] = await Promise.all([
-      fetchNoteTransparencyGrant(careNotesClient, profileId),
-      fetchCareNotesForSubject(careNotesClient, profileId),
-      fetchPrayerRequestsForSubject(careNotesClient, profileId),
-    ]);
+    const [grantRes, notesRes, prayersRes, groupNotesRes, groupPrayersRes] =
+      await Promise.all([
+        fetchNoteTransparencyGrant(careNotesClient, profileId),
+        fetchCareNotesForSubject(careNotesClient, profileId),
+        fetchPrayerRequestsForSubject(careNotesClient, profileId),
+        fetchAuthoredGroupCareNotes(careNotesClient, profileId),
+        fetchAuthoredGroupPrayerRequests(careNotesClient, profileId),
+      ]);
     transparencyGranted = grantRes.data?.granted ?? false;
     careNotes = notesRes.data ?? [];
     prayerRequests = prayersRes.data ?? [];
+
+    // Resolve the group name for each authored group note for display context.
+    const groupNoteRows = groupNotesRes.data ?? [];
+    const groupPrayerRows = groupPrayersRes.data ?? [];
+    const groupIds = Array.from(
+      new Set(
+        [...groupNoteRows, ...groupPrayerRows]
+          .map((r) => r.subject_group_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+    const groupNameById = new Map<string, string>();
+    if (groupIds.length > 0) {
+      const groupsRes = await fetchGroupsByIds(careNotesClient, groupIds);
+      for (const g of groupsRes.data ?? []) groupNameById.set(g.id, g.name);
+    }
+    const toAuthoredNote = (r: {
+      id: string;
+      body: string;
+      created_at: string;
+      subject_group_id: string | null;
+    }): AuthoredGroupNote => ({
+      id: r.id,
+      body: r.body,
+      created_at: r.created_at,
+      groupName: r.subject_group_id
+        ? (groupNameById.get(r.subject_group_id) ?? "their group")
+        : "their group",
+    });
+    authoredGroupCareNotes = groupNoteRows.map(toAuthoredNote);
+    authoredGroupPrayerRequests = groupPrayerRows.map(toAuthoredNote);
   }
   const careNotesPanel = (
     <CareNotesSection
@@ -713,6 +757,8 @@ export default async function AdminShepherdCareDetailPage({
       granted={transparencyGranted}
       careNotes={careNotes}
       prayerRequests={prayerRequests}
+      authoredGroupCareNotes={authoredGroupCareNotes}
+      authoredGroupPrayerRequests={authoredGroupPrayerRequests}
     />
   );
 

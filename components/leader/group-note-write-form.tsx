@@ -52,8 +52,9 @@ export function GroupNoteWriteForm({
     >
       <input type="hidden" name="group_id" value={groupId} />
       <p style={formNoteStyle}>
-        {label}s are private to you by default. Ministry leadership can only
-        read them if your transparency toggle is turned on.
+        {label}s are private to you. The only way ministry leadership can read
+        them is if an admin turns on transparency for you &mdash; that&apos;s
+        their call, not something you set here.
       </p>
       <div className="lg-m-grid-stack" style={formGridStyle}>
         <div style={{ gridColumn: "1 / -1" }}>
