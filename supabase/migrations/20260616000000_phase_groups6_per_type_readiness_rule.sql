@@ -131,6 +131,19 @@ begin
     raise exception 'invalid_input';
   end if;
 
+  -- Serialize concurrent writers to THIS (year, audience) key before reading the
+  -- prior rule, so the audited `before` always reflects the row actually being
+  -- overwritten. Without it, two admins racing the FIRST insert for a brand-new
+  -- key would both pre-read NULL (a SELECT ... FOR UPDATE locks nothing when no
+  -- row exists yet), and the ON CONFLICT loser would overwrite the winner while
+  -- auditing `before: null`. A per-key advisory xact lock (held to commit) makes
+  -- the second writer see the first's committed row. The two int4 keys namespace
+  -- the lock to this table + key, avoiding collisions with other advisory locks.
+  perform pg_advisory_xact_lock(
+    hashtext('audience_readiness_rule'),
+    hashtext(p_ministry_year::text || ':' || p_audience_category)
+  );
+
   -- Snapshot the prior rule (if any) for the audit before/after pair.
   select rule into v_before
     from public.audience_readiness_rule

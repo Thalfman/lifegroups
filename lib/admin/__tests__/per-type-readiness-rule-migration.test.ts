@@ -81,6 +81,19 @@ describe("per-type readiness-rule migration — the write RPC", () => {
     );
   });
 
+  it("serializes concurrent writers per (year, audience) so the audited before is accurate", () => {
+    // A per-key advisory xact lock guards the first-insert race: without it, two
+    // admins racing the first write for a brand-new key both pre-read NULL and the
+    // ON CONFLICT loser audits before:null. The lock makes the second see the
+    // first's committed row.
+    const body = functionBody(sql, "admin_set_audience_readiness_rule");
+    expect(body).toContain("pg_advisory_xact_lock");
+    // The lock is taken BEFORE the prior-rule snapshot, not after.
+    expect(body.indexOf("pg_advisory_xact_lock")).toBeLessThan(
+      body.indexOf("select rule into v_before")
+    );
+  });
+
   it("writes a paired audit_events row for the per-type rule write", () => {
     assertPairedAuditInsert(
       sql,
