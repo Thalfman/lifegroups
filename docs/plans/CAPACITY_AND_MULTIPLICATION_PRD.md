@@ -283,10 +283,10 @@ Grouped by view; each traces to a concept (§3) and names existing code to reuse
 ## 6. Data-model changes
 
 Described as **intent**, not migrations. All additive/nullable; all writes through
-the existing audited path (`runAdminWriteAction` → `SECURITY DEFINER` `admin_*` RPC
-
-- paired `audit_events`), admin-only RLS, no hard deletes (archive via
-  `archived_at`) — consistent with ADR-0001 and the existing pipeline.
+the existing audited path (`runAdminWriteAction` → `SECURITY DEFINER` `admin_*` RPC,
+with a paired `audit_events` row written in the same transaction), admin-only RLS,
+no hard deletes (archive via `archived_at`) — consistent with ADR-0001 and the
+existing pipeline.
 
 1. **`leader_pipeline` (apprentices) — 🆕.** One row per apprentice: `group_id`, a
    `readiness_stage` enum (`identified / in_training / ready_to_lead / launched`),
