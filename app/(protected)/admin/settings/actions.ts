@@ -10,6 +10,8 @@ import {
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
   validateSetCategoryTypeTargetCountPayload,
+  validateReadinessRulePayload,
+  validateCellTriggerOverridePayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
@@ -19,6 +21,8 @@ import {
   type ArchiveGroupCategoryPayload,
   type SetCategoryTypeCellPayload,
   type SetCategoryTypeTargetCountPayload,
+  type ReadinessRulePayload,
+  type CellTriggerOverridePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -37,6 +41,8 @@ import {
   rpcAdminArchiveGroupCategory,
   rpcAdminSetCategoryTypeCell,
   rpcAdminSetCategoryTypeTargetCount,
+  rpcAdminSetReadinessRule,
+  rpcAdminSetCellTriggerOverrides,
 } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
@@ -456,4 +462,69 @@ export async function adminSetCategoryTypeTargetCount(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
+}
+
+// ----- Per-cell readiness rule (#402 / PRD §2.4) --------------------------
+// The Settings > Groups readiness editor posts the GLOBAL rule (ministry_year +
+// the rule JSON) and, per active cell, that cell's overrides (a partial of the
+// rule). Each is its own audited RPC; the validators decode through the pure
+// trust-boundary decoders and the RPCs stay the authoritative gate. Ministry-
+// Admin-owned, so the default requireAdminSession path applies. Revalidates the
+// Multiply boards as well as Settings (the readiness model feeds the Multiply
+// grid in a later slice, #403).
+const READINESS_REVALIDATE_PATHS = [
+  "/admin/settings",
+  "/admin/multiply",
+] as const;
+
+const SET_READINESS_RULE_SPEC: AdminWriteActionSpec<
+  ReadinessRulePayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_readiness_rule",
+  keys: ["ministry_year", "rule"],
+  validate: validateReadinessRulePayload,
+  fields: (_actor, value) => ({ ministry_year: value.ministryYear }),
+  rpc: (client, value) =>
+    rpcAdminSetReadinessRule(client, {
+      p_ministry_year: value.ministryYear,
+      p_rule: value.rule as unknown as Record<string, unknown>,
+    }),
+  revalidate: () => READINESS_REVALIDATE_PATHS,
+  noDataError: "The readiness rule was not saved. Please try again.",
+};
+
+export async function adminSetReadinessRule(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_READINESS_RULE_SPEC, prev, input);
+}
+
+const SET_CELL_TRIGGER_OVERRIDES_SPEC: AdminWriteActionSpec<
+  CellTriggerOverridePayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_cell_trigger_overrides",
+  keys: ["category_id", "audience_category", "overrides"],
+  validate: validateCellTriggerOverridePayload,
+  fields: (_actor, value) => ({
+    target_category_id: value.categoryId,
+    audience_category: value.audienceCategory,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetCellTriggerOverrides(client, {
+      p_category_id: value.categoryId,
+      p_audience_category: value.audienceCategory,
+      p_overrides: value.overrides as unknown as Record<string, unknown>,
+    }),
+  revalidate: () => READINESS_REVALIDATE_PATHS,
+  noDataError: "The cell overrides were not saved. Please try again.",
+};
+
+export async function adminSetCellTriggerOverrides(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_CELL_TRIGGER_OVERRIDES_SPEC, prev, input);
 }

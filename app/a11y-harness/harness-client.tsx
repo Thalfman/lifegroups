@@ -503,6 +503,32 @@ const SETTINGS_DATA: SettingsShellData = {
       gap: 0,
     },
   ],
+  // #402 Settings > Groups: the recast readiness rule — the global rule plus one
+  // override row per active cat-1 cell — so the readiness editor (global controls
+  // + per-cell override disclosures) is in the tree for the a11y scan.
+  readiness: {
+    ministryYear: 2026,
+    rule: {
+      interest: { required: true, min: 3 },
+      capacity: { required: true },
+      groupHealth: { required: false, min: "C" },
+      leaderHealth: { required: false, min: "C" },
+    },
+    cells: [
+      {
+        audienceCategory: "men",
+        categoryId: "cat-1",
+        label: "20-30s",
+        override: { interest: { required: true, min: 5 } },
+      },
+      {
+        audienceCategory: "women",
+        categoryId: "cat-1",
+        label: "20-30s",
+        override: {},
+      },
+    ],
+  },
   // Issue #304: render the super_admin variant so the super-admin-only System
   // tab affordances are in the tree for the a11y scan.
   isSuperAdmin: true,
@@ -514,6 +540,7 @@ const SETTINGS_DATA: SettingsShellData = {
     groupRubric: null,
     leaderRubric: null,
     groupCategories: null,
+    readiness: null,
   },
 };
 
