@@ -2,9 +2,9 @@ import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
-  tallyInterestVolumeByType,
+  tallyCellInterest,
+  type CellInterestTally,
   type InterestProspectRow,
-  type InterestVolumeByType,
 } from "@/lib/admin/prospect-interest";
 import {
   resolveGrade,
@@ -17,20 +17,27 @@ import {
   type RubricScores,
 } from "@/lib/admin/health-rubric";
 
-// Multiplication Pillars config + funnel-volume read model (#380, updated #401).
-// Reads that feed the Multiply boards:
+// Multiplication config + per-cell read models (#380, updated #401/#403). Reads
+// that feed the Multiply surface:
 //   1. fetchMultiplicationConfigs — the per-(type, ministry-year) config rows
 //      (thresholds + trigger), column-allowlisted. RLS already restricts SELECT
 //      to admins (belt-and-braces, matching the health-rubric reads idiom). The
 //      fed-capacity column was retired in #401 — capacity is now derived.
-//   2. fetchFunnelVolumeByType — the interest VOLUME per top type, the per-cell
-//      desired-cell tally (#399): interested-state, non-archived prospects whose
-//      DESIRED top type (named at intake) is that type.
+//   2. fetchCellInterestCounts — the interest HEADCOUNT per CELL (#399/#403): the
+//      count of interested-state, non-archived prospects whose DESIRED cell (top
+//      type × category, named at intake) is each cell. Feeds the per-cell
+//      readiness rule's Interest pillar in its natural unit (people).
 //   3. fetchCellActiveGroupSizes — per-CELL active group member counts (#401),
 //      the input to the derived per-cell capacity ISSUE resolver.
+//   4. fetchCellHealthGrades — per-CELL Group/Leader Health A–F grade arrays
+//      (#403), feeding the readiness rule's two health pillars per cell.
 //
 // The config row's two jsonb columns are decoded into typed config at the trust
 // boundary (lib/admin/multiplication-pillars.ts); the row type here stays raw.
+//
+// #403 retired the per-TYPE roll-ups (fetchFunnelVolumeByType /
+// fetchHealthGradesByType) that fed the old per-type Multiply boards: the boards
+// folded into the per-cell grid, so interest and health are now read per CELL.
 
 // #401: `fed_capacity` is removed from the allowlist — the column was dropped by
 // the retire-fed-capacity migration and capacity is now a derived per-cell issue.
@@ -70,27 +77,19 @@ export async function fetchMultiplicationConfigs(
 }
 
 // ---------------------------------------------------------------------------
-// Interest volume per top type — the per-cell desired-cell tally (#399).
+// Interest headcount per CELL — the desired-cell tally (#399/#403).
 // ---------------------------------------------------------------------------
 //
-// REWIRED in #399 (ADR 0016): interest is no longer the count of active
-// prospects ATTACHED to a group of each type. It is the per-cell desired-cell
-// headcount, rolled up to the per-type number the Interest pillar takes: the
-// count of prospects in state `interested` (NOT matched/joined/not_at_this_time)
-// and not archived whose DESIRED top type (named at intake) is each type. A
-// prospect who named no desired cell — or who has moved past raw interest —
-// contributes nothing. The state-filtering + keying live in the pure
-// lib/admin/prospect-interest core; this read just supplies it bare rows.
+// Interest (ADR 0016) is the per-cell desired-cell HEADCOUNT: the count of
+// prospects in state `interested` (NOT matched/joined/not_at_this_time) and not
+// archived whose DESIRED cell (top type × category, named at intake) is each
+// cell. A prospect who named no desired cell — or who has moved past raw
+// interest — contributes nothing. The state-filtering + per-cell keying live in
+// the pure lib/admin/prospect-interest core; this read just supplies it bare
+// rows. The per-cell grid (#403) reads each cell's count directly via
+// interestForCell; the old per-type roll-up was retired with the boards.
 
-// Per-type interest volume, kept under the FunnelVolumeByType name the Multiply
-// loader already imports so the rewire is internal. Equals InterestVolumeByType.
-export type FunnelVolumeByType = InterestVolumeByType;
-
-export const EMPTY_FUNNEL_VOLUME: FunnelVolumeByType = {
-  men: 0,
-  women: 0,
-  mixed: 0,
-};
+export const EMPTY_CELL_INTEREST: CellInterestTally = {};
 
 // The desired-cell + state/archived columns the tally needs. Allowlisted —
 // never select("*"); RLS already restricts SELECT to admins (belt-and-braces).
@@ -98,15 +97,15 @@ const INTEREST_VOLUME_COLUMNS =
   "state, archived, desired_audience_category, desired_category_id";
 const INTEREST_PAGE_LIMIT = 10000;
 
-// Per-type interest volume from the prospects' desired cells. Filters archived
+// Per-cell interest headcount from the prospects' desired cells. Filters archived
 // rows AND rows with no desired cell in the DB before the page cap, so a church
 // with >INTEREST_PAGE_LIMIT historical or cell-less prospects can't push the
-// countable interested ones off the first page and understate the pillar. Only
+// countable interested ones off the first page and understate a cell. Only
 // interested-state prospects with a fully-named desired cell count (also
-// re-enforced in tallyInterestVolumeByType).
-export async function fetchFunnelVolumeByType(
+// re-enforced in tallyCellInterest).
+export async function fetchCellInterestCounts(
   client: ReadClient
-): Promise<ReadResult<FunnelVolumeByType>> {
+): Promise<ReadResult<CellInterestTally>> {
   const { data, error } = await client
     .from("prospects")
     .select(INTEREST_VOLUME_COLUMNS)
@@ -118,9 +117,9 @@ export async function fetchFunnelVolumeByType(
     .returns<InterestProspectRow[]>();
 
   if (error)
-    return { data: null, error: wrapError("fetchFunnelVolumeByType", error) };
+    return { data: null, error: wrapError("fetchCellInterestCounts", error) };
 
-  return { data: tallyInterestVolumeByType(data ?? []), error: null };
+  return { data: tallyCellInterest(data ?? []), error: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -367,18 +366,19 @@ export async function fetchCellActiveGroupSizes(
 }
 
 // ---------------------------------------------------------------------------
-// Group/Leader Health grade roll-up per group type (#377/#378 → #380).
+// Group/Leader Health grade roll-up per CELL (#377/#378 → #380 → #403).
 // ---------------------------------------------------------------------------
 //
-// The Multiply boards' Group Health and Leader Health pillars roll up that type's
+// The Multiply grid's Group Health and Leader Health pillars roll up each cell's
 // rubric grades over the Ministry Year. We RECOMPUTE each grade's effective letter
 // live from its stored criterion_scores against the CURRENT rubric — never the
 // possibly-stale persisted computed_letter — exactly as the Care detail readers
-// do, so the board and the grade editor always agree even after a rubric edit.
+// do, so the grid and the grade editor always agree even after a rubric edit.
 // The shared override resolver then applies the this-month/until-cleared expiry.
-// Grades bucket by group type; a leader spanning more than one type contributes
-// to every type they actively lead. A type with no grades yields an empty array,
-// so computePillars renders that pillar "—".
+// Grades bucket by CELL (type × category); a group with no category, or a leader's
+// group with no category, contributes to no cell. A leader spanning more than one
+// cell contributes to every cell they actively lead. A cell with no grades is
+// simply absent from the map (the grid rolls an absent cell up to "—").
 
 // The override + scores slice of a grade row, shared by both grade tables. The
 // effective letter is recomputed from `criterion_scores`; `computed_letter` is
@@ -431,16 +431,18 @@ export function effectiveGradeLetter(
 type GroupGradeJoinRow = GradeScoreFields & {
   group: {
     audience_category: GroupAudienceCategory | null;
+    category_id: string | null;
     lifecycle_status: string | null;
   } | null;
 };
 
 type LeaderGradeRow = GradeScoreFields & { profile_id: string };
 
-type LeaderTypeJoinRow = {
+type LeaderCellJoinRow = {
   profile_id: string;
   group: {
     audience_category: GroupAudienceCategory | null;
+    category_id: string | null;
     lifecycle_status: string | null;
   } | null;
   profile: { role: string | null } | null;
@@ -449,84 +451,98 @@ type LeaderTypeJoinRow = {
 const GRADE_SCORE_COLUMNS =
   "criterion_scores, override_letter, override_scope, override_period_month";
 
-// Page cap for the rollup reads, mirroring the funnel read. A ministry year with
+// Page cap for the rollup reads, mirroring the interest read. A ministry year with
 // more grade rows than this would otherwise be silently truncated by PostgREST's
 // default page size and grade the pillar on a partial set.
 const HEALTH_GRADE_PAGE_LIMIT = 10000;
 
-// A grade already resolved to its effective letter, ready for bucketing.
-type ResolvedGroupGrade = {
+// A grade already resolved to its effective letter, ready for per-cell bucketing.
+type ResolvedCellGroupGrade = {
   type: GroupAudienceCategory | null;
+  categoryId: string | null;
   isClosed: boolean;
   letter: GroupHealthLetter | null;
 };
-type ResolvedLeaderGrade = {
-  // Every active, non-closed, categorised group this leader leads.
-  types: ReadonlySet<GroupAudienceCategory>;
+type ResolvedCellLeaderGrade = {
+  // Every cell key (type:categoryId) of an active, non-closed, categorised group
+  // this leader leads.
+  cells: ReadonlySet<string>;
   letter: GroupHealthLetter | null;
 };
 
-// The per-type effective A–F letter arrays feeding the two health pillars.
-export type HealthGradesByType = Record<
-  GroupAudienceCategory,
+// The per-CELL effective A–F letter arrays feeding the two health pillars, keyed
+// by `${audience_category}:${category_id}` (single colon — matching the readiness
+// + interest cell keys, distinct from the capacity read's double-colon key). A
+// cell with no grades is simply absent from the map.
+export type CellHealthGrades = Map<
+  string,
   { groupGrades: GroupHealthLetter[]; leaderGrades: GroupHealthLetter[] }
 >;
 
-export const EMPTY_HEALTH_GRADES: HealthGradesByType = {
-  men: { groupGrades: [], leaderGrades: [] },
-  women: { groupGrades: [], leaderGrades: [] },
-  mixed: { groupGrades: [], leaderGrades: [] },
-};
+export const EMPTY_CELL_HEALTH_GRADES: CellHealthGrades = new Map();
 
 function isCategory(value: unknown): value is GroupAudienceCategory {
   return value === "men" || value === "women" || value === "mixed";
 }
 
-// Pure bucketer (exported for testing): bucket each resolved group grade under
-// its type (dropping closed groups and ungraded rows) and each resolved leader
-// grade under EVERY type that leader actively leads, so a multi-type leader feeds
-// each of their boards' Leader Health pillar.
-export function tallyHealthGrades(
-  groupGrades: ResolvedGroupGrade[],
-  leaderGrades: ResolvedLeaderGrade[]
-): HealthGradesByType {
-  const out: HealthGradesByType = {
-    men: { groupGrades: [], leaderGrades: [] },
-    women: { groupGrades: [], leaderGrades: [] },
-    mixed: { groupGrades: [], leaderGrades: [] },
+// The per-cell health key — the same single-colon shape the readiness inputs use.
+export function cellHealthKey(
+  type: GroupAudienceCategory,
+  categoryId: string
+): string {
+  return `${type}:${categoryId}`;
+}
+
+// Pure bucketer (exported for testing): bucket each resolved group grade under its
+// CELL (dropping closed groups, ungraded rows, and rows with no type/category) and
+// each resolved leader grade under EVERY cell that leader actively leads, so a
+// leader spanning more than one cell feeds each cell's Leader Health pillar.
+export function tallyCellHealthGrades(
+  groupGrades: ResolvedCellGroupGrade[],
+  leaderGrades: ResolvedCellLeaderGrade[]
+): CellHealthGrades {
+  const out: CellHealthGrades = new Map();
+  const ensure = (key: string) => {
+    let entry = out.get(key);
+    if (!entry) {
+      entry = { groupGrades: [], leaderGrades: [] };
+      out.set(key, entry);
+    }
+    return entry;
   };
 
   for (const g of groupGrades) {
-    if (!g.letter || g.isClosed || !isCategory(g.type)) continue;
-    out[g.type].groupGrades.push(g.letter);
+    if (!g.letter || g.isClosed) continue;
+    if (!isCategory(g.type) || g.categoryId == null) continue;
+    ensure(cellHealthKey(g.type, g.categoryId)).groupGrades.push(g.letter);
   }
 
   for (const l of leaderGrades) {
     if (!l.letter) continue;
-    for (const type of l.types) out[type].leaderGrades.push(l.letter);
+    for (const key of l.cells) ensure(key).leaderGrades.push(l.letter);
   }
 
   return out;
 }
 
-// Read + resolve the per-type Group/Leader Health grade arrays for a ministry
+// Read + resolve the per-CELL Group/Leader Health grade arrays for a ministry
 // year. Reads both rubrics (to recompute live), the two grade tables' scores +
-// overrides, and the active leader→type map, then resolves + buckets purely. A
-// read failure surfaces as an error so the board notes it rather than silently
+// overrides, and the active leader→cell map, then resolves + buckets purely. A
+// read failure surfaces as an error so the grid notes it rather than silently
 // grading on partial data.
-export async function fetchHealthGradesByType(
+export async function fetchCellHealthGrades(
   client: ReadClient,
   ministryYear: number,
   periodMonthIso: string
-): Promise<ReadResult<HealthGradesByType>> {
-  const [groupRubricRes, leaderRubricRes, groupRes, leaderRes, leaderTypeRes] =
+): Promise<ReadResult<CellHealthGrades>> {
+  const [groupRubricRes, leaderRubricRes, groupRes, leaderRes, leaderCellRes] =
     await Promise.all([
       fetchHealthRubric(client, "group"),
       fetchHealthRubric(client, "leader"),
       client
         .from("group_rubric_grades")
         .select(
-          `${GRADE_SCORE_COLUMNS}, group:groups(audience_category, lifecycle_status)`
+          `${GRADE_SCORE_COLUMNS}, group:groups(audience_category, category_id, lifecycle_status)`
         )
         .eq("ministry_year", ministryYear)
         .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
@@ -544,12 +560,12 @@ export async function fetchHealthGradesByType(
         // role-guard predicate documents that group_leaders rows don't cascade on
         // a role change, so an ex-leader's grade must not keep feeding the pillar.
         .select(
-          "profile_id, group:groups(audience_category, lifecycle_status), profile:profiles(role)"
+          "profile_id, group:groups(audience_category, category_id, lifecycle_status), profile:profiles(role)"
         )
         .eq("active", true)
         .in("role", ["leader", "co_leader"])
         .range(0, HEALTH_GRADE_PAGE_LIMIT - 1)
-        .returns<LeaderTypeJoinRow[]>(),
+        .returns<LeaderCellJoinRow[]>(),
     ]);
 
   for (const [label, res] of [
@@ -557,12 +573,12 @@ export async function fetchHealthGradesByType(
     ["leaderRubric", leaderRubricRes],
     ["group", groupRes],
     ["leader", leaderRes],
-    ["leaderType", leaderTypeRes],
+    ["leaderCell", leaderCellRes],
   ] as const) {
     if (res.error)
       return {
         data: null,
-        error: wrapError(`fetchHealthGradesByType/${label}`, res.error),
+        error: wrapError(`fetchCellHealthGrades/${label}`, res.error),
       };
   }
 
@@ -573,11 +589,12 @@ export async function fetchHealthGradesByType(
     criteria: decodeRubricCriteria(leaderRubricRes.data?.criteria ?? null),
   };
 
-  // A leader's set of active, non-closed, categorised types. A closed group's
+  // A leader's set of active, non-closed, categorised CELL keys. A closed group's
   // group_leaders rows can stay active (Care code relies on that), so closed
-  // groups are excluded — matching the closed-group drop on the group side.
-  const leaderTypesByProfile = new Map<string, Set<GroupAudienceCategory>>();
-  for (const row of leaderTypeRes.data ?? []) {
+  // groups are excluded — matching the closed-group drop on the group side. A
+  // group with no category belongs to no cell and is skipped.
+  const leaderCellsByProfile = new Map<string, Set<string>>();
+  for (const row of leaderCellRes.data ?? []) {
     if (row.group?.lifecycle_status === "closed") continue;
     // The profile must still BE a leader/co_leader — a stale active group_leaders
     // row left behind by a role change does not count (matches os7's predicate,
@@ -585,15 +602,17 @@ export async function fetchHealthGradesByType(
     const profileRole = row.profile?.role ?? null;
     if (profileRole !== "leader" && profileRole !== "co_leader") continue;
     const type = row.group?.audience_category ?? null;
-    if (!isCategory(type)) continue;
-    const set = leaderTypesByProfile.get(row.profile_id) ?? new Set();
-    set.add(type);
-    leaderTypesByProfile.set(row.profile_id, set);
+    const categoryId = row.group?.category_id ?? null;
+    if (!isCategory(type) || categoryId == null) continue;
+    const set = leaderCellsByProfile.get(row.profile_id) ?? new Set();
+    set.add(cellHealthKey(type, categoryId));
+    leaderCellsByProfile.set(row.profile_id, set);
   }
 
-  const groupGrades: ResolvedGroupGrade[] = (groupRes.data ?? []).map(
+  const groupGrades: ResolvedCellGroupGrade[] = (groupRes.data ?? []).map(
     (row) => ({
       type: row.group?.audience_category ?? null,
+      categoryId: row.group?.category_id ?? null,
       isClosed: row.group?.lifecycle_status === "closed",
       letter: effectiveGradeLetter(
         groupRubric,
@@ -604,9 +623,9 @@ export async function fetchHealthGradesByType(
     })
   );
 
-  const leaderGrades: ResolvedLeaderGrade[] = (leaderRes.data ?? []).map(
+  const leaderGrades: ResolvedCellLeaderGrade[] = (leaderRes.data ?? []).map(
     (row) => ({
-      types: leaderTypesByProfile.get(row.profile_id) ?? new Set(),
+      cells: leaderCellsByProfile.get(row.profile_id) ?? new Set(),
       letter: effectiveGradeLetter(
         leaderRubric,
         decodeScores(row.criterion_scores),
@@ -616,5 +635,8 @@ export async function fetchHealthGradesByType(
     })
   );
 
-  return { data: tallyHealthGrades(groupGrades, leaderGrades), error: null };
+  return {
+    data: tallyCellHealthGrades(groupGrades, leaderGrades),
+    error: null,
+  };
 }

@@ -69,39 +69,3 @@ export function interestForCell(
 ): number {
   return tally[cellInterestKey(audienceCategory, categoryId)] ?? 0;
 }
-
-// Per-TOP-TYPE interest volume, summed over that type's cells. The Multiply
-// boards are per top type (men/women/mixed) and each board's Interest pillar
-// takes a single volume number; this rolls the per-cell tally up to that number
-// by counting interested, non-archived prospects whose DESIRED top type is each
-// type (regardless of which category within it). This REPLACES the old
-// "joined/matched group's type" funnel volume (tallyFunnelVolume): interest is
-// now the count of people who SAID they want a group of that type and are still
-// interested, not the count attached to a group of that type.
-export type InterestVolumeByType = Record<GroupAudienceCategory, number>;
-
-export const EMPTY_INTEREST_VOLUME: InterestVolumeByType = {
-  men: 0,
-  women: 0,
-  mixed: 0,
-};
-
-export function tallyInterestVolumeByType(
-  rows: readonly InterestProspectRow[]
-): InterestVolumeByType {
-  const out: InterestVolumeByType = { men: 0, women: 0, mixed: 0 };
-  for (const row of rows) {
-    if (row.state !== "interested") continue;
-    if (row.archived) continue;
-    const audience = row.desired_audience_category;
-    const category = row.desired_category_id;
-    // A real desired cell needs BOTH coordinates (mirrors tallyCellInterest), so
-    // a half-named prospect feeds no type — keeping the per-type roll-up exactly
-    // the sum of the per-cell tally.
-    if (audience == null || category == null) continue;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed")
-      continue;
-    out[audience] += 1;
-  }
-  return out;
-}
