@@ -29,7 +29,7 @@ function baseGroup(overrides: Partial<GroupsRow> = {}): GroupsRow {
     lifecycle_status: "active",
     health_status: "healthy",
     audience_category: null,
-    life_stage: null,
+    category_id: null,
     launched_on: null,
     pause_reason: null,
     pause_start_date: null,
@@ -120,7 +120,7 @@ describe("ADMIN_FALLBACK — no retired check-in signal", () => {
   // changed to drop.
   it("seeds no missing_check_in attention item", () => {
     expect(
-      ADMIN_FALLBACK.attentionItems.some((i) => i.reason === "missing_check_in"),
+      ADMIN_FALLBACK.attentionItems.some((i) => i.reason === "missing_check_in")
     ).toBe(false);
   });
 });

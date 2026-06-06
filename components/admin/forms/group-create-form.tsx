@@ -16,8 +16,13 @@ import {
   MEETING_FREQUENCY_OPTIONS,
   MEETING_PARITY_OPTIONS,
 } from "./meeting-schedule-options";
-import type { MeetingFrequency } from "@/types/enums";
+import type { GroupAudienceCategory, MeetingFrequency } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
+import {
+  EMPTY_CATEGORIES_BY_AUDIENCE,
+  optionsForAudience,
+  type CategoriesByAudience,
+} from "./group-category-options";
 
 export function GroupCreateForm({
   // G3 (#222): a new group's capacity defaults to the ministry-wide
@@ -34,12 +39,16 @@ export function GroupCreateForm({
   onDirty,
   onCancel,
   onPendingChange,
+  // #398: the category-picker options grouped by top type. The picker filters to
+  // the categories applied to the group's selected audience (its cell).
+  categoriesByAudience = EMPTY_CATEGORIES_BY_AUDIENCE,
 }: {
   defaultCapacity: number | null;
   onSaved?: () => void;
   onDirty?: () => void;
   onCancel?: () => void;
   onPendingChange?: (pending: boolean) => void;
+  categoriesByAudience?: CategoriesByAudience;
 }) {
   const { state, formAction, pending, formRef } = useActionForm<{ id: string }>(
     adminCreateGroup,
@@ -47,6 +56,9 @@ export function GroupCreateForm({
   );
   const [frequency, setFrequency] = useState<MeetingFrequency>("weekly");
   const [showMore, setShowMore] = useState(false);
+  // #398: the live audience selection drives which categories the picker offers
+  // (only those with an active cell under that top type). "" = unset.
+  const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
 
   // useActionForm resets the <form> element on success; the local UI state
   // (frequency select, expanded "More details") lives in React, so reset it too.
@@ -56,6 +68,7 @@ export function GroupCreateForm({
     if (!state?.ok) return;
     setFrequency("weekly");
     setShowMore(false);
+    setAudience("");
     onSaved?.();
   }, [state, onSaved]);
 
@@ -277,7 +290,10 @@ export function GroupCreateForm({
           <select
             id="group-audience_category"
             name="audience_category"
-            defaultValue=""
+            value={audience}
+            onChange={(e) =>
+              setAudience(e.target.value as GroupAudienceCategory | "")
+            }
             style={fieldSelectStyle}
           >
             <option value="">Unset</option>
@@ -287,26 +303,40 @@ export function GroupCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="group-life_stage" style={fieldLabelStyle}>
-            Life stage (optional)
+          <label htmlFor="group-category_id" style={fieldLabelStyle}>
+            Category (optional)
           </label>
           <select
-            id="group-life_stage"
-            name="life_stage"
+            id="group-category_id"
+            name="category_id"
+            // Keyed by audience so the selection resets when the top type
+            // changes (a category from the old type wouldn't apply to the new
+            // one). "" = Uncategorized.
+            key={audience}
             defaultValue=""
+            disabled={!audience}
             style={fieldSelectStyle}
           >
-            <option value="">Unset</option>
-            <option value="young_professionals">Young professionals</option>
-            <option value="young_families">Young families</option>
-            <option value="families_with_kids">Families with kids/teens</option>
-            <option value="families_with_adult_kids">
-              Families with adult kids
-            </option>
-            <option value="retirement">Retirement</option>
-            <option value="multi_generational">Multi-generational</option>
-            <option value="spanish_speaking">Spanish speaking</option>
+            <option value="">Uncategorized</option>
+            {optionsForAudience(categoriesByAudience, audience).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
           </select>
+          <p
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              margin: "6px 0 0",
+              lineHeight: 1.4,
+            }}
+          >
+            {audience
+              ? "Categories applied to this audience. Leave Uncategorized to tag it later."
+              : "Pick an audience first to choose a category. Until then the group is Uncategorized."}
+          </p>
         </div>
         <div>
           <label htmlFor="group-launched_on" style={fieldLabelStyle}>

@@ -317,6 +317,9 @@ export async function buildLaunchPlanningData(
         coShepherdSinceByGroup: boardExtras.coShepherdSinceByGroup,
         candidateFlagsByGroup: boardExtras.candidateFlagsByGroup,
         candidateGroupIds: boardExtras.candidateGroupIds,
+        categoryLabelByGroup: new Map(
+          Object.entries(boardExtras.categoryLabelByGroup)
+        ),
         todayIso,
       });
 

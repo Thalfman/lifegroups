@@ -106,17 +106,21 @@ Mixed / couples. A user-facing grouping on the capacity board and the
 multiplication planner.
 _Avoid_: Segment, gender category.
 
-**Stage of life**:
-The season a Life Group serves, by the `life_stage` attribute — young
-professionals, young families, retirement, and so on. Pairs with Audience to
-describe a group; a group with neither set reads as **Not categorized**.
-_Avoid_: Segment, age bracket, cohort.
+**Category**:
+The free-form bracket a Life Group serves, by the `category_id` attribute — a
+label from the `group_categories` catalog (e.g. "20-30s", "Young families"),
+applied to the group's Audience via a cell (`category_type_targets`). Replaced
+the retired `life_stage` enum as the single segmentation source (#398). A group
+with no category reads as **Uncategorized** — a visible bucket so untagged
+groups are never lost. The `group_life_stage` enum type still exists but is no
+longer read by any code path.
+_Avoid_: Segment, age bracket, cohort, life stage (the old enum).
 
 **Segment**:
-The internal umbrella term for the Audience × Stage-of-life bucket a group falls
-into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`); it is
-**not shown to users** — surfaces say Audience, Stage of life, or Group type
-instead. Treated like "Admin OS": an internal-only name.
+The internal umbrella term for the Audience × Category bucket (the cell) a group
+falls into. Stays in code and docs (`segmentLabel`, `buildPlannerSegments`,
+`bucketGroupsBySegment`); it is **not shown to users** — surfaces say Audience,
+Category, or Group type instead. Treated like "Admin OS": an internal-only name.
 _Avoid_: Segment, segmented, unsegmented (as user-facing labels).
 
 ### Interest funnel concepts

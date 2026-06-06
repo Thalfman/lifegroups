@@ -102,8 +102,10 @@ export type FedCapacity = {
 // The plain inputs the resolver grades. Grade arrays are A–F letters as the
 // parallel grade-storage slices will supply them; empty arrays yield "—".
 export type PillarInputs = {
-  // The Interest Funnel volume for this type (count of active prospects whose
-  // matched/joined group is of this type). Drives the Interest pillar.
+  // The interest volume for this type (#399): the count of prospects in state
+  // `interested` (not matched/joined/not_at_this_time, not archived) whose
+  // DESIRED top type — named at intake — is this type. Drives the Interest
+  // pillar. (Was the count attached to a group of this type, before #399.)
   funnelVolume: number;
   // This type's group-health grades within the Ministry Year (A–F). Empty ⇒ "—".
   groupGrades: HealthLetter[];

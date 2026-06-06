@@ -24,6 +24,7 @@ import type {
 } from "@/types/database";
 import type {
   FollowUpStatus,
+  GroupAudienceCategory,
   GuestPipelineStage,
   LeaderReadinessStage,
   MembershipStatus,
@@ -722,13 +723,14 @@ const MULTIPLICATION_CANDIDATE_COLUMNS =
 
 export type MultiplicationCandidateGroup = Pick<
   GroupsRow,
-  | "id"
-  | "name"
-  | "audience_category"
-  | "life_stage"
-  | "launched_on"
-  | "lifecycle_status"
->;
+  "id" | "name" | "audience_category" | "launched_on" | "lifecycle_status"
+> & {
+  // #398: the group's category label, resolved from category_id →
+  // group_categories.label. null = Uncategorized (no category, or its category
+  // was archived). Replaces the retired life_stage field as the segmentation
+  // axis the planner buckets by.
+  category_label: string | null;
+};
 
 // Capacity & Multiplication #184: the linked apprentice's identity + stage,
 // surfaced inline in the planner. Null when the candidate has no link.
@@ -787,7 +789,7 @@ export async function fetchMultiplicationCandidatesForAdmin(
       client
         .from("groups")
         .select(
-          "id, name, audience_category, life_stage, launched_on, lifecycle_status"
+          "id, name, audience_category, category_id, launched_on, lifecycle_status"
         )
         .in("id", groupIds),
       client
@@ -858,9 +860,62 @@ export async function fetchMultiplicationCandidatesForAdmin(
     });
   }
 
+  // #398: resolve each group's category_id to its catalog label so the planner
+  // buckets by audience × category label. Batch-read the referenced categories
+  // (one extra round-trip keyed by the distinct category ids) and map id →
+  // label; a null/absent/archived category resolves to null = Uncategorized.
+  type GroupCategoryProjection = {
+    id: string;
+    audience_category: GroupAudienceCategory | null;
+    category_id: string | null;
+    launched_on: string | null;
+    lifecycle_status: GroupsRow["lifecycle_status"];
+    name: string;
+  };
+  const groupRows = (groupsRes.data ?? []) as GroupCategoryProjection[];
+  const categoryIds = [
+    ...new Set(
+      groupRows
+        .map((g) => g.category_id)
+        .filter((id): id is string => id != null)
+    ),
+  ];
+  const categoryLabelById = new Map<string, string>();
+  if (categoryIds.length > 0) {
+    const categoriesRes = await client
+      .from("group_categories")
+      .select("id, label")
+      .in("id", categoryIds)
+      .is("archived_at", null);
+    if (categoriesRes.error) {
+      return {
+        data: null,
+        error: wrapError(
+          "fetchMultiplicationCandidatesForAdmin/categories",
+          categoriesRes.error
+        ),
+      };
+    }
+    for (const c of (categoriesRes.data ?? []) as {
+      id: string;
+      label: string;
+    }[]) {
+      categoryLabelById.set(c.id, c.label);
+    }
+  }
+
   const groupById = new Map<string, MultiplicationCandidateGroup>();
-  for (const g of (groupsRes.data ?? []) as MultiplicationCandidateGroup[]) {
-    groupById.set(g.id, g);
+  for (const g of groupRows) {
+    groupById.set(g.id, {
+      id: g.id,
+      name: g.name,
+      audience_category: g.audience_category,
+      launched_on: g.launched_on,
+      lifecycle_status: g.lifecycle_status,
+      category_label: g.category_id
+        ? (categoryLabelById.get(g.category_id) ?? null)
+        : null,
+    });
   }
 
   const memberCountByGroup = new Map<string, number>();
@@ -973,6 +1028,10 @@ export type CapacityBoardExtras = {
     { shepherdWilling: boolean; needsSimilarStage: boolean }
   >;
   candidateGroupIds: string[];
+  // #398: group id → resolved category label (from category_id →
+  // group_categories.label), so the board's segment is audience × category
+  // label. A group with no/archived category is simply absent (= Uncategorized).
+  categoryLabelByGroup: Record<string, string>;
   error: string | null;
 };
 
@@ -984,24 +1043,28 @@ export async function fetchCapacityBoardExtras(
     coShepherdSinceByGroup: {},
     candidateFlagsByGroup: {},
     candidateGroupIds: [],
+    categoryLabelByGroup: {},
     error: null,
   };
 
-  const [apprenticesRes, leadersRes, candidatesRes] = await Promise.all([
-    client
-      .from("leader_pipeline")
-      .select("id, group_id, display_name, readiness_stage")
-      .is("archived_at", null),
-    client
-      .from("group_leaders")
-      .select("group_id, assigned_at, role, active")
-      .eq("role", "co_leader")
-      .eq("active", true),
-    client
-      .from("multiplication_candidates")
-      .select("group_id, shepherd_willing, needs_similar_stage")
-      .is("archived_at", null),
-  ]);
+  const [apprenticesRes, leadersRes, candidatesRes, groupsRes] =
+    await Promise.all([
+      client
+        .from("leader_pipeline")
+        .select("id, group_id, display_name, readiness_stage")
+        .is("archived_at", null),
+      client
+        .from("group_leaders")
+        .select("group_id, assigned_at, role, active")
+        .eq("role", "co_leader")
+        .eq("active", true),
+      client
+        .from("multiplication_candidates")
+        .select("group_id, shepherd_willing, needs_similar_stage")
+        .is("archived_at", null),
+      // #398: each group's category id, to resolve the board's segment label.
+      client.from("groups").select("id, category_id"),
+    ]);
 
   const error =
     (apprenticesRes.error &&
@@ -1013,8 +1076,53 @@ export async function fetchCapacityBoardExtras(
     (candidatesRes.error &&
       wrapError("fetchCapacityBoardExtras/candidates", candidatesRes.error)
         .message) ||
+    (groupsRes.error &&
+      wrapError("fetchCapacityBoardExtras/groups", groupsRes.error).message) ||
     null;
   if (error) return { ...empty, error };
+
+  // #398: resolve each group's category_id to its catalog label (live
+  // categories only) so the board buckets by audience × category label.
+  const categoryLabelByGroup: Record<string, string> = {};
+  const groupRows = (groupsRes.data ?? []) as {
+    id: string;
+    category_id: string | null;
+  }[];
+  const boardCategoryIds = [
+    ...new Set(
+      groupRows
+        .map((g) => g.category_id)
+        .filter((id): id is string => id != null)
+    ),
+  ];
+  if (boardCategoryIds.length > 0) {
+    const categoriesRes = await client
+      .from("group_categories")
+      .select("id, label")
+      .in("id", boardCategoryIds)
+      .is("archived_at", null);
+    if (categoriesRes.error) {
+      return {
+        ...empty,
+        error: wrapError(
+          "fetchCapacityBoardExtras/categories",
+          categoriesRes.error
+        ).message,
+      };
+    }
+    const labelById = new Map<string, string>();
+    for (const c of (categoriesRes.data ?? []) as {
+      id: string;
+      label: string;
+    }[]) {
+      labelById.set(c.id, c.label);
+    }
+    for (const g of groupRows) {
+      if (g.category_id && labelById.has(g.category_id)) {
+        categoryLabelByGroup[g.id] = labelById.get(g.category_id)!;
+      }
+    }
+  }
 
   const coShepherdSinceByGroup: Record<string, string> = {};
   for (const l of (leadersRes.data ?? []) as {
@@ -1050,6 +1158,7 @@ export async function fetchCapacityBoardExtras(
     coShepherdSinceByGroup,
     candidateFlagsByGroup,
     candidateGroupIds,
+    categoryLabelByGroup,
     error: null,
   };
 }

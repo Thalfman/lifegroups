@@ -34,6 +34,7 @@ const EMPTY_EXTRAS: CapacityBoardExtras = {
   coShepherdSinceByGroup: {},
   candidateFlagsByGroup: {},
   candidateGroupIds: [],
+  categoryLabelByGroup: {},
   error: null,
 };
 

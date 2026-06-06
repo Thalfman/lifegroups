@@ -30,7 +30,7 @@ function group(over: Partial<GroupsRow> & { id: string }): GroupsRow {
     lifecycle_status: over.lifecycle_status ?? "active",
     health_status: "healthy",
     audience_category: over.audience_category ?? "mixed",
-    life_stage: over.life_stage ?? "families_with_kids",
+    category_id: over.category_id ?? null,
     launched_on: over.launched_on ?? null,
     pause_reason: null,
     pause_start_date: null,
@@ -39,6 +39,7 @@ function group(over: Partial<GroupsRow> & { id: string }): GroupsRow {
     admin_notes: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
+    closed_at: null,
   } as GroupsRow;
 }
 

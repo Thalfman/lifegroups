@@ -2,6 +2,11 @@ import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
+  tallyInterestVolumeByType,
+  type InterestProspectRow,
+  type InterestVolumeByType,
+} from "@/lib/admin/prospect-interest";
+import {
   resolveGrade,
   type GradeOverrideScope,
 } from "@/lib/admin/group-health-override";
@@ -18,8 +23,9 @@ import {
 //      (thresholds + trigger + fed capacity), column-allowlisted. RLS already
 //      restricts SELECT to admins (belt-and-braces, matching the health-rubric
 //      reads idiom).
-//   2. fetchFunnelVolumeByType — the Interest Funnel VOLUME per group type,
-//      derived from active prospects whose matched/joined group is of that type.
+//   2. fetchFunnelVolumeByType — the interest VOLUME per top type, rewired in
+//      #399 to the per-cell desired-cell tally: interested-state, non-archived
+//      prospects whose DESIRED top type (named at intake) is that type.
 //
 // The config row's three jsonb columns are decoded into typed config at the trust
 // boundary (lib/admin/multiplication-pillars.ts); the row type here stays raw.
@@ -61,24 +67,21 @@ export async function fetchMultiplicationConfigs(
 }
 
 // ---------------------------------------------------------------------------
-// Interest Funnel volume per group type.
+// Interest volume per top type — the per-cell desired-cell tally (#399).
 // ---------------------------------------------------------------------------
+//
+// REWIRED in #399 (ADR 0016): interest is no longer the count of active
+// prospects ATTACHED to a group of each type. It is the per-cell desired-cell
+// headcount, rolled up to the per-type number the Interest pillar takes: the
+// count of prospects in state `interested` (NOT matched/joined/not_at_this_time)
+// and not archived whose DESIRED top type (named at intake) is each type. A
+// prospect who named no desired cell — or who has moved past raw interest —
+// contributes nothing. The state-filtering + keying live in the pure
+// lib/admin/prospect-interest core; this read just supplies it bare rows.
 
-// The funnel-volume read joins active (non-archived) prospects to their attached
-// group's audience_category. A prospect with no group, or a group with no
-// category, contributes to no type's volume (it isn't yet a type-specific signal).
-type FunnelVolumeJoinRow = {
-  id: string;
-  archived: boolean;
-  group: { audience_category: GroupAudienceCategory | null } | null;
-};
-
-const FUNNEL_VOLUME_COLUMNS = "id, archived, group:groups(audience_category)";
-const FUNNEL_PAGE_LIMIT = 10000;
-
-// Per-type Interest Funnel volume: the count of active prospects whose attached
-// group is of each type. Drives the Interest pillar's input.
-export type FunnelVolumeByType = Record<GroupAudienceCategory, number>;
+// Per-type interest volume, kept under the FunnelVolumeByType name the Multiply
+// loader already imports so the rewire is internal. Equals InterestVolumeByType.
+export type FunnelVolumeByType = InterestVolumeByType;
 
 export const EMPTY_FUNNEL_VOLUME: FunnelVolumeByType = {
   men: 0,
@@ -86,41 +89,35 @@ export const EMPTY_FUNNEL_VOLUME: FunnelVolumeByType = {
   mixed: 0,
 };
 
-// Count active prospects per group type. Reads prospects + their group's audience
-// category in one round-trip, then tallies in TS. Archived prospects (joined /
-// parked-off-board) are excluded — the funnel volume is the LIVE interest signal.
+// The desired-cell + state/archived columns the tally needs. Allowlisted —
+// never select("*"); RLS already restricts SELECT to admins (belt-and-braces).
+const INTEREST_VOLUME_COLUMNS =
+  "state, archived, desired_audience_category, desired_category_id";
+const INTEREST_PAGE_LIMIT = 10000;
+
+// Per-type interest volume from the prospects' desired cells. Filters archived
+// rows AND rows with no desired cell in the DB before the page cap, so a church
+// with >INTEREST_PAGE_LIMIT historical or cell-less prospects can't push the
+// countable interested ones off the first page and understate the pillar. Only
+// interested-state prospects with a fully-named desired cell count (also
+// re-enforced in tallyInterestVolumeByType).
 export async function fetchFunnelVolumeByType(
   client: ReadClient
 ): Promise<ReadResult<FunnelVolumeByType>> {
   const { data, error } = await client
     .from("prospects")
-    .select(FUNNEL_VOLUME_COLUMNS)
-    // Filter archived (joined / parked-off-board) rows in the DB BEFORE the page
-    // cap, so a church with >FUNNEL_PAGE_LIMIT historical prospects can't push
-    // active ones off the first page and understate the Interest pillar.
+    .select(INTEREST_VOLUME_COLUMNS)
     .eq("archived", false)
-    .range(0, FUNNEL_PAGE_LIMIT - 1)
-    .returns<FunnelVolumeJoinRow[]>();
+    .eq("state", "interested")
+    .not("desired_audience_category", "is", null)
+    .not("desired_category_id", "is", null)
+    .range(0, INTEREST_PAGE_LIMIT - 1)
+    .returns<InterestProspectRow[]>();
 
   if (error)
     return { data: null, error: wrapError("fetchFunnelVolumeByType", error) };
 
-  return { data: tallyFunnelVolume(data ?? []), error: null };
-}
-
-// Pure tally (exported for testing): count non-archived prospects per type.
-export function tallyFunnelVolume(
-  rows: FunnelVolumeJoinRow[]
-): FunnelVolumeByType {
-  const out: FunnelVolumeByType = { men: 0, women: 0, mixed: 0 };
-  for (const row of rows) {
-    if (row.archived) continue;
-    const type = row.group?.audience_category ?? null;
-    if (type === "men" || type === "women" || type === "mixed") {
-      out[type] += 1;
-    }
-  }
-  return out;
+  return { data: tallyInterestVolumeByType(data ?? []), error: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -348,16 +345,18 @@ export async function fetchHealthGradesByType(
     leaderTypesByProfile.set(row.profile_id, set);
   }
 
-  const groupGrades: ResolvedGroupGrade[] = (groupRes.data ?? []).map((row) => ({
-    type: row.group?.audience_category ?? null,
-    isClosed: row.group?.lifecycle_status === "closed",
-    letter: effectiveGradeLetter(
-      groupRubric,
-      decodeScores(row.criterion_scores),
-      row,
-      periodMonthIso
-    ),
-  }));
+  const groupGrades: ResolvedGroupGrade[] = (groupRes.data ?? []).map(
+    (row) => ({
+      type: row.group?.audience_category ?? null,
+      isClosed: row.group?.lifecycle_status === "closed",
+      letter: effectiveGradeLetter(
+        groupRubric,
+        decodeScores(row.criterion_scores),
+        row,
+        periodMonthIso
+      ),
+    })
+  );
 
   const leaderGrades: ResolvedLeaderGrade[] = (leaderRes.data ?? []).map(
     (row) => ({

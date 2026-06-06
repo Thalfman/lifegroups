@@ -16,7 +16,8 @@ export default async function AdminPlanPage() {
   await requireAdmin();
   const data = await loadPlanData();
 
-  const error = data.errors.prospects ?? data.errors.groups;
+  const error =
+    data.errors.prospects ?? data.errors.groups ?? data.errors.categoryOptions;
 
   return (
     <>
@@ -36,7 +37,9 @@ export default async function AdminPlanPage() {
               padding: "20px 22px",
             }}
           >
-            <ProspectCreateForm />
+            <ProspectCreateForm
+              categoryOptionsByAudience={data.categoryOptionsByAudience}
+            />
           </section>
 
           {error ? (

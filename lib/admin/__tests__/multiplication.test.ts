@@ -5,6 +5,7 @@ import {
   filterSegmentsByYear,
   segmentLabel,
   summarizeTargetYears,
+  UNCATEGORIZED_SEGMENT,
   wholeYearsBetween,
 } from "@/lib/admin/multiplication";
 import type { MultiplicationCandidateEntry } from "@/lib/supabase/read-models";
@@ -17,7 +18,9 @@ function entry(over: {
   id: string;
   groupName?: string;
   audience?: "men" | "women" | "mixed" | null;
-  lifeStage?: "young_professionals" | "young_families" | "retirement" | null;
+  // #398: the group's category label (resolved from category_id), or null =
+  // Uncategorized. Replaces the old life_stage axis.
+  categoryLabel?: string | null;
   targetYear?: number | null;
   activeMemberCount?: number;
   launchedOn?: string | null;
@@ -51,7 +54,10 @@ function entry(over: {
             id: `g-${over.id}`,
             name: over.groupName ?? `Group ${over.id}`,
             audience_category: over.audience ?? "men",
-            life_stage: over.lifeStage ?? "young_families",
+            category_label:
+              over.categoryLabel === undefined
+                ? "Young families"
+                : over.categoryLabel,
             launched_on: over.launchedOn ?? null,
             lifecycle_status: "active",
           },
@@ -131,27 +137,31 @@ describe("evaluateReadiness (Julian P4 answer 10 criteria)", () => {
   });
 });
 
-describe("segmentLabel", () => {
-  it("combines audience and life stage", () => {
-    expect(segmentLabel("mixed", "retirement")).toBe(
+describe("segmentLabel (#398: audience × category label)", () => {
+  it("combines audience and the free-form category label", () => {
+    expect(segmentLabel("mixed", "Retirement")).toBe(
       "Mixed / couples · Retirement"
     );
-    expect(segmentLabel("men", null)).toBe("Men");
-    expect(segmentLabel(null, null)).toBe("Not categorized");
+    // A group with an audience but NO category has no cell, so it buckets under
+    // Uncategorized rather than masquerading as an audience-only segment.
+    expect(segmentLabel("men", null)).toBe("Uncategorized");
+    // No audience and no category → the visible Uncategorized bucket.
+    expect(segmentLabel(null, null)).toBe("Uncategorized");
+    // A category but no audience still reads its label under Uncategorized.
+    expect(segmentLabel(null, "20-30s")).toBe("Uncategorized · 20-30s");
   });
 });
 
-// Julian #145: the dedicated multiplication surface groups candidates by
-// audience × life stage (the Doc's gender-category × age-bracket shape) with
-// readiness computed against today. buildPlannerSegments is the pure read
-// model the surface renders.
+// Julian #145 / #398: the dedicated multiplication surface groups candidates by
+// cell — audience × category label — with readiness computed against today.
+// buildPlannerSegments is the pure read model the surface renders.
 describe("buildPlannerSegments", () => {
-  it("groups candidates by audience × life-stage segment, sorted by segment", () => {
+  it("groups candidates by audience × category segment, sorted by segment", () => {
     const segments = buildPlannerSegments(
       [
-        entry({ id: "1", audience: "women", lifeStage: "retirement" }),
-        entry({ id: "2", audience: "men", lifeStage: "young_families" }),
-        entry({ id: "3", audience: "men", lifeStage: "young_families" }),
+        entry({ id: "1", audience: "women", categoryLabel: "Retirement" }),
+        entry({ id: "2", audience: "men", categoryLabel: "Young families" }),
+        entry({ id: "3", audience: "men", categoryLabel: "Young families" }),
       ],
       TODAY
     );
@@ -162,6 +172,14 @@ describe("buildPlannerSegments", () => {
     ]);
     const men = segments.find((s) => s.segment === "Men · Young families");
     expect(men!.candidates.map((c) => c.candidateId)).toEqual(["2", "3"]);
+  });
+
+  it("buckets a tagged group into the '20-30s × <type>' cell (#398)", () => {
+    const segments = buildPlannerSegments(
+      [entry({ id: "1", audience: "men", categoryLabel: "20-30s" })],
+      TODAY
+    );
+    expect(segments[0].segment).toBe("Men · 20-30s");
   });
 
   it("computes readiness against today for each candidate", () => {
@@ -190,13 +208,23 @@ describe("buildPlannerSegments", () => {
     expect(segment.candidates[0].successorDesignate).toBe("Tony L.");
   });
 
-  it("buckets groups with missing segmentation under Not categorized", () => {
+  it("buckets groups with missing segmentation under Uncategorized (#398)", () => {
     const segments = buildPlannerSegments(
       [entry({ id: "1", audience: null })],
       TODAY
     );
-    expect(segments[0].segment).toBe("Not categorized");
+    expect(segments[0].segment).toBe("Uncategorized");
     expect(segments[0].candidates[0].groupName).toBe("Unknown group");
+  });
+
+  it("buckets a group with an audience but no category under Uncategorized", () => {
+    const segments = buildPlannerSegments(
+      [entry({ id: "1", audience: "men", categoryLabel: null })],
+      TODAY
+    );
+    // No category means no cell, so it collects in the visible Uncategorized
+    // bucket admins use to find groups still needing a tag — not a "Men" segment.
+    expect(segments[0].segment).toBe(UNCATEGORIZED_SEGMENT);
   });
 });
 
@@ -237,19 +265,19 @@ describe("filterSegmentsByYear", () => {
         entry({
           id: "1",
           audience: "men",
-          lifeStage: "young_families",
+          categoryLabel: "Young families",
           targetYear: 2026,
         }),
         entry({
           id: "2",
           audience: "men",
-          lifeStage: "young_families",
+          categoryLabel: "Young families",
           targetYear: 2027,
         }),
         entry({
           id: "3",
           audience: "women",
-          lifeStage: "retirement",
+          categoryLabel: "Retirement",
           targetYear: null,
         }),
       ],

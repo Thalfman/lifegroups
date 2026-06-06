@@ -1,4 +1,8 @@
-import type { GroupLifecycleStatus, ProspectState } from "@/types/enums";
+import type {
+  GroupAudienceCategory,
+  GroupLifecycleStatus,
+  ProspectState,
+} from "@/types/enums";
 import {
   decodeNextStep,
   dueFollowUps,
@@ -29,6 +33,10 @@ export type ProspectBoardEntry = {
   // Additional Note. Either may be absent.
   next_step: NextStep | null;
   additional_note: string | null;
+  // #399: the DESIRED (top type × category) cell named at intake. Both null when
+  // no cell was chosen. The per-cell interest tally keys on this pair.
+  desired_audience_category: GroupAudienceCategory | null;
+  desired_category_id: string | null;
 };
 
 // The raw row as it comes back from PostgREST: next_step is untyped jsonb.
@@ -37,7 +45,7 @@ type ProspectRawRow = Omit<ProspectBoardEntry, "next_step"> & {
 };
 
 const PROSPECT_BOARD_COLUMNS =
-  "id, full_name, email, phone, state, group_id, archived, created_at, next_step, additional_note";
+  "id, full_name, email, phone, state, group_id, archived, created_at, next_step, additional_note, desired_audience_category, desired_category_id";
 
 // Same default-cap rationale as fetchGuests: widen past PostgREST's ~1000 row
 // default so funnel counts don't silently truncate.

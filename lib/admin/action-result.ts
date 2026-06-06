@@ -39,6 +39,11 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   no_role_change: "That profile already has that role. Nothing to change.",
   missing_settings:
     "The settings record is missing. Refresh the page and try again.",
+  // #396/#398/#399 Group Category cell tokens.
+  missing_category:
+    "We couldn't find that category. Refresh the page and try again.",
+  inactive_cell:
+    "That category isn't applied to this top type. Pick one offered for the selected type, or apply it in Settings > Groups first.",
   // #375 Interest Funnel (Prospect transition) tokens.
   missing_prospect:
     "We couldn't find that prospect. Refresh the page and try again.",

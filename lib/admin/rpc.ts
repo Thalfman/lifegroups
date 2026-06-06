@@ -12,7 +12,6 @@ import type {
   GroupAudienceCategory,
   GroupCalendarEventStatus,
   GroupCalendarEventType,
-  GroupLifeStage,
   GuestPipelineStage,
   LeaderReadinessStage,
   MeetingFrequency,
@@ -90,7 +89,9 @@ export type GroupRpcArgs = {
   p_meeting_frequency: MeetingFrequency;
   p_meeting_week_parity: MeetingWeekParity | null;
   p_audience_category: GroupAudienceCategory | null;
-  p_life_stage: GroupLifeStage | null;
+  // #398: the group's category id (its cell). null = Uncategorized. Replaces
+  // the retired p_life_stage argument.
+  p_category_id: string | null;
   p_launched_on: string | null;
 };
 
@@ -537,7 +538,15 @@ export function rpcAdminUpdateGuestPipeline(
 
 export function rpcAdminCreateProspect(
   client: AppSupabaseClient,
-  args: { p_full_name: string; p_email: string | null; p_phone: string | null }
+  args: {
+    p_full_name: string;
+    p_email: string | null;
+    p_phone: string | null;
+    // #399: the DESIRED (top type × category) cell named at intake. Both null
+    // when no cell was chosen.
+    p_desired_audience_category: GroupAudienceCategory | null;
+    p_desired_category_id: string | null;
+  }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_prospect", args);
 }
