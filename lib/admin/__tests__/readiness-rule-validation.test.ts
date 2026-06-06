@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  validateAudienceReadinessRulePayload,
   validateCellTriggerOverridePayload,
   validateReadinessRulePayload,
 } from "@/lib/admin/validation/readiness-rule";
@@ -55,6 +56,68 @@ describe("validateReadinessRulePayload — global rule", () => {
   it("rejects an unparseable rule payload", () => {
     const result = validateReadinessRulePayload({
       ministry_year: 2026,
+      rule: "not json {",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.join(" ")).toContain("rule must be a JSON object");
+  });
+});
+
+describe("validateAudienceReadinessRulePayload — per-type rule (#410)", () => {
+  it("accepts a JSON-string partial rule for a valid (year, type)", () => {
+    const result = validateAudienceReadinessRulePayload({
+      ministry_year: "2026",
+      audience_category: "men",
+      rule: JSON.stringify({ interest: { required: true, min: 5 } }),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.ministryYear).toBe(2026);
+    expect(result.value.audienceCategory).toBe("men");
+    // A partial: only the present pillar survives; absent pillars inherit global.
+    expect(result.value.rule).toEqual({ interest: { required: true, min: 5 } });
+    expect(result.value.rule).not.toHaveProperty("capacity");
+  });
+
+  it("accepts an empty rule object (clearing the per-type rule back to global)", () => {
+    const result = validateAudienceReadinessRulePayload({
+      ministry_year: 2026,
+      audience_category: "women",
+      rule: {},
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.rule).toEqual({});
+  });
+
+  it("drops malformed pillars but keeps the valid ones", () => {
+    const result = validateAudienceReadinessRulePayload({
+      ministry_year: 2026,
+      audience_category: "mixed",
+      rule: { capacity: { required: false }, bogus: { x: 1 } },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.rule).toEqual({ capacity: { required: false } });
+  });
+
+  it("rejects a non-four-digit year and a bad top type", () => {
+    const result = validateAudienceReadinessRulePayload({
+      ministry_year: "26",
+      audience_category: "elders",
+      rule: {},
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.join(" ")).toContain("four-digit year");
+    expect(result.errors.join(" ")).toContain("top type");
+  });
+
+  it("rejects an unparseable rule payload", () => {
+    const result = validateAudienceReadinessRulePayload({
+      ministry_year: 2026,
+      audience_category: "men",
       rule: "not json {",
     });
     expect(result.ok).toBe(false);

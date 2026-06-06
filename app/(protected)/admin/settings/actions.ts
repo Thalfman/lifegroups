@@ -11,6 +11,7 @@ import {
   validateSetCategoryTypeCellPayload,
   validateSetCategoryTypeTargetCountPayload,
   validateReadinessRulePayload,
+  validateAudienceReadinessRulePayload,
   validateCellTriggerOverridePayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
@@ -22,6 +23,7 @@ import {
   type SetCategoryTypeCellPayload,
   type SetCategoryTypeTargetCountPayload,
   type ReadinessRulePayload,
+  type AudienceReadinessRulePayload,
   type CellTriggerOverridePayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -42,6 +44,7 @@ import {
   rpcAdminSetCategoryTypeCell,
   rpcAdminSetCategoryTypeTargetCount,
   rpcAdminSetReadinessRule,
+  rpcAdminSetAudienceReadinessRule,
   rpcAdminSetCellTriggerOverrides,
 } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
@@ -499,6 +502,37 @@ export async function adminSetReadinessRule(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_READINESS_RULE_SPEC, prev, input);
+}
+
+// The MIDDLE tier of the cascade (#410 / ADR 0021): the per-type (Audience) rule,
+// a partial of the global rule keyed by ministry_year × audience_category. Same
+// audited-RPC pattern as the global rule; an empty `{}` clears it back to global.
+const SET_AUDIENCE_READINESS_RULE_SPEC: AdminWriteActionSpec<
+  AudienceReadinessRulePayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_audience_readiness_rule",
+  keys: ["ministry_year", "audience_category", "rule"],
+  validate: validateAudienceReadinessRulePayload,
+  fields: (_actor, value) => ({
+    ministry_year: value.ministryYear,
+    audience_category: value.audienceCategory,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetAudienceReadinessRule(client, {
+      p_ministry_year: value.ministryYear,
+      p_audience_category: value.audienceCategory,
+      p_rule: value.rule as unknown as Record<string, unknown>,
+    }),
+  revalidate: () => READINESS_REVALIDATE_PATHS,
+  noDataError: "The per-type readiness rule was not saved. Please try again.",
+};
+
+export async function adminSetAudienceReadinessRule(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_AUDIENCE_READINESS_RULE_SPEC, prev, input);
 }
 
 const SET_CELL_TRIGGER_OVERRIDES_SPEC: AdminWriteActionSpec<

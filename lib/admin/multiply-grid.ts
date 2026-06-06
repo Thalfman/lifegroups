@@ -2,10 +2,11 @@ import type { GroupAudienceCategory } from "@/types/enums";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import {
   evaluateCellReadiness,
-  resolveCellRule,
+  resolveReadinessRule,
   type CellReadinessInputs,
   type CellReadinessOverride,
   type CellReadinessSignal,
+  type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 
@@ -100,15 +101,22 @@ function cellKey(
 // Build the Multiply grid: for every catalog category, derive its three cells from
 // the cell inputs. A cell with no input row, or an input whose `active` flag is
 // false, renders BLANK (applied: false, readout: null) — the category is not
-// applied to that type. An ACTIVE cell resolves its effective readiness rule
-// (global rule overlaid with the cell's override) and evaluates it against the
+// applied to that type. An ACTIVE cell resolves its effective readiness rule down
+// the THREE-TIER cascade (#410 / ADR 0021) — global rule, then the column's
+// per-type rule, then the cell's own override — and evaluates it against the
 // cell's natural-unit inputs, pairing the signal with the cell's `have X of Y`
-// coverage. Cells whose category isn't in the catalog are dropped (the rows are
-// keyed off the catalog), so an archived category's stale cells never surface.
+// coverage. `perTypeRules` is keyed by top type; a type with no entry inherits the
+// global rule for every pillar (the additive default — the per-type tier is empty
+// until a rule is set). Cells whose category isn't in the catalog are dropped (the
+// rows are keyed off the catalog), so an archived category's stale cells never
+// surface.
 export function buildMultiplyGrid(
   categories: GridCategoryInput[],
   cells: GridCellInput[],
-  globalRule: ReadinessRule
+  globalRule: ReadinessRule,
+  perTypeRules: Partial<
+    Record<GroupAudienceCategory, PerTypeReadinessRule>
+  > = {}
 ): MultiplyGrid {
   // Index the cell inputs by `${audience_category}:${category_id}` for O(1) lookup.
   const inputByKey = new Map<string, GridCellInput>();
@@ -128,7 +136,11 @@ export function buildMultiplyGrid(
         applied && input
           ? {
               signal: evaluateCellReadiness(
-                resolveCellRule(globalRule, input.override),
+                resolveReadinessRule(
+                  globalRule,
+                  perTypeRules[type] ?? {},
+                  input.override
+                ),
                 input.inputs
               ),
               coverage: { have: input.have, target: input.target },

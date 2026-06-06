@@ -179,6 +179,66 @@ describe("buildMultiplyGrid — per-cell readiness + coverage readout", () => {
     expect(signal?.blockers).toContain("interest");
   });
 
+  it("a per-type rule changes only that type's cells that don't override it (#410 / ADR 0021)", () => {
+    // Every cell has exactly 3 interested prospects: ready under the global rule
+    // (interest ≥ 3), and ready for Men's, Women's, Mixed alike — until a per-type
+    // rule raises one column's bar.
+    const ready = inputs({ interestCount: 3, capacityIssue: false });
+    const cells: GridCellInput[] = GRID_TYPES.map((type) =>
+      cell({ audienceCategory: type, active: true, inputs: ready })
+    );
+    // A Men's-wide Interest ≥ 5 rule: the MIDDLE tier, set for Men's only.
+    const grid = buildMultiplyGrid(
+      [{ id: CAT, label: "20-30s" }],
+      cells,
+      GLOBAL,
+      { men: { interest: { required: true, min: 5 } } }
+    );
+    const row = grid.rows[0];
+    // Men's now needs ≥ 5 → the 3-prospect Men's cell is NOT ready…
+    expect(row.cells.men.readout?.signal.ready).toBe(false);
+    expect(row.cells.men.readout?.signal.blockers).toContain("interest");
+    // …while Women's and Mixed still follow the global ≥ 3 and stay ready.
+    expect(row.cells.women.readout?.signal.ready).toBe(true);
+    expect(row.cells.mixed.readout?.signal.ready).toBe(true);
+  });
+
+  it("a per-cell override beats the per-type rule for that cell only", () => {
+    const ready = inputs({ interestCount: 3, capacityIssue: false });
+    const grid = buildMultiplyGrid(
+      [{ id: CAT, label: "20-30s" }],
+      [
+        // This Men's cell overrides interest back down to ≥ 3, beating the
+        // per-type ≥ 5 — so it stays ready even under the stricter column rule.
+        cell({
+          audienceCategory: "men",
+          active: true,
+          inputs: ready,
+          override: { interest: { required: true, min: 3 } },
+        }),
+      ],
+      GLOBAL,
+      { men: { interest: { required: true, min: 5 } } }
+    );
+    expect(grid.rows[0].cells.men.readout?.signal.ready).toBe(true);
+  });
+
+  it("with no per-type rules supplied, behaviour is identical to global-only (additive)", () => {
+    const ready = inputs({ interestCount: 3, capacityIssue: false });
+    const cells: GridCellInput[] = GRID_TYPES.map((type) =>
+      cell({ audienceCategory: type, active: true, inputs: ready })
+    );
+    // The 4th arg defaults to {} — every cell resolves straight off the global rule.
+    const grid = buildMultiplyGrid(
+      [{ id: CAT, label: "20-30s" }],
+      cells,
+      GLOBAL
+    );
+    for (const type of GRID_TYPES) {
+      expect(grid.rows[0].cells[type].readout?.signal.ready).toBe(true);
+    }
+  });
+
   it("assembles a mixed row — some cells applied (with readouts), others blank", () => {
     const applied: GroupAudienceCategory[] = ["men", "mixed"];
     const cells: GridCellInput[] = applied.map((type) =>

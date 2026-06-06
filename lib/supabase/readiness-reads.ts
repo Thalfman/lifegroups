@@ -1,3 +1,4 @@
+import type { GroupAudienceCategory } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // Per-cell readiness rule read model (#402 / PRD §2.4). One allowlisted read feeds
@@ -41,4 +42,45 @@ export async function fetchReadinessRule(
       error: wrapError("multiplication_readiness_rule", error),
     };
   return { data: data ?? null, error: null };
+}
+
+// Per-TYPE readiness rule read model (#410 / ADR 0021) — the MIDDLE tier of the
+// global → per-type → per-cell cascade. One allowlisted read returns every
+// per-type rule for a ministry year (at most one per Audience: Men's / Women's /
+// Mixed). RLS already restricts SELECT to admins; never select("*"). Each row's
+// `rule` jsonb is a PARTIAL of the global rule, decoded into a typed
+// PerTypeReadinessRule at the trust boundary (lib/admin/cell-readiness.ts).
+
+export const AUDIENCE_READINESS_RULE_COLUMNS =
+  "id, ministry_year, audience_category, rule, updated_at";
+
+// One persisted per-type rule row, as read through the allowlist. The `rule` field
+// is raw jsonb; the caller decodes it with decodePerTypeRule.
+export type AudienceReadinessRuleRow = {
+  id: string;
+  ministry_year: number;
+  audience_category: GroupAudienceCategory;
+  rule: unknown;
+  updated_at: string;
+};
+
+// Fetch every per-type readiness rule for a ministry year (0–3 rows). An empty
+// result is the success-with-empty case — until a per-type rule is set, every type
+// inherits the global rule (the additive default per ADR 0021).
+export async function fetchAudienceReadinessRules(
+  client: ReadClient,
+  ministryYear: number
+): Promise<ReadResult<AudienceReadinessRuleRow[]>> {
+  const { data, error } = await client
+    .from("audience_readiness_rule")
+    .select(AUDIENCE_READINESS_RULE_COLUMNS)
+    .eq("ministry_year", ministryYear)
+    .returns<AudienceReadinessRuleRow[]>();
+
+  if (error)
+    return {
+      data: null,
+      error: wrapError("audience_readiness_rule", error),
+    };
+  return { data: data ?? [], error: null };
 }

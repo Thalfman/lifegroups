@@ -1038,6 +1038,21 @@ export function rpcAdminSetCellTriggerOverrides(
   return callUuidRpc(client, "admin_set_cell_trigger_overrides", args);
 }
 
+// #410 / ADR 0021 per-TYPE readiness rule: upsert the per-type (Audience) rule for
+// a ministry year — the MIDDLE tier of the global → per-type → per-cell cascade. A
+// partial of the global rule (absent pillars inherit); an empty `{}` clears it back
+// to the global rule. The jsonb is validated in TS first; the RPC re-guards shape.
+export function rpcAdminSetAudienceReadinessRule(
+  client: AppSupabaseClient,
+  args: {
+    p_ministry_year: number;
+    p_audience_category: GroupAudienceCategory;
+    p_rule: Record<string, unknown>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_audience_readiness_rule", args);
+}
+
 // #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's grade
 // for a ministry year. The roll-up + override resolution are done in TS first
 // (lib/admin/leader-rubric-grade.ts); this persists the already-computed letter
