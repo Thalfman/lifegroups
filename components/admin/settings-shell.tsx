@@ -19,6 +19,8 @@ import {
   MultiplicationConfigEditor,
   type MultiplicationConfigSeed,
 } from "@/components/admin/settings/multiplication-config-editor";
+import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
+import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -39,6 +41,11 @@ export type SettingsShellData = {
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
   leaderRubricCriteria: RubricCriterion[];
+  // #396 Settings > Groups: the type×category matrix — rows = catalog categories,
+  // columns = the three top types — with each cell's active flag. Built purely
+  // from the catalog + cell reads; empty rows when the catalog is empty (fresh
+  // ministry) or the reads failed (see errors.groupCategories).
+  categoryMatrix: CategoryMatrix;
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but bulk people import stays behind the super-admin
   // boundary (requireSuperAdminSession). For a ministry_admin the System tab
@@ -59,6 +66,9 @@ export type SettingsShellData = {
     multiplication: string | null;
     groupRubric: string | null;
     leaderRubric: string | null;
+    // #396: a single transient-read failure key for the Groups tab's catalog +
+    // cell reads, so an unmigrated environment softens to a placeholder.
+    groupCategories: string | null;
   };
 };
 
@@ -84,6 +94,11 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
       id: "care",
       label: "Care",
       panel: <CarePanel data={data} />,
+    },
+    {
+      id: "groups",
+      label: "Groups",
+      panel: <GroupsPanel data={data} />,
     },
     {
       id: "multiply",
@@ -175,6 +190,34 @@ function CarePanel({ data }: { data: SettingsShellData }) {
               kind="leader"
               subjectLabel="leader"
             />
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// Groups tab (#396 / PRD §2.1, §2.7): the foundation of the groups overhaul —
+// the free-form category catalog and the (top type × category) matrix of active
+// cells. An admin defines free-form labels, then applies a label to one or more
+// top types; applying activates that cell, the live unit everything downstream
+// (target, capacity, interest, readiness) hangs off in later slices. Care stays
+// the default tab; this tab is new. Softens to a placeholder when its reads fail
+// (e.g. an environment whose groups tables aren't migrated yet).
+function GroupsPanel({ data }: { data: SettingsShellData }) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Group categories"
+          title="Categories and the type grid"
+          description="Define free-form category labels, then apply each to the top types it belongs under. Applying a category to a type activates that cell."
+        />
+        {data.errors.groupCategories ? (
+          <NotConfigured subject="Group categories" />
+        ) : (
+          <Card>
+            <GroupsCatalogEditor matrix={data.categoryMatrix} />
           </Card>
         )}
       </section>

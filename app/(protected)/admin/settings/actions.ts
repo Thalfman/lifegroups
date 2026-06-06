@@ -5,10 +5,18 @@ import {
   validateMetricDefaultsPayload,
   validateHealthRubricPayload,
   validateMultiplicationConfigPayload,
+  validateCreateGroupCategoryPayload,
+  validateRenameGroupCategoryPayload,
+  validateArchiveGroupCategoryPayload,
+  validateSetCategoryTypeCellPayload,
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
   type MultiplicationConfigPayload,
+  type CreateGroupCategoryPayload,
+  type RenameGroupCategoryPayload,
+  type ArchiveGroupCategoryPayload,
+  type SetCategoryTypeCellPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -22,6 +30,10 @@ import {
   rpcAdminSetMultiplicationConfig,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
+  rpcAdminCreateGroupCategory,
+  rpcAdminRenameGroupCategory,
+  rpcAdminArchiveGroupCategory,
+  rpcAdminSetCategoryTypeCell,
 } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
@@ -309,4 +321,110 @@ export async function adminSetMultiplicationConfig(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_MULTIPLICATION_CONFIG_SPEC, prev, input);
+}
+
+// ----- Group Category catalog + cell matrix (#396) ------------------------
+// The Settings > Groups editor posts free-form catalog CRUD (create / rename /
+// archive) and the (top type × category) cell apply/unapply. Each is a separate
+// audited RPC; the validators keep malformed input off the wire and the RPCs
+// stay the authoritative gate (duplicate-label / missing-category re-checked
+// there). Ministry-Admin-owned, so the default requireAdminSession path applies.
+// Revalidates Settings; the matrix feeds the Multiply grid in a later slice.
+const GROUP_CATEGORY_REVALIDATE_PATHS = [
+  "/admin/settings",
+  "/admin/multiply",
+] as const;
+
+const CREATE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
+  CreateGroupCategoryPayload,
+  { id: string }
+> = {
+  name: "admin.settings.create_group_category",
+  keys: ["label"],
+  validate: validateCreateGroupCategoryPayload,
+  rpc: (client, value) =>
+    rpcAdminCreateGroupCategory(client, { p_label: value.label }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The category was not created. Please try again.",
+};
+
+export async function adminCreateGroupCategory(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(CREATE_GROUP_CATEGORY_SPEC, prev, input);
+}
+
+const RENAME_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
+  RenameGroupCategoryPayload,
+  { id: string }
+> = {
+  name: "admin.settings.rename_group_category",
+  keys: ["category_id", "label"],
+  validate: validateRenameGroupCategoryPayload,
+  fields: (_actor, value) => ({ target_category_id: value.categoryId }),
+  rpc: (client, value) =>
+    rpcAdminRenameGroupCategory(client, {
+      p_category_id: value.categoryId,
+      p_label: value.label,
+    }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The category was not renamed. Please try again.",
+};
+
+export async function adminRenameGroupCategory(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(RENAME_GROUP_CATEGORY_SPEC, prev, input);
+}
+
+const ARCHIVE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
+  ArchiveGroupCategoryPayload,
+  { id: string }
+> = {
+  name: "admin.settings.archive_group_category",
+  keys: ["category_id"],
+  validate: validateArchiveGroupCategoryPayload,
+  fields: (_actor, value) => ({ target_category_id: value.categoryId }),
+  rpc: (client, value) =>
+    rpcAdminArchiveGroupCategory(client, { p_category_id: value.categoryId }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The category was not removed. Please try again.",
+};
+
+export async function adminArchiveGroupCategory(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ARCHIVE_GROUP_CATEGORY_SPEC, prev, input);
+}
+
+const SET_CATEGORY_TYPE_CELL_SPEC: AdminWriteActionSpec<
+  SetCategoryTypeCellPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_category_type_cell",
+  keys: ["category_id", "audience_category", "active"],
+  validate: validateSetCategoryTypeCellPayload,
+  fields: (_actor, value) => ({
+    target_category_id: value.categoryId,
+    audience_category: value.audienceCategory,
+    active: value.active,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetCategoryTypeCell(client, {
+      p_category_id: value.categoryId,
+      p_audience_category: value.audienceCategory,
+      p_active: value.active,
+    }),
+  revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The change was not saved. Please try again.",
+};
+
+export async function adminSetCategoryTypeCell(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_CATEGORY_TYPE_CELL_SPEC, prev, input);
 }
