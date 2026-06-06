@@ -1,3 +1,4 @@
+import { isAudienceCategory } from "@/lib/admin/audience";
 import type { ValidationResult } from "./shared";
 import {
   isNonEmptyString,
@@ -16,8 +17,6 @@ import {
 // Catalog labels are free-form but bounded, so a stray paste can't store an
 // unbounded blob. The column itself is unbounded text; this is a UI sanity cap.
 const MAX_LABEL_LENGTH = 80;
-
-const AUDIENCE_CATEGORIES = new Set(["men", "women", "mixed"]);
 
 export type CreateGroupCategoryPayload = { label: string };
 
@@ -112,7 +111,7 @@ export function validateSetCategoryTypeCellPayload(
 
   const audienceCategory =
     typeof input.audience_category === "string" ? input.audience_category : "";
-  if (!AUDIENCE_CATEGORIES.has(audienceCategory)) {
+  if (!isAudienceCategory(audienceCategory)) {
     errors.push("The top type must be 'men', 'women', or 'mixed'.");
   }
 
@@ -169,7 +168,7 @@ export function validateSetCategoryTypeTargetCountPayload(
 
   const audienceCategory =
     typeof input.audience_category === "string" ? input.audience_category : "";
-  if (!AUDIENCE_CATEGORIES.has(audienceCategory)) {
+  if (!isAudienceCategory(audienceCategory)) {
     errors.push("The top type must be 'men', 'women', or 'mixed'.");
   }
 

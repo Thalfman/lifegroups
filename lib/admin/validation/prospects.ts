@@ -1,5 +1,6 @@
 import type { GroupAudienceCategory, ProspectState } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
+import { isAudienceCategory } from "@/lib/admin/audience";
 import {
   normalizeAdditionalNote,
   normalizeNextStep,
@@ -28,18 +29,6 @@ const PROSPECT_STATES: ReadonlySet<ProspectState> = new Set<ProspectState>([
 function isProspectState(value: unknown): value is ProspectState {
   return (
     typeof value === "string" && PROSPECT_STATES.has(value as ProspectState)
-  );
-}
-
-// The three top types a desired cell can sit under (#399). Mirrors
-// GroupAudienceCategory + the SQL CHECK / category_type_targets domain.
-const DESIRED_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> =
-  new Set<GroupAudienceCategory>(["men", "women", "mixed"]);
-
-function isAudienceCategory(value: unknown): value is GroupAudienceCategory {
-  return (
-    typeof value === "string" &&
-    DESIRED_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
   );
 }
 

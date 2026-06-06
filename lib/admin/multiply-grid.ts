@@ -1,4 +1,5 @@
 import type { GroupAudienceCategory } from "@/types/enums";
+import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import {
   evaluateCellReadiness,
   resolveCellRule,
@@ -26,13 +27,8 @@ import {
 // unit readiness inputs (interest headcount, capacity issue, the two health
 // letters) plus the coverage X — and this resolver assembles the grid.
 
-// The three top types, in display order. Mirrors MATRIX_TYPES / MULTIPLY_TYPES but
-// kept local so this pure module has no surface dependency.
-export const GRID_TYPES: readonly GroupAudienceCategory[] = [
-  "men",
-  "women",
-  "mixed",
-];
+// The three top types, in display order — the canonical Audience vocabulary.
+export const GRID_TYPES = AUDIENCE_CATEGORIES;
 
 // One catalog category: a grid ROW.
 export type GridCategoryInput = {

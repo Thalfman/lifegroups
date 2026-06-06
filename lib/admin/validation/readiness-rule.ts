@@ -1,3 +1,4 @@
+import { isAudienceCategory } from "@/lib/admin/audience";
 import type { ValidationResult } from "./shared";
 import { isNonEmptyString, isRecord, normalizeUuid } from "./shared";
 import {
@@ -17,8 +18,6 @@ import {
 // lib/admin/cell-readiness.ts, so the client and server reject identically. The
 // SECURITY DEFINER RPCs stay the authoritative gate; this keeps malformed input
 // off the wire and supplies friendlier messages.
-
-const AUDIENCE_CATEGORIES = new Set(["men", "women", "mixed"]);
 
 // Parse a JSON payload field from either a JSON string or an already-parsed
 // object. Returns undefined when unparseable / not an object.
@@ -106,7 +105,7 @@ export function validateCellTriggerOverridePayload(
 
   const audienceCategory =
     typeof input.audience_category === "string" ? input.audience_category : "";
-  if (!AUDIENCE_CATEGORIES.has(audienceCategory)) {
+  if (!isAudienceCategory(audienceCategory)) {
     errors.push("The top type must be 'men', 'women', or 'mixed'.");
   }
 

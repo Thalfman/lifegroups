@@ -3,6 +3,7 @@ import type {
   GroupLifecycleStatus,
 } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import { AUDIENCE_CATEGORIES, isAudienceCategory } from "@/lib/admin/audience";
 
 // Group Category catalog + cell-matrix read models (#396 / ADR 0015). Two
 // column-allowlisted reads feed the Settings > Groups tab — never select("*"),
@@ -297,12 +298,12 @@ export function bucketActiveCategoryOptions(
     if (!row.active) continue;
     if (row.category == null || row.category.archived_at != null) continue;
     const type = row.audience_category;
-    if (type !== "men" && type !== "women" && type !== "mixed") continue;
+    if (!isAudienceCategory(type)) continue;
     if (seen[type].has(row.category_id)) continue;
     seen[type].add(row.category_id);
     out[type].push({ id: row.category_id, label: row.category.label });
   }
-  for (const type of ["men", "women", "mixed"] as const) {
+  for (const type of AUDIENCE_CATEGORIES) {
     out[type].sort((a, b) => a.label.localeCompare(b.label));
   }
   return out;

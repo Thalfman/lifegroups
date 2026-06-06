@@ -1,6 +1,7 @@
 import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
+import { isAudienceCategory } from "@/lib/admin/audience";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -227,7 +228,7 @@ export function tallyCellActiveGroupSizes(
   const keys = new Map<string, CellKey>();
   for (const cell of activeCells) {
     const audience = cell.audience;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     if (cell.categoryId == null) continue;
@@ -241,7 +242,7 @@ export function tallyCellActiveGroupSizes(
   for (const g of groups) {
     if (g.lifecycle_status !== "active") continue;
     const audience = g.audience_category;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     // An uncategorized group (null category_id) is in no category cell, so it
@@ -342,7 +343,7 @@ export async function fetchCellActiveGroupSizes(
   const activeCells: CellKey[] = [];
   for (const cell of cellsRes.data ?? []) {
     const audience = cell.audience_category;
-    if (audience !== "men" && audience !== "women" && audience !== "mixed") {
+    if (!isAudienceCategory(audience)) {
       continue;
     }
     if (cell.category_id == null) continue;
