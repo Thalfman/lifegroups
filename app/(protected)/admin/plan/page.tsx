@@ -36,7 +36,9 @@ export default async function AdminPlanPage() {
               padding: "20px 22px",
             }}
           >
-            <ProspectCreateForm />
+            <ProspectCreateForm
+              categoryOptionsByAudience={data.categoryOptionsByAudience}
+            />
           </section>
 
           {error ? (

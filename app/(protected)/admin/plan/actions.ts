@@ -24,7 +24,14 @@ import {
 // surfaces funnel counts, so it is revalidated too.
 const REVALIDATE_PATHS = ["/admin/plan", "/admin"] as const;
 
-const CREATE_PROSPECT_KEYS = ["full_name", "email", "phone"] as const;
+const CREATE_PROSPECT_KEYS = [
+  "full_name",
+  "email",
+  "phone",
+  // #399: the desired (top type × category) cell named at intake.
+  "desired_audience_category",
+  "desired_category_id",
+] as const;
 
 const TRANSITION_PROSPECT_KEYS = ["prospect_id", "state", "group_id"] as const;
 
@@ -51,6 +58,8 @@ const CREATE_PROSPECT_SPEC: AdminWriteActionSpec<
       p_full_name: value.full_name,
       p_email: value.email,
       p_phone: value.phone,
+      p_desired_audience_category: value.desired_audience_category,
+      p_desired_category_id: value.desired_category_id,
     }),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The prospect wasn't saved. Please try again.",

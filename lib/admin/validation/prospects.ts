@@ -1,4 +1,4 @@
-import type { ProspectState } from "@/types/enums";
+import type { GroupAudienceCategory, ProspectState } from "@/types/enums";
 import { isUuid } from "@/lib/shared/uuid";
 import {
   normalizeAdditionalNote,
@@ -31,10 +31,27 @@ function isProspectState(value: unknown): value is ProspectState {
   );
 }
 
+// The three top types a desired cell can sit under (#399). Mirrors
+// GroupAudienceCategory + the SQL CHECK / category_type_targets domain.
+const DESIRED_AUDIENCE_CATEGORIES: ReadonlySet<GroupAudienceCategory> =
+  new Set<GroupAudienceCategory>(["men", "women", "mixed"]);
+
+function isAudienceCategory(value: unknown): value is GroupAudienceCategory {
+  return (
+    typeof value === "string" &&
+    DESIRED_AUDIENCE_CATEGORIES.has(value as GroupAudienceCategory)
+  );
+}
+
 export type CreateProspectPayload = {
   full_name: string;
   email: string | null;
   phone: string | null;
+  // #399: the DESIRED (top type × category) cell this prospect wants, captured
+  // at intake. Both travel together — a named cell needs a type AND a category;
+  // either absent yields no desired cell (both null).
+  desired_audience_category: GroupAudienceCategory | null;
+  desired_category_id: string | null;
 };
 
 export function validateCreateProspectPayload(
@@ -56,6 +73,32 @@ export function validateCreateProspectPayload(
   if (phone !== undefined && !isPhone(phone))
     errors.push("Phone format is invalid.");
 
+  // The desired cell is optional. A blank/absent top type means "no cell"; a
+  // present-but-out-of-domain value is an error. The category id must be a uuid
+  // when present. The two are coupled: a named cell needs BOTH (a top type
+  // without a category, or vice versa, is not a real cell), so a partial pair
+  // is rejected rather than silently stored half-set.
+  const audienceRaw = trimString(input.desired_audience_category) ?? "";
+  const categoryRaw = readOptionalString(input.desired_category_id);
+  let desiredAudience: GroupAudienceCategory | null = null;
+  let desiredCategory: string | null = null;
+
+  if (audienceRaw !== "" && !isAudienceCategory(audienceRaw)) {
+    errors.push("The interested-in top type isn't a valid value.");
+  } else if (isAudienceCategory(audienceRaw)) {
+    desiredAudience = audienceRaw;
+  }
+  if (categoryRaw !== undefined && !isUuid(categoryRaw)) {
+    errors.push("The interested-in category is invalid.");
+  } else if (categoryRaw !== undefined) {
+    desiredCategory = normalizeUuid(categoryRaw);
+  }
+  if ((desiredAudience === null) !== (desiredCategory === null)) {
+    errors.push(
+      "Choose both a top type and a category for the interested-in cell, or leave both blank."
+    );
+  }
+
   if (errors.length > 0) return { ok: false, errors };
 
   return {
@@ -64,6 +107,8 @@ export function validateCreateProspectPayload(
       full_name: fullName,
       email: email ?? null,
       phone: phone ?? null,
+      desired_audience_category: desiredAudience,
+      desired_category_id: desiredCategory,
     },
   };
 }

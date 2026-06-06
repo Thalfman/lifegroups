@@ -110,3 +110,146 @@ export async function fetchCategoriesForAudience(
     };
   return { data: catalogRes.data ?? [], error: null };
 }
+
+// ---------------------------------------------------------------------------
+// Active-cell category options for a top type (#399).
+// ---------------------------------------------------------------------------
+//
+// The prospect-intake form's category select offers, for the chosen top type,
+// only the categories that have an ACTIVE cell in category_type_targets for that
+// audience_category — i.e. the live cells of the matrix. The read joins each
+// active cell to its (live) catalog category, allowlisted to the option's
+// id/label, ordered by label for a stable picker. An archived category's cell is
+// dropped because the inner-joined catalog row is excluded by archived_at.
+
+// One category option for a top type's intake picker.
+export type CategoryOption = {
+  id: string;
+  label: string;
+};
+
+// The raw join row: an active cell + its (possibly-archived) catalog category.
+type ActiveCellCategoryJoinRow = {
+  category_id: string;
+  category: { label: string; archived_at: string | null } | null;
+};
+
+const ACTIVE_CELL_CATEGORY_COLUMNS =
+  "category_id, category:group_categories(label, archived_at)";
+
+// Fetch the categories with an ACTIVE cell for a top type, as intake options.
+// Archived categories are dropped (their catalog row carries archived_at), so a
+// stale active cell whose category was later archived never appears. Returns the
+// options sorted by label.
+export async function fetchActiveCategoriesForAudience(
+  client: ReadClient,
+  audienceCategory: GroupAudienceCategory
+): Promise<ReadResult<CategoryOption[]>> {
+  const { data, error } = await client
+    .from("category_type_targets")
+    .select(ACTIVE_CELL_CATEGORY_COLUMNS)
+    .eq("audience_category", audienceCategory)
+    .eq("active", true)
+    .returns<ActiveCellCategoryJoinRow[]>();
+
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchActiveCategoriesForAudience", error),
+    };
+
+  const options: CategoryOption[] = (data ?? [])
+    .filter(
+      (
+        row
+      ): row is ActiveCellCategoryJoinRow & {
+        category: { label: string; archived_at: string | null };
+      } => row.category != null && row.category.archived_at == null
+    )
+    .map((row) => ({ id: row.category_id, label: row.category.label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  return { data: options, error: null };
+}
+
+// All three top types' active-cell category options, in one shape the intake form
+// can hand to its dependent select. Each top type maps to its sorted options;
+// a top type with no active cells maps to an empty array.
+export type CategoryOptionsByAudience = Record<
+  GroupAudienceCategory,
+  CategoryOption[]
+>;
+
+export const EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE: CategoryOptionsByAudience = {
+  men: [],
+  women: [],
+  mixed: [],
+};
+
+// Pure assembly (exported for testing): bucket active-cell category options by
+// their top type from the full cell+category join, dropping archived categories
+// and de-duplicating a category that somehow has two active cells for one type
+// (the unique (audience_category, category_id) cell makes that impossible in the
+// DB, but the bucketer stays defensive). Options come out sorted by label.
+export function bucketActiveCategoryOptions(
+  rows: Array<{
+    audience_category: GroupAudienceCategory;
+    category_id: string;
+    active: boolean;
+    category: { label: string; archived_at: string | null } | null;
+  }>
+): CategoryOptionsByAudience {
+  const out: CategoryOptionsByAudience = {
+    men: [],
+    women: [],
+    mixed: [],
+  };
+  const seen: Record<GroupAudienceCategory, Set<string>> = {
+    men: new Set(),
+    women: new Set(),
+    mixed: new Set(),
+  };
+  for (const row of rows) {
+    if (!row.active) continue;
+    if (row.category == null || row.category.archived_at != null) continue;
+    const type = row.audience_category;
+    if (type !== "men" && type !== "women" && type !== "mixed") continue;
+    if (seen[type].has(row.category_id)) continue;
+    seen[type].add(row.category_id);
+    out[type].push({ id: row.category_id, label: row.category.label });
+  }
+  for (const type of ["men", "women", "mixed"] as const) {
+    out[type].sort((a, b) => a.label.localeCompare(b.label));
+  }
+  return out;
+}
+
+const ACTIVE_CELL_WITH_AUDIENCE_COLUMNS =
+  "audience_category, category_id, active, category:group_categories(label, archived_at)";
+
+type ActiveCellWithAudienceJoinRow = {
+  audience_category: GroupAudienceCategory;
+  category_id: string;
+  active: boolean;
+  category: { label: string; archived_at: string | null } | null;
+};
+
+// Fetch all three top types' active-cell category options in one round-trip, for
+// the intake form's dependent category select. The bucketing is pure/tested.
+export async function fetchActiveCategoryOptionsByAudience(
+  client: ReadClient
+): Promise<ReadResult<CategoryOptionsByAudience>> {
+  const { data, error } = await client
+    .from("category_type_targets")
+    .select(ACTIVE_CELL_WITH_AUDIENCE_COLUMNS)
+    .eq("active", true)
+    .returns<ActiveCellWithAudienceJoinRow[]>();
+
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchActiveCategoryOptionsByAudience", error),
+    };
+
+  return { data: bucketActiveCategoryOptions(data ?? []), error: null };
+}

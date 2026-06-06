@@ -6,6 +6,11 @@ import {
   fetchProspects,
   type ProspectBoard,
 } from "@/lib/supabase/prospect-reads";
+import {
+  EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
+  fetchActiveCategoryOptionsByAudience,
+  type CategoryOptionsByAudience,
+} from "@/lib/supabase/group-categories-reads";
 import { type DueFollowUp } from "@/lib/admin/prospect-next-step";
 import { churchTodayIso } from "@/lib/shared/church-time";
 
@@ -24,6 +29,10 @@ export type PlanData = {
   // #379: armed follow-ups that have come due (soonest-due first), surfaced as
   // a "due tasks" list above the board.
   dueTasks: DueFollowUp[];
+  // #399: the intake form's "interested in" category options, per top type — only
+  // categories with an ACTIVE cell for that type. The category select filters to
+  // the chosen top type's list.
+  categoryOptionsByAudience: CategoryOptionsByAudience;
   errors: { prospects: string | null; groups: string | null };
 };
 
@@ -32,6 +41,7 @@ export const EMPTY_PLAN_DATA: PlanData = {
   activeGroups: [],
   groupNamesById: {},
   dueTasks: [],
+  categoryOptionsByAudience: EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
   errors: {
     prospects: "The database is not configured in this environment.",
     groups: "The database is not configured in this environment.",
@@ -48,11 +58,13 @@ export async function loadPlanData(): Promise<PlanData> {
   // capped, newest-first board and the reminder be silently missed. Only
   // non-archived dated follow_up steps are eligible; connect_to_group_leader and
   // undated steps never appear (encoded in dueFollowUps).
-  const [prospectsResult, groupsResult, dueTasksResult] = await Promise.all([
-    fetchProspects(client),
-    fetchPlanGroupOptions(client),
-    fetchDueFollowUps(client, today),
-  ]);
+  const [prospectsResult, groupsResult, dueTasksResult, categoryOptionsResult] =
+    await Promise.all([
+      fetchProspects(client),
+      fetchPlanGroupOptions(client),
+      fetchDueFollowUps(client, today),
+      fetchActiveCategoryOptionsByAudience(client),
+    ]);
 
   const prospects = prospectsResult.data ?? [];
   const groups = groupsResult.data ?? [];
@@ -75,11 +87,13 @@ export async function loadPlanData(): Promise<PlanData> {
     activeGroups,
     groupNamesById,
     dueTasks,
+    // A category-options read failure softens to no options rather than blocking
+    // the funnel — the prospect can still be added without naming a cell.
+    categoryOptionsByAudience:
+      categoryOptionsResult.data ?? EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
     errors: {
       prospects:
-        prospectsResult.error?.message ??
-        dueTasksResult.error?.message ??
-        null,
+        prospectsResult.error?.message ?? dueTasksResult.error?.message ?? null,
       groups: groupsResult.error?.message ?? null,
     },
   };
