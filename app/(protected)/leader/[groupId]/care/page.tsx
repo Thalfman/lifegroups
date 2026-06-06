@@ -94,6 +94,7 @@ export default async function LeaderGroupCarePage({
           <Link
             href={`/leader/${groupId}/calendar`}
             style={{ color: P.ink2, textDecoration: "none" }}
+            aria-label={`Calendar for ${group.name}`}
           >
             Calendar →
           </Link>

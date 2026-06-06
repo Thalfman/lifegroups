@@ -112,10 +112,18 @@ function GroupCard({ group }: { group: GroupsRow }) {
         ) : null}
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link href={`/leader/${group.id}/care`} style={linkStyle}>
+        <Link
+          href={`/leader/${group.id}/care`}
+          style={linkStyle}
+          aria-label={`Care notes for ${group.name}`}
+        >
           Care notes
         </Link>
-        <Link href={`/leader/${group.id}/calendar`} style={linkStyle}>
+        <Link
+          href={`/leader/${group.id}/calendar`}
+          style={linkStyle}
+          aria-label={`Calendar for ${group.name}`}
+        >
           Calendar
         </Link>
       </div>
