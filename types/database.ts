@@ -493,6 +493,39 @@ export interface ShepherdCareNoteKeySlotsRow {
   created_at: Timestamp;
 }
 
+// Pivot slice 9 (#381 / ADR 0017) — author-private Care Notes + Prayer Requests
+// with the per-person transparency model. DISTINCT from the SC.4 encrypted
+// private care note above: plaintext bodies, subject-toggle-gated ladder peek.
+// note_transparency_grants is the per-subject Ministry-Admin peek toggle (default
+// DENIED). All three are admin/author-RLS-fenced; writes only via the RPCs.
+export interface NoteTransparencyGrantsRow {
+  id: UUID;
+  subject_profile_id: UUID;
+  granted: boolean;
+  set_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface CareNotesRow {
+  id: UUID;
+  author_profile_id: UUID;
+  subject_profile_id: UUID;
+  body: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface PrayerRequestsRow {
+  id: UUID;
+  author_profile_id: UUID;
+  subject_profile_id: UUID;
+  body: string;
+  status: "open" | "answered" | "archived";
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface OverShepherdsRow {
   id: UUID;
   full_name: string;
@@ -831,6 +864,30 @@ export interface Database {
           "id" | "created_at" | "dek_version"
         >;
         Update: Partial<ShepherdCareNoteKeySlotsRow>;
+        Relationships: [];
+      };
+      note_transparency_grants: {
+        Row: NoteTransparencyGrantsRow;
+        Insert: InsertOf<
+          NoteTransparencyGrantsRow,
+          "id" | "created_at" | "updated_at" | "granted" | "set_by"
+        >;
+        Update: Partial<NoteTransparencyGrantsRow>;
+        Relationships: [];
+      };
+      care_notes: {
+        Row: CareNotesRow;
+        Insert: InsertOf<CareNotesRow, "id" | "created_at" | "updated_at">;
+        Update: Partial<CareNotesRow>;
+        Relationships: [];
+      };
+      prayer_requests: {
+        Row: PrayerRequestsRow;
+        Insert: InsertOf<
+          PrayerRequestsRow,
+          "id" | "created_at" | "updated_at" | "status"
+        >;
+        Update: Partial<PrayerRequestsRow>;
         Relationships: [];
       };
       over_shepherds: {
@@ -1184,6 +1241,18 @@ export interface Database {
       };
       admin_remove_private_note_key_slot: {
         Args: { p_slot_id: UUID };
+        Returns: UUID;
+      };
+      admin_write_care_note: {
+        Args: { p_subject_profile_id: UUID; p_body: string };
+        Returns: UUID;
+      };
+      admin_write_prayer_request: {
+        Args: { p_subject_profile_id: UUID; p_body: string };
+        Returns: UUID;
+      };
+      set_note_transparency_grant: {
+        Args: { p_subject_profile_id: UUID; p_granted: boolean };
         Returns: UUID;
       };
       admin_update_shepherd_care_follow_up_status: {

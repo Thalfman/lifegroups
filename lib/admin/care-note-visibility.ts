@@ -1,0 +1,97 @@
+// Care-note / prayer-request visibility resolver (Pivot slice 9, #381 / ADR 0017).
+//
+// Author-private Care Notes and Prayer Requests follow the per-person
+// transparency model: an Over-Shepherd (or Leader) authors notes ABOUT a
+// subject person, and those notes are sealed to the author by default. A
+// per-subject transparency toggle, controlled by the Ministry Admin team in the
+// Care surface, is the ONLY thing that lets the oversight ladder (Ministry Admin
+// / Super Admin) peek. Julian (Super Admin) sees EXACTLY what a Ministry Admin
+// can — gated on the same grant, with no broader super-admin bypass — never more.
+//
+// This module is the pure, isolation-testable MIRROR of the RLS truth table the
+// 20260608090000_phase_pivot9_care_notes.sql migration enforces in the database.
+// Like lib/admin/feature-flags.ts, it encodes the security rule in pure logic,
+// not glue: no I/O, callers load the viewer + note + grant and this resolves a
+// single boolean. RLS is the real boundary; this resolver is the app-layer copy
+// that the UI uses to decide what to even attempt to render, and that the unit
+// test pins against the full truth table so the two can never silently diverge.
+//
+// Visibility truth table (default = SEALED):
+//
+//   | Viewer                        | grant OFF | grant ON |
+//   |-------------------------------|-----------|----------|
+//   | Author (OS or Leader)         | yes       | yes      |
+//   | Ministry Admin (not author)   | no/sealed | yes/read |
+//   | Super Admin (not author)      | no/sealed | yes/read |  (=== Ministry Admin)
+//   | Peers / other tiers           | no/never  | no/never |
+//
+// The author always reads their own note regardless of role or grant. Everyone
+// else is sealed unless they are on the oversight ladder (Ministry Admin OR
+// Super Admin) AND the subject person's transparency toggle is ON. Peers — any
+// other Over-Shepherd, Leader, or Co-Leader who is not the author — never read,
+// in either grant state. Anything not explicitly granted is denied.
+
+import type { UserRole } from "@/types/enums";
+
+// The party attempting to read a note: their role and their own profile id.
+export type NoteViewer = {
+  role: UserRole;
+  profileId: string;
+};
+
+// The note (or prayer request) being read: who authored it and which subject
+// person it is about. Only the author identity is load-bearing for visibility;
+// the subject id is carried so callers can correlate to the right grant.
+export type NoteMeta = {
+  authorProfileId: string;
+  subjectProfileId: string;
+};
+
+// The subject person's transparency grant. `granted` ON lets the Ministry Admin
+// team (and, identically, the Super Admin) peek; OFF (the default) seals the
+// note from the ladder. A null/undefined grant is treated as OFF (sealed) — the
+// per-person toggle defaults to DENIED.
+export type TransparencyGrant = {
+  granted: boolean;
+} | null;
+
+// The oversight-ladder roles that the transparency grant gates. Both read
+// EXACTLY the same thing through the same gate: a Super Admin gets no broader
+// bypass than a Ministry Admin (the deliberate "no more" of the truth table).
+const LADDER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>([
+  "ministry_admin",
+  "super_admin",
+]);
+
+// Whether `viewer` may read `note`, given the subject person's `grant`.
+//
+// Resolution order (default sealed):
+//   1. Author — anyone whose profile id matches the note's author — always
+//      reads their own note, in any role and either grant state.
+//   2. Oversight ladder (ministry_admin OR super_admin), NOT the author — reads
+//      only when the grant is ON. Super Admin is gated on the SAME grant as the
+//      Ministry Admin, so it never sees more.
+//   3. Everyone else (peers / other tiers) — never reads, in either grant state.
+//
+// Pure and total: no I/O. The grant being null/undefined or `granted: false`
+// both mean OFF (sealed). RLS enforces this same table in the database.
+export function canReadNote(
+  viewer: NoteViewer,
+  note: NoteMeta,
+  grant: TransparencyGrant
+): boolean {
+  // 1. Author always reads their own note (role-independent, grant-independent).
+  if (viewer.profileId === note.authorProfileId) {
+    return true;
+  }
+
+  // 2. Oversight ladder reads only when the subject's toggle is ON. Super Admin
+  //    is gated on the identical grant as Ministry Admin — no broader bypass.
+  if (LADDER_ROLES.has(viewer.role)) {
+    return grant?.granted === true;
+  }
+
+  // 3. Peers / other tiers (over_shepherd, leader, co_leader who are not the
+  //    author) never read, regardless of the grant. Default sealed.
+  return false;
+}

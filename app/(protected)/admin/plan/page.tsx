@@ -60,6 +60,7 @@ export default async function AdminPlanPage() {
             board={data.board}
             groupNamesById={data.groupNamesById}
             activeGroups={data.activeGroups}
+            dueTasks={data.dueTasks}
           />
         </div>
       </PageBody>

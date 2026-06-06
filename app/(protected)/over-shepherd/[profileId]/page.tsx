@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/dashboard/cards";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { LogBroadNoteForm } from "@/components/over-shepherd/log-broad-note-form";
+import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
+import { MyCareNotes } from "@/components/over-shepherd/my-care-notes";
 import { requireOverShepherd } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -16,7 +18,15 @@ import {
   fetchOverShepherdCareInteractions,
   fetchOverShepherdCareProfileByShepherdId,
 } from "@/lib/over-shepherd/read-models";
-import type { ShepherdCareInteractionsRow } from "@/types/database";
+import {
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+} from "@/lib/supabase/read-models";
+import type {
+  CareNotesRow,
+  PrayerRequestsRow,
+  ShepherdCareInteractionsRow,
+} from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { P, fontBody } from "@/lib/pastoral";
@@ -55,14 +65,22 @@ export default async function OverShepherdShepherdPage({
   // and independent, so issue them in parallel. Only the interaction history
   // below genuinely depends on the resolved care row. (RLS scopes both reads to
   // covered profiles.)
-  const [profileQuery, careResult] = await Promise.all([
-    client!
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("id", profileId)
-      .maybeSingle(),
-    fetchOverShepherdCareProfileByShepherdId(client!, profileId),
-  ]);
+  const [profileQuery, careResult, careNotesResult, prayerRequestsResult] =
+    await Promise.all([
+      client!
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("id", profileId)
+        .maybeSingle(),
+      fetchOverShepherdCareProfileByShepherdId(client!, profileId),
+      // The caller's OWN author-private notes/prayers about this Leader, read
+      // back so they can verify what they saved. RLS returns the author's rows
+      // regardless of the transparency toggle.
+      fetchCareNotesForSubject(client!, profileId),
+      fetchPrayerRequestsForSubject(client!, profileId),
+    ]);
+  const myCareNotes: CareNotesRow[] = careNotesResult.data ?? [];
+  const myPrayerRequests: PrayerRequestsRow[] = prayerRequestsResult.data ?? [];
   const shepherdName =
     (profileQuery.data as { full_name?: string } | null)?.full_name ??
     "This Leader";
@@ -128,6 +146,31 @@ export default async function OverShepherdShepherdPage({
             }}
           >
             <LogBroadNoteForm shepherdProfileId={profileId} />
+          </section>
+
+          {/* Pivot slice 9 (#381 / ADR 0017): author-private Care Notes +
+              Prayer Requests about this covered Leader. Private to you by
+              default; ministry leadership reads them only when this Leader's
+              transparency toggle is on (controlled in admin Care). */}
+          <section
+            style={{
+              border: `1px solid ${P.line}`,
+              borderRadius: 12,
+              padding: 16,
+              background: P.bg,
+              display: "grid",
+              gap: 18,
+            }}
+          >
+            <CareNoteWriteForm subjectProfileId={profileId} kind="care_note" />
+            <CareNoteWriteForm
+              subjectProfileId={profileId}
+              kind="prayer_request"
+            />
+            <MyCareNotes
+              careNotes={myCareNotes}
+              prayerRequests={myPrayerRequests}
+            />
           </section>
 
           {interactions.length === 0 ? (

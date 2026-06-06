@@ -15,6 +15,8 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchAllGroupMetricSettings: async () => ok([]),
     fetchPlatformConfig: async () => ok(null as never),
     fetchGroupHealthRubric: async () => ok(null),
+    fetchMultiplicationConfigs: async () => ok([]),
+    fetchLeaderHealthRubric: async () => ok(null),
     ...overrides,
   };
 }

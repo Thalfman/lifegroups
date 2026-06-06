@@ -15,6 +15,22 @@ import {
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
+import { fetchMultiplicationConfigs } from "@/lib/supabase/multiplication-config-reads";
+import {
+  BUILT_IN_PILLAR_THRESHOLDS,
+  decodeFedCapacity,
+  decodePillarThresholds,
+  decodeTriggerRubric,
+  type FedCapacity,
+  type PillarThresholds,
+  type TriggerRubric,
+} from "@/lib/admin/multiplication-pillars";
+import {
+  MULTIPLY_TYPES,
+  MULTIPLY_TYPE_LABEL,
+  currentMinistryYear,
+} from "@/components/admin/multiply/multiply-data";
+import type { MultiplicationConfigSeed } from "@/components/admin/settings/multiplication-config-editor";
 
 // The Settings surface's data, as a function of the reads seam (ADR 0015). The
 // editable-copy read is gated on the viewer being a Super Admin (platform_config
@@ -30,6 +46,14 @@ export type SettingsReads = {
   // #374 Health Rubric: the current group rubric (Ministry-Admin-owned). Bound
   // to the "group" kind here so the seam exposes a zero-arg read like the rest.
   fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
+  // #380 Multiplication Pillars: the per-type config rows for the current
+  // ministry year. Bound to the current year so the seam stays zero-arg.
+  fetchMultiplicationConfigs: () => ReturnType<
+    typeof fetchMultiplicationConfigs
+  >;
+  // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
+  // "leader" kind. Same shared reader, filtered to the other rubric row.
+  fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
 };
 
 export function supabaseSettingsReads(
@@ -43,7 +67,45 @@ export function supabaseSettingsReads(
       fetchPlatformConfig,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
+    fetchMultiplicationConfigs: () =>
+      fetchMultiplicationConfigs(client, currentMinistryYear(new Date())),
+    fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
+}
+
+// The default trigger a type uses until Julian configures one — a light gate so a
+// fresh ministry sees a sensible "ready?" answer rather than a blank one. Mirrors
+// the default in multiply-data.ts.
+const DEFAULT_TRIGGER: TriggerRubric = {
+  minimums: { capacity: "B", interest: "C" },
+  requireHealthGrades: false,
+};
+
+const EMPTY_FED_CAPACITY: FedCapacity = { headroom: null, fullGroupCount: 0 };
+
+// Build the per-type editor seeds for the Settings Multiply-config editor from
+// the decoded config rows (indexed by type). Each type gets its stored config or
+// a built-in fallback, so all three types are always editable.
+function buildMultiplicationSeeds(
+  configByType: Map<
+    string,
+    {
+      thresholds: PillarThresholds;
+      trigger: TriggerRubric;
+      fedCapacity: FedCapacity;
+    }
+  >
+): MultiplicationConfigSeed[] {
+  return MULTIPLY_TYPES.map((type) => {
+    const config = configByType.get(type);
+    return {
+      type,
+      label: MULTIPLY_TYPE_LABEL[type],
+      thresholds: config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS,
+      trigger: config?.trigger ?? DEFAULT_TRIGGER,
+      fedCapacity: config?.fedCapacity ?? EMPTY_FED_CAPACITY,
+    };
+  });
 }
 
 export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
@@ -53,12 +115,19 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groups: [],
     groupMetricSettings: [],
     groupRubricCriteria: [],
+    multiplicationConfig: {
+      ministryYear: currentMinistryYear(new Date()),
+      seeds: buildMultiplicationSeeds(new Map()),
+    },
+    leaderRubricCriteria: [],
     isSuperAdmin,
     editableCopy: isSuperAdmin ? {} : null,
     errors: {
       defaults: "The database is not configured in this environment.",
       groups: "The database is not configured in this environment.",
       overrides: "The database is not configured in this environment.",
+      multiplication: "The database is not configured in this environment.",
+      leaderRubric: "The database is not configured in this environment.",
     },
   };
 }
@@ -75,6 +144,8 @@ export async function buildSettingsData(
     settingsResult,
     platformConfigResult,
     rubricResult,
+    multiplicationResult,
+    leaderRubricResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -84,9 +155,29 @@ export async function buildSettingsData(
     // The General tab surfaces a pointer to the console for ministry admins.
     isSuperAdmin ? reads.fetchPlatformConfig() : Promise.resolve(null),
     reads.fetchGroupHealthRubric(),
+    reads.fetchMultiplicationConfigs(),
+    reads.fetchLeaderHealthRubric(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
+
+  // #380: index the per-type config rows, decoding each jsonb payload, and build
+  // the editor seeds (all three types, with built-in fallbacks).
+  const configByType = new Map<
+    string,
+    {
+      thresholds: PillarThresholds;
+      trigger: TriggerRubric;
+      fedCapacity: FedCapacity;
+    }
+  >();
+  for (const row of multiplicationResult.data ?? []) {
+    configByType.set(row.group_type, {
+      thresholds: decodePillarThresholds(row.thresholds),
+      trigger: decodeTriggerRubric(row.trigger_rubric),
+      fedCapacity: decodeFedCapacity(row.fed_capacity),
+    });
+  }
 
   return {
     defaults: decoded,
@@ -96,6 +187,13 @@ export async function buildSettingsData(
     groupRubricCriteria: decodeRubricCriteria(
       rubricResult.data?.criteria ?? null
     ),
+    multiplicationConfig: {
+      ministryYear: currentMinistryYear(new Date()),
+      seeds: buildMultiplicationSeeds(configByType),
+    },
+    leaderRubricCriteria: decodeRubricCriteria(
+      leaderRubricResult.data?.criteria ?? null
+    ),
     isSuperAdmin,
     editableCopy: isSuperAdmin
       ? decodeAppConfig(platformConfigResult?.data ?? null).editableCopy
@@ -104,6 +202,8 @@ export async function buildSettingsData(
       defaults: defaultsResult.error?.message ?? null,
       groups: groupsResult.error?.message ?? null,
       overrides: settingsResult.error?.message ?? null,
+      multiplication: multiplicationResult.error?.message ?? null,
+      leaderRubric: leaderRubricResult.error?.message ?? null,
     },
   };
 }

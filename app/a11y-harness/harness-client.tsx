@@ -455,11 +455,21 @@ const SETTINGS_DATA: SettingsShellData = {
     { key: "attendance", label: "Attendance", weight: 60 },
     { key: "unity", label: "Unity", weight: 40 },
   ],
+  leaderRubricCriteria: [
+    { key: "walk", label: "Walk with God", weight: 50 },
+    { key: "team", label: "Team development", weight: 50 },
+  ],
   // Issue #304: render the super_admin variant so the General tab's pastoral
   // editable-copy editor is in the tree for the a11y scan.
   isSuperAdmin: true,
   editableCopy: {},
-  errors: { defaults: null, groups: null, overrides: null },
+  errors: {
+    defaults: null,
+    groups: null,
+    overrides: null,
+    multiplication: null,
+    leaderRubric: null,
+  },
 };
 
 // People surface (#270, Admin Interaction Model req 3). Proves the People page

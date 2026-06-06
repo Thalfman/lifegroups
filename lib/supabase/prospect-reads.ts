@@ -1,13 +1,20 @@
 import type { GroupLifecycleStatus, ProspectState } from "@/types/enums";
+import {
+  decodeNextStep,
+  dueFollowUps,
+  type DueFollowUp,
+  type NextStep,
+} from "@/lib/admin/prospect-next-step";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
-// Read-model for the Interest Funnel board (#375). Column-allowlisted: the
-// board only needs identity, state, and the attached group — never the audit /
-// mutation columns (created_by, updated_by, updated_at) nor the reserved #379
-// fields (next_step, additional_note). The row type is declared locally rather
-// than Pick-ed from a generated ProspectsRow, since types/database.ts is not
-// regenerated in this slice; the allowlist string and this type are the single
-// place the board's shape is named.
+// Read-model for the Interest Funnel board (#375, extended in #379). Column-
+// allowlisted: the board needs identity, state, the attached group, plus the
+// #379 Next Step + Additional Note fields. It never reads the audit / mutation
+// columns (created_by, updated_by, updated_at). The row type is declared locally
+// rather than Pick-ed from a generated ProspectsRow, since types/database.ts is
+// not regenerated in this slice; the allowlist string and this type are the
+// single place the board's shape is named. next_step arrives as raw jsonb and is
+// decoded at the trust boundary (decodeNextStep) into the typed NextStep.
 
 export type ProspectBoardEntry = {
   id: string;
@@ -18,10 +25,19 @@ export type ProspectBoardEntry = {
   group_id: string | null;
   archived: boolean;
   created_at: string;
+  // #379: the single current Next Step (decoded from jsonb) and the separate
+  // Additional Note. Either may be absent.
+  next_step: NextStep | null;
+  additional_note: string | null;
+};
+
+// The raw row as it comes back from PostgREST: next_step is untyped jsonb.
+type ProspectRawRow = Omit<ProspectBoardEntry, "next_step"> & {
+  next_step: unknown;
 };
 
 const PROSPECT_BOARD_COLUMNS =
-  "id, full_name, email, phone, state, group_id, archived, created_at";
+  "id, full_name, email, phone, state, group_id, archived, created_at, next_step, additional_note";
 
 // Same default-cap rationale as fetchGuests: widen past PostgREST's ~1000 row
 // default so funnel counts don't silently truncate.
@@ -40,9 +56,58 @@ export async function fetchProspects(
     .select(PROSPECT_BOARD_COLUMNS)
     .order("created_at", { ascending: false })
     .range(0, PROSPECT_PAGE_LIMIT - 1)
-    .returns<ProspectBoardEntry[]>();
+    .returns<ProspectRawRow[]>();
   if (error) return { data: null, error: wrapError("fetchProspects", error) };
-  return { data: data ?? [], error: null };
+  // Decode the next_step jsonb into the typed NextStep at the trust boundary;
+  // a malformed value decodes to null rather than throwing.
+  const decoded: ProspectBoardEntry[] = (data ?? []).map((row) => ({
+    ...row,
+    next_step: decodeNextStep(row.next_step),
+  }));
+  return { data: decoded, error: null };
+}
+
+// Armed follow-ups that have come due, read DIRECTLY (not derived from the capped
+// board page). The board read is newest-first and capped at PROSPECT_PAGE_LIMIT,
+// so in a church with more prospects than the cap an older prospect's due
+// follow-up would fall off the page and the reminder would be silently missed.
+// This filters in the DB — non-archived, a dated `follow_up` step due on/before
+// today — so the cap only ever bounds the (small) already-due set, then re-derives
+// the canonical list purely via dueFollowUps. The jsonb path filters mirror
+// decodeNextStep's stored snake_case keys (type / due_date).
+const DUE_FOLLOW_UP_COLUMNS = "id, full_name, next_step";
+
+type DueFollowUpRawRow = {
+  id: string;
+  full_name: string;
+  next_step: unknown;
+};
+
+export async function fetchDueFollowUps(
+  client: ReadClient,
+  todayIso: string
+): Promise<ReadResult<DueFollowUp[]>> {
+  const { data, error } = await client
+    .from("prospects")
+    .select(DUE_FOLLOW_UP_COLUMNS)
+    .eq("archived", false)
+    // jsonb-path filters on the stored Next Step (snake_case keys, per
+    // decodeNextStep): a dated follow_up step due on/before today.
+    .eq("next_step->>type", "follow_up")
+    .not("next_step->>due_date", "is", null)
+    .lte("next_step->>due_date", todayIso)
+    .range(0, PROSPECT_PAGE_LIMIT - 1)
+    .returns<DueFollowUpRawRow[]>();
+  if (error)
+    return { data: null, error: wrapError("fetchDueFollowUps", error) };
+  // Re-derive purely so the DB filter and the UI's due rule share one tested home
+  // (dueFollowUps also drops anything that doesn't normalize cleanly).
+  const rows = ((data ?? []) as DueFollowUpRawRow[]).map((row) => ({
+    id: row.id,
+    full_name: row.full_name,
+    next_step: decodeNextStep(row.next_step),
+  }));
+  return { data: dueFollowUps(rows, todayIso), error: null };
 }
 
 // Narrow group-option read for the Plan board's Match/Join picker + roll-up

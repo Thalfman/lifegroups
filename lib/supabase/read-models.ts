@@ -3,6 +3,7 @@ import type {
   AttendanceRecordsRow,
   AttendanceSessionsRow,
   AuditEventsRow,
+  CareNotesRow,
   ChurchAttendanceSnapshotsRow,
   FollowUpsRow,
   GroupCalendarEventsRow,
@@ -16,7 +17,9 @@ import type {
   LeaderPipelineRow,
   MembersRow,
   MultiplicationCandidatesRow,
+  NoteTransparencyGrantsRow,
   PlatformConfigRow,
+  PrayerRequestsRow,
   ProfilesRow,
 } from "@/types/database";
 import type {
@@ -1439,4 +1442,80 @@ export async function fetchLaunchPlanningScenarioByIdForAdmin(
     };
   }
   return { data: raw, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Pivot slice 9 (#381 / ADR 0017) — Care Notes + Prayer Requests + the
+// per-subject transparency grant reads.
+//
+// Column-allowlisted reads (never select("*")). RLS is the real boundary: the
+// author reads their own rows, and the oversight ladder reads a subject's rows
+// only when that subject has an active transparency grant — so these readers
+// return whatever the caller's RLS admits. The transparency-grant reader is
+// admin-only by RLS and powers the inline Care toggle's current state.
+// ---------------------------------------------------------------------------
+
+const CARE_NOTE_COLUMNS =
+  "id, author_profile_id, subject_profile_id, body, created_at, updated_at";
+
+const PRAYER_REQUEST_COLUMNS =
+  "id, author_profile_id, subject_profile_id, body, status, created_at, updated_at";
+
+const NOTE_TRANSPARENCY_GRANT_COLUMNS =
+  "id, subject_profile_id, granted, set_by, created_at, updated_at";
+
+export async function fetchCareNotesForSubject(
+  client: ReadClient,
+  subjectProfileId: string
+): Promise<ReadResult<CareNotesRow[]>> {
+  if (!isUuid(subjectProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .eq("subject_profile_id", subjectProfileId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return { data: null, error: wrapError("fetchCareNotesForSubject", error) };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchPrayerRequestsForSubject(
+  client: ReadClient,
+  subjectProfileId: string
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  if (!isUuid(subjectProfileId)) return { data: [], error: null };
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .eq("subject_profile_id", subjectProfileId)
+    .order("created_at", { ascending: false });
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchPrayerRequestsForSubject", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
+// The per-subject transparency grant (admin-only by RLS). Returns null when no
+// grant row exists — the toggle defaults to DENIED (sealed) in that case.
+export async function fetchNoteTransparencyGrant(
+  client: ReadClient,
+  subjectProfileId: string
+): Promise<ReadResult<NoteTransparencyGrantsRow | null>> {
+  if (!isUuid(subjectProfileId)) return { data: null, error: null };
+  const { data, error } = await client
+    .from("note_transparency_grants")
+    .select(NOTE_TRANSPARENCY_GRANT_COLUMNS)
+    .eq("subject_profile_id", subjectProfileId)
+    .maybeSingle();
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchNoteTransparencyGrant", error),
+    };
+  return {
+    data: (data as NoteTransparencyGrantsRow | null) ?? null,
+    error: null,
+  };
 }

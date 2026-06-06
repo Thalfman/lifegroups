@@ -553,6 +553,22 @@ export function rpcAdminTransitionProspect(
   return callUuidRpc(client, "admin_transition_prospect", args);
 }
 
+// #379 pivot slice 7: set a Prospect's single current Next Step (type
+// connect_to_group_leader | follow_up + optional due date + detail) and a
+// separate Additional Note. The next_step jsonb shape is validated in the
+// action layer (validateSetProspectNextStepPayload) and re-validated
+// authoritatively in the RPC. No provider is wired — nothing is sent.
+export function rpcAdminSetProspectNextStep(
+  client: AppSupabaseClient,
+  args: {
+    p_prospect_id: string;
+    p_next_step: Record<string, unknown> | null;
+    p_additional_note: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_prospect_next_step", args);
+}
+
 export type AdminCreateFollowUpArgs = {
   p_type: FollowUpType;
   p_title: string;
@@ -967,4 +983,106 @@ export function rpcAdminSetHealthRubric(
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_health_rubric", args);
+}
+
+// #380 Multiplication Pillars: upsert one group type's pillar config (thresholds
+// + trigger rubric + Ministry-Admin-fed capacity) for a ministry year. The three
+// jsonb payloads are validated in TS first; the RPC re-guards their object shape.
+export function rpcAdminSetMultiplicationConfig(
+  client: AppSupabaseClient,
+  args: {
+    p_group_type: GroupAudienceCategory;
+    p_ministry_year: number;
+    p_thresholds: Record<string, unknown>;
+    p_trigger: Record<string, unknown>;
+    p_fed_capacity: Record<string, unknown>;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_multiplication_config", args);
+}
+
+// #378 / ADR 0018 (pivot slice 5) Leader-Health Grade: upsert a leader's grade
+// for a ministry year. The roll-up + override resolution are done in TS first
+// (lib/admin/leader-rubric-grade.ts); this persists the already-computed letter
+// (+ raw per-criterion scores and any override) through the audited RPC. The
+// override letter + scope travel together (both null, or both set).
+export type AdminSetLeaderRubricGradeArgs = {
+  p_profile_id: string;
+  p_ministry_year: number;
+  p_criterion_scores: Record<string, number>;
+  p_computed_letter: string | null;
+  p_override_letter: string | null;
+  p_override_scope: "this_month" | "until_cleared" | null;
+  p_override_period_month: string | null;
+};
+
+export function rpcAdminSetLeaderRubricGrade(
+  client: AppSupabaseClient,
+  args: AdminSetLeaderRubricGradeArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_leader_rubric_grade", args);
+}
+
+// #377 / ADR 0018 Group-Health Grade by rubric: upsert a group's rubric grade
+// for a ministry year (per-criterion 0–100 scores + the computed A–F letter +
+// an optional letter override under this-month / until-cleared scope). The
+// letter is recomputed in TS first via the pure facade
+// (lib/admin/group-rubric-grade.ts); the RPC re-validates score range + letters.
+export type AdminSetGroupRubricGradeArgs = {
+  p_group_id: string;
+  p_ministry_year: number;
+  p_criterion_scores: Record<string, number>;
+  p_computed_letter: string | null;
+  p_override_letter: string | null;
+  p_override_scope: string | null;
+  p_override_period_month: string | null;
+};
+
+export function rpcAdminSetGroupRubricGrade(
+  client: AppSupabaseClient,
+  args: AdminSetGroupRubricGradeArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_rubric_grade", args);
+}
+
+// Pivot slice 9 (#381 / ADR 0017): author-private Care Notes + Prayer Requests
+// + the per-subject transparency toggle. The note/prayer body travels as
+// plaintext text; the RPC derives the author server-side and gates authorship on
+// the over-shepherd coverage predicate. The transparency toggle is Ministry-
+// Admin controlled. DISTINCT from the SC.4 encrypted private care note.
+
+export type AdminWriteCareNoteArgs = {
+  p_subject_profile_id: string;
+  p_body: string;
+};
+
+export function rpcAdminWriteCareNote(
+  client: AppSupabaseClient,
+  args: AdminWriteCareNoteArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_write_care_note", args);
+}
+
+export type AdminWritePrayerRequestArgs = {
+  p_subject_profile_id: string;
+  p_body: string;
+};
+
+export function rpcAdminWritePrayerRequest(
+  client: AppSupabaseClient,
+  args: AdminWritePrayerRequestArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_write_prayer_request", args);
+}
+
+export type SetNoteTransparencyGrantArgs = {
+  p_subject_profile_id: string;
+  p_granted: boolean;
+};
+
+export function rpcSetNoteTransparencyGrant(
+  client: AppSupabaseClient,
+  args: SetNoteTransparencyGrantArgs
+): Promise<RpcResult> {
+  return callUuidRpc(client, "set_note_transparency_grant", args);
 }

@@ -6,11 +6,20 @@ import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { InteractionTimeline } from "@/components/admin/shepherd-care/interaction-timeline";
 import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-notes-section";
+import { CareNotesSection } from "@/components/admin/shepherd-care/care-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
+import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
+import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
+import {
+  currentMinistryYear,
+  getGroupRubricGrade,
+  type GroupRubricGradeView,
+} from "@/lib/admin/group-rubric-grade-read";
 import {
   currentUtcDateIso,
   fetchActiveShepherdCoverageAssignmentByShepherdId,
@@ -23,6 +32,9 @@ import {
   fetchShepherdCareInteractionsForAdmin,
   fetchShepherdCarePrivateNoteCiphertextForCreator,
   fetchShepherdCareProfileByShepherdId,
+  fetchCareNotesForSubject,
+  fetchPrayerRequestsForSubject,
+  fetchNoteTransparencyGrant,
   type ActiveShepherdCoverageAssignmentSummary,
   type LedGroupSummary,
   type OverShepherdListRow,
@@ -31,8 +43,19 @@ import {
 } from "@/lib/supabase/read-models";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
+import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
+import {
+  fetchLeaderHealthRubric,
+  fetchLeaderRubricGrade,
+  currentPeriodMonthIso,
+  type LeaderRubricGradeRow,
+} from "@/lib/admin/leader-health-read";
+import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
+import { type RubricCriterion } from "@/lib/admin/health-rubric";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
+  CareNotesRow,
+  PrayerRequestsRow,
   ShepherdCareFollowUpsRow,
   ShepherdCareInteractionsRow,
   ShepherdCareProfilesRow,
@@ -62,6 +85,16 @@ const cardStyle = {
   border: `1px solid ${P.line}`,
   borderRadius: 12,
   padding: 20,
+};
+
+// Shown in place of a grade editor when its read failed — blocks editing so a
+// blank seed can't overwrite an existing grade (#377/#378 read-failure guard).
+const gradeReadErrorStyle = {
+  fontFamily: fontBody,
+  fontSize: 13,
+  color: P.terraTextStrong,
+  margin: 0,
+  lineHeight: 1.5,
 };
 
 async function loadDetail(
@@ -270,6 +303,90 @@ export default async function AdminShepherdCareDetailPage({
   const roleLabel = detail.profileRole === "leader" ? "Leader" : "Co-leader";
   const today = currentUtcDateIso();
 
+  // Current Ministry Year, shared by the Leader-Health Grade (#378) and the
+  // per-group Group-Health Grade (#377) reads below. Off-season (Jun/Jul) has no
+  // ministry year, so the grade controls are suppressed then.
+  const ministryYear = currentMinistryYear();
+
+  // Leader-Health Grade (#378): the symmetric per-leader rubric grade, keyed to
+  // the current Ministry Year. Loaded here (admin-only by RLS) for the distinct
+  // "Leader Health" tab below. A separate, surgical read so the existing
+  // loadDetail shape is untouched; failures degrade to an empty editor.
+  let leaderRubricCriteria: RubricCriterion[] = [];
+  let leaderGrade: LeaderRubricGradeRow | null = null;
+  // A transient read failure must NOT seed the editor with empty scores — saving
+  // from that state would overwrite an existing grade with a blank one. Track it
+  // and block the editor (showing an error) rather than degrading to empty.
+  let leaderGradeReadFailed = false;
+  {
+    const client = await createSupabaseServerClient();
+    if (client) {
+      const [rubricRes, gradeRes] = await Promise.all([
+        fetchLeaderHealthRubric(client),
+        ministryYear !== null
+          ? fetchLeaderRubricGrade(client, profileId, ministryYear)
+          : Promise.resolve({ data: null, error: null as Error | null }),
+      ]);
+      leaderRubricCriteria = rubricRes.data?.criteria ?? [];
+      leaderGrade = gradeRes.data ?? null;
+      leaderGradeReadFailed = Boolean(rubricRes.error || gradeRes.error);
+    }
+  }
+
+  // Resolve the stored leader override against the current period BEFORE seeding
+  // the editor: a "this_month" override set in an earlier month has expired, so
+  // it must seed as "no override" rather than render active and re-post itself
+  // forward under the current month on the next save.
+  const leaderPeriodMonth = currentPeriodMonthIso();
+  const leaderResolved =
+    ministryYear !== null
+      ? resolveLeaderGrade({
+          rubric: { criteria: leaderRubricCriteria },
+          scores: leaderGrade?.criterion_scores ?? {},
+          override:
+            leaderGrade?.override_letter && leaderGrade?.override_scope
+              ? {
+                  letter: leaderGrade.override_letter,
+                  scope: leaderGrade.override_scope,
+                  period_month:
+                    leaderGrade.override_period_month ?? leaderPeriodMonth,
+                }
+              : null,
+          ministryYear,
+          currentPeriodMonth: leaderPeriodMonth,
+        })
+      : null;
+
+  // Group-Health Grade by rubric (#377): for each group this leader leads, load
+  // the configured group rubric criteria + the group's grade for the current
+  // ministry year so the Group panel can host the per-group grade-entry control.
+  const gradeClient =
+    ministryYear !== null && detail.ledGroups.length > 0
+      ? await createSupabaseServerClient()
+      : null;
+  const groupRubricRes =
+    gradeClient !== null
+      ? await fetchHealthRubric(gradeClient, "group")
+      : null;
+  const rubricCriteria = decodeRubricCriteria(
+    groupRubricRes?.data?.criteria ?? null
+  );
+  // A failed group-rubric read taints every group's editor (empty criteria); a
+  // failed per-group grade read taints just that group. Either way we block the
+  // affected editor instead of seeding empty scores that could overwrite a grade.
+  const groupRubricReadFailed = Boolean(groupRubricRes?.error);
+  const gradeByGroupId = new Map<string, GroupRubricGradeView>();
+  const gradeReadFailed = new Set<string>();
+  if (gradeClient !== null && ministryYear !== null) {
+    await Promise.all(
+      detail.ledGroups.map(async (g) => {
+        const res = await getGroupRubricGrade(gradeClient, g.id, ministryYear);
+        if (res.error) gradeReadFailed.add(g.id);
+        else if (res.data) gradeByGroupId.set(g.id, res.data);
+      })
+    );
+  }
+
   const tabRaw = (await searchParams)?.tab;
   const tabParam = Array.isArray(tabRaw) ? tabRaw[0] : tabRaw;
 
@@ -470,21 +587,49 @@ export default async function AdminShepherdCareDetailPage({
             gap: 10,
           }}
         >
-          {detail.ledGroups.map((g) => (
-            <li key={g.id}>
-              <Link
-                href={`/admin/groups/${g.id}`}
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  textDecoration: "underline",
-                }}
-              >
-                {g.name} →
-              </Link>
-            </li>
-          ))}
+          {detail.ledGroups.map((g) => {
+            const gradeView = gradeByGroupId.get(g.id);
+            return (
+              <li key={g.id} style={{ display: "grid", gap: 8 }}>
+                <Link
+                  href={`/admin/groups/${g.id}`}
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 14,
+                    color: P.ink,
+                    textDecoration: "underline",
+                  }}
+                >
+                  {g.name} →
+                </Link>
+                {ministryYear !== null ? (
+                  groupRubricReadFailed || gradeReadFailed.has(g.id) ? (
+                    <p role="alert" style={gradeReadErrorStyle}>
+                      This group&rsquo;s grade couldn&rsquo;t be loaded. Reload
+                      before editing — saving now could overwrite the saved
+                      grade.
+                    </p>
+                  ) : (
+                    <GroupRubricGradeEntry
+                      groupId={g.id}
+                      groupName={g.name}
+                      ministryYear={ministryYear}
+                      criteria={rubricCriteria}
+                      initialScores={gradeView?.criterion_scores ?? {}}
+                      initialOverrideLetter={
+                        gradeView?.grade.overridden
+                          ? gradeView.grade.effective_letter
+                          : null
+                      }
+                      initialOverrideScope={
+                        gradeView?.grade.override_scope ?? null
+                      }
+                    />
+                  )
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p
@@ -502,8 +647,78 @@ export default async function AdminShepherdCareDetailPage({
     </section>
   );
 
+  // Leader Health — the rubric-driven Leader-Health Grade entry, deliberately a
+  // separate tab/card from the Overview's Care Status. The two are distinct
+  // concepts (a graded report card vs a pastoral signal) and must read that way.
+  const leaderHealthPanel = (
+    <section style={cardStyle} aria-label="Leader-Health Grade">
+      <h2 style={sectionHeadingStyle}>Leader-Health Grade</h2>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 13,
+          color: P.ink2,
+          margin: "0 0 14px",
+          lineHeight: 1.5,
+        }}
+      >
+        A rubric-driven A–F grade for this leader, scored against the
+        Leader-Health Rubric and kept for the ministry year. This is separate
+        from their Care Status above — it&rsquo;s a report card, not a pastoral
+        signal.
+      </p>
+      {leaderGradeReadFailed ? (
+        <p role="alert" style={gradeReadErrorStyle}>
+          This leader&rsquo;s grade couldn&rsquo;t be loaded. Reload before
+          editing — saving now could overwrite the saved grade.
+        </p>
+      ) : (
+        <LeaderHealthGradeEditor
+          profileId={profileId}
+          leaderName={detail.profileFullName}
+          ministryYear={ministryYear}
+          criteria={leaderRubricCriteria}
+          initialScores={leaderGrade?.criterion_scores ?? {}}
+          initialOverrideLetter={
+            leaderResolved?.overridden ? leaderResolved.letter : null
+          }
+          initialOverrideScope={leaderResolved?.override_scope ?? null}
+        />
+      )}
+    </section>
+  );
+
+  // Pivot slice 9 (#381 / ADR 0017): the per-person transparency toggle + the
+  // (RLS-filtered) Care Notes + Prayer Requests. The grant gates the ladder's
+  // read, so when it is off the note/prayer reads return nothing by construction
+  // (RLS withholds the rows) — the section explains the sealed state inline. The
+  // grant read is admin-only by RLS; this page is requireAdmin().
+  const careNotesClient = await createSupabaseServerClient();
+  let transparencyGranted = false;
+  let careNotes: CareNotesRow[] = [];
+  let prayerRequests: PrayerRequestsRow[] = [];
+  if (careNotesClient) {
+    const [grantRes, notesRes, prayersRes] = await Promise.all([
+      fetchNoteTransparencyGrant(careNotesClient, profileId),
+      fetchCareNotesForSubject(careNotesClient, profileId),
+      fetchPrayerRequestsForSubject(careNotesClient, profileId),
+    ]);
+    transparencyGranted = grantRes.data?.granted ?? false;
+    careNotes = notesRes.data ?? [];
+    prayerRequests = prayersRes.data ?? [];
+  }
+  const careNotesPanel = (
+    <CareNotesSection
+      subjectProfileId={profileId}
+      granted={transparencyGranted}
+      careNotes={careNotes}
+      prayerRequests={prayerRequests}
+    />
+  );
+
   const tabs = [
     { key: "overview", label: "Overview", panel: overviewPanel },
+    { key: "leader-health", label: "Leader Health", panel: leaderHealthPanel },
     {
       key: "contact-history",
       label: "Contact History",
@@ -513,6 +728,11 @@ export default async function AdminShepherdCareDetailPage({
     ...(notesPanel
       ? [{ key: "notes", label: "Notes", panel: notesPanel }]
       : []),
+    {
+      key: "care-notes",
+      label: "Care notes & prayer",
+      panel: careNotesPanel,
+    },
     { key: "group", label: "Group", panel: groupPanel },
   ];
 

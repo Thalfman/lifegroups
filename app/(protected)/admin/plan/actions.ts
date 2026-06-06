@@ -3,8 +3,10 @@
 import {
   validateCreateProspectPayload,
   validateTransitionProspectPayload,
+  validateSetProspectNextStepPayload,
   type CreateProspectPayload,
   type TransitionProspectPayload,
+  type SetProspectNextStepPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -15,6 +17,7 @@ import {
 import {
   rpcAdminCreateProspect,
   rpcAdminTransitionProspect,
+  rpcAdminSetProspectNextStep,
 } from "@/lib/admin/rpc";
 
 // The Interest Funnel board reads from /admin/plan; the home dashboard also
@@ -24,6 +27,14 @@ const REVALIDATE_PATHS = ["/admin/plan", "/admin"] as const;
 const CREATE_PROSPECT_KEYS = ["full_name", "email", "phone"] as const;
 
 const TRANSITION_PROSPECT_KEYS = ["prospect_id", "state", "group_id"] as const;
+
+const SET_NEXT_STEP_KEYS = [
+  "prospect_id",
+  "next_step_type",
+  "next_step_due_date",
+  "next_step_detail",
+  "additional_note",
+] as const;
 
 // ----- adminCreateProspect ------------------------------------------------
 
@@ -78,4 +89,41 @@ export async function adminTransitionProspect(
   input: ActionInput<TransitionProspectPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(TRANSITION_PROSPECT_SPEC, prev, input);
+}
+
+// ----- adminSetProspectNextStep (#379) ------------------------------------
+// Sets a Prospect's single current Next Step + separate Additional Note. A
+// follow_up with a due date is an armed follow-up (surfaced as a due task). No
+// provider is wired — nothing is sent. The audit (in the RPC) records presence
+// flags only, so the action's log fields stay presence-only too.
+
+const SET_NEXT_STEP_SPEC: AdminWriteActionSpec<
+  SetProspectNextStepPayload,
+  { id: string }
+> = {
+  name: "admin.plan.set_prospect_next_step",
+  keys: SET_NEXT_STEP_KEYS,
+  validate: validateSetProspectNextStepPayload,
+  fields: (_actor, value) => ({ target_prospect_id: value.prospect_id }),
+  okFields: (value) => ({
+    next_step_type: value.next_step?.type ?? null,
+    has_due_date: value.next_step?.due_date != null,
+    has_detail: value.next_step?.detail != null,
+    has_note: value.additional_note != null,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetProspectNextStep(client, {
+      p_prospect_id: value.prospect_id,
+      p_next_step: value.next_step,
+      p_additional_note: value.additional_note,
+    }),
+  revalidate: () => REVALIDATE_PATHS,
+  noDataError: "The next step wasn't saved. Please try again.",
+};
+
+export async function adminSetProspectNextStep(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<SetProspectNextStepPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_NEXT_STEP_SPEC, prev, input);
 }

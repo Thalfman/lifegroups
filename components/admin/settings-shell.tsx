@@ -22,6 +22,10 @@ import {
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
+import {
+  MultiplicationConfigEditor,
+  type MultiplicationConfigSeed,
+} from "@/components/admin/settings/multiplication-config-editor";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -31,6 +35,17 @@ export type SettingsShellData = {
   // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
   // Empty when no rubric has been built yet; the editor seeds a blank row.
   groupRubricCriteria: RubricCriterion[];
+  // #380 Multiplication Pillars: the per-type config seeds (Capacity feed +
+  // trigger rubric) for the current ministry year, plus the year itself. Optional
+  // so the shell tolerates a build that hasn't wired this read yet.
+  multiplicationConfig?: {
+    ministryYear: number;
+    seeds: MultiplicationConfigSeed[];
+  };
+  // #378 / ADR 0018: the current Leader-Health Rubric's criteria — the symmetric
+  // per-leader rubric, same editor parameterized to the "leader" kind. Empty
+  // until Julian builds it.
+  leaderRubricCriteria: RubricCriterion[];
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but two facets stay behind the super-admin
   // boundary: the pastoral editable-copy editor (writes the Super-Admin-only
@@ -46,6 +61,12 @@ export type SettingsShellData = {
     defaults: string | null;
     groups: string | null;
     overrides: string | null;
+    // #380 / #378: a transient read failure for the multiplication config or the
+    // leader rubric must surface (not silently fall back to default seeds / a
+    // blank rubric), so an admin save can't overwrite config that merely failed
+    // to load.
+    multiplication: string | null;
+    leaderRubric: string | null;
   };
 };
 
@@ -62,7 +83,11 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
     .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
 
   const anyError =
-    data.errors.defaults || data.errors.groups || data.errors.overrides;
+    data.errors.defaults ||
+    data.errors.groups ||
+    data.errors.overrides ||
+    data.errors.multiplication ||
+    data.errors.leaderRubric;
 
   const tabs: SettingsTab[] = [
     {
@@ -151,6 +176,45 @@ function ThresholdsPanel({
         />
         <Card>
           <HealthRubricEditor criteria={data.groupRubricCriteria} />
+        </Card>
+      </section>
+
+      {/* #380 Multiplication Pillars: the Ministry-Admin-fed Capacity per type +
+          the trigger rubric that decides when a type is ready to multiply. Feeds
+          the Multiply boards directly; capacity here is the fed source, never
+          in-app counts. */}
+      {data.multiplicationConfig ? (
+        <section style={{ display: "grid", gap: 18 }}>
+          <SectionHeader
+            eyebrow="Multiplication pillars"
+            title="When a group type is ready to multiply"
+            description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+          />
+          <Card>
+            <MultiplicationConfigEditor
+              seeds={data.multiplicationConfig.seeds}
+              ministryYear={data.multiplicationConfig.ministryYear}
+            />
+          </Card>
+        </section>
+      ) : null}
+      {/* #378 / ADR 0018 (pivot slice 5): the Leader-Health Rubric — the
+          symmetric per-leader weighted criteria that roll up to an A–F
+          Leader-Health Grade entered in Care. Same editor, parameterized to the
+          "leader" kind; same weight-to-100 gate. A deliberate FOURTH "health"
+          concept, distinct from Leader Care Status and the Health Pulse. */}
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Leader Health Rubric"
+          title="How a leader is graded"
+          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
+        />
+        <Card>
+          <HealthRubricEditor
+            criteria={data.leaderRubricCriteria}
+            kind="leader"
+            subjectLabel="leader"
+          />
         </Card>
       </section>
 
