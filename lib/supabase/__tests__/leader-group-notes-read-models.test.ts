@@ -5,6 +5,7 @@ import {
   fetchAuthoredGroupPrayerRequests,
   fetchGroupCareNotes,
   fetchGroupPrayerRequests,
+  fetchLeaderGroupsByIds,
 } from "@/lib/supabase/read-models";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 
@@ -17,9 +18,14 @@ const GROUP = "22222222-2222-2222-2222-222222222222";
 function makeClient(rows: unknown[]) {
   const eqCalls: Array<[string, unknown]> = [];
   const notCalls: Array<[string, string, unknown]> = [];
+  const selectArgs: string[] = [];
   let lastTable = "";
   const builder: Record<string, unknown> = {
-    select: () => builder,
+    select: (cols?: string) => {
+      if (typeof cols === "string") selectArgs.push(cols);
+      return builder;
+    },
+    in: () => builder,
     eq: (col: string, val: unknown) => {
       eqCalls.push([col, val]);
       return builder;
@@ -38,7 +44,7 @@ function makeClient(rows: unknown[]) {
       return builder;
     },
   } as unknown as AppSupabaseClient;
-  return { client, eqCalls, notCalls, table: () => lastTable };
+  return { client, eqCalls, notCalls, selectArgs, table: () => lastTable };
 }
 
 const noteRow = {
@@ -106,6 +112,40 @@ describe("fetchGroupCareNotes / fetchGroupPrayerRequests (leader surface)", () =
   it("short-circuits to empty on a non-uuid group id", async () => {
     const { client } = makeClient([noteRow]);
     expect(await fetchGroupCareNotes(client, "nope")).toEqual({
+      data: [],
+      error: null,
+    });
+  });
+});
+
+describe("fetchLeaderGroupsByIds (leader-safe projection)", () => {
+  it("reads an allowlist of columns — never select(*) and never admin_notes", async () => {
+    const { client, selectArgs, table } = makeClient([
+      {
+        id: GROUP,
+        name: "Tuesday Men",
+        lifecycle_status: "active",
+        meeting_day: "tuesday",
+        meeting_time: "19:00",
+        meeting_frequency: "weekly",
+        meeting_week_parity: null,
+      },
+    ]);
+    const result = await fetchLeaderGroupsByIds(client, [GROUP]);
+    expect(result.error).toBeNull();
+    expect(table()).toBe("groups");
+    const cols = selectArgs.join(" ");
+    // The admin-only column must never reach a leader route (AGENTS.md).
+    expect(cols).not.toContain("admin_notes");
+    expect(cols).not.toContain("*");
+    expect(cols).toContain("id");
+    expect(cols).toContain("name");
+    expect(cols).toContain("lifecycle_status");
+  });
+
+  it("short-circuits to empty on no ids", async () => {
+    const { client } = makeClient([]);
+    expect(await fetchLeaderGroupsByIds(client, [])).toEqual({
       data: [],
       error: null,
     });

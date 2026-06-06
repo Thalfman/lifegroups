@@ -3,8 +3,10 @@ import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { requireLeader } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { fetchGroupsByIds } from "@/lib/supabase/read-models";
-import type { GroupsRow } from "@/types/database";
+import {
+  fetchLeaderGroupsByIds,
+  type LeaderSafeGroupRow,
+} from "@/lib/supabase/read-models";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +29,13 @@ export default async function LeaderPage() {
   const MAX_WIDTH = 720;
 
   const groupIds = session.assignedGroupIds;
-  let groups: GroupsRow[] = [];
+  let groups: LeaderSafeGroupRow[] = [];
   if (groupIds.length > 0) {
     const client = await createSupabaseServerClient();
     if (client) {
-      const result = await fetchGroupsByIds(client, groupIds);
+      const result = await fetchLeaderGroupsByIds(client, groupIds);
       if (result.error) throw result.error;
-      groups = (result.data ?? []) as GroupsRow[];
+      groups = result.data ?? [];
       // Stable, friendly ordering by name.
       groups.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -63,7 +65,7 @@ export default async function LeaderPage() {
   );
 }
 
-function GroupCard({ group }: { group: GroupsRow }) {
+function GroupCard({ group }: { group: LeaderSafeGroupRow }) {
   const linkStyle: React.CSSProperties = {
     fontFamily: "var(--font-sans)",
     fontSize: 13,

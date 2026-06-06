@@ -97,6 +97,41 @@ export async function fetchGroupsByIds(
   return { data: data ?? [], error: null };
 }
 
+// Leader-safe group read: an ALLOWLISTED projection that excludes admin-only
+// columns (notably `admin_notes`, see AGENTS.md — admin notes must never reach a
+// leader route). The leader surfaces (dashboard, care, calendar) read their own
+// groups via the group RLS `auth_is_leader_of(id)` arm, so a plain `select("*")`
+// (fetchGroupsByIds) would pull admin_notes into a leader context. Leaders only
+// ever need identity + schedule, so this returns exactly those columns.
+export type LeaderSafeGroupRow = Pick<
+  GroupsRow,
+  | "id"
+  | "name"
+  | "lifecycle_status"
+  | "meeting_day"
+  | "meeting_time"
+  | "meeting_frequency"
+  | "meeting_week_parity"
+>;
+
+const LEADER_SAFE_GROUP_COLUMNS =
+  "id, name, lifecycle_status, meeting_day, meeting_time, meeting_frequency, meeting_week_parity";
+
+export async function fetchLeaderGroupsByIds(
+  client: ReadClient,
+  ids: string[]
+): Promise<ReadResult<LeaderSafeGroupRow[]>> {
+  if (ids.length === 0) return { data: [], error: null };
+  const { data, error } = await client
+    .from("groups")
+    .select(LEADER_SAFE_GROUP_COLUMNS)
+    .in("id", ids)
+    .order("name", { ascending: true });
+  if (error)
+    return { data: null, error: wrapError("fetchLeaderGroupsByIds", error) };
+  return { data: (data ?? []) as LeaderSafeGroupRow[], error: null };
+}
+
 export async function fetchActiveGroupCount(
   client: ReadClient
 ): Promise<ReadResult<number>> {
