@@ -128,8 +128,7 @@ export function CareAccordion({ panes }: { panes: CareAccordionPane[] }) {
             color: P.ink2,
           }}
         >
-          Leaders grouped by their over-shepherd. Open a pane to see who they
-          cover, then a leader for their care detail.
+          Leaders grouped by their over-shepherd.
         </p>
         <Link
           href="/admin/shepherd-care/over-shepherds"

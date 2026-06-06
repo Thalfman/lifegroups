@@ -459,6 +459,29 @@ const SETTINGS_DATA: SettingsShellData = {
     { key: "walk", label: "Walk with God", weight: 50 },
     { key: "team", label: "Team development", weight: 50 },
   ],
+  // #396 Settings > Groups: a small type×category matrix so the catalog editor +
+  // grid (with its cell toggles) is in the tree for the a11y scan.
+  categoryMatrix: {
+    rows: [
+      {
+        categoryId: "cat-1",
+        label: "20-30s",
+        cells: {
+          men: { categoryId: "cat-1", audienceCategory: "men", active: true },
+          women: {
+            categoryId: "cat-1",
+            audienceCategory: "women",
+            active: true,
+          },
+          mixed: {
+            categoryId: "cat-1",
+            audienceCategory: "mixed",
+            active: false,
+          },
+        },
+      },
+    ],
+  },
   // Issue #304: render the super_admin variant so the super-admin-only System
   // tab affordances are in the tree for the a11y scan.
   isSuperAdmin: true,
@@ -469,6 +492,7 @@ const SETTINGS_DATA: SettingsShellData = {
     multiplication: null,
     groupRubric: null,
     leaderRubric: null,
+    groupCategories: null,
   },
 };
 

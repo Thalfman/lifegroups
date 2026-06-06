@@ -1,0 +1,66 @@
+import type { GroupAudienceCategory } from "@/types/enums";
+import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+
+// Group Category catalog + cell-matrix read models (#396 / ADR 0015). Two
+// column-allowlisted reads feed the Settings > Groups tab — never select("*"),
+// even though RLS already restricts SELECT to admins (belt-and-braces, matching
+// the multiplication-config + health-rubric reads idiom):
+//   1. fetchGroupCategories — the live (non-archived) catalog, alphabetical.
+//   2. fetchCategoryTypeCells — every cell row (audience_category × category)
+//      with its active flag, so the matrix can render which cells are active.
+// The matrix assembly (rows = categories, columns = the three top types) is a
+// pure function over these two reads (lib/admin/group-category-matrix.ts).
+
+export const GROUP_CATEGORY_COLUMNS = "id, label, created_at";
+
+// One live catalog category, as read through the allowlist.
+export type GroupCategoryRow = {
+  id: string;
+  label: string;
+  created_at: string;
+};
+
+// Fetch the live (non-archived) catalog, ordered by label. An empty result is
+// the success-with-empty case — a fresh ministry ships an EMPTY catalog (PRD
+// §2.2), so the editor seeds a blank row.
+export async function fetchGroupCategories(
+  client: ReadClient
+): Promise<ReadResult<GroupCategoryRow[]>> {
+  const { data, error } = await client
+    .from("group_categories")
+    .select(GROUP_CATEGORY_COLUMNS)
+    .is("archived_at", null)
+    .order("label", { ascending: true })
+    .returns<GroupCategoryRow[]>();
+
+  if (error) return { data: null, error: wrapError("group_categories", error) };
+  return { data: data ?? [], error: null };
+}
+
+export const CATEGORY_TYPE_CELL_COLUMNS =
+  "id, audience_category, category_id, active";
+
+// One cell row, as read through the allowlist. target_count + trigger_overrides
+// are deliberately NOT read here — they are later-slice columns.
+export type CategoryTypeCellRow = {
+  id: string;
+  audience_category: GroupAudienceCategory;
+  category_id: string;
+  active: boolean;
+};
+
+// Fetch every cell row. The matrix builder pairs these against the catalog; a
+// cell whose category is archived is dropped by the join (the catalog read only
+// returns live categories), so an archived category's stale cells never show.
+export async function fetchCategoryTypeCells(
+  client: ReadClient
+): Promise<ReadResult<CategoryTypeCellRow[]>> {
+  const { data, error } = await client
+    .from("category_type_targets")
+    .select(CATEGORY_TYPE_CELL_COLUMNS)
+    .returns<CategoryTypeCellRow[]>();
+
+  if (error)
+    return { data: null, error: wrapError("category_type_targets", error) };
+  return { data: data ?? [], error: null };
+}

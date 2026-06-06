@@ -19,6 +19,8 @@ import {
   MultiplicationConfigEditor,
   type MultiplicationConfigSeed,
 } from "@/components/admin/settings/multiplication-config-editor";
+import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
+import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -39,6 +41,11 @@ export type SettingsShellData = {
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
   leaderRubricCriteria: RubricCriterion[];
+  // #396 Settings > Groups: the type×category matrix — rows = catalog categories,
+  // columns = the three top types — with each cell's active flag. Built purely
+  // from the catalog + cell reads; empty rows when the catalog is empty (fresh
+  // ministry) or the reads failed (see errors.groupCategories).
+  categoryMatrix: CategoryMatrix;
   // Issue #304: whether the viewer is the super_admin. Settings is a
   // ministry-admin surface, but bulk people import stays behind the super-admin
   // boundary (requireSuperAdminSession). For a ministry_admin the System tab
@@ -59,6 +66,9 @@ export type SettingsShellData = {
     multiplication: string | null;
     groupRubric: string | null;
     leaderRubric: string | null;
+    // #396: a single transient-read failure key for the Groups tab's catalog +
+    // cell reads, so an unmigrated environment softens to a placeholder.
+    groupCategories: string | null;
   };
 };
 
@@ -84,6 +94,11 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
       id: "care",
       label: "Care",
       panel: <CarePanel data={data} />,
+    },
+    {
+      id: "groups",
+      label: "Groups",
+      panel: <GroupsPanel data={data} />,
     },
     {
       id: "multiply",
@@ -144,7 +159,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Group Health Rubric"
           title="How a group is graded"
-          description="Name the criteria a group is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F letter; a manual override can still force the letter."
+          description="Name the criteria and set each weight; they must total 100."
         />
         {data.errors.groupRubric ? (
           <NotConfigured subject="The Group Health Rubric" />
@@ -164,7 +179,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Leader Health Rubric"
           title="How a leader is graded"
-          description="Name the criteria a leader is graded on and set each one's weight. The weights must total 100. Grades roll up to an A–F Leader-Health Grade entered per leader in Care; a manual override can still force the letter. This is distinct from a leader's Care Status."
+          description="Name the criteria and set each weight; they must total 100. Distinct from a leader's Care Status."
         />
         {data.errors.leaderRubric ? (
           <NotConfigured subject="The Leader Health Rubric" />
@@ -175,6 +190,34 @@ function CarePanel({ data }: { data: SettingsShellData }) {
               kind="leader"
               subjectLabel="leader"
             />
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// Groups tab (#396 / PRD §2.1, §2.7): the foundation of the groups overhaul —
+// the free-form category catalog and the (top type × category) matrix of active
+// cells. An admin defines free-form labels, then applies a label to one or more
+// top types; applying activates that cell, the live unit everything downstream
+// (target, capacity, interest, readiness) hangs off in later slices. Care stays
+// the default tab; this tab is new. Softens to a placeholder when its reads fail
+// (e.g. an environment whose groups tables aren't migrated yet).
+function GroupsPanel({ data }: { data: SettingsShellData }) {
+  return (
+    <div style={{ display: "grid", gap: 36 }}>
+      <section style={{ display: "grid", gap: 18 }}>
+        <SectionHeader
+          eyebrow="Group categories"
+          title="Categories and the type grid"
+          description="Define free-form category labels, then apply each to the top types it belongs under. Applying a category to a type activates that cell."
+        />
+        {data.errors.groupCategories ? (
+          <NotConfigured subject="Group categories" />
+        ) : (
+          <Card>
+            <GroupsCatalogEditor matrix={data.categoryMatrix} />
           </Card>
         )}
       </section>
@@ -194,7 +237,7 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Multiplication pillars"
           title="When a group type is ready to multiply"
-          description="Feed each type's capacity (it is not derived from in-app counts) and set the trigger — the minimum pillar grades a type must clear before it counts as ready to multiply. A full group can be flagged to multiply on its own."
+          description="Feed each type's capacity and set the trigger that marks it ready to multiply."
         />
         {data.errors.multiplication || !data.multiplicationConfig ? (
           <NotConfigured subject="The Multiplication pillars" />
@@ -232,7 +275,7 @@ function ThresholdsPanel({
         <SectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Set the ministry-wide defaults the dashboard uses for capacity, attendance health, and leader-care cadence. Per-group overrides below take precedence when needed."
+          description="Ministry-wide defaults for capacity, attendance health, and leader-care cadence."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
@@ -261,8 +304,7 @@ function ThresholdsPanel({
               <strong style={{ color: P.ink, fontWeight: 600 }}>
                 Need a clean slate?
               </strong>{" "}
-              Reset the baseline thresholds back to the ministry defaults.
-              You&rsquo;ll be asked to confirm first.
+              Reset the thresholds to the ministry defaults.
             </div>
             <ResetMetricDefaultsButton />
           </div>
@@ -289,7 +331,7 @@ function ThresholdsPanel({
             <SectionHeader
               eyebrow="Group-specific overrides"
               title="Per-group adjustments"
-              description="Override capacity or attendance thresholds for a single group, pin a manual health label, or exclude a launch group from capacity warnings."
+              description="Override thresholds or health labels for a single group."
             />
             <Card>
               <GroupMetricOverridesForm
@@ -303,7 +345,7 @@ function ThresholdsPanel({
             <SectionHeader
               eyebrow="Currently overridden"
               title="Groups with active overrides"
-              description="Each line shows the overrides currently in effect. Clear them to fall back to the global defaults."
+              description="Clear an override to fall back to the global defaults."
             />
             {overrideRows.length === 0 ? (
               <Empty
@@ -340,7 +382,7 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <SectionHeader
         eyebrow="Imports"
         title="Bulk people import"
-        description="Import tools for getting people into the system in bulk."
+        description="Tools for loading people in bulk."
       />
       <Card>
         <p
@@ -352,11 +394,10 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             lineHeight: 1.55,
           }}
         >
-          Bulk people import is a guarded write path and stays in the Super
-          Admin Console.{" "}
+          Bulk import stays in the Super Admin Console.{" "}
           {isSuperAdmin
             ? "Open the console to run an import."
-            : "Only the super admin can run an import; ask them if you need people loaded in bulk."}
+            : "Only the super admin can run one."}
         </p>
         {isSuperAdmin ? (
           <PLinkButton

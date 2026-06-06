@@ -262,11 +262,17 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toBe(true);
   });
 
-  test("presents the Care / Multiply / Thresholds / System tabs (pivot, ADR 0016)", async ({
+  test("presents the Care / Groups / Multiply / Thresholds / System tabs (pivot, ADR 0016)", async ({
     page,
   }) => {
     const tabs = page.locator(`${SETTINGS} [role="tab"]`);
-    await expect(tabs).toHaveText(["Care", "Multiply", "Thresholds", "System"]);
+    await expect(tabs).toHaveText([
+      "Care",
+      "Groups",
+      "Multiply",
+      "Thresholds",
+      "System",
+    ]);
     // Care is the default selected tab — the rubrics it carries are the heart of
     // what Settings configures now, so the surface lands on them rather than on
     // the older threshold knobs.
@@ -302,12 +308,12 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     });
     await care.focus();
     await page.keyboard.press("ArrowRight");
-    // Arrow-right moves selection to the next tab (Multiply) and focuses it.
-    const multiply = page.locator(`${SETTINGS} [role="tab"]`, {
-      hasText: "Multiply",
+    // Arrow-right moves selection to the next tab (Groups) and focuses it.
+    const groups = page.locator(`${SETTINGS} [role="tab"]`, {
+      hasText: "Groups",
     });
-    await expect(multiply).toHaveAttribute("aria-selected", "true");
-    await expect(multiply).toBeFocused();
+    await expect(groups).toHaveAttribute("aria-selected", "true");
+    await expect(groups).toBeFocused();
   });
 
   test("axe finds no critical or serious violations on settings", async ({

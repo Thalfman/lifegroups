@@ -1086,3 +1086,41 @@ export function rpcSetNoteTransparencyGrant(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "set_note_transparency_grant", args);
 }
+
+// #396 Settings > Groups: the group Category catalog + the (top type × category)
+// cell matrix. Free-form catalog CRUD (create / rename / archive) and the cell
+// apply/unapply, each through an audited SECURITY DEFINER RPC. Archive is the
+// reversible soft delete (Archive convention); the cell upsert flips the
+// (audience_category × category) row's active flag.
+
+export function rpcAdminCreateGroupCategory(
+  client: AppSupabaseClient,
+  args: { p_label: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_create_group_category", args);
+}
+
+export function rpcAdminRenameGroupCategory(
+  client: AppSupabaseClient,
+  args: { p_category_id: string; p_label: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_rename_group_category", args);
+}
+
+export function rpcAdminArchiveGroupCategory(
+  client: AppSupabaseClient,
+  args: { p_category_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_archive_group_category", args);
+}
+
+export function rpcAdminSetCategoryTypeCell(
+  client: AppSupabaseClient,
+  args: {
+    p_category_id: string;
+    p_audience_category: GroupAudienceCategory;
+    p_active: boolean;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_category_type_cell", args);
+}
