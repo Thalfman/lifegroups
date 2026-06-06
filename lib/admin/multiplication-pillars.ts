@@ -26,10 +26,13 @@ import type { GroupHealthLetter } from "@/types/enums";
 // type so the Multiply pillars and the Health rubric share one A–F vocabulary.
 export type HealthLetter = GroupHealthLetter;
 
-// The pillar identities. Capacity + Interest are always computable from a fed
-// number; the two health pillars roll up supplied grades and may be null.
+// The pillar identities. Capacity, Overflow + Interest are always computable from
+// a fed number; the two health pillars roll up supplied grades and may be null.
+// Overflow ("Capacity (additional): groups overflowing") grades the magnitude of
+// full groups of the type — a separate signal from the per-group multiply flag.
 export type PillarKey =
   | "capacity"
+  | "overflow"
   | "interest"
   | "groupHealth"
   | "leaderHealth";
@@ -38,6 +41,7 @@ export type PillarKey =
 // the health pillars have no grades yet (rendered as "—").
 export type PillarGrades = {
   capacity: HealthLetter;
+  overflow: HealthLetter;
   interest: HealthLetter;
   groupHealth: HealthLetter | null;
   leaderHealth: HealthLetter | null;
@@ -58,11 +62,21 @@ export type PillarBands = {
   d: number;
 };
 
-// A type's full threshold configuration: one band set per numeric pillar. The
-// health pillars are graded from supplied letters, not bands, so they need none.
+// A type's full threshold configuration: one band set per numeric pillar
+// (Capacity, Overflow, Interest). The health pillars are graded from supplied
+// letters, not bands, so they need none.
 export type PillarThresholds = {
   capacity: PillarBands;
+  overflow: PillarBands;
   interest: PillarBands;
+};
+
+// One customizable life-group capacity option Julian can offer for a type. The
+// `label` names the offering (e.g. "Standard", "Larger"); `capacity` is its
+// target size (null when not set). Up to two per type.
+export type CapacityOption = {
+  label: string;
+  capacity: number | null;
 };
 
 // The fed Capacity input for a type. `headroom` is the Ministry-Admin number
@@ -71,13 +85,18 @@ export type PillarThresholds = {
 export type FedCapacity = {
   // The Ministry-Admin-fed capacity headroom for this type. Graded against the
   // capacity bands. Higher = more room. Null when the admin has not fed a value
-  // — then the pillar grades at the floor (F), since no fed room is the worst
-  // capacity signal and the type cannot be claimed ready on capacity alone.
+  // — then the Capacity pillar falls back to the largest configured capacity
+  // option (see computePillars); only with neither does it grade at the floor (F).
   headroom: number | null;
   // How many individual groups of this type are at/over full. A single full
   // group can raise a per-group "multiply this one" flag (acceptance #4),
-  // independent of the type-level trigger.
+  // independent of the type-level trigger; the magnitude also grades the
+  // Overflow pillar.
   fullGroupCount: number;
+  // Up to two customizable life-group capacity options Julian can offer anyone
+  // interested in this type. The largest option's capacity also feeds the
+  // Capacity pillar when no explicit headroom is fed.
+  options: CapacityOption[];
 };
 
 // The plain inputs the resolver grades. Grade arrays are A–F letters as the
@@ -95,9 +114,12 @@ export type PillarInputs = {
 };
 
 // Built-in default bands. Capacity/Interest default to a simple 4/3/2/1 ladder
-// (e.g. "4+ open seats is an A"); Julian tunes these per type in Settings.
+// (e.g. "4+ open seats is an A"); Overflow defaults lower (more overflowing
+// groups = a stronger multiply signal, so 3+ full groups is an A). Julian tunes
+// these per type in Settings.
 export const BUILT_IN_PILLAR_THRESHOLDS: PillarThresholds = {
   capacity: { a: 4, b: 3, c: 2, d: 1 },
+  overflow: { a: 3, b: 2, c: 1, d: 1 },
   interest: { a: 4, b: 3, c: 2, d: 1 },
 };
 
@@ -179,10 +201,17 @@ export function computePillars(
   // is handed, so the math does not branch on it. Referenced to keep it a real
   // parameter without an unused-var lint exception.
   void ministryYear;
+  // The Capacity pillar grades the fed headroom; when no headroom is fed it falls
+  // back to the largest configured capacity option, so the two offerable targets
+  // genuinely feed the pillar. Only with neither does it grade at the floor (F).
+  const capacityInput =
+    inputs.fedCapacity.headroom ??
+    maxOptionCapacity(inputs.fedCapacity.options);
   return {
-    capacity: gradeNumericPillar(
-      inputs.fedCapacity.headroom,
-      thresholds.capacity
+    capacity: gradeNumericPillar(capacityInput, thresholds.capacity),
+    overflow: gradeNumericPillar(
+      inputs.fedCapacity.fullGroupCount,
+      thresholds.overflow
     ),
     interest: gradeNumericPillar(inputs.funnelVolume, thresholds.interest),
     groupHealth: rollUpGrades(inputs.groupGrades),
@@ -190,18 +219,42 @@ export function computePillars(
   };
 }
 
+// The largest capacity among a type's offered options, or null when none is set.
+// Lets the Capacity pillar fall back to the offered targets when no explicit
+// headroom is fed.
+function maxOptionCapacity(options: CapacityOption[]): number | null {
+  let max: number | null = null;
+  for (const opt of options) {
+    if (typeof opt.capacity === "number" && Number.isFinite(opt.capacity)) {
+      max = max === null ? opt.capacity : Math.max(max, opt.capacity);
+    }
+  }
+  return max;
+}
+
 // ---------------------------------------------------------------------------
 // Trigger rubric: thresholds the pillars must clear for the multiply signal.
 // ---------------------------------------------------------------------------
 
-// A trigger names, per pillar, the WORST letter that still clears it (a "min"
-// grade). A pillar clears when its graded letter is at least that good. Omit a
-// pillar to exclude it from the trigger. `requireHealthGrades` makes the two
-// health pillars (which can be "—") mandatory: when true, a null health pillar
-// fails the trigger; when false, an ungraded health pillar is skipped (not yet
-// a blocker) so a type isn't held back purely for lack of grades.
+// A per-pillar condition the trigger fires on. Health (and capacity/interest)
+// are NOT monotonic: high health can warrant multiplying OR holding, and low
+// health can warrant splitting OR staying put. So each pillar's condition names a
+// DIRECTION, not just a minimum:
+//   * atLeast — clears when the grade is at least that good (the legacy "min").
+//   * atMost  — clears when the grade is at most that good (fires on LOW).
+//   * between — clears when the grade falls within a band [best, worst].
+export type PillarCondition =
+  | { op: "atLeast"; letter: HealthLetter }
+  | { op: "atMost"; letter: HealthLetter }
+  | { op: "between"; best: HealthLetter; worst: HealthLetter };
+
+// A trigger names, per pillar, the CONDITION that clears it. Omit a pillar to
+// exclude it from the trigger. `requireHealthGrades` makes the two health pillars
+// (which can be "—") mandatory: when true, a null health pillar fails the
+// trigger; when false, an ungraded health pillar is skipped (not yet a blocker)
+// so a type isn't held back purely for lack of grades.
 export type TriggerRubric = {
-  minimums: Partial<Record<PillarKey, HealthLetter>>;
+  conditions: Partial<Record<PillarKey, PillarCondition>>;
   requireHealthGrades?: boolean;
 };
 
@@ -211,8 +264,8 @@ export type PillarTriggerOutcome = {
   pillar: PillarKey;
   // The pillar's graded letter, or null when ungraded ("—").
   letter: HealthLetter | null;
-  // The trigger's required minimum for this pillar.
-  required: HealthLetter;
+  // The trigger's condition for this pillar.
+  condition: PillarCondition;
   // "cleared" | "failed" | "skipped" (ungraded health pillar, not required).
   status: "cleared" | "failed" | "skipped";
 };
@@ -228,13 +281,34 @@ export type MultiplySignal = {
   blockers: PillarKey[];
 };
 
-// True when `actual` is at least as good as `required` on the A–F ladder. The
-// ladder is best→worst, so a SMALLER index is a better grade: actual clears when
-// its index ≤ the required index.
-function letterClears(actual: HealthLetter, required: HealthLetter): boolean {
-  return (
-    HEALTH_GRADE_LADDER.indexOf(actual) <= HEALTH_GRADE_LADDER.indexOf(required)
-  );
+// Whether `actual` satisfies a pillar `condition` on the A–F ladder. The ladder
+// is best→worst, so a SMALLER index is a better grade:
+//   * atLeast — at least as good ⇒ index ≤ the letter's index.
+//   * atMost  — at most as good (fires on low) ⇒ index ≥ the letter's index.
+//   * between — within [best, worst] inclusive ⇒ index(best) ≤ index ≤ index(worst).
+function conditionClears(
+  actual: HealthLetter,
+  condition: PillarCondition
+): boolean {
+  const idx = HEALTH_GRADE_LADDER.indexOf(actual);
+  switch (condition.op) {
+    case "atLeast":
+      return idx <= HEALTH_GRADE_LADDER.indexOf(condition.letter);
+    case "atMost":
+      return idx >= HEALTH_GRADE_LADDER.indexOf(condition.letter);
+    case "between": {
+      // Tolerate a band whose letters are supplied in either order.
+      const lo = Math.min(
+        HEALTH_GRADE_LADDER.indexOf(condition.best),
+        HEALTH_GRADE_LADDER.indexOf(condition.worst)
+      );
+      const hi = Math.max(
+        HEALTH_GRADE_LADDER.indexOf(condition.best),
+        HEALTH_GRADE_LADDER.indexOf(condition.worst)
+      );
+      return idx >= lo && idx <= hi;
+    }
+  }
 }
 
 // Whether a pillar is one of the two health pillars (which may be null/"—").
@@ -258,27 +332,27 @@ export function evaluateTrigger(
 
   const requireHealth = trigger.requireHealthGrades ?? false;
 
-  for (const key of Object.keys(trigger.minimums) as PillarKey[]) {
-    const required = trigger.minimums[key];
-    if (required === undefined) continue;
+  for (const key of Object.keys(trigger.conditions) as PillarKey[]) {
+    const condition = trigger.conditions[key];
+    if (condition === undefined) continue;
     const letter = pillars[key];
 
     if (letter === null) {
       // Only the two health pillars can be null. Treat per requireHealthGrades.
       if (isHealthPillar(key) && !requireHealth) {
-        outcomes.push({ pillar: key, letter, required, status: "skipped" });
+        outcomes.push({ pillar: key, letter, condition, status: "skipped" });
         continue;
       }
-      outcomes.push({ pillar: key, letter, required, status: "failed" });
+      outcomes.push({ pillar: key, letter, condition, status: "failed" });
       blockers.push(key);
       ready = false;
       continue;
     }
 
-    if (letterClears(letter, required)) {
-      outcomes.push({ pillar: key, letter, required, status: "cleared" });
+    if (conditionClears(letter, condition)) {
+      outcomes.push({ pillar: key, letter, condition, status: "cleared" });
     } else {
-      outcomes.push({ pillar: key, letter, required, status: "failed" });
+      outcomes.push({ pillar: key, letter, condition, status: "failed" });
       blockers.push(key);
       ready = false;
     }
@@ -341,43 +415,95 @@ export function decodePillarThresholds(raw: unknown): PillarThresholds {
   if (!isRecord(raw)) return BUILT_IN_PILLAR_THRESHOLDS;
   return {
     capacity: decodeBands(raw.capacity, BUILT_IN_PILLAR_THRESHOLDS.capacity),
+    overflow: decodeBands(raw.overflow, BUILT_IN_PILLAR_THRESHOLDS.overflow),
     interest: decodeBands(raw.interest, BUILT_IN_PILLAR_THRESHOLDS.interest),
   };
 }
 
 const PILLAR_KEYS: PillarKey[] = [
   "capacity",
+  "overflow",
   "interest",
   "groupHealth",
   "leaderHealth",
 ];
 
-// Decode the stored `trigger_rubric` jsonb into a TriggerRubric. Only A–F
-// minimums on known pillars survive; everything else is dropped.
+function isLetter(value: unknown): value is HealthLetter {
+  return (
+    typeof value === "string" &&
+    HEALTH_GRADE_LADDER.includes(value as HealthLetter)
+  );
+}
+
+// Decode one stored pillar condition. The current shape is a tagged object
+// ({op, letter} / {op, best, worst}); a bare letter string is read as the legacy
+// "atLeast" minimum. Returns undefined when nothing valid is present.
+function decodeCondition(raw: unknown): PillarCondition | undefined {
+  if (isLetter(raw)) return { op: "atLeast", letter: raw };
+  if (!isRecord(raw)) return undefined;
+  if (raw.op === "atMost" && isLetter(raw.letter)) {
+    return { op: "atMost", letter: raw.letter };
+  }
+  if (raw.op === "between" && isLetter(raw.best) && isLetter(raw.worst)) {
+    return { op: "between", best: raw.best, worst: raw.worst };
+  }
+  // Default / explicit "atLeast": accept a letter under either `letter` or the
+  // legacy bare value already handled above.
+  if (isLetter(raw.letter)) return { op: "atLeast", letter: raw.letter };
+  return undefined;
+}
+
+// Decode the stored `trigger_rubric` jsonb into a TriggerRubric. Reads the
+// current `conditions` map; falls back to the legacy `minimums` map (each lifted
+// to an "atLeast" condition) so pre-existing config rows keep working with no
+// backfill. Only known pillars with a valid condition survive.
 export function decodeTriggerRubric(raw: unknown): TriggerRubric {
-  const minimums: Partial<Record<PillarKey, HealthLetter>> = {};
-  if (isRecord(raw) && isRecord(raw.minimums)) {
+  const conditions: Partial<Record<PillarKey, PillarCondition>> = {};
+  const source =
+    isRecord(raw) && isRecord(raw.conditions)
+      ? raw.conditions
+      : isRecord(raw) && isRecord(raw.minimums)
+        ? raw.minimums
+        : null;
+  if (source) {
     for (const key of PILLAR_KEYS) {
-      const value = raw.minimums[key];
-      if (
-        typeof value === "string" &&
-        HEALTH_GRADE_LADDER.includes(value as HealthLetter)
-      ) {
-        minimums[key] = value as HealthLetter;
-      }
+      const condition = decodeCondition(source[key]);
+      if (condition) conditions[key] = condition;
     }
   }
   const requireHealthGrades =
     isRecord(raw) && typeof raw.requireHealthGrades === "boolean"
       ? raw.requireHealthGrades
       : false;
-  return { minimums, requireHealthGrades };
+  return { conditions, requireHealthGrades };
+}
+
+// Decode the stored capacity options jsonb array into at most two clean options,
+// dropping malformed entries. A missing/invalid label becomes "" and a
+// missing/invalid capacity becomes null.
+function decodeCapacityOptions(raw: unknown): CapacityOption[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CapacityOption[] = [];
+  for (const entry of raw) {
+    if (out.length >= 2) break;
+    if (!isRecord(entry)) continue;
+    const label = typeof entry.label === "string" ? entry.label : "";
+    const capacity =
+      typeof entry.capacity === "number" && Number.isFinite(entry.capacity)
+        ? entry.capacity
+        : null;
+    // Skip a wholly-empty option (no label and no capacity).
+    if (label.trim() === "" && capacity === null) continue;
+    out.push({ label, capacity });
+  }
+  return out;
 }
 
 // Decode the stored `fed_capacity` jsonb into FedCapacity. A missing/invalid
-// headroom decodes to null (ungraded ⇒ F); a missing full-group count to 0.
+// headroom decodes to null (then the Capacity pillar falls back to the largest
+// option); a missing full-group count to 0; missing options to [].
 export function decodeFedCapacity(raw: unknown): FedCapacity {
-  if (!isRecord(raw)) return { headroom: null, fullGroupCount: 0 };
+  if (!isRecord(raw)) return { headroom: null, fullGroupCount: 0, options: [] };
   const headroom =
     typeof raw.headroom === "number" && Number.isFinite(raw.headroom)
       ? raw.headroom
@@ -387,5 +513,9 @@ export function decodeFedCapacity(raw: unknown): FedCapacity {
     Number.isFinite(raw.fullGroupCount)
       ? Math.max(0, Math.trunc(raw.fullGroupCount))
       : 0;
-  return { headroom, fullGroupCount };
+  return {
+    headroom,
+    fullGroupCount,
+    options: decodeCapacityOptions(raw.options),
+  };
 }

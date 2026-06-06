@@ -79,11 +79,18 @@ export function currentMinistryYear(now: Date): number {
 }
 
 const DEFAULT_TRIGGER: TriggerRubric = {
-  minimums: { capacity: "B", interest: "C" },
+  conditions: {
+    capacity: { op: "atLeast", letter: "B" },
+    interest: { op: "atLeast", letter: "C" },
+  },
   requireHealthGrades: false,
 };
 
-const EMPTY_FED_CAPACITY: FedCapacity = { headroom: null, fullGroupCount: 0 };
+const EMPTY_FED_CAPACITY: FedCapacity = {
+  headroom: null,
+  fullGroupCount: 0,
+  options: [],
+};
 
 // Compose one type's board from its (possibly absent) config, funnel volume, and
 // the type's rolled-up Group/Leader Health grades (#377/#378). Pure — exported
