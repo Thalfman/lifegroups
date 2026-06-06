@@ -258,15 +258,18 @@ the multiply trigger.
 **Multiplication Trigger** (readiness rule):
 The Ministry-Admin-configured rule over the pillars that signals a cell is ready
 to multiply — each pillar **required or not**, with a threshold in its natural
-unit (Interest ≥ N people, Capacity required/not, Group/Leader Health ≥ a letter).
-The rule is **global with per-cell overrides** (#402): one global rule per ministry
-year (`multiplication_readiness_rule`), and any cell may override a pillar wholesale
-(`category_type_targets.trigger_overrides`; an absent pillar inherits the global
-rule). A cell reads **ready** when every _required_ pillar clears; not-required
-pillars are ignored. Julian owns the rule; the app surfaces the signal, it does not
-decide for him. (The interim per-type Multiply boards still read the older per-type
-`multiplication_config` trigger until they become the per-cell grid in #403.)
-_Avoid_: Alert, threshold (when you mean the whole configured rule); overflow.
+unit. Interest is a **count (≥ N people), never a letter**; Capacity is
+required/not; Group/Leader Health are ≥ a letter. The rule resolves as a
+**three-tier cascade — global → per-type (Audience) → per-cell** — each level
+inheriting the level above per pillar unless it overrides (ADR 0021, amending the
+global-plus-per-cell-only model of #402). One global rule per ministry year
+(`multiplication_readiness_rule`), an optional per-type rule per Audience, and any
+cell may override a pillar wholesale (`category_type_targets.trigger_overrides`). A
+cell reads **ready** when every _required_ pillar clears; not-required pillars are
+ignored. Julian owns the rule; the app surfaces the signal, it does not decide for
+him.
+_Avoid_: Alert, threshold (when you mean the whole configured rule); overflow;
+per-pillar letter grade for Interest (it is a count).
 
 ### Surfaces
 
@@ -295,8 +298,13 @@ dashboard.
 **Settings**:
 The Ministry-Admin configuration surface — ministry/pastoral knobs and all
 Julian-owned pastoral copy and rubrics: the Health Rubric, the Leader-Health
-Rubric, the Multiplication Trigger, and his per-type Capacity feed (ADR
-0007/0018/0019). Visible to Ministry Admin and Super Admin. The per-person Care
+Rubric, and the multiplication setup (ADR 0007/0018/0019/0021). Multiplication setup
+spans **two** sub-tabs: a **Groups** sub-tab where the admin _creates_ the group
+types (a cell at a time — pick an Audience, type a free-text category — and sets each
+one's tracking target), and a **Multiply** sub-tab where the admin sets the readiness
+trigger through a tiered control (global → per-type → per-cell) over those cells.
+"Multiply" deliberately overloads the area name: the area reads the signal, this
+sub-tab configures it. Visible to Ministry Admin and Super Admin. The per-person Care
 Note transparency toggle is _not_ here — it lives inline on each person in Care.
 _Avoid_: Admin settings, config (ambiguous with the Super Admin Console).
 
