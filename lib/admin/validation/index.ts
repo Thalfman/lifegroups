@@ -22,3 +22,4 @@ export * from "./multiplication-pillars";
 export * from "./leader-health";
 export * from "./group-rubric-grade";
 export * from "./leader-pipeline";
+export * from "./group-categories";

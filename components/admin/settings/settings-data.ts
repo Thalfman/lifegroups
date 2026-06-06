@@ -29,6 +29,11 @@ import {
   currentMinistryYear,
 } from "@/components/admin/multiply/multiply-data";
 import type { MultiplicationConfigSeed } from "@/components/admin/settings/multiplication-config-editor";
+import {
+  fetchCategoryTypeCells,
+  fetchGroupCategories,
+} from "@/lib/supabase/group-categories-reads";
+import { buildCategoryMatrix } from "@/lib/admin/group-category-matrix";
 
 // The Settings surface's data, as a function of the reads seam (ADR 0015). The
 // build function takes `isSuperAdmin` only to record it on the shell data (the
@@ -50,6 +55,11 @@ export type SettingsReads = {
   // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
   // "leader" kind. Same shared reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
+  // #396 Settings > Groups: the live category catalog and every cell row. The
+  // matrix (rows = categories, columns = the three top types) is built purely
+  // from these two reads.
+  fetchGroupCategories: OmitClient<typeof fetchGroupCategories>;
+  fetchCategoryTypeCells: OmitClient<typeof fetchCategoryTypeCells>;
 };
 
 export function supabaseSettingsReads(
@@ -60,6 +70,8 @@ export function supabaseSettingsReads(
       fetchMetricDefaults: fetchMetricDefaultsCached,
       fetchAllGroups,
       fetchAllGroupMetricSettings,
+      fetchGroupCategories,
+      fetchCategoryTypeCells,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchMultiplicationConfigs: () =>
@@ -122,6 +134,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       seeds: buildMultiplicationSeeds(new Map()),
     },
     leaderRubricCriteria: [],
+    categoryMatrix: { rows: [] },
     isSuperAdmin,
     errors: {
       defaults: "The database is not configured in this environment.",
@@ -130,6 +143,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       multiplication: "The database is not configured in this environment.",
       groupRubric: "The database is not configured in this environment.",
       leaderRubric: "The database is not configured in this environment.",
+      groupCategories: "The database is not configured in this environment.",
     },
   };
 }
@@ -147,6 +161,8 @@ export async function buildSettingsData(
     rubricResult,
     multiplicationResult,
     leaderRubricResult,
+    categoriesResult,
+    cellsResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -154,6 +170,8 @@ export async function buildSettingsData(
     reads.fetchGroupHealthRubric(),
     reads.fetchMultiplicationConfigs(),
     reads.fetchLeaderHealthRubric(),
+    reads.fetchGroupCategories(),
+    reads.fetchCategoryTypeCells(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
@@ -191,6 +209,13 @@ export async function buildSettingsData(
     leaderRubricCriteria: decodeRubricCriteria(
       leaderRubricResult.data?.criteria ?? null
     ),
+    // #396: the type×category matrix is a pure function of the catalog + the cell
+    // rows. A single error key covers both reads — the Groups tab softens to a
+    // "not set up yet" placeholder if either fails (e.g. an unmigrated env).
+    categoryMatrix: buildCategoryMatrix(
+      categoriesResult.data ?? [],
+      cellsResult.data ?? []
+    ),
     isSuperAdmin,
     errors: {
       defaults: defaultsResult.error?.message ?? null,
@@ -199,6 +224,8 @@ export async function buildSettingsData(
       multiplication: multiplicationResult.error?.message ?? null,
       groupRubric: rubricResult.error?.message ?? null,
       leaderRubric: leaderRubricResult.error?.message ?? null,
+      groupCategories:
+        categoriesResult.error?.message ?? cellsResult.error?.message ?? null,
     },
   };
 }
