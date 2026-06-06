@@ -22,6 +22,10 @@ import {
   type ReadinessResult,
 } from "@/lib/admin/multiplication";
 import { isReadyToLead } from "@/lib/admin/leader-pipeline";
+import {
+  countActiveMembersByGroup,
+  indexOverridesByGroup,
+} from "@/lib/admin/group-capacity-inputs";
 import type {
   GroupMembershipsRow,
   GroupMetricSettingsRow,
@@ -307,17 +311,8 @@ export function buildCapacityBoardModel(args: {
   // category-label segment. Absent map = every group reads as Uncategorized.
   categoryLabelByGroup?: ReadonlyMap<string, string | null>;
 }): CapacityBoardModel {
-  const overridesByGroup = new Map<string, OverrideInput>();
-  for (const o of args.overrides) overridesByGroup.set(o.group_id, o);
-
-  const membershipCounts = new Map<string, number>();
-  for (const m of args.memberships) {
-    if (m.status !== "active") continue;
-    membershipCounts.set(
-      m.group_id,
-      (membershipCounts.get(m.group_id) ?? 0) + 1
-    );
-  }
+  const overridesByGroup = indexOverridesByGroup(args.overrides);
+  const membershipCounts = countActiveMembersByGroup(args.memberships);
 
   const apprenticesByGroup = new Map<string, CapacityBoardApprentice[]>();
   for (const a of args.apprentices) {

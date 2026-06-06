@@ -1,5 +1,6 @@
 import type { GroupAudienceCategory, GroupHealthLetter } from "@/types/enums";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
+import { countActiveMembersByGroup } from "@/lib/admin/group-capacity-inputs";
 import { fetchHealthRubric } from "./health-rubric-reads";
 import {
   tallyCellInterest,
@@ -216,15 +217,8 @@ export function tallyCellActiveGroupSizes(
   memberships: readonly CellMembershipRow[],
   activeCells: readonly CellKey[]
 ): CellActiveGroupSizes {
-  // Active-membership count per group id (the capacity-board count idiom).
-  const activeCountByGroup = new Map<string, number>();
-  for (const m of memberships) {
-    if (m.status !== "active") continue;
-    activeCountByGroup.set(
-      m.group_id,
-      (activeCountByGroup.get(m.group_id) ?? 0) + 1
-    );
-  }
+  // Active-membership count per group id (the shared capacity-input rule).
+  const activeCountByGroup = countActiveMembersByGroup(memberships);
 
   // Seed every ACTIVE cell with an empty size list so a configured cell with no
   // active groups still appears in the rollup (and trips Facet B) rather than
