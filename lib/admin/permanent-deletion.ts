@@ -258,6 +258,401 @@ const CLEAN_SLATE_SNAPSHOT: PermanentDeletionEntity = {
   },
 };
 
+// Operational record types (#316 follow-up). Registering the junction/child
+// tables alongside the leaf ones is deliberate: with the "refuse + list"
+// dependency rule (no cascade), a Super Admin clears blockers bottom-up, so every
+// blocker a preflight names must itself be a deletable target. Each loader is
+// bounded with .limit() — fetchPermanentDeletionTargets loads all types in
+// parallel on every Super Admin page load.
+
+const MEMBER: PermanentDeletionEntity = {
+  entityType: "member",
+  label: "Member",
+  pluralLabel: "Members",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("members")
+      .select("id, full_name, email, status")
+      .order("full_name", { ascending: true })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      full_name: string;
+      email: string | null;
+      status: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label:
+        str(r.full_name) +
+        (r.email ? ` <${r.email}>` : "") +
+        (r.status && r.status !== "active" ? ` (${r.status})` : ""),
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.full_name) || str(snapshot.email) || "Member";
+  },
+};
+
+const GROUP_MEMBERSHIP: PermanentDeletionEntity = {
+  entityType: "group_membership",
+  label: "Group membership",
+  pluralLabel: "Group memberships",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("group_memberships")
+      .select("id, role, groups(name), members(full_name)")
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      role: string;
+      groups: { name: string } | null;
+      members: { full_name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.members?.full_name ?? "Member"} in ${
+        r.groups?.name ?? "group"
+      } (${str(r.role)})`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const role = str(snapshot.role);
+    return role ? `Membership (${role})` : "Group membership";
+  },
+};
+
+const GROUP_LEADER: PermanentDeletionEntity = {
+  entityType: "group_leader",
+  label: "Group leader assignment",
+  pluralLabel: "Group leader assignments",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("group_leaders")
+      .select("id, role, active, groups(name), profiles(full_name)")
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      role: string;
+      active: boolean;
+      groups: { name: string } | null;
+      profiles: { full_name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.profiles?.full_name ?? "Leader"} — ${
+        r.groups?.name ?? "group"
+      } (${str(r.role)})${r.active ? "" : " (inactive)"}`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const role = str(snapshot.role);
+    return role ? `Leader assignment (${role})` : "Group leader assignment";
+  },
+};
+
+const ATTENDANCE_SESSION: PermanentDeletionEntity = {
+  entityType: "attendance_session",
+  label: "Attendance session",
+  pluralLabel: "Attendance sessions",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("attendance_sessions")
+      .select("id, meeting_week, meeting_date, status, groups(name)")
+      .order("meeting_week", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      meeting_week: string;
+      meeting_date: string | null;
+      status: string | null;
+      groups: { name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.groups?.name ?? "Group"} — ${
+        str(r.meeting_date) || str(r.meeting_week)
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const week = str(snapshot.meeting_week);
+    return week ? `Attendance ${week}` : "Attendance session";
+  },
+};
+
+const ATTENDANCE_RECORD: PermanentDeletionEntity = {
+  entityType: "attendance_record",
+  label: "Attendance record",
+  pluralLabel: "Attendance records",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("attendance_records")
+      .select(
+        "id, attendance_status, members(full_name), attendance_sessions(meeting_week)"
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      attendance_status: string;
+      members: { full_name: string } | null;
+      attendance_sessions: { meeting_week: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.members?.full_name ?? "Member"} — ${str(
+        r.attendance_status
+      )}${
+        r.attendance_sessions?.meeting_week
+          ? ` (${r.attendance_sessions.meeting_week})`
+          : ""
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const status = str(snapshot.attendance_status);
+    return status ? `Attendance record (${status})` : "Attendance record";
+  },
+};
+
+const GUEST: PermanentDeletionEntity = {
+  entityType: "guest",
+  label: "Guest",
+  pluralLabel: "Guests",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("guests")
+      .select("id, full_name, email, pipeline_stage")
+      .order("full_name", { ascending: true })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      full_name: string;
+      email: string | null;
+      pipeline_stage: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label:
+        str(r.full_name) +
+        (r.email ? ` <${r.email}>` : "") +
+        (r.pipeline_stage ? ` (${r.pipeline_stage})` : ""),
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.full_name) || str(snapshot.email) || "Guest";
+  },
+};
+
+const FOLLOW_UP: PermanentDeletionEntity = {
+  entityType: "follow_up",
+  label: "Follow-up",
+  pluralLabel: "Follow-ups",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("follow_ups")
+      .select("id, type, title, status")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      type: string;
+      title: string;
+      status: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${str(r.title) || str(r.type)}${
+        r.status && r.status !== "open" ? ` (${r.status})` : ""
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.title) || str(snapshot.type) || "Follow-up";
+  },
+};
+
+const GROUP_HEALTH_UPDATE: PermanentDeletionEntity = {
+  entityType: "group_health_update",
+  label: "Group health update",
+  pluralLabel: "Group health updates",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("group_health_updates")
+      .select("id, update_week, pulse, groups(name)")
+      .order("update_week", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      update_week: string;
+      pulse: string | null;
+      groups: { name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.groups?.name ?? "Group"} — ${str(r.update_week)}${
+        r.pulse ? ` (${r.pulse})` : ""
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const week = str(snapshot.update_week);
+    return week ? `Health update ${week}` : "Group health update";
+  },
+};
+
+const GROUP_HEALTH_ASSESSMENT: PermanentDeletionEntity = {
+  entityType: "group_health_assessment",
+  label: "Group health assessment",
+  pluralLabel: "Group health assessments",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("group_health_assessments")
+      .select(
+        "id, period_month, computed_letter, override_letter, groups(name)"
+      )
+      .order("period_month", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      period_month: string;
+      computed_letter: string | null;
+      override_letter: string | null;
+      groups: { name: string } | null;
+    }>;
+    return rows.map((r) => {
+      const grade = str(r.override_letter) || str(r.computed_letter);
+      return {
+        id: r.id,
+        label: `${r.groups?.name ?? "Group"} — ${str(r.period_month)}${
+          grade ? ` (${grade})` : ""
+        }`,
+      };
+    });
+  },
+  labelFromSnapshot(snapshot) {
+    const month = str(snapshot.period_month);
+    return month ? `Assessment ${month}` : "Group health assessment";
+  },
+};
+
+const GROUP_CATEGORY: PermanentDeletionEntity = {
+  entityType: "group_category",
+  label: "Group category",
+  pluralLabel: "Group categories",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("group_categories")
+      .select("id, label, archived_at")
+      .order("label", { ascending: true })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      label: string;
+      archived_at: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: str(r.label) + (r.archived_at ? " (archived)" : ""),
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.label) || "Group category";
+  },
+};
+
+const INVITATION: PermanentDeletionEntity = {
+  entityType: "invitation",
+  label: "Invitation",
+  pluralLabel: "Invitations",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("invitations")
+      .select("id, role, expires_at, revoked_at, used_count, groups(name)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      role: string;
+      expires_at: string;
+      revoked_at: string | null;
+      used_count: number;
+      groups: { name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${str(r.role)} invite${
+        r.groups?.name ? ` · ${r.groups.name}` : ""
+      } — expires ${str(r.expires_at).slice(0, 10)}${
+        r.revoked_at
+          ? " (revoked)"
+          : r.used_count > 0
+            ? ` (used ${r.used_count})`
+            : ""
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const role = str(snapshot.role);
+    return role ? `Invite (${role})` : "Invitation";
+  },
+};
+
+const SHEPHERD_COVERAGE_ASSIGNMENT: PermanentDeletionEntity = {
+  entityType: "shepherd_coverage_assignment",
+  label: "Coverage assignment",
+  pluralLabel: "Coverage assignments",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("shepherd_coverage_assignments")
+      .select("id, active, profiles(full_name), over_shepherds(full_name)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      active: boolean;
+      profiles: { full_name: string } | null;
+      over_shepherds: { full_name: string } | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${r.profiles?.full_name ?? "Leader"} → ${
+        r.over_shepherds?.full_name ?? "over-shepherd"
+      }${r.active ? "" : " (inactive)"}`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return `Coverage assignment ${String(snapshot.id ?? "").slice(0, 8)}`;
+  },
+};
+
+const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
+  entityType: "church_attendance_snapshot",
+  label: "Church attendance snapshot",
+  pluralLabel: "Church attendance snapshots",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("church_attendance_snapshots")
+      .select("id, snapshot_date, attendance_count")
+      .order("snapshot_date", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      snapshot_date: string;
+      attendance_count: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${str(r.snapshot_date)} — ${r.attendance_count}`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const date = str(snapshot.snapshot_date);
+    return date ? `Church attendance ${date}` : "Church attendance snapshot";
+  },
+};
+
 // Registry order is the order the picker lists entity types.
 export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   LAUNCH_SCENARIO,
@@ -268,6 +663,19 @@ export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   APPRENTICE,
   OVER_SHEPHERD,
   CLEAN_SLATE_SNAPSHOT,
+  MEMBER,
+  GROUP_MEMBERSHIP,
+  GROUP_LEADER,
+  ATTENDANCE_SESSION,
+  ATTENDANCE_RECORD,
+  GUEST,
+  FOLLOW_UP,
+  GROUP_HEALTH_UPDATE,
+  GROUP_HEALTH_ASSESSMENT,
+  GROUP_CATEGORY,
+  INVITATION,
+  SHEPHERD_COVERAGE_ASSIGNMENT,
+  CHURCH_ATTENDANCE_SNAPSHOT,
 ];
 
 export function findPermanentDeletionEntity(

@@ -79,7 +79,18 @@ describe("SAD5 — client registry matches the SQL allowlist", () => {
     }
   });
 
-  it("has eight curated entity types total", () => {
-    expect(PERMANENT_DELETION_ENTITIES).toHaveLength(8);
+  it("keeps the eight SAD1–SAD5 curated entity types registered", () => {
+    for (const token of [
+      "launch_scenario",
+      "group",
+      "profile",
+      "calendar_event",
+      "multiplication_candidate",
+      "apprentice",
+      "over_shepherd",
+      "clean_slate_snapshot",
+    ]) {
+      expect(findPermanentDeletionEntity(token)).toBeDefined();
+    }
   });
 });
