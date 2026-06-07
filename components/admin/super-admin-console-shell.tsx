@@ -789,7 +789,7 @@ function ReadinessWorkspace({
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <WorkspaceHeader
         title="Readiness"
-        description="A quick read on whether the platform is ready, and the one thing worth doing next. The rest of the controls live in the workspaces above."
+        description="Whether the platform is ready, and the one thing worth doing next. The rest of the controls live in the workspaces above."
       />
       <NextActionCard action={nextAction} />
       <div className="lg-m-grid-stack" style={cardGridStyle}>
@@ -1162,7 +1162,7 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <WorkspaceHeader
         title="Config"
-        description="Feature flags, owner settings, and editable copy. Frozen surfaces stay off until their routes and access are re-verified; clearing a copy value falls back to its built-in default."
+        description="Feature flags, owner settings, and editable copy. Held surfaces stay off until their routes and access are re-checked; clearing a copy value falls back to its built-in default."
       />
       <FeatureFlagsCard data={data} />
       <div className="lg-m-grid-stack" style={twoCardGridStyle}>
@@ -1195,7 +1195,7 @@ function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
     <CommandCard
       id="settings"
       title="Owner settings"
-      description="A small saved value you can use to confirm owner settings persist correctly. Saving writes to the owner-only config store with a matching audit entry."
+      description="A small saved value you can use to confirm owner settings persist correctly. Saving writes to the owner-only settings with a matching audit entry."
       status={
         data.errors.platformConfig
           ? { label: "Read failed", tone: "blocked" }
@@ -1254,9 +1254,9 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           lineHeight: 1.5,
         }}
       >
-        New surfaces toggle freely. Frozen surfaces stay off until re-verified,
-        so a stale toggle can’t re-expose a surface before its routes and access
-        are re-checked. Nav flags re-show a tab the Care/Plan/Multiply pivot
+        New surfaces toggle freely. Held surfaces stay off until re-checked, so
+        a stale toggle can’t re-expose a surface before its routes and access
+        are confirmed. Nav flags re-show a tab the Care/Plan/Multiply pivot
         hides by default — the route resolves by direct URL either way.
       </p>
       <div style={{ display: "grid", gap: 10 }}>
@@ -1268,9 +1268,9 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           const navVis = def.kind === "nav_visibility";
           const frozenHeldOff = frozen && enabled && state?.verified !== true;
           const riskNote = frozenHeldOff
-            ? "Turned on, but held off until its routes and access are re-verified."
+            ? "Turned on, but held off until its routes and access are re-checked."
             : frozen
-              ? "Frozen surface — stays off until re-verified."
+              ? "Held off — stays off until re-checked."
               : navVis
                 ? "Hidden by default (Care/Plan/Multiply pivot). Turning this on re-shows the tab; its route resolves by direct URL either way."
                 : null;
@@ -1316,7 +1316,7 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                     {def.label}
                   </span>
                   <StatusBadge
-                    label={frozen ? "Frozen" : navVis ? "Nav" : "New"}
+                    label={frozen ? "Held" : navVis ? "Nav" : "New"}
                     tone={frozen ? "warning" : "planned"}
                   />
                   <StatusBadge
@@ -1380,7 +1380,7 @@ function DiagnosticsWorkspace({
     <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
       <WorkspaceHeader
         title="Diagnostics"
-        description="Read-only health checks, plus isolated test tooling kept separate from normal app authorization."
+        description="Read-only health checks, plus test tools kept separate from the normal app."
       />
       <SystemStatusChecklist rows={data.checklist} />
       <section
@@ -1427,9 +1427,9 @@ function DiagnosticsWorkspace({
             lineHeight: 1.5,
           }}
         >
-          These tools run against an isolated test-account function, separate
-          from normal app authorization. Status reads as enabled, disabled, or
-          missing — no secrets are shown.
+          These tools run on isolated test accounts, kept separate from the
+          normal app. Status reads as enabled, disabled, or missing — no secrets
+          are shown.
         </p>
         {testAccountsPanel}
       </section>

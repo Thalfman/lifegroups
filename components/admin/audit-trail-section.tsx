@@ -39,7 +39,7 @@ export function AuditTrailSection({
     <section style={{ display: "grid", gap: 18 }}>
       <SectionHeader
         eyebrow="Audit trail"
-        title="Every change, recorded"
+        title="Every change is recorded"
         description="A read-only stream of admin people-management actions. Phone numbers are intentionally omitted; admin can see contact details on the profile directly."
       />
       {error ? (

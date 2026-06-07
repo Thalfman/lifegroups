@@ -27,8 +27,7 @@ const STATUS_MESSAGES: Record<Exclude<PeekStatus, "valid">, string> = {
 
 async function peek(token: string): Promise<PeekResult | { error: string }> {
   const client = await createSupabaseServerClient();
-  if (!client)
-    return { error: "Signups are not configured on this deployment." };
+  if (!client) return { error: "Sign-ups aren’t available right now." };
   const tokenHash = hashInviteToken(token);
   const { data, error } = await callJsonRpc(client, "peek_invitation", {
     p_token_hash: tokenHash,

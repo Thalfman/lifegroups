@@ -25,7 +25,7 @@ export default async function AdminPlanPage() {
         eyebrow="Plan"
         title="The interest"
         italic="funnel"
-        lede="Where people interested in joining a group move from first interest to a real group. Matched and Joined need a group; Joined rolls up off the board."
+        lede="Where people interested in joining a group move from first interest to a real group. Matched and Joined need a group; Joined drops off the active board."
       />
       <PageBody>
         <div style={{ display: "grid", gap: 24 }}>

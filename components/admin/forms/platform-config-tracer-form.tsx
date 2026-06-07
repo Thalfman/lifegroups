@@ -21,7 +21,7 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
     <form key={value} action={formAction} style={{ display: "grid", gap: 10 }}>
       <div>
         <label htmlFor="console_tracer_note" style={fieldLabelStyle}>
-          Console tracer note
+          Test note
         </label>
         <input
           id="console_tracer_note"
@@ -29,7 +29,7 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
           type="text"
           maxLength={APP_CONFIG_TRACER_MAX_LENGTH}
           defaultValue={value}
-          placeholder="A short note that round-trips through the audited config store"
+          placeholder="A short note to confirm settings save and reload"
           style={fieldInputStyle}
         />
         <p
@@ -41,13 +41,14 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
             lineHeight: 1.4,
           }}
         >
-          Foundation tracer: saving persists via the audited super-admin RPC and
-          reads back on reload. Up to {APP_CONFIG_TRACER_MAX_LENGTH} characters.
+          Saving stores this note and reloads it from the database — a quick
+          check that owner settings persist. Up to{" "}
+          {APP_CONFIG_TRACER_MAX_LENGTH} characters.
         </p>
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
-          {pending ? "Saving…" : "Save config"}
+          {pending ? "Saving…" : "Save note"}
         </PButton>
         <FormStatus state={state} successText="Saved." />
       </div>

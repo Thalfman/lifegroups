@@ -476,7 +476,7 @@ export function CheckInForm({
 
       <FieldSet
         eyebrow="Optional"
-        title="A quick note for the record"
+        title="A note for the record"
         helper="Anything you want admins to see this week. Leave blank if nothing comes to mind."
       >
         <textarea

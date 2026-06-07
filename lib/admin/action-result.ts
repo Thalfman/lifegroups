@@ -25,7 +25,7 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   missing_member:
     "We couldn't find that member. Refresh the page and try again.",
   forbidden_target:
-    "That target isn't allowed through this screen. super_admin must be set via the documented bootstrap procedure, and ministry admins can't deactivate the super admin.",
+    "That action isn't allowed here. The owner role is set up separately, and ministry admins can't deactivate the owner account.",
   self_target_not_allowed:
     "You can't deactivate, reassign, or change your own role through this screen.",
   invalid_role:
@@ -131,9 +131,9 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   has_confidential_records:
     "This person has confidential records and cannot be permanently deleted; disable instead.",
   missing_tombstone:
-    "We couldn't find that tombstone. Refresh the page and try again.",
+    "We couldn't find that backup copy. Refresh the page and try again.",
   already_restored:
-    "That record has already been restored from this tombstone.",
+    "That record has already been restored from its backup copy.",
   id_already_exists:
     "A record with that id already exists again, so the restore can't run without overwriting it. Remove the conflicting record first.",
   missing_parent:

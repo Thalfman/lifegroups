@@ -4,10 +4,7 @@ import { useMemo, useState } from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import { pipelineStageLabel } from "@/lib/dashboard/labels";
-import type {
-  GroupsRow,
-  ProfilesRow,
-} from "@/types/database";
+import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
 import {
   GUEST_PIPELINE_STAGES,
@@ -45,24 +42,30 @@ const STAGE_TONES: Record<GuestPipelineStage, string> = {
   not_now: P.ink3,
 };
 
-export function GuestsManagementShell({ data }: { data: GuestsManagementData }) {
+export function GuestsManagementShell({
+  data,
+}: {
+  data: GuestsManagementData;
+}) {
   const { guests, groups, ownerProfiles, openFollowUpsByGuest, errors } = data;
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState<GuestPipelineStage | "all">("all");
+  const [stageFilter, setStageFilter] = useState<GuestPipelineStage | "all">(
+    "all"
+  );
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
 
   const activeGroups = useMemo(
     () => groups.filter((g) => g.lifecycle_status !== "closed"),
-    [groups],
+    [groups]
   );
   const groupsById = useMemo(
     () => new Map(groups.map((g) => [g.id, g] as const)),
-    [groups],
+    [groups]
   );
   const ownersById = useMemo(
     () => new Map(ownerProfiles.map((p) => [p.id, p] as const)),
-    [ownerProfiles],
+    [ownerProfiles]
   );
 
   const stageCounts = useMemo(() => {
@@ -82,10 +85,14 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
   const filtered = useMemo(() => {
     const lower = search.trim().toLowerCase();
     return guests.filter((g) => {
-      if (lower.length > 0 && !g.full_name.toLowerCase().includes(lower)) return false;
-      if (stageFilter !== "all" && g.pipeline_stage !== stageFilter) return false;
-      if (groupFilter !== "all" && g.assigned_group_id !== groupFilter) return false;
-      if (ownerFilter !== "all" && g.follow_up_owner_id !== ownerFilter) return false;
+      if (lower.length > 0 && !g.full_name.toLowerCase().includes(lower))
+        return false;
+      if (stageFilter !== "all" && g.pipeline_stage !== stageFilter)
+        return false;
+      if (groupFilter !== "all" && g.assigned_group_id !== groupFilter)
+        return false;
+      if (ownerFilter !== "all" && g.follow_up_owner_id !== ownerFilter)
+        return false;
       return true;
     });
   }, [guests, search, stageFilter, groupFilter, ownerFilter]);
@@ -114,11 +121,9 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
     <div style={{ display: "grid", gap: 36 }}>
       {anyError ? (
         <div role="alert" style={alertStyle}>
-          One or more reads failed. The page below shows what we did get; retry in
-          a moment or check the database connection.
-          {errors.guests ? (
-            <p style={errorTextStyle}>{errors.guests}</p>
-          ) : null}
+          One or more reads failed. The page below shows what we did get; retry
+          in a moment or check the database connection.
+          {errors.guests ? <p style={errorTextStyle}>{errors.guests}</p> : null}
         </div>
       ) : null}
 
@@ -126,7 +131,7 @@ export function GuestsManagementShell({ data }: { data: GuestsManagementData }) 
         <SectionHeader
           eyebrow="Pipeline at a glance"
           title="Where everyone stands"
-          description="A live count by stage. The pipeline is manual — no auto-advance, no SMS, no email. You're the one moving people forward."
+          description="A count by stage. The pipeline is manual — no auto-advance, no SMS, no email; you move each person forward yourself."
         />
         <div
           className="lg-m-grid-stack"

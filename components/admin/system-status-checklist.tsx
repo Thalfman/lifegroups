@@ -12,7 +12,13 @@ export type ChecklistRow = {
 
 const TONE_STYLE: Record<
   ChecklistTone,
-  { color: string; background: string; border: string; glyph: string; word: string }
+  {
+    color: string;
+    background: string;
+    border: string;
+    glyph: string;
+    word: string;
+  }
 > = {
   ok: {
     color: P.sageTextStrong,
@@ -43,7 +49,7 @@ export function SystemStatusChecklist({ rows }: { rows: ChecklistRow[] }) {
       <SectionHeader
         eyebrow="System status"
         title="What&rsquo;s in place"
-        description="A quick read of the foundational data and audit access. Useful after a fresh deploy or a seed import."
+        description="A check of the core data and audit access. Useful right after first setting up the app."
       />
       <ol
         style={{

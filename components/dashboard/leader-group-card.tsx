@@ -5,7 +5,10 @@ import { EmptyState, StatusCard } from "@/components/dashboard/cards";
 import { HealthBadge, LifecycleBadge } from "@/components/dashboard/badges";
 import { LeaderQuickDidNotMeet } from "@/components/leader/quick-did-not-meet";
 import { UpcomingEventsStrip } from "@/components/calendar/upcoming-events-strip";
-import { mapHealthToBadge, mapLifecycleToBadge } from "@/lib/dashboard/badge-map";
+import {
+  mapHealthToBadge,
+  mapLifecycleToBadge,
+} from "@/lib/dashboard/badge-map";
 import {
   followUpPriorityLabel,
   followUpTypeLabel,
@@ -33,7 +36,14 @@ export function LeaderGroupCard({
 }: {
   dashboard: LeaderGroupDashboard;
 }) {
-  const { group, recentSessions, healthPulse, followUps, currentWeek, upcomingEvents } = dashboard;
+  const {
+    group,
+    recentSessions,
+    healthPulse,
+    followUps,
+    currentWeek,
+    upcomingEvents,
+  } = dashboard;
   const calendarHref = `/leader/${group.groupId}/calendar`;
   const lifecycle = mapLifecycleToBadge(group.lifecycleStatus);
   const health = mapHealthToBadge(group.healthStatus);
@@ -277,14 +287,11 @@ export function LeaderGroupCard({
           gap: 16,
         }}
       >
-        <StatusCard title="A quick pulse" eyebrow="Group">
+        <StatusCard title="This week at a glance" eyebrow="Group">
           {(
             [
               ["Rhythm", healthPulse.attendanceRhythm],
-              [
-                "New guests",
-                `${healthPulse.newGuestsThisWeek} this week`,
-              ],
+              ["New guests", `${healthPulse.newGuestsThisWeek} this week`],
               [
                 "Members",
                 `${group.activeMembers}${group.capacity ? ` of ${group.capacity}` : ""} active`,
