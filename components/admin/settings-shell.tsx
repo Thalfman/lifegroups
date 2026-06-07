@@ -15,18 +15,18 @@ import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
-import {
-  MultiplicationConfigEditor,
-  type MultiplicationConfigSeed,
-} from "@/components/admin/settings/multiplication-config-editor";
 import { GroupsCatalogEditor } from "@/components/admin/settings/groups-catalog-editor";
 import {
-  ReadinessRuleEditor,
+  MultiplyTriggerEditor,
   type ReadinessCellSeed,
-} from "@/components/admin/settings/readiness-rule-editor";
+} from "@/components/admin/settings/multiply-trigger-editor";
 import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
 import type { CellCoverage } from "@/lib/admin/cell-coverage";
-import type { ReadinessRule } from "@/lib/admin/cell-readiness";
+import type {
+  PerTypeReadinessRule,
+  ReadinessRule,
+} from "@/lib/admin/cell-readiness";
+import type { GroupAudienceCategory } from "@/types/enums";
 
 export type SettingsShellData = {
   defaults: MetricDefaults;
@@ -36,13 +36,6 @@ export type SettingsShellData = {
   // #374 / ADR 0018: the current group Health Rubric's criteria (Julian-owned).
   // Empty when no rubric has been built yet; the editor seeds a blank row.
   groupRubricCriteria: RubricCriterion[];
-  // #380 Multiplication Pillars: the per-type config seeds (Capacity feed +
-  // trigger rubric) for the current ministry year, plus the year itself. Optional
-  // so the shell tolerates a build that hasn't wired this read yet.
-  multiplicationConfig?: {
-    ministryYear: number;
-    seeds: MultiplicationConfigSeed[];
-  };
   // #378 / ADR 0018: the current Leader-Health Rubric's criteria — the symmetric
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
@@ -57,13 +50,15 @@ export type SettingsShellData = {
   // matrix cell by audience + category) and the dedicated coverage panel. Empty
   // when no cell is active or the reads failed (see errors.groupCategories).
   cellCoverage: CellCoverage[];
-  // #402 Settings > Groups: the recast readiness trigger — the GLOBAL rule (each
-  // pillar in its natural unit) plus one override row per active cell. Optional so
-  // the shell tolerates a build that hasn't wired this read yet; softens to a
-  // placeholder on errors.readiness.
+  // #402 / #410 / #411 / ADR 0021: the three-tier multiplication trigger the
+  // Multiply sub-tab edits — the GLOBAL rule (each pillar in its natural unit), the
+  // per-type (Audience) rules (the middle tier), and one row per active cell (its
+  // per-cell overrides). Optional so the shell tolerates a build that hasn't wired
+  // these reads yet; softens to a placeholder on errors.readiness.
   readiness?: {
     ministryYear: number;
     rule: ReadinessRule;
+    perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>;
     cells: ReadinessCellSeed[];
   };
   // Issue #304: whether the viewer is the super_admin. Settings is a
@@ -76,14 +71,12 @@ export type SettingsShellData = {
     defaults: string | null;
     groups: string | null;
     overrides: string | null;
-    // #380 / #378 / #374: a transient read failure for the multiplication config
-    // or either health rubric must surface (not silently fall back to default
-    // seeds / a blank rubric), so an admin save can't overwrite config that
-    // merely failed to load. It also lets a section that can't load — e.g. on an
-    // environment whose pivot tables aren't migrated yet — render a calm
+    // #378 / #374: a transient read failure for either health rubric must surface
+    // (not silently fall back to a blank rubric), so an admin save can't overwrite
+    // a rubric that merely failed to load. It also lets a section that can't load —
+    // e.g. on an environment whose pivot tables aren't migrated yet — render a calm
     // "not set up yet" placeholder in place of its editor, rather than tripping a
     // page-wide error banner.
-    multiplication: string | null;
     groupRubric: string | null;
     leaderRubric: string | null;
     // #396: a single transient-read failure key for the Groups tab's catalog +
@@ -265,36 +258,6 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
           </Card>
         </section>
       ) : null}
-
-      {/* #402 / PRD §2.4: the recast readiness trigger. The global rule reads each
-          pillar in its natural unit — interest ≥ N people, capacity required/not,
-          health ≥ A–F letter (no overflow pillar) — and each active cell can
-          override any pillar. The per-cell override ROWS are built from the catalog
-          + target-cell reads, so a failure there (errors.groupCategories) softens
-          this editor too — otherwise it would render with the global rule but its
-          override rows silently dropped, inviting a save from a surface that lost
-          them. The per-cell display of the resulting readiness signal lands with
-          the Multiply grid (#403); here we own the editing. */}
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
-          eyebrow="Readiness rule"
-          title="When a cell is ready to multiply"
-          description="Mark each pillar required or not and set its threshold. A cell is ready when every required pillar clears; override the rule per cell below."
-        />
-        {data.errors.readiness ||
-        data.errors.groupCategories ||
-        !data.readiness ? (
-          <NotConfigured subject="The readiness rule" />
-        ) : (
-          <Card>
-            <ReadinessRuleEditor
-              ministryYear={data.readiness.ministryYear}
-              rule={data.readiness.rule}
-              cells={data.readiness.cells}
-            />
-          </Card>
-        )}
-      </section>
     </div>
   );
 }
@@ -382,27 +345,36 @@ const coverageTdStyle = {
   color: P.ink2,
 } as const;
 
-// Multiply tab (#380): the per-type Multiplication Pillars — Julian's fed
-// Capacity per type plus the trigger rubric that decides when a group type is
-// ready to multiply. Feeds the Multiply boards directly; capacity here is the
-// fed source, never in-app counts. Softens to a placeholder when its config
-// couldn't load.
+// Multiply tab (#411 / ADR 0021): the multiplication trigger, configured through ONE
+// tiered control over the three-tier cascade — Global default → per-type (Audience)
+// → per-cell. A grouped dropdown picks which level you're configuring; the four
+// pillars then show, each either carrying its own value or inheriting its parent
+// (labelled by source) behind an Override toggle. Interest is a count at every level
+// (never a letter). Each level saves only itself via its matching audited RPC. The
+// per-cell rows are built from the catalog + target reads, so a failure there
+// (errors.groupCategories) softens this editor too — otherwise it would render with
+// the global rule but its cell rows silently dropped. The Multiply grid
+// (/admin/multiply) reads the resolved rule; here we own the editing.
 function MultiplyPanel({ data }: { data: SettingsShellData }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          eyebrow="Multiplication pillars"
-          title="When a group type is ready to multiply"
-          description="Set the trigger — the pillar grades a type must clear before it counts as ready to multiply. Capacity is a derived per-cell issue (a group over 12, or only one group to join), not fed here."
+          eyebrow="Multiplication trigger"
+          title="When a cell is ready to multiply"
+          description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single cell. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-cell issue; Group and Leader Health are A–F letters."
         />
-        {data.errors.multiplication || !data.multiplicationConfig ? (
-          <NotConfigured subject="The Multiplication pillars" />
+        {data.errors.readiness ||
+        data.errors.groupCategories ||
+        !data.readiness ? (
+          <NotConfigured subject="The multiplication trigger" />
         ) : (
           <Card>
-            <MultiplicationConfigEditor
-              seeds={data.multiplicationConfig.seeds}
-              ministryYear={data.multiplicationConfig.ministryYear}
+            <MultiplyTriggerEditor
+              ministryYear={data.readiness.ministryYear}
+              globalRule={data.readiness.rule}
+              perType={data.readiness.perType}
+              cells={data.readiness.cells}
             />
           </Card>
         )}

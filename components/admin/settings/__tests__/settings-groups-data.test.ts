@@ -23,9 +23,10 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchAllGroups: async () => ok([]),
     fetchAllGroupMetricSettings: async () => ok([]),
     fetchGroupHealthRubric: async () => ok(null),
-    fetchMultiplicationConfigs: async () => ok([]),
     // #402: the global readiness rule defaults to absent (built-in rule in use).
     fetchReadinessRule: async () => ok(null),
+    // #410: the per-type tier defaults to empty (every type inherits global).
+    fetchAudienceReadinessRules: async () => ok([]),
     fetchLeaderHealthRubric: async () => ok(null),
     fetchGroupCategories: async () => ok([]),
     fetchCategoryTypeCells: async () => ok([]),
@@ -288,5 +289,57 @@ describe("buildSettingsData — Groups tab readiness rule (#402)", () => {
       { isSuperAdmin: false }
     );
     expect(data.errors.readiness).toBe("rule boom");
+  });
+});
+
+describe("buildSettingsData — Multiply tab per-type tier (#410/#411)", () => {
+  it("defaults the per-type tier to empty when no rule is stored", async () => {
+    const data = await buildSettingsData(emptyReads(), { isSuperAdmin: false });
+    expect(data.errors.readiness).toBeNull();
+    expect(data.readiness?.perType).toEqual({});
+  });
+
+  it("decodes the per-type rules keyed by audience_category", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchAudienceReadinessRules: async () =>
+          ok([
+            {
+              id: "men-rule",
+              ministry_year: 2026,
+              audience_category: "men" as const,
+              // A partial: only Interest overrides global; the rest inherit.
+              rule: { interest: { required: true, min: 5 } },
+              updated_at: "2026-06-06",
+            },
+            {
+              id: "women-rule",
+              ministry_year: 2026,
+              audience_category: "women" as const,
+              rule: { groupHealth: { required: true, min: "B" } },
+              updated_at: "2026-06-06",
+            },
+          ]),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.readiness?.perType.men).toEqual({
+      interest: { required: true, min: 5 },
+    });
+    expect(data.readiness?.perType.women).toEqual({
+      groupHealth: { required: true, min: "B" },
+    });
+    // Mixed has no row, so it is absent (inherits global for every pillar).
+    expect(data.readiness?.perType.mixed).toBeUndefined();
+  });
+
+  it("surfaces a per-type readiness read failure on errors.readiness", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchAudienceReadinessRules: async () => fail("per-type boom"),
+      }),
+      { isSuperAdmin: false }
+    );
+    expect(data.errors.readiness).toBe("per-type boom");
   });
 });
