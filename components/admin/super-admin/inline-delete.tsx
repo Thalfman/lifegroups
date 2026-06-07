@@ -65,6 +65,11 @@ export function SuperAdminInlineDelete({
     preflight.state.value.entityId === id
       ? preflight.state.value
       : null;
+  // A finished preflight that produced no usable report is a failure (stale row,
+  // transient RPC error) — distinct from "still checking". Surface it instead of
+  // leaving the popover stuck on "Checking…".
+  const preflightFailed =
+    !preflight.pending && preflight.state !== undefined && report === null;
   const canDelete = report !== null && report.deletable;
   const deleted = del.state?.ok === true;
 
@@ -124,7 +129,12 @@ export function SuperAdminInlineDelete({
             Delete this record permanently?
           </div>
 
-          <DeletePreview pending={preflight.pending} report={report} />
+          <DeletePreview
+            pending={preflight.pending}
+            failed={preflightFailed}
+            report={report}
+            onRetry={() => preflight.formRef.current?.requestSubmit()}
+          />
 
           <form
             ref={del.formRef}
@@ -166,10 +176,14 @@ export function SuperAdminInlineDelete({
 
 function DeletePreview({
   pending,
+  failed,
   report,
+  onRetry,
 }: {
   pending: boolean;
+  failed: boolean;
   report: DeletionPreflight | null;
+  onRetry: () => void;
 }) {
   const noteStyle = {
     fontFamily: fontBody,
@@ -178,7 +192,22 @@ function DeletePreview({
     margin: 0,
   } as const;
 
-  if (pending || report === null) {
+  if (pending) {
+    return <p style={noteStyle}>Checking what depends on this…</p>;
+  }
+  if (failed) {
+    return (
+      <div style={{ display: "grid", gap: 6 }}>
+        <p style={{ ...noteStyle, color: "#923220" }}>
+          Couldn&rsquo;t check what this affects — the record may have changed.
+        </p>
+        <PButton type="button" tone="ghost" size="sm" onClick={onRetry}>
+          Retry check
+        </PButton>
+      </div>
+    );
+  }
+  if (report === null) {
     return <p style={noteStyle}>Checking what depends on this…</p>;
   }
   if (report.confidential) {
