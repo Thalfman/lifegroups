@@ -459,32 +459,13 @@ const SETTINGS_DATA: SettingsShellData = {
     { key: "walk", label: "Walk with God", weight: 50 },
     { key: "team", label: "Team development", weight: 50 },
   ],
-  // #396 Settings > Groups: a small type×category matrix so the catalog editor +
-  // grid (with its cell toggles) is in the tree for the a11y scan.
-  categoryMatrix: {
-    rows: [
-      {
-        categoryId: "cat-1",
-        label: "20-30s",
-        cells: {
-          men: { categoryId: "cat-1", audienceCategory: "men", active: true },
-          women: {
-            categoryId: "cat-1",
-            audienceCategory: "women",
-            active: true,
-          },
-          mixed: {
-            categoryId: "cat-1",
-            audienceCategory: "mixed",
-            active: false,
-          },
-        },
-      },
-    ],
-  },
-  // #400 Settings > Groups: coverage rows for the two active cat-1 cells, so the
-  // inline "currently X / target Y" readouts + the dedicated coverage panel are
-  // in the tree for the a11y scan. Sorted by largest shortfall (men first).
+  // #412 Settings > Groups: the live catalog (id + label) the create flow dedupes
+  // against, so the group-type list + "+" add flow is in the tree for the a11y
+  // scan.
+  groupCategories: [{ id: "cat-1", label: "20-30s" }],
+  // #400 / #412 Settings > Groups: coverage rows for the two active cat-1 cells —
+  // each is a row in the group-type list (its label, target, and live count) for
+  // the a11y scan.
   cellCoverage: [
     {
       audienceCategory: "men",
