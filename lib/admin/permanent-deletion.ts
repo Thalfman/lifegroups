@@ -537,30 +537,11 @@ const GROUP_HEALTH_ASSESSMENT: PermanentDeletionEntity = {
   },
 };
 
-const GROUP_CATEGORY: PermanentDeletionEntity = {
-  entityType: "group_category",
-  label: "Group category",
-  pluralLabel: "Group categories",
-  async fetchItems(client) {
-    const { data } = await client
-      .from("group_categories")
-      .select("id, label, archived_at")
-      .order("label", { ascending: true })
-      .limit(200);
-    const rows = (data ?? []) as Array<{
-      id: string;
-      label: string;
-      archived_at: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id,
-      label: str(r.label) + (r.archived_at ? " (archived)" : ""),
-    }));
-  },
-  labelFromSnapshot(snapshot) {
-    return str(snapshot.label) || "Group category";
-  },
-};
+// NOTE: group_categories is intentionally NOT registered. The category catalog
+// is archive-only by design (a category leaves via soft delete so its cells +
+// audit are never orphaned), and its cascade child category_type_targets is not
+// itself a deletable target — so hard-deleting a category conflicts with that
+// documented workflow and is unclearable bottom-up. Use the archive path.
 
 const INVITATION: PermanentDeletionEntity = {
   entityType: "invitation",
@@ -672,7 +653,6 @@ export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   FOLLOW_UP,
   GROUP_HEALTH_UPDATE,
   GROUP_HEALTH_ASSESSMENT,
-  GROUP_CATEGORY,
   INVITATION,
   SHEPHERD_COVERAGE_ASSIGNMENT,
   CHURCH_ATTENDANCE_SNAPSHOT,

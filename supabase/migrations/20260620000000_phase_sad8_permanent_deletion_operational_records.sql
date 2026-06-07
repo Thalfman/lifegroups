@@ -18,7 +18,6 @@
 --   * follow_up                   -> follow_ups
 --   * group_health_update         -> group_health_updates
 --   * group_health_assessment     -> group_health_assessments
---   * group_category              -> group_categories
 --   * invitation                  -> invitations
 --   * shepherd_coverage_assignment-> shepherd_coverage_assignments
 --   * church_attendance_snapshot  -> church_attendance_snapshots
@@ -33,7 +32,10 @@
 -- Off-limits, by omission (unchanged from #316 / #388): Private Care Notes,
 -- author-private Care Notes / Prayer Requests (opaque confidential block),
 -- audit_events / audit_events_archive, and tombstones are never registered — the
--- engine raises forbidden_target for any unregistered type.
+-- engine raises forbidden_target for any unregistered type. group_categories is
+-- also deliberately left out: the category catalog is archive-only by design (a
+-- category leaves via soft delete so its cells + audit are never orphaned), and
+-- its cascade child category_type_targets is not itself a deletable target.
 
 set check_function_bodies = off;
 
@@ -62,13 +64,13 @@ as $$
     when 'follow_up' then 'follow_ups'
     when 'group_health_update' then 'group_health_updates'
     when 'group_health_assessment' then 'group_health_assessments'
-    when 'group_category' then 'group_categories'
     when 'invitation' then 'invitations'
     when 'shepherd_coverage_assignment' then 'shepherd_coverage_assignments'
     when 'church_attendance_snapshot' then 'church_attendance_snapshots'
     -- Off-limits (never registered): shepherd_care_private_notes, care_notes,
     -- prayer_requests, audit_events, audit_events_archive, tombstones,
-    -- group_metric_settings (no `id` column).
+    -- group_metric_settings (no `id` column), and the archive-only category
+    -- catalog (group_categories).
     else null
   end;
 $$;

@@ -34,7 +34,6 @@ const REGISTERED: Array<[string, string]> = [
   ["follow_up", "follow_ups"],
   ["group_health_update", "group_health_updates"],
   ["group_health_assessment", "group_health_assessments"],
-  ["group_category", "group_categories"],
   ["invitation", "invitations"],
   ["shepherd_coverage_assignment", "shepherd_coverage_assignments"],
   ["church_attendance_snapshot", "church_attendance_snapshots"],
@@ -74,6 +73,8 @@ describe("SAD8 — off-limits boundary (never registered)", () => {
     "tombstones",
     // No `id` column (PK is group_id) — can never be an `id`-keyed delete target.
     "group_metric_settings",
+    // Archive-only catalog — deliberately not hard-deletable (Codex P1).
+    "group_categories",
   ])("does not map any entity_type to %s", (table) => {
     const body = functionBody(sql, "super_admin_deletable_table");
     expect(body).not.toContain(`'${table}'`);
@@ -111,13 +112,15 @@ describe("SAD8 — client registry matches the SQL allowlist", () => {
       "tombstone",
       "tombstones",
       "group_metric_settings",
+      "group_category",
+      "group_categories",
     ]) {
       expect(tokens.has(forbidden)).toBe(false);
     }
   });
 
-  it("has the full curated set (8 prior + 13 operational = 21)", () => {
-    expect(PERMANENT_DELETION_ENTITIES).toHaveLength(21);
+  it("has the full curated set (8 prior + 12 operational = 20)", () => {
+    expect(PERMANENT_DELETION_ENTITIES).toHaveLength(20);
   });
 
   it("keeps SQL allowlist and TS registry in lockstep", () => {
