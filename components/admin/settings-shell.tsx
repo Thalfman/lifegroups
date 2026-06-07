@@ -88,7 +88,15 @@ export type SettingsShellData = {
   };
 };
 
-export function SettingsShell({ data }: { data: SettingsShellData }) {
+export function SettingsShell({
+  data,
+  // Optional deep-link target (from `?tab=`). SettingsTabs falls back to the
+  // default when it's undefined or not a known tab id.
+  initialTabId,
+}: {
+  data: SettingsShellData;
+  initialTabId?: string;
+}) {
   const settingsByGroupId = new Map(
     data.groupMetricSettings.map((s) => [s.group_id, s])
   );
@@ -154,7 +162,7 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
           0016). A section whose data failed to load (e.g. an environment without
           the pivot tables) softens to a calm "not set up yet" placeholder rather
           than tripping a page-wide error. */}
-      <SettingsTabs tabs={tabs} defaultTabId="care" />
+      <SettingsTabs tabs={tabs} defaultTabId={initialTabId ?? "care"} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdEditForm } from "@/components/admin/shepherd-care/over-shepherd-edit-form";
+import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -181,6 +182,39 @@ export default async function AdminOverShepherdEditPage({
               Edit over-shepherd
             </h2>
             <OverShepherdEditForm overShepherd={detail.overShepherd} />
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 14,
+                borderTop: `1px solid ${P.line}`,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: fontBody,
+                  fontSize: 13,
+                  color: P.ink2,
+                  margin: 0,
+                  maxWidth: 420,
+                  lineHeight: 1.45,
+                }}
+              >
+                {detail.overShepherd.active
+                  ? "Archiving removes them from the active list but keeps them in history and on past coverage. Restore any time."
+                  : "This over-shepherd is archived. Restore to make them selectable for coverage again."}
+              </p>
+              <OverShepherdArchiveButton
+                overShepherdId={detail.overShepherd.id}
+                fullName={detail.overShepherd.full_name}
+                active={detail.overShepherd.active}
+                coveredCount={detail.coveredShepherds.length}
+              />
+            </div>
           </section>
 
           <section style={cardStyle} aria-label="Currently covers">

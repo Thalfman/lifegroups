@@ -1,7 +1,10 @@
 "use client";
 
 import { PButton } from "@/components/pastoral/button";
-import { adminUpdateShepherdCareFollowUpStatus } from "@/app/(protected)/admin/shepherd-care/actions";
+import {
+  adminArchiveShepherdCareFollowUp,
+  adminUpdateShepherdCareFollowUpStatus,
+} from "@/app/(protected)/admin/shepherd-care/actions";
 import {
   useActionForm,
   FormStatus,
@@ -52,8 +55,24 @@ export function CareFollowUpStatusControls({
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateShepherdCareFollowUpStatus
   );
+  // Archive is its own action with its own pending/error state, available in
+  // every status so an accidental/test follow-up can be cleaned up whether it's
+  // still open or already done.
+  const archive = useActionForm<{ id: string }>(
+    adminArchiveShepherdCareFollowUp
+  );
 
   const transitions = transitionsFor(status);
+
+  function confirmArchive(e: React.FormEvent<HTMLFormElement>) {
+    if (
+      !window.confirm(
+        `Archive the follow-up "${followUpTitle}"? It leaves every queue but stays in history; it can't be un-archived from here.`
+      )
+    ) {
+      e.preventDefault();
+    }
+  }
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
@@ -80,8 +99,28 @@ export function CareFollowUpStatusControls({
             </PButton>
           </form>
         ))}
+        <form action={archive.formAction} onSubmit={confirmArchive}>
+          <input type="hidden" name="follow_up_id" value={followUpId} />
+          <input
+            type="hidden"
+            name="shepherd_profile_id"
+            value={shepherdProfileId}
+          />
+          <PButton
+            type="submit"
+            tone="ghost"
+            size="sm"
+            disabled={archive.pending}
+            aria-label={`Archive follow-up: ${followUpTitle}${
+              followUpDueDate ? ` (due ${followUpDueDate})` : ""
+            }`}
+          >
+            {archive.pending ? "Archiving…" : "Archive"}
+          </PButton>
+        </form>
       </div>
       <FormStatus state={state} />
+      <FormStatus state={archive.state} />
     </div>
   );
 }

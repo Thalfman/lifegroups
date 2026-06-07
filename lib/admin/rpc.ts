@@ -562,6 +562,28 @@ export function rpcAdminTransitionProspect(
   return callUuidRpc(client, "admin_transition_prospect", args);
 }
 
+// Admin UX: edit a Prospect's identity fields (no state change) and soft-archive
+// it for cleanup. Both gate on auth_is_admin() in the RPC body and write a
+// paired audit_events row; archive sets archived = true so the board drops it.
+export function rpcAdminUpdateProspect(
+  client: AppSupabaseClient,
+  args: {
+    p_prospect_id: string;
+    p_full_name: string;
+    p_email: string | null;
+    p_phone: string | null;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_update_prospect", args);
+}
+
+export function rpcAdminArchiveProspect(
+  client: AppSupabaseClient,
+  args: { p_prospect_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_archive_prospect", args);
+}
+
 // #379 pivot slice 7: set a Prospect's single current Next Step (type
 // connect_to_group_leader | follow_up + optional due date + detail) and a
 // separate Additional Note. The next_step jsonb shape is validated in the
@@ -751,6 +773,15 @@ export function rpcAdminUpdateShepherdCareFollowUp(
   return callUuidRpc(client, "admin_update_shepherd_care_follow_up", args);
 }
 
+// Admin UX: soft-archive a care follow-up (sets archived_at) so it leaves every
+// queue. Status/completed_at are untouched; the RPC writes a paired audit row.
+export function rpcAdminArchiveShepherdCareFollowUp(
+  client: AppSupabaseClient,
+  args: { p_follow_up_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_archive_shepherd_care_follow_up", args);
+}
+
 // Phase SC.4 private care notes admin RPCs. The bytea columns travel as base64
 // strings (the RPC decodes them); the server only ever holds ciphertext.
 
@@ -852,6 +883,16 @@ export function rpcAdminUpdateOverShepherd(
   args: AdminUpdateOverShepherdArgs
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_over_shepherd", args);
+}
+
+// Admin UX: a focused active toggle so a list/detail "Archive"/"Restore" button
+// can soft-archive or restore an over-shepherd without re-sending the whole
+// record. Maintains archived_at; writes a paired audit row.
+export function rpcAdminSetOverShepherdActive(
+  client: AppSupabaseClient,
+  args: { p_over_shepherd_id: string; p_active: boolean }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_over_shepherd_active", args);
 }
 
 export type AdminAssignShepherdToOverShepherdArgs = {

@@ -190,8 +190,8 @@ export function buildProspectBoard(
   const joined: JoinedRollupEntry[] = [];
 
   for (const p of prospects) {
-    // Joined / archived Prospects never appear as a board row.
-    if (p.archived || p.state === "joined") {
+    // Joined Prospects (always archived) live only in the collapsed roll-up.
+    if (p.state === "joined") {
       joined.push({
         id: p.id,
         full_name: p.full_name,
@@ -199,6 +199,10 @@ export function buildProspectBoard(
       });
       continue;
     }
+    // A Prospect archived for cleanup (archived but NOT joined) leaves the board
+    // entirely — it is neither an active card nor a "joined" outcome, so it must
+    // not be dumped into the Joined roll-up.
+    if (p.archived) continue;
     const bucket = byState.get(p.state);
     if (bucket) bucket.push(p);
     // A non-archived row in an unexpected state is dropped from the active

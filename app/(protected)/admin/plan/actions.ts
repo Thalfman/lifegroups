@@ -4,9 +4,13 @@ import {
   validateCreateProspectPayload,
   validateTransitionProspectPayload,
   validateSetProspectNextStepPayload,
+  validateUpdateProspectPayload,
+  validateArchiveProspectPayload,
   type CreateProspectPayload,
   type TransitionProspectPayload,
   type SetProspectNextStepPayload,
+  type UpdateProspectPayload,
+  type ArchiveProspectPayload,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
 import {
@@ -18,6 +22,8 @@ import {
   rpcAdminCreateProspect,
   rpcAdminTransitionProspect,
   rpcAdminSetProspectNextStep,
+  rpcAdminUpdateProspect,
+  rpcAdminArchiveProspect,
 } from "@/lib/admin/rpc";
 
 // The Interest Funnel board reads from /admin/plan; the home dashboard also
@@ -34,6 +40,15 @@ const CREATE_PROSPECT_KEYS = [
 ] as const;
 
 const TRANSITION_PROSPECT_KEYS = ["prospect_id", "state", "group_id"] as const;
+
+const UPDATE_PROSPECT_KEYS = [
+  "prospect_id",
+  "full_name",
+  "email",
+  "phone",
+] as const;
+
+const ARCHIVE_PROSPECT_KEYS = ["prospect_id"] as const;
 
 const SET_NEXT_STEP_KEYS = [
   "prospect_id",
@@ -135,4 +150,62 @@ export async function adminSetProspectNextStep(
   input: ActionInput<SetProspectNextStepPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_NEXT_STEP_SPEC, prev, input);
+}
+
+// ----- adminUpdateProspect ------------------------------------------------
+// Correct a Prospect's identity fields (name / email / phone). No state change.
+
+const UPDATE_PROSPECT_SPEC: AdminWriteActionSpec<
+  UpdateProspectPayload,
+  { id: string }
+> = {
+  name: "admin.plan.update_prospect",
+  keys: UPDATE_PROSPECT_KEYS,
+  validate: validateUpdateProspectPayload,
+  fields: (_actor, value) => ({ target_prospect_id: value.prospect_id }),
+  okFields: (value) => ({
+    has_email: value.email !== null,
+    has_phone: value.phone !== null,
+  }),
+  rpc: (client, value) =>
+    rpcAdminUpdateProspect(client, {
+      p_prospect_id: value.prospect_id,
+      p_full_name: value.full_name,
+      p_email: value.email,
+      p_phone: value.phone,
+    }),
+  revalidate: () => REVALIDATE_PATHS,
+  noDataError: "The prospect wasn't updated. Please try again.",
+};
+
+export async function adminUpdateProspect(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<UpdateProspectPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(UPDATE_PROSPECT_SPEC, prev, input);
+}
+
+// ----- adminArchiveProspect -----------------------------------------------
+// Soft-archive a Prospect (cleanup). The board read drops archived non-joined
+// rows entirely, so it leaves the board (and is not shown in the Joined roll-up).
+
+const ARCHIVE_PROSPECT_SPEC: AdminWriteActionSpec<
+  ArchiveProspectPayload,
+  { id: string }
+> = {
+  name: "admin.plan.archive_prospect",
+  keys: ARCHIVE_PROSPECT_KEYS,
+  validate: validateArchiveProspectPayload,
+  fields: (_actor, value) => ({ target_prospect_id: value.prospect_id }),
+  rpc: (client, value) =>
+    rpcAdminArchiveProspect(client, { p_prospect_id: value.prospect_id }),
+  revalidate: () => REVALIDATE_PATHS,
+  noDataError: "The prospect wasn't archived. Please try again.",
+};
+
+export async function adminArchiveProspect(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<ArchiveProspectPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ARCHIVE_PROSPECT_SPEC, prev, input);
 }

@@ -1,4 +1,5 @@
 import { P, fontDisplay, fontBody, fontMono } from "@/lib/pastoral";
+import { PLinkButton } from "@/components/pastoral/button";
 import type { ReadinessPillarKey } from "@/lib/admin/cell-readiness";
 import {
   GRID_TYPES,
@@ -105,13 +106,23 @@ export function MultiplyGridView({
 }) {
   if (grid.rows.length === 0) {
     return (
-      <p
-        style={{ margin: 0, fontFamily: fontBody, fontSize: 14, color: P.ink2 }}
-      >
-        No categories yet. Add categories and apply them to top types in
-        Settings &rsaquo; Groups, then each active cell appears here with its
-        readiness and coverage.
-      </p>
+      <div style={{ display: "grid", gap: 14, justifyItems: "start" }}>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: fontBody,
+            fontSize: 14,
+            color: P.ink2,
+          }}
+        >
+          No categories yet. Add categories and apply them to top types in
+          Settings &rsaquo; Groups, then each active cell appears here with its
+          readiness and coverage.
+        </p>
+        <PLinkButton href="/admin/settings?tab=groups" tone="terra" size="md">
+          Set up group types in Settings →
+        </PLinkButton>
+      </div>
     );
   }
 
@@ -126,6 +137,16 @@ export function MultiplyGridView({
         <code style={{ fontFamily: fontMono }}>have X of Y</code> coverage. A
         cell where the category isn&rsquo;t applied to that type is left blank.
       </p>
+      {/* This grid is read-only; the setup controls live in Settings. Link
+          straight to the right tabs so admins don't have to guess routes. */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <PLinkButton href="/admin/settings?tab=groups" tone="ghost" size="sm">
+          Edit group types →
+        </PLinkButton>
+        <PLinkButton href="/admin/settings?tab=multiply" tone="ghost" size="sm">
+          Edit multiplication trigger →
+        </PLinkButton>
+      </div>
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>

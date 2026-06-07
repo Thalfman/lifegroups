@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
+  adminArchiveGroupCategory,
   adminCreateGroupCategory,
   adminRenameGroupCategory,
   adminSetCategoryTypeCell,
@@ -61,6 +62,15 @@ export function GroupsCatalogEditor({
   // upstream does not matter here.
   const rows = sortGroupTypeRows(cells);
 
+  // Unused categories: live catalog labels applied to no active cell. These
+  // surface as all-blank orphan rows in Multiply, so offer an explicit
+  // Delete-category (archive) cleanup. A label still in use can't be deleted
+  // here — remove its group types first.
+  const usedCategoryIds = new Set(cells.map((c) => c.categoryId));
+  const unusedCategories = categories
+    .filter((c) => !usedCategoryIds.has(c.id))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div style={{ display: "grid", gap: 24 }}>
       <AddGroupTypeForm categories={categories} />
@@ -80,7 +90,82 @@ export function GroupsCatalogEditor({
           ))}
         </ul>
       )}
+
+      {unusedCategories.length > 0 ? (
+        <UnusedCategories categories={unusedCategories} />
+      ) : null}
     </div>
+  );
+}
+
+// Cleanup for category labels applied to no active group type. Removing a
+// group type leaves its shared category in the catalog (so re-adding it reuses
+// the label), but a category left applied to nothing renders as an all-blank
+// orphan row in Multiply. Deleting one here archives the catalog label so it
+// stops surfacing; it stays in history and the action revalidates Multiply.
+function UnusedCategories({
+  categories,
+}: {
+  categories: { id: string; label: string }[];
+}) {
+  return (
+    <section style={unusedSectionStyle}>
+      <div style={unusedHeadingStyle}>Unused categories</div>
+      <p style={noteStyle}>
+        These category labels aren&rsquo;t applied to any group type, so they
+        show as empty rows in Multiply. Delete one to remove the label (it stays
+        in history), or re-add a group type above to use it again.
+      </p>
+      <ul style={listStyle}>
+        {categories.map((c) => (
+          <li key={c.id} style={unusedRowStyle}>
+            <span style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
+              {c.label}
+            </span>
+            <DeleteCategoryForm categoryId={c.id} label={c.label} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// Deletes (archives) an unused category label via the audited archive RPC.
+function DeleteCategoryForm({
+  categoryId,
+  label,
+}: {
+  categoryId: string;
+  label: string;
+}) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminArchiveGroupCategory
+  );
+
+  function confirmDelete(e: FormEvent<HTMLFormElement>) {
+    if (
+      !window.confirm(
+        `Delete the category "${label}"? It's applied to no group type. It stops showing in Multiply and stays in history.`
+      )
+    ) {
+      e.preventDefault();
+    }
+  }
+
+  return (
+    <form action={formAction} onSubmit={confirmDelete} style={inlineFormStyle}>
+      <input type="hidden" name="category_id" value={categoryId} />
+      <PButton
+        type="submit"
+        tone="ghost"
+        size="sm"
+        disabled={pending}
+        aria-label={`Delete unused category ${label}`}
+      >
+        {pending ? "Deleting…" : "Delete category"}
+      </PButton>
+      <FormStatus state={state} successText="Category deleted." />
+    </form>
   );
 }
 
@@ -514,4 +599,32 @@ const emptyNoteStyle = {
   margin: 0,
   lineHeight: 1.55,
   fontStyle: "italic" as const,
+} as const;
+
+const unusedSectionStyle = {
+  display: "grid",
+  gap: 12,
+  borderTop: `1px solid ${P.line}`,
+  paddingTop: 18,
+} as const;
+
+const unusedHeadingStyle = {
+  fontFamily: fontBody,
+  fontSize: 13,
+  fontWeight: 700,
+  letterSpacing: 0.4,
+  textTransform: "uppercase" as const,
+  color: P.ink3,
+} as const;
+
+const unusedRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap" as const,
+  border: `1px solid ${P.line}`,
+  borderRadius: 10,
+  padding: "12px 16px",
+  background: P.surface,
 } as const;
