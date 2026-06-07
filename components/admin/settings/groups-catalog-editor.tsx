@@ -49,6 +49,7 @@ const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
 export function GroupsCatalogEditor({
   cells,
   categories,
+  categoryIdsWithGroups,
 }: {
   // One row per ACTIVE cell, carrying its label + coverage ("have X of Y"). The
   // list is the live group types; an off / never-applied cell has no row.
@@ -56,19 +57,28 @@ export function GroupsCatalogEditor({
   // The live catalog (id + label), so the create flow can dedupe a typed label
   // against an existing shared category rather than creating a second one.
   categories: { id: string; label: string }[];
+  // Category ids still referenced by at least one group (any audience /
+  // lifecycle). Such a category is NOT offered for deletion even with no active
+  // cell — archiving it would orphan those groups' label (reads resolve an
+  // archived category to "Uncategorized").
+  categoryIdsWithGroups: ReadonlySet<string>;
 }) {
   // Group shared-category rows together (label then Audience) so the "rename
   // syncs across both" behaviour reads clearly; the coverage shortfall order
   // upstream does not matter here.
   const rows = sortGroupTypeRows(cells);
 
-  // Unused categories: live catalog labels applied to no active cell. These
-  // surface as all-blank orphan rows in Multiply, so offer an explicit
-  // Delete-category (archive) cleanup. A label still in use can't be deleted
-  // here — remove its group types first.
+  // Unused categories: live catalog labels applied to no active cell AND not
+  // referenced by any group. These surface as all-blank orphan rows in
+  // Multiply, so offer an explicit Delete-category (archive) cleanup. A label
+  // still applied to a group type (active cell) or still carried by a group is
+  // excluded — archiving the latter would orphan those groups' label
+  // ("Uncategorized" on reads), so those must be recategorized first.
   const usedCategoryIds = new Set(cells.map((c) => c.categoryId));
   const unusedCategories = categories
-    .filter((c) => !usedCategoryIds.has(c.id))
+    .filter(
+      (c) => !usedCategoryIds.has(c.id) && !categoryIdsWithGroups.has(c.id)
+    )
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return (

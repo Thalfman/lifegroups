@@ -52,9 +52,16 @@ const PROSPECT_BOARD_COLUMNS =
 const PROSPECT_PAGE_LIMIT = 10000;
 
 /**
- * All Prospects, newest first, column-allowlisted. The board layer partitions
- * these into the active states and the collapsed Joined roll-up — keeping the
- * read a single round-trip and the partitioning pure/testable.
+ * All board-relevant Prospects, newest first, column-allowlisted. The board
+ * layer partitions these into the active states and the collapsed Joined
+ * roll-up — keeping the read a single round-trip and the partitioning
+ * pure/testable.
+ *
+ * Cleanup-archived rows (archived = true AND state <> 'joined') are excluded in
+ * the DB, BEFORE the page cap: they never render (the board drops them), so
+ * letting them consume the PROSPECT_PAGE_LIMIT budget could push older still-
+ * active prospects off the page and make them vanish from the board. We keep
+ * archived 'joined' rows (the Joined roll-up needs them) via the OR.
  */
 export async function fetchProspects(
   client: ReadClient
@@ -62,6 +69,9 @@ export async function fetchProspects(
   const { data, error } = await client
     .from("prospects")
     .select(PROSPECT_BOARD_COLUMNS)
+    // Active rows (archived = false) OR joined rows (always archived, shown in
+    // the roll-up). This excludes only cleanup-archived non-joined rows.
+    .or("archived.eq.false,state.eq.joined")
     .order("created_at", { ascending: false })
     .range(0, PROSPECT_PAGE_LIMIT - 1)
     .returns<ProspectRawRow[]>();

@@ -230,6 +230,14 @@ function CarePanel({ data }: { data: SettingsShellData }) {
 // placeholder when its reads fail (e.g. an environment whose groups tables aren't
 // migrated yet).
 function GroupsPanel({ data }: { data: SettingsShellData }) {
+  // Categories still carried by at least one group (any audience / lifecycle).
+  // Derived from the already-loaded groups, so the Delete-category cleanup never
+  // offers to archive a category whose label real groups still resolve.
+  const categoryIdsWithGroups = new Set(
+    data.groups
+      .map((g) => g.category_id)
+      .filter((id): id is string => id !== null)
+  );
   return (
     <div style={{ display: "grid", gap: 36 }}>
       <section style={{ display: "grid", gap: 18 }}>
@@ -245,6 +253,7 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
             <GroupsCatalogEditor
               cells={data.cellCoverage}
               categories={data.groupCategories}
+              categoryIdsWithGroups={categoryIdsWithGroups}
             />
           </Card>
         )}

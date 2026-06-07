@@ -61,6 +61,10 @@ export function ProspectCard({
   );
   const [target, setTarget] = useState<ProspectState | "">("");
   const needsGroup = target !== "" && stateRequiresGroup(target);
+  // The destination actually submitted, snapshotted on submit so the success
+  // line reflects where the prospect went — not a later, unsubmitted change to
+  // the dropdown.
+  const [movedTo, setMovedTo] = useState<ProspectState | "">("");
 
   return (
     <div
@@ -104,7 +108,11 @@ export function ProspectCard({
       </div>
 
       {legalTargets.length > 0 ? (
-        <form action={formAction} style={{ display: "grid", gap: 6 }}>
+        <form
+          action={formAction}
+          onSubmit={() => setMovedTo(target)}
+          style={{ display: "grid", gap: 6 }}
+        >
           <input type="hidden" name="prospect_id" value={prospect.id} />
           <label
             htmlFor={`move-${prospect.id}`}
@@ -157,9 +165,9 @@ export function ProspectCard({
           <FormStatus
             state={state}
             successText={
-              target === ""
+              movedTo === ""
                 ? "Moved."
-                : `Moved to ${PROSPECT_STATE_LABEL[target]}.`
+                : `Moved to ${PROSPECT_STATE_LABEL[movedTo]}.`
             }
           />
         </form>
