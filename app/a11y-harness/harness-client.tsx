@@ -503,9 +503,10 @@ const SETTINGS_DATA: SettingsShellData = {
       gap: 0,
     },
   ],
-  // #402 Settings > Groups: the recast readiness rule — the global rule plus one
-  // override row per active cat-1 cell — so the readiness editor (global controls
-  // + per-cell override disclosures) is in the tree for the a11y scan.
+  // #402 / #410 / #411 Settings > Multiply: the three-tier readiness trigger — the
+  // global rule, a per-type (Audience) rule, and one row per active cat-1 cell — so
+  // the Multiply tiered trigger editor (the level dropdown + pillar controls) is in
+  // the tree for the a11y scan.
   readiness: {
     ministryYear: 2026,
     rule: {
@@ -513,6 +514,9 @@ const SETTINGS_DATA: SettingsShellData = {
       capacity: { required: true },
       groupHealth: { required: false, min: "C" },
       leaderHealth: { required: false, min: "C" },
+    },
+    perType: {
+      men: { interest: { required: true, min: 5 } },
     },
     cells: [
       {
@@ -536,7 +540,6 @@ const SETTINGS_DATA: SettingsShellData = {
     defaults: null,
     groups: null,
     overrides: null,
-    multiplication: null,
     groupRubric: null,
     leaderRubric: null,
     groupCategories: null,

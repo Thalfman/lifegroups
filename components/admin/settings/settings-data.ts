@@ -13,28 +13,22 @@ import {
 } from "@/lib/admin/metrics";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
-import { fetchMultiplicationConfigs } from "@/lib/supabase/multiplication-config-reads";
-import { fetchReadinessRule } from "@/lib/supabase/readiness-reads";
 import {
-  BUILT_IN_PILLAR_THRESHOLDS,
-  decodePillarThresholds,
-  decodeTriggerRubric,
-  type PillarThresholds,
-  type TriggerRubric,
-} from "@/lib/admin/multiplication-pillars";
+  fetchAudienceReadinessRules,
+  fetchReadinessRule,
+  type AudienceReadinessRuleRow,
+} from "@/lib/supabase/readiness-reads";
 import {
   BUILT_IN_READINESS_RULE,
   decodeCellOverride,
+  decodePerTypeRule,
   decodeReadinessRule,
+  type PerTypeReadinessRule,
   type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
-import type { ReadinessCellSeed } from "@/components/admin/settings/readiness-rule-editor";
-import {
-  MULTIPLY_TYPES,
-  MULTIPLY_TYPE_LABEL,
-  currentMinistryYear,
-} from "@/components/admin/multiply/multiply-data";
-import type { MultiplicationConfigSeed } from "@/components/admin/settings/multiplication-config-editor";
+import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-trigger-editor";
+import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
+import type { GroupAudienceCategory } from "@/types/enums";
 import {
   fetchCategoryTypeCells,
   fetchCategoryTypeTargetCells,
@@ -62,16 +56,16 @@ export type SettingsReads = {
   // #374 Health Rubric: the current group rubric (Ministry-Admin-owned). Bound
   // to the "group" kind here so the seam exposes a zero-arg read like the rest.
   fetchGroupHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
-  // #380 Multiplication Pillars: the per-type config rows for the current
-  // ministry year. Bound to the current year so the seam stays zero-arg.
-  fetchMultiplicationConfigs: () => ReturnType<
-    typeof fetchMultiplicationConfigs
-  >;
-  // #402 Settings > Groups: the GLOBAL per-cell readiness rule for the current
-  // ministry year. Bound to the year so the seam stays zero-arg; the per-cell
-  // overrides come from fetchCategoryTypeTargetCells (which now reads
-  // trigger_overrides).
+  // #402 Settings > Multiply: the GLOBAL readiness rule for the current ministry
+  // year. Bound to the year so the seam stays zero-arg; the per-cell overrides come
+  // from fetchCategoryTypeTargetCells (which reads trigger_overrides).
   fetchReadinessRule: () => ReturnType<typeof fetchReadinessRule>;
+  // #410 / #411 Settings > Multiply: the per-type (Audience) rules — the MIDDLE
+  // tier of the cascade — for the current ministry year. Bound to the year so the
+  // seam stays zero-arg.
+  fetchAudienceReadinessRules: () => ReturnType<
+    typeof fetchAudienceReadinessRules
+  >;
   // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
   // "leader" kind. Same shared reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
@@ -101,48 +95,27 @@ export function supabaseSettingsReads(
       fetchGroupCellLifecycleRows,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
-    fetchMultiplicationConfigs: () =>
-      fetchMultiplicationConfigs(client, currentMinistryYear(new Date())),
     fetchReadinessRule: () =>
       fetchReadinessRule(client, currentMinistryYear(new Date())),
+    fetchAudienceReadinessRules: () =>
+      fetchAudienceReadinessRules(client, currentMinistryYear(new Date())),
     fetchLeaderHealthRubric: () => fetchHealthRubric(client, "leader"),
   };
 }
 
-// The default trigger a type uses until Julian configures one — a light gate so a
-// fresh ministry sees a sensible "ready?" answer rather than a blank one. Mirrors
-// the default in multiply-data.ts.
-const DEFAULT_TRIGGER: TriggerRubric = {
-  conditions: {
-    interest: { op: "atLeast", letter: "C" },
-  },
-  requireHealthGrades: false,
-  // Capacity gates readiness by default (PRD §2.4 / §4.1).
-  requireCapacity: true,
-};
-
-// Build the per-type editor seeds for the Settings Multiply-config editor from
-// the decoded config rows (indexed by type). Each type gets its stored config or
-// a built-in fallback, so all three types are always editable. #401: capacity is
-// no longer fed here — it is a derived per-cell issue, so no fedCapacity seed.
-function buildMultiplicationSeeds(
-  configByType: Map<
-    string,
-    {
-      thresholds: PillarThresholds;
-      trigger: TriggerRubric;
-    }
-  >
-): MultiplicationConfigSeed[] {
-  return MULTIPLY_TYPES.map((type) => {
-    const config = configByType.get(type);
-    return {
-      type,
-      label: MULTIPLY_TYPE_LABEL[type],
-      thresholds: config?.thresholds ?? BUILT_IN_PILLAR_THRESHOLDS,
-      trigger: config?.trigger ?? DEFAULT_TRIGGER,
-    };
-  });
+// #410 / #411 / ADR 0021: index the per-type (Audience) rules — the MIDDLE tier of
+// the cascade — by Audience, decoding each stored jsonb into a typed partial. A type
+// with no row is simply absent (it inherits the global rule for every pillar — the
+// additive default until a per-type rule is set), so the map only carries seeded
+// types. The Multiply trigger editor lays each over the global rule.
+function buildPerTypeRules(
+  rows: AudienceReadinessRuleRow[]
+): Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>> {
+  const out: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>> = {};
+  for (const row of rows) {
+    out[row.audience_category] = decodePerTypeRule(row.rule);
+  }
+  return out;
 }
 
 // #400: assemble the per-cell coverage rows ("have X of Y"), sorted by largest
@@ -206,16 +179,13 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groups: [],
     groupMetricSettings: [],
     groupRubricCriteria: [],
-    multiplicationConfig: {
-      ministryYear: currentMinistryYear(new Date()),
-      seeds: buildMultiplicationSeeds(new Map()),
-    },
     leaderRubricCriteria: [],
     categoryMatrix: { rows: [] },
     cellCoverage: [],
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
       rule: BUILT_IN_READINESS_RULE,
+      perType: {},
       cells: [],
     },
     isSuperAdmin,
@@ -223,7 +193,6 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
       defaults: "The database is not configured in this environment.",
       groups: "The database is not configured in this environment.",
       overrides: "The database is not configured in this environment.",
-      multiplication: "The database is not configured in this environment.",
       groupRubric: "The database is not configured in this environment.",
       leaderRubric: "The database is not configured in this environment.",
       groupCategories: "The database is not configured in this environment.",
@@ -243,45 +212,28 @@ export async function buildSettingsData(
     groupsResult,
     settingsResult,
     rubricResult,
-    multiplicationResult,
     leaderRubricResult,
     categoriesResult,
     cellsResult,
     targetCellsResult,
     groupCellLifecycleResult,
     readinessResult,
+    audienceReadinessResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
     reads.fetchAllGroupMetricSettings(),
     reads.fetchGroupHealthRubric(),
-    reads.fetchMultiplicationConfigs(),
     reads.fetchLeaderHealthRubric(),
     reads.fetchGroupCategories(),
     reads.fetchCategoryTypeCells(),
     reads.fetchCategoryTypeTargetCells(),
     reads.fetchGroupCellLifecycleRows(),
     reads.fetchReadinessRule(),
+    reads.fetchAudienceReadinessRules(),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
-
-  // #380: index the per-type config rows, decoding each jsonb payload, and build
-  // the editor seeds (all three types, with built-in fallbacks). #401: fed
-  // capacity is no longer decoded — it was retired in favour of the derived issue.
-  const configByType = new Map<
-    string,
-    {
-      thresholds: PillarThresholds;
-      trigger: TriggerRubric;
-    }
-  >();
-  for (const row of multiplicationResult.data ?? []) {
-    configByType.set(row.group_type, {
-      thresholds: decodePillarThresholds(row.thresholds),
-      trigger: decodeTriggerRubric(row.trigger_rubric),
-    });
-  }
 
   return {
     defaults: decoded,
@@ -291,10 +243,6 @@ export async function buildSettingsData(
     groupRubricCriteria: decodeRubricCriteria(
       rubricResult.data?.criteria ?? null
     ),
-    multiplicationConfig: {
-      ministryYear: currentMinistryYear(new Date()),
-      seeds: buildMultiplicationSeeds(configByType),
-    },
     leaderRubricCriteria: decodeRubricCriteria(
       leaderRubricResult.data?.criteria ?? null
     ),
@@ -313,12 +261,15 @@ export async function buildSettingsData(
       targetCellsResult.data ?? [],
       groupCellLifecycleResult.data ?? []
     ),
-    // #402 / PRD §2.4: the GLOBAL readiness rule (decoded, built-in fallback) plus
-    // one override row per active, live-category cell. A pure function of the rule
-    // read + the catalog + the target cells (which now carry trigger_overrides).
+    // #402 / #410 / #411 / ADR 0021: the three-tier readiness trigger the Multiply
+    // sub-tab edits — the GLOBAL rule (decoded, built-in fallback), the per-type
+    // (Audience) rules (the middle tier), and one row per active, live-category cell
+    // (its per-cell overrides). A pure function of the rule reads + the catalog +
+    // the target cells (which carry trigger_overrides).
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
       rule: decodeReadinessRule(readinessResult.data?.rule ?? null),
+      perType: buildPerTypeRules(audienceReadinessResult.data ?? []),
       cells: buildReadinessCells(
         categoriesResult.data ?? [],
         targetCellsResult.data ?? []
@@ -329,7 +280,6 @@ export async function buildSettingsData(
       defaults: defaultsResult.error?.message ?? null,
       groups: groupsResult.error?.message ?? null,
       overrides: settingsResult.error?.message ?? null,
-      multiplication: multiplicationResult.error?.message ?? null,
       groupRubric: rubricResult.error?.message ?? null,
       leaderRubric: leaderRubricResult.error?.message ?? null,
       // #400 folds the coverage reads into the same Groups-tab error key: a
@@ -340,11 +290,16 @@ export async function buildSettingsData(
         targetCellsResult.error?.message ??
         groupCellLifecycleResult.error?.message ??
         null,
-      // #402: a readiness-rule read failure surfaces on its own key so the editor
-      // softens to a placeholder rather than letting an admin save over a rule
-      // that merely failed to load. The per-cell override rows also depend on the
-      // catalog + target reads, so those failures fold into groupCategories above.
-      readiness: readinessResult.error?.message ?? null,
+      // #402 / #410: a readiness read failure surfaces on its own key so the editor
+      // softens to a placeholder rather than letting an admin save over a rule that
+      // merely failed to load. Both the global rule and the per-type tier fold in
+      // here (either failing softens the Multiply editor); the per-cell override rows
+      // depend on the catalog + target reads, so those failures fold into
+      // groupCategories above.
+      readiness:
+        readinessResult.error?.message ??
+        audienceReadinessResult.error?.message ??
+        null,
     },
   };
 }
