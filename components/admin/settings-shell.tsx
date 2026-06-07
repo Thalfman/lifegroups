@@ -8,6 +8,7 @@ import {
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
+import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
 import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
@@ -412,6 +413,7 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         title="Bulk people import"
         description="Tools for loading people in bulk."
       />
+      {isSuperAdmin ? <SuperAdminOnlyBadge /> : null}
       <Card>
         <p
           style={{

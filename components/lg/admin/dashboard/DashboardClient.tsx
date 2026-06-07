@@ -12,6 +12,7 @@ import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ThisWeekCard } from "./ThisWeekCard";
 import { ActivityBand } from "./ActivityBand";
 import { ActivityResetControl } from "./ActivityResetControl";
+import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PeriodSlicer } from "./PeriodSlicer";
 import { CollapsibleOverview } from "./CollapsibleOverview";
 
@@ -196,9 +197,12 @@ export function DashboardClient({
               }}
             >
               {canResetActivity ? (
-                <ActivityResetControl
-                  baselineOn={data.activity.resetBaselineOn}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <SuperAdminOnlyBadge />
+                  <ActivityResetControl
+                    baselineOn={data.activity.resetBaselineOn}
+                  />
+                </div>
               ) : null}
               <PeriodSlicer current={data.activity.grain} />
             </div>

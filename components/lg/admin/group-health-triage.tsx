@@ -38,6 +38,7 @@ import {
 } from "@/components/admin/forms/field-styles";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
+import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PButton } from "@/components/pastoral/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { dateLabel } from "@/lib/calendar/occurrences";
@@ -590,16 +591,26 @@ function GroupHealthEditorBody({
             gap: 6,
           }}
         >
-          <span
+          <div
             style={{
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 700,
-              color: P.ink,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
             }}
           >
-            Reset attention (super admin)
-          </span>
+            <span
+              style={{
+                fontFamily: fontSans,
+                fontSize: 12,
+                fontWeight: 700,
+                color: P.ink,
+              }}
+            >
+              Reset attention
+            </span>
+            <SuperAdminOnlyBadge />
+          </div>
           <p
             style={{
               fontFamily: fontBody,
