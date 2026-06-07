@@ -28,6 +28,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { successTextStyle } from "@/components/admin/forms/field-styles";
+import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export function SuperAdminInlineDelete({
@@ -74,7 +75,17 @@ export function SuperAdminInlineDelete({
   const deleted = del.state?.ok === true;
 
   return (
-    <span style={{ position: "relative", display: "inline-flex" }}>
+    <span
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+      }}
+    >
+      {/* Marks this Delete as private to the super admin — it never renders for
+          other roles, so the marker is only ever seen by a super admin. */}
+      <SuperAdminOnlyMark />
       <PButton
         type="button"
         tone="ghost"

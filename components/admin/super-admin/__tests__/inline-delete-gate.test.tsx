@@ -70,3 +70,33 @@ describe("SuperAdminInlineDelete render gate (via CareItemList)", () => {
     expect(html).not.toContain('data-testid="inline-delete"');
   });
 });
+
+// The "Super admin only" mark lives inside the inline-delete control, so it
+// appears exactly when the Delete trigger does — flagging the control as private
+// to the super admin. It must never render for any other role.
+describe("SuperAdminOnlyMark on the inline delete", () => {
+  it("marks the Delete control for a super admin with a delete target", () => {
+    const html = renderToStaticMarkup(
+      <CareItemList items={[careItem()]} {...LIST_PROPS} isSuperAdmin />
+    );
+    expect(html).toContain('data-testid="super-admin-only-mark"');
+  });
+
+  it("shows no mark for a non-super-admin", () => {
+    const html = renderToStaticMarkup(
+      <CareItemList items={[careItem()]} {...LIST_PROPS} isSuperAdmin={false} />
+    );
+    expect(html).not.toContain('data-testid="super-admin-only-mark"');
+  });
+
+  it("shows no mark for a super admin when the row has no delete target", () => {
+    const html = renderToStaticMarkup(
+      <CareItemList
+        items={[careItem({ deleteTarget: null })]}
+        {...LIST_PROPS}
+        isSuperAdmin
+      />
+    );
+    expect(html).not.toContain('data-testid="super-admin-only-mark"');
+  });
+});

@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/shepherd-care/care-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
+import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
 import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
@@ -492,7 +493,20 @@ export default async function AdminShepherdCareDetailPage({
               borderTop: `1px solid ${P.line}`,
             }}
           >
-            <span style={labelStyle}>Reset attention (super admin)</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 4,
+              }}
+            >
+              <span style={{ ...labelStyle, marginBottom: 0 }}>
+                Reset attention
+              </span>
+              <SuperAdminOnlyBadge />
+            </div>
             <p
               style={{
                 fontFamily: fontBody,
