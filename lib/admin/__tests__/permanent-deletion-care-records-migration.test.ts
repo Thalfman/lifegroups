@@ -6,6 +6,7 @@ import {
   type MigrationSql,
 } from "./migration-safety";
 import {
+  INLINE_DELETABLE_ENTITY_TYPES,
   PERMANENT_DELETION_ENTITIES,
   findPermanentDeletionEntity,
 } from "@/lib/admin/permanent-deletion";
@@ -130,6 +131,26 @@ describe("SAD9 — client registry matches the SQL allowlist", () => {
       "shepherd_care_private_notes",
     ]) {
       expect(tokens.has(forbidden)).toBe(false);
+    }
+  });
+});
+
+describe("SAD9 — inline-deletable subset (no-phrase action scope)", () => {
+  it("every inline-deletable token is a registered permanent-deletion entity", () => {
+    for (const token of INLINE_DELETABLE_ENTITY_TYPES) {
+      expect(findPermanentDeletionEntity(token)).toBeDefined();
+    }
+  });
+
+  it("never includes the confidential / audit / tombstone tokens", () => {
+    for (const forbidden of [
+      "care_notes",
+      "prayer_requests",
+      "shepherd_care_private_notes",
+      "audit_events",
+      "tombstones",
+    ]) {
+      expect(INLINE_DELETABLE_ENTITY_TYPES.has(forbidden)).toBe(false);
     }
   });
 });

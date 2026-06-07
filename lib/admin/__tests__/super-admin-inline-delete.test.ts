@@ -58,6 +58,22 @@ describe("superAdminInlineDelete", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it.each([["launch_scenario"], ["invitation"], ["attendance_record"]])(
+    "rejects a registered-but-non-inline type %s (no-phrase scope)",
+    async (entityType) => {
+      // These are valid danger-zone targets, but the inline control never
+      // renders them — so the no-phrase action must refuse them even though the
+      // shared readTarget validator accepts the whole registry.
+      const result = await superAdminInlineDelete(undefined, {
+        entityType,
+        id: ROW,
+        path: "/admin/care",
+      });
+      expect(result.ok).toBe(false);
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
+
   it("rejects a non-uuid id without calling the RPC", async () => {
     const result = await superAdminInlineDelete(undefined, {
       entityType: "follow_up",

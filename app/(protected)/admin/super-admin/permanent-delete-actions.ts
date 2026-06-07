@@ -24,7 +24,10 @@ import {
   type PermanentDeleteSuccess,
   type TombstoneRestoreSuccess,
 } from "@/lib/admin/danger-zone";
-import { findPermanentDeletionEntity } from "@/lib/admin/permanent-deletion";
+import {
+  findPermanentDeletionEntity,
+  isInlineDeletableEntityType,
+} from "@/lib/admin/permanent-deletion";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -193,6 +196,14 @@ export async function superAdminInlineDelete(
   const raw = readForm(input);
   const target = readTarget(raw);
   if (!target.ok) return actionFail([target.error]);
+
+  // The no-phrase quick-confirm is only justified for the entity types the inline
+  // control renders. Every other registered danger-zone target still requires the
+  // PERMANENTLY DELETE phrase, so refuse them here even though readTarget (the
+  // shared validator) accepts the whole registry.
+  if (!isInlineDeletableEntityType(target.entityType)) {
+    return actionFail(["That record type can't be deleted from here."]);
+  }
 
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
