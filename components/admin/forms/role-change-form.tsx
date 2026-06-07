@@ -54,9 +54,9 @@ export function RoleChangeForm({
           lineHeight: 1.5,
         }}
       >
-        Change a profile&rsquo;s role. Promotion to super admin happens through
-        the documented bootstrap procedure, not the app. You can&rsquo;t change
-        your own role here; every change records an audit event.
+        Change a profile&rsquo;s role. The owner role is set up separately and
+        can&rsquo;t be assigned here. You can&rsquo;t change your own role here;
+        every change records an audit event.
       </p>
       <div
         className="lg-m-grid-stack"

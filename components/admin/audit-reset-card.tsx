@@ -41,11 +41,11 @@ export function AuditResetCard({
   return (
     <DangerCard
       title="Reset audit log"
-      intro="Archives the current audit events to a backup table, then purges the live audit log. Independent of Clean Slate. The purge itself is recorded as a fresh audit entry."
+      intro="Archives the current audit events to a backup, then clears the live audit log. Independent of Clean Slate. The reset itself is recorded as a fresh audit entry."
     >
       <DangerSection
         variant="destructive"
-        label="Archive & purge"
+        label="Archive & clear"
         status={{ label: "Requires confirmation", tone: "confirm" }}
       >
         <div

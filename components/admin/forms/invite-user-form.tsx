@@ -151,7 +151,7 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
           }}
         >
           Create the login invite and linked profile in one audited workflow.
-          super_admin is bootstrap-only and is not selectable here. Group
+          The owner role is set up separately and can’t be selected here. Group
           assignment is for leaders and co-leaders only.
         </p>
       </div>

@@ -108,7 +108,7 @@ export function PermanentDeleteCard({
   return (
     <DangerCard
       title="Permanent deletion"
-      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere — a tombstone is captured first so it can be recovered, and the act is audited. Records with cascade/restrict dependents are refused until those are cleared; confidential records cannot be deleted (disable instead)."
+      intro="Physically removes a curated record. This is the bounded exception to archive-everywhere — a backup copy is captured first so it can be recovered, and the act is audited. Records that other records still depend on are refused until those are cleared; confidential records cannot be deleted (disable instead)."
     >
       <DangerSection
         variant="destructive"
@@ -215,7 +215,7 @@ export function PermanentDeleteCard({
             </PButton>
             {del.state?.ok ? (
               <span style={successTextStyle}>
-                Deleted. A tombstone was captured for recovery.
+                Deleted. A backup copy was captured for recovery.
               </span>
             ) : null}
           </div>
@@ -319,8 +319,8 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
       )}
       {report.setNull.length > 0 ? (
         <div style={{ marginTop: 4 }}>
-          Will null + capture {report.setNull.reduce((n, s) => n + s.count, 0)}{" "}
-          set-null reference
+          Will clear and back up{" "}
+          {report.setNull.reduce((n, s) => n + s.count, 0)} linked reference
           {report.setNull.reduce((n, s) => n + s.count, 0) === 1
             ? ""
             : "s"}{" "}
@@ -339,9 +339,9 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
       status={
         tombstones.length > 0
           ? { label: "Reversible", tone: "reversible" }
-          : { label: "No tombstones", tone: "info" }
+          : { label: "No backups", tone: "info" }
       }
-      description="Restore a tombstoned row from its captured snapshot, re-linking the dependents the delete nulled. The tombstone is kept after restoring."
+      description="Restore a deleted record from its backup copy, re-linking the references the delete cleared. The backup is kept after restoring."
     >
       {tombstones.length === 0 ? (
         <p
@@ -352,7 +352,7 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
             margin: 0,
           }}
         >
-          No tombstones yet — nothing has been permanently deleted.
+          No backups yet — nothing has been permanently deleted.
         </p>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>

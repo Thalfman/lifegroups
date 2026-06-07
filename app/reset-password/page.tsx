@@ -183,7 +183,7 @@ export default async function ResetPasswordPage({
               : view.kind === "confirm"
                 ? "For your security, confirm below to continue resetting your password. Reset links can only be used once."
                 : view.kind === "not_configured"
-                  ? "Password reset is not available on this deployment right now."
+                  ? "Password reset isn’t available right now."
                   : "Reset links can only be used once and expire after a short time. Request a fresh one and use it right away."}
           </p>
 
@@ -219,7 +219,7 @@ export default async function ResetPasswordPage({
               }}
             >
               {view.kind === "not_configured"
-                ? "Password reset is not configured on this deployment."
+                ? "Password reset isn’t available right now."
                 : "This reset link is invalid, was already used, or has expired."}{" "}
               <Link
                 href="/forgot-password"
