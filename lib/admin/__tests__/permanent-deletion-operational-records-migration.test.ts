@@ -20,7 +20,7 @@ let sql: MigrationSql;
 
 beforeAll(() => {
   sql = loadMigration(
-    "20260611000000_phase_sad8_permanent_deletion_operational_records.sql"
+    "20260620000000_phase_sad8_permanent_deletion_operational_records.sql"
   );
 });
 
