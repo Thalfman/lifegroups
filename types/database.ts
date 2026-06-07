@@ -80,6 +80,9 @@ export interface GroupHealthAssessmentsRow {
   updated_by: UUID | null;
   created_at: Timestamp;
   updated_at: Timestamp;
+  // #126 gh3: deliberate follow-up flag for the assessment, set when the group's
+  // health warrants a next-step (parallels group_health_updates.follow_up_needed).
+  needs_follow_up: boolean;
 }
 
 export interface GroupLeadersRow {
@@ -575,6 +578,168 @@ export interface LaunchPlanningScenariosRow {
   updated_at: Timestamp;
 }
 
+// ── Health Rubric + rubric grades (#374, #377, #378 / ADR 0018) ──────────────
+// The configurable per-kind rubric Julian owns in Settings, plus the group- and
+// leader-level letter grades scored against it. Admin-only; read column-
+// allowlisted via lib/supabase/*-reads with .returns<>(); writes via the
+// admin_set_health_rubric / admin_set_group_rubric_grade /
+// admin_set_leader_rubric_grade RPCs. Letter/scope columns are stored as text in
+// Postgres but carry the A–F / scope vocabularies, typed here as the matching
+// enums to mirror their meaning (consistent with GroupHealthAssessmentsRow).
+export interface HealthRubricsRow {
+  id: UUID;
+  kind: "group" | "leader";
+  criteria: Record<string, unknown>;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface GroupRubricGradesRow {
+  id: UUID;
+  group_id: UUID;
+  ministry_year: number;
+  criterion_scores: Record<string, unknown>;
+  override_letter: E.GroupHealthLetter | null;
+  override_scope: E.GroupHealthOverrideScope | null;
+  override_period_month: DateString | null;
+  computed_letter: E.GroupHealthLetter | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface LeaderRubricGradesRow {
+  id: UUID;
+  profile_id: UUID;
+  ministry_year: number;
+  criterion_scores: Record<string, unknown>;
+  computed_letter: E.LeaderHealthLetter | null;
+  override_letter: E.LeaderHealthLetter | null;
+  override_scope: E.GroupHealthOverrideScope | null;
+  override_period_month: DateString | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+// ── Interest Funnel Prospects (#375 / ADR 0016) ──────────────────────────────
+// Supersedes the frozen guests pipeline. Admin-only; read column-allowlisted
+// with .returns<>() (next_step arrives as raw jsonb, decoded at the trust
+// boundary). Writes via admin_create_prospect / admin_transition_prospect /
+// admin_update_prospect / admin_archive_prospect.
+export interface ProspectsRow {
+  id: UUID;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  state: E.ProspectState;
+  group_id: UUID | null;
+  archived: boolean;
+  next_step: Record<string, unknown> | null;
+  additional_note: string | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  // #399: the DESIRED (audience_category × catalog category) cell named at
+  // intake. Both null when no cell was chosen; the per-cell tally keys on them.
+  desired_audience_category: E.GroupAudienceCategory | null;
+  desired_category_id: UUID | null;
+}
+
+// ── Groups overhaul: category catalog + per-cell config (#396, #402, #410) ────
+// group_categories is the free-form label catalog; category_type_targets is one
+// row per active (audience_category × category) cell. Readiness cascades
+// global (multiplication_readiness_rule) → per-type (audience_readiness_rule) →
+// per-cell (category_type_targets.trigger_overrides). All admin-only; writes via
+// admin_create/rename/archive_group_category, admin_set_category_type_cell,
+// admin_set_category_type_target_count, admin_set_readiness_rule,
+// admin_set_audience_readiness_rule. audience_category is stored as text but
+// carries the GroupAudienceCategory vocabulary (mirrors GroupsRow).
+export interface GroupCategoriesRow {
+  id: UUID;
+  label: string;
+  archived_at: Timestamp | null;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface CategoryTypeTargetsRow {
+  id: UUID;
+  audience_category: E.GroupAudienceCategory;
+  category_id: UUID;
+  active: boolean;
+  target_count: number;
+  trigger_overrides: Record<string, unknown>;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface MultiplicationReadinessRuleRow {
+  id: UUID;
+  ministry_year: number;
+  rule: Record<string, unknown>;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface AudienceReadinessRuleRow {
+  id: UUID;
+  ministry_year: number;
+  audience_category: E.GroupAudienceCategory;
+  rule: Record<string, unknown>;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+// ── Multiplication Pillars config (#380 / ADR 0016; fed capacity retired #401) ─
+// Per-type, per-ministry-year pillar thresholds + trigger rubric. group_type is
+// stored as text but carries the GroupAudienceCategory vocabulary. Admin-only;
+// writes via admin_set_multiplication_config.
+export interface MultiplicationConfigRow {
+  id: UUID;
+  group_type: E.GroupAudienceCategory;
+  ministry_year: number;
+  thresholds: Record<string, unknown>;
+  trigger_rubric: Record<string, unknown>;
+  created_by: UUID | null;
+  updated_by: UUID | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+// ── Group lifecycle/health status history (append-only audit trail) ──────────
+export interface GroupStatusHistoryRow {
+  id: UUID;
+  group_id: UUID;
+  previous_lifecycle_status: E.GroupLifecycleStatus | null;
+  new_lifecycle_status: E.GroupLifecycleStatus;
+  previous_health_status: E.GroupHealthStatus | null;
+  new_health_status: E.GroupHealthStatus;
+  reason: string | null;
+  changed_by: UUID | null;
+  created_at: Timestamp;
+}
+
+// ── Invite redeem throttle (IL.2): internal rate-limit ledger, never surfaced ─
+export interface InviteRedeemThrottleRow {
+  id: UUID;
+  throttle_key: string;
+  attempted_at: Timestamp;
+}
+
 type InsertOf<
   Row,
   Auto extends keyof Row,
@@ -945,6 +1110,115 @@ export interface Database {
           | "description"
         >;
         Update: Partial<LaunchPlanningScenariosRow>;
+        Relationships: [];
+      };
+      group_health_assessments: {
+        Row: GroupHealthAssessmentsRow;
+        Insert: InsertOf<
+          GroupHealthAssessmentsRow,
+          | "id"
+          | "attendance_weeks_counted"
+          | "group_question_leader_reported"
+          | "needs_follow_up"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<GroupHealthAssessmentsRow>;
+        Relationships: [];
+      };
+      health_rubrics: {
+        Row: HealthRubricsRow;
+        Insert: InsertOf<HealthRubricsRow, "id" | "created_at" | "updated_at">;
+        Update: Partial<HealthRubricsRow>;
+        Relationships: [];
+      };
+      group_rubric_grades: {
+        Row: GroupRubricGradesRow;
+        Insert: InsertOf<
+          GroupRubricGradesRow,
+          "id" | "criterion_scores" | "created_at" | "updated_at"
+        >;
+        Update: Partial<GroupRubricGradesRow>;
+        Relationships: [];
+      };
+      leader_rubric_grades: {
+        Row: LeaderRubricGradesRow;
+        Insert: InsertOf<
+          LeaderRubricGradesRow,
+          "id" | "criterion_scores" | "created_at" | "updated_at"
+        >;
+        Update: Partial<LeaderRubricGradesRow>;
+        Relationships: [];
+      };
+      prospects: {
+        Row: ProspectsRow;
+        Insert: InsertOf<
+          ProspectsRow,
+          "id" | "state" | "archived" | "created_at" | "updated_at"
+        >;
+        Update: Partial<ProspectsRow>;
+        Relationships: [];
+      };
+      group_categories: {
+        Row: GroupCategoriesRow;
+        Insert: InsertOf<
+          GroupCategoriesRow,
+          "id" | "created_at" | "updated_at"
+        >;
+        Update: Partial<GroupCategoriesRow>;
+        Relationships: [];
+      };
+      category_type_targets: {
+        Row: CategoryTypeTargetsRow;
+        Insert: InsertOf<
+          CategoryTypeTargetsRow,
+          | "id"
+          | "active"
+          | "target_count"
+          | "trigger_overrides"
+          | "created_at"
+          | "updated_at"
+        >;
+        Update: Partial<CategoryTypeTargetsRow>;
+        Relationships: [];
+      };
+      multiplication_readiness_rule: {
+        Row: MultiplicationReadinessRuleRow;
+        Insert: InsertOf<
+          MultiplicationReadinessRuleRow,
+          "id" | "created_at" | "updated_at"
+        >;
+        Update: Partial<MultiplicationReadinessRuleRow>;
+        Relationships: [];
+      };
+      audience_readiness_rule: {
+        Row: AudienceReadinessRuleRow;
+        Insert: InsertOf<
+          AudienceReadinessRuleRow,
+          "id" | "created_at" | "updated_at"
+        >;
+        Update: Partial<AudienceReadinessRuleRow>;
+        Relationships: [];
+      };
+      multiplication_config: {
+        Row: MultiplicationConfigRow;
+        Insert: InsertOf<
+          MultiplicationConfigRow,
+          "id" | "created_at" | "updated_at"
+        >;
+        Update: Partial<MultiplicationConfigRow>;
+        Relationships: [];
+      };
+      group_status_history: {
+        Row: GroupStatusHistoryRow;
+        Insert: InsertOf<GroupStatusHistoryRow, "id" | "created_at">;
+        Update: Partial<GroupStatusHistoryRow>;
+        Relationships: [];
+      };
+      invite_redeem_throttle: {
+        Row: InviteRedeemThrottleRow;
+        Insert: InsertOf<InviteRedeemThrottleRow, "id" | "attempted_at">;
+        Update: Partial<InviteRedeemThrottleRow>;
         Relationships: [];
       };
     };
