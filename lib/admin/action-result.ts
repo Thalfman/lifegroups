@@ -50,6 +50,8 @@ export const RPC_ERROR_MESSAGES: RpcErrorMessages = {
   illegal_transition:
     "That move isn't allowed in the funnel. Refresh to see the prospect's current state.",
   group_required: "Pick a group before moving a prospect to Matched or Joined.",
+  prospect_archived:
+    "That prospect has been archived and can no longer be moved. Refresh the board.",
   // Phase 5C.0 tokens.
   missing_guest: "We couldn't find that guest. Refresh the page and try again.",
   missing_follow_up:
