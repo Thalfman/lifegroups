@@ -102,6 +102,66 @@ export function validateCreateProspectPayload(
   };
 }
 
+// Admin UX: edit a Prospect's identity fields (no state change). Mirrors the
+// create validator's name/email/phone rules; the RPC re-validates + checks the
+// row exists (missing_prospect).
+export type UpdateProspectPayload = {
+  prospect_id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export function validateUpdateProspectPayload(
+  input: unknown
+): ValidationResult<UpdateProspectPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+
+  if (!isUuid(input.prospect_id)) errors.push("prospect_id must be a uuid");
+
+  const fullName = trimString(input.full_name) ?? "";
+  const email = readOptionalString(input.email);
+  const phone = readOptionalString(input.phone);
+
+  if (fullName.length === 0) errors.push("Prospect name is required.");
+  if (fullName.length > 120)
+    errors.push("Prospect name is too long (max 120 characters).");
+  if (email !== undefined && !isEmail(email))
+    errors.push("Email must be a valid address.");
+  if (phone !== undefined && !isPhone(phone))
+    errors.push("Phone format is invalid.");
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      prospect_id: normalizeUuid(input.prospect_id as string),
+      full_name: fullName,
+      email: email ?? null,
+      phone: phone ?? null,
+    },
+  };
+}
+
+// Admin UX: soft-archive a Prospect (cleanup). Shape-only.
+export type ArchiveProspectPayload = { prospect_id: string };
+
+export function validateArchiveProspectPayload(
+  input: unknown
+): ValidationResult<ArchiveProspectPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.prospect_id))
+    return { ok: false, errors: ["prospect_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { prospect_id: normalizeUuid(input.prospect_id as string) },
+  };
+}
+
 export type TransitionProspectPayload = {
   prospect_id: string;
   state: ProspectState;

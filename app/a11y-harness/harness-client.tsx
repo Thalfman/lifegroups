@@ -235,6 +235,7 @@ const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
     created_at: STAMP,
     updated_at: STAMP,
     completed_at: null,
+    archived_at: null,
   },
   {
     id: "care-fu-2",
@@ -247,6 +248,7 @@ const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
     created_at: STAMP,
     updated_at: STAMP,
     completed_at: null,
+    archived_at: null,
   },
 ];
 

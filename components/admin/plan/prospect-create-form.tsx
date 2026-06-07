@@ -45,6 +45,13 @@ export function ProspectCreateForm({
   const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
 
+  // The "Prospect added." confirmation auto-dismisses. Otherwise it lingered as
+  // a stale message at the top of the board after a later action on a different
+  // card (e.g. moving a prospect), since this create form is a separate
+  // persistent client component whose useActionState success state isn't cleared
+  // by the board's revalidation.
+  const [showSuccess, setShowSuccess] = useState(false);
+
   // useActionForm resets the <form> element on success, but these two selects
   // are controlled by React state, so reset them too. Otherwise the next
   // prospect (entered with only a name) would resubmit the previous prospect's
@@ -55,6 +62,9 @@ export function ProspectCreateForm({
     if (!state?.ok) return;
     setAudience("");
     setCategoryId("");
+    setShowSuccess(true);
+    const timer = setTimeout(() => setShowSuccess(false), 5000);
+    return () => clearTimeout(timer);
   }, [state]);
 
   const categoryOptions =
@@ -169,7 +179,12 @@ export function ProspectCreateForm({
           </PButton>
         </div>
       </div>
-      <FormStatus state={state} successText="Prospect added." />
+      {/* successText is withheld once the timer fires so the confirmation
+          auto-dismisses; errors (state not ok) always show. */}
+      <FormStatus
+        state={state}
+        successText={showSuccess ? "Prospect added." : undefined}
+      />
     </form>
   );
 }

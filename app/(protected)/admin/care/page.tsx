@@ -264,27 +264,27 @@ export async function loadCarePageData(): Promise<{
             <SectionHeader
               eyebrow="Shepherd care"
               title="Care follow-ups"
-              description="Care follow-ups due soon, overdue, or recently completed."
+              description="Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down — the two are tracked independently, so their counts won't match."
             />
             <div style={{ display: "grid", gap: 24 }}>
               <div style={{ display: "grid", gap: 10 }}>
                 <h3 style={careGroupHeadingStyle}>
-                  Due soon ({area.dueSoon.length})
+                  Due-soon care follow-ups ({area.dueSoon.length})
                 </h3>
                 <CareItemList
                   items={area.dueSoon}
-                  emptyTitle="Nothing due soon"
+                  emptyTitle="No care follow-ups due soon"
                   emptyDescription="No care follow-ups are overdue or due in the next week."
                 />
               </div>
               <div style={{ display: "grid", gap: 10 }}>
                 <h3 style={careGroupHeadingStyle}>
-                  Completed ({area.completed.length})
+                  Completed care follow-ups ({area.completed.length})
                 </h3>
                 <CareItemList
                   items={area.completed}
-                  emptyTitle="No completed follow-ups yet"
-                  emptyDescription="Care follow-ups you mark complete will land here."
+                  emptyTitle="No completed care follow-ups yet"
+                  emptyDescription="Care follow-ups you mark complete land here — not items from the general follow-up queue below."
                 />
               </div>
             </div>

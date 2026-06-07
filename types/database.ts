@@ -464,6 +464,10 @@ export interface ShepherdCareFollowUpsRow {
   created_at: Timestamp;
   updated_at: Timestamp;
   completed_at: Timestamp | null;
+  // Soft-archive timestamp (#admin-ux). Set when an admin archives the
+  // follow-up so accidental/test rows drop out of every queue; null = active.
+  // No hard delete — the row stays for the audit trail.
+  archived_at: Timestamp | null;
 }
 
 // Phase SC.4 — zero-knowledge private care notes. The body is AES-256-GCM
@@ -852,7 +856,12 @@ export interface Database {
         Row: ShepherdCareFollowUpsRow;
         Insert: InsertOf<
           ShepherdCareFollowUpsRow,
-          "id" | "created_at" | "updated_at" | "completed_at" | "status"
+          | "id"
+          | "created_at"
+          | "updated_at"
+          | "completed_at"
+          | "status"
+          | "archived_at"
         >;
         Update: Partial<ShepherdCareFollowUpsRow>;
         Relationships: [];

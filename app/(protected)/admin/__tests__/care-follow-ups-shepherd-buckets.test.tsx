@@ -106,7 +106,7 @@ describe("Shepherd-care follow-up buckets stay actionable under /admin/care (#33
     const html = renderToStaticMarkup(
       <CareItemList
         items={dueSoon}
-        emptyTitle="Nothing due soon"
+        emptyTitle="No care follow-ups due soon"
         emptyDescription="No care follow-ups are overdue or due in the next week."
       />
     );
@@ -118,7 +118,7 @@ describe("Shepherd-care follow-up buckets stay actionable under /admin/care (#33
     expect(html).toContain("Resolve follow-up");
     expect(html).toContain("/admin/shepherd-care/leader-soon?tab=follow-ups");
     // It is the actual list, not the empty state.
-    expect(html).not.toContain("Nothing due soon");
+    expect(html).not.toContain("No care follow-ups due soon");
   });
 
   it("renders a recently completed care follow-up as an actionable row", () => {
@@ -129,14 +129,14 @@ describe("Shepherd-care follow-up buckets stay actionable under /admin/care (#33
     const html = renderToStaticMarkup(
       <CareItemList
         items={completed}
-        emptyTitle="No completed follow-ups yet"
-        emptyDescription="Care follow-ups you mark complete will land here."
+        emptyTitle="No completed care follow-ups yet"
+        emptyDescription="Care follow-ups you mark complete land here — not items from the general follow-up queue below."
       />
     );
     expect(html).toContain("Dan Completed");
     expect(html).toContain("View follow-up");
     expect(html).toContain("/admin/shepherd-care/leader-done?tab=follow-ups");
-    expect(html).not.toContain("No completed follow-ups yet");
+    expect(html).not.toContain("No completed care follow-ups yet");
   });
 });
 
@@ -160,5 +160,16 @@ describe("The Follow-ups tab wires the shepherd-care buckets into the page (#334
 
   it("labels the shepherd-care section so the two sources are distinguishable", () => {
     expect(CARE_PAGE).toContain('eyebrow="Shepherd care"');
+  });
+
+  it("scopes the bucket labels to care follow-ups so they can't read as a global done count", () => {
+    // The buckets must name themselves "care follow-ups" rather than a bare
+    // "Completed (n)" / "Due soon (n)" that reads as a global count and
+    // contradicts the generic queue's Done section right below.
+    expect(CARE_PAGE).toContain("Completed care follow-ups (");
+    expect(CARE_PAGE).toContain("Due-soon care follow-ups (");
+    expect(CARE_PAGE).not.toMatch(
+      />\s*Completed \(\{area\.completed\.length\}\)/
+    );
   });
 });

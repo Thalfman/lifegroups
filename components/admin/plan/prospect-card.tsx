@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import type { ProspectState } from "@/types/enums";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminTransitionProspect,
   adminSetProspectNextStep,
+  adminUpdateProspect,
+  adminArchiveProspect,
 } from "@/app/(protected)/admin/plan/actions";
 import {
   fieldInputStyle,
@@ -59,6 +61,10 @@ export function ProspectCard({
   );
   const [target, setTarget] = useState<ProspectState | "">("");
   const needsGroup = target !== "" && stateRequiresGroup(target);
+  // The destination actually submitted, snapshotted on submit so the success
+  // line reflects where the prospect went — not a later, unsubmitted change to
+  // the dropdown.
+  const [movedTo, setMovedTo] = useState<ProspectState | "">("");
 
   return (
     <div
@@ -102,7 +108,11 @@ export function ProspectCard({
       </div>
 
       {legalTargets.length > 0 ? (
-        <form action={formAction} style={{ display: "grid", gap: 6 }}>
+        <form
+          action={formAction}
+          onSubmit={() => setMovedTo(target)}
+          style={{ display: "grid", gap: 6 }}
+        >
           <input type="hidden" name="prospect_id" value={prospect.id} />
           <label
             htmlFor={`move-${prospect.id}`}
@@ -149,11 +159,158 @@ export function ProspectCard({
               {pending ? "Moving…" : "Apply"}
             </PButton>
           </div>
-          <FormStatus state={state} successText="Moved." />
+          {/* Operation-specific confirmation so the message says where the
+              prospect went ("Moved to Not at this time.") rather than a bare
+              "Moved." */}
+          <FormStatus
+            state={state}
+            successText={
+              movedTo === ""
+                ? "Moved."
+                : `Moved to ${PROSPECT_STATE_LABEL[movedTo]}.`
+            }
+          />
         </form>
       ) : null}
 
+      <EditProspectDetails prospect={prospect} />
+
       <NextStepEditor prospect={prospect} />
+
+      <ArchiveProspectControl prospect={prospect} />
+    </div>
+  );
+}
+
+// Inline "Edit details" editor for a Prospect's identity fields (name / email /
+// phone). A collapsed <details> like the Next-step editor so the card stays
+// compact; saving corrects the record in place without a state change.
+function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminUpdateProspect
+  );
+
+  const sublabelStyle = { ...fieldLabelStyle, marginBottom: 2 } as const;
+  const inputStyle = { ...fieldInputStyle, padding: "8px 10px" } as const;
+
+  return (
+    <details
+      style={{
+        borderTop: `1px solid ${P.line}`,
+        paddingTop: 8,
+        marginTop: 2,
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          fontFamily: fontSans,
+          fontSize: 12,
+          fontWeight: 600,
+          color: P.ink2,
+        }}
+      >
+        Edit details
+      </summary>
+
+      <form
+        action={formAction}
+        style={{ display: "grid", gap: 6, marginTop: 8 }}
+      >
+        <input type="hidden" name="prospect_id" value={prospect.id} />
+
+        <label htmlFor={`edit-name-${prospect.id}`} style={sublabelStyle}>
+          Full name
+        </label>
+        <input
+          id={`edit-name-${prospect.id}`}
+          name="full_name"
+          type="text"
+          required
+          maxLength={120}
+          defaultValue={prospect.full_name}
+          style={inputStyle}
+        />
+
+        <label htmlFor={`edit-email-${prospect.id}`} style={sublabelStyle}>
+          Email (optional)
+        </label>
+        <input
+          id={`edit-email-${prospect.id}`}
+          name="email"
+          type="email"
+          defaultValue={prospect.email ?? ""}
+          style={inputStyle}
+        />
+
+        <label htmlFor={`edit-phone-${prospect.id}`} style={sublabelStyle}>
+          Phone (optional)
+        </label>
+        <input
+          id={`edit-phone-${prospect.id}`}
+          name="phone"
+          type="tel"
+          defaultValue={prospect.phone ?? ""}
+          style={inputStyle}
+        />
+
+        <div>
+          <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+            {pending ? "Saving…" : "Save details"}
+          </PButton>
+        </div>
+        <FormStatus state={state} successText="Details saved." />
+      </form>
+    </details>
+  );
+}
+
+// Archive (soft-delete) a Prospect for cleanup. Archiving removes it from the
+// board entirely (it is not "joined", so it does not appear in the Joined
+// roll-up either). Distinct from the "Not at this time" move, which is a state
+// change that keeps the prospect on the board.
+function ArchiveProspectControl({
+  prospect,
+}: {
+  prospect: ProspectBoardEntry;
+}) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminArchiveProspect
+  );
+
+  function confirmArchive(e: FormEvent<HTMLFormElement>) {
+    if (
+      !window.confirm(
+        `Archive ${prospect.full_name}? They leave the board (kept in history). Use "Not at this time" instead if you only want to park them.`
+      )
+    ) {
+      e.preventDefault();
+    }
+  }
+
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${P.line}`,
+        paddingTop: 8,
+        marginTop: 2,
+        display: "grid",
+        gap: 4,
+      }}
+    >
+      <form action={formAction} onSubmit={confirmArchive}>
+        <input type="hidden" name="prospect_id" value={prospect.id} />
+        <PButton
+          type="submit"
+          tone="ghost"
+          size="sm"
+          disabled={pending}
+          aria-label={`Archive prospect ${prospect.full_name}`}
+        >
+          {pending ? "Archiving…" : "Archive"}
+        </PButton>
+      </form>
+      <FormStatus state={state} successText="Prospect archived." />
     </div>
   );
 }

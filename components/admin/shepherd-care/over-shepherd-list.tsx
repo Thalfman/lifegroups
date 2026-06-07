@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
+import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
 
 const tableStyle: CSSProperties = {
   width: "100%",
@@ -64,6 +65,7 @@ export function OverShepherdList({
             <th style={thStyle}>Phone</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Leaders covered</th>
+            <th style={thStyle}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -97,6 +99,14 @@ export function OverShepherdList({
                   )}
                 </td>
                 <td style={tdStyle}>{count}</td>
+                <td style={tdStyle}>
+                  <OverShepherdArchiveButton
+                    overShepherdId={os.id}
+                    fullName={os.full_name}
+                    active={os.active}
+                    coveredCount={count}
+                  />
+                </td>
               </tr>
             );
           })}

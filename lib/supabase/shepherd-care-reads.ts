@@ -411,7 +411,7 @@ export async function fetchShepherdCareInteractionsForAdmin(
  */
 export const SHEPHERD_CARE_FOLLOW_UP_COLUMNS =
   "id, care_profile_id, title, due_date, status, notes, " +
-  "created_by_profile_id, created_at, updated_at, completed_at";
+  "created_by_profile_id, created_at, updated_at, completed_at, archived_at";
 
 /**
  * Admin-only list of care follow-ups for one care profile. Returns the raw
@@ -427,6 +427,8 @@ export async function fetchShepherdCareFollowUpsForProfile(
     .from("shepherd_care_follow_ups")
     .select(SHEPHERD_CARE_FOLLOW_UP_COLUMNS)
     .eq("care_profile_id", careProfileId)
+    // Archived (soft-deleted) follow-ups drop out of the list entirely.
+    .is("archived_at", null)
     .order("status", { ascending: true })
     .order("due_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
@@ -463,6 +465,8 @@ export async function fetchOutstandingCareFollowUpsForAdmin(
     .from("shepherd_care_follow_ups")
     .select("id, care_profile_id, status, due_date")
     .neq("status", "done")
+    // Archived (soft-deleted) follow-ups never surface in the outstanding feed.
+    .is("archived_at", null)
     .range(0, 9999);
   if (error) {
     return {
@@ -562,6 +566,8 @@ export async function fetchRecentlyCompletedCareFollowUpsForAdmin(
     .from("shepherd_care_follow_ups")
     .select("id, care_profile_id, status, due_date, completed_at")
     .eq("status", "done")
+    // Archived (soft-deleted) follow-ups drop out of the completed feed too.
+    .is("archived_at", null)
     .order("completed_at", { ascending: false, nullsFirst: false })
     .range(0, Math.max(0, limit - 1));
   if (error) {

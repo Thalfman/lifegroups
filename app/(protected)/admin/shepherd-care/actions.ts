@@ -2,6 +2,7 @@
 
 import {
   validateAddPrivateNoteKeySlotPayload,
+  validateArchiveShepherdCareFollowUpPayload,
   validateAssignShepherdCoveragePayload,
   validateCreateOverShepherdPayload,
   validateCreateShepherdCareFollowUpPayload,
@@ -10,12 +11,14 @@ import {
   validateLogShepherdCareInteractionPayload,
   validateRemovePrivateNoteKeySlotPayload,
   validateRotatePrivateNoteRecoveryPayload,
+  validateSetOverShepherdActivePayload,
   validateUpdateOverShepherdPayload,
   validateUpdateShepherdCareFollowUpPayload,
   validateUpdateShepherdCareFollowUpStatusPayload,
   validateUpsertShepherdCarePrivateNotePayload,
   validateUpsertShepherdCareProfilePayload,
   type AddPrivateNoteKeySlotPayload,
+  type ArchiveShepherdCareFollowUpPayload,
   type AssignShepherdCoveragePayload,
   type CreateOverShepherdPayload,
   type CreateShepherdCareFollowUpPayload,
@@ -24,6 +27,7 @@ import {
   type LogShepherdCareInteractionPayload,
   type RemovePrivateNoteKeySlotPayload,
   type RotatePrivateNoteRecoveryPayload,
+  type SetOverShepherdActivePayload,
   type UpdateOverShepherdPayload,
   type UpdateShepherdCareFollowUpPayload,
   type UpdateShepherdCareFollowUpStatusPayload,
@@ -37,6 +41,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import {
+  rpcAdminArchiveShepherdCareFollowUp,
   rpcAdminAssignShepherdToOverShepherd,
   rpcAdminCreateOverShepherd,
   rpcAdminCreateShepherdCareFollowUp,
@@ -46,6 +51,7 @@ import {
   rpcAdminLogShepherdCareInteraction,
   rpcAdminRemovePrivateNoteKeySlot,
   rpcAdminRotatePrivateNoteRecovery,
+  rpcAdminSetOverShepherdActive,
   rpcAdminUpdateOverShepherd,
   rpcAdminUpdateShepherdCareFollowUp,
   rpcAdminUpdateShepherdCareFollowUpStatus,
@@ -92,6 +98,13 @@ const UPDATE_CARE_FOLLOW_UP_STATUS_KEYS = [
   "shepherd_profile_id",
 ] as const;
 
+// Archive (soft-delete) a care follow-up. shepherd_profile_id is form-only, for
+// revalidation; the RPC keys on follow_up_id.
+const ARCHIVE_CARE_FOLLOW_UP_KEYS = [
+  "follow_up_id",
+  "shepherd_profile_id",
+] as const;
+
 const UPDATE_CARE_FOLLOW_UP_KEYS = [
   "follow_up_id",
   "title",
@@ -102,7 +115,12 @@ const UPDATE_CARE_FOLLOW_UP_KEYS = [
   "shepherd_profile_id",
 ] as const;
 
-const CREATE_OVER_SHEPHERD_KEYS = ["full_name", "email", "phone", "notes"] as const;
+const CREATE_OVER_SHEPHERD_KEYS = [
+  "full_name",
+  "email",
+  "phone",
+  "notes",
+] as const;
 
 const UPDATE_OVER_SHEPHERD_KEYS = [
   "over_shepherd_id",
@@ -112,6 +130,8 @@ const UPDATE_OVER_SHEPHERD_KEYS = [
   "notes",
   "active",
 ] as const;
+
+const SET_OVER_SHEPHERD_ACTIVE_KEYS = ["over_shepherd_id", "active"] as const;
 
 const ASSIGN_COVERAGE_KEYS = [
   "shepherd_profile_id",
@@ -123,7 +143,11 @@ const ASSIGN_COVERAGE_KEYS = [
 // assignment id so the action can revalidate the right detail page on
 // success. It is intentionally optional and NOT passed to the RPC -- the
 // RPC reads the canonical shepherd_profile_id from the assignment row.
-const END_COVERAGE_KEYS = ["assignment_id", "ended_at", "shepherd_profile_id"] as const;
+const END_COVERAGE_KEYS = [
+  "assignment_id",
+  "ended_at",
+  "shepherd_profile_id",
+] as const;
 
 // Phase SC.4 private-note keys. shepherd_profile_id is form-only (for
 // revalidation); the RPC keys on care_profile_id and derives the creator from
@@ -137,7 +161,11 @@ const UPSERT_PRIVATE_NOTE_KEYS = [
   "shepherd_profile_id",
 ] as const;
 
-const ENROLL_PRIVATE_NOTE_KEYS = ["dek_version", "slots", "shepherd_profile_id"] as const;
+const ENROLL_PRIVATE_NOTE_KEYS = [
+  "dek_version",
+  "slots",
+  "shepherd_profile_id",
+] as const;
 
 function shepherdCarePaths(shepherdProfileId?: string): string[] {
   return [
@@ -150,7 +178,9 @@ function overShepherdPaths(overShepherdId?: string): string[] {
   return [
     "/admin/shepherd-care",
     "/admin/shepherd-care/over-shepherds",
-    ...(overShepherdId ? [`/admin/shepherd-care/over-shepherds/${overShepherdId}`] : []),
+    ...(overShepherdId
+      ? [`/admin/shepherd-care/over-shepherds/${overShepherdId}`]
+      : []),
   ];
 }
 
@@ -163,7 +193,9 @@ const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
   name: "admin.shepherd_care.upsert_profile",
   keys: UPSERT_KEYS,
   validate: validateUpsertShepherdCareProfilePayload,
-  fields: (_actor, value) => ({ target_shepherd_profile_id: value.shepherd_profile_id }),
+  fields: (_actor, value) => ({
+    target_shepherd_profile_id: value.shepherd_profile_id,
+  }),
   okFields: (value) => ({
     status_set: value.set_current_status,
     next_touchpoint_set: value.set_next_touchpoint_due,
@@ -185,7 +217,7 @@ const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
 
 export async function adminUpsertShepherdCareProfile(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpsertShepherdCareProfilePayload>,
+  input: ActionInput<UpsertShepherdCareProfilePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPSERT_PROFILE_SPEC, prev, input);
 }
@@ -199,7 +231,9 @@ const LOG_INTERACTION_SPEC: AdminWriteActionSpec<
   name: "admin.shepherd_care.log_interaction",
   keys: LOG_INTERACTION_KEYS,
   validate: validateLogShepherdCareInteractionPayload,
-  fields: (_actor, value) => ({ target_shepherd_profile_id: value.shepherd_profile_id }),
+  fields: (_actor, value) => ({
+    target_shepherd_profile_id: value.shepherd_profile_id,
+  }),
   okFields: (value) => ({
     interaction_type: value.interaction_type,
     has_notes: value.notes !== null,
@@ -221,7 +255,7 @@ const LOG_INTERACTION_SPEC: AdminWriteActionSpec<
 
 export async function adminLogShepherdCareInteraction(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<LogShepherdCareInteractionPayload>,
+  input: ActionInput<LogShepherdCareInteractionPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(LOG_INTERACTION_SPEC, prev, input);
 }
@@ -232,7 +266,9 @@ export async function adminLogShepherdCareInteraction(
 // page revalidates after a follow-up write. The RPC never sees it.
 function revalidateShepherdFromRaw(raw: Record<string, unknown>): string[] {
   const shepherdProfileId =
-    typeof raw.shepherd_profile_id === "string" ? raw.shepherd_profile_id : undefined;
+    typeof raw.shepherd_profile_id === "string"
+      ? raw.shepherd_profile_id
+      : undefined;
   return shepherdCarePaths(shepherdProfileId);
 }
 
@@ -245,7 +281,9 @@ const CREATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
   name: "admin.shepherd_care.create_follow_up",
   keys: CREATE_CARE_FOLLOW_UP_KEYS,
   validate: validateCreateShepherdCareFollowUpPayload,
-  fields: (_actor, value) => ({ target_care_profile_id: value.care_profile_id }),
+  fields: (_actor, value) => ({
+    target_care_profile_id: value.care_profile_id,
+  }),
   okFields: (value) => ({
     has_due_date: value.due_date !== null,
     has_notes: value.notes !== null,
@@ -263,7 +301,7 @@ const CREATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
 
 export async function adminCreateShepherdCareFollowUp(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateShepherdCareFollowUpPayload>,
+  input: ActionInput<CreateShepherdCareFollowUpPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_CARE_FOLLOW_UP_SPEC, prev, input);
 }
@@ -290,9 +328,34 @@ const UPDATE_CARE_FOLLOW_UP_STATUS_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateShepherdCareFollowUpStatus(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpdateShepherdCareFollowUpStatusPayload>,
+  input: ActionInput<UpdateShepherdCareFollowUpStatusPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_CARE_FOLLOW_UP_STATUS_SPEC, prev, input);
+}
+
+// ----- adminArchiveShepherdCareFollowUp -----------------------------------
+
+const ARCHIVE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
+  ArchiveShepherdCareFollowUpPayload,
+  { id: string }
+> = {
+  name: "admin.shepherd_care.archive_follow_up",
+  keys: ARCHIVE_CARE_FOLLOW_UP_KEYS,
+  validate: validateArchiveShepherdCareFollowUpPayload,
+  fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
+  rpc: (client, value) =>
+    rpcAdminArchiveShepherdCareFollowUp(client, {
+      p_follow_up_id: value.follow_up_id,
+    }),
+  revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
+  noDataError: "The follow-up wasn't archived. Please try again.",
+};
+
+export async function adminArchiveShepherdCareFollowUp(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<ArchiveShepherdCareFollowUpPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(ARCHIVE_CARE_FOLLOW_UP_SPEC, prev, input);
 }
 
 // ----- adminUpdateShepherdCareFollowUp ------------------------------------
@@ -324,7 +387,7 @@ const UPDATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateShepherdCareFollowUp(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpdateShepherdCareFollowUpPayload>,
+  input: ActionInput<UpdateShepherdCareFollowUpPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_CARE_FOLLOW_UP_SPEC, prev, input);
 }
@@ -358,7 +421,7 @@ const CREATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
 
 export async function adminCreateOverShepherd(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateOverShepherdPayload>,
+  input: ActionInput<CreateOverShepherdPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_OVER_SHEPHERD_SPEC, prev, input);
 }
@@ -372,7 +435,9 @@ const UPDATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
   name: "admin.over_shepherd.update",
   keys: UPDATE_OVER_SHEPHERD_KEYS,
   validate: validateUpdateOverShepherdPayload,
-  fields: (_actor, value) => ({ target_over_shepherd_id: value.over_shepherd_id }),
+  fields: (_actor, value) => ({
+    target_over_shepherd_id: value.over_shepherd_id,
+  }),
   okFields: (value) => ({
     active: value.active,
     has_email: value.email !== null,
@@ -394,9 +459,40 @@ const UPDATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateOverShepherd(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpdateOverShepherdPayload>,
+  input: ActionInput<UpdateOverShepherdPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_OVER_SHEPHERD_SPEC, prev, input);
+}
+
+// ----- adminSetOverShepherdActive -----------------------------------------
+// Focused archive/restore toggle for the list + detail buttons — flips only the
+// active flag (the RPC maintains archived_at) without re-sending the record.
+
+const SET_OVER_SHEPHERD_ACTIVE_SPEC: AdminWriteActionSpec<
+  SetOverShepherdActivePayload,
+  { id: string }
+> = {
+  name: "admin.over_shepherd.set_active",
+  keys: SET_OVER_SHEPHERD_ACTIVE_KEYS,
+  validate: validateSetOverShepherdActivePayload,
+  fields: (_actor, value) => ({
+    target_over_shepherd_id: value.over_shepherd_id,
+  }),
+  okFields: (value) => ({ active: value.active }),
+  rpc: (client, value) =>
+    rpcAdminSetOverShepherdActive(client, {
+      p_over_shepherd_id: value.over_shepherd_id,
+      p_active: value.active,
+    }),
+  revalidate: (value) => overShepherdPaths(value.over_shepherd_id),
+  noDataError: "The over-shepherd wasn't updated. Please try again.",
+};
+
+export async function adminSetOverShepherdActive(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<SetOverShepherdActivePayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_OVER_SHEPHERD_ACTIVE_SPEC, prev, input);
 }
 
 // ----- adminAssignShepherdCoverage ----------------------------------------
@@ -408,7 +504,9 @@ const ASSIGN_COVERAGE_SPEC: AdminWriteActionSpec<
   name: "admin.shepherd_coverage.assign",
   keys: ASSIGN_COVERAGE_KEYS,
   validate: validateAssignShepherdCoveragePayload,
-  fields: (_actor, value) => ({ target_shepherd_profile_id: value.shepherd_profile_id }),
+  fields: (_actor, value) => ({
+    target_shepherd_profile_id: value.shepherd_profile_id,
+  }),
   okFields: (value) => ({ over_shepherd_id: value.over_shepherd_id }),
   rpc: (client, value) =>
     rpcAdminAssignShepherdToOverShepherd(client, {
@@ -425,7 +523,7 @@ const ASSIGN_COVERAGE_SPEC: AdminWriteActionSpec<
 
 export async function adminAssignShepherdCoverage(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<AssignShepherdCoveragePayload>,
+  input: ActionInput<AssignShepherdCoveragePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ASSIGN_COVERAGE_SPEC, prev, input);
 }
@@ -447,7 +545,9 @@ const END_COVERAGE_SPEC: AdminWriteActionSpec<
     }),
   revalidate: (_value, raw) => {
     const shepherdProfileId =
-      typeof raw.shepherd_profile_id === "string" ? raw.shepherd_profile_id : undefined;
+      typeof raw.shepherd_profile_id === "string"
+        ? raw.shepherd_profile_id
+        : undefined;
     return [...shepherdCarePaths(shepherdProfileId), ...overShepherdPaths()];
   },
   noDataError: "The coverage assignment wasn't ended. Please try again.",
@@ -455,7 +555,7 @@ const END_COVERAGE_SPEC: AdminWriteActionSpec<
 
 export async function adminEndShepherdCoverage(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<EndShepherdCoverageAssignmentPayload>,
+  input: ActionInput<EndShepherdCoverageAssignmentPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(END_COVERAGE_SPEC, prev, input);
 }
@@ -481,11 +581,13 @@ const ENROLL_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
   noDataError: "Private notes couldn't be set up. Please try again.",
 };
 
-type EnrollPrivateNoteInput = EnrollPrivateNoteKeysPayload & { shepherd_profile_id?: string };
+type EnrollPrivateNoteInput = EnrollPrivateNoteKeysPayload & {
+  shepherd_profile_id?: string;
+};
 
 export async function adminEnrollPrivateNoteKeys(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<EnrollPrivateNoteInput>,
+  input: ActionInput<EnrollPrivateNoteInput>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ENROLL_PRIVATE_NOTE_SPEC, prev, input);
 }
@@ -499,7 +601,9 @@ const UPSERT_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
   name: "admin.shepherd_care.upsert_private_note",
   keys: UPSERT_PRIVATE_NOTE_KEYS,
   validate: validateUpsertShepherdCarePrivateNotePayload,
-  fields: (_actor, value) => ({ target_care_profile_id: value.care_profile_id }),
+  fields: (_actor, value) => ({
+    target_care_profile_id: value.care_profile_id,
+  }),
   okFields: (value) => ({ body_set: value.set_body }),
   rpc: (client, value) =>
     rpcAdminUpsertShepherdCarePrivateNote(client, {
@@ -519,7 +623,7 @@ type UpsertPrivateNoteInput = UpsertShepherdCarePrivateNotePayload & {
 
 export async function adminUpsertShepherdCarePrivateNote(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpsertPrivateNoteInput>,
+  input: ActionInput<UpsertPrivateNoteInput>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPSERT_PRIVATE_NOTE_SPEC, prev, input);
 }
@@ -528,9 +632,20 @@ export async function adminUpsertShepherdCarePrivateNote(
 
 // ----- adminAddPrivateNoteKeySlot (second passkey) ------------------------
 
-const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<AddPrivateNoteKeySlotPayload, { id: string }> = {
+const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<
+  AddPrivateNoteKeySlotPayload,
+  { id: string }
+> = {
   name: "admin.shepherd_care.private_note.add_slot",
-  keys: ["credential_id", "label", "prf_salt", "hkdf_salt", "wrapped_dek", "wrap_iv", "shepherd_profile_id"],
+  keys: [
+    "credential_id",
+    "label",
+    "prf_salt",
+    "hkdf_salt",
+    "wrapped_dek",
+    "wrap_iv",
+    "shepherd_profile_id",
+  ],
   validate: validateAddPrivateNoteKeySlotPayload,
   okFields: (value) => ({ has_label: value.label !== null }),
   rpc: (client, value) =>
@@ -547,18 +662,23 @@ const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<AddPrivateNoteKeySlotPayload, { id
   noDataError: "The passkey couldn't be added. Please try again.",
 };
 
-type AddKeySlotInput = AddPrivateNoteKeySlotPayload & { shepherd_profile_id?: string };
+type AddKeySlotInput = AddPrivateNoteKeySlotPayload & {
+  shepherd_profile_id?: string;
+};
 
 export async function adminAddPrivateNoteKeySlot(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<AddKeySlotInput>,
+  input: ActionInput<AddKeySlotInput>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ADD_KEY_SLOT_SPEC, prev, input);
 }
 
 // ----- adminRotatePrivateNoteRecovery -------------------------------------
 
-const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<RotatePrivateNoteRecoveryPayload, { id: string }> = {
+const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<
+  RotatePrivateNoteRecoveryPayload,
+  { id: string }
+> = {
   name: "admin.shepherd_care.private_note.rotate_recovery",
   keys: ["hkdf_salt", "wrapped_dek", "wrap_iv", "label", "shepherd_profile_id"],
   validate: validateRotatePrivateNoteRecoveryPayload,
@@ -573,18 +693,23 @@ const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<RotatePrivateNoteRecoveryPayloa
   noDataError: "The recovery code couldn't be rotated. Please try again.",
 };
 
-type RotateRecoveryInput = RotatePrivateNoteRecoveryPayload & { shepherd_profile_id?: string };
+type RotateRecoveryInput = RotatePrivateNoteRecoveryPayload & {
+  shepherd_profile_id?: string;
+};
 
 export async function adminRotatePrivateNoteRecovery(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<RotateRecoveryInput>,
+  input: ActionInput<RotateRecoveryInput>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ROTATE_RECOVERY_SPEC, prev, input);
 }
 
 // ----- adminRemovePrivateNoteKeySlot --------------------------------------
 
-const REMOVE_KEY_SLOT_SPEC: AdminWriteActionSpec<RemovePrivateNoteKeySlotPayload, { id: string }> = {
+const REMOVE_KEY_SLOT_SPEC: AdminWriteActionSpec<
+  RemovePrivateNoteKeySlotPayload,
+  { id: string }
+> = {
   name: "admin.shepherd_care.private_note.remove_slot",
   keys: ["slot_id", "shepherd_profile_id"],
   validate: validateRemovePrivateNoteKeySlotPayload,
@@ -595,11 +720,13 @@ const REMOVE_KEY_SLOT_SPEC: AdminWriteActionSpec<RemovePrivateNoteKeySlotPayload
   noDataError: "The unlock method couldn't be removed. Please try again.",
 };
 
-type RemoveKeySlotInput = RemovePrivateNoteKeySlotPayload & { shepherd_profile_id?: string };
+type RemoveKeySlotInput = RemovePrivateNoteKeySlotPayload & {
+  shepherd_profile_id?: string;
+};
 
 export async function adminRemovePrivateNoteKeySlot(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<RemoveKeySlotInput>,
+  input: ActionInput<RemoveKeySlotInput>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(REMOVE_KEY_SLOT_SPEC, prev, input);
 }

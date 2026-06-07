@@ -88,7 +88,15 @@ export type SettingsShellData = {
   };
 };
 
-export function SettingsShell({ data }: { data: SettingsShellData }) {
+export function SettingsShell({
+  data,
+  // Optional deep-link target (from `?tab=`). SettingsTabs falls back to the
+  // default when it's undefined or not a known tab id.
+  initialTabId,
+}: {
+  data: SettingsShellData;
+  initialTabId?: string;
+}) {
   const settingsByGroupId = new Map(
     data.groupMetricSettings.map((s) => [s.group_id, s])
   );
@@ -154,7 +162,7 @@ export function SettingsShell({ data }: { data: SettingsShellData }) {
           0016). A section whose data failed to load (e.g. an environment without
           the pivot tables) softens to a calm "not set up yet" placeholder rather
           than tripping a page-wide error. */}
-      <SettingsTabs tabs={tabs} defaultTabId="care" />
+      <SettingsTabs tabs={tabs} defaultTabId={initialTabId ?? "care"} />
     </div>
   );
 }
@@ -222,6 +230,14 @@ function CarePanel({ data }: { data: SettingsShellData }) {
 // placeholder when its reads fail (e.g. an environment whose groups tables aren't
 // migrated yet).
 function GroupsPanel({ data }: { data: SettingsShellData }) {
+  // Categories still carried by at least one group (any audience / lifecycle).
+  // Derived from the already-loaded groups, so the Delete-category cleanup never
+  // offers to archive a category whose label real groups still resolve.
+  const categoryIdsWithGroups = new Set(
+    data.groups
+      .map((g) => g.category_id)
+      .filter((id): id is string => id !== null)
+  );
   return (
     <div style={{ display: "grid", gap: 36 }}>
       <section style={{ display: "grid", gap: 18 }}>
@@ -237,6 +253,10 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
             <GroupsCatalogEditor
               cells={data.cellCoverage}
               categories={data.groupCategories}
+              categoryIdsWithGroups={categoryIdsWithGroups}
+              // A failed groups read makes the reference set empty for the wrong
+              // reason, so the editor must not offer deletion in that case.
+              groupReferencesKnown={data.errors.groups === null}
             />
           </Card>
         )}

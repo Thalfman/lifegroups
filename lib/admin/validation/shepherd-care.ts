@@ -332,6 +332,25 @@ export function validateUpdateShepherdCareFollowUpStatusPayload(
   };
 }
 
+// Admin UX: soft-archive a care follow-up (cleanup). Shape-only — the RPC is the
+// authoritative gate (missing_follow_up, active-target re-check).
+export type ArchiveShepherdCareFollowUpPayload = {
+  follow_up_id: string;
+};
+
+export function validateArchiveShepherdCareFollowUpPayload(
+  input: unknown
+): ValidationResult<ArchiveShepherdCareFollowUpPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.follow_up_id))
+    return { ok: false, errors: ["follow_up_id must be a uuid"] };
+  return {
+    ok: true,
+    value: { follow_up_id: normalizeUuid(input.follow_up_id as string) },
+  };
+}
+
 export type UpdateShepherdCareFollowUpPayload = {
   follow_up_id: string;
   title: string;
@@ -523,6 +542,29 @@ export function validateUpdateOverShepherdPayload(
       over_shepherd_id: normalizeUuid(input.over_shepherd_id as string),
       ...fields,
       active,
+    },
+  };
+}
+
+// Admin UX: a focused active toggle for the list/detail Archive/Restore button.
+// Shape-only — the RPC owns the soft-archive/restore + archived_at maintenance.
+export type SetOverShepherdActivePayload = {
+  over_shepherd_id: string;
+  active: boolean;
+};
+
+export function validateSetOverShepherdActivePayload(
+  input: unknown
+): ValidationResult<SetOverShepherdActivePayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.over_shepherd_id))
+    return { ok: false, errors: ["over_shepherd_id must be a uuid"] };
+  return {
+    ok: true,
+    value: {
+      over_shepherd_id: normalizeUuid(input.over_shepherd_id as string),
+      active: readBooleanFlag(input.active),
     },
   };
 }

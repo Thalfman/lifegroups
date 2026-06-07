@@ -147,6 +147,13 @@ export async function loadMultiplyGridData(
     haveByKey.set(`${row.audienceCategory}:${row.categoryId}`, row.have);
   }
 
+  // Categories that are applied to at least one top type (have an active cell).
+  // A category with no active cell is an "orphan" — kept in the catalog but not
+  // shown as a Multiply row (see the filter on the grid build below).
+  const activeCategoryIds = new Set(
+    targetCells.filter((cell) => cell.active).map((cell) => cell.category_id)
+  );
+
   // Assemble one GridCellInput per cell row. The pure builder pairs these against
   // the catalog rows, so a cell whose category isn't live is dropped there.
   const cells: GridCellInput[] = targetCells.map((cell) => {
@@ -176,7 +183,15 @@ export async function loadMultiplyGridData(
   return {
     ministryYear,
     grid: buildMultiplyGrid(
-      categories.map((c) => ({ id: c.id, label: c.label })),
+      // Only categories with at least one ACTIVE cell earn a grid row. After the
+      // last group type using a category is removed (its cell deactivated), the
+      // live catalog still carries the label — without this filter it would
+      // render as an all-blank "orphan" row. With none left, the grid falls back
+      // to its "No categories yet" empty state. (Settings › Groups also exposes
+      // a Delete-category control to clear the lingering label for good.)
+      categories
+        .filter((c) => activeCategoryIds.has(c.id))
+        .map((c) => ({ id: c.id, label: c.label })),
       cells,
       globalRule,
       perTypeRules
