@@ -4,6 +4,7 @@ import { memo, useDeferredValue, useMemo, useState } from "react";
 import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-member-button";
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { PBadge } from "@/components/pastoral/atoms";
 import { PLinkButton } from "@/components/pastoral/button";
 import { ROLE_LABELS } from "@/lib/auth/roles";
@@ -35,6 +36,8 @@ type PeopleDirectoryProps = {
   // person row can show the Contact/Care indicator ("Needs contact" vs "No
   // current concerns"). Members have no care model, so they are never in here.
   needsContactProfileIds: ReadonlySet<string>;
+  // SAD9: super-admin-only inline permanent delete of a person / member record.
+  isSuperAdmin?: boolean;
   errors: {
     profiles: string | null;
     members: string | null;
@@ -188,6 +191,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               assignedGroups={profileGroupMap.get(p.id) ?? NO_GROUPS}
               isSelf={p.id === props.currentActorProfileId}
               needsContact={props.needsContactProfileIds.has(p.id)}
+              isSuperAdmin={props.isSuperAdmin ?? false}
             />
           ))}
         </DirectorySection>
@@ -215,6 +219,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               key={m.id}
               member={m}
               assignedGroups={memberGroupMap.get(m.id) ?? NO_GROUPS}
+              isSuperAdmin={props.isSuperAdmin ?? false}
             />
           ))}
         </DirectorySection>
@@ -469,11 +474,13 @@ const ProfileRow = memo(function ProfileRow({
   assignedGroups,
   isSelf,
   needsContact,
+  isSuperAdmin,
 }: {
   profile: ProfilesRow;
   assignedGroups: GroupsRow[];
   isSelf: boolean;
   needsContact: boolean;
+  isSuperAdmin: boolean;
 }) {
   const isLeaderType =
     profile.role === "leader" || profile.role === "co_leader";
@@ -578,6 +585,13 @@ const ProfileRow = memo(function ProfileRow({
                 fullName={profile.full_name}
               />
             ) : null}
+            {isSuperAdmin ? (
+              <SuperAdminInlineDelete
+                entityType="profile"
+                id={profile.id}
+                label={profile.full_name}
+              />
+            ) : null}
           </>
         )}
       </div>
@@ -588,9 +602,11 @@ const ProfileRow = memo(function ProfileRow({
 const MemberRow = memo(function MemberRow({
   member,
   assignedGroups,
+  isSuperAdmin,
 }: {
   member: MembersRow;
   assignedGroups: GroupsRow[];
+  isSuperAdmin: boolean;
 }) {
   return (
     <li className="lg-m-grid-stack" style={rowStyle}>
@@ -670,6 +686,13 @@ const MemberRow = memo(function MemberRow({
           <DeactivateMemberButton
             memberId={member.id}
             fullName={member.full_name}
+          />
+        ) : null}
+        {isSuperAdmin ? (
+          <SuperAdminInlineDelete
+            entityType="member"
+            id={member.id}
+            label={member.full_name}
           />
         ) : null}
       </div>

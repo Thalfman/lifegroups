@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import type { CareAccordionPane } from "@/lib/admin/care-accordion";
 
 // The canonical Care view (#373, ADR 0016): a collapsible accordion grouped by
@@ -44,7 +45,13 @@ function leaderCountLabel(count: number): string {
   return `${count} leader${count === 1 ? "" : "s"}`;
 }
 
-function CarePane({ pane }: { pane: CareAccordionPane }) {
+function CarePane({
+  pane,
+  isSuperAdmin,
+}: {
+  pane: CareAccordionPane;
+  isSuperAdmin: boolean;
+}) {
   return (
     <details
       style={{
@@ -100,12 +107,39 @@ function CarePane({ pane }: { pane: CareAccordionPane }) {
             <CareLeaderPanel key={leader.profileId} leader={leader} />
           ))
         )}
+        {/* SAD9: super-admin-only permanent delete of the over-shepherd record
+            itself. Lives in the expanded body (not the summary) so it can't
+            fight the <details> disclosure toggle. The preflight surfaces — and
+            the engine refuses — a delete while active coverage assignments still
+            reference this over-shepherd, so they must be cleared first. */}
+        {isSuperAdmin && pane.overShepherdId && !pane.isUnassigned ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              borderTop: `1px solid ${P.line2}`,
+              paddingTop: 10,
+            }}
+          >
+            <SuperAdminInlineDelete
+              entityType="over_shepherd"
+              id={pane.overShepherdId}
+              label={pane.overShepherdName}
+            />
+          </div>
+        ) : null}
       </div>
     </details>
   );
 }
 
-export function CareAccordion({ panes }: { panes: CareAccordionPane[] }) {
+export function CareAccordion({
+  panes,
+  isSuperAdmin = false,
+}: {
+  panes: CareAccordionPane[];
+  isSuperAdmin?: boolean;
+}) {
   return (
     <div style={{ display: "grid", gap: 18 }}>
       {/* Coverage maintenance is NOT rebuilt here (#373 req 4): link out to the
@@ -150,7 +184,11 @@ export function CareAccordion({ panes }: { panes: CareAccordionPane[] }) {
 
       <div style={{ display: "grid", gap: 12 }}>
         {panes.map((pane) => (
-          <CarePane key={pane.overShepherdId ?? "unassigned"} pane={pane} />
+          <CarePane
+            key={pane.overShepherdId ?? "unassigned"}
+            pane={pane}
+            isSuperAdmin={isSuperAdmin}
+          />
         ))}
       </div>
     </div>

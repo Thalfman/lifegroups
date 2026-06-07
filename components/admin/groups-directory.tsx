@@ -14,6 +14,7 @@ import { ArchiveGroupButton } from "@/components/admin/forms/archive-group-butto
 import { GroupCreateForm } from "@/components/admin/forms/group-create-form";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { PButton } from "@/components/pastoral/button";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
@@ -133,6 +134,8 @@ type GroupsDirectoryProps = {
   // Signed-in profile id, used only to scope this browser's saved card⇄table
   // view preference per admin (#325). Null falls back to a shared bucket.
   viewerId?: string | null;
+  // SAD9: super-admin-only inline permanent delete of a group record.
+  isSuperAdmin?: boolean;
   // #398: category-picker options grouped by top type, for the create/edit
   // forms in the editing drawer. Each list is the categories applied (active
   // cell) to that audience.
@@ -655,6 +658,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             overrideByGroupId={overrideByGroupId}
             defaults={props.metricDefaults}
             onEdit={openEdit}
+            isSuperAdmin={props.isSuperAdmin ?? false}
           />
         </div>
       ) : (
@@ -677,6 +681,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
                 override={overrideByGroupId.get(g.id) ?? null}
                 defaults={props.metricDefaults}
                 onEdit={openEdit}
+                isSuperAdmin={props.isSuperAdmin ?? false}
               />
             </li>
           ))}
@@ -1042,6 +1047,7 @@ const GroupTableRowView = memo(function GroupTableRowView({
   memberCount,
   defaults,
   onEdit,
+  isSuperAdmin,
 }: {
   group: GroupsRow;
   status: GroupStatus;
@@ -1053,6 +1059,7 @@ const GroupTableRowView = memo(function GroupTableRowView({
   memberCount: number;
   defaults: MetricDefaults;
   onEdit: (group: GroupsRow) => void;
+  isSuperAdmin: boolean;
 }) {
   const show = (column: GroupsTableOptionalColumn) =>
     isColumnShown(shownColumns, column);
@@ -1189,6 +1196,13 @@ const GroupTableRowView = memo(function GroupTableRowView({
               </PButton>
             </>
           )}
+          {isSuperAdmin ? (
+            <SuperAdminInlineDelete
+              entityType="group"
+              id={group.id}
+              label={group.name}
+            />
+          ) : null}
         </div>
       </td>
     </tr>
@@ -1207,6 +1221,7 @@ function GroupsTable({
   overrideByGroupId,
   defaults,
   onEdit,
+  isSuperAdmin,
 }: {
   rows: GroupTableRow[];
   sortKey: GroupsTableSortKey;
@@ -1219,6 +1234,7 @@ function GroupsTable({
   overrideByGroupId: Map<string, GroupMetricSettingsRow>;
   defaults: MetricDefaults;
   onEdit: (group: GroupsRow) => void;
+  isSuperAdmin: boolean;
 }) {
   // Render the structural "group" column plus only the optional columns the
   // admin has chosen to show, keeping the table's fixed render order.
@@ -1322,6 +1338,7 @@ function GroupsTable({
               memberCount={activeMemberCountByGroup.get(group.id) ?? 0}
               defaults={defaults}
               onEdit={onEdit}
+              isSuperAdmin={isSuperAdmin}
             />
           ))}
         </tbody>
@@ -1479,6 +1496,7 @@ const GroupCard = memo(function GroupCard({
   override,
   defaults,
   onEdit,
+  isSuperAdmin,
 }: {
   group: GroupsRow;
   status: GroupStatus;
@@ -1491,6 +1509,7 @@ const GroupCard = memo(function GroupCard({
   // Opens the shared editing drawer for this group (#266). The card itself
   // stays a read-only row — editing no longer happens inline.
   onEdit: (group: GroupsRow) => void;
+  isSuperAdmin: boolean;
 }) {
   const isArchived = status.lifecycle === "archived";
   // Repeated row actions name their group plus a stable discriminator so two
@@ -1595,6 +1614,13 @@ const GroupCard = memo(function GroupCard({
               </PButton>
             </>
           )}
+          {isSuperAdmin ? (
+            <SuperAdminInlineDelete
+              entityType="group"
+              id={group.id}
+              label={group.name}
+            />
+          ) : null}
         </div>
       </header>
 

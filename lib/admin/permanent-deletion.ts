@@ -634,6 +634,96 @@ const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
   },
 };
 
+// SAD9: Care leaf records — the inline super-admin Delete control covers
+// everything under the Care tab EXCEPT the confidential care notes & prayer
+// requests. Both tables have a uuid `id` PK and no inbound FKs, so they delete
+// cleanly. fetchItems is only used by the danger-zone picker; the inline path
+// passes entityType + id directly. Both tables' RLS SELECT is admin-only
+// (auth_is_admin), which super_admin satisfies, so these reads work server-side.
+
+// care_profile_id -> shepherd_care_profiles -> profiles(full_name): the leader a
+// care record is about. Embedded so the destructive danger-zone picker names the
+// person, not just a bare title/type+date (two near-identical rows for different
+// leaders must be distinguishable before a permanent delete).
+type CareSubjectEmbed = {
+  shepherd_care_profiles: { profiles: { full_name: string } | null } | null;
+};
+
+function careSubjectName(row: CareSubjectEmbed): string {
+  return str(row.shepherd_care_profiles?.profiles?.full_name ?? "");
+}
+
+const SHEPHERD_CARE_FOLLOW_UP: PermanentDeletionEntity = {
+  entityType: "shepherd_care_follow_up",
+  label: "Care follow-up",
+  pluralLabel: "Care follow-ups",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("shepherd_care_follow_ups")
+      .select(
+        "id, title, status, due_date, shepherd_care_profiles(profiles(full_name))"
+      )
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<
+      {
+        id: string;
+        title: string;
+        status: string | null;
+        due_date: string | null;
+      } & CareSubjectEmbed
+    >;
+    return rows.map((r) => {
+      const who = careSubjectName(r);
+      const statusSuffix =
+        r.status && r.status !== "open" ? ` (${r.status})` : "";
+      return {
+        id: r.id,
+        label: `${who ? `${who} · ` : ""}${str(r.title)}${statusSuffix} [${r.id.slice(0, 8)}]`,
+      };
+    });
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.title) || "Care follow-up";
+  },
+};
+
+const SHEPHERD_CARE_INTERACTION: PermanentDeletionEntity = {
+  entityType: "shepherd_care_interaction",
+  label: "Care interaction",
+  pluralLabel: "Care interactions",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("shepherd_care_interactions")
+      .select(
+        "id, interaction_type, interaction_at, shepherd_care_profiles(profiles(full_name))"
+      )
+      .order("interaction_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<
+      {
+        id: string;
+        interaction_type: string;
+        interaction_at: string;
+      } & CareSubjectEmbed
+    >;
+    return rows.map((r) => {
+      const who = careSubjectName(r);
+      return {
+        id: r.id,
+        label: `${who ? `${who} · ` : ""}${str(r.interaction_type)} — ${str(
+          r.interaction_at
+        ).slice(0, 10)} [${r.id.slice(0, 8)}]`,
+      };
+    });
+  },
+  labelFromSnapshot(snapshot) {
+    const type = str(snapshot.interaction_type);
+    const at = str(snapshot.interaction_at).slice(0, 10);
+    return type ? `${type} ${at}`.trim() : "Care interaction";
+  },
+};
+
 // Registry order is the order the picker lists entity types.
 export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   LAUNCH_SCENARIO,
@@ -656,10 +746,39 @@ export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   INVITATION,
   SHEPHERD_COVERAGE_ASSIGNMENT,
   CHURCH_ATTENDANCE_SNAPSHOT,
+  SHEPHERD_CARE_FOLLOW_UP,
+  SHEPHERD_CARE_INTERACTION,
 ];
 
 export function findPermanentDeletionEntity(
   entityType: string
 ): PermanentDeletionEntity | undefined {
   return PERMANENT_DELETION_ENTITIES.find((e) => e.entityType === entityType);
+}
+
+// SAD9: the subset of registered entity types the super-admin INLINE Delete
+// control actually renders. The lighter, no-phrase action (superAdminInlineDelete)
+// accepts ONLY these — every other registered danger-zone target (snapshots,
+// invitations, attendance records, launch-planning records, …) still requires the
+// PERMANENTLY DELETE phrase on the danger-zone card. Keeping this explicit, rather
+// than "anything in the registry", means a crafted no-phrase request can't drop a
+// target the quick-confirm UX was never meant to cover. Every token here must also
+// be a registered PERMANENT_DELETION_ENTITIES entry (asserted in tests).
+export const INLINE_DELETABLE_ENTITY_TYPES: ReadonlySet<string> = new Set([
+  // Care surface (the original ask): everything under Care except the
+  // confidential notes & prayer requests.
+  "shepherd_care_follow_up",
+  "shepherd_care_interaction",
+  "over_shepherd",
+  "shepherd_coverage_assignment",
+  // Main record surfaces the control is wired into.
+  "follow_up",
+  "group",
+  "profile",
+  "member",
+  "guest",
+]);
+
+export function isInlineDeletableEntityType(entityType: string): boolean {
+  return INLINE_DELETABLE_ENTITY_TYPES.has(entityType);
 }

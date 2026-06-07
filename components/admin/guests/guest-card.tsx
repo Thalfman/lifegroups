@@ -19,6 +19,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import type { GroupsRow, ProfilesRow } from "@/types/database";
 import type { GuestPipelineStage } from "@/types/enums";
 
@@ -31,6 +32,7 @@ export function GuestCard({
   activeGroups,
   ownerProfiles,
   openFollowUpsCount,
+  isSuperAdmin = false,
 }: {
   guest: GuestDirectoryEntry;
   groupsById: Map<string, GroupsRow>;
@@ -38,6 +40,8 @@ export function GuestCard({
   activeGroups: GroupsRow[];
   ownerProfiles: ProfilesRow[];
   openFollowUpsCount: number;
+  // SAD9: super-admin-only inline permanent delete of this guest.
+  isSuperAdmin?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const { state, formAction, pending } = useActionForm<{ id: string }>(
@@ -172,7 +176,7 @@ export function GuestCard({
         </blockquote>
       ) : null}
 
-      <div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <PButton
           type="button"
           tone="ghost"
@@ -181,6 +185,13 @@ export function GuestCard({
         >
           {editing ? "Cancel" : "Update"}
         </PButton>
+        {isSuperAdmin ? (
+          <SuperAdminInlineDelete
+            entityType="guest"
+            id={guest.id}
+            label={guest.full_name}
+          />
+        ) : null}
       </div>
 
       {editing ? (

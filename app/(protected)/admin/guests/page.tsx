@@ -8,11 +8,13 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { GuestsManagementShell } from "@/components/admin/guests/guests-shell";
 import { loadGuestsData } from "@/components/admin/guests/guests-data";
 import { requireAdmin } from "@/lib/auth/session";
+import { isSuperAdminRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminGuestsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const isSuperAdmin = isSuperAdminRole(session.profile.role);
   const data = await loadGuestsData();
 
   return (
@@ -24,7 +26,7 @@ export default async function AdminGuestsPage() {
         lede="Add a guest, walk them through the pipeline, and assign a follow-up owner. Nothing here sends an SMS or email — this is your manual record."
       />
       <PageBody>
-        <GuestsManagementShell data={data} />
+        <GuestsManagementShell data={data} isSuperAdmin={isSuperAdmin} />
       </PageBody>
     </>
   );

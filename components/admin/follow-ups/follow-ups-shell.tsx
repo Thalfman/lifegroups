@@ -20,6 +20,7 @@ import type {
 } from "@/lib/supabase/read-models";
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import {
   errorTextStyle,
   fieldInputStyle,
@@ -130,10 +131,13 @@ function isFollowUpsViewSnapshot(
 export function AdminFollowUpsShell({
   data,
   viewerId,
+  isSuperAdmin = false,
 }: {
   data: AdminFollowUpsData;
   // Signed-in profile id, used only to scope this admin's saved filters (#263).
   viewerId?: string | null;
+  // SAD9: super-admin-only inline permanent delete of a follow-up row.
+  isSuperAdmin?: boolean;
 }) {
   const { followUps, groups, members, guests, assigneeProfiles, errors } = data;
 
@@ -584,6 +588,7 @@ export function AdminFollowUpsShell({
                           guestsById={guestsById}
                           profilesById={profilesById}
                           today={today}
+                          isSuperAdmin={isSuperAdmin}
                         />
                       </li>
                     ))}
@@ -628,6 +633,7 @@ function FollowUpRow({
   guestsById,
   profilesById,
   today,
+  isSuperAdmin,
 }: {
   followUp: AdminFollowUpEntry;
   groupsById: Map<string, GroupsRow>;
@@ -635,6 +641,7 @@ function FollowUpRow({
   guestsById: Map<string, GuestDirectoryEntry>;
   profilesById: Map<string, ProfilesRow>;
   today: Date;
+  isSuperAdmin: boolean;
 }) {
   const group = followUp.related_group_id
     ? groupsById.get(followUp.related_group_id)
@@ -775,7 +782,24 @@ function FollowUpRow({
           {followUp.admin_private_note}
         </blockquote>
       ) : null}
-      <FollowUpStatusControls followUp={followUp} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <FollowUpStatusControls followUp={followUp} />
+        {isSuperAdmin ? (
+          <SuperAdminInlineDelete
+            entityType="follow_up"
+            id={followUp.id}
+            label={followUp.title}
+          />
+        ) : null}
+      </div>
     </article>
   );
 }

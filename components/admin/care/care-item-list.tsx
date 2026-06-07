@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { CareItem, CareItemDueTone } from "@/lib/admin/care-area";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 
 // One care item rendered with the reduction-plan six-field structure (#301):
 // Person, Reason, Related group, Due date, Owner, Action. The action is the ONE
@@ -66,10 +67,14 @@ export function CareItemList({
   items,
   emptyTitle,
   emptyDescription,
+  isSuperAdmin = false,
 }: {
   items: CareItem[];
   emptyTitle: string;
   emptyDescription: string;
+  // SAD9: when the viewer is the super admin, each row that maps to a deletable
+  // DB record (care follow-up / interaction) gets an inline Delete control.
+  isSuperAdmin?: boolean;
 }) {
   if (items.length === 0) {
     return (
@@ -161,28 +166,43 @@ export function CareItemList({
                 ) : null}
               </div>
             </div>
-            <Link
-              href={item.actionHref}
-              // Record-context accessible name (#332 / req 4): assistive tech
-              // announces "Log contact for Jane Doe", not a bare "Log contact"
-              // repeated down the list. The visible label stays the short verb.
-              aria-label={item.actionAccessibleName}
+            <div
               style={{
                 flexShrink: 0,
                 alignSelf: "center",
-                fontFamily: fontSans,
-                fontSize: 12.5,
-                fontWeight: 600,
-                color: P.sageTextStrong,
-                textDecoration: "none",
-                border: `1px solid ${P.line}`,
-                borderRadius: 999,
-                padding: "7px 14px",
-                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
-              {item.actionLabel} →
-            </Link>
+              <Link
+                href={item.actionHref}
+                // Record-context accessible name (#332 / req 4): assistive tech
+                // announces "Log contact for Jane Doe", not a bare "Log contact"
+                // repeated down the list. The visible label stays the short verb.
+                aria-label={item.actionAccessibleName}
+                style={{
+                  fontFamily: fontSans,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: P.sageTextStrong,
+                  textDecoration: "none",
+                  border: `1px solid ${P.line}`,
+                  borderRadius: 999,
+                  padding: "7px 14px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.actionLabel} →
+              </Link>
+              {isSuperAdmin && item.deleteTarget ? (
+                <SuperAdminInlineDelete
+                  entityType={item.deleteTarget.entityType}
+                  id={item.deleteTarget.id}
+                  label={`${item.personName} — ${item.reason}`}
+                />
+              ) : null}
+            </div>
           </div>
         );
       })}

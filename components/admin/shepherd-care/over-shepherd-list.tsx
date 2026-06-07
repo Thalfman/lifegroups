@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
 import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 
 const tableStyle: CSSProperties = {
   width: "100%",
@@ -41,9 +42,12 @@ const emptyStyle: CSSProperties = {
 export function OverShepherdList({
   overShepherds,
   shepherdCountById,
+  isSuperAdmin = false,
 }: {
   overShepherds: OverShepherdListRow[];
   shepherdCountById: Map<string, number>;
+  // SAD9: super-admin-only inline permanent delete of an over-shepherd record.
+  isSuperAdmin?: boolean;
 }) {
   if (overShepherds.length === 0) {
     return <div style={emptyStyle}>No over-shepherds yet.</div>;
@@ -100,12 +104,28 @@ export function OverShepherdList({
                 </td>
                 <td style={tdStyle}>{count}</td>
                 <td style={tdStyle}>
-                  <OverShepherdArchiveButton
-                    overShepherdId={os.id}
-                    fullName={os.full_name}
-                    active={os.active}
-                    coveredCount={count}
-                  />
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <OverShepherdArchiveButton
+                      overShepherdId={os.id}
+                      fullName={os.full_name}
+                      active={os.active}
+                      coveredCount={count}
+                    />
+                    {isSuperAdmin ? (
+                      <SuperAdminInlineDelete
+                        entityType="over_shepherd"
+                        id={os.id}
+                        label={os.full_name}
+                      />
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             );

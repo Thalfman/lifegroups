@@ -60,10 +60,13 @@ export function PeopleManagementShell({
   data,
   pipeline,
   needsContactProfileIds,
+  isSuperAdmin = false,
 }: {
   data: PeopleManagementData;
   pipeline: PeoplePipelineData;
   needsContactProfileIds: ReadonlySet<string>;
+  // SAD9: super-admin-only inline permanent delete on the directory rows.
+  isSuperAdmin?: boolean;
 }) {
   const [view, setView] = useState<PeopleView>("directory");
 
@@ -91,6 +94,7 @@ export function PeopleManagementShell({
           memberships={data.memberships}
           currentActorProfileId={data.currentActorProfileId}
           needsContactProfileIds={needsContactProfileIds}
+          isSuperAdmin={isSuperAdmin}
           errors={directoryErrors}
         />
       ) : null}

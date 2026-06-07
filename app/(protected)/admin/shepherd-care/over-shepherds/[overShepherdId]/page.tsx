@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdEditForm } from "@/components/admin/shepherd-care/over-shepherd-edit-form";
 import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over-shepherd-archive-button";
+import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { requireAdmin } from "@/lib/auth/session";
+import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchOverShepherdByIdForAdmin,
@@ -64,7 +66,8 @@ export default async function AdminOverShepherdEditPage({
 }: {
   params: Promise<{ overShepherdId: string }>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const isSuperAdmin = isSuperAdminRole(session.profile.role);
 
   const { overShepherdId } = await params;
   if (!isUuid(overShepherdId)) notFound();
@@ -251,7 +254,15 @@ export default async function AdminOverShepherdEditPage({
                 }}
               >
                 {detail.coveredShepherds.map((entry) => (
-                  <li key={entry.assignment.id}>
+                  <li
+                    key={entry.assignment.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
                     <Link
                       href={`/admin/shepherd-care/${entry.shepherd.id}`}
                       style={{
@@ -262,6 +273,13 @@ export default async function AdminOverShepherdEditPage({
                     >
                       {entry.shepherd.full_name}
                     </Link>
+                    {isSuperAdmin ? (
+                      <SuperAdminInlineDelete
+                        entityType="shepherd_coverage_assignment"
+                        id={entry.assignment.id}
+                        label={`coverage of ${entry.shepherd.full_name}`}
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ul>
