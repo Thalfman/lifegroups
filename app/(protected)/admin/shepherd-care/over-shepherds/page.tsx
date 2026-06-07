@@ -3,6 +3,7 @@ import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdCreateForm } from "@/components/admin/shepherd-care/over-shepherd-create-form";
 import { OverShepherdList } from "@/components/admin/shepherd-care/over-shepherd-list";
 import { requireAdmin } from "@/lib/auth/session";
+import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   fetchActiveShepherdCoverageAssignmentsForAdmin,
@@ -47,7 +48,8 @@ async function loadOverShepherds(): Promise<{
 }
 
 export default async function AdminOverShepherdsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const isSuperAdmin = isSuperAdminRole(session.profile.role);
 
   const { overShepherds, assignments, error } = await loadOverShepherds();
   const shepherdCountById = new Map<string, number>();
@@ -127,6 +129,7 @@ export default async function AdminOverShepherdsPage() {
             <OverShepherdList
               overShepherds={overShepherds}
               shepherdCountById={shepherdCountById}
+              isSuperAdmin={isSuperAdmin}
             />
           </section>
         </div>

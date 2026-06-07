@@ -16,6 +16,7 @@ import {
 } from "@/components/admin/care/care-shell";
 import { resolveCareInitialTabFromParams } from "@/lib/admin/shepherd-care-view";
 import { requireAdmin } from "@/lib/auth/session";
+import { isSuperAdminRole } from "@/lib/auth/roles";
 import {
   currentUtcDateIso,
   type ActiveShepherdCoverageAssignmentSummary,
@@ -107,6 +108,9 @@ export async function loadCarePageData(): Promise<{
   errorBanner: ReactNode;
 }> {
   const session = await requireAdmin();
+  // SAD9: the inline permanent-delete control is super-admin-only. Gate at render
+  // here (the server action + RPC re-gate authoritatively).
+  const isSuperAdmin = isSuperAdminRole(session.profile.role);
   const today = currentUtcDateIso();
 
   const [followUpsData, care] = await Promise.all([
@@ -217,7 +221,9 @@ export async function loadCarePageData(): Promise<{
       // accordion (collapsed by default).
       key: "over-shepherds",
       label: "Over-Shepherds",
-      panel: <CareAccordion panes={accordionPanes} />,
+      panel: (
+        <CareAccordion panes={accordionPanes} isSuperAdmin={isSuperAdmin} />
+      ),
     },
     {
       key: "dashboard",
@@ -275,6 +281,7 @@ export async function loadCarePageData(): Promise<{
                   items={area.dueSoon}
                   emptyTitle="No care follow-ups due soon"
                   emptyDescription="No care follow-ups are overdue or due in the next week."
+                  isSuperAdmin={isSuperAdmin}
                 />
               </div>
               <div style={{ display: "grid", gap: 10 }}>
@@ -285,6 +292,7 @@ export async function loadCarePageData(): Promise<{
                   items={area.completed}
                   emptyTitle="No completed care follow-ups yet"
                   emptyDescription="Care follow-ups you mark complete land here — not items from the general follow-up queue below."
+                  isSuperAdmin={isSuperAdmin}
                 />
               </div>
             </div>
@@ -292,6 +300,7 @@ export async function loadCarePageData(): Promise<{
           <AdminFollowUpsShell
             data={followUpsData}
             viewerId={session.profile.id}
+            isSuperAdmin={isSuperAdmin}
           />
         </div>
       ),
@@ -310,6 +319,7 @@ export async function loadCarePageData(): Promise<{
           items={area.recentCare}
           emptyTitle="No recent care logged"
           emptyDescription="Logged calls, notes, and meetings will appear here as they happen."
+          isSuperAdmin={isSuperAdmin}
         />
       ),
     },

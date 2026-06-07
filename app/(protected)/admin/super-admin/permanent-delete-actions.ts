@@ -175,6 +175,50 @@ export async function superAdminPermanentDelete(
   });
 }
 
+// ADR 0014 (SAD9): the lighter sibling of superAdminPermanentDelete that backs
+// the inline super-admin-only Delete control. Same super-admin gate +
+// registered-target/uuid validation + snapshot-then-delete RPC, but NO
+// type-to-confirm phrase — the inline confirm popover is the deliberate confirm
+// step. Revalidates the caller's surface path plus /admin so the just-deleted row
+// disappears in place. The RPC re-checks role, registered target, blockers, and
+// the confidential block authoritatively, so dropping the phrase weakens nothing
+// the engine guarantees.
+export async function superAdminInlineDelete(
+  _prev: ActionResult<PermanentDeleteSuccess> | undefined,
+  input: unknown
+): Promise<ActionResult<PermanentDeleteSuccess>> {
+  const auth = await requireSuperAdminSession();
+  if (!auth.ok) return actionFail([auth.error]);
+
+  const raw = readForm(input);
+  const target = readTarget(raw);
+  if (!target.ok) return actionFail([target.error]);
+
+  const client = await createSupabaseServerClient();
+  if (!client) return actionFail(["Database is not configured."]);
+
+  const { data: tombstoneId, error } = await rpcSuperAdminPermanentDelete(
+    client,
+    { p_entity_type: target.entityType, p_id: target.id }
+  );
+  if (error) return actionFail([mapRpcError(error.message)]);
+  if (!tombstoneId) {
+    return actionFail(["The deletion did not complete. Please try again."]);
+  }
+
+  // Targeted revalidation of the surface the control was rendered on. `path`
+  // arrives from the client (usePathname); accept it only when it begins with
+  // /admin so a forged value can't trigger arbitrary revalidation.
+  const path = readStr(raw, "path");
+  if (path.startsWith("/admin")) revalidatePath(path);
+  revalidatePath("/admin");
+  return actionOk({
+    entityType: target.entityType,
+    entityId: target.id,
+    tombstoneId,
+  });
+}
+
 // ADR 0014 (#315): restore a tombstoned row from its snapshot. Gate
 // super_admin, re-verify the RESTORE RECORD phrase, then run the restore RPC,
 // which re-inserts the row and re-links the captured set-null dependents,

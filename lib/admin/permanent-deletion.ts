@@ -634,6 +634,68 @@ const CHURCH_ATTENDANCE_SNAPSHOT: PermanentDeletionEntity = {
   },
 };
 
+// SAD9: Care leaf records — the inline super-admin Delete control covers
+// everything under the Care tab EXCEPT the confidential care notes & prayer
+// requests. Both tables have a uuid `id` PK and no inbound FKs, so they delete
+// cleanly. fetchItems is only used by the danger-zone picker; the inline path
+// passes entityType + id directly. Both tables' RLS SELECT is admin-only
+// (auth_is_admin), which super_admin satisfies, so these reads work server-side.
+
+const SHEPHERD_CARE_FOLLOW_UP: PermanentDeletionEntity = {
+  entityType: "shepherd_care_follow_up",
+  label: "Care follow-up",
+  pluralLabel: "Care follow-ups",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("shepherd_care_follow_ups")
+      .select("id, title, status, due_date")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      title: string;
+      status: string | null;
+      due_date: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${str(r.title)}${
+        r.status && r.status !== "open" ? ` (${r.status})` : ""
+      }`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    return str(snapshot.title) || "Care follow-up";
+  },
+};
+
+const SHEPHERD_CARE_INTERACTION: PermanentDeletionEntity = {
+  entityType: "shepherd_care_interaction",
+  label: "Care interaction",
+  pluralLabel: "Care interactions",
+  async fetchItems(client) {
+    const { data } = await client
+      .from("shepherd_care_interactions")
+      .select("id, interaction_type, interaction_at")
+      .order("interaction_at", { ascending: false })
+      .limit(200);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      interaction_type: string;
+      interaction_at: string;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      label: `${str(r.interaction_type)} — ${str(r.interaction_at).slice(0, 10)}`,
+    }));
+  },
+  labelFromSnapshot(snapshot) {
+    const type = str(snapshot.interaction_type);
+    const at = str(snapshot.interaction_at).slice(0, 10);
+    return type ? `${type} ${at}`.trim() : "Care interaction";
+  },
+};
+
 // Registry order is the order the picker lists entity types.
 export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   LAUNCH_SCENARIO,
@@ -656,6 +718,8 @@ export const PERMANENT_DELETION_ENTITIES: PermanentDeletionEntity[] = [
   INVITATION,
   SHEPHERD_COVERAGE_ASSIGNMENT,
   CHURCH_ATTENDANCE_SNAPSHOT,
+  SHEPHERD_CARE_FOLLOW_UP,
+  SHEPHERD_CARE_INTERACTION,
 ];
 
 export function findPermanentDeletionEntity(

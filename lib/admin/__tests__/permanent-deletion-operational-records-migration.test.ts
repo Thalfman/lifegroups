@@ -119,14 +119,15 @@ describe("SAD8 — client registry matches the SQL allowlist", () => {
     }
   });
 
-  it("has the full curated set (8 prior + 12 operational = 20)", () => {
-    expect(PERMANENT_DELETION_ENTITIES).toHaveLength(20);
-  });
-
-  it("keeps SQL allowlist and TS registry in lockstep", () => {
+  // The live-registry total and the full SQL↔registry lockstep are asserted
+  // against the NEWEST allowlist migration (super_admin_deletable_table is a
+  // create-or-replace, so the latest body is authoritative). SAD8 only owns its
+  // own tokens above — see permanent-deletion-care-records-migration.test.ts for
+  // the current total + lockstep (SAD9 registered the two Care leaf types).
+  it("registers the SAD8 operational tokens in the SAD8 body (lockstep for this slice)", () => {
     const body = functionBody(sql, "super_admin_deletable_table");
-    for (const entity of PERMANENT_DELETION_ENTITIES) {
-      expect(body).toContain(`'${entity.entityType}'`);
+    for (const [token] of REGISTERED) {
+      expect(body).toContain(`'${token}'`);
     }
   });
 });

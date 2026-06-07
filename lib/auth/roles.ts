@@ -40,6 +40,13 @@ export function isAdminRole(role: UserRole): boolean {
   return ADMIN_ROLES.has(role);
 }
 
+// The super_admin alone — the gate for the inline permanent-delete control and
+// any other Super-Admin-only affordance. Distinct from isAdminRole, which also
+// admits ministry_admin.
+export function isSuperAdminRole(role: UserRole): boolean {
+  return role === "super_admin";
+}
+
 export function isLeaderRole(role: UserRole): boolean {
   return LEADER_ROLES.has(role);
 }

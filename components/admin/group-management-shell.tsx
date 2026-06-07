@@ -74,12 +74,15 @@ export type GroupManagementData = {
 export function GroupManagementShell({
   data,
   viewerId,
+  isSuperAdmin = false,
 }: {
   data: GroupManagementData;
   // Signed-in profile id, threaded only to scope this browser's saved
   // card⇄table view preference per admin (#325). Null when no identity is
   // available; the directory falls back to a shared bucket.
   viewerId?: string | null;
+  // SAD9: super-admin-only inline permanent delete of a group record.
+  isSuperAdmin?: boolean;
 }) {
   const anyError =
     data.errors.groups ||
@@ -118,6 +121,7 @@ export function GroupManagementShell({
         healthSignalsByGroupId={data.healthSignalsByGroupId}
         watchGrade={data.metricDefaults.group_health_watch_grade}
         viewerId={viewerId}
+        isSuperAdmin={isSuperAdmin}
         categoriesByAudience={
           data.categoriesByAudience ?? EMPTY_CATEGORIES_BY_AUDIENCE
         }

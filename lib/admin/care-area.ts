@@ -54,6 +54,11 @@ export type CareItem = {
   // label stays the short verb; this is what assistive tech announces.
   actionAccessibleName: string;
   actionHref: string;
+  // SAD9: the underlying deletable DB row for the Super-Admin-only inline Delete
+  // control, or null when the item is a derived aggregate with no single row
+  // (needsContact). dueSoon/completed map to the care follow-up; recentCare maps
+  // to the interaction log row. Notes & prayer requests are never surfaced here.
+  deleteTarget: { entityType: string; id: string } | null;
 };
 
 export type CareArea = {
@@ -166,6 +171,8 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
         item.shepherdName
       ),
       actionHref: careDetailHref(item.shepherdProfileId, next.tab),
+      // A derived attention aggregate keyed by leader — no single deletable row.
+      deleteTarget: null,
     };
   });
 
@@ -200,6 +207,7 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
           shepherd.name
         ),
         actionHref: careDetailHref(shepherd.shepherdId, next.tab),
+        deleteTarget: { entityType: "shepherd_care_follow_up", id: fu.id },
       },
     });
   }
@@ -228,6 +236,7 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
       row.shepherd_full_name
     ),
     actionHref: careDetailHref(row.shepherd_profile_id, "overview"),
+    deleteTarget: { entityType: "shepherd_care_interaction", id: row.id },
   }));
 
   // --- Completed: recently completed care follow-ups. ---
@@ -250,6 +259,7 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
       actionLabel: "View follow-up",
       actionAccessibleName: `View follow-up for ${shepherd.name}`,
       actionHref: careDetailHref(shepherd.shepherdId, "follow-ups"),
+      deleteTarget: { entityType: "shepherd_care_follow_up", id: fu.id },
     });
   }
 

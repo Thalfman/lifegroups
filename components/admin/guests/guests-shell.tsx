@@ -44,8 +44,11 @@ const STAGE_TONES: Record<GuestPipelineStage, string> = {
 
 export function GuestsManagementShell({
   data,
+  isSuperAdmin = false,
 }: {
   data: GuestsManagementData;
+  // SAD9: super-admin-only inline permanent delete of a guest record.
+  isSuperAdmin?: boolean;
 }) {
   const { guests, groups, ownerProfiles, openFollowUpsByGuest, errors } = data;
   const [search, setSearch] = useState("");
@@ -303,6 +306,7 @@ export function GuestsManagementShell({
                           openFollowUpsCount={
                             openFollowUpsByGuest[guest.id] ?? 0
                           }
+                          isSuperAdmin={isSuperAdmin}
                         />
                       </li>
                     ))}
