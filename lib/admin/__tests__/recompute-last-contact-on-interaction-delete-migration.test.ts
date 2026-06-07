@@ -33,6 +33,17 @@ describe("SAD9 last_contact_at recompute trigger", () => {
     expect(body).toContain("where i.care_profile_id = old.care_profile_id");
   });
 
+  it("excludes over-shepherd broad notes from the recompute (audit-identified)", () => {
+    const body = functionBody(sql, FN);
+    // Broad notes never advance the clock on insert, so they must not be counted
+    // as contact on recompute either. They carry no row-level flag, so the
+    // exclusion is keyed on their immutable audit_events row.
+    expect(body).toContain("not exists");
+    expect(body).toContain("from public.audit_events ae");
+    expect(body).toContain("ae.entity_type = 'shepherd_care_interactions'");
+    expect(body).toContain("ae.action = 'over_shepherd.log_broad_note'");
+  });
+
   it("runs SECURITY DEFINER with a pinned search_path", () => {
     assertSecurityDefiner(sql, FN);
   });
