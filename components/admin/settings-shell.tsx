@@ -20,7 +20,6 @@ import {
   MultiplyTriggerEditor,
   type ReadinessCellSeed,
 } from "@/components/admin/settings/multiply-trigger-editor";
-import type { CategoryMatrix } from "@/lib/admin/group-category-matrix";
 import type { CellCoverage } from "@/lib/admin/cell-coverage";
 import type {
   PerTypeReadinessRule,
@@ -40,15 +39,15 @@ export type SettingsShellData = {
   // per-leader rubric, same editor parameterized to the "leader" kind. Empty
   // until Julian builds it.
   leaderRubricCriteria: RubricCriterion[];
-  // #396 Settings > Groups: the type×category matrix — rows = catalog categories,
-  // columns = the three top types — with each cell's active flag. Built purely
-  // from the catalog + cell reads; empty rows when the catalog is empty (fresh
-  // ministry) or the reads failed (see errors.groupCategories).
-  categoryMatrix: CategoryMatrix;
-  // #400 Settings > Groups: per-active-cell coverage ("have X of Y"), already
-  // sorted by largest shortfall. Feeds both the inline readout (matched to its
-  // matrix cell by audience + category) and the dedicated coverage panel. Empty
-  // when no cell is active or the reads failed (see errors.groupCategories).
+  // #412 Settings > Groups: the live category catalog (id + label). Feeds the
+  // create flow's shared-label dedupe — the same label under a second Audience
+  // reuses one category. Empty for a fresh ministry or when the read failed (see
+  // errors.groupCategories).
+  groupCategories: { id: string; label: string }[];
+  // #400 / #412 Settings > Groups: per-active-cell coverage ("have X of Y"). Each
+  // entry is a row in the group-type list, carrying its label, target, and live
+  // count. Empty when no cell is active or the reads failed (see
+  // errors.groupCategories).
   cellCoverage: CellCoverage[];
   // #402 / #410 / #411 / ADR 0021: the three-tier multiplication trigger the
   // Multiply sub-tab edits — the GLOBAL rule (each pillar in its natural unit), the
@@ -213,137 +212,37 @@ function CarePanel({ data }: { data: SettingsShellData }) {
   );
 }
 
-// Groups tab (#396 / PRD §2.1, §2.7): the foundation of the groups overhaul —
-// the free-form category catalog and the (top type × category) matrix of active
-// cells. An admin defines free-form labels, then applies a label to one or more
-// top types; applying activates that cell, the live unit everything downstream
-// (target, capacity, interest, readiness) hangs off in later slices. Care stays
-// the default tab; this tab is new. Softens to a placeholder when its reads fail
-// (e.g. an environment whose groups tables aren't migrated yet).
+// Groups tab (#412 / ADR 0021): where the admin creates the group types. Reworked
+// from the old category×type matrix into a LIST of group types (cells) with a "+"
+// create flow — pick an Audience, type a free-text category, save, and the
+// (Audience × category) cell is created in one step. Each row carries its target,
+// its coverage ("have X of Y"), a rename, and a remove. The trigger editor moved
+// to the Multiply sub-tab (#411); this tab is just the types. Softens to a
+// placeholder when its reads fail (e.g. an environment whose groups tables aren't
+// migrated yet).
 function GroupsPanel({ data }: { data: SettingsShellData }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
-          eyebrow="Group categories"
-          title="Categories and the type grid"
-          description="Define free-form category labels, then apply each to the top types it belongs under. Applying a category to a type activates that cell."
+          eyebrow="Group types"
+          title="The group types you track"
+          description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Coverage (have X of Y) counts active and launching groups."
         />
         {data.errors.groupCategories ? (
-          <NotConfigured subject="Group categories" />
+          <NotConfigured subject="Group types" />
         ) : (
           <Card>
             <GroupsCatalogEditor
-              matrix={data.categoryMatrix}
-              cellCoverage={data.cellCoverage}
+              cells={data.cellCoverage}
+              categories={data.groupCategories}
             />
           </Card>
         )}
       </section>
-
-      {/* #400 / PRD §2.3: the dedicated coverage panel. Every ACTIVE cell with its
-          gap (target − have), sorted by largest shortfall so the cells most short
-          of their target read first. Targets are tracking only — this is a
-          read-only readout, not a trigger. Hidden when no cell is active yet (or
-          the reads failed, which the placeholder above already covers). */}
-      {!data.errors.groupCategories && data.cellCoverage.length > 0 ? (
-        <section style={{ display: "grid", gap: 18 }}>
-          <SectionHeader
-            eyebrow="Coverage"
-            title="Where groups are short of target"
-            description="Each active cell's current count against its target, largest shortfall first. Counts active and launching groups only."
-          />
-          <Card>
-            <CellCoveragePanel rows={data.cellCoverage} />
-          </Card>
-        </section>
-      ) : null}
     </div>
   );
 }
-
-// #400: the dedicated coverage panel — a read-only table of every active cell's
-// "have X of Y" with its gap, already sorted by largest shortfall upstream. A
-// cell that has met (or exceeded) its target reads gap 0 / "On target".
-function CellCoveragePanel({ rows }: { rows: CellCoverage[] }) {
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={coverageTableStyle}>
-        <thead>
-          <tr>
-            <th style={{ ...coverageThStyle, textAlign: "left" }} scope="col">
-              Cell
-            </th>
-            <th style={coverageThStyle} scope="col">
-              Have
-            </th>
-            <th style={coverageThStyle} scope="col">
-              Target
-            </th>
-            <th style={coverageThStyle} scope="col">
-              Gap
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.audienceCategory}:${row.categoryId}`}>
-              <td style={{ ...coverageTdStyle, textAlign: "left" }}>
-                <span style={{ fontWeight: 500, color: P.ink }}>
-                  {row.label}
-                </span>
-                <span style={{ color: P.ink3 }}>
-                  {" "}
-                  · {COVERAGE_TYPE_LABEL[row.audienceCategory]}
-                </span>
-              </td>
-              <td style={coverageTdStyle}>{row.have}</td>
-              <td style={coverageTdStyle}>{row.target}</td>
-              <td style={coverageTdStyle}>
-                {row.gap === 0 ? (
-                  <span style={{ color: P.ink3 }}>On target</span>
-                ) : (
-                  <strong style={{ color: P.ink }}>−{row.gap}</strong>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-const COVERAGE_TYPE_LABEL: Record<"men" | "women" | "mixed", string> = {
-  men: "Men's",
-  women: "Women's",
-  mixed: "Mixed",
-};
-
-const coverageTableStyle = {
-  width: "100%",
-  borderCollapse: "collapse" as const,
-  fontFamily: fontBody,
-  fontSize: 13,
-} as const;
-
-const coverageThStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 600,
-  color: P.ink3,
-  textAlign: "center" as const,
-  padding: "8px 12px",
-  borderBottom: `1px solid ${P.line}`,
-  whiteSpace: "nowrap" as const,
-} as const;
-
-const coverageTdStyle = {
-  padding: "10px 12px",
-  borderBottom: `1px solid ${P.line}`,
-  textAlign: "center" as const,
-  color: P.ink2,
-} as const;
 
 // Multiply tab (#411 / ADR 0021): the multiplication trigger, configured through ONE
 // tiered control over the three-tier cascade — Global default → per-type (Audience)

@@ -13,7 +13,7 @@ import type {
 // Targets are TRACKING ONLY here; this module is read-only and feeds NO trigger
 // / readiness logic. Keeping it a pure function of its inputs makes the count,
 // the active+launching rule, and the panel sort testable with no database
-// (ADR 0015), exactly like lib/admin/group-category-matrix.ts.
+// (ADR 0015).
 
 // The lifecycle states that count toward coverage X. "active + launching" per
 // the PRD = a live group plus one that is actively launching. Exported so the

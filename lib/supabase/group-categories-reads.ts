@@ -5,15 +5,16 @@ import type {
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 import { AUDIENCE_CATEGORIES, isAudienceCategory } from "@/lib/admin/audience";
 
-// Group Category catalog + cell-matrix read models (#396 / ADR 0015). Two
-// column-allowlisted reads feed the Settings > Groups tab — never select("*"),
+// Group Category catalog + cell read models (#396, reworked #412 / ADR 0015).
+// Column-allowlisted reads feed the Settings > Groups tab — never select("*"),
 // even though RLS already restricts SELECT to admins (belt-and-braces, matching
 // the multiplication-config + health-rubric reads idiom):
-//   1. fetchGroupCategories — the live (non-archived) catalog, alphabetical.
-//   2. fetchCategoryTypeCells — every cell row (audience_category × category)
-//      with its active flag, so the matrix can render which cells are active.
-// The matrix assembly (rows = categories, columns = the three top types) is a
-// pure function over these two reads (lib/admin/group-category-matrix.ts).
+//   1. fetchGroupCategories — the live (non-archived) catalog, alphabetical. The
+//      Groups create flow dedupes a typed label against it, so the same label
+//      under two Audiences resolves to one shared category (#412).
+//   2. fetchCategoryTypeTargetCells (below) — every cell row with its
+//      target_count + trigger_overrides, feeding the group-type list's coverage
+//      ("have X of Y") and the readiness editor's per-cell rows.
 
 export const GROUP_CATEGORY_COLUMNS = "id, label, created_at";
 
@@ -41,11 +42,15 @@ export async function fetchGroupCategories(
   return { data: data ?? [], error: null };
 }
 
+// The cell columns the category picker read (fetchCategoriesForAudience) pins —
+// id + active flag, no target_count (it has no need of it). Kept narrow so that
+// read stays column-allowlisted.
 export const CATEGORY_TYPE_CELL_COLUMNS =
   "id, audience_category, category_id, active";
 
-// One cell row, as read through the allowlist. target_count + trigger_overrides
-// are deliberately NOT read here — they are later-slice columns.
+// One cell row, as read through the allowlist for the picker — target_count +
+// trigger_overrides are not read in this shape (the coverage read below carries
+// them).
 export type CategoryTypeCellRow = {
   id: string;
   audience_category: GroupAudienceCategory;
@@ -53,29 +58,11 @@ export type CategoryTypeCellRow = {
   active: boolean;
 };
 
-// Fetch every cell row. The matrix builder pairs these against the catalog; a
-// cell whose category is archived is dropped by the join (the catalog read only
-// returns live categories), so an archived category's stale cells never show.
-export async function fetchCategoryTypeCells(
-  client: ReadClient
-): Promise<ReadResult<CategoryTypeCellRow[]>> {
-  const { data, error } = await client
-    .from("category_type_targets")
-    .select(CATEGORY_TYPE_CELL_COLUMNS)
-    .returns<CategoryTypeCellRow[]>();
-
-  if (error)
-    return { data: null, error: wrapError("category_type_targets", error) };
-  return { data: data ?? [], error: null };
-}
-
 // ---------------------------------------------------------------------------
 // Per-cell target_count + coverage reads (#400 / PRD §2.3).
 // ---------------------------------------------------------------------------
 //
-// The cell coverage surface ("have X of Y") needs two new allowlisted reads,
-// kept separate from fetchCategoryTypeCells so its existing callers (the matrix
-// builder, which has no need for target_count) keep their pinned column set:
+// The cell coverage surface ("have X of Y") needs two allowlisted reads:
 //   1. fetchCategoryTypeTargetCells — every cell row WITH its target_count, so
 //      the coverage builder reads Y per cell.
 //   2. fetchGroupCellLifecycleRows — every non-closed group with a category, as

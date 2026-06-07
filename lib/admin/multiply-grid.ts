@@ -19,7 +19,7 @@ import {
 // and its `have X of Y` COVERAGE (#400). A cell where the category is NOT applied
 // to that type renders BLANK — it carries no readout.
 //
-// Like lib/admin/group-category-matrix.ts and lib/admin/cell-coverage.ts, this is
+// Like lib/admin/cell-coverage.ts, this is
 // a pure function of its inputs (no I/O, no Supabase), so the grid assembly, the
 // blank inactive cells, and the per-cell readiness + coverage readout are all
 // testable with no database (ADR 0015). The loader

@@ -30,14 +30,12 @@ import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-tri
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 import type { GroupAudienceCategory } from "@/types/enums";
 import {
-  fetchCategoryTypeCells,
   fetchCategoryTypeTargetCells,
   fetchGroupCategories,
   fetchGroupCellLifecycleRows,
   type CategoryTypeTargetRow,
   type GroupCellLifecycleRow,
 } from "@/lib/supabase/group-categories-reads";
-import { buildCategoryMatrix } from "@/lib/admin/group-category-matrix";
 import {
   buildCellCoverage,
   sortByLargestShortfall,
@@ -69,11 +67,11 @@ export type SettingsReads = {
   // #378 Leader-Health Rubric: the symmetric per-leader rubric, bound to the
   // "leader" kind. Same shared reader, filtered to the other rubric row.
   fetchLeaderHealthRubric: () => ReturnType<typeof fetchHealthRubric>;
-  // #396 Settings > Groups: the live category catalog and every cell row. The
-  // matrix (rows = categories, columns = the three top types) is built purely
-  // from these two reads.
+  // #396 / #412 Settings > Groups: the live category catalog. The group-type list
+  // is built from the per-cell target reads below; the catalog feeds the create
+  // flow's shared-label dedupe (the same label under a second Audience reuses one
+  // category).
   fetchGroupCategories: OmitClient<typeof fetchGroupCategories>;
-  fetchCategoryTypeCells: OmitClient<typeof fetchCategoryTypeCells>;
   // #400 Settings > Groups: per-cell coverage ("have X of Y"). The cell rows WITH
   // their target_count (Y) and every non-closed group's cell + lifecycle (X) feed
   // the pure buildCellCoverage resolver.
@@ -90,7 +88,6 @@ export function supabaseSettingsReads(
       fetchAllGroups,
       fetchAllGroupMetricSettings,
       fetchGroupCategories,
-      fetchCategoryTypeCells,
       fetchCategoryTypeTargetCells,
       fetchGroupCellLifecycleRows,
     }),
@@ -118,11 +115,12 @@ function buildPerTypeRules(
   return out;
 }
 
-// #400: assemble the per-cell coverage rows ("have X of Y"), sorted by largest
-// shortfall for the dedicated panel. Resolves each cell's label from the live
-// catalog and drops cells whose category isn't live (an archived category's
-// stale cell never surfaces), then defers the active-cell filter + count to the
-// pure buildCellCoverage resolver.
+// #400 / #412: assemble the per-active-cell coverage rows ("have X of Y") — the
+// rows of the Groups group-type list. Resolves each cell's label from the live
+// catalog and drops cells whose category isn't live (an archived category's stale
+// cell never surfaces), then defers the active-cell filter + count to the pure
+// buildCellCoverage resolver. (The list re-orders these by label/Audience; the
+// shortfall sort is left as a stable, meaningful default.)
 function buildSettingsCellCoverage(
   categories: { id: string; label: string }[],
   targetCells: CategoryTypeTargetRow[],
@@ -180,7 +178,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groupMetricSettings: [],
     groupRubricCriteria: [],
     leaderRubricCriteria: [],
-    categoryMatrix: { rows: [] },
+    groupCategories: [],
     cellCoverage: [],
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
@@ -214,7 +212,6 @@ export async function buildSettingsData(
     rubricResult,
     leaderRubricResult,
     categoriesResult,
-    cellsResult,
     targetCellsResult,
     groupCellLifecycleResult,
     readinessResult,
@@ -226,7 +223,6 @@ export async function buildSettingsData(
     reads.fetchGroupHealthRubric(),
     reads.fetchLeaderHealthRubric(),
     reads.fetchGroupCategories(),
-    reads.fetchCategoryTypeCells(),
     reads.fetchCategoryTypeTargetCells(),
     reads.fetchGroupCellLifecycleRows(),
     reads.fetchReadinessRule(),
@@ -246,16 +242,17 @@ export async function buildSettingsData(
     leaderRubricCriteria: decodeRubricCriteria(
       leaderRubricResult.data?.criteria ?? null
     ),
-    // #396: the type×category matrix is a pure function of the catalog + the cell
-    // rows. A single error key covers both reads — the Groups tab softens to a
-    // "not set up yet" placeholder if either fails (e.g. an unmigrated env).
-    categoryMatrix: buildCategoryMatrix(
-      categoriesResult.data ?? [],
-      cellsResult.data ?? []
-    ),
-    // #400: per-active-cell coverage ("have X of Y"), sorted by largest shortfall
-    // for the dedicated panel. A pure function of the catalog, the target cells,
-    // and the group lifecycle rows; the inline readout reads the same rows.
+    // #412: the live catalog (id + label) the Groups create flow dedupes a typed
+    // label against, so the same label under a second Audience reuses one shared
+    // category. Empty for a fresh ministry; the Groups tab softens to a "not set
+    // up yet" placeholder if the read fails (errors.groupCategories).
+    groupCategories: (categoriesResult.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
+    // #400 / #412: per-active-cell coverage ("have X of Y") — one entry per row of
+    // the Groups group-type list. A pure function of the catalog, the target cells,
+    // and the group lifecycle rows.
     cellCoverage: buildSettingsCellCoverage(
       categoriesResult.data ?? [],
       targetCellsResult.data ?? [],
@@ -282,11 +279,11 @@ export async function buildSettingsData(
       overrides: settingsResult.error?.message ?? null,
       groupRubric: rubricResult.error?.message ?? null,
       leaderRubric: leaderRubricResult.error?.message ?? null,
-      // #400 folds the coverage reads into the same Groups-tab error key: a
-      // failed target/lifecycle read softens the whole tab to the placeholder.
+      // #400 / #412 fold the catalog + coverage reads into one Groups-tab error
+      // key: a failed catalog, target, or lifecycle read softens the whole tab to
+      // the placeholder.
       groupCategories:
         categoriesResult.error?.message ??
-        cellsResult.error?.message ??
         targetCellsResult.error?.message ??
         groupCellLifecycleResult.error?.message ??
         null,

@@ -1,39 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminCreateGroupCategory,
   adminRenameGroupCategory,
-  adminArchiveGroupCategory,
   adminSetCategoryTypeCell,
   adminSetCategoryTypeTargetCount,
 } from "@/app/(protected)/admin/settings/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import {
+  errorTextStyle,
   fieldInputStyle,
   fieldLabelStyle,
+  fieldSelectStyle,
+  successTextStyle,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import {
-  MATRIX_TYPES,
-  type CategoryMatrix,
-} from "@/lib/admin/group-category-matrix";
+  resolveCategoryForLabel,
+  sortGroupTypeRows,
+} from "@/lib/admin/group-type-list";
 import type { CellCoverage } from "@/lib/admin/cell-coverage";
 import type { GroupAudienceCategory } from "@/types/enums";
 
-// Settings > Groups catalog + matrix editor (#396 / PRD §2.1, #400 / PRD §2.3).
-// One client component owns the whole tab: the free-form catalog (create /
-// rename / archive) AND the (top type × category) matrix grid. Rows = categories,
-// columns = the three top types; each cell is a toggle that applies/unapplies the
-// category to that type (activating/deactivating the cell). #400 adds, inside
-// each ACTIVE cell, a live "currently X / target Y" readout and an editable
-// target input. Each write is its own audited RPC, posted through a small action
-// form — there is no client-side batching, so every toggle, rename and target
-// edit round-trips through the server's authoritative gate.
+// Settings › Groups: the group-type list + "+" create flow (#412 / ADR 0021).
+// Reworks the old category×type matrix into a flat LIST of group types (cells),
+// each row an (Audience × category) with its target, coverage ("have X of Y"),
+// rename and remove — plus a "+" flow that creates one in a single step (pick an
+// Audience, type a free-text category, save). The catalog stays shared under the
+// hood: a typed label that already exists resolves to the one category (rename
+// then syncs across Audiences), so the same label under a second Audience reuses
+// it with no migration. Every write is its own audited RPC — there is no
+// client-side batching, so each create / apply / target / rename / remove
+// round-trips through the server's authoritative gate.
 
 const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
   men: "Men's",
@@ -41,107 +45,154 @@ const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
   mixed: "Mixed",
 };
 
-// Key a cell by its (top type, category) pair, matching the coverage row key, so
-// each active cell's toggle can look up its "have X of Y".
-function coverageKey(
-  audienceCategory: GroupAudienceCategory,
-  categoryId: string
-): string {
-  return `${audienceCategory}:${categoryId}`;
-}
-
 export function GroupsCatalogEditor({
-  matrix,
-  cellCoverage,
+  cells,
+  categories,
 }: {
-  matrix: CategoryMatrix;
-  cellCoverage: CellCoverage[];
+  // One row per ACTIVE cell, carrying its label + coverage ("have X of Y"). The
+  // list is the live group types; an off / never-applied cell has no row.
+  cells: CellCoverage[];
+  // The live catalog (id + label), so the create flow can dedupe a typed label
+  // against an existing shared category rather than creating a second one.
+  categories: { id: string; label: string }[];
 }) {
-  // Index coverage by (type, category) so each active cell reads its own X/Y in
-  // O(1). Only active cells have coverage rows, so an off cell looks up nothing.
-  const coverageByKey = new Map(
-    cellCoverage.map((row) => [
-      coverageKey(row.audienceCategory, row.categoryId),
-      row,
-    ])
-  );
+  // Group shared-category rows together (label then Audience) so the "rename
+  // syncs across both" behaviour reads clearly; the coverage shortfall order
+  // upstream does not matter here.
+  const rows = sortGroupTypeRows(cells);
 
   return (
     <div style={{ display: "grid", gap: 24 }}>
-      <CreateCategoryForm />
+      <AddGroupTypeForm categories={categories} />
 
-      {matrix.rows.length === 0 ? (
+      {rows.length === 0 ? (
         <p style={emptyNoteStyle}>
-          No categories yet. Add one above — for example &ldquo;20-30s&rdquo; —
-          then apply it to the top types it belongs under.
+          No group types yet. Use &ldquo;Add a group type&rdquo; above — pick an
+          audience, type a category like &ldquo;20-30s&rdquo;, and save.
         </p>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={{ ...thStyle, textAlign: "left" }}>Category</th>
-                {MATRIX_TYPES.map((type) => (
-                  <th key={type} style={thStyle} scope="col">
-                    {TYPE_LABEL[type]}
-                  </th>
-                ))}
-                <th style={thStyle} aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {matrix.rows.map((row) => (
-                <CategoryRow
-                  key={row.categoryId}
-                  categoryId={row.categoryId}
-                  label={row.label}
-                  cells={row.cells}
-                  coverageByKey={coverageByKey}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul style={listStyle}>
+          {rows.map((row) => (
+            <GroupTypeRow
+              key={`${row.audienceCategory}:${row.categoryId}`}
+              row={row}
+            />
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-// The "add a category" form — a single free-form label field. On success the
-// server revalidates Settings, so the new category appears as a fresh row.
-function CreateCategoryForm() {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminCreateGroupCategory,
-    { resetOnSuccess: true }
-  );
+// The "+" create flow. Hitting "+" reveals one step: pick an Audience, type a
+// free-text category, save. On save it resolves the label against the shared
+// catalog (reuse if it already exists, else create it through the audited create
+// RPC), then applies the (Audience × category) cell through the audited apply
+// RPC — the two existing writes chained, no new RPC. The flow stays open after a
+// save so the admin can add another.
+function AddGroupTypeForm({
+  categories,
+}: {
+  categories: { id: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [audience, setAudience] = useState<GroupAudienceCategory>("men");
   const [label, setLabel] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const trimmed = label.trim();
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (trimmed.length === 0) return;
+    setError(null);
+    setSaved(false);
+    startTransition(async () => {
+      // Reuse the shared category when the label already lives in the catalog;
+      // otherwise create it first. The DB stays the authoritative gate — a create
+      // that races another still rejects the duplicate label, surfaced here.
+      const resolution = resolveCategoryForLabel(categories, trimmed);
+      let categoryId: string;
+      if (resolution.kind === "existing") {
+        categoryId = resolution.categoryId;
+      } else {
+        const created = await adminCreateGroupCategory(undefined, {
+          label: trimmed,
+        });
+        if (!created.ok) {
+          setError(created.errors.join(" "));
+          return;
+        }
+        categoryId = created.value.id;
+      }
+      const applied = await adminSetCategoryTypeCell(undefined, {
+        category_id: categoryId,
+        audience_category: audience,
+        active: "true",
+      });
+      if (!applied.ok) {
+        setError(applied.errors.join(" "));
+        return;
+      }
+      setLabel("");
+      setSaved(true);
+    });
+  };
+
+  if (!open) {
+    return (
+      <div>
+        <PButton
+          type="button"
+          tone="terra"
+          size="md"
+          onClick={() => {
+            setOpen(true);
+            setSaved(false);
+            setError(null);
+          }}
+        >
+          + Add a group type
+        </PButton>
+      </div>
+    );
+  }
 
   return (
-    <form
-      action={formAction}
-      style={{ display: "grid", gap: 10 }}
-      onSubmit={() => setLabel("")}
-    >
+    <form onSubmit={submit} style={addFormStyle}>
       <p style={noteStyle}>
-        Add a free-form category label. The same label can apply to more than
-        one top type.
+        Pick an audience and type a category — that one step creates the group
+        type. The same category typed under another audience reuses the shared
+        label, so renaming it later updates both.
       </p>
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: 12,
-          alignItems: "end",
-        }}
-      >
+      <div className="lg-m-grid-stack" style={addGridStyle}>
         <div>
-          <label htmlFor="new-category-label" style={fieldLabelStyle}>
-            New category
+          <label htmlFor="new-group-type-audience" style={fieldLabelStyle}>
+            Audience
+          </label>
+          <select
+            id="new-group-type-audience"
+            value={audience}
+            onChange={(e) =>
+              setAudience(e.target.value as GroupAudienceCategory)
+            }
+            style={fieldSelectStyle}
+          >
+            {AUDIENCE_CATEGORIES.map((a) => (
+              <option key={a} value={a}>
+                {TYPE_LABEL[a]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="new-group-type-label" style={fieldLabelStyle}>
+            Category
           </label>
           <input
-            id="new-category-label"
-            name="label"
+            id="new-group-type-label"
             type="text"
             value={label}
             placeholder="e.g. 20-30s"
@@ -149,63 +200,87 @@ function CreateCategoryForm() {
             style={fieldInputStyle}
           />
         </div>
+      </div>
+      <div style={controlsRowStyle}>
         <PButton
           type="submit"
           tone="terra"
           size="md"
-          disabled={pending || label.trim().length === 0}
+          disabled={pending || trimmed.length === 0}
         >
-          {pending ? "Adding…" : "Add category"}
+          {pending ? "Saving…" : "Save group type"}
         </PButton>
+        <PButton
+          type="button"
+          tone="ghost"
+          size="md"
+          disabled={pending}
+          onClick={() => {
+            setOpen(false);
+            setLabel("");
+            setError(null);
+            setSaved(false);
+          }}
+        >
+          Done
+        </PButton>
+        {error ? (
+          <p style={errorTextStyle}>{error}</p>
+        ) : saved ? (
+          <span style={successTextStyle}>Group type added.</span>
+        ) : null}
       </div>
-      <FormStatus state={state} successText="Category added." />
     </form>
   );
 }
 
-// One matrix row: the category's rename field + archive control, plus the three
-// cell toggles. Rename and archive are their own forms; each cell toggle posts
-// its own apply/unapply.
-function CategoryRow({
-  categoryId,
-  label,
-  cells,
-  coverageByKey,
-}: {
-  categoryId: string;
-  label: string;
-  cells: Record<GroupAudienceCategory, { active: boolean }>;
-  coverageByKey: Map<string, CellCoverage>;
-}) {
+// One group-type row: the Audience badge, the (shared) category rename, the live
+// coverage readout, then the editable target and the remove control. Each write
+// is its own audited form.
+function GroupTypeRow({ row }: { row: CellCoverage }) {
   return (
-    <tr>
-      <td style={{ ...tdStyle, textAlign: "left" }}>
-        <RenameCategoryForm categoryId={categoryId} label={label} />
-      </td>
-      {MATRIX_TYPES.map((type) => (
-        <td key={type} style={tdStyle}>
-          <CellToggle
-            categoryId={categoryId}
-            categoryLabel={label}
-            audienceCategory={type}
-            active={cells[type].active}
-            coverage={coverageByKey.get(coverageKey(type, categoryId)) ?? null}
+    <li style={rowStyle}>
+      <div style={rowTopStyle}>
+        <div style={rowIdentityStyle}>
+          <span style={badgeStyle}>{TYPE_LABEL[row.audienceCategory]}</span>
+          <RenameCategoryForm
+            categoryId={row.categoryId}
+            label={row.label}
+            audienceCategory={row.audienceCategory}
           />
-        </td>
-      ))}
-      <td style={tdStyle}>
-        <ArchiveCategoryForm categoryId={categoryId} label={label} />
-      </td>
-    </tr>
+        </div>
+        <span style={readoutStyle} aria-live="polite">
+          have {row.have} of {row.target}
+        </span>
+      </div>
+      <div style={rowBottomStyle}>
+        <TargetForm
+          categoryId={row.categoryId}
+          label={row.label}
+          audienceCategory={row.audienceCategory}
+          target={row.target}
+        />
+        <RemoveForm
+          categoryId={row.categoryId}
+          label={row.label}
+          audienceCategory={row.audienceCategory}
+        />
+      </div>
+    </li>
   );
 }
 
+// Rename the row's (shared) category. Renaming reflects across every cell of the
+// category — both Audiences when the label is shared — since they point at one
+// catalog row. Posts to the audited rename RPC.
 function RenameCategoryForm({
   categoryId,
   label,
+  audienceCategory,
 }: {
   categoryId: string;
   label: string;
+  audienceCategory: GroupAudienceCategory;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminRenameGroupCategory
@@ -214,136 +289,42 @@ function RenameCategoryForm({
   const dirty = draft.trim() !== label.trim() && draft.trim().length > 0;
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 6 }}>
+    <form action={formAction} style={inlineFormStyle}>
       <input type="hidden" name="category_id" value={categoryId} />
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <input
-          aria-label={`Rename ${label}`}
-          name="label"
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          style={{ ...fieldInputStyle, minWidth: 140 }}
-        />
-        <PButton
-          type="submit"
-          tone="ghost"
-          size="sm"
-          disabled={pending || !dirty}
-          aria-label={`Save ${label} name`}
-        >
-          {pending ? "Saving…" : "Rename"}
-        </PButton>
-      </div>
+      <input
+        aria-label={`Rename ${TYPE_LABEL[audienceCategory]} ${label} category`}
+        name="label"
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        style={{ ...fieldInputStyle, minWidth: 150 }}
+      />
+      <PButton
+        type="submit"
+        tone="ghost"
+        size="sm"
+        disabled={pending || !dirty}
+        aria-label={`Save ${TYPE_LABEL[audienceCategory]} ${label} name`}
+      >
+        {pending ? "Saving…" : "Rename"}
+      </PButton>
       <FormStatus state={state} successText="Renamed." />
     </form>
   );
 }
 
-function ArchiveCategoryForm({
+// The editable target group count (the "Y" in have X of Y) — tracking only, it
+// feeds no trigger. X (have) is read-only, derived from the live groups upstream.
+// Posts to the audited target-count RPC.
+function TargetForm({
   categoryId,
   label,
-}: {
-  categoryId: string;
-  label: string;
-}) {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminArchiveGroupCategory
-  );
-
-  return (
-    <form action={formAction} style={{ display: "grid", gap: 6 }}>
-      <input type="hidden" name="category_id" value={categoryId} />
-      <PButton
-        type="submit"
-        tone="ghost"
-        size="sm"
-        disabled={pending}
-        aria-label={`Remove ${label}`}
-      >
-        {pending ? "Removing…" : "Remove"}
-      </PButton>
-      <FormStatus state={state} />
-    </form>
-  );
-}
-
-// One cell's apply/unapply toggle. Posts the category, the top type, and the
-// NEXT active state (the opposite of the current one). The button reads as an
-// on/off pill; aria-pressed carries the active state for assistive tech. When the
-// cell is ACTIVE it also shows the #400 coverage readout + editable target input
-// underneath.
-function CellToggle({
-  categoryId,
-  categoryLabel,
   audienceCategory,
-  active,
-  coverage,
-}: {
-  categoryId: string;
-  categoryLabel: string;
-  audienceCategory: GroupAudienceCategory;
-  active: boolean;
-  coverage: CellCoverage | null;
-}) {
-  const { formAction, pending } = useActionForm<{ id: string }>(
-    adminSetCategoryTypeCell
-  );
-
-  return (
-    <div style={{ display: "inline-grid", gap: 8, justifyItems: "center" }}>
-      <form action={formAction} style={{ display: "inline-grid" }}>
-        <input type="hidden" name="category_id" value={categoryId} />
-        <input
-          type="hidden"
-          name="audience_category"
-          value={audienceCategory}
-        />
-        {/* Post the OPPOSITE of the current state — clicking toggles the cell. */}
-        <input type="hidden" name="active" value={active ? "false" : "true"} />
-        <button
-          type="submit"
-          disabled={pending}
-          aria-pressed={active}
-          aria-label={`${active ? "Unapply" : "Apply"} ${categoryLabel} to ${
-            TYPE_LABEL[audienceCategory]
-          }`}
-          style={active ? { ...toggleStyle, ...toggleOnStyle } : toggleStyle}
-        >
-          {active ? "Active" : "Off"}
-        </button>
-      </form>
-      {/* #400 / PRD §2.3: an active cell carries its "currently X / target Y"
-          readout and an editable target input. An off cell has no coverage row,
-          so nothing renders below the toggle. */}
-      {active && coverage ? (
-        <CellTargetForm
-          categoryId={categoryId}
-          categoryLabel={categoryLabel}
-          audienceCategory={audienceCategory}
-          have={coverage.have}
-          target={coverage.target}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-// #400: the inline "currently X / target Y" readout + editable target input for
-// one active cell. Posts the new target to the audited target-count RPC; the
-// server revalidates Settings so the readout refreshes. X (have) is read-only —
-// it's derived from the live groups, not editable here.
-function CellTargetForm({
-  categoryId,
-  categoryLabel,
-  audienceCategory,
-  have,
   target,
 }: {
   categoryId: string;
-  categoryLabel: string;
+  label: string;
   audienceCategory: GroupAudienceCategory;
-  have: number;
   target: number;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
@@ -358,89 +339,164 @@ function CellTargetForm({
     parsed !== target;
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 4 }}>
+    <form action={formAction} style={inlineFormStyle}>
       <input type="hidden" name="category_id" value={categoryId} />
       <input type="hidden" name="audience_category" value={audienceCategory} />
-      <div style={readoutStyle} aria-live="polite">
-        currently {have} / target {target}
-      </div>
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <input
-          aria-label={`Target for ${categoryLabel} ${TYPE_LABEL[audienceCategory]}`}
-          name="target_count"
-          type="number"
-          min={0}
-          step={1}
-          inputMode="numeric"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          style={{ ...fieldInputStyle, width: 64, textAlign: "center" }}
-        />
-        <PButton
-          type="submit"
-          tone="ghost"
-          size="sm"
-          disabled={pending || !dirty}
-          aria-label={`Save target for ${categoryLabel} ${TYPE_LABEL[audienceCategory]}`}
-        >
-          {pending ? "Saving…" : "Set"}
-        </PButton>
-      </div>
+      <span style={inlineLabelStyle}>Target</span>
+      <input
+        aria-label={`Target for ${TYPE_LABEL[audienceCategory]} ${label}`}
+        name="target_count"
+        type="number"
+        min={0}
+        step={1}
+        inputMode="numeric"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        style={{ ...fieldInputStyle, width: 72, textAlign: "center" }}
+      />
+      <PButton
+        type="submit"
+        tone="ghost"
+        size="sm"
+        disabled={pending || !dirty}
+        aria-label={`Save target for ${TYPE_LABEL[audienceCategory]} ${label}`}
+      >
+        {pending ? "Saving…" : "Set"}
+      </PButton>
       <FormStatus state={state} successText="Target saved." />
     </form>
   );
 }
 
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse" as const,
-  fontFamily: fontBody,
+// Remove the group type by unapplying its cell (active=false). Per the Archive
+// convention the row stays (reversible) with its target/overrides; it simply
+// drops out of the active list. The shared category lingers in the catalog,
+// applied to no type, if this was its last cell. Posts to the audited apply RPC.
+function RemoveForm({
+  categoryId,
+  label,
+  audienceCategory,
+}: {
+  categoryId: string;
+  label: string;
+  audienceCategory: GroupAudienceCategory;
+}) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminSetCategoryTypeCell
+  );
+
+  return (
+    <form action={formAction} style={inlineFormStyle}>
+      <input type="hidden" name="category_id" value={categoryId} />
+      <input type="hidden" name="audience_category" value={audienceCategory} />
+      <input type="hidden" name="active" value="false" />
+      <PButton
+        type="submit"
+        tone="ghost"
+        size="sm"
+        disabled={pending}
+        aria-label={`Remove ${TYPE_LABEL[audienceCategory]} ${label}`}
+      >
+        {pending ? "Removing…" : "Remove"}
+      </PButton>
+      <FormStatus state={state} />
+    </form>
+  );
+}
+
+const listStyle = {
+  listStyle: "none",
+  padding: 0,
+  margin: 0,
+  display: "grid",
+  gap: 12,
 } as const;
 
-// #400: the "currently X / target Y" readout under an active cell's toggle.
+const rowStyle = {
+  border: `1px solid ${P.line}`,
+  borderRadius: 10,
+  padding: "14px 16px",
+  background: P.surface,
+  display: "grid",
+  gap: 12,
+} as const;
+
+const rowTopStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap" as const,
+} as const;
+
+const rowIdentityStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap" as const,
+} as const;
+
+const rowBottomStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 18,
+  flexWrap: "wrap" as const,
+} as const;
+
+const badgeStyle = {
+  fontFamily: fontBody,
+  fontSize: 12,
+  fontWeight: 600,
+  color: "#3e4f29",
+  background: P.sageSoft,
+  border: "1px solid #7f9b5e",
+  borderRadius: 999,
+  padding: "3px 10px",
+  whiteSpace: "nowrap" as const,
+} as const;
+
 const readoutStyle = {
   fontFamily: fontBody,
-  fontSize: 11,
+  fontSize: 12,
   color: P.ink3,
   whiteSpace: "nowrap" as const,
 } as const;
 
-const thStyle = {
+const inlineFormStyle = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+} as const;
+
+const inlineLabelStyle = {
   fontFamily: fontBody,
   fontSize: 12,
   fontWeight: 600,
   color: P.ink3,
-  textAlign: "center" as const,
-  padding: "8px 12px",
-  borderBottom: `1px solid ${P.line}`,
-  whiteSpace: "nowrap" as const,
 } as const;
 
-const tdStyle = {
-  padding: "10px 12px",
-  borderBottom: `1px solid ${P.line}`,
-  textAlign: "center" as const,
-  verticalAlign: "top" as const,
-} as const;
-
-const toggleStyle = {
-  appearance: "none" as const,
+const addFormStyle = {
+  display: "grid",
+  gap: 12,
   border: `1px solid ${P.line}`,
-  background: P.surface,
-  color: P.ink3,
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 600,
-  padding: "6px 14px",
-  borderRadius: 999,
-  cursor: "pointer",
-  minWidth: 64,
+  borderRadius: 10,
+  padding: "16px 18px",
+  background: P.bg,
 } as const;
 
-const toggleOnStyle = {
-  background: P.sageSoft,
-  borderColor: "#7f9b5e",
-  color: "#3e4f29",
+const addGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(140px, 220px) 1fr",
+  gap: 12,
+  alignItems: "end",
+} as const;
+
+const controlsRowStyle = {
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  flexWrap: "wrap" as const,
 } as const;
 
 const noteStyle = {

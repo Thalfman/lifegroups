@@ -5,7 +5,6 @@ import {
   type SettingsReads,
 } from "@/components/admin/settings/settings-data";
 import type { ReadResult } from "@/lib/supabase/read-core";
-import { MATRIX_TYPES } from "@/lib/admin/group-category-matrix";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
 const fail = (message: string): ReadResult<never> => ({
@@ -29,7 +28,6 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     fetchAudienceReadinessRules: async () => ok([]),
     fetchLeaderHealthRubric: async () => ok(null),
     fetchGroupCategories: async () => ok([]),
-    fetchCategoryTypeCells: async () => ok([]),
     // #400: per-cell coverage reads default to empty.
     fetchCategoryTypeTargetCells: async () => ok([]),
     fetchGroupCellLifecycleRows: async () => ok([]),
@@ -39,63 +37,35 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
 
 const CAT = "cat-2030";
 
-describe("buildSettingsData — Groups tab (#396)", () => {
-  it("builds an empty matrix when the catalog is empty (fresh ministry)", async () => {
+describe("buildSettingsData — Groups tab catalog (#412)", () => {
+  it("exposes an empty catalog when none exists (fresh ministry)", async () => {
     const data = await buildSettingsData(emptyReads(), { isSuperAdmin: false });
-    expect(data.categoryMatrix.rows).toEqual([]);
+    expect(data.groupCategories).toEqual([]);
     expect(data.errors.groupCategories).toBeNull();
   });
 
-  it("applying 20-30s to all three types surfaces three active cells in the matrix", async () => {
+  it("exposes the live catalog (id + label) for the create-flow dedupe", async () => {
     const data = await buildSettingsData(
       emptyReads({
         fetchGroupCategories: async () =>
-          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
-        fetchCategoryTypeCells: async () =>
-          ok(
-            MATRIX_TYPES.map((audience_category, i) => ({
-              id: `cell-${i}`,
-              audience_category,
-              category_id: CAT,
-              active: true,
-            }))
-          ),
-      }),
-      { isSuperAdmin: false }
-    );
-
-    expect(data.categoryMatrix.rows).toHaveLength(1);
-    const row = data.categoryMatrix.rows[0];
-    expect(row.label).toBe("20-30s");
-    const active = MATRIX_TYPES.filter((type) => row.cells[type].active);
-    expect(active).toHaveLength(3);
-  });
-
-  it("reflects a partial apply (one type on, the others off)", async () => {
-    const data = await buildSettingsData(
-      emptyReads({
-        fetchGroupCategories: async () =>
-          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
-        fetchCategoryTypeCells: async () =>
           ok([
+            { id: CAT, label: "20-30s", created_at: "2026-06-06" },
             {
-              id: "cell-men",
-              audience_category: "men",
-              category_id: CAT,
-              active: true,
+              id: "cat-fam",
+              label: "Young families",
+              created_at: "2026-06-06",
             },
           ]),
       }),
       { isSuperAdmin: false }
     );
-
-    const row = data.categoryMatrix.rows[0];
-    expect(row.cells.men.active).toBe(true);
-    expect(row.cells.women.active).toBe(false);
-    expect(row.cells.mixed.active).toBe(false);
+    expect(data.groupCategories).toEqual([
+      { id: CAT, label: "20-30s" },
+      { id: "cat-fam", label: "Young families" },
+    ]);
   });
 
-  it("surfaces a read failure on errors.groupCategories and degrades to an empty matrix", async () => {
+  it("surfaces a catalog read failure on errors.groupCategories and degrades to an empty catalog", async () => {
     const data = await buildSettingsData(
       emptyReads({
         fetchGroupCategories: async () => fail("catalog boom"),
@@ -103,15 +73,13 @@ describe("buildSettingsData — Groups tab (#396)", () => {
       { isSuperAdmin: false }
     );
     expect(data.errors.groupCategories).toBe("catalog boom");
-    expect(data.categoryMatrix.rows).toEqual([]);
+    expect(data.groupCategories).toEqual([]);
   });
 
-  it("surfaces a cell read failure too (either read failing sets the key)", async () => {
+  it("surfaces a target-cell read failure on the same Groups-tab key", async () => {
     const data = await buildSettingsData(
       emptyReads({
-        fetchGroupCategories: async () =>
-          ok([{ id: CAT, label: "20-30s", created_at: "2026-06-06" }]),
-        fetchCategoryTypeCells: async () => fail("cells boom"),
+        fetchCategoryTypeTargetCells: async () => fail("cells boom"),
       }),
       { isSuperAdmin: false }
     );
