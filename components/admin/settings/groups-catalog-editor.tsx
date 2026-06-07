@@ -50,6 +50,7 @@ export function GroupsCatalogEditor({
   cells,
   categories,
   categoryIdsWithGroups,
+  groupReferencesKnown,
 }: {
   // One row per ACTIVE cell, carrying its label + coverage ("have X of Y"). The
   // list is the live group types; an off / never-applied cell has no row.
@@ -62,6 +63,11 @@ export function GroupsCatalogEditor({
   // cell — archiving it would orphan those groups' label (reads resolve an
   // archived category to "Uncategorized").
   categoryIdsWithGroups: ReadonlySet<string>;
+  // Whether the groups read that backs categoryIdsWithGroups succeeded. When the
+  // groups read failed, the set is empty for the wrong reason (not "no groups"),
+  // so we can't safely tell which categories are unreferenced — suppress the
+  // Delete-category cleanup entirely rather than risk archiving an in-use label.
+  groupReferencesKnown: boolean;
 }) {
   // Group shared-category rows together (label then Audience) so the "rename
   // syncs across both" behaviour reads clearly; the coverage shortfall order
@@ -75,11 +81,15 @@ export function GroupsCatalogEditor({
   // excluded — archiving the latter would orphan those groups' label
   // ("Uncategorized" on reads), so those must be recategorized first.
   const usedCategoryIds = new Set(cells.map((c) => c.categoryId));
-  const unusedCategories = categories
-    .filter(
-      (c) => !usedCategoryIds.has(c.id) && !categoryIdsWithGroups.has(c.id)
-    )
-    .sort((a, b) => a.label.localeCompare(b.label));
+  // Only offer deletion when we can actually verify group references. If the
+  // groups read failed, treat references as unknown and offer nothing.
+  const unusedCategories = groupReferencesKnown
+    ? categories
+        .filter(
+          (c) => !usedCategoryIds.has(c.id) && !categoryIdsWithGroups.has(c.id)
+        )
+        .sort((a, b) => a.label.localeCompare(b.label))
+    : [];
 
   return (
     <div style={{ display: "grid", gap: 24 }}>

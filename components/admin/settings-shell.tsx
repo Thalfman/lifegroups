@@ -254,6 +254,9 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
               cells={data.cellCoverage}
               categories={data.groupCategories}
               categoryIdsWithGroups={categoryIdsWithGroups}
+              // A failed groups read makes the reference set empty for the wrong
+              // reason, so the editor must not offer deletion in that case.
+              groupReferencesKnown={data.errors.groups === null}
             />
           </Card>
         )}

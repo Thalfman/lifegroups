@@ -27,8 +27,11 @@ import {
 } from "@/lib/admin/rpc";
 
 // The Interest Funnel board reads from /admin/plan; the home dashboard also
-// surfaces funnel counts, so it is revalidated too.
-const REVALIDATE_PATHS = ["/admin/plan", "/admin"] as const;
+// surfaces funnel counts, so it is revalidated too. /admin/multiply's Interest
+// pillar counts interested, non-archived prospects by desired cell, so any
+// prospect write that can change that set (create / transition / archive)
+// refreshes it as well.
+const REVALIDATE_PATHS = ["/admin/plan", "/admin", "/admin/multiply"] as const;
 
 const CREATE_PROSPECT_KEYS = [
   "full_name",
