@@ -313,7 +313,11 @@ function WillingGroupField({
             name="group_id"
             value={state.groupId}
             onChange={(e) => state.setGroupId(e.target.value)}
-            disabled={!state.typeKey}
+            // Disabled only when there's genuinely nothing to pick — NOT merely
+            // when no type is selected. A legacy candidate on an Uncategorized
+            // group has no type but its current group is injected as an option;
+            // a disabled control wouldn't submit, silently dropping the group.
+            disabled={state.groupsForType.length === 0}
             style={fieldSelectStyle}
           >
             <option value="">Select a group…</option>
@@ -324,11 +328,11 @@ function WillingGroupField({
             ))}
           </select>
           <p style={hintStyle}>
-            {!state.typeKey
-              ? "Pick a group type first."
-              : state.groupsForType.length === 0
+            {state.groupsForType.length > 0
+              ? "Groups that carry the selected type. Leave unset to track the type only."
+              : state.typeKey
                 ? "No active groups carry this type yet — leave it as a type-only watch."
-                : "Groups that carry the selected type. Leave unset to track the type only."}
+                : "Pick a group type first."}
           </p>
         </div>
       ) : null}
