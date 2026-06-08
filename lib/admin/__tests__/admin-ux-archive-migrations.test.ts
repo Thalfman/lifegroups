@@ -117,3 +117,57 @@ describe("admin_transition_prospect archive-guard migration", () => {
     expect(body).toContain("v_archived := (p_state = 'joined')");
   });
 });
+
+describe("archive_over_shepherd_ends_coverage migration (#423)", () => {
+  const sql = loadMigration(
+    "20260622000000_archive_over_shepherd_ends_coverage.sql"
+  );
+
+  it("re-creates the one-click archive RPC as an admin-gated SECURITY DEFINER write with paired audit + EXECUTE lockdown", () => {
+    assertSecurityDefiner(sql, "admin_set_over_shepherd_active");
+    assertPairedAuditInsert(
+      sql,
+      "admin_set_over_shepherd_active",
+      "'admin.set_over_shepherd_active'"
+    );
+    assertExecuteLockdown(
+      sql,
+      "admin_set_over_shepherd_active",
+      "uuid, boolean"
+    );
+  });
+
+  it("ends the over-shepherd's active coverage on the archive transition", () => {
+    const body = functionBody(sql, "admin_set_over_shepherd_active");
+    // Only on the active true -> false archive transition.
+    expect(body).toContain("= false and v_existing.active = true");
+    // Bulk soft-ends this over-shepherd's active assignments (no hard delete).
+    expect(body).toContain("update public.shepherd_coverage_assignments");
+    expect(body).toContain("over_shepherd_id = p_over_shepherd_id");
+    expect(body).toContain("and active = true");
+    // Clamps ended_at so the ended_at >= assigned_at CHECK can't abort the
+    // archive (mirrors admin_update_over_shepherd's hardened cascade).
+    expect(body).toContain("greatest(");
+    expect(body).toContain("assigned_at");
+    // The ended count is folded into the audit row (no per-assignment row),
+    // under the same key the edit-form cascade uses.
+    expect(body).toContain("ended_active_assignments_count");
+  });
+
+  it("does NOT re-create admin_update_over_shepherd (its hardened cascade is already correct)", () => {
+    expect(sql.lower).not.toContain(
+      "function public.admin_update_over_shepherd"
+    );
+  });
+
+  it("backfills assignments left active under already-archived over-shepherds with a system audit row", () => {
+    expect(sql.lower).toContain(
+      "system.backfill_end_coverage_for_archived_over_shepherds"
+    );
+    // Only assignments whose over-shepherd is inactive are ended.
+    expect(sql.lower).toContain("os.active is not true");
+    expect(sql.lower).toContain("sca.active = true");
+    // Same ended_at clamp as the cascade.
+    expect(sql.lower).toContain("greatest(current_date, sca.assigned_at)");
+  });
+});

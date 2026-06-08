@@ -208,7 +208,7 @@ export default async function AdminOverShepherdEditPage({
                 }}
               >
                 {detail.overShepherd.active
-                  ? "Archiving removes them from the active list but keeps them in history and on past coverage. Restore any time."
+                  ? "Archiving removes them from the active list and ends their current coverage, moving those leaders to Unassigned. History is kept; restore any time (coverage is not restored)."
                   : "This over-shepherd is archived. Restore to make them selectable for coverage again."}
               </p>
               <OverShepherdArchiveButton
