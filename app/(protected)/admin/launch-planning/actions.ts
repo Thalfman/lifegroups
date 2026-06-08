@@ -100,7 +100,13 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
       : {};
   }
   return {
-    group_id: input.get("group_id") ?? undefined,
+    // Type-first: the cell (audience × category) the candidate is anchored to.
+    audience_category: input.get("audience_category") ?? undefined,
+    category_id: input.get("category_id") ?? undefined,
+    // The multiplying group is optional; an empty (type-only) submission
+    // collapses to undefined so the validator reads it as null rather than a
+    // malformed uuid.
+    group_id: readBlankableField(input.get("group_id")),
     candidate_id: input.get("candidate_id") ?? undefined,
     target_year: input.get("target_year") ?? undefined,
     status: input.get("status") ?? undefined,
@@ -231,6 +237,8 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
       p_manual_member_count: value.manual_member_count,
+      p_audience_category: value.audience_category,
+      p_category_id: value.category_id,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
@@ -262,6 +270,9 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
       p_manual_member_count: value.manual_member_count,
+      p_audience_category: value.audience_category,
+      p_category_id: value.category_id,
+      p_group_id: value.group_id,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",

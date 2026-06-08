@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildLaunchPlanningData,
+  buildMultiplicationView,
   type LaunchPlanningReads,
 } from "@/components/admin/launch-planning/launch-planning-data";
 import type {
   CapacityBoardExtras,
   LaunchPlanningInputsBundle,
+  MultiplicationCandidateEntry,
 } from "@/lib/supabase/read-models";
+import type { GroupTypeOption } from "@/lib/admin/audience";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -48,6 +51,7 @@ function emptyReads(
     fetchLeaderPipelineForAdmin: async () => ok([]),
     fetchMultiplicationCandidatesForAdmin: async () => ok([]),
     fetchCapacityBoardExtras: async () => EMPTY_EXTRAS,
+    fetchCategoriesForAudience: async () => ok([]),
     ...overrides,
   };
 }
@@ -99,5 +103,111 @@ describe("buildLaunchPlanningData", () => {
     );
 
     expect(data.capacityError).toBe("extras boom");
+  });
+});
+
+// Type-first (group-types-multiplication): the planner picks a group TYPE, then
+// (when willing) a group OF that type. buildMultiplicationView turns the active
+// groups into `groupsByType`, excluding groups already used by a concrete
+// candidate, and passes the type options through.
+describe("buildMultiplicationView", () => {
+  const TODAY = "2026-06-08";
+  const TYPE_OPTIONS: GroupTypeOption[] = [
+    { audienceCategory: "men", categoryId: "c1", label: "20-30s" },
+  ];
+  const GROUPS = [
+    {
+      id: "g1",
+      name: "Alpha",
+      lifecycle_status: "active",
+      audience_category: "men" as const,
+      category_id: "c1",
+    },
+    {
+      id: "g2",
+      name: "Beta",
+      lifecycle_status: "active",
+      audience_category: "men" as const,
+      category_id: "c1",
+    },
+    // Excluded: not active, and Uncategorized (no category).
+    {
+      id: "g3",
+      name: "Gamma",
+      lifecycle_status: "closed",
+      audience_category: "men" as const,
+      category_id: "c1",
+    },
+    {
+      id: "g4",
+      name: "Delta",
+      lifecycle_status: "active",
+      audience_category: "men" as const,
+      category_id: null,
+    },
+  ];
+
+  function candidate(groupId: string | null): MultiplicationCandidateEntry {
+    return {
+      candidate: {
+        id: `cand-${groupId ?? "type"}`,
+        group_id: groupId,
+        audience_category: "men",
+        category_id: "c1",
+        target_year: null,
+        status: "watching",
+        shepherd_willing: false,
+        needs_similar_stage: false,
+        notes: null,
+        successor_designate: null,
+        meeting_time: null,
+        leader_pipeline_id: null,
+        manual_member_count: null,
+        archived_at: null,
+        created_by: null,
+        updated_by: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+      group: null,
+      candidateCategoryLabel: "20-30s",
+      activeMemberCount: 0,
+      coShepherdSince: null,
+      linkedApprentice: null,
+    };
+  }
+
+  it("buckets only active, typed groups by type and passes typeOptions through", () => {
+    const view = buildMultiplicationView([], GROUPS, [], TYPE_OPTIONS, TODAY);
+    expect(view.typeOptions).toBe(TYPE_OPTIONS);
+    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual([
+      "Alpha",
+      "Beta",
+    ]);
+  });
+
+  it("excludes a group already attached to a concrete candidate", () => {
+    const view = buildMultiplicationView(
+      [candidate("g1")],
+      GROUPS,
+      [],
+      TYPE_OPTIONS,
+      TODAY
+    );
+    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual(["Beta"]);
+  });
+
+  it("a type-only candidate removes no group from its type bucket", () => {
+    const view = buildMultiplicationView(
+      [candidate(null)],
+      GROUPS,
+      [],
+      TYPE_OPTIONS,
+      TODAY
+    );
+    expect(view.groupsByType["men|c1"].map((g) => g.name)).toEqual([
+      "Alpha",
+      "Beta",
+    ]);
   });
 });

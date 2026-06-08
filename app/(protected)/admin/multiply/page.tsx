@@ -76,7 +76,8 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
       ) : (
         <MultiplicationPlanner
           segments={plan.segments}
-          availableGroups={plan.availableGroups}
+          typeOptions={plan.typeOptions}
+          groupsByType={plan.groupsByType}
           apprenticesByGroup={plan.apprenticesByGroup}
           // Suggestions are derived from the (frozen) capacity board; the Plan
           // tab doesn't load it, so none are surfaced here for now (ADR 0022).

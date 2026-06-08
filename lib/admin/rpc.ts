@@ -403,7 +403,8 @@ export function rpcAdminRecordChurchAttendanceSnapshot(
 export function rpcAdminCreateMultiplicationCandidate(
   client: AppSupabaseClient,
   args: {
-    p_group_id: string;
+    // Type-first: optional multiplying group (null = type-only watch).
+    p_group_id: string | null;
     p_target_year: number | null;
     p_status: MultiplicationCandidateStatus;
     p_shepherd_willing: boolean;
@@ -414,6 +415,9 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
+    // The candidate's cell (audience × category). Required.
+    p_audience_category: GroupAudienceCategory;
+    p_category_id: string;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -433,6 +437,12 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
+    // The candidate's cell (audience × category). Required. Update may move the
+    // candidate between cells and attach/detach its group.
+    p_audience_category: GroupAudienceCategory;
+    p_category_id: string;
+    // Type-first: optional multiplying group (null = type-only watch).
+    p_group_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);

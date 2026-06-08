@@ -91,18 +91,22 @@ export async function fetchAllGroups(
   return { data: data ?? [], error: null };
 }
 
-// A group reference is the id, name, and lifecycle status — enough to list
-// active groups (e.g. a candidate/apprentice picker) without pulling the full
-// row's privacy-sensitive columns (e.g. admin_notes). Prefer this over
+// A group reference is the id, name, lifecycle status, and the group's cell
+// (audience × category) — enough to list active groups (e.g. a
+// candidate/apprentice picker) and bucket them by type, without pulling the
+// full row's privacy-sensitive columns (e.g. admin_notes). Prefer this over
 // fetchAllGroups on read paths that only need to identify active groups.
-export type GroupRef = Pick<GroupsRow, "id" | "name" | "lifecycle_status">;
+export type GroupRef = Pick<
+  GroupsRow,
+  "id" | "name" | "lifecycle_status" | "audience_category" | "category_id"
+>;
 
 export async function fetchGroupRefs(
   client: ReadClient
 ): Promise<ReadResult<GroupRef[]>> {
   const { data, error } = await client
     .from("groups")
-    .select("id, name, lifecycle_status")
+    .select("id, name, lifecycle_status, audience_category, category_id")
     .order("name", { ascending: true });
   if (error) return { data: null, error: wrapError("fetchGroupRefs", error) };
   return { data: (data ?? []) as GroupRef[], error: null };
@@ -741,7 +745,8 @@ export async function fetchChurchAttendanceSnapshots(
 }
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
-  "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
+  "id, group_id, audience_category, category_id, target_year, status, " +
+  "shepherd_willing, needs_similar_stage, " +
   "notes, successor_designate, meeting_time, leader_pipeline_id, " +
   "manual_member_count, archived_at, " +
   "created_by, updated_by, created_at, updated_at";
@@ -768,6 +773,10 @@ export type MultiplicationCandidateApprentice = {
 export type MultiplicationCandidateEntry = {
   candidate: MultiplicationCandidatesRow;
   group: MultiplicationCandidateGroup | null;
+  // Type-first: the candidate's OWN category label, resolved from
+  // candidate.category_id → group_categories.label. Drives segmentation for
+  // type-only candidates (no group). null = Uncategorized / unresolved.
+  candidateCategoryLabel: string | null;
   activeMemberCount: number;
   // Earliest active co_leader assignment date (YYYY-MM-DD), or null.
   coShepherdSince: string | null;
@@ -800,7 +809,13 @@ export async function fetchMultiplicationCandidatesForAdmin(
     []) as MultiplicationCandidatesRow[];
   if (candidates.length === 0) return { data: [], error: null };
 
-  const groupIds = [...new Set(candidates.map((c) => c.group_id))];
+  // Type-first: a candidate may have no group (type-only watch), so filter null
+  // group ids out before the batched group/membership/leader reads.
+  const groupIds = [
+    ...new Set(
+      candidates.map((c) => c.group_id).filter((id): id is string => id != null)
+    ),
+  ];
   const apprenticeIds = [
     ...new Set(
       candidates
@@ -898,11 +913,15 @@ export async function fetchMultiplicationCandidatesForAdmin(
     name: string;
   };
   const groupRows = (groupsRes.data ?? []) as GroupCategoryProjection[];
+  // Resolve labels for both the groups' categories AND each candidate's own
+  // category (type-only candidates have no group but still segment by their
+  // cell), so one batched read covers every label the planner needs.
   const categoryIds = [
     ...new Set(
-      groupRows
-        .map((g) => g.category_id)
-        .filter((id): id is string => id != null)
+      [
+        ...groupRows.map((g) => g.category_id),
+        ...candidates.map((c) => c.category_id),
+      ].filter((id): id is string => id != null)
     ),
   ];
   const categoryLabelById = new Map<string, string>();
@@ -965,9 +984,20 @@ export async function fetchMultiplicationCandidatesForAdmin(
   const entries: MultiplicationCandidateEntry[] = candidates.map(
     (candidate) => ({
       candidate,
-      group: groupById.get(candidate.group_id) ?? null,
-      activeMemberCount: memberCountByGroup.get(candidate.group_id) ?? 0,
-      coShepherdSince: coShepherdSinceByGroup.get(candidate.group_id) ?? null,
+      // Type-only candidates carry no group → group/member/co-shepherd facts are
+      // absent (group: null, 0 members, no co-shepherd date).
+      group: candidate.group_id
+        ? (groupById.get(candidate.group_id) ?? null)
+        : null,
+      candidateCategoryLabel: candidate.category_id
+        ? (categoryLabelById.get(candidate.category_id) ?? null)
+        : null,
+      activeMemberCount: candidate.group_id
+        ? (memberCountByGroup.get(candidate.group_id) ?? 0)
+        : 0,
+      coShepherdSince: candidate.group_id
+        ? (coShepherdSinceByGroup.get(candidate.group_id) ?? null)
+        : null,
       linkedApprentice: candidate.leader_pipeline_id
         ? (apprenticeById.get(candidate.leader_pipeline_id) ?? null)
         : null,
@@ -1192,10 +1222,13 @@ export async function fetchCapacityBoardExtras(
   > = {};
   const candidateGroupIds: string[] = [];
   for (const c of (candidatesRes.data ?? []) as {
-    group_id: string;
+    group_id: string | null;
     shepherd_willing: boolean;
     needs_similar_stage: boolean;
   }[]) {
+    // Type-only candidates carry no group, so they neither flag a group nor
+    // count as "already a candidate" on the capacity board.
+    if (c.group_id == null) continue;
     candidateGroupIds.push(c.group_id);
     candidateFlagsByGroup[c.group_id] = {
       shepherdWilling: c.shepherd_willing,
