@@ -389,6 +389,9 @@ describe("categorizeAuditAction", () => {
     expect(categorizeAuditAction("admin.update_metric_defaults")).toBe(
       "settings"
     );
+    // Tagging a group into a category is a Settings › Groups mutation, so it
+    // surfaces under the Settings audit filter (not the catch-all).
+    expect(categorizeAuditAction("admin.set_group_category")).toBe("settings");
   });
 
   it("does not miscategorise reset-shaped non-danger actions", () => {
