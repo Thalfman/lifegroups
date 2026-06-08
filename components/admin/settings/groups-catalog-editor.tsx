@@ -162,6 +162,7 @@ export function GroupsCatalogEditor({
                   typeKey(row.audienceCategory, row.categoryId)
                 ) ?? []
               }
+              groupsKnown={groupReferencesKnown}
               onEdit={drawer.open}
             />
           ))}
@@ -446,10 +447,15 @@ function AddGroupTypeForm({
 function GroupTypeRow({
   row,
   groups,
+  groupsKnown,
   onEdit,
 }: {
   row: CellCoverage;
   groups: GroupsRow[];
+  // Whether the groups read succeeded. When it failed `groups` is an empty array
+  // for the wrong reason (not "no groups"), so we show a degraded note instead of
+  // a misleading "0 groups" + no edit buttons next to a live "have X of Y".
+  groupsKnown: boolean;
   onEdit: (groupId: string) => void;
 }) {
   const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
@@ -464,7 +470,11 @@ function GroupTypeRow({
           <span style={readoutStyle} aria-live="polite">
             have {row.have} of {row.target}
           </span>
-          <span style={groupCountStyle}>{groupCountLabel(sorted.length)}</span>
+          {groupsKnown ? (
+            <span style={groupCountStyle}>
+              {groupCountLabel(sorted.length)}
+            </span>
+          ) : null}
         </summary>
         <div style={detailsBodyStyle}>
           <div style={rowIdentityStyle}>
@@ -487,7 +497,15 @@ function GroupTypeRow({
               audienceCategory={row.audienceCategory}
             />
           </div>
-          <GroupsInType groups={sorted} heading="Groups" onEdit={onEdit} />
+          {groupsKnown ? (
+            <GroupsInType groups={sorted} heading="Groups" onEdit={onEdit} />
+          ) : (
+            <p style={emptyGroupsNoteStyle}>
+              This type&rsquo;s groups couldn&rsquo;t be loaded right now, so
+              they can&rsquo;t be listed or edited here. The coverage above is
+              still current.
+            </p>
+          )}
         </div>
       </details>
     </li>
