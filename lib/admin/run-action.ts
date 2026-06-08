@@ -25,6 +25,7 @@ import type { LogOutcome } from "@/lib/observability/logger";
 import { type ActionResult, mapRpcError } from "./action-result";
 import {
   runWriteAction,
+  type RevalidateTarget,
   type RpcResult,
   type ValidationResult as CoreValidationResult,
 } from "@/lib/shared/run-action";
@@ -91,11 +92,12 @@ export type AdminWriteActionSpec<V, T> = {
   rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult>;
   // Paths to revalidate on success. `raw` is available for paths derived
   // from input outside the validated payload; return [] to revalidate
-  // nothing.
+  // nothing. A target may be a bare path string or a typed `RevalidateTarget`
+  // (to invalidate a whole dynamic route in one call).
   revalidate: (
     value: V,
     raw: Record<string, unknown>
-  ) => string | readonly string[];
+  ) => RevalidateTarget | readonly RevalidateTarget[];
   // Builds the success value from the RPC's returned id. Defaults to { id }.
   result?: (id: string) => T;
   // User-facing message when the RPC succeeds at the protocol level but

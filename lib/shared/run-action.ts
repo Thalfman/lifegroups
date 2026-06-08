@@ -41,6 +41,16 @@ export type RpcResult = {
   error: { message: string } | null;
 };
 
+// A path to revalidate on success. A bare string revalidates that exact path
+// (the common case). The object form forwards a `type` to `revalidatePath`, so a
+// dynamic route can be invalidated wholesale — e.g.
+// `{ path: "/admin/shepherd-care/[profileId]", type: "page" }` revalidates every
+// leader-detail page in one call, for a write that affects an unknown set of
+// them (an over-shepherd archive ends coverage for all the leaders it covered).
+export type RevalidateTarget =
+  | string
+  | { path: string; type: "page" | "layout" };
+
 // Everything that varies between surfaces, captured as data. `Actor` is the
 // authenticated identity the guards and field-builders see; `V` the validated
 // payload; `T` the success value.
@@ -98,11 +108,12 @@ export type WriteActionCore<Actor, V, T> = {
   // Maps the validated payload to the typed RPC wrapper call.
   rpc: (client: AppSupabaseClient, value: V) => Promise<RpcResult>;
   // Paths to revalidate on success; `raw` is available for paths derived from
-  // input outside the validated payload.
+  // input outside the validated payload. A target may be a bare path string or
+  // a typed `RevalidateTarget` (to invalidate a whole dynamic route).
   revalidate: (
     value: V,
     raw: Record<string, unknown>
-  ) => string | readonly string[];
+  ) => RevalidateTarget | readonly RevalidateTarget[];
   // Builds the success value from the RPC's returned id. Defaults to { id }.
   result?: (id: string) => T;
   // User-facing message when the RPC succeeds but returns no id.
@@ -202,9 +213,10 @@ export async function runWriteAction<Actor, V, T>(
     return { ok: false, errors: [core.noDataError] };
   }
 
-  const paths = core.revalidate(v.value, raw);
-  for (const path of typeof paths === "string" ? [paths] : paths) {
-    revalidatePath(path);
+  const targets = core.revalidate(v.value, raw);
+  for (const target of Array.isArray(targets) ? targets : [targets]) {
+    if (typeof target === "string") revalidatePath(target);
+    else revalidatePath(target.path, target.type);
   }
 
   const okFields = core.okFields ? core.okFields(v.value, data, raw) : {};

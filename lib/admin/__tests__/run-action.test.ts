@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRequireAdminSession, mockCreateClient, mockRevalidatePath } = vi.hoisted(
-  () => ({
+const { mockRequireAdminSession, mockCreateClient, mockRevalidatePath } =
+  vi.hoisted(() => ({
     mockRequireAdminSession: vi.fn(),
     mockCreateClient: vi.fn(),
     mockRevalidatePath: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock("@/lib/auth/session", () => ({
   requireAdminSession: mockRequireAdminSession,
@@ -20,12 +19,18 @@ vi.mock("next/cache", () => ({
   revalidatePath: mockRevalidatePath,
 }));
 
-const logCalls: { level: "info" | "warn" | "error"; ctx: Record<string, unknown> }[] = [];
+const logCalls: {
+  level: "info" | "warn" | "error";
+  ctx: Record<string, unknown>;
+}[] = [];
 vi.mock("@/lib/observability/logger", () => ({
   log: {
-    info: (ctx: Record<string, unknown>) => logCalls.push({ level: "info", ctx }),
-    warn: (ctx: Record<string, unknown>) => logCalls.push({ level: "warn", ctx }),
-    error: (ctx: Record<string, unknown>) => logCalls.push({ level: "error", ctx }),
+    info: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "info", ctx }),
+    warn: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "warn", ctx }),
+    error: (ctx: Record<string, unknown>) =>
+      logCalls.push({ level: "error", ctx }),
   },
 }));
 
@@ -50,7 +55,7 @@ function authOk(role = "ministry_admin") {
 type Payload = { name: string };
 
 function baseSpec(
-  overrides: Partial<AdminWriteActionSpec<Payload, { id: string }>> = {},
+  overrides: Partial<AdminWriteActionSpec<Payload, { id: string }>> = {}
 ): AdminWriteActionSpec<Payload, { id: string }> {
   return {
     name: "admin.test.action",
@@ -82,15 +87,22 @@ describe("runAdminWriteAction", () => {
   it("returns the auth error and logs denied when the session is rejected", async () => {
     mockRequireAdminSession.mockResolvedValue({ ok: false, error: "sign in" });
 
-    const result = await runAdminWriteAction(baseSpec(), undefined, { name: "x" });
+    const result = await runAdminWriteAction(baseSpec(), undefined, {
+      name: "x",
+    });
 
     expect(result).toEqual({ ok: false, errors: ["sign in"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "denied", error_code: "auth_denied" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "denied",
+      error_code: "auth_denied",
+    });
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
   it("returns validation errors without hitting the client", async () => {
-    const result = await runAdminWriteAction(baseSpec(), undefined, { name: "" });
+    const result = await runAdminWriteAction(baseSpec(), undefined, {
+      name: "",
+    });
 
     expect(result).toEqual({ ok: false, errors: ["name required"] });
     expect(lastLog().ctx).toMatchObject({
@@ -109,16 +121,24 @@ describe("runAdminWriteAction", () => {
     const result = await runAdminWriteAction(spec, undefined, { name: "x" });
 
     expect(result).toEqual({ ok: false, errors: ["no self-target"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "denied", error_code: "self_guard" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "denied",
+      error_code: "self_guard",
+    });
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
   it("fails closed when the supabase client is not configured", async () => {
     mockCreateClient.mockResolvedValue(null);
 
-    const result = await runAdminWriteAction(baseSpec(), undefined, { name: "x" });
+    const result = await runAdminWriteAction(baseSpec(), undefined, {
+      name: "x",
+    });
 
-    expect(result).toEqual({ ok: false, errors: ["Database is not configured."] });
+    expect(result).toEqual({
+      ok: false,
+      errors: ["Database is not configured."],
+    });
     expect(lastLog().ctx).toMatchObject({
       outcome: "fail",
       error_code: "supabase_not_configured",
@@ -128,7 +148,10 @@ describe("runAdminWriteAction", () => {
 
   it("maps the RPC error token to a friendly message", async () => {
     const spec = baseSpec({
-      rpc: async () => ({ data: null, error: { message: "insufficient_privilege" } }),
+      rpc: async () => ({
+        data: null,
+        error: { message: "insufficient_privilege" },
+      }),
     });
 
     const result = await runAdminWriteAction(spec, undefined, { name: "x" });
@@ -148,7 +171,10 @@ describe("runAdminWriteAction", () => {
     const result = await runAdminWriteAction(spec, undefined, { name: "x" });
 
     expect(result).toEqual({ ok: false, errors: ["nothing saved"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "fail", error_code: "rpc_no_data" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "rpc_no_data",
+    });
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
@@ -171,8 +197,27 @@ describe("runAdminWriteAction", () => {
     });
   });
 
+  it("forwards a typed revalidate target's `type` to revalidatePath (dynamic route)", async () => {
+    const spec = baseSpec({
+      revalidate: () => [
+        "/admin/test",
+        { path: "/admin/test/[id]", type: "page" },
+      ],
+    });
+
+    const result = await runAdminWriteAction(spec, undefined, { name: "x" });
+
+    expect(result.ok).toBe(true);
+    // Bare string -> single-arg call; typed target -> path + type so a whole
+    // dynamic route is invalidated in one call.
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/test");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/test/[id]", "page");
+  });
+
   it("awaits async field extractors exactly once and threads them into the log", async () => {
-    const fields = vi.fn(async (_actor, value: Payload) => ({ hashed: `h:${value.name}` }));
+    const fields = vi.fn(async (_actor, value: Payload) => ({
+      hashed: `h:${value.name}`,
+    }));
     const spec = baseSpec({ fields });
 
     const result = await runAdminWriteAction(spec, undefined, { name: "x" });
@@ -198,7 +243,11 @@ describe("runAdminWriteAction", () => {
     const form = new FormData();
     form.set("name", "from-form");
 
-    const result = await runAdminWriteAction(baseSpec({ rpc }), undefined, form);
+    const result = await runAdminWriteAction(
+      baseSpec({ rpc }),
+      undefined,
+      form
+    );
 
     expect(result).toEqual({ ok: true, value: { id: NEW_ID } });
     expect(rpc).toHaveBeenCalledWith(expect.anything(), { name: "from-form" });
@@ -227,26 +276,38 @@ describe("runAdminWriteAction", () => {
     expect(result.ok).toBe(true);
     expect(customAuth).toHaveBeenCalledTimes(1);
     expect(mockRequireAdminSession).not.toHaveBeenCalled();
-    expect(lastLog().ctx).toMatchObject({ outcome: "ok", actor_role: "super_admin" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "ok",
+      actor_role: "super_admin",
+    });
   });
 
   it("honors a guard outcome override so a non-auth bail logs fail", async () => {
     const spec = baseSpec({
-      guard: () => ({ error: "nothing to change", code: "empty_diff", outcome: "fail" }),
+      guard: () => ({
+        error: "nothing to change",
+        code: "empty_diff",
+        outcome: "fail",
+      }),
     });
 
     const result = await runAdminWriteAction(spec, undefined, { name: "x" });
 
     expect(result).toEqual({ ok: false, errors: ["nothing to change"] });
-    expect(lastLog().ctx).toMatchObject({ outcome: "fail", error_code: "empty_diff" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "fail",
+      error_code: "empty_diff",
+    });
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
   it("uses a custom reader and threads raw into revalidate and okFields", async () => {
     const read = vi.fn(() => ({ name: "x", group_id: "g-9" }));
-    const revalidate = vi.fn((_value: Payload, raw: Record<string, unknown>) => [
-      `/admin/groups/${String(raw.group_id)}`,
-    ]);
+    const revalidate = vi.fn(
+      (_value: Payload, raw: Record<string, unknown>) => [
+        `/admin/groups/${String(raw.group_id)}`,
+      ]
+    );
     const spec = baseSpec({
       read,
       keys: undefined,
@@ -254,11 +315,16 @@ describe("runAdminWriteAction", () => {
       okFields: (_value, _id, raw) => ({ target_group_id: raw.group_id }),
     });
 
-    const result = await runAdminWriteAction(spec, undefined, { anything: true });
+    const result = await runAdminWriteAction(spec, undefined, {
+      anything: true,
+    });
 
     expect(result.ok).toBe(true);
     expect(read).toHaveBeenCalledWith({ anything: true });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/groups/g-9");
-    expect(lastLog().ctx).toMatchObject({ outcome: "ok", target_group_id: "g-9" });
+    expect(lastLog().ctx).toMatchObject({
+      outcome: "ok",
+      target_group_id: "g-9",
+    });
   });
 });
