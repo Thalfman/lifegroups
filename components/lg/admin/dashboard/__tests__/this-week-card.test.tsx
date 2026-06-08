@@ -8,10 +8,11 @@ import type {
 } from "@/lib/dashboard/types";
 
 // Render the metadata-only Home "This week" card to static markup (node env, no
-// jsdom needed — the card is pure presentational) and assert the round-3 gating
-// behaviour: a single SHARED church-local week-ahead horizon for the launch
-// milestone, and a launch-unavailable partial state instead of "nothing
-// scheduled" when the launch read failed.
+// jsdom needed — the card is pure presentational) and assert the post-pivot
+// behaviour (ADR 0016): the card is follow-ups only. The launch-planning
+// milestone/capacity rows and the "View planning" action were removed, so the
+// card must NOT surface launch data or link to the hidden Planning shell even
+// when launch-planning data is present in the dashboard read.
 
 function makeData(
   overrides: {
@@ -35,83 +36,73 @@ function makeData(
 }
 
 describe("ThisWeekCard", () => {
-  it("shows the launch milestone when it falls on or before the shared cutoff", () => {
+  it("shows due follow-ups and links to the follow-up workflow", () => {
+    const html = renderToStaticMarkup(
+      <ThisWeekCard data={makeData({ dueFollowUpsThisWeekCount: 3 })} />
+    );
+    expect(html).toContain("Follow-ups due");
+    expect(html).toContain("3 due in the next 7 days");
+    expect(html).toContain("Work follow-ups");
+    expect(html).toContain("/admin/follow-ups");
+  });
+
+  it("renders the empty state with no action when nothing is due", () => {
+    const html = renderToStaticMarkup(
+      <ThisWeekCard data={makeData({ dueFollowUpsThisWeekCount: 0 })} />
+    );
+    expect(html).toContain("Nothing scheduled");
+    expect(html).not.toContain("Work follow-ups");
+    expect(html).not.toContain("/admin/follow-ups");
+  });
+
+  it("never surfaces launch-planning rows or links, even when launch data is present", () => {
+    // The launch milestone/capacity rows were removed in the pivot (ADR 0016);
+    // launch planning is a hidden surface tracked elsewhere. Even with a launch
+    // date inside the window and an unavailable read, the card stays follow-ups
+    // only and never links to the hidden Planning shell.
     const html = renderToStaticMarkup(
       <ThisWeekCard
         data={makeData({
+          dueFollowUpsThisWeekCount: 2,
           weekAheadCutoffIso: "2026-05-25",
           launchPlanning: {
             suggestedLaunchByDate: "2026-05-25",
-            recommendedNewGroups: 2,
-          },
-        })}
-      />
-    );
-    expect(html).toContain("Suggested launch by");
-    expect(html).toContain("Recommended new groups");
-    expect(html).not.toContain("Nothing scheduled");
-  });
-
-  it("drops the launch milestone (and the new-groups row tied to it) when it is one day past the shared cutoff", () => {
-    // The day just past the church-local horizon: the card must NOT treat it as
-    // this-week work, matching the follow-up window. With no other rows this
-    // renders the empty state rather than a launch milestone the count read
-    // would have excluded (Codex round 3 — one shared horizon, not two).
-    const html = renderToStaticMarkup(
-      <ThisWeekCard
-        data={makeData({
-          weekAheadCutoffIso: "2026-05-25",
-          launchPlanning: {
-            suggestedLaunchByDate: "2026-05-26",
-            recommendedNewGroups: 2,
+            recommendedNewGroups: 4,
           },
         })}
       />
     );
     expect(html).not.toContain("Suggested launch by");
     expect(html).not.toContain("Recommended new groups");
-    expect(html).toContain("Nothing scheduled");
+    expect(html).not.toContain("Launch outlook");
+    expect(html).not.toContain("View planning");
+    expect(html).not.toContain("/admin/launch-planning");
   });
 
-  it("surfaces a launch-unavailable note instead of 'nothing scheduled' when the launch read failed", () => {
+  it("does not surface a launch-unavailable note when the launch read failed", () => {
     const html = renderToStaticMarkup(
       <ThisWeekCard
         data={makeData({
-          launchPlanning: { available: false, error: "boom" },
-        })}
-      />
-    );
-    expect(html).toContain("Launch outlook");
-    expect(html).toContain("Unavailable right now");
-    expect(html).not.toContain("Nothing scheduled");
-  });
-
-  it("keeps follow-up rows working when the launch read failed", () => {
-    const html = renderToStaticMarkup(
-      <ThisWeekCard
-        data={makeData({
-          dueFollowUpsThisWeekCount: 3,
+          dueFollowUpsThisWeekCount: 1,
           launchPlanning: { available: false, error: "boom" },
         })}
       />
     );
     expect(html).toContain("Follow-ups due");
-    expect(html).toContain("3 due in the next 7 days");
-    expect(html).toContain("Launch outlook");
+    expect(html).not.toContain("Launch outlook");
+    expect(html).not.toContain("/admin/launch-planning");
   });
 
-  it("suppresses all week-ahead data (including the launch-unavailable note) when the whole dashboard degraded", () => {
+  it("suppresses the week-ahead rows when the whole dashboard degraded", () => {
     const html = renderToStaticMarkup(
       <ThisWeekCard
-        data={makeData({
-          dueFollowUpsThisWeekCount: 3,
-          launchPlanning: { available: false, error: "boom" },
-        })}
+        data={makeData({ dueFollowUpsThisWeekCount: 3 })}
         degraded
       />
     );
     expect(html).toContain("The week ahead is unavailable right now.");
-    expect(html).not.toContain("Launch outlook");
     expect(html).not.toContain("Follow-ups due");
+    // The launch milestone is gone for good, degraded or not.
+    expect(html).not.toContain("/admin/launch-planning");
   });
 });

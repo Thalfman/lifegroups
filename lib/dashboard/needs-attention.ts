@@ -37,9 +37,18 @@ export type NeedsAttentionTone = "primary" | "warning";
 //     contributes nothing rather than fabricate imperative actions from the
 //     demo seed. (The deliberate no-client demo preview is *not* degraded and
 //     still showcases its items.)
+//   - The Groups-bound rows (no_leader, setup_gaps) drop out when the Groups tab
+//     is hidden (ADR 0016 retired group/member setup; `hiddenNavAreas` carries
+//     "/admin/groups"). Home must not rank an action whose only destination is a
+//     tab the operator retired; the rows return automatically only if a Super
+//     Admin re-shows Groups.
 export function buildNeedsAttentionItems(
   data: AdminDashboardData,
-  options: { degraded?: boolean; mutedKeys?: ReadonlySet<string> } = {}
+  options: {
+    degraded?: boolean;
+    mutedKeys?: ReadonlySet<string>;
+    hiddenNavAreas?: ReadonlySet<string>;
+  } = {}
 ): NeedsAttentionItem[] {
   if (options.degraded) return [];
 
@@ -76,7 +85,9 @@ export function buildNeedsAttentionItems(
       key: "health",
       label: "Overdue or missing health checks",
       count: health.missing + health.needs_follow_up,
-      href: "/admin/group-health",
+      // Care absorbs Group-Health (ADR 0016): land on the active Care area, not
+      // the off-nav /admin/group-health page.
+      href: "/admin/care",
       tone: "warning",
     },
     {
@@ -97,12 +108,24 @@ export function buildNeedsAttentionItems(
     },
   ];
 
+  // Drop the Groups-bound actions when the Groups tab is hidden (ADR 0016). Both
+  // no_leader and setup_gaps link only to /admin/groups, so once that tab is
+  // retired there is no active surface to act on; surfacing them would rank a
+  // top action that dead-ends in a hidden tab. Re-showing Groups restores them.
+  const groupsHidden = options.hiddenNavAreas?.has("/admin/groups") ?? false;
+  const GROUPS_BOUND_KEYS = new Set(["no_leader", "setup_gaps"]);
+
   // Drop any Super-Admin-muted categories (launch-optics mutes, #260 follow-up).
   // Muting suppresses a time-based category from the queue entirely; only the
   // three time-based keys are ever mutable, so no_leader / setup_gaps are
-  // unaffected regardless of what is passed.
+  // unaffected by muting (they are governed by the Groups-hidden gate above).
   const muted = options.mutedKeys;
-  return candidates.filter((c) => c.count > 0 && !(muted?.has(c.key) ?? false));
+  return candidates.filter(
+    (c) =>
+      c.count > 0 &&
+      !(muted?.has(c.key) ?? false) &&
+      !(groupsHidden && GROUPS_BOUND_KEYS.has(c.key))
+  );
 }
 
 // Ranked "Top next actions" queue (Admin Interaction Model PRD req 8, #271).
@@ -191,7 +214,11 @@ function imperativeAction(item: NeedsAttentionItem): string {
 
 export function buildTopNextActions(
   data: AdminDashboardData,
-  options: { degraded?: boolean; mutedKeys?: ReadonlySet<string> } = {}
+  options: {
+    degraded?: boolean;
+    mutedKeys?: ReadonlySet<string>;
+    hiddenNavAreas?: ReadonlySet<string>;
+  } = {}
 ): TopNextAction[] {
   return buildNeedsAttentionItems(data, options)
     .map((item) => ({

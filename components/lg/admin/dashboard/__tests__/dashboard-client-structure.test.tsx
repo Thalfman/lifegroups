@@ -129,4 +129,27 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     expect(html).toContain("Health pulse"); // HealthDistributionCard
     expect(html).toContain("Pipeline funnel"); // GuestPipelineFunnelCard
   });
+
+  // Home-link hygiene (ADR 0016): with the default hidden set (Groups, People,
+  // Planning hidden), no visible link may point at a retired/off-nav surface.
+  // The Groups-bound attention rows drop out, the launch-planning links are gone
+  // with the Planning-gated card and the now-removed "This week" milestone, and
+  // group-health re-points to the active Care area.
+  it("renders no links to hidden or off-nav surfaces under the default hidden set", () => {
+    const html = renderToStaticMarkup(
+      <DashboardClient
+        data={ADMIN_FALLBACK}
+        guestsLive={false}
+        scopeId="p1"
+        hiddenNavAreas={["/admin/groups", "/admin/people", "/admin/planning"]}
+      />
+    );
+
+    expect(html).not.toContain("/admin/groups");
+    expect(html).not.toContain("/admin/launch-planning");
+    expect(html).not.toContain("/admin/group-health");
+    expect(html).not.toContain("View planning");
+    // The Care-owned health link lands on the active area instead.
+    expect(html).toContain("/admin/care");
+  });
 });
