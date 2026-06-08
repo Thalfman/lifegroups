@@ -1,7 +1,9 @@
 import type {
+  GroupAudienceCategory,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
+import { isAudienceCategory } from "@/lib/admin/audience";
 import { isUuid } from "@/lib/shared/uuid";
 import type { ValidationResult } from "./shared";
 import {
@@ -442,6 +444,14 @@ function isMultiplicationMeetingTime(
 const MULTIPLICATION_SUCCESSOR_MAX = 120;
 
 type MultiplicationCandidateFields = {
+  // Type-first: the candidate's own cell (audience × category). Required for a
+  // type-only watch; when a group is attached the cell is derived from the group
+  // server-side, so the form may omit it (legacy/uncategorized/retagged groups).
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
+  // The multiplying group, set only once a leader is willing and a group of the
+  // candidate's type is picked. Null = type-only watch.
+  group_id: string | null;
   target_year: number | null;
   status: MultiplicationCandidateStatus;
   shepherd_willing: boolean;
@@ -462,6 +472,45 @@ function validateMultiplicationCandidateFields(
   input: Record<string, unknown>,
   errors: string[]
 ): MultiplicationCandidateFields {
+  // The multiplying group is optional (type-only watch). When present it must
+  // be a uuid; the group is the source of truth for the cell server-side.
+  let groupId: string | null = null;
+  const groupRaw = readOptionalString(input.group_id);
+  if (groupRaw !== undefined) {
+    if (!isUuid(groupRaw)) {
+      errors.push("group_id must be a uuid.");
+    } else {
+      groupId = normalizeUuid(groupRaw);
+    }
+  }
+
+  // The cell (audience × category) is required for a type-only watch; when a
+  // group is attached the RPC derives the cell from the group, so the form may
+  // omit it (e.g. editing a legacy/uncategorized or retagged candidate).
+  let audienceCategory: GroupAudienceCategory | null = null;
+  const audienceRaw = readOptionalString(input.audience_category);
+  if (audienceRaw !== undefined) {
+    if (!isAudienceCategory(audienceRaw)) {
+      errors.push("Audience category must be men, women, or mixed.");
+    } else {
+      audienceCategory = audienceRaw;
+    }
+  } else if (groupId === null) {
+    errors.push("Group type is required.");
+  }
+
+  let categoryId: string | null = null;
+  const categoryRaw = readOptionalString(input.category_id);
+  if (categoryRaw !== undefined) {
+    if (!isUuid(categoryRaw)) {
+      errors.push("category_id must be a uuid.");
+    } else {
+      categoryId = normalizeUuid(categoryRaw);
+    }
+  } else if (groupId === null) {
+    errors.push("Group type is required.");
+  }
+
   let targetYear: number | null = null;
   const yearRaw = readOptionalString(input.target_year);
   if (yearRaw !== undefined) {
@@ -523,6 +572,13 @@ function validateMultiplicationCandidateFields(
     }
   }
 
+  // An apprentice is a same-group concept: linking one without a multiplying
+  // group is meaningless (and the RPC + trigger reject it as
+  // apprentice_requires_group). Pre-empt it here with a friendlier message.
+  if (leaderPipelineId !== null && groupId === null) {
+    errors.push("Pick a group before linking an apprentice.");
+  }
+
   // ADR 0022: Julian-fed headcount. Blank/absent reads as null (= fall back to
   // the in-app roster count); a value must be a whole number in [0, 1000],
   // matching the RPC's bounds check.
@@ -540,6 +596,9 @@ function validateMultiplicationCandidateFields(
   }
 
   return {
+    audience_category: audienceCategory,
+    category_id: categoryId,
+    group_id: groupId,
     target_year: targetYear,
     status,
     shepherd_willing: readBooleanFlag(input.shepherd_willing),
@@ -553,9 +612,7 @@ function validateMultiplicationCandidateFields(
 }
 
 export type CreateMultiplicationCandidatePayload =
-  MultiplicationCandidateFields & {
-    group_id: string;
-  };
+  MultiplicationCandidateFields;
 
 export function validateCreateMultiplicationCandidatePayload(
   input: unknown
@@ -563,13 +620,9 @@ export function validateCreateMultiplicationCandidatePayload(
   if (!isRecord(input))
     return { ok: false, errors: ["payload must be an object"] };
   const errors: string[] = [];
-  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
   const fields = validateMultiplicationCandidateFields(input, errors);
   if (errors.length > 0) return { ok: false, errors };
-  return {
-    ok: true,
-    value: { group_id: normalizeUuid(input.group_id as string), ...fields },
-  };
+  return { ok: true, value: fields };
 }
 
 export type UpdateMultiplicationCandidatePayload =

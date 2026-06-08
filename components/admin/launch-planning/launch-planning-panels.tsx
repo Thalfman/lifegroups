@@ -217,7 +217,8 @@ export function buildLaunchPlanningPanels(
     // Suggestions render in the capacity board, so they are suppressed here.
     <MultiplicationPlanner
       segments={data.segments}
-      availableGroups={data.availableGroups}
+      typeOptions={data.typeOptions}
+      groupsByType={data.groupsByType}
       apprenticesByGroup={data.apprenticesByGroup}
       suggestions={[]}
     />

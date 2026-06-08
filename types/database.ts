@@ -367,7 +367,12 @@ export interface ChurchAttendanceSnapshotsRow {
 
 export interface MultiplicationCandidatesRow {
   id: UUID;
-  group_id: UUID;
+  // Type-first: a candidate is anchored to a cell (audience_category ×
+  // category_id); the multiplying group is optional, set only once a leader is
+  // willing and a specific group of that type is picked. null = type-only watch.
+  group_id: UUID | null;
+  audience_category: E.GroupAudienceCategory | null;
+  category_id: UUID | null;
   target_year: number | null;
   status: E.MultiplicationCandidateStatus;
   shepherd_willing: boolean;

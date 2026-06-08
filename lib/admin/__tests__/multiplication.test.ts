@@ -21,6 +21,14 @@ function entry(over: {
   // #398: the group's category label (resolved from category_id), or null =
   // Uncategorized. Replaces the old life_stage axis.
   categoryLabel?: string | null;
+  // Type-first: the candidate's OWN cell. Defaulting these to null exercises the
+  // legacy fallback (segment by the attached group). Set them (with groupId:
+  // null) for a type-only watch.
+  candidateAudience?: "men" | "women" | "mixed" | null;
+  candidateCategoryId?: string | null;
+  candidateCategoryLabel?: string | null;
+  // The multiplying group id; default `g-<id>`. Pass null for a type-only watch.
+  groupId?: string | null;
   targetYear?: number | null;
   activeMemberCount?: number;
   // ADR 0022: Julian-fed headcount; null = fall back to activeMemberCount.
@@ -31,10 +39,13 @@ function entry(over: {
   needsSimilarStage?: boolean;
   successorDesignate?: string | null;
 }): MultiplicationCandidateEntry {
+  const groupId = over.groupId === undefined ? `g-${over.id}` : over.groupId;
   return {
     candidate: {
       id: over.id,
-      group_id: `g-${over.id}`,
+      group_id: groupId,
+      audience_category: over.candidateAudience ?? null,
+      category_id: over.candidateCategoryId ?? null,
       target_year: over.targetYear ?? null,
       status: "watching",
       shepherd_willing: over.shepherdWilling ?? false,
@@ -51,10 +62,10 @@ function entry(over: {
       updated_at: "2026-01-01T00:00:00Z",
     },
     group:
-      over.audience === null
+      over.audience === null || groupId === null
         ? null
         : {
-            id: `g-${over.id}`,
+            id: groupId,
             name: over.groupName ?? `Group ${over.id}`,
             audience_category: over.audience ?? "men",
             category_label:
@@ -64,6 +75,7 @@ function entry(over: {
             launched_on: over.launchedOn ?? null,
             lifecycle_status: "active",
           },
+    candidateCategoryLabel: over.candidateCategoryLabel ?? null,
     activeMemberCount: over.activeMemberCount ?? 0,
     coShepherdSince: over.coShepherdSince ?? null,
     linkedApprentice: null,
@@ -228,6 +240,63 @@ describe("buildPlannerSegments", () => {
     // No category means no cell, so it collects in the visible Uncategorized
     // bucket admins use to find groups still needing a tag — not a "Men" segment.
     expect(segments[0].segment).toBe(UNCATEGORIZED_SEGMENT);
+  });
+});
+
+// Type-first (group-types-multiplication): a candidate is anchored to its own
+// cell. A type-only watch has no group; segmentation reads the candidate's own
+// audience + category label, falling back to the attached group's for legacy
+// rows whose type columns weren't backfilled.
+describe("buildPlannerSegments — type-first candidates", () => {
+  it("segments a type-only candidate by its OWN cell, with a no-group title", () => {
+    const [segment] = buildPlannerSegments(
+      [
+        entry({
+          id: "t1",
+          groupId: null,
+          candidateAudience: "women",
+          candidateCategoryId: "c-1",
+          candidateCategoryLabel: "20-30s",
+        }),
+      ],
+      TODAY
+    );
+    expect(segment.segment).toBe("Women · 20-30s");
+    const c = segment.candidates[0];
+    expect(c.groupId).toBeNull();
+    expect(c.groupName).toBe("(type only — no group yet)");
+    expect(c.audience).toBe("women");
+    expect(c.categoryId).toBe("c-1");
+    // No group → group-derived criteria can't be met.
+    expect(c.readiness.criteria.established_long_enough).toBe(false);
+    expect(c.readiness.criteria.co_shepherd_tenured).toBe(false);
+  });
+
+  it("prefers the candidate's own cell over the attached group's", () => {
+    const [segment] = buildPlannerSegments(
+      [
+        entry({
+          id: "t2",
+          // The attached group is a Men · Young families group…
+          audience: "men",
+          categoryLabel: "Young families",
+          // …but the candidate's own cell wins.
+          candidateAudience: "women",
+          candidateCategoryLabel: "Retirement",
+        }),
+      ],
+      TODAY
+    );
+    expect(segment.segment).toBe("Women · Retirement");
+  });
+
+  it("falls back to the attached group's cell when the candidate has no type", () => {
+    const [segment] = buildPlannerSegments(
+      [entry({ id: "t3", audience: "men", categoryLabel: "20-30s" })],
+      TODAY
+    );
+    // candidateAudience / candidateCategoryLabel default to null → group fallback.
+    expect(segment.segment).toBe("Men · 20-30s");
   });
 });
 

@@ -1272,15 +1272,22 @@ describe("validateRecordChurchAttendancePayload (Julian P2)", () => {
   });
 });
 
-describe("multiplication candidate payloads (Julian P4)", () => {
-  it("accepts a valid create payload and defaults status to watching", () => {
+describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
+  // Type-first: every candidate is anchored to a cell (audience × category).
+  // UUID_B doubles as the category id here; the multiplying group is optional.
+  const TYPE = { audience_category: "men", category_id: UUID_B } as const;
+
+  it("accepts a valid create payload (type + group) and defaults status", () => {
     const r = validateCreateMultiplicationCandidatePayload({
+      ...TYPE,
       group_id: UUID_A,
       target_year: "2027",
       shepherd_willing: "on",
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
+      expect(r.value.audience_category).toBe("men");
+      expect(r.value.category_id).toBe(UUID_B);
       expect(r.value.group_id).toBe(UUID_A);
       expect(r.value.target_year).toBe(2027);
       expect(r.value.status).toBe("watching");
@@ -1289,21 +1296,85 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     }
   });
 
-  it("rejects a bad group id and out-of-range year", () => {
+  it("accepts a type-only candidate with no group", () => {
+    const r = validateCreateMultiplicationCandidatePayload({ ...TYPE });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBeNull();
+      expect(r.value.category_id).toBe(UUID_B);
+    }
+  });
+
+  it("accepts a group-attached candidate with no explicit type (derived from group)", () => {
+    // A legacy/uncategorized or retagged candidate posts a group but a blank
+    // cell; the RPC derives the cell from the group, so validation must allow it.
+    const r = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.audience_category).toBeNull();
+      expect(r.value.category_id).toBeNull();
+    }
+  });
+
+  it("requires the group type (audience + category)", () => {
+    expect(validateCreateMultiplicationCandidatePayload({}).ok).toBe(false);
     expect(
-      validateCreateMultiplicationCandidatePayload({ group_id: "nope" }).ok
+      validateCreateMultiplicationCandidatePayload({
+        category_id: UUID_B,
+      }).ok
     ).toBe(false);
     expect(
       validateCreateMultiplicationCandidatePayload({
-        group_id: UUID_A,
+        audience_category: "men",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects an invalid audience and a non-uuid category", () => {
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        audience_category: "everyone",
+        category_id: UUID_B,
+      }).ok
+    ).toBe(false);
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        audience_category: "men",
+        category_id: "nope",
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects a bad group id and out-of-range year", () => {
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        ...TYPE,
+        group_id: "nope",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        ...TYPE,
         target_year: "1999",
       }).ok
     ).toBe(false);
   });
 
+  it("rejects linking an apprentice without a group", () => {
+    const r = validateCreateMultiplicationCandidatePayload({
+      ...TYPE,
+      leader_pipeline_id: UUID_A,
+    });
+    expect(r.ok).toBe(false);
+  });
+
   it("rejects an invalid status", () => {
     expect(
       validateUpdateMultiplicationCandidatePayload({
+        ...TYPE,
         candidate_id: UUID_A,
         status: "maybe",
       }).ok
@@ -1312,6 +1383,7 @@ describe("multiplication candidate payloads (Julian P4)", () => {
 
   it("accepts a valid update payload", () => {
     const r = validateUpdateMultiplicationCandidatePayload({
+      ...TYPE,
       candidate_id: UUID_A,
       status: "planned",
       target_year: "2026",
@@ -1320,27 +1392,27 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     if (r.ok) {
       expect(r.value.status).toBe("planned");
       expect(r.value.candidate_id).toBe(UUID_A);
+      expect(r.value.audience_category).toBe("men");
     }
   });
 
   // Julian #143: successor/leader-designate + meeting-time fields.
   it("round-trips a successor/leader-designate, defaulting it to null when absent", () => {
     const present = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
+      ...TYPE,
       successor_designate: "  Tony L.  ",
     });
     expect(present.ok).toBe(true);
     if (present.ok) expect(present.value.successor_designate).toBe("Tony L.");
 
-    const absent = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
-    });
+    const absent = validateCreateMultiplicationCandidatePayload({ ...TYPE });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.successor_designate).toBeNull();
   });
 
   it("rejects a successor/leader-designate longer than the text-field bound", () => {
     const r = validateUpdateMultiplicationCandidatePayload({
+      ...TYPE,
       candidate_id: UUID_A,
       successor_designate: "x".repeat(121),
     });
@@ -1350,30 +1422,29 @@ describe("multiplication candidate payloads (Julian P4)", () => {
   it("accepts both meeting-time values and defaults to null when absent", () => {
     for (const meeting_time of ["during_the_day", "evening"] as const) {
       const r = validateCreateMultiplicationCandidatePayload({
-        group_id: UUID_A,
+        ...TYPE,
         meeting_time,
       });
       expect(r.ok).toBe(true);
       if (r.ok) expect(r.value.meeting_time).toBe(meeting_time);
     }
-    const absent = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
-    });
+    const absent = validateCreateMultiplicationCandidatePayload({ ...TYPE });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.meeting_time).toBeNull();
   });
 
   it("rejects a meeting-time outside the allowed values", () => {
     const r = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
+      ...TYPE,
       meeting_time: "midnight",
     });
     expect(r.ok).toBe(false);
   });
 
-  // Capacity & Multiplication #184: the apprentice link.
+  // Capacity & Multiplication #184: the apprentice link (requires a group).
   it("round-trips a leader_pipeline_id, defaulting to null when absent or blank", () => {
     const present = validateCreateMultiplicationCandidatePayload({
+      ...TYPE,
       group_id: UUID_A,
       leader_pipeline_id: UUID_B,
     });
@@ -1381,6 +1452,7 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     if (present.ok) expect(present.value.leader_pipeline_id).toBe(UUID_B);
 
     const absent = validateCreateMultiplicationCandidatePayload({
+      ...TYPE,
       group_id: UUID_A,
     });
     expect(absent.ok).toBe(true);
@@ -1389,7 +1461,9 @@ describe("multiplication candidate payloads (Julian P4)", () => {
 
   it("rejects a non-uuid leader_pipeline_id", () => {
     const r = validateUpdateMultiplicationCandidatePayload({
+      ...TYPE,
       candidate_id: UUID_A,
+      group_id: UUID_A,
       leader_pipeline_id: "not-a-uuid",
     });
     expect(r.ok).toBe(false);
@@ -1398,22 +1472,21 @@ describe("multiplication candidate payloads (Julian P4)", () => {
   // ADR 0022: Julian-fed headcount.
   it("round-trips a manual_member_count, defaulting to null when absent or blank", () => {
     const present = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
+      ...TYPE,
       manual_member_count: "12",
     });
     expect(present.ok).toBe(true);
     if (present.ok) expect(present.value.manual_member_count).toBe(12);
 
     const blank = validateUpdateMultiplicationCandidatePayload({
+      ...TYPE,
       candidate_id: UUID_A,
       manual_member_count: "",
     });
     expect(blank.ok).toBe(true);
     if (blank.ok) expect(blank.value.manual_member_count).toBeNull();
 
-    const absent = validateCreateMultiplicationCandidatePayload({
-      group_id: UUID_A,
-    });
+    const absent = validateCreateMultiplicationCandidatePayload({ ...TYPE });
     expect(absent.ok).toBe(true);
     if (absent.ok) expect(absent.value.manual_member_count).toBeNull();
   });
@@ -1421,19 +1494,19 @@ describe("multiplication candidate payloads (Julian P4)", () => {
   it("rejects a manual_member_count that is non-numeric or out of bounds", () => {
     expect(
       validateCreateMultiplicationCandidatePayload({
-        group_id: UUID_A,
+        ...TYPE,
         manual_member_count: "lots",
       }).ok
     ).toBe(false);
     expect(
       validateCreateMultiplicationCandidatePayload({
-        group_id: UUID_A,
+        ...TYPE,
         manual_member_count: "-1",
       }).ok
     ).toBe(false);
     expect(
       validateCreateMultiplicationCandidatePayload({
-        group_id: UUID_A,
+        ...TYPE,
         manual_member_count: "1001",
       }).ok
     ).toBe(false);

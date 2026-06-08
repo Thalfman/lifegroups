@@ -24,6 +24,12 @@ import {
   CAPACITY_STATUS_LABEL,
   type SuggestedMultiplicationGroup,
 } from "@/lib/admin/capacity-board";
+import {
+  AUDIENCE_LABEL,
+  groupTypeKey,
+  type GroupTypeOption,
+  type GroupTypeRef,
+} from "@/lib/admin/audience";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   fieldInputStyle,
@@ -35,6 +41,7 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type {
+  GroupAudienceCategory,
   MultiplicationCandidateStatus,
   MultiplicationMeetingTime,
 } from "@/types/enums";
@@ -97,16 +104,263 @@ function ReadinessChips({ readiness }: { readiness: ReadinessResult }) {
   );
 }
 
+// Props the type-first forms share: the selectable group types, the active
+// groups per type, and the full apprentice map (the apprentice picker keys off
+// whichever group is chosen).
+type TypeGroupProps = {
+  typeOptions: GroupTypeOption[];
+  groupsByType: Record<string, GroupTypeRef[]>;
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
+};
+
+// The reactive heart of the type-first candidate forms: the selected type drives
+// which groups the "willing to multiply" picker offers, and the selected group
+// drives which apprentices can be linked. Returns controlled state plus the
+// derived audience/category (posted as hidden fields) and the filtered option
+// lists. `effectiveGroupId` / `effectiveLeaderPipelineId` collapse a stale
+// selection to "" when the type/group changes out from under it.
+function useCandidateTypeGroup(opts: {
+  typeOptions: GroupTypeOption[];
+  groupsByType: Record<string, GroupTypeRef[]>;
+  apprenticesByGroup: Record<string, ApprenticeOption[]>;
+  initialAudience?: GroupAudienceCategory | null;
+  initialCategoryId?: string | null;
+  initialWilling?: boolean;
+  initialGroupId?: string | null;
+  initialGroupName?: string | null;
+  initialLeaderPipelineId?: string | null;
+  initialTypeLabel?: string | null;
+}) {
+  const initialTypeKey =
+    opts.initialAudience && opts.initialCategoryId
+      ? groupTypeKey(opts.initialAudience, opts.initialCategoryId)
+      : "";
+  const [typeKey, setTypeKey] = useState(initialTypeKey);
+  const [willing, setWilling] = useState(opts.initialWilling ?? false);
+  const [groupId, setGroupId] = useState(opts.initialGroupId ?? "");
+  const [leaderPipelineId, setLeaderPipelineId] = useState(
+    opts.initialLeaderPipelineId ?? ""
+  );
+
+  // Degraded-read safety (edit): if a category read failed or the candidate's
+  // cell was deactivated, its type is absent from the loaded options. Keep it
+  // selectable so editing other fields doesn't blank the now-required type and
+  // make the candidate unsaveable.
+  const typeOptions = useMemo(() => {
+    if (
+      !opts.initialAudience ||
+      !opts.initialCategoryId ||
+      opts.typeOptions.some(
+        (t) => groupTypeKey(t.audienceCategory, t.categoryId) === initialTypeKey
+      )
+    ) {
+      return opts.typeOptions;
+    }
+    return [
+      {
+        audienceCategory: opts.initialAudience,
+        categoryId: opts.initialCategoryId,
+        label: opts.initialTypeLabel ?? "Current type",
+      },
+      ...opts.typeOptions,
+    ];
+  }, [
+    opts.typeOptions,
+    opts.initialAudience,
+    opts.initialCategoryId,
+    opts.initialTypeLabel,
+    initialTypeKey,
+  ]);
+
+  const selectedType = typeOptions.find(
+    (t) => groupTypeKey(t.audienceCategory, t.categoryId) === typeKey
+  );
+
+  const groupsForType = useMemo(() => {
+    const base = typeKey ? (opts.groupsByType[typeKey] ?? []) : [];
+    // A candidate's own group is excluded from groupsByType server-side (it's
+    // "used"), so inject it on edit to keep it selectable for its own type.
+    if (
+      opts.initialGroupId &&
+      typeKey === initialTypeKey &&
+      !base.some((g) => g.id === opts.initialGroupId)
+    ) {
+      return [
+        {
+          id: opts.initialGroupId,
+          name: opts.initialGroupName ?? "Current group",
+        },
+        ...base,
+      ];
+    }
+    return base;
+  }, [
+    typeKey,
+    opts.groupsByType,
+    opts.initialGroupId,
+    opts.initialGroupName,
+    initialTypeKey,
+  ]);
+
+  // The group picker is revealed by the willing checkbox (the requested UX) —
+  // but a candidate that ALREADY has a group keeps the picker shown regardless,
+  // so editing an unrelated field on a not-yet-willing-but-grouped candidate
+  // never silently detaches its group. Detaching is then explicit (pick "none").
+  const showGroupPicker = willing || Boolean(opts.initialGroupId);
+  const effectiveGroupId =
+    showGroupPicker && groupsForType.some((g) => g.id === groupId)
+      ? groupId
+      : "";
+  const apprenticeOptions = effectiveGroupId
+    ? (opts.apprenticesByGroup[effectiveGroupId] ?? [])
+    : [];
+  const effectiveLeaderPipelineId = apprenticeOptions.some(
+    (a) => a.id === leaderPipelineId
+  )
+    ? leaderPipelineId
+    : "";
+
+  return {
+    typeKey,
+    setTypeKey,
+    willing,
+    setWilling,
+    showGroupPicker,
+    groupId: effectiveGroupId,
+    setGroupId,
+    leaderPipelineId: effectiveLeaderPipelineId,
+    setLeaderPipelineId,
+    audience: selectedType?.audienceCategory ?? null,
+    categoryId: selectedType?.categoryId ?? null,
+    groupsForType,
+    apprenticeOptions,
+    typeOptions,
+  };
+}
+
+type TypeGroupState = ReturnType<typeof useCandidateTypeGroup>;
+
+// The top "group candidate" picker — a group type (audience × category). Posts
+// the audience_category + category_id the candidate is anchored to.
+function TypeField({
+  idPrefix,
+  state,
+}: {
+  idPrefix: string;
+  state: TypeGroupState;
+}) {
+  return (
+    <div>
+      <label htmlFor={`${idPrefix}-type`} style={fieldLabelStyle}>
+        Group type
+      </label>
+      <select
+        id={`${idPrefix}-type`}
+        value={state.typeKey}
+        onChange={(e) => state.setTypeKey(e.target.value)}
+        style={fieldSelectStyle}
+      >
+        <option value="" disabled>
+          Select a type…
+        </option>
+        {state.typeOptions.map((t) => {
+          const key = groupTypeKey(t.audienceCategory, t.categoryId);
+          return (
+            <option key={key} value={key}>
+              {AUDIENCE_LABEL[t.audienceCategory]} · {t.label}
+            </option>
+          );
+        })}
+      </select>
+      <input
+        type="hidden"
+        name="audience_category"
+        value={state.audience ?? ""}
+      />
+      <input type="hidden" name="category_id" value={state.categoryId ?? ""} />
+    </div>
+  );
+}
+
+// The "Leader willing to multiply" checkbox and the group picker it reveals —
+// the groups that carry the selected type. With willing unchecked, no group_id
+// posts, so the candidate is saved as a type-only watch.
+function WillingGroupField({
+  idPrefix,
+  state,
+}: {
+  idPrefix: string;
+  state: TypeGroupState;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <label style={checkboxLabelStyle}>
+        <input
+          type="checkbox"
+          name="shepherd_willing"
+          checked={state.willing}
+          onChange={(e) => state.setWilling(e.target.checked)}
+        />
+        Leader willing to multiply
+      </label>
+      {state.showGroupPicker ? (
+        <div>
+          <label htmlFor={`${idPrefix}-group`} style={fieldLabelStyle}>
+            Group multiplying
+          </label>
+          <select
+            id={`${idPrefix}-group`}
+            name="group_id"
+            value={state.groupId}
+            onChange={(e) => state.setGroupId(e.target.value)}
+            // Disabled only when there's genuinely nothing to pick — NOT merely
+            // when no type is selected. A legacy candidate on an Uncategorized
+            // group has no type but its current group is injected as an option;
+            // a disabled control wouldn't submit, silently dropping the group.
+            disabled={state.groupsForType.length === 0}
+            style={fieldSelectStyle}
+          >
+            <option value="">Select a group…</option>
+            {state.groupsForType.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          <p style={hintStyle}>
+            {state.groupsForType.length > 0
+              ? "Groups that carry the selected type. Leave unset to track the type only."
+              : state.typeKey
+                ? "No active groups carry this type yet — leave it as a type-only watch."
+                : "Pick a group type first."}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function CandidateEditForm({
   c,
-  apprenticeOptions,
-}: {
-  c: CandidateView;
-  apprenticeOptions: ApprenticeOption[];
-}) {
+  typeOptions,
+  groupsByType,
+  apprenticesByGroup,
+}: { c: CandidateView } & TypeGroupProps) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateMultiplicationCandidate
   );
+  const typeGroup = useCandidateTypeGroup({
+    typeOptions,
+    groupsByType,
+    apprenticesByGroup,
+    initialAudience: c.audience,
+    initialCategoryId: c.categoryId,
+    initialWilling: c.shepherdWilling,
+    initialGroupId: c.groupId,
+    initialGroupName: c.groupName,
+    initialLeaderPipelineId: c.leaderPipelineId,
+    initialTypeLabel: c.categoryLabel,
+  });
   const {
     state: archiveState,
     formAction: archiveAction,
@@ -119,6 +373,7 @@ function CandidateEditForm({
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <form action={formAction} style={{ display: "grid", gap: 10 }}>
         <input type="hidden" name="candidate_id" value={c.candidateId} />
+        <TypeField idPrefix={`mc-edit-${c.candidateId}`} state={typeGroup} />
         <div
           className="lg-m-grid-stack"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
@@ -222,6 +477,10 @@ function CandidateEditForm({
             {c.activeMemberCount}).
           </p>
         </div>
+        <WillingGroupField
+          idPrefix={`mc-edit-${c.candidateId}`}
+          state={typeGroup}
+        />
         <div>
           <label htmlFor={fid("leader_pipeline_id")} style={fieldLabelStyle}>
             Linked apprentice
@@ -229,36 +488,24 @@ function CandidateEditForm({
           <select
             id={fid("leader_pipeline_id")}
             name="leader_pipeline_id"
-            defaultValue={c.leaderPipelineId ?? ""}
+            value={typeGroup.leaderPipelineId}
+            onChange={(e) => typeGroup.setLeaderPipelineId(e.target.value)}
+            disabled={!typeGroup.groupId}
             style={fieldSelectStyle}
           >
             <option value="">No apprentice linked</option>
-            {apprenticeOptions.map((a) => (
+            {typeGroup.apprenticeOptions.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
               </option>
             ))}
           </select>
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontFamily: fontBody,
-              fontSize: 11,
-              color: P.ink3,
-            }}
-          >
-            Only apprentices in this group can lead its next group. Add one in
-            People → Apprentices.
+          <p style={hintStyle}>
+            {typeGroup.groupId
+              ? "Only apprentices in the multiplying group can lead its next group. Add one in People → Apprentices."
+              : "Pick the multiplying group above to link one of its apprentices."}
           </p>
         </div>
-        <label style={{ ...checkboxLabelStyle }}>
-          <input
-            type="checkbox"
-            name="shepherd_willing"
-            defaultChecked={c.shepherdWilling}
-          />
-          Leader willing to multiply
-        </label>
         <label style={{ ...checkboxLabelStyle }}>
           <input
             type="checkbox"
@@ -300,11 +547,10 @@ function CandidateEditForm({
 
 function CandidateRow({
   c,
-  apprenticeOptions,
-}: {
-  c: CandidateView;
-  apprenticeOptions: ApprenticeOption[];
-}) {
+  typeOptions,
+  groupsByType,
+  apprenticesByGroup,
+}: { c: CandidateView } & TypeGroupProps) {
   const [editing, setEditing] = useState(false);
   // Doc-shaped read view: surface the planning facts Julian scans for — the
   // linked apprentice and its stage (R8), then successor/meeting time —
@@ -361,26 +607,37 @@ function CandidateRow({
         {editing ? "Close" : "Edit"}
       </button>
       {editing ? (
-        <CandidateEditForm c={c} apprenticeOptions={apprenticeOptions} />
+        <CandidateEditForm
+          c={c}
+          typeOptions={typeOptions}
+          groupsByType={groupsByType}
+          apprenticesByGroup={apprenticesByGroup}
+        />
       ) : null}
     </div>
   );
 }
 
 function AddCandidateForm({
-  availableGroups,
-}: {
-  availableGroups: { id: string; name: string }[];
-}) {
+  typeOptions,
+  groupsByType,
+  apprenticesByGroup,
+}: TypeGroupProps) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminCreateMultiplicationCandidate
   );
-  if (availableGroups.length === 0) {
+  const typeGroup = useCandidateTypeGroup({
+    typeOptions,
+    groupsByType,
+    apprenticesByGroup,
+  });
+  if (typeOptions.length === 0) {
     return (
       <p
         style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3, margin: 0 }}
       >
-        Every active group is already in the pipeline.
+        No active group types yet. Add one in Settings → Groups, then it will be
+        selectable here.
       </p>
     );
   }
@@ -390,26 +647,7 @@ function AddCandidateForm({
         className="lg-m-grid-stack"
         style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}
       >
-        <div>
-          <label htmlFor="mc-group" style={fieldLabelStyle}>
-            Group
-          </label>
-          <select
-            id="mc-group"
-            name="group_id"
-            defaultValue=""
-            style={fieldSelectStyle}
-          >
-            <option value="" disabled>
-              Select a group…
-            </option>
-            {availableGroups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TypeField idPrefix="mc-add" state={typeGroup} />
         <div>
           <label htmlFor="mc-year" style={fieldLabelStyle}>
             Target year
@@ -493,22 +731,12 @@ function AddCandidateForm({
           placeholder="e.g. 12"
           style={fieldInputStyle}
         />
-        <p
-          style={{
-            margin: "4px 0 0",
-            fontFamily: fontBody,
-            fontSize: 11,
-            color: P.ink3,
-          }}
-        >
-          Julian&rsquo;s headcount for this group. Leave blank to use the in-app
-          roster count.
+        <p style={hintStyle}>
+          Julian&rsquo;s headcount for the multiplying group. Leave blank to use
+          the in-app roster count.
         </p>
       </div>
-      <label style={checkboxLabelStyle}>
-        <input type="checkbox" name="shepherd_willing" />
-        Leader willing to multiply
-      </label>
+      <WillingGroupField idPrefix="mc-add" state={typeGroup} />
       <label style={checkboxLabelStyle}>
         <input type="checkbox" name="needs_similar_stage" />
         Need for a similar-stage group
@@ -684,15 +912,14 @@ function SuggestionsPanel({
 
 export function MultiplicationPlanner({
   segments,
-  availableGroups,
+  typeOptions,
+  groupsByType,
   apprenticesByGroup,
   suggestions,
 }: {
   segments: SegmentGroup[];
-  availableGroups: { id: string; name: string }[];
-  apprenticesByGroup: Record<string, ApprenticeOption[]>;
   suggestions: SuggestedMultiplicationGroup[];
-}) {
+} & TypeGroupProps) {
   const [yearFilter, setYearFilter] = useState<TargetYearFilter>("all");
   const visible = useMemo(
     () => filterSegmentsByYear(segments, yearFilter),
@@ -751,7 +978,11 @@ export function MultiplicationPlanner({
           </p>
         </header>
 
-        <AddCandidateForm availableGroups={availableGroups} />
+        <AddCandidateForm
+          typeOptions={typeOptions}
+          groupsByType={groupsByType}
+          apprenticesByGroup={apprenticesByGroup}
+        />
 
         {segments.length === 0 ? null : (
           <YearFilterBar
@@ -813,7 +1044,9 @@ export function MultiplicationPlanner({
                 <CandidateRow
                   key={c.candidateId}
                   c={c}
-                  apprenticeOptions={apprenticesByGroup[c.groupId] ?? []}
+                  typeOptions={typeOptions}
+                  groupsByType={groupsByType}
+                  apprenticesByGroup={apprenticesByGroup}
                 />
               ))}
             </div>
@@ -831,6 +1064,13 @@ const checkboxLabelStyle = {
   fontFamily: fontBody,
   fontSize: 13,
   color: P.ink,
+} as const;
+
+const hintStyle = {
+  margin: "4px 0 0",
+  fontFamily: fontBody,
+  fontSize: 11,
+  color: P.ink3,
 } as const;
 
 const linkButtonStyle = {

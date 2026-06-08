@@ -35,3 +35,28 @@ export function isAudienceCategory(
 ): value is GroupAudienceCategory {
   return value === "men" || value === "women" || value === "mixed";
 }
+
+// A "group type" is a cell — an audience × a free-form category. These shapes
+// and the key live in this pure leaf (no server/IO deps) so both the server
+// data builders and the client planner can share them without a client bundle
+// pulling in server-only code.
+
+// A selectable group type for the multiplication candidate form's top picker;
+// `label` is the category's catalog label (e.g. "20-30s").
+export type GroupTypeOption = {
+  audienceCategory: GroupAudienceCategory;
+  categoryId: string;
+  label: string;
+};
+
+// A group that carries a given type, for the "willing to multiply" picker.
+export type GroupTypeRef = { id: string; name: string };
+
+// The stable key joining an audience + category into one map key, so the
+// server's `groupsByType` and the client's lookups agree without sharing state.
+export function groupTypeKey(
+  audience: GroupAudienceCategory,
+  categoryId: string
+): string {
+  return `${audience}|${categoryId}`;
+}

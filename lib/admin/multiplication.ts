@@ -164,8 +164,16 @@ export function segmentAnchorId(segment: string): string {
 // server so the client component stays presentational.
 export type CandidateView = {
   candidateId: string;
-  groupId: string;
+  // Type-first: the multiplying group, or null for a type-only watch. The edit
+  // form pre-selects the type from `audience`/`categoryId` and the group from
+  // `groupId`.
+  groupId: string | null;
   groupName: string;
+  audience: GroupAudienceCategory | null;
+  categoryId: string | null;
+  // The candidate's own category label (for re-displaying its type in the edit
+  // form even when the loaded type options omit it). null = Uncategorized.
+  categoryLabel: string | null;
   segment: string;
   targetYear: number | null;
   status: MultiplicationCandidateStatus;
@@ -206,10 +214,16 @@ export function buildPlannerSegments(
 ): SegmentGroup[] {
   const segmentMap = new Map<string, SegmentGroup>();
   for (const entry of entries) {
-    const segment = segmentLabel(
-      entry.group?.audience_category ?? null,
-      entry.group?.category_label ?? null
-    );
+    // Type-first: bucket by the candidate's OWN cell (audience × category),
+    // falling back to the attached group's for legacy rows whose type columns
+    // weren't backfilled (e.g. a group that was Uncategorized).
+    const audience =
+      entry.candidate.audience_category ??
+      entry.group?.audience_category ??
+      null;
+    const categoryLabel =
+      entry.candidateCategoryLabel ?? entry.group?.category_label ?? null;
+    const segment = segmentLabel(audience, categoryLabel);
     // ADR 0022: Julian-fed headcount wins; fall back to the in-app roster count
     // when he hasn't entered one (so seeded candidates aren't shown as "0
     // members" until backfilled). The effective count drives both the display
@@ -219,7 +233,14 @@ export function buildPlannerSegments(
     const view: CandidateView = {
       candidateId: entry.candidate.id,
       groupId: entry.candidate.group_id,
-      groupName: entry.group?.name ?? "Unknown group",
+      groupName:
+        entry.group?.name ??
+        (entry.candidate.group_id
+          ? "Unknown group"
+          : "(type only — no group yet)"),
+      audience,
+      categoryId: entry.candidate.category_id,
+      categoryLabel,
       segment,
       targetYear: entry.candidate.target_year,
       status: entry.candidate.status,

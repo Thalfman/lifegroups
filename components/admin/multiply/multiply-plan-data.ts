@@ -6,7 +6,9 @@ import {
   fetchGroupRefs,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
+import { fetchCategoriesForAudience } from "@/lib/supabase/group-categories-reads";
 import {
+  buildGroupTypeOptions,
   buildMultiplicationView,
   type MultiplicationView,
 } from "@/components/admin/launch-planning/launch-planning-data";
@@ -27,11 +29,14 @@ export type MultiplyPlanReads = {
   fetchMultiplicationCandidates: OmitClient<
     typeof fetchMultiplicationCandidatesForAdmin
   >;
-  // Lean projections — the planner only needs to list active groups and build
-  // same-group apprentice-picker labels, so we avoid pulling privacy-sensitive
-  // columns (group admin_notes, apprentice notes) into this always-on read path.
+  // Lean projections — the planner only needs to list active groups (with their
+  // cell, to bucket the type picker) and build same-group apprentice-picker
+  // labels, so we avoid pulling privacy-sensitive columns (group admin_notes,
+  // apprentice notes) into this always-on read path.
   fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
   fetchApprenticeRefs: OmitClient<typeof fetchApprenticePickerRefs>;
+  // The active-cell category options per top type, for the group-type picker.
+  fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
 };
 
 export function supabaseMultiplyPlanReads(
@@ -41,12 +46,14 @@ export function supabaseMultiplyPlanReads(
     fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
     fetchGroupRefs,
     fetchApprenticeRefs: fetchApprenticePickerRefs,
+    fetchCategoriesForAudience,
   });
 }
 
 const EMPTY_VIEW: MultiplicationView = {
   segments: [],
-  availableGroups: [],
+  typeOptions: [],
+  groupsByType: {},
   apprenticesByGroup: {},
 };
 
@@ -56,10 +63,20 @@ const EMPTY_VIEW: MultiplicationView = {
 export async function buildMultiplyPlanData(
   reads: MultiplyPlanReads
 ): Promise<MultiplyPlanData> {
-  const [candidatesRes, groupRefsRes, apprenticeRefsRes] = await Promise.all([
+  const [
+    candidatesRes,
+    groupRefsRes,
+    apprenticeRefsRes,
+    menCatsRes,
+    womenCatsRes,
+    mixedCatsRes,
+  ] = await Promise.all([
     reads.fetchMultiplicationCandidates(),
     reads.fetchGroupRefs(),
     reads.fetchApprenticeRefs(),
+    reads.fetchCategoriesForAudience("men"),
+    reads.fetchCategoriesForAudience("women"),
+    reads.fetchCategoriesForAudience("mixed"),
   ]);
 
   const error =
@@ -70,11 +87,20 @@ export async function buildMultiplyPlanData(
 
   if (error) return { ...EMPTY_VIEW, error };
 
+  // The type picker degrades to empty rather than blocking the plan on a
+  // category read failure — the edit form preserves a candidate's existing type.
+  const typeOptions = buildGroupTypeOptions({
+    men: (menCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    women: (womenCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    mixed: (mixedCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+  });
+
   const todayIso = new Date().toISOString().slice(0, 10);
   const view = buildMultiplicationView(
     candidatesRes.data ?? [],
     groupRefsRes.data ?? [],
     apprenticeRefsRes.data ?? [],
+    typeOptions,
     todayIso
   );
   return { ...view, error: null };
