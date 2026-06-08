@@ -11,6 +11,7 @@ import {
   fetchAllGroupLeaders,
   fetchAllGroups,
   fetchAllMembers,
+  fetchGroupRefs,
   fetchLeaderPipelineForAdmin,
   fetchProfilesForAdmin,
   fetchShepherdCareDirectoryForAdmin,
@@ -33,6 +34,9 @@ export type PeopleReads = {
   fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
   fetchAllMembers: OmitClient<typeof fetchAllMembers>;
   fetchAllGroups: OmitClient<typeof fetchAllGroups>;
+  // Lean group projection for the shared leader-pipeline builder (which only
+  // needs id/name/lifecycle); the directory above keeps the full fetchAllGroups.
+  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
   fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
   fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
   fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
@@ -50,6 +54,7 @@ export function supabasePeopleReads(client: AppSupabaseClient): PeopleReads {
     fetchProfilesForAdmin,
     fetchAllMembers,
     fetchAllGroups,
+    fetchGroupRefs,
     fetchAllGroupLeaders,
     fetchActiveMemberships,
     fetchLeaderPipeline: fetchLeaderPipelineForAdmin,

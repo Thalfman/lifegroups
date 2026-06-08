@@ -17,7 +17,7 @@ function emptyReads(
 ): LeaderPipelineReads {
   return {
     fetchLeaderPipeline: async () => ok([]),
-    fetchAllGroups: async () => ok([]),
+    fetchGroupRefs: async () => ok([]),
     ...overrides,
   };
 }
@@ -26,7 +26,7 @@ describe("buildLeaderPipelineData", () => {
   it("offers only active groups, sorted by name", async () => {
     const data = await buildLeaderPipelineData(
       emptyReads({
-        fetchAllGroups: async () =>
+        fetchGroupRefs: async () =>
           ok([
             { id: "g2", name: "Beta", lifecycle_status: "active" },
             { id: "g1", name: "Alpha", lifecycle_status: "active" },

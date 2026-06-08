@@ -454,6 +454,8 @@ type MultiplicationCandidateFields = {
   // Capacity & Multiplication #184: the linked apprentice (leader_pipeline).
   // Same-group enforcement lives server-side (RPC + trigger).
   leader_pipeline_id: string | null;
+  // ADR 0022: Julian-fed headcount. Null = use the in-app roster count instead.
+  manual_member_count: number | null;
 };
 
 function validateMultiplicationCandidateFields(
@@ -521,6 +523,22 @@ function validateMultiplicationCandidateFields(
     }
   }
 
+  // ADR 0022: Julian-fed headcount. Blank/absent reads as null (= fall back to
+  // the in-app roster count); a value must be a whole number in [0, 1000],
+  // matching the RPC's bounds check.
+  let manualMemberCount: number | null = null;
+  const countRaw = readOptionalString(input.manual_member_count);
+  if (countRaw !== undefined) {
+    const n = readOptionalInteger(countRaw);
+    if (n === "invalid" || n === undefined) {
+      errors.push("Members (entered) must be a whole number.");
+    } else if (n < 0 || n > 1000) {
+      errors.push("Members (entered) must be between 0 and 1000.");
+    } else {
+      manualMemberCount = n;
+    }
+  }
+
   return {
     target_year: targetYear,
     status,
@@ -530,6 +548,7 @@ function validateMultiplicationCandidateFields(
     successor_designate: successor ?? null,
     meeting_time: meetingTime,
     leader_pipeline_id: leaderPipelineId,
+    manual_member_count: manualMemberCount,
   };
 }
 

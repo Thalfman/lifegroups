@@ -15,7 +15,9 @@ import {
 // the source of truth is the Doc, so the job is faithful transcription, not
 // data authoring. Ambiguity in the Doc is preserved, never resolved.
 
-const entry = (over: Partial<MultiplicationSeedEntry>): MultiplicationSeedEntry => ({
+const entry = (
+  over: Partial<MultiplicationSeedEntry>
+): MultiplicationSeedEntry => ({
   leader: "Test Leader",
   audience: "men",
   lifeStage: "multi_generational",
@@ -28,11 +30,19 @@ const entry = (over: Partial<MultiplicationSeedEntry>): MultiplicationSeedEntry 
 describe("buildSeedRows — Doc entry to group + candidate", () => {
   it("maps a single entry to one segmented group and one linked candidate", () => {
     const { groups, candidates } = buildSeedRows([
-      entry({ leader: "Nate Baron", audience: "men", lifeStage: "multi_generational" }),
+      entry({
+        leader: "Nate Baron",
+        audience: "men",
+        lifeStage: "multi_generational",
+      }),
     ]);
 
     expect(groups).toEqual([
-      { name: "Nate Baron", audienceCategory: "men", lifeStage: "multi_generational" },
+      {
+        name: "Nate Baron",
+        audienceCategory: "men",
+        lifeStage: "multi_generational",
+      },
     ]);
     expect(candidates).toHaveLength(1);
     expect(candidates[0].groupName).toBe("Nate Baron");
@@ -53,7 +63,9 @@ describe("buildSeedRows — Doc entry to group + candidate", () => {
 
 describe("buildCandidateNotes — provenance carried, not invented", () => {
   it("records the Doc's member count as provenance (no member-count column)", () => {
-    const notes = buildCandidateNotes(entry({ leader: "Tim Boberg", memberCount: 13 }));
+    const notes = buildCandidateNotes(
+      entry({ leader: "Tim Boberg", memberCount: 13 })
+    );
     expect(notes).toContain("13 members");
   });
 
@@ -63,14 +75,16 @@ describe("buildCandidateNotes — provenance carried, not invented", () => {
   });
 
   it("preserves a `(?)` uncertainty marker rather than resolving it", () => {
-    const notes = buildCandidateNotes(entry({ leader: "Sandra Lea", memberCount: null, uncertain: true }));
+    const notes = buildCandidateNotes(
+      entry({ leader: "Sandra Lea", memberCount: null, uncertain: true })
+    );
     expect(notes).not.toBeNull();
     expect(notes!.toLowerCase()).toContain("unconfirmed");
   });
 
   it("preserves verbatim source caveats", () => {
     const notes = buildCandidateNotes(
-      entry({ leader: "Jere and Jana Miller", caveats: ["(Vietmeier's?)"] }),
+      entry({ leader: "Jere and Jana Miller", caveats: ["(Vietmeier's?)"] })
     );
     expect(notes).toContain("(Vietmeier's?)");
   });
@@ -82,7 +96,9 @@ describe("buildSeedRows — candidate carries the composed notes", () => {
       entry({ leader: "Sandra Lea", memberCount: null, uncertain: true }),
     ]);
     expect(candidates[0].notes).toBe(
-      buildCandidateNotes(entry({ leader: "Sandra Lea", memberCount: null, uncertain: true })),
+      buildCandidateNotes(
+        entry({ leader: "Sandra Lea", memberCount: null, uncertain: true })
+      )
     );
   });
 });
@@ -90,12 +106,16 @@ describe("buildSeedRows — candidate carries the composed notes", () => {
 describe("renderMultiplicationSeedSql — idempotent, archive-safe inserts", () => {
   const sql = () =>
     renderMultiplicationSeedSql([
-      entry({ leader: "Nate Baron", audience: "men", lifeStage: "multi_generational" }),
+      entry({
+        leader: "Nate Baron",
+        audience: "men",
+        lifeStage: "multi_generational",
+      }),
     ]);
 
   it("guards the group insert so re-running does not duplicate it", () => {
     expect(sql()).toMatch(
-      /insert into public\.groups[\s\S]*where not exists \(\s*select 1 from public\.groups where name = 'Nate Baron'/i,
+      /insert into public\.groups[\s\S]*where not exists \(\s*select 1 from public\.groups where name = 'Nate Baron'/i
     );
   });
 
@@ -125,15 +145,48 @@ describe("renderMultiplicationSeedSql — faithful field rendering", () => {
 
   it("renders the successor/leader-designate and meeting time", () => {
     const out = renderMultiplicationSeedSql([
-      entry({ leader: "Nate Baron", successor: "Tony L.", meetingTime: "during_the_day" }),
+      entry({
+        leader: "Nate Baron",
+        successor: "Tony L.",
+        meetingTime: "during_the_day",
+      }),
     ]);
     expect(out).toContain("'Tony L.'");
-    expect(out).toContain("'during_the_day'::public.multiplication_meeting_time");
+    expect(out).toContain(
+      "'during_the_day'::public.multiplication_meeting_time"
+    );
   });
 
   it("renders null meeting time when the Doc gives none (no enum cast)", () => {
     const out = renderMultiplicationSeedSql([entry({ leader: "Tim Boberg" })]);
     expect(out).not.toContain("::public.multiplication_meeting_time");
+  });
+
+  // ADR 0022: the Doc's count now seeds the structured manual_member_count
+  // column, not just the provenance note, so seeded groups read Julian's
+  // headcount instead of the (unseeded → 0) in-app roster.
+  it("seeds the Doc's count into the manual_member_count column", () => {
+    const { candidates } = buildSeedRows([
+      entry({ leader: "George Kelly", memberCount: 9 }),
+    ]);
+    expect(candidates[0].manualMemberCount).toBe(9);
+
+    const out = renderMultiplicationSeedSql([
+      entry({ leader: "George Kelly", memberCount: 9 }),
+    ]);
+    expect(out).toContain("manual_member_count");
+    expect(out).toMatch(/, 9\n/);
+  });
+
+  it("renders manual_member_count null when the Doc gives no count", () => {
+    const { candidates } = buildSeedRows([
+      entry({ leader: "Sandra Lea", memberCount: null }),
+    ]);
+    expect(candidates[0].manualMemberCount).toBeNull();
+    const out = renderMultiplicationSeedSql([
+      entry({ leader: "Sandra Lea", memberCount: null }),
+    ]);
+    expect(out).toMatch(/, null\n/);
   });
 });
 
@@ -162,7 +215,9 @@ describe("MULTIPLICATION_SEED_ENTRIES — faithful transcription of the Doc", ()
   });
 
   it("carries the women's 6-vs-7 reconciliation mismatch into notes for every women's group", () => {
-    const womensGroups = MULTIPLICATION_SEED_ENTRIES.filter((e) => e.audience === "women");
+    const womensGroups = MULTIPLICATION_SEED_ENTRIES.filter(
+      (e) => e.audience === "women"
+    );
     expect(womensGroups.length).toBeGreaterThan(0);
     for (const e of womensGroups) {
       const notes = buildCandidateNotes(e);
@@ -177,7 +232,9 @@ describe("MULTIPLICATION_SEED_ENTRIES — faithful transcription of the Doc", ()
 
   it("preserves the meeting time the Doc records for retirement groups", () => {
     expect(byLeader("Carol Dembkowski").meetingTime).toBe("evening");
-    expect(byLeader("Ray and Julie Herrick").meetingTime).toBe("during_the_day");
+    expect(byLeader("Ray and Julie Herrick").meetingTime).toBe(
+      "during_the_day"
+    );
   });
 
   it("preserves an ambiguous life-stage label rather than silently remapping it", () => {
@@ -191,7 +248,7 @@ describe("supabase/seed/multiplication_seed.sql — committed artifact stays in 
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const path = fileURLToPath(
-      new URL("../../../supabase/seed/multiplication_seed.sql", import.meta.url),
+      new URL("../../../supabase/seed/multiplication_seed.sql", import.meta.url)
     );
     const onDisk = readFileSync(path, "utf8");
     expect(onDisk).toBe(renderMultiplicationSeedFile());

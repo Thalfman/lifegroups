@@ -91,6 +91,23 @@ export async function fetchAllGroups(
   return { data: data ?? [], error: null };
 }
 
+// A group reference is the id, name, and lifecycle status — enough to list
+// active groups (e.g. a candidate/apprentice picker) without pulling the full
+// row's privacy-sensitive columns (e.g. admin_notes). Prefer this over
+// fetchAllGroups on read paths that only need to identify active groups.
+export type GroupRef = Pick<GroupsRow, "id" | "name" | "lifecycle_status">;
+
+export async function fetchGroupRefs(
+  client: ReadClient
+): Promise<ReadResult<GroupRef[]>> {
+  const { data, error } = await client
+    .from("groups")
+    .select("id, name, lifecycle_status")
+    .order("name", { ascending: true });
+  if (error) return { data: null, error: wrapError("fetchGroupRefs", error) };
+  return { data: (data ?? []) as GroupRef[], error: null };
+}
+
 export async function fetchGroupsByIds(
   client: ReadClient,
   ids: string[]
@@ -725,7 +742,8 @@ export async function fetchChurchAttendanceSnapshots(
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
-  "notes, successor_designate, meeting_time, leader_pipeline_id, archived_at, " +
+  "notes, successor_designate, meeting_time, leader_pipeline_id, " +
+  "manual_member_count, archived_at, " +
   "created_by, updated_by, created_at, updated_at";
 
 export type MultiplicationCandidateGroup = Pick<
@@ -1014,6 +1032,32 @@ export async function fetchLeaderPipelineForAdmin(
     groupName: nameById.get(apprentice.group_id) ?? null,
   }));
   return { data: entries, error: null };
+}
+
+// A lean apprentice reference for the multiplication candidate picker: only the
+// identity, group, and stage used to build the same-group dropdown labels.
+// Narrower than fetchLeaderPipelineForAdmin (which also reads notes / dates /
+// member_id for the editable Leaders surface), so a Plan-only read path doesn't
+// pull apprentice notes. Shaped as `{ apprentice }` so it slots into the same
+// consumer (buildMultiplicationView) as the full pipeline entries.
+export type ApprenticePickerRef = Pick<
+  LeaderPipelineRow,
+  "id" | "group_id" | "display_name" | "readiness_stage"
+>;
+
+export async function fetchApprenticePickerRefs(
+  client: ReadClient
+): Promise<ReadResult<{ apprentice: ApprenticePickerRef }[]>> {
+  const { data, error } = await client
+    .from("leader_pipeline")
+    .select("id, group_id, display_name, readiness_stage")
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (error) {
+    return { data: null, error: wrapError("fetchApprenticePickerRefs", error) };
+  }
+  const rows = (data ?? []) as ApprenticePickerRef[];
+  return { data: rows.map((apprentice) => ({ apprentice })), error: null };
 }
 
 // Capacity & Multiplication #185: everything the Capacity Board + system

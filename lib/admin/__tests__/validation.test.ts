@@ -1394,6 +1394,50 @@ describe("multiplication candidate payloads (Julian P4)", () => {
     });
     expect(r.ok).toBe(false);
   });
+
+  // ADR 0022: Julian-fed headcount.
+  it("round-trips a manual_member_count, defaulting to null when absent or blank", () => {
+    const present = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+      manual_member_count: "12",
+    });
+    expect(present.ok).toBe(true);
+    if (present.ok) expect(present.value.manual_member_count).toBe(12);
+
+    const blank = validateUpdateMultiplicationCandidatePayload({
+      candidate_id: UUID_A,
+      manual_member_count: "",
+    });
+    expect(blank.ok).toBe(true);
+    if (blank.ok) expect(blank.value.manual_member_count).toBeNull();
+
+    const absent = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
+    expect(absent.ok).toBe(true);
+    if (absent.ok) expect(absent.value.manual_member_count).toBeNull();
+  });
+
+  it("rejects a manual_member_count that is non-numeric or out of bounds", () => {
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        group_id: UUID_A,
+        manual_member_count: "lots",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        group_id: UUID_A,
+        manual_member_count: "-1",
+      }).ok
+    ).toBe(false);
+    expect(
+      validateCreateMultiplicationCandidatePayload({
+        group_id: UUID_A,
+        manual_member_count: "1001",
+      }).ok
+    ).toBe(false);
+  });
 });
 
 describe("validateCreateShepherdCareFollowUpPayload", () => {

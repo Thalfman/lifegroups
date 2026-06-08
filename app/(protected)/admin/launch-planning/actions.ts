@@ -37,11 +37,15 @@ const REVALIDATE_PATH_PLANNING = "/admin/planning";
 
 // The former /admin/multiplication and /admin/capacity-board surfaces are now
 // folded into /admin/launch-planning (ADR 0010 surface-budget consolidation;
-// both old routes redirect here). Candidate and capacity-target writes therefore
-// only need to revalidate launch planning + the Planning area + the admin home.
+// both old routes redirect here). The per-group multiplication planner is ALSO
+// re-homed into the visible Multiply area's Plan tab (ADR 0022), so candidate
+// writes must revalidate /admin/multiply too — otherwise the Plan tab keeps
+// showing stale server-rendered candidates until a full reload.
+const REVALIDATE_PATH_MULTIPLY = "/admin/multiply";
 const CANDIDATE_REVALIDATE = [
   REVALIDATE_PATH_LAUNCH_PLANNING,
   REVALIDATE_PATH_PLANNING,
+  REVALIDATE_PATH_MULTIPLY,
   REVALIDATE_PATH_ADMIN,
 ] as const;
 
@@ -109,6 +113,9 @@ function readCandidateForm(input: unknown): Record<string, unknown> {
     // Empty string = "no apprentice linked"; collapse to undefined so the
     // validator reads it as unset (null) rather than a malformed uuid.
     leader_pipeline_id: readBlankableField(input.get("leader_pipeline_id")),
+    // ADR 0022: Julian-fed headcount; blank collapses to undefined so the
+    // validator reads it as unset (null = fall back to the roster count).
+    manual_member_count: readBlankableField(input.get("manual_member_count")),
   };
 }
 
@@ -223,6 +230,7 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
+      p_manual_member_count: value.manual_member_count,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",
@@ -253,6 +261,7 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
       p_successor_designate: value.successor_designate,
       p_meeting_time: value.meeting_time,
       p_leader_pipeline_id: value.leader_pipeline_id,
+      p_manual_member_count: value.manual_member_count,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
   noDataError: "The candidate was not saved. Please try again.",

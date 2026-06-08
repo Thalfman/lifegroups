@@ -23,6 +23,8 @@ function entry(over: {
   categoryLabel?: string | null;
   targetYear?: number | null;
   activeMemberCount?: number;
+  // ADR 0022: Julian-fed headcount; null = fall back to activeMemberCount.
+  manualMemberCount?: number | null;
   launchedOn?: string | null;
   coShepherdSince?: string | null;
   shepherdWilling?: boolean;
@@ -41,6 +43,7 @@ function entry(over: {
       successor_designate: over.successorDesignate ?? null,
       meeting_time: null,
       leader_pipeline_id: null,
+      manual_member_count: over.manualMemberCount ?? null,
       archived_at: null,
       created_by: null,
       updated_by: null,
@@ -225,6 +228,55 @@ describe("buildPlannerSegments", () => {
     // No category means no cell, so it collects in the visible Uncategorized
     // bucket admins use to find groups still needing a tag — not a "Men" segment.
     expect(segments[0].segment).toBe(UNCATEGORIZED_SEGMENT);
+  });
+});
+
+// ADR 0022: Julian-fed headcount. The manual count, when present, is the
+// effective member count the planner displays AND the value the "12+ members"
+// readiness criterion reads — overriding the in-app roster count. A null manual
+// count falls back to the roster count so seeded candidates aren't "0 members"
+// until backfilled.
+describe("buildPlannerSegments — Julian-fed member count (ADR 0022)", () => {
+  it("uses the manual count for the effective memberCount and the criterion when set", () => {
+    const [segment] = buildPlannerSegments(
+      [entry({ id: "1", activeMemberCount: 4, manualMemberCount: 13 })],
+      TODAY
+    );
+    const c = segment.candidates[0];
+    expect(c.memberCount).toBe(13);
+    expect(c.manualMemberCount).toBe(13);
+    // 13 ≥ 12, so the criterion is met even though the roster count (4) is not.
+    expect(c.readiness.criteria.enough_members).toBe(true);
+  });
+
+  it("falls back to the roster count for display and the criterion when manual is null", () => {
+    const [segment] = buildPlannerSegments(
+      [entry({ id: "1", activeMemberCount: 14, manualMemberCount: null })],
+      TODAY
+    );
+    const c = segment.candidates[0];
+    expect(c.memberCount).toBe(14);
+    expect(c.manualMemberCount).toBeNull();
+    expect(c.readiness.criteria.enough_members).toBe(true);
+  });
+
+  it("evaluates the 12-member boundary against the manual count", () => {
+    const below = buildPlannerSegments(
+      [entry({ id: "below", activeMemberCount: 30, manualMemberCount: 11 })],
+      TODAY
+    )[0].candidates[0];
+    const at = buildPlannerSegments(
+      [entry({ id: "at", activeMemberCount: 0, manualMemberCount: 12 })],
+      TODAY
+    )[0].candidates[0];
+
+    // Manual 11 fails the criterion even though the roster (30) would pass —
+    // the manual value is authoritative.
+    expect(below.memberCount).toBe(11);
+    expect(below.readiness.criteria.enough_members).toBe(false);
+    // Manual 12 passes even though the roster (0) would fail.
+    expect(at.memberCount).toBe(12);
+    expect(at.readiness.criteria.enough_members).toBe(true);
   });
 });
 

@@ -5,7 +5,8 @@ import {
   fetchLaunchPlanningScenariosForAdmin,
   fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
-  fetchAllGroups,
+  type ApprenticePickerRef,
+  type GroupRef,
   type LaunchPlanningInputsBundle,
 } from "@/lib/supabase/read-models";
 import {
@@ -121,7 +122,10 @@ const EMPTY_CAPACITY_MODEL: CapacityBoardModel = {
   segments: [],
 };
 
-type MultiplicationView = {
+// Exported so the Multiply area's thin Plan-tab loader
+// (components/admin/multiply/multiply-plan-data.ts) can shape the same planner
+// props without pulling in the heavy launch-planning forecast bundle.
+export type MultiplicationView = {
   segments: SegmentGroup[];
   availableGroups: { id: string; name: string }[];
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
@@ -130,19 +134,19 @@ type MultiplicationView = {
 type CandidatesData = NonNullable<
   Awaited<ReturnType<typeof fetchMultiplicationCandidatesForAdmin>>["data"]
 >;
-type AllGroupsData = NonNullable<
-  Awaited<ReturnType<typeof fetchAllGroups>>["data"]
->;
-type PipelineData = NonNullable<
-  Awaited<ReturnType<typeof fetchLeaderPipelineForAdmin>>["data"]
->;
 
 // Shape the multiplication-candidate, group, and pipeline reads into the
 // planner's props. Only called once its three source reads have succeeded.
-function buildMultiplicationView(
+// Shared by this loader and the Multiply Plan-tab loader. Both `allGroups` and
+// `pipeline` are typed to only the fields this builder reads (id/name/lifecycle;
+// apprentice id/group/name/stage), so callers may pass either the full rows
+// (launch planning) or the lean fetchGroupRefs / fetchApprenticePickerRefs
+// projections — the latter avoid pulling privacy-sensitive columns (group
+// admin_notes, apprentice notes) into the always-on Plan read path.
+export function buildMultiplicationView(
   candidates: CandidatesData,
-  allGroups: AllGroupsData,
-  pipeline: PipelineData,
+  allGroups: readonly GroupRef[],
+  pipeline: readonly { apprentice: ApprenticePickerRef }[],
   todayIso: string
 ): MultiplicationView {
   const segments = buildPlannerSegments(candidates, todayIso);

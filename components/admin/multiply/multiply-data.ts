@@ -2,6 +2,10 @@ import type { GroupAudienceCategory } from "@/types/enums";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import { ministryYearOf } from "@/lib/admin/ministry-year";
 
+// The Multiply area's tab keys. Defined here (not in the "use client" shell) so
+// both the shell and the server page can import them without a client boundary.
+export type MultiplyTabKey = "plan" | "readiness" | "leaders";
+
 // Shared Multiply constants (#380 → #403). The three top types (the canonical
 // Audience vocabulary) and their possessive per-type labels, plus the
 // off-season-aware ministry-year helper. These outlived the original per-type
@@ -25,4 +29,21 @@ export const MULTIPLY_TYPE_LABEL: Record<GroupAudienceCategory, string> = {
 export function currentMinistryYear(now: Date): number {
   const located = ministryYearOf(now);
   return located.year ?? now.getUTCFullYear();
+}
+
+const MULTIPLY_TAB_KEYS: readonly MultiplyTabKey[] = [
+  "plan",
+  "readiness",
+  "leaders",
+];
+
+// Resolve the Multiply tab the page should open on from a `?tab=` query param.
+// Defaults to "plan" (Julian's working view) for an absent or unrecognized
+// value, so a Readiness-grid cell can deep-link with `?tab=plan` and any other
+// caller still lands somewhere coherent. Pure, so the server page can call it.
+export function resolveMultiplyInitialTab(
+  param: string | string[] | undefined
+): MultiplyTabKey {
+  const raw = Array.isArray(param) ? param[0] : param;
+  return MULTIPLY_TAB_KEYS.find((k) => k === raw) ?? "plan";
 }
