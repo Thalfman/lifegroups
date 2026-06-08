@@ -22,8 +22,9 @@ export type InviteUserSuccess = {
   role: InviteUserPayload["role"];
   authUserState: "invited" | "existing_reused";
   groupAssignmentState: "none" | "created" | "reactivated" | "already_active";
-  // Present only on the "link" delivery path for a newly-invited user; the
-  // copyable invite action_link. Absent when an existing login is reused.
+  // A copyable setup link surfaced on every delivery path when one could be
+  // minted: the invite action_link for a newly-invited user, or a best-effort
+  // password-recovery link for an existing login. Absent only if minting failed.
   inviteLink?: string;
   warnings: string[];
 };

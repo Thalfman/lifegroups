@@ -216,26 +216,43 @@ Deno.serve(async (req: Request) => {
   if (inv.max_uses !== null && inv.used_count >= inv.max_uses)
     return fail("invitation_used", 409);
 
-  // 2. Don't let self-signup hijack or duplicate an existing identity. Both an
-  //    existing profile (which redeem_invitation refuses to relink) and an
-  //    existing Auth user are rejected with the SAME generic code so a
-  //    link-holder can't use the distinct response to enumerate which emails
-  //    are registered. (Full enumeration-resistance would need a verified-email
-  //    flow; this avoids the explicit "email_in_use" oracle.)
+  // 2. Don't let self-signup hijack a real login, but DO let a person already
+  //    on the roster (a profiles row with no linked auth user yet) CLAIM their
+  //    account. `redeem_invitation` is the authority and relinks such a row;
+  //    this pre-check only avoids creating an auth user for a case the RPC will
+  //    refuse. Cases:
+  //      * profile with a linked auth user, or a super_admin roster row ->
+  //        reject. Kept generic (`email_unavailable`) so a link holder can't
+  //        tell a claimable roster row from a real account.
+  //      * profile with auth_user_id IS NULL (non-super_admin) -> fall through
+  //        to createUser + RPC, which relinks it (the claim path).
+  //      * no profile at all -> brand-new path; additionally reject if an Auth
+  //        user already owns the email (a login with no profile) so it can't be
+  //        hijacked. The listUsers scan runs ONLY here -- on the claim branch
+  //        there is by definition no linked auth user for the profile, and a
+  //        stray same-email auth user is caught by createUser below.
   const { data: existingProfile, error: profileErr } = await service
     .from("profiles")
-    .select("id")
+    .select("auth_user_id, role")
     .eq("email", email)
     .maybeSingle();
   if (profileErr) return fail("db_error", 500);
-  if (existingProfile) return fail("email_unavailable", 409);
-
-  try {
-    if (await emailHasAuthUser(service, email)) {
+  if (existingProfile) {
+    if (
+      existingProfile.auth_user_id !== null ||
+      existingProfile.role === "super_admin"
+    ) {
       return fail("email_unavailable", 409);
     }
-  } catch {
-    return fail("db_error", 500);
+    // else: claimable roster profile -> proceed to createUser + RPC.
+  } else {
+    try {
+      if (await emailHasAuthUser(service, email)) {
+        return fail("email_unavailable", 409);
+      }
+    } catch {
+      return fail("db_error", 500);
+    }
   }
 
   // 3. Create the auth user with the chosen password (already email-confirmed
