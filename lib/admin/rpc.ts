@@ -1246,3 +1246,19 @@ export function rpcAdminSetCategoryTypeTargetCount(
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_set_category_type_target_count", args);
 }
+
+// Settings › Groups "+ Add existing group": tag an existing group into a cell
+// (audience × category). Focused audited write — updates ONLY the group's
+// audience_category + category_id under a row lock, rejecting closed groups and
+// inactive/archived cells. Used instead of replaying admin_update_group so a
+// concurrent edit to the group's other fields can't be clobbered.
+export function rpcAdminSetGroupCategory(
+  client: AppSupabaseClient,
+  args: {
+    p_group_id: string;
+    p_audience_category: GroupAudienceCategory;
+    p_category_id: string;
+  }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_set_group_category", args);
+}

@@ -27,6 +27,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.update_group": "Updated group",
   "admin.close_group": "Closed group",
   "admin.reopen_group": "Reopened group",
+  "admin.set_group_category": "Tagged group into category",
   "leader.submit_checkin": "Submitted check-in",
   "leader.update_checkin": "Updated check-in",
   "leader.mark_did_not_meet": "Did not meet",
