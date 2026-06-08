@@ -243,7 +243,7 @@ export function CareProfileFieldForm({
           </p>
           <div>
             <label htmlFor="cta-next_touchpoint_due" style={fieldLabelStyle}>
-              Next touchpoint
+              Next step
             </label>
             {/* Required: this drawer always submits set_next_touchpoint_due, so
                 an empty save would clear the leader's scheduled touchpoint. The
@@ -270,7 +270,7 @@ export function CareProfileFieldForm({
           </p>
           <div>
             <label htmlFor="cta-admin_summary" style={fieldLabelStyle}>
-              Admin summary (max 2000 chars) — admin-only
+              Issue / current concern (max 2000 chars) — admin-only
             </label>
             <textarea
               id="cta-admin_summary"

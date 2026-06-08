@@ -59,7 +59,7 @@ export function CareActions({
     { kind: "log_text", label: "Log text" },
     { kind: "log_visit", label: "Log visit" },
     { kind: "update_status", label: "Update status" },
-    { kind: "set_touchpoint", label: "Set next touchpoint" },
+    { kind: "set_touchpoint", label: "Set next step" },
     { kind: "edit_summary", label: summaryLabel },
   ];
 
@@ -106,7 +106,7 @@ export function CareActions({
     }
     if (kind === "set_touchpoint") {
       return {
-        title: "Set next touchpoint",
+        title: "Set next step",
         description: `When you'll next reach out to ${leaderName}. Admin-only.`,
         form: (
           <CareProfileFieldForm
@@ -119,8 +119,8 @@ export function CareActions({
     }
     return {
       title: current?.admin_summary
-        ? "Edit admin summary"
-        : "Add admin summary",
+        ? "Edit issue / concern"
+        : "Add issue / concern",
       description: `A high-level read on ${leaderName}. Admin-only — never shown on leader or member surfaces.`,
       form: (
         <CareProfileFieldForm {...shared} field="summary" current={current} />
