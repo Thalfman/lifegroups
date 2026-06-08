@@ -23,8 +23,9 @@ import {
 } from "@/components/admin/forms/action-form";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import {
+  groupCellsByAudience,
   resolveCategoryForLabel,
-  sortGroupTypeRows,
+  type AudienceBoard,
 } from "@/lib/admin/group-type-list";
 import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
@@ -83,10 +84,11 @@ export function GroupsCatalogEditor({
   // Delete-category cleanup entirely rather than risk archiving an in-use label.
   groupReferencesKnown: boolean;
 }) {
-  // Group shared-category rows together (label then Audience) so the "rename
-  // syncs across both" behaviour reads clearly; the coverage shortfall order
-  // upstream does not matter here.
-  const rows = sortGroupTypeRows(cells);
+  // Fold the flat per-cell list into the three Audience boards (Men's, Women's,
+  // Mixed), each carrying its categories (sorted by label) and summed coverage.
+  // A category shared across audiences now sits once under each board rather than
+  // as N separate top-level rows; the shared rename still syncs across them.
+  const boards = groupCellsByAudience(cells);
 
   // The drawer that edits one individual group — the same EditingSurface +
   // GroupEditForm the Groups page uses (#266). One instance for the whole list;
@@ -115,9 +117,10 @@ export function GroupsCatalogEditor({
 
   // Active groups that match no active group-type row (uncategorized, or a type
   // that's since been removed). They'd otherwise be unreachable here, so a
-  // catch-all keeps every group editable from this tab.
+  // catch-all keeps every group editable from this tab. Keyed off the cells
+  // directly (the boards hold exactly these), so it's independent of grouping.
   const matchedKeys = new Set(
-    rows.map((r) => typeKey(r.audienceCategory, r.categoryId))
+    cells.map((c) => typeKey(c.audienceCategory, c.categoryId))
   );
   const otherGroups = activeGroups
     .filter(
@@ -146,28 +149,17 @@ export function GroupsCatalogEditor({
     <div style={{ display: "grid", gap: 24 }}>
       <AddGroupTypeForm categories={categories} />
 
-      {rows.length === 0 ? (
-        <p style={emptyNoteStyle}>
-          No group types yet. Use &ldquo;Add a group type&rdquo; above — pick an
-          audience, type a category like &ldquo;20-30s&rdquo;, and save.
-        </p>
-      ) : (
-        <ul style={listStyle}>
-          {rows.map((row) => (
-            <GroupTypeRow
-              key={`${row.audienceCategory}:${row.categoryId}`}
-              row={row}
-              groups={
-                groupsByType.get(
-                  typeKey(row.audienceCategory, row.categoryId)
-                ) ?? []
-              }
-              groupsKnown={groupReferencesKnown}
-              onEdit={drawer.open}
-            />
-          ))}
-        </ul>
-      )}
+      <div style={{ display: "grid", gap: 12 }}>
+        {boards.map((board) => (
+          <AudienceBoard
+            key={board.audienceCategory}
+            board={board}
+            groupsByType={groupsByType}
+            groupsKnown={groupReferencesKnown}
+            onEdit={drawer.open}
+          />
+        ))}
+      </div>
 
       {otherGroups.length > 0 ? (
         <OtherGroups groups={otherGroups} onEdit={drawer.open} />
@@ -439,11 +431,73 @@ function AddGroupTypeForm({
   );
 }
 
-// One group-type row, now a native <details> disclosure so the list stays
-// scannable: the summary carries the Audience badge, the category label, the
-// live coverage readout, and the group count. Expanding reveals the type's
-// controls (rename / target / remove — each its own audited form) and the list
-// of individual groups in the type, each editable in place.
+// One Audience board — Men's, Women's, or Mixed. A native <details> (open by
+// default) so the whole list now collapses to three scannable rows: the summary
+// carries the audience name, the summed coverage across the board, and how many
+// categories it holds. Inside, each category is its own GroupTypeRow. All three
+// boards always render — an audience with no group types shows a short note so
+// there's a stable place to read every audience and add to it.
+function AudienceBoard({
+  board,
+  groupsByType,
+  groupsKnown,
+  onEdit,
+}: {
+  board: AudienceBoard;
+  groupsByType: Map<string, GroupsRow[]>;
+  groupsKnown: boolean;
+  onEdit: (groupId: string) => void;
+}) {
+  const name = TYPE_LABEL[board.audienceCategory];
+  const count = categoryCountLabel(board.cells.length);
+  return (
+    <details style={boardStyle} open>
+      <summary
+        className="lg-sac-summary"
+        style={summaryRowStyle}
+        aria-label={`${name} group types, have ${board.haveTotal} of ${board.targetTotal}, ${count}`}
+      >
+        <Chevron />
+        <span style={boardTitleStyle}>{name}</span>
+        <span style={summarySpacerStyle} />
+        <span style={readoutStyle} aria-live="polite">
+          have {board.haveTotal} of {board.targetTotal}
+        </span>
+        <span style={groupCountStyle}>{count}</span>
+      </summary>
+      <div style={detailsBodyStyle}>
+        {board.cells.length === 0 ? (
+          <p style={emptyGroupsNoteStyle}>
+            No {name} group types yet. Use &ldquo;Add a group type&rdquo; above.
+          </p>
+        ) : (
+          <ul style={listStyle}>
+            {board.cells.map((row) => (
+              <GroupTypeRow
+                key={`${row.audienceCategory}:${row.categoryId}`}
+                row={row}
+                groups={
+                  groupsByType.get(
+                    typeKey(row.audienceCategory, row.categoryId)
+                  ) ?? []
+                }
+                groupsKnown={groupsKnown}
+                onEdit={onEdit}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// One group-type row, a native <details> disclosure nested inside its Audience
+// board so the list stays scannable: the summary carries the category label, the
+// live coverage readout, and the group count (the board supplies the audience).
+// Expanding reveals the type's controls (rename / target / remove — each its own
+// audited form) and the list of individual groups in the type, each editable in
+// place.
 function GroupTypeRow({
   row,
   groups,
@@ -464,7 +518,6 @@ function GroupTypeRow({
       <details style={rowStyle}>
         <summary className="lg-sac-summary" style={summaryRowStyle}>
           <Chevron />
-          <span style={badgeStyle}>{TYPE_LABEL[row.audienceCategory]}</span>
           <span style={typeLabelStyle}>{row.label}</span>
           <span style={summarySpacerStyle} />
           <span style={readoutStyle} aria-live="polite">
@@ -623,6 +676,10 @@ function groupCountLabel(n: number): string {
   return n === 1 ? "1 group" : `${n} groups`;
 }
 
+function categoryCountLabel(n: number): string {
+  return n === 1 ? "1 category" : `${n} categories`;
+}
+
 // Rename the row's (shared) category. Renaming reflects across every cell of the
 // category — both Audiences when the label is shared — since they point at one
 // catalog row. Posts to the audited rename RPC.
@@ -771,6 +828,21 @@ const rowStyle = {
   background: P.surface,
 } as const;
 
+// The Audience board wraps a list of group-type rows. A slightly heavier border
+// than an inner row so the two nesting levels read as distinct.
+const boardStyle = {
+  border: `1px solid ${P.line2}`,
+  borderRadius: 12,
+  background: P.surface,
+} as const;
+
+const boardTitleStyle = {
+  fontFamily: fontBody,
+  fontSize: 15,
+  fontWeight: 700,
+  color: P.ink,
+} as const;
+
 const summaryRowStyle = {
   display: "flex",
   alignItems: "center",
@@ -873,18 +945,6 @@ const rowBottomStyle = {
   flexWrap: "wrap" as const,
 } as const;
 
-const badgeStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 600,
-  color: "#3e4f29",
-  background: P.sageSoft,
-  border: "1px solid #7f9b5e",
-  borderRadius: 999,
-  padding: "3px 10px",
-  whiteSpace: "nowrap" as const,
-} as const;
-
 const readoutStyle = {
   fontFamily: fontBody,
   fontSize: 12,
@@ -935,15 +995,6 @@ const noteStyle = {
   color: P.ink2,
   margin: 0,
   lineHeight: 1.55,
-} as const;
-
-const emptyNoteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-  margin: 0,
-  lineHeight: 1.55,
-  fontStyle: "italic" as const,
 } as const;
 
 const unusedSectionStyle = {
