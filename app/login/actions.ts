@@ -14,13 +14,16 @@ const ROUTE = "login";
 
 export async function loginAction(
   _prev: LoginFormState,
-  formData: FormData,
+  formData: FormData
 ): Promise<LoginFormState> {
   const requestId = newCorrelationId();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const nextRaw = formData.get("next");
-  const next = typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
+  const next =
+    typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -53,8 +56,12 @@ export async function loginAction(
       route_or_action: ROUTE,
       request_id: requestId,
       email_hash: emailHash,
-      // Stable code, no leak about whether the email exists.
-      error_code: "invalid_credentials",
+      // Record the real GoTrue code/status server-side (e.g. invalid_credentials
+      // vs email_not_confirmed vs over_request_rate_limit) so failures are
+      // triageable from logs. The user-facing message below stays deliberately
+      // generic so it never leaks whether the email is registered.
+      error_code: error.code ?? "invalid_credentials",
+      auth_status: error.status,
     });
     return { error: "Invalid email or password." };
   }
@@ -95,10 +102,16 @@ export async function loginAction(
     // Scope `local` so we only revoke the session we just created, not every
     // session the user has across other devices.
     await client.auth.signOut({ scope: "local" });
-    return { error: "Sign-in succeeded but we couldn't load your profile. Please try again." };
+    return {
+      error:
+        "Sign-in succeeded but we couldn't load your profile. Please try again.",
+    };
   }
 
-  const profile = profileQuery.data as { role: UserRole; status: ProfileStatus } | null;
+  const profile = profileQuery.data as {
+    role: UserRole;
+    status: ProfileStatus;
+  } | null;
 
   if (!profile) {
     log.warn({
