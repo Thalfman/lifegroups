@@ -1,17 +1,18 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { formatIsoDateOr } from "@/lib/shared/date";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
 
 // The per-Leader detail inside a Care accordion pane (#373, ADR 0016). Opened
-// (it lives behind its own <details>), it shows the Leader's pastoral Leader
-// Care Status plus four LABELLED PLACEHOLDER slots — Group-Health Grade,
-// Leader-Health Grade, Care Notes, Prayer Requests — that later slices
-// (#377/#378/#381) fill in. They are placeholders only: this slice is read-only
-// consolidation and reads no grade/note/prayer data. The Leader name links into
-// the existing per-leader detail surface (still resolvable under
-// /admin/shepherd-care) where the actual care work happens.
+// (it lives behind its own <details>), it shows an at-a-glance contact line
+// (the spreadsheet's Last contact / Next step), the Leader's pastoral Leader
+// Care Status, and the four slots that were placeholders until #377/#378/#381:
+// the Group-Health Grade(s), the Leader-Health Grade, and the Care Notes /
+// Prayer Requests presence. The slots read from the accordion model's enrichment
+// (no per-leader reads here); the Leader name still links into the full
+// per-leader detail surface where the actual care work happens.
 
 const slotLabelStyle: CSSProperties = {
   margin: 0,
@@ -23,32 +24,70 @@ const slotLabelStyle: CSSProperties = {
   color: P.ink3,
 };
 
-const placeholderBoxStyle: CSSProperties = {
-  background: P.bg,
-  border: `1px dashed ${P.line}`,
-  borderRadius: 8,
-  padding: "10px 12px",
+const valueTextStyle: CSSProperties = {
+  fontFamily: fontBody,
+  fontSize: 12.5,
+  color: P.ink,
+};
+
+const mutedTextStyle: CSSProperties = {
   fontFamily: fontBody,
   fontSize: 12.5,
   fontStyle: "italic",
   color: P.ink3,
 };
 
-// Each placeholder names the concept (so the slot is unmistakable in the UI and
-// in the test surface) and says it's coming, without inventing any value.
-function PlaceholderSlot({
-  label,
-  comingNote,
-}: {
-  label: string;
-  comingNote: string;
-}) {
+// A small A–F letter pill. D / F read as a concern (terra tint); A–C are neutral.
+function LetterBadge({ letter }: { letter: string }) {
+  const concern = letter === "D" || letter === "F";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        minWidth: 18,
+        justifyContent: "center",
+        fontFamily: fontSans,
+        fontSize: 12,
+        fontWeight: 700,
+        color: concern ? P.terraTextStrong : P.ink,
+        background: concern ? P.terraSoft : P.bg,
+        border: `1px solid ${concern ? P.terraSoft : P.line}`,
+        borderRadius: 6,
+        padding: "1px 6px",
+      }}
+    >
+      {letter}
+    </span>
+  );
+}
+
+function Slot({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div style={{ display: "grid", gap: 5 }}>
       <p style={slotLabelStyle}>{label}</p>
-      <div style={placeholderBoxStyle}>{comingNote}</div>
+      <div>{children}</div>
     </div>
   );
+}
+
+// "N care note(s) · M prayer request(s)", or a sealed / none-yet line. Never a
+// note body — only counts behind the RLS transparency grant.
+function CareNotesValue({ notes }: { notes: CareAccordionLeader["notes"] }) {
+  if (notes.transparency === "sealed") {
+    return (
+      <span style={mutedTextStyle}>
+        Sealed — visible when this leader&rsquo;s toggle is on.
+      </span>
+    );
+  }
+  if (notes.careNoteCount === 0 && notes.prayerCount === 0) {
+    return <span style={mutedTextStyle}>None yet.</span>;
+  }
+  const parts = [
+    `${notes.careNoteCount} care note${notes.careNoteCount === 1 ? "" : "s"}`,
+    `${notes.prayerCount} prayer request${notes.prayerCount === 1 ? "" : "s"}`,
+  ];
+  return <span style={valueTextStyle}>{parts.join(" · ")}</span>;
 }
 
 export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
@@ -107,25 +146,35 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
       </summary>
 
       <div style={{ display: "grid", gap: 14, padding: "4px 14px 16px" }}>
-        <div style={{ display: "grid", gap: 5 }}>
-          <p style={slotLabelStyle}>Leader Care Status</p>
-          <div>
-            {leader.careStatus ? (
-              <ShepherdCareStatusBadge status={leader.careStatus} />
-            ) : (
-              <span
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 12.5,
-                  fontStyle: "italic",
-                  color: P.ink3,
-                }}
-              >
-                No care status set yet.
-              </span>
-            )}
-          </div>
+        {/* At-a-glance, mirroring the spreadsheet row (Last contact / Next step).
+            Both come straight from the care directory row — no extra read. */}
+        <div
+          className="lg-m-grid-stack"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <Slot label="Last contact">
+            <span style={valueTextStyle}>
+              {formatIsoDateOr(leader.lastContactAt, "Never")}
+            </span>
+          </Slot>
+          <Slot label="Next step">
+            <span style={valueTextStyle}>
+              {formatIsoDateOr(leader.nextStepDue)}
+            </span>
+          </Slot>
         </div>
+
+        <Slot label="Leader Care Status">
+          {leader.careStatus ? (
+            <ShepherdCareStatusBadge status={leader.careStatus} />
+          ) : (
+            <span style={mutedTextStyle}>No care status set yet.</span>
+          )}
+        </Slot>
 
         <div
           className="lg-m-grid-stack"
@@ -135,22 +184,46 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
             gap: 12,
           }}
         >
-          <PlaceholderSlot
-            label="Group-Health Grade"
-            comingNote="Group-Health Grade coming soon."
-          />
-          <PlaceholderSlot
-            label="Leader-Health Grade"
-            comingNote="Leader-Health Grade coming soon."
-          />
-          <PlaceholderSlot
-            label="Care Notes"
-            comingNote="Care Notes coming soon."
-          />
-          <PlaceholderSlot
-            label="Prayer Requests"
-            comingNote="Prayer Requests coming soon."
-          />
+          <Slot label="Group-Health Grade">
+            {leader.ledGroups.length === 0 ? (
+              <span style={mutedTextStyle}>No active group.</span>
+            ) : (
+              <div style={{ display: "grid", gap: 4 }}>
+                {leader.ledGroups.map((g) => (
+                  <span
+                    key={g.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      ...valueTextStyle,
+                    }}
+                  >
+                    {g.healthGrade ? (
+                      <LetterBadge letter={g.healthGrade} />
+                    ) : (
+                      <span style={mutedTextStyle}>Not graded</span>
+                    )}
+                    <span style={{ color: P.ink2, overflowWrap: "anywhere" }}>
+                      {g.name}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Slot>
+
+          <Slot label="Leader-Health Grade">
+            {leader.leaderHealthGrade ? (
+              <LetterBadge letter={leader.leaderHealthGrade} />
+            ) : (
+              <span style={mutedTextStyle}>Not graded</span>
+            )}
+          </Slot>
+
+          <Slot label="Care Notes & Prayer">
+            <CareNotesValue notes={leader.notes} />
+          </Slot>
         </div>
 
         <Link

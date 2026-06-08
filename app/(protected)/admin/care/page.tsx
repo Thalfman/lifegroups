@@ -17,6 +17,16 @@ import {
 import { resolveCareInitialTabFromParams } from "@/lib/admin/shepherd-care-view";
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  currentMinistryYear,
+  currentPeriodMonthIso,
+} from "@/lib/admin/ministry-year";
+import {
+  loadCareAccordionEnrichment,
+  EMPTY_ENRICHMENT,
+  type CareAccordionEnrichment,
+} from "@/lib/supabase/care-accordion-reads";
 import {
   currentUtcDateIso,
   type ActiveShepherdCoverageAssignmentSummary,
@@ -97,6 +107,18 @@ function buildGroupNameByShepherdId(
   return out;
 }
 
+// Load the accordion enrichment (grades + note presence) behind its own client,
+// degrading to empty maps when the DB is not configured so the Care surface
+// still renders (matching loadCareData's documented empty-shape behaviour).
+async function loadCareAccordionEnrichmentSafe(
+  ministryYear: number | null,
+  periodMonthIso: string
+): Promise<CareAccordionEnrichment> {
+  const client = await createSupabaseServerClient();
+  if (!client) return EMPTY_ENRICHMENT;
+  return loadCareAccordionEnrichment(client, { ministryYear, periodMonthIso });
+}
+
 // Shared loader + tab/banner builder for the canonical Care shell. The canonical
 // /admin/care page and the thin alias entries (/admin/shepherd-care landing and
 // /admin/follow-ups) all call this one function so there is a single data path
@@ -112,10 +134,15 @@ export async function loadCarePageData(): Promise<{
   // here (the server action + RPC re-gate authoritatively).
   const isSuperAdmin = isSuperAdminRole(session.profile.role);
   const today = currentUtcDateIso();
+  // Health grades are keyed to the current Ministry Year (Aug–May); the Jun/Jul
+  // off-season has none, so the enrichment loader skips the grade reads then.
+  const ministryYear = currentMinistryYear();
+  const periodMonthIso = currentPeriodMonthIso();
 
-  const [followUpsData, care] = await Promise.all([
+  const [followUpsData, care, enrichment] = await Promise.all([
     loadAdminFollowUpsData(),
     loadCareData(today),
+    loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
   ]);
 
   const ownerNameByShepherdId = new Map<string, string>();
@@ -198,6 +225,13 @@ export async function loadCarePageData(): Promise<{
     groupLeaders: care.groupLeaders,
     groups: followUpsData.groups,
     careEntries: care.entries,
+    // #377/#378/#381 — the formerly-placeholder slots, now filled from the
+    // batched enrichment reads (Group-/Leader-Health Grades + Care Notes /
+    // Prayer presence). Enrichment degrades to empty maps, never blocking the
+    // accordion, so a failed grade/note read just shows ungraded / sealed.
+    leaderHealthByLeaderId: enrichment.leaderHealthByLeaderId,
+    groupHealthByGroupId: enrichment.groupHealthByGroupId,
+    noteStateByLeaderId: enrichment.noteStateByLeaderId,
   });
 
   const errorBanner = care.error ? (

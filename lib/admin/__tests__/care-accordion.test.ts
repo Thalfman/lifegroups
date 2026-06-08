@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCareAccordion,
+  buildNoteStateByLeaderId,
+  resolveGroupHealthByGroupId,
+  resolveLeaderHealthByLeaderId,
   type CareAccordionGroupLeader,
+  type CareAccordionNoteState,
+  type GroupHealthGradeInput,
+  type LeaderHealthGradeInput,
 } from "@/lib/admin/care-accordion";
 import type { GroupsRow } from "@/types/database";
-import type { ShepherdCareStatus } from "@/types/enums";
+import type {
+  GroupHealthLetter,
+  LeaderHealthLetter,
+  ShepherdCareStatus,
+} from "@/types/enums";
+import type { Rubric } from "@/lib/admin/health-rubric";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   OverShepherdListRow,
@@ -246,5 +257,147 @@ describe("buildCareAccordion", () => {
       "Abe Leader",
       "Zeb Leader",
     ]);
+  });
+
+  // #377/#378/#381 — the formerly-placeholder slots, now filled from enrichment.
+  it("defaults to ungraded / sealed when no enrichment maps are passed", () => {
+    const panes = buildCareAccordion({
+      overShepherds: [overShepherd("os-1", "Olive Shepherd")],
+      assignments: [assignment("ldr-1", "os-1", "Olive Shepherd")],
+      groupLeaders: [groupLeader("ldr-1", "g-1")],
+      groups: [group("g-1", "Alpha Group")],
+      careEntries: [entry("ldr-1", "Lance Leader", "doing_well")],
+    });
+
+    const leader = panes.find((p) => p.overShepherdId === "os-1")!.leaders[0]!;
+    expect(leader.leaderHealthGrade).toBeNull();
+    expect(leader.ledGroups).toEqual([
+      { id: "g-1", name: "Alpha Group", healthGrade: null },
+    ]);
+    expect(leader.notes).toEqual<CareAccordionNoteState>({
+      transparency: "sealed",
+      careNoteCount: 0,
+      prayerCount: 0,
+    });
+  });
+
+  it("fills grade + note slots from the enrichment maps", () => {
+    const panes = buildCareAccordion({
+      overShepherds: [overShepherd("os-1", "Olive Shepherd")],
+      assignments: [assignment("ldr-1", "os-1", "Olive Shepherd")],
+      groupLeaders: [groupLeader("ldr-1", "g-1")],
+      groups: [group("g-1", "Alpha Group")],
+      careEntries: [entry("ldr-1", "Lance Leader", "needs_follow_up")],
+      leaderHealthByLeaderId: new Map<string, LeaderHealthLetter | null>([
+        ["ldr-1", "B"],
+      ]),
+      groupHealthByGroupId: new Map<string, GroupHealthLetter | null>([
+        ["g-1", "C"],
+      ]),
+      noteStateByLeaderId: new Map<string, CareAccordionNoteState>([
+        [
+          "ldr-1",
+          { transparency: "visible", careNoteCount: 2, prayerCount: 1 },
+        ],
+      ]),
+    });
+
+    const leader = panes.find((p) => p.overShepherdId === "os-1")!.leaders[0]!;
+    expect(leader.leaderHealthGrade).toBe("B");
+    expect(leader.ledGroups[0]!.healthGrade).toBe("C");
+    expect(leader.notes.transparency).toBe("visible");
+    expect(leader.notes.careNoteCount).toBe(2);
+    expect(leader.notes.prayerCount).toBe(1);
+  });
+});
+
+const ONE_CRITERION_RUBRIC: Rubric = {
+  criteria: [{ key: "k1", label: "Criterion 1", weight: 100 }],
+};
+const PERIOD = "2026-02-01"; // Feb 2026 — inside ministry year 2025 (Aug–May).
+
+describe("resolveLeaderHealthByLeaderId", () => {
+  it("resolves the computed letter from scores", () => {
+    const rows: LeaderHealthGradeInput[] = [
+      {
+        profile_id: "ldr-1",
+        criterion_scores: { k1: 95 },
+        override_letter: null,
+        override_scope: null,
+        override_period_month: null,
+      },
+    ];
+    const map = resolveLeaderHealthByLeaderId(
+      rows,
+      ONE_CRITERION_RUBRIC,
+      2025,
+      PERIOD
+    );
+    expect(map.get("ldr-1")).toBe("A");
+  });
+
+  it("an until_cleared override forces the letter over the computed band", () => {
+    const rows: LeaderHealthGradeInput[] = [
+      {
+        profile_id: "ldr-1",
+        criterion_scores: { k1: 95 }, // computes to A
+        override_letter: "D",
+        override_scope: "until_cleared",
+        override_period_month: null,
+      },
+    ];
+    const map = resolveLeaderHealthByLeaderId(
+      rows,
+      ONE_CRITERION_RUBRIC,
+      2025,
+      PERIOD
+    );
+    expect(map.get("ldr-1")).toBe("D");
+  });
+});
+
+describe("resolveGroupHealthByGroupId", () => {
+  it("resolves the computed letter from scores", () => {
+    const rows: GroupHealthGradeInput[] = [
+      {
+        group_id: "g-1",
+        criterion_scores: { k1: 72 },
+        override_letter: null,
+        override_scope: null,
+        override_period_month: null,
+      },
+    ];
+    const map = resolveGroupHealthByGroupId(rows, ONE_CRITERION_RUBRIC, PERIOD);
+    expect(map.get("g-1")).toBe("C"); // 72 is in the 70–79 band
+  });
+});
+
+describe("buildNoteStateByLeaderId", () => {
+  it("marks granted leaders visible and counts their notes/prayers", () => {
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: ["ldr-1", "ldr-2"],
+      careNoteSubjectIds: ["ldr-1", "ldr-1", "ldr-2"],
+      prayerSubjectIds: ["ldr-1"],
+    });
+    expect(map.get("ldr-1")).toEqual<CareAccordionNoteState>({
+      transparency: "visible",
+      careNoteCount: 2,
+      prayerCount: 1,
+    });
+    // Granted but no notes yet → visible with zero counts.
+    expect(map.get("ldr-2")).toEqual<CareAccordionNoteState>({
+      transparency: "visible",
+      careNoteCount: 1,
+      prayerCount: 0,
+    });
+  });
+
+  it("omits leaders with no grant and no readable notes (default sealed)", () => {
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: [],
+      careNoteSubjectIds: [],
+      prayerSubjectIds: [],
+    });
+    expect(map.size).toBe(0);
   });
 });
