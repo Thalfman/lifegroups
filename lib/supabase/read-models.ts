@@ -1034,6 +1034,32 @@ export async function fetchLeaderPipelineForAdmin(
   return { data: entries, error: null };
 }
 
+// A lean apprentice reference for the multiplication candidate picker: only the
+// identity, group, and stage used to build the same-group dropdown labels.
+// Narrower than fetchLeaderPipelineForAdmin (which also reads notes / dates /
+// member_id for the editable Leaders surface), so a Plan-only read path doesn't
+// pull apprentice notes. Shaped as `{ apprentice }` so it slots into the same
+// consumer (buildMultiplicationView) as the full pipeline entries.
+export type ApprenticePickerRef = Pick<
+  LeaderPipelineRow,
+  "id" | "group_id" | "display_name" | "readiness_stage"
+>;
+
+export async function fetchApprenticePickerRefs(
+  client: ReadClient
+): Promise<ReadResult<{ apprentice: ApprenticePickerRef }[]>> {
+  const { data, error } = await client
+    .from("leader_pipeline")
+    .select("id, group_id, display_name, readiness_stage")
+    .is("archived_at", null)
+    .order("created_at", { ascending: true });
+  if (error) {
+    return { data: null, error: wrapError("fetchApprenticePickerRefs", error) };
+  }
+  const rows = (data ?? []) as ApprenticePickerRef[];
+  return { data: rows.map((apprentice) => ({ apprentice })), error: null };
+}
+
 // Capacity & Multiplication #185: everything the Capacity Board + system
 // suggestions need beyond the launch-planning inputs bundle — the apprentices
 // per group (for the ready-to-multiply badge), the co-shepherd tenure for every

@@ -2,8 +2,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
+  fetchApprenticePickerRefs,
   fetchGroupRefs,
-  fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
 import {
@@ -27,10 +27,11 @@ export type MultiplyPlanReads = {
   fetchMultiplicationCandidates: OmitClient<
     typeof fetchMultiplicationCandidatesForAdmin
   >;
-  // Lean id/name/lifecycle projection — the planner only needs to list active
-  // groups, so we avoid pulling privacy-sensitive columns (admin_notes).
+  // Lean projections — the planner only needs to list active groups and build
+  // same-group apprentice-picker labels, so we avoid pulling privacy-sensitive
+  // columns (group admin_notes, apprentice notes) into this always-on read path.
   fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
-  fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
+  fetchApprenticeRefs: OmitClient<typeof fetchApprenticePickerRefs>;
 };
 
 export function supabaseMultiplyPlanReads(
@@ -39,7 +40,7 @@ export function supabaseMultiplyPlanReads(
   return bindReads(client, {
     fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
     fetchGroupRefs,
-    fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
+    fetchApprenticeRefs: fetchApprenticePickerRefs,
   });
 }
 
@@ -55,16 +56,16 @@ const EMPTY_VIEW: MultiplicationView = {
 export async function buildMultiplyPlanData(
   reads: MultiplyPlanReads
 ): Promise<MultiplyPlanData> {
-  const [candidatesRes, groupRefsRes, pipelineRes] = await Promise.all([
+  const [candidatesRes, groupRefsRes, apprenticeRefsRes] = await Promise.all([
     reads.fetchMultiplicationCandidates(),
     reads.fetchGroupRefs(),
-    reads.fetchLeaderPipeline(),
+    reads.fetchApprenticeRefs(),
   ]);
 
   const error =
     candidatesRes.error?.message ??
     groupRefsRes.error?.message ??
-    pipelineRes.error?.message ??
+    apprenticeRefsRes.error?.message ??
     null;
 
   if (error) return { ...EMPTY_VIEW, error };
@@ -73,7 +74,7 @@ export async function buildMultiplyPlanData(
   const view = buildMultiplicationView(
     candidatesRes.data ?? [],
     groupRefsRes.data ?? [],
-    pipelineRes.data ?? [],
+    apprenticeRefsRes.data ?? [],
     todayIso
   );
   return { ...view, error: null };

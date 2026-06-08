@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchAllGroups,
+  fetchGroupRefs,
   fetchLeaderPipelineForAdmin,
 } from "@/lib/supabase/read-models";
 import {
@@ -26,7 +26,10 @@ export type LeaderPipelineData = {
 
 export type LeaderPipelineReads = {
   fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
+  // Lean id/name/lifecycle projection — the rollup only needs to identify active
+  // groups, so we avoid pulling the full group row (e.g. admin_notes), which
+  // matters now this loads on every Multiply visit via the Leaders tab.
+  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
 };
 
 export function supabaseLeaderPipelineReads(
@@ -34,7 +37,7 @@ export function supabaseLeaderPipelineReads(
 ): LeaderPipelineReads {
   return bindReads(client, {
     fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
-    fetchAllGroups,
+    fetchGroupRefs,
   });
 }
 
@@ -47,12 +50,12 @@ const EMPTY_ROLLUP: PipelineRollup = {
 export async function buildLeaderPipelineData(
   reads: LeaderPipelineReads
 ): Promise<LeaderPipelineData> {
-  const [pipelineRes, allGroupsRes] = await Promise.all([
+  const [pipelineRes, groupRefsRes] = await Promise.all([
     reads.fetchLeaderPipeline(),
-    reads.fetchAllGroups(),
+    reads.fetchGroupRefs(),
   ]);
 
-  const activeGroups: PipelineGroupRef[] = (allGroupsRes.data ?? [])
+  const activeGroups: PipelineGroupRef[] = (groupRefsRes.data ?? [])
     .filter((g) => g.lifecycle_status === "active")
     .map((g) => ({ id: g.id, name: g.name }));
 
@@ -75,7 +78,7 @@ export async function buildLeaderPipelineData(
   return {
     rollup,
     availableGroups,
-    error: pipelineRes.error?.message ?? allGroupsRes.error?.message ?? null,
+    error: pipelineRes.error?.message ?? groupRefsRes.error?.message ?? null,
   };
 }
 

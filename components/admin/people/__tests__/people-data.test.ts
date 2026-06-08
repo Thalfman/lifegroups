@@ -19,6 +19,7 @@ function emptyReads(overrides: Partial<PeopleReads> = {}): PeopleReads {
     fetchProfilesForAdmin: async () => ok([]),
     fetchAllMembers: async () => ok([]),
     fetchAllGroups: async () => ok([]),
+    fetchGroupRefs: async () => ok([]),
     fetchAllGroupLeaders: async () => ok([]),
     fetchActiveMemberships: async () => ok([]),
     fetchLeaderPipeline: async () => ok([]),
@@ -63,7 +64,7 @@ describe("buildPeoplePipelineData", () => {
   it("offers only active groups, sorted by name", async () => {
     const pipeline = await buildPeoplePipelineData(
       emptyReads({
-        fetchAllGroups: async () =>
+        fetchGroupRefs: async () =>
           ok([
             { id: "g2", name: "Beta", lifecycle_status: "active" },
             { id: "g1", name: "Alpha", lifecycle_status: "active" },
