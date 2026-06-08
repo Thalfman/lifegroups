@@ -31,6 +31,8 @@ function emptyReads(overrides: Partial<SettingsReads> = {}): SettingsReads {
     // #400: per-cell coverage reads default to empty.
     fetchCategoryTypeTargetCells: async () => ok([]),
     fetchGroupCellLifecycleRows: async () => ok([]),
+    // The Groups-tab inline edit drawer's category picker; empty by default.
+    fetchCategoriesForAudience: async () => ok([]),
     ...overrides,
   };
 }

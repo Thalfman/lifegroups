@@ -465,6 +465,13 @@ const SETTINGS_DATA: SettingsShellData = {
   // against, so the group-type list + "+" add flow is in the tree for the a11y
   // scan.
   groupCategories: [{ id: "cat-1", label: "20-30s" }],
+  // The category-picker options per top type for the Groups tab's inline edit
+  // drawer; cat-1 is applied under men + women in the coverage rows below.
+  categoriesByAudience: {
+    men: [{ id: "cat-1", label: "20-30s" }],
+    women: [{ id: "cat-1", label: "20-30s" }],
+    mixed: [],
+  },
   // #400 / #412 Settings > Groups: coverage rows for the two active cat-1 cells —
   // each is a row in the group-type list (its label, target, and live count) for
   // the a11y scan.
