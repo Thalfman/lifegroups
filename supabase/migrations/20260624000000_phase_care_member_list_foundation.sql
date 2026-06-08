@@ -44,11 +44,15 @@
 -- ---------------------------------------------------------------------------
 -- Tables  (enums reused from the shepherd_care foundation — no new enum)
 -- ---------------------------------------------------------------------------
+-- NOTE: the baseline status literal is 'doing_well', NOT 'healthy'. The
+-- shepherd_care_status value 'healthy' was renamed to 'doing_well' by
+-- 20260530030000_julian_q2_shepherd_care_status_five.sql, which runs before
+-- this migration — so 'healthy' is no longer a valid enum input here.
 
 create table public.member_care_profiles (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null references public.members(id) on delete restrict,
-  current_status public.shepherd_care_status not null default 'healthy',
+  current_status public.shepherd_care_status not null default 'doing_well',
   last_contact_at date,
   next_touchpoint_due date,
   admin_summary text,
@@ -187,7 +191,7 @@ begin
   -- audit before/after match the persisted row under a row lock even when two
   -- admins race the first upsert (same strategy as the leader-care RPC).
   insert into public.member_care_profiles (member_id, current_status)
-  values (p_member_id, 'healthy'::public.shepherd_care_status)
+  values (p_member_id, 'doing_well'::public.shepherd_care_status)
   on conflict (member_id) do nothing
   returning id into v_inserted_id;
 
@@ -324,8 +328,8 @@ begin
     member_id, current_status, last_contact_at, next_touchpoint_due
   ) values (
     p_member_id,
-    case when p_set_current_status then coalesce(p_current_status, 'healthy'::public.shepherd_care_status)
-         else 'healthy'::public.shepherd_care_status end,
+    case when p_set_current_status then coalesce(p_current_status, 'doing_well'::public.shepherd_care_status)
+         else 'doing_well'::public.shepherd_care_status end,
     p_interaction_at,
     case when p_set_next_touchpoint_due then p_next_touchpoint_due else null end
   )

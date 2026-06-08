@@ -48,8 +48,10 @@ describe("member-care migration — tables", () => {
   });
 
   it("REUSES the shepherd_care enums — it does not create a second enum", () => {
+    // Baseline is the post-rename value 'doing_well' (20260530030000 renamed
+    // 'healthy' -> 'doing_well'); 'healthy' would be an invalid enum input here.
     expect(sql.lower).toContain(
-      "current_status public.shepherd_care_status not null default 'healthy'"
+      "current_status public.shepherd_care_status not null default 'doing_well'"
     );
     expect(sql.lower).toContain(
       "interaction_type public.shepherd_care_interaction_type not null"
