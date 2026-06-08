@@ -278,14 +278,31 @@ export async function loadCarePageData(): Promise<{
       ),
     },
     {
+      // The flat, sortable view of the SAME leaders the Over-Shepherds tab
+      // groups — labelled "All leaders" so the two read as two views of one
+      // roster, not competing homes. Key stays "directory" for the legacy
+      // ?view=directory drill-down deep links (ADR 0013).
       key: "directory",
-      label: "Directory",
+      label: "All leaders",
       count: care.entries.length,
       panel: (
-        <ShepherdCareDirectoryTable
-          entries={care.entries}
-          coverageByShepherdId={coverageByShepherdId}
-        />
+        <div style={{ display: "grid", gap: 12 }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: fontBody,
+              fontSize: 13,
+              color: P.ink2,
+            }}
+          >
+            Every leader in one flat list — the same leaders the Over-Shepherds
+            tab groups by their over-shepherd.
+          </p>
+          <ShepherdCareDirectoryTable
+            entries={care.entries}
+            coverageByShepherdId={coverageByShepherdId}
+          />
+        </div>
       ),
     },
     {
@@ -345,8 +362,10 @@ export async function loadCarePageData(): Promise<{
       panel: <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />,
     },
     {
+      // The spreadsheet's "Update of communication", across all leaders: the
+      // recent calls / notes / meetings feed. Key unchanged for deep links.
       key: "recent-interactions",
-      label: "Recent interactions",
+      label: "Recent updates",
       count: area.recentCare.length,
       panel: (
         <CareItemList
