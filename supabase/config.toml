@@ -32,3 +32,7 @@ verify_jwt = false
 # mail scanner's GET can't burn the single-use token and verification works
 # cross-device. The required Redirect URLs (/reset-password, /auth/confirm,
 # /login) and Site URL are set under Auth → URL Configuration.
+#
+# IMPORTANT: invite/reset emails only DELIVER reliably with a custom SMTP
+# provider configured in the dashboard — Supabase's default sender is test-only.
+# Full setup steps: docs/architecture/EMAIL_DELIVERY.md.
