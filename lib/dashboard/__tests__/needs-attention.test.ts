@@ -215,6 +215,63 @@ describe("buildNeedsAttentionItems: muted categories", () => {
   });
 });
 
+// Care/Plan/Multiply pivot (ADR 0016): group/member setup was retired, so the
+// Groups-bound actions drop out when the Groups tab is hidden, and the health
+// action lands on the active Care area instead of the off-nav group-health page.
+describe("buildNeedsAttentionItems: pivot link hygiene", () => {
+  function everyCategoryData(): AdminDashboardData {
+    const d = allClearData();
+    d.setupGaps.counts.noLeader = 1;
+    d.setupGaps.counts.noCapacity = 2; // a setup gap
+    d.healthSummary.counts.missing = 3;
+    d.shepherdCare.needsAttention = 4;
+    d.followUps = baseData().followUps; // a populated follow-ups list
+    return d;
+  }
+
+  it("keeps the Groups-bound actions when no hidden-nav set is supplied", () => {
+    const keys = buildNeedsAttentionItems(everyCategoryData()).map(
+      (i) => i.key
+    );
+    expect(keys).toContain("no_leader");
+    expect(keys).toContain("setup_gaps");
+  });
+
+  it("keeps the Groups-bound actions when Groups is NOT hidden", () => {
+    const keys = buildNeedsAttentionItems(everyCategoryData(), {
+      hiddenNavAreas: new Set(["/admin/people", "/admin/planning"]),
+    }).map((i) => i.key);
+    expect(keys).toContain("no_leader");
+    expect(keys).toContain("setup_gaps");
+  });
+
+  it("drops both Groups-bound actions when the Groups tab is hidden", () => {
+    const keys = buildNeedsAttentionItems(everyCategoryData(), {
+      hiddenNavAreas: new Set(["/admin/groups"]),
+    }).map((i) => i.key);
+    expect(keys).not.toContain("no_leader");
+    expect(keys).not.toContain("setup_gaps");
+    // The non-Groups actions are untouched.
+    expect(keys).toContain("care_attention");
+    expect(keys).toContain("health");
+    expect(keys).toContain("follow_ups");
+  });
+
+  it("threads the Groups-hidden gate through the ranked queue too", () => {
+    const keys = buildTopNextActions(everyCategoryData(), {
+      hiddenNavAreas: new Set(["/admin/groups"]),
+    }).map((a) => a.key);
+    expect(keys).toEqual(["care_attention", "health", "follow_ups"]);
+  });
+
+  it("lands the health action on the active Care area, not the off-nav page", () => {
+    const d = allClearData();
+    d.healthSummary.counts.missing = 3;
+    const health = buildNeedsAttentionItems(d).find((i) => i.key === "health");
+    expect(health?.href).toBe("/admin/care");
+  });
+});
+
 // Ranked "Top next actions" queue (Admin Interaction Model PRD req 8, #271).
 // Pins the director-confirmed fixed ordering and the imperative phrasing.
 describe("buildTopNextActions", () => {

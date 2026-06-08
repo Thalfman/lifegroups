@@ -159,6 +159,7 @@ export function NeedsAttentionArea({
   data,
   degraded,
   mutedKeys,
+  hiddenNavAreas,
 }: {
   data: AdminDashboardData;
   // The dashboard read degraded to demo fallback; suppress the queue so its
@@ -168,10 +169,15 @@ export function NeedsAttentionArea({
   // each named category drops out of the queue entirely. Resolved server-side
   // from feature flags; an empty/undefined list mutes nothing.
   mutedKeys?: string[];
+  // Top-level area hrefs hidden from nav (ADR 0016). When Groups is hidden the
+  // Groups-bound actions (assign leaders / resolve setup gaps) drop out, since
+  // their only destination is a retired tab. Omitted ⇒ gate nothing.
+  hiddenNavAreas?: readonly string[];
 }) {
   const actions = buildTopNextActions(data, {
     degraded,
     mutedKeys: mutedKeys ? new Set(mutedKeys) : undefined,
+    hiddenNavAreas: hiddenNavAreas ? new Set(hiddenNavAreas) : undefined,
   });
 
   if (actions.length === 0) {

@@ -101,6 +101,7 @@ export function DashboardClient({
             data={data}
             degraded={degraded}
             mutedKeys={mutedKeys}
+            hiddenNavAreas={hiddenNavAreas}
           />
         </section>
 
