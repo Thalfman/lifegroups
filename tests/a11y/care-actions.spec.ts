@@ -23,7 +23,7 @@ test.describe("leader care actions (redesigned)", () => {
       "Log text",
       "Log visit",
       "Update status",
-      "Set next touchpoint",
+      "Set next step",
       "Add summary",
     ]) {
       await expect(

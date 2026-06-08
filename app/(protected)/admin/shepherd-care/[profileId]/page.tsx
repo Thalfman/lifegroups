@@ -402,6 +402,17 @@ export default async function AdminShepherdCareDetailPage({
       ? detail.ledGroups.map((g) => g.name).join(", ")
       : "No group assigned";
 
+  // "Date of first communication" (the spreadsheet's column C): the earliest
+  // logged interaction for this leader. Interactions load newest-first for the
+  // timeline, so scan for the minimum interaction_at rather than trusting order.
+  const firstContactAt = detail.interactions.reduce<string | null>(
+    (earliest, i) =>
+      i.interaction_at && (earliest === null || i.interaction_at < earliest)
+        ? i.interaction_at
+        : earliest,
+    null
+  );
+
   // Overview — leader summary, assigned group, care status, next action, plus
   // coverage and the care-action forms.
   const overviewPanel = (
@@ -434,13 +445,19 @@ export default async function AdminShepherdCareDetailPage({
             </div>
           </div>
           <div>
+            <span style={labelStyle}>First contact</span>
+            <div style={valueStyle}>
+              {formatIsoDateOr(firstContactAt, "No contact logged")}
+            </div>
+          </div>
+          <div>
             <span style={labelStyle}>Last contact</span>
             <div style={valueStyle}>
               {formatIsoDateOr(detail.care?.last_contact_at ?? null, "Never")}
             </div>
           </div>
           <div>
-            <span style={labelStyle}>Next touchpoint</span>
+            <span style={labelStyle}>Next step</span>
             <div style={valueStyle}>
               {formatIsoDateOr(detail.care?.next_touchpoint_due ?? null)}
             </div>
@@ -448,7 +465,11 @@ export default async function AdminShepherdCareDetailPage({
         </div>
         {detail.care?.admin_summary ? (
           <div style={{ marginTop: 16 }}>
-            <span style={labelStyle}>Admin summary</span>
+            {/* Spreadsheet column B ("Issue") + the running "Misc. note" — the
+                admin's plain-language summary of what's going on with this
+                leader. Visible up the oversight ladder; the truly sensitive
+                layer lives in the encrypted Private note tab. */}
+            <span style={labelStyle}>Issue / current concern</span>
             <p style={{ ...valueStyle, margin: 0, whiteSpace: "pre-wrap" }}>
               {detail.care.admin_summary}
             </p>
@@ -533,8 +554,10 @@ export default async function AdminShepherdCareDetailPage({
   );
 
   const contactHistoryPanel = (
-    <section style={cardStyle} aria-label="Interaction history">
-      <h2 style={sectionHeadingStyle}>Contact history</h2>
+    <section style={cardStyle} aria-label="Updates of communication">
+      {/* Spreadsheet column E ("Update of communication"): the append-only
+          running log of every call / note / meeting with this leader. */}
+      <h2 style={sectionHeadingStyle}>Updates</h2>
       <InteractionTimeline interactions={detail.interactions} />
     </section>
   );
@@ -782,13 +805,18 @@ export default async function AdminShepherdCareDetailPage({
     { key: "overview", label: "Overview", panel: overviewPanel },
     { key: "leader-health", label: "Leader Health", panel: leaderHealthPanel },
     {
+      // Key stays "contact-history" so existing ?tab= deep links keep landing
+      // here; the label speaks the spreadsheet's "Update of communication".
       key: "contact-history",
-      label: "Contact History",
+      label: "Updates",
       panel: contactHistoryPanel,
     },
     { key: "follow-ups", label: "Follow-ups", panel: followUpsPanel },
+    // The spreadsheet's "Misc. note" sensitive layer. Labelled "Private note"
+    // (not just "Notes") to disambiguate from the "Care notes & prayer" tab and
+    // signal the encrypted, only-you boundary. Key stays "notes" for deep links.
     ...(notesPanel
-      ? [{ key: "notes", label: "Notes", panel: notesPanel }]
+      ? [{ key: "notes", label: "Private note", panel: notesPanel }]
       : []),
     {
       key: "care-notes",

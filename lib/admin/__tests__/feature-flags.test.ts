@@ -115,6 +115,19 @@ describe("feature-flags", () => {
       }
     });
 
+    it("registers the member care list as a plain on/off new-surface flag", () => {
+      expect(getFeatureFlagDefinition("care_member_list")?.kind).toBe(
+        "new_surface"
+      );
+      expect(isFrozenSurfaceFlag("care_member_list")).toBe(false);
+      // Off by default: no stored config ⇒ Care stays leaders only.
+      expect(resolveFlag({}, "care_member_list")).toBe(false);
+      // On when explicitly enabled — no verify-before-flip for a new surface.
+      expect(
+        resolveFlag({ care_member_list: { enabled: true } }, "care_member_list")
+      ).toBe(true);
+    });
+
     it("registers the three nav-visibility flags as their own kind (not frozen)", () => {
       for (const { key } of NAV_VISIBILITY_FLAGS) {
         expect(getFeatureFlagDefinition(key)?.kind).toBe("nav_visibility");
