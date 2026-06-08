@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   validateCreateGroupPayload,
   validateUpdateGroupPayload,
+  validateSetGroupCategoryPayload,
 } from "@/lib/admin/validation";
 
 // #398: a group carries a free-form category_id (its cell under the top type)
@@ -64,6 +65,58 @@ describe("validateUpdateGroupPayload — category_id (#398)", () => {
     if (result.ok) {
       expect(result.value.group_id).toBe(GROUP_ID);
       expect(result.value.category_id).toBe(VALID_CATEGORY_ID);
+    }
+  });
+});
+
+describe("validateSetGroupCategoryPayload — Settings '+ Add existing group'", () => {
+  it("accepts a group id, audience, and concrete category id", () => {
+    const result = validateSetGroupCategoryPayload({
+      group_id: GROUP_ID,
+      audience_category: "men",
+      category_id: VALID_CATEGORY_ID,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.group_id).toBe(GROUP_ID);
+      expect(result.value.audience_category).toBe("men");
+      expect(result.value.category_id).toBe(VALID_CATEGORY_ID);
+    }
+  });
+
+  it("requires a concrete category — Uncategorized is not a tag target", () => {
+    const result = validateSetGroupCategoryPayload({
+      group_id: GROUP_ID,
+      audience_category: "men",
+      category_id: "",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join(" ")).toMatch(/category/i);
+    }
+  });
+
+  it("rejects a bad audience", () => {
+    const result = validateSetGroupCategoryPayload({
+      group_id: GROUP_ID,
+      audience_category: "everyone",
+      category_id: VALID_CATEGORY_ID,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join(" ")).toMatch(/audience/i);
+    }
+  });
+
+  it("rejects a missing/invalid group id", () => {
+    const result = validateSetGroupCategoryPayload({
+      group_id: "not-a-uuid",
+      audience_category: "women",
+      category_id: VALID_CATEGORY_ID,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.join(" ")).toMatch(/group_id/i);
     }
   });
 });

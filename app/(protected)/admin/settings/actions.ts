@@ -10,6 +10,7 @@ import {
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
   validateSetCategoryTypeTargetCountPayload,
+  validateSetGroupCategoryPayload,
   validateReadinessRulePayload,
   validateAudienceReadinessRulePayload,
   validateCellTriggerOverridePayload,
@@ -22,6 +23,7 @@ import {
   type ArchiveGroupCategoryPayload,
   type SetCategoryTypeCellPayload,
   type SetCategoryTypeTargetCountPayload,
+  type SetGroupCategoryPayload,
   type ReadinessRulePayload,
   type AudienceReadinessRulePayload,
   type CellTriggerOverridePayload,
@@ -46,7 +48,9 @@ import {
   rpcAdminSetReadinessRule,
   rpcAdminSetAudienceReadinessRule,
   rpcAdminSetCellTriggerOverrides,
+  rpcAdminUpdateGroup,
 } from "@/lib/admin/rpc";
+import { fetchGroupsByIds } from "@/lib/supabase/read-models";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
 
@@ -465,6 +469,66 @@ export async function adminSetCategoryTypeTargetCount(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
+}
+
+// Settings › Groups "+ Add existing group": tag an existing group into a cell
+// (audience × category) straight from the group-type list. Rather than add a
+// second group-write path, this reuses the audited admin_update_group RPC: it
+// re-reads the group's current fields server-side (so the full-column update
+// preserves everything else) and overrides ONLY the cell. The RPC stays the
+// authoritative gate — it re-checks the new cell is live + active and writes the
+// paired audit row, exactly as the group editor's save does. Revalidates the
+// Groups tab + Groups page + Multiply (all read this coverage).
+const SET_GROUP_CATEGORY_REVALIDATE_PATHS = [
+  ...SETTINGS_REVALIDATE_PATHS,
+  "/admin/multiply",
+] as const;
+
+const SET_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
+  SetGroupCategoryPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_group_category",
+  keys: ["group_id", "audience_category", "category_id"],
+  validate: validateSetGroupCategoryPayload,
+  fields: (_actor, value) => ({
+    target_group_id: value.group_id,
+    audience_category: value.audience_category,
+    target_category_id: value.category_id,
+  }),
+  rpc: async (client, value) => {
+    const { data } = await fetchGroupsByIds(client, [value.group_id]);
+    const group = data?.[0];
+    // The candidate list is built from current data, so a miss means the group
+    // was closed/removed between load and submit — surface it like the RPC's own
+    // missing_group so the form shows a clean error rather than throwing.
+    if (!group) return { data: null, error: { message: "missing_group" } };
+    return rpcAdminUpdateGroup(client, {
+      p_group_id: group.id,
+      p_name: group.name,
+      p_description: group.description,
+      p_meeting_day: group.meeting_day,
+      p_meeting_time: group.meeting_time,
+      p_location_area: group.location_area,
+      p_address_optional: group.address_optional,
+      p_capacity: group.capacity,
+      p_meeting_frequency: group.meeting_frequency,
+      p_meeting_week_parity: group.meeting_week_parity,
+      // The only fields this flow changes: the group's cell.
+      p_audience_category: value.audience_category,
+      p_category_id: value.category_id,
+      p_launched_on: group.launched_on,
+    });
+  },
+  revalidate: () => SET_GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The group was not added. Please try again.",
+};
+
+export async function adminSetGroupCategory(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_GROUP_CATEGORY_SPEC, prev, input);
 }
 
 // ----- Per-cell readiness rule (#402 / PRD §2.4) --------------------------
