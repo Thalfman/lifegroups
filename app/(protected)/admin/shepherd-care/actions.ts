@@ -184,6 +184,18 @@ function overShepherdPaths(overShepherdId?: string): string[] {
   ];
 }
 
+// Archiving an over-shepherd ends coverage for every leader they covered (#423),
+// so each of those leaders' detail pages now shows the wrong coverage. We don't
+// know that (unbounded) set of leader ids in the action, and the pages are
+// force-dynamic so the server re-renders fresh — but the client Router Cache can
+// still serve a stale copy. Invalidate the whole leader-detail route in one call
+// so they refresh, mirroring how the assign/end-coverage actions revalidate the
+// specific leader they touch. (PR #428 review.)
+const LEADER_DETAIL_ROUTE = {
+  path: "/admin/shepherd-care/[profileId]",
+  type: "page",
+} as const;
+
 // ----- adminUpsertShepherdCareProfile -------------------------------------
 
 const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
@@ -453,7 +465,10 @@ const UPDATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
       p_notes: value.notes,
       p_active: value.active,
     }),
-  revalidate: (value) => overShepherdPaths(value.over_shepherd_id),
+  revalidate: (value) => [
+    ...overShepherdPaths(value.over_shepherd_id),
+    ...(value.active === false ? [LEADER_DETAIL_ROUTE] : []),
+  ],
   noDataError: "The over-shepherd wasn't updated. Please try again.",
 };
 
@@ -484,7 +499,10 @@ const SET_OVER_SHEPHERD_ACTIVE_SPEC: AdminWriteActionSpec<
       p_over_shepherd_id: value.over_shepherd_id,
       p_active: value.active,
     }),
-  revalidate: (value) => overShepherdPaths(value.over_shepherd_id),
+  revalidate: (value) => [
+    ...overShepherdPaths(value.over_shepherd_id),
+    ...(value.active === false ? [LEADER_DETAIL_ROUTE] : []),
+  ],
   noDataError: "The over-shepherd wasn't updated. Please try again.",
 };
 

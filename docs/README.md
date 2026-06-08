@@ -1,14 +1,15 @@
 # Documentation Index
 
-The app is **pivoting to three areas — Care · Plan · Multiply** (2026-06). The
-current direction lives in the pivot ADRs + PRD #371 below; the prior north star
-(Julian's systems conversation, mapped 1:1 to Q1–Q12) is kept as the historical
-record it grew from. Everything off that path has been archived.
+The app is organised as **three areas — Care · Plan · Multiply** (the 2026-06
+pivot, now landed). The current direction lives in the pivot ADRs + PRD #371
+below; the prior north star (Julian's systems conversation, mapped 1:1 to
+Q1–Q12) is kept as the historical record it grew from. Everything off that path
+has been archived.
 
-> 🔄 **Current direction (the pivot):** **ADR
-> [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0020](./adr/0020-leader-care-note-is-group-scoped.md)**
-> and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (sliced
-> into #372–#382). Glossary: [`../CONTEXT.md`](../CONTEXT.md).
+> ✅ **Current direction (the landed pivot):** **ADR
+> [0016](./adr/0016-pivot-to-care-plan-multiply.md)–[0021](./adr/0021-three-tier-multiplication-trigger.md)**
+> and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (closed;
+> delivered across #372–#382). Glossary: [`../CONTEXT.md`](../CONTEXT.md).
 >
 > ⭐ **Original North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
 > — Julian's twelve questions (2026-05-27); re-shaped into Care/Plan/Multiply by the pivot.
