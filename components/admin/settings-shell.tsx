@@ -26,6 +26,7 @@ import type {
   PerTypeReadinessRule,
   ReadinessRule,
 } from "@/lib/admin/cell-readiness";
+import type { CategoriesByAudience } from "@/components/admin/forms/group-category-options";
 import type { GroupAudienceCategory } from "@/types/enums";
 
 export type SettingsShellData = {
@@ -45,6 +46,10 @@ export type SettingsShellData = {
   // reuses one category. Empty for a fresh ministry or when the read failed (see
   // errors.groupCategories).
   groupCategories: { id: string; label: string }[];
+  // Settings > Groups: the category-picker options per top type, feeding the
+  // inline edit drawer the group-type list now opens for an individual group.
+  // Empty for a fresh ministry or when the per-type catalog reads failed.
+  categoriesByAudience: CategoriesByAudience;
   // #400 / #412 Settings > Groups: per-active-cell coverage ("have X of Y"). Each
   // entry is a row in the group-type list, carrying its label, target, and live
   // count. Empty when no cell is active or the reads failed (see
@@ -244,7 +249,7 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
         <SectionHeader
           eyebrow="Group types"
           title="The group types you track"
-          description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Coverage (have X of Y) counts active and launching groups."
+          description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
         />
         {data.errors.groupCategories ? (
           <NotConfigured subject="Group types" />
@@ -254,6 +259,8 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
               cells={data.cellCoverage}
               categories={data.groupCategories}
               categoryIdsWithGroups={categoryIdsWithGroups}
+              groups={data.groups}
+              categoriesByAudience={data.categoriesByAudience}
               // A failed groups read makes the reference set empty for the wrong
               // reason, so the editor must not offer deletion in that case.
               groupReferencesKnown={data.errors.groups === null}
@@ -281,8 +288,8 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
       <section style={{ display: "grid", gap: 18 }}>
         <SectionHeader
           eyebrow="Multiplication trigger"
-          title="When a cell is ready to multiply"
-          description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single cell. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-cell issue; Group and Leader Health are A–F letters."
+          title="When a group type is ready to multiply"
+          description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-group-type issue; Group and Leader Health are A–F letters."
         />
         {data.errors.readiness ||
         data.errors.groupCategories ||

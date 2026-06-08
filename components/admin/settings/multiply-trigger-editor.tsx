@@ -121,10 +121,10 @@ export function MultiplyTriggerEditor({
     successText = "Global trigger saved.";
     note = (
       <p style={noteStyle}>
-        The ministry-wide default every type and cell inherits. A cell reads
-        &ldquo;ready&rdquo; when every <em>required</em> pillar clears; pillars
-        that aren&rsquo;t required are ignored. Ministry year {ministryYear}–
-        {ministryYear + 1}.
+        The ministry-wide default every type and group type inherits. A group
+        type reads &ldquo;ready&rdquo; when every <em>required</em> pillar
+        clears; pillars that aren&rsquo;t required are ignored. Ministry year{" "}
+        {ministryYear}–{ministryYear + 1}.
       </p>
     );
   } else if (level.kind === "type") {
@@ -152,7 +152,7 @@ export function MultiplyTriggerEditor({
     ];
     payloadName = "overrides";
     saveLabel = "Save overrides";
-    successText = "Cell overrides saved.";
+    successText = "Group type overrides saved.";
     note = (
       <p style={noteStyle}>
         Override only the pillars that differ for{" "}
@@ -160,7 +160,7 @@ export function MultiplyTriggerEditor({
           {TRIGGER_TYPE_LABEL[level.audience]} · {selectedCell?.label}
         </strong>
         ; the rest inherit {TRIGGER_TYPE_LABEL[level.audience]} / Global. Turn
-        every Override off to clear this cell.
+        every Override off to clear this group type.
       </p>
     );
   }

@@ -30,12 +30,17 @@ import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-tri
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 import type { GroupAudienceCategory } from "@/types/enums";
 import {
+  fetchCategoriesForAudience,
   fetchCategoryTypeTargetCells,
   fetchGroupCategories,
   fetchGroupCellLifecycleRows,
   type CategoryTypeTargetRow,
   type GroupCellLifecycleRow,
 } from "@/lib/supabase/group-categories-reads";
+import {
+  EMPTY_CATEGORIES_BY_AUDIENCE,
+  type CategoriesByAudience,
+} from "@/components/admin/forms/group-category-options";
 import {
   buildCellCoverage,
   sortByLargestShortfall,
@@ -77,6 +82,10 @@ export type SettingsReads = {
   // the pure buildCellCoverage resolver.
   fetchCategoryTypeTargetCells: OmitClient<typeof fetchCategoryTypeTargetCells>;
   fetchGroupCellLifecycleRows: OmitClient<typeof fetchGroupCellLifecycleRows>;
+  // Settings > Groups: the category-picker options per top type, for the inline
+  // edit drawer the group-type list now opens. Same per-audience read the Groups
+  // page uses (group-management-data); a failed read just narrows the picker.
+  fetchCategoriesForAudience: OmitClient<typeof fetchCategoriesForAudience>;
 };
 
 export function supabaseSettingsReads(
@@ -90,6 +99,7 @@ export function supabaseSettingsReads(
       fetchGroupCategories,
       fetchCategoryTypeTargetCells,
       fetchGroupCellLifecycleRows,
+      fetchCategoriesForAudience,
     }),
     fetchGroupHealthRubric: () => fetchHealthRubric(client, "group"),
     fetchReadinessRule: () =>
@@ -179,6 +189,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     groupRubricCriteria: [],
     leaderRubricCriteria: [],
     groupCategories: [],
+    categoriesByAudience: EMPTY_CATEGORIES_BY_AUDIENCE,
     cellCoverage: [],
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
@@ -216,6 +227,9 @@ export async function buildSettingsData(
     groupCellLifecycleResult,
     readinessResult,
     audienceReadinessResult,
+    menCatsResult,
+    womenCatsResult,
+    mixedCatsResult,
   ] = await Promise.all([
     reads.fetchMetricDefaults(),
     reads.fetchAllGroups(),
@@ -227,9 +241,28 @@ export async function buildSettingsData(
     reads.fetchGroupCellLifecycleRows(),
     reads.fetchReadinessRule(),
     reads.fetchAudienceReadinessRules(),
+    reads.fetchCategoriesForAudience("men"),
+    reads.fetchCategoriesForAudience("women"),
+    reads.fetchCategoriesForAudience("mixed"),
   ]);
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
+
+  // The category-picker options for the Groups tab's inline edit drawer, grouped
+  // by top type. A failed per-type read just drops to no options for that type
+  // (the picker then only offers "Uncategorized") rather than failing the tab —
+  // same silent fallback the Groups page uses.
+  const categoriesByAudience: CategoriesByAudience = {
+    men: (menCatsResult.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    women: (womenCatsResult.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
+    mixed: (mixedCatsResult.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
+  };
 
   return {
     defaults: decoded,
@@ -250,6 +283,7 @@ export async function buildSettingsData(
       id: c.id,
       label: c.label,
     })),
+    categoriesByAudience,
     // #400 / #412: per-active-cell coverage ("have X of Y") — one entry per row of
     // the Groups group-type list. A pure function of the catalog, the target cells,
     // and the group lifecycle rows.
