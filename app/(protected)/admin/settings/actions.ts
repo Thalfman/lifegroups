@@ -10,6 +10,7 @@ import {
   validateArchiveGroupCategoryPayload,
   validateSetCategoryTypeCellPayload,
   validateSetCategoryTypeTargetCountPayload,
+  validateSetGroupCategoryPayload,
   validateReadinessRulePayload,
   validateAudienceReadinessRulePayload,
   validateCellTriggerOverridePayload,
@@ -22,6 +23,7 @@ import {
   type ArchiveGroupCategoryPayload,
   type SetCategoryTypeCellPayload,
   type SetCategoryTypeTargetCountPayload,
+  type SetGroupCategoryPayload,
   type ReadinessRulePayload,
   type AudienceReadinessRulePayload,
   type CellTriggerOverridePayload,
@@ -43,6 +45,7 @@ import {
   rpcAdminArchiveGroupCategory,
   rpcAdminSetCategoryTypeCell,
   rpcAdminSetCategoryTypeTargetCount,
+  rpcAdminSetGroupCategory,
   rpcAdminSetReadinessRule,
   rpcAdminSetAudienceReadinessRule,
   rpcAdminSetCellTriggerOverrides,
@@ -465,6 +468,48 @@ export async function adminSetCategoryTypeTargetCount(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(SET_CATEGORY_TYPE_TARGET_COUNT_SPEC, prev, input);
+}
+
+// Settings › Groups "+ Add existing group": tag an existing group into a cell
+// (audience × category) straight from the group-type list. Delegates to the
+// focused admin_set_group_category RPC, which updates ONLY the group's cell
+// (audience_category + category_id) under a row lock — so a concurrent edit to
+// the group's other fields is never clobbered — and is the authoritative gate:
+// it rejects closed groups and inactive/archived cells and writes the paired
+// audit row. Revalidates the Groups tab + Groups page + Multiply (all read this
+// coverage).
+const SET_GROUP_CATEGORY_REVALIDATE_PATHS = [
+  ...SETTINGS_REVALIDATE_PATHS,
+  "/admin/multiply",
+] as const;
+
+const SET_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
+  SetGroupCategoryPayload,
+  { id: string }
+> = {
+  name: "admin.settings.set_group_category",
+  keys: ["group_id", "audience_category", "category_id"],
+  validate: validateSetGroupCategoryPayload,
+  fields: (_actor, value) => ({
+    target_group_id: value.group_id,
+    audience_category: value.audience_category,
+    target_category_id: value.category_id,
+  }),
+  rpc: (client, value) =>
+    rpcAdminSetGroupCategory(client, {
+      p_group_id: value.group_id,
+      p_audience_category: value.audience_category,
+      p_category_id: value.category_id,
+    }),
+  revalidate: () => SET_GROUP_CATEGORY_REVALIDATE_PATHS,
+  noDataError: "The group was not added. Please try again.",
+};
+
+export async function adminSetGroupCategory(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(SET_GROUP_CATEGORY_SPEC, prev, input);
 }
 
 // ----- Per-cell readiness rule (#402 / PRD §2.4) --------------------------

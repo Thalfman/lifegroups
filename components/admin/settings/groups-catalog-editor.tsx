@@ -8,6 +8,7 @@ import {
   adminRenameGroupCategory,
   adminSetCategoryTypeCell,
   adminSetCategoryTypeTargetCount,
+  adminSetGroupCategory,
 } from "@/app/(protected)/admin/settings/actions";
 import { P, fontBody } from "@/lib/pastoral";
 import {
@@ -90,6 +91,12 @@ export function GroupsCatalogEditor({
   // as N separate top-level rows; the shared rename still syncs across them.
   const boards = groupCellsByAudience(cells);
 
+  // Catalog label by id, so the "+ Add existing group" picker can show each
+  // candidate's current cell (audience · category) — the admin is picking from
+  // ANY active group, so naming where it sits now keeps a cross-audience /
+  // cross-category move from being a surprise.
+  const categoryLabelById = new Map(categories.map((c) => [c.id, c.label]));
+
   // The drawer that edits one individual group — the same EditingSurface +
   // GroupEditForm the Groups page uses (#266). One instance for the whole list;
   // `target` is the group id being edited. On save it revalidates Settings and
@@ -155,6 +162,8 @@ export function GroupsCatalogEditor({
             key={board.audienceCategory}
             board={board}
             groupsByType={groupsByType}
+            allActiveGroups={activeGroups}
+            categoryLabelById={categoryLabelById}
             groupsKnown={groupReferencesKnown}
             onEdit={drawer.open}
           />
@@ -440,11 +449,17 @@ function AddGroupTypeForm({
 function AudienceBoard({
   board,
   groupsByType,
+  allActiveGroups,
+  categoryLabelById,
   groupsKnown,
   onEdit,
 }: {
   board: AudienceBoard;
   groupsByType: Map<string, GroupsRow[]>;
+  // Every active group (any audience / category), so each type row can offer the
+  // full pool of candidates to its "+ Add existing group" picker.
+  allActiveGroups: GroupsRow[];
+  categoryLabelById: Map<string, string>;
   groupsKnown: boolean;
   onEdit: (groupId: string) => void;
 }) {
@@ -455,14 +470,11 @@ function AudienceBoard({
       <summary
         className="lg-sac-summary"
         style={summaryRowStyle}
-        aria-label={`${name} group types, have ${board.haveTotal} of ${board.targetTotal}, ${count}`}
+        aria-label={`${name} group types, ${count}`}
       >
         <Chevron />
         <span style={boardTitleStyle}>{name}</span>
         <span style={summarySpacerStyle} />
-        <span style={readoutStyle} aria-live="polite">
-          have {board.haveTotal} of {board.targetTotal}
-        </span>
         <span style={groupCountStyle}>{count}</span>
       </summary>
       <div style={detailsBodyStyle}>
@@ -481,6 +493,8 @@ function AudienceBoard({
                     typeKey(row.audienceCategory, row.categoryId)
                   ) ?? []
                 }
+                allActiveGroups={allActiveGroups}
+                categoryLabelById={categoryLabelById}
                 groupsKnown={groupsKnown}
                 onEdit={onEdit}
               />
@@ -501,11 +515,15 @@ function AudienceBoard({
 function GroupTypeRow({
   row,
   groups,
+  allActiveGroups,
+  categoryLabelById,
   groupsKnown,
   onEdit,
 }: {
   row: CellCoverage;
   groups: GroupsRow[];
+  allActiveGroups: GroupsRow[];
+  categoryLabelById: Map<string, string>;
   // Whether the groups read succeeded. When it failed `groups` is an empty array
   // for the wrong reason (not "no groups"), so we show a degraded note instead of
   // a misleading "0 groups" + no edit buttons next to a live "have X of Y".
@@ -513,6 +531,18 @@ function GroupTypeRow({
   onEdit: (groupId: string) => void;
 }) {
   const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+  // Candidates for the "+ Add existing group" picker: any active group NOT
+  // already in this exact cell. Picking one tags it into this (audience ×
+  // category) — moving it from wherever it sits now (#"Any active group").
+  const candidates = allActiveGroups
+    .filter(
+      (g) =>
+        !(
+          g.audience_category === row.audienceCategory &&
+          g.category_id === row.categoryId
+        )
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <li style={{ listStyle: "none" }}>
       <details style={rowStyle}>
@@ -551,7 +581,16 @@ function GroupTypeRow({
             />
           </div>
           {groupsKnown ? (
-            <GroupsInType groups={sorted} heading="Groups" onEdit={onEdit} />
+            <>
+              <GroupsInType groups={sorted} heading="Groups" onEdit={onEdit} />
+              <AddExistingGroupForm
+                audienceCategory={row.audienceCategory}
+                categoryId={row.categoryId}
+                label={row.label}
+                candidates={candidates}
+                categoryLabelById={categoryLabelById}
+              />
+            </>
           ) : (
             <p style={emptyGroupsNoteStyle}>
               This type&rsquo;s groups couldn&rsquo;t be loaded right now, so
@@ -812,6 +851,108 @@ function RemoveForm({
       <FormStatus state={state} />
     </form>
   );
+}
+
+// "+ Add existing group": tag an already-existing group into this (audience ×
+// category) cell. The picker offers ANY active group not already in the cell;
+// choosing one moves it here (its audience + category are both set to this
+// cell), so each option names where the group sits now. Reuses the audited
+// group-update write under the hood (adminSetGroupCategory), so the cell's
+// live/active gate and the audit trail match the group editor's.
+function AddExistingGroupForm({
+  audienceCategory,
+  categoryId,
+  label,
+  candidates,
+  categoryLabelById,
+}: {
+  audienceCategory: GroupAudienceCategory;
+  categoryId: string;
+  label: string;
+  candidates: GroupsRow[];
+  categoryLabelById: Map<string, string>;
+}) {
+  const { state, formAction, pending } = useActionForm<{ id: string }>(
+    adminSetGroupCategory
+  );
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState("");
+
+  // Nothing else exists to pull in — don't offer an empty picker.
+  if (candidates.length === 0) return null;
+
+  if (!open) {
+    return (
+      <PButton
+        type="button"
+        tone="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label={`Add an existing group to ${TYPE_LABEL[audienceCategory]} ${label}`}
+      >
+        + Add existing group
+      </PButton>
+    );
+  }
+
+  return (
+    <form action={formAction} style={inlineFormStyle}>
+      <input type="hidden" name="audience_category" value={audienceCategory} />
+      <input type="hidden" name="category_id" value={categoryId} />
+      <select
+        name="group_id"
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        style={{ ...fieldSelectStyle, minWidth: 240 }}
+        aria-label={`Choose a group to add to ${TYPE_LABEL[audienceCategory]} ${label}`}
+      >
+        <option value="">Choose a group…</option>
+        {candidates.map((g) => (
+          <option key={g.id} value={g.id}>
+            {candidateGroupLabel(g, categoryLabelById)}
+          </option>
+        ))}
+      </select>
+      <PButton
+        type="submit"
+        tone="terra"
+        size="sm"
+        disabled={pending || selected === ""}
+        aria-label={`Add the chosen group to ${TYPE_LABEL[audienceCategory]} ${label}`}
+      >
+        {pending ? "Adding…" : "Add"}
+      </PButton>
+      <PButton
+        type="button"
+        tone="ghost"
+        size="sm"
+        disabled={pending}
+        onClick={() => {
+          setOpen(false);
+          setSelected("");
+        }}
+      >
+        Cancel
+      </PButton>
+      <FormStatus state={state} successText="Group added." />
+    </form>
+  );
+}
+
+// One picker option's label: the group's name plus where it sits now (its top
+// type · category), so adding a group from another audience/category is an
+// informed choice rather than a silent move.
+function candidateGroupLabel(
+  group: GroupsRow,
+  categoryLabelById: Map<string, string>
+): string {
+  const audience = group.audience_category
+    ? TYPE_LABEL[group.audience_category]
+    : "No audience";
+  const category = group.category_id
+    ? (categoryLabelById.get(group.category_id) ?? "Other category")
+    : "Uncategorized";
+  return `${group.name} — ${audience} · ${category}`;
 }
 
 const listStyle = {

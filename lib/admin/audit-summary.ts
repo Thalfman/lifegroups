@@ -27,6 +27,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.update_group": "Updated group",
   "admin.close_group": "Closed group",
   "admin.reopen_group": "Reopened group",
+  "admin.set_group_category": "Tagged group into category",
   "leader.submit_checkin": "Submitted check-in",
   "leader.update_checkin": "Updated check-in",
   "leader.mark_did_not_meet": "Did not meet",
@@ -83,7 +84,7 @@ const DANGER_ACTION_RE =
   /^super_admin\.(clean_slate|launch_prep|permanent_delete|reset_all|reset_attention|reset_audit|reset_care|reset_health|reset_history|restore_tombstone)/;
 
 const SETTINGS_ACTION_RE =
-  /(platform_config|feature_flag|set_copy|metric_defaults|group_metric_settings)/;
+  /(platform_config|feature_flag|set_copy|metric_defaults|group_metric_settings|set_group_category)/;
 
 // Bucket an audit action string for the console's category filter. Pure string
 // classification — no I/O — so it's trivially unit-testable and usable both

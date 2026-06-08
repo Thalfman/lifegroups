@@ -260,3 +260,47 @@ export function validateGroupIdPayload(
     value: { group_id: normalizeUuid(input.group_id as string) },
   };
 }
+
+// Settings › Groups "+ Add existing group": tag a group into a specific cell
+// (audience × category). Unlike the full group update this carries ONLY the
+// target cell — the action re-reads the group's other fields server-side. The
+// category is always a concrete catalog id here (you tag INTO a category, never
+// into Uncategorized); the RPC re-checks it names a live, active cell.
+export type SetGroupCategoryPayload = {
+  group_id: string;
+  audience_category: GroupAudienceCategory;
+  category_id: string;
+};
+
+export function validateSetGroupCategoryPayload(
+  input: unknown
+): ValidationResult<SetGroupCategoryPayload> {
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  const errors: string[] = [];
+
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+
+  const audienceRaw = readOptionalString(input.audience_category);
+  let audienceCategory: GroupAudienceCategory | undefined;
+  if (audienceRaw === undefined || !isAudienceCategory(audienceRaw))
+    errors.push("Audience category must be men, women, or mixed.");
+  else audienceCategory = audienceRaw;
+
+  const categoryRaw = readOptionalString(input.category_id);
+  let categoryId: string | undefined;
+  if (categoryRaw === undefined || !isUuid(categoryRaw))
+    errors.push("Category is not a valid value.");
+  else categoryId = normalizeUuid(categoryRaw);
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      group_id: normalizeUuid(input.group_id as string),
+      audience_category: audienceCategory as GroupAudienceCategory,
+      category_id: categoryId as string,
+    },
+  };
+}
