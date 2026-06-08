@@ -1,8 +1,11 @@
 # Life Group Operations
 
 Julian's admin operating system for shepherding Life Group leaders and
-planning group launches. The app is currently for the ministry's
-oversight tiers only — not for group leaders themselves.
+planning group launches, organised as three areas — **Care · Plan · Multiply**
+(ADR 0016). The oversight tiers (Ministry Admin, Over-Shepherd) work it day to
+day; Over-Shepherds log in to their own coverage-scoped Care surface, and a
+Leader Care surface is built and re-audited behind a Super-Admin switch
+(ADR 0017).
 
 ## Language
 
@@ -10,19 +13,21 @@ oversight tiers only — not for group leaders themselves.
 
 **Leader**:
 A person who leads a Life Group (the `leader` role; `co_leader` → Co-Leader).
-Leaders are the people the ministry cares for. They have a deliberately minimal,
-**maintenance-mode** surface — they log in only to submit weekly check-ins (the
-source of the Health Pulse) and view their group calendar. The app is built for
-the oversight tiers; no new Leader-facing features ship without Julian's explicit
-go-ahead (LDR.1).
+Leaders are the people the ministry cares for. Their login surface is a
+group-scoped **Care** surface — Care Notes + Prayer Requests over their own
+members, plus the group calendar (ADR 0017/0020) — built and RLS-re-audited but
+held behind the Super-Admin `leader_surface` switch until Tom flips it on and
+Julian gives the go-ahead (LDR.1; ADR 0009 verify-before-flip). Weekly check-ins
+(the source of the Health Pulse) remain separately frozen.
 _Avoid_: Shepherd (there is no "Shepherd" tier — only Leaders and the
 Over-Shepherds who oversee them), group leader.
 
 **Over-Shepherd**:
 A coach responsible for a set of Leaders. Sits above Leaders and below
-the Ministry Admin in the oversight ladder. Tracked today as coverage data;
-becoming a login tier. Kept as a single atomic term even though there is no
-standalone "Shepherd".
+the Ministry Admin in the oversight ladder. Both coverage data and a login
+tier: an Over-Shepherd logs in to a coverage-scoped Care surface over the
+Leaders they cover (ADR 0017). Kept as a single atomic term even though there is
+no standalone "Shepherd".
 _Avoid_: Coach, over shepherd, overseer.
 
 **Ministry Admin**:
@@ -42,11 +47,13 @@ below sees, and more:
 
 **Super Admin ▸ Ministry Admin ▸ Over-Shepherd ▸ Leader**
 
-The Leader tier has only a minimal **maintenance-mode** surface (weekly
-check-ins + group calendar); it is not the headline product and is frozen to
-new features without Julian's go-ahead (LDR.1). The one deliberate exception
-to "higher tiers see everything below" is private care notes — see CONTEXT
-note on Private Care Note below.
+The Leader tier's login surface is a group-scoped **Care** surface (Care Notes +
+Prayer Requests + group calendar; ADR 0017/0020), built and re-audited but gated
+off behind the Super-Admin `leader_surface` switch until Julian's go-ahead
+(LDR.1). The deliberate exceptions to "higher tiers see everything below" are the
+author-private **Care Note** (sealed to its author unless the Ministry Admin
+flips that person's transparency toggle) and the Ministry Admin's own **Private
+Care Note** (hidden even from the Super Admin) — see the Care concepts below.
 
 ### Care concepts
 

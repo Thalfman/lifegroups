@@ -7,15 +7,17 @@ with the 2026-06 pivot, the Leaders they care for (ADR 0017). Built with Next.js
 
 **🌐 Live app:** <https://fvclifegroups.vercel.app/>
 
-> 🔄 **Pivot in progress (2026-06).** The app is being re-scoped to **three
-> areas — Care · Plan · Multiply** — with the old group-assignment and number
-> surfaces turned off behind Super-Admin flags (turned off, not deleted). The
-> decisions are recorded in **ADR 0016–0020**; the spec is **PRD
-> [#371](https://github.com/Thalfman/lifegroups/issues/371)** and the
-> implementation slices are **#372–#382**. The sections below describe the **new
-> north star** and what exists **today** versus what the pivot adds. The prior
-> "three jobs" framing (Care, Launch Planning, Group Health) is superseded by
-> ADR 0016; the original Q1–Q12 record lives on in
+> ✅ **The pivot has landed (2026-06).** The app is re-scoped to **three
+> areas — Care · Plan · Multiply** (ADR 0016): that is the live navigation spine,
+> with the old group-assignment and number surfaces turned off behind
+> Super-Admin nav flags (turned off, not deleted — their routes still resolve by
+> direct URL). The decisions are recorded in **ADR 0016–0021**; the spec was
+> **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (now closed),
+> delivered across slices **#372–#382**. The one surface still gated is **Leader
+> login** — built and RLS-re-audited, waiting on the Super-Admin `leader_surface`
+> switch and Julian's go-ahead (LDR.1; ADR 0009). The prior "three jobs" framing
+> (Care, Launch Planning, Group Health) is superseded by ADR 0016; the original
+> Q1–Q12 record lives on in
 > [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md).
 
 ## What this app is for
@@ -33,8 +35,9 @@ star is **three areas** (ADR 0016) — each the focus of one job:
    / Mixed), read from four pillars (Capacity · Interest · Group Health · Leader
    Health) and a Julian-owned trigger.
 
-Leaders **and** Over-Shepherds log in to their own slice of Care (ADR 0017 —
-re-opening the previously frozen Leader surface behind a verified flag). The old
+Over-Shepherds log in to their own slice of Care today; the Leader Care surface
+is built and re-audited behind a verified flag, awaiting the Super-Admin switch
+(ADR 0017 — re-opening the previously frozen Leader surface). The old
 group-assignment, capacity, roster, calendar, and follow-up surfaces are hidden
 behind Super-Admin nav flags (default off) — **turned off, not deleted**
 (ADR 0016).
@@ -42,23 +45,23 @@ behind Super-Admin nav flags (default off) — **turned off, not deleted**
 ## What "done" looks like
 
 "Done" is **outcome-based, not a feature checklist**: the app is done when it
-does Julian's three jobs _reliably_ — now framed as the three areas. Each row
-names what the pivot delivers and what exists **today** (the pivot is in flight;
-the running app is still largely the pre-pivot one). The authoritative spec is
-**PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**, sliced into
-issues **#372–#382**.
+does Julian's three jobs _reliably_ — now framed as the three areas. The pivot
+has landed (PRD [#371](https://github.com/Thalfman/lifegroups/issues/371),
+delivered across **#372–#382**); the table below records what each area delivers
+and what is **live today**. The lone exception is **Leader login** — built and
+re-audited, but still flag-gated.
 
-| Area         | The pivot delivers…                                                                                                                                                                                        | Today                                                                                                                                                                                                                                            |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Care**     | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- _and_ Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **In flight.** The separate Leader-care, over-shepherd, and (A–D) group-health surfaces and private-to-Julian encrypted notes (SC.\*) exist today. Consolidation + rubrics + notes + logins are slices #373, #374, #376, #377, #378, #381, #382. |
-| **Plan**     | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline.                                             | **In flight.** A 7-stage Guests pipeline exists but is frozen (off-nav). The funnel reframe is slices #375 / #379.                                                                                                                               |
-| **Multiply** | Three boards by group **type** + four pillars + a Julian-owned trigger; Capacity is Julian-fed.                                                                                                            | **In flight.** Today's per-group multiplication planner (seeded from Julian's Doc, ADR 0006) exists; the per-type pillar reframe is slice #380.                                                                                                  |
+| Area         | What it delivers                                                                                                                                                                                           | Live today                                                                                                                                                                                                                                            |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Care**     | One Over-Shepherd accordion consolidating Leader-care + coverage + health grading; configurable **A–F** Group- _and_ Leader-Health rubrics; author-private Care Notes + Prayer Requests; Leader/OS logins. | **Live.** The Over-Shepherd accordion, configurable **A–F** Group- and Leader-Health rubrics, and author-private Care Notes + Prayer Requests have shipped, and Over-Shepherds log in. Leader login is built + re-audited but flag-gated (#376/#382). |
+| **Plan**     | The Interest Funnel — Prospects moving Interested → Matched → Joined / Not at this time — with a Next Step and armed follow-ups; replaces the Guests pipeline.                                             | **Live.** The Interest Funnel has shipped and replaced the Guests pipeline (now an off-nav alias). Follow-ups are armed (shown as due tasks); actually _sending_ one still awaits a provider (deliberately out of scope, #371).                       |
+| **Multiply** | Multiplication by group **type** — pillars (Interest · Capacity · Group/Leader Health) + a Julian-owned trigger — instead of by individual group.                                                          | **Live.** The Multiply grid — cells (Audience × Category) with per-cell pillars and a tiered (global → per-type → per-cell) readiness trigger — has shipped (#380, ADR 0019/0021).                                                                    |
 
 **In one line:** the three jobs are unchanged in spirit but re-shaped into Care ·
-Plan · Multiply (ADR 0016), with Leaders/OS now logging in (ADR 0017),
-configurable A–F health rubrics (ADR 0018), and multiplication by type
-(ADR 0019). Implementation is tracked in PRD #371 and slices #372–#382; the
-old number/assignment surfaces are flagged off, not removed.
+Plan · Multiply (ADR 0016), with Over-Shepherds logging in and the Leader login
+built behind a switch (ADR 0017), configurable A–F health rubrics (ADR 0018), and
+multiplication by type/cell (ADR 0019/0021). Delivered via PRD #371 and slices
+#372–#382; the old number/assignment surfaces are flagged off, not removed.
 
 ## Where to look next
 
@@ -105,13 +108,16 @@ App-login roles live on `profiles.role` (the `user_role` enum):
   `/admin`. This is the primary persona.
 - **`over_shepherd`** — a coach scoped to **only the Leaders they cover** (via
   `shepherd_coverage_assignments`). Lands on `/over-shepherd`: a focused,
-  coverage-scoped care surface, not `/admin`. The pivot adds author-private
-  **Care Notes** + **Prayer Requests** about their Leaders (ADR 0017, slice #381).
-- **`leader` / `co_leader`** — **being re-opened (ADR 0017).** The Leader surface
-  was frozen (ADR 0002); the pivot re-opens it so a Leader logs in to a care
-  surface over their group's members (Care Notes + Prayer Requests + calendar).
-  The flag flips only after a route + RLS re-audit (verify-before-flip, ADR 0009)
-  and Julian's LDR.1 go-ahead — tracked in #376 / #382. Dormant until then.
+  coverage-scoped care surface, not `/admin`. Logs in today and writes
+  author-private **Care Notes** + **Prayer Requests** about their Leaders
+  (ADR 0017, slice #381).
+- **`leader` / `co_leader`** — **re-opened in code (ADR 0017), gated off.** The
+  Leader surface (frozen by ADR 0002) now logs a Leader in to a care surface over
+  their group's members (Care Notes + Prayer Requests + calendar). The route +
+  RLS re-audit has landed and the `leader_surface` **verified** marker is set
+  (verify-before-flip, ADR 0009); the surface goes live only when the Super Admin
+  flips `leader_surface` **on** and Julian gives the LDR.1 go-ahead — tracked in
+  #376 / #382. Gated off until then (leaders land on `/unauthorized`).
 - **`staff_viewer`** — **deprecated.** Retained in the SQL enum for backwards
   compatibility; routed to `/unauthorized`.
 
@@ -130,16 +136,23 @@ Two clarifications:
   `/unauthorized`. The landing page is a minimal sign-in entry point.
 - **Protected (sign-in required), each with its own role gate via Supabase
   Auth / RLS:**
-  - **Ministry/Super Admin** — `/admin`, `/admin/shepherd-care` (+
-    `/[profileId]`, `/over-shepherds`), `/admin/launch-planning`,
-    `/admin/follow-ups`, `/admin/people`, `/admin/groups` (+ `/[groupId]/calendar`),
-    `/admin/guests`, `/admin/calendar`, `/admin/settings`. `/admin/super-admin`
-    is **super_admin only**; the rest accept `ministry_admin` and `super_admin`.
+  - **Ministry/Super Admin — live nav spine** (Home · Care · Plan · Multiply ·
+    Settings): `/admin`, `/admin/care` (+ the `/admin/shepherd-care/**` detail
+    routes it links into), `/admin/plan`, `/admin/multiply`, `/admin/settings`.
+    `/admin/super-admin` is **super_admin only**; the rest accept `ministry_admin`
+    and `super_admin`.
+  - **Ministry/Super Admin — off-nav, still resolve by direct URL** (the old
+    number/assignment surfaces — Groups, People, Planning hidden behind
+    Super-Admin nav-visibility flags, default off, ADR 0016; plus the other
+    pre-pivot routes): `/admin/groups` (+ `/[groupId]/calendar`), `/admin/people`,
+    `/admin/planning`, `/admin/launch-planning`, `/admin/follow-ups`,
+    `/admin/guests`, `/admin/calendar`, `/admin/group-health`.
   - **Over-Shepherd** — `/over-shepherd` (+ `/[profileId]`), scoped to covered
-    Shepherds.
-  - **Dormant** — `/admin/check-ins/**` (reachable by direct URL, removed from
-    nav) and the entire `/leader/**` surface (gated; leaders land on
-    `/unauthorized`).
+    Leaders.
+  - **Gated / frozen** — the entire `/leader/**` surface (built + re-audited but
+    behind the `leader_surface` switch; leaders land on `/unauthorized` until it
+    flips) and `/admin/check-ins/**` (separately frozen, reachable by direct URL,
+    removed from nav).
 
 ## How data loads
 
