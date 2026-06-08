@@ -34,18 +34,6 @@ type ResponseBody = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
-// Role privilege rank (lower = more privileged). A shareable link is a
-// low-trust, unverified credential, so it must not be usable to claim a roster
-// profile MORE privileged than the invitation itself grants. The RPC enforces
-// the same ceiling; this mirror just avoids creating an auth user we'd delete.
-const ROLE_RANK: Record<string, number> = {
-  super_admin: 0,
-  ministry_admin: 1,
-  over_shepherd: 2,
-  leader: 3,
-  co_leader: 4,
-};
-
 function jsonResponse(body: ResponseBody, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -228,54 +216,28 @@ Deno.serve(async (req: Request) => {
   if (inv.max_uses !== null && inv.used_count >= inv.max_uses)
     return fail("invitation_used", 409);
 
-  // 2. Don't let self-signup hijack a real login, but DO let a person already
-  //    on the roster (a profiles row with no linked auth user yet) CLAIM their
-  //    account. `redeem_invitation` is the authority and relinks such a row;
-  //    this pre-check only avoids creating an auth user for a case the RPC will
-  //    refuse. Cases:
-  //      * profile with a linked auth user, or a super_admin roster row ->
-  //        reject. Kept generic (`email_unavailable`) so a link holder can't
-  //        tell a claimable roster row from a real account.
-  //      * profile with auth_user_id IS NULL (non-super_admin) -> fall through
-  //        to createUser + RPC, which relinks it (the claim path).
-  //      * no profile at all -> brand-new path; additionally reject if an Auth
-  //        user already owns the email (a login with no profile) so it can't be
-  //        hijacked. The listUsers scan runs ONLY here -- on the claim branch
-  //        there is by definition no linked auth user for the profile, and a
-  //        stray same-email auth user is caught by createUser below.
+  // 2. Don't let self-signup hijack or duplicate an existing identity. Both an
+  //    existing profile (which redeem_invitation refuses to relink) and an
+  //    existing Auth user are rejected with the SAME generic code so a
+  //    link-holder can't use the distinct response to enumerate which emails
+  //    are registered. (Full enumeration-resistance would need a verified-email
+  //    flow; this avoids the explicit "email_in_use" oracle.) Shareable links
+  //    are for brand-new signups only; people already on the roster are
+  //    onboarded via the per-person admin invite (which relinks safely).
   const { data: existingProfile, error: profileErr } = await service
     .from("profiles")
-    .select("auth_user_id, role, status")
+    .select("id")
     .eq("email", email)
     .maybeSingle();
   if (profileErr) return fail("db_error", 500);
-  if (existingProfile) {
-    const existingRank = ROLE_RANK[existingProfile.role as string] ?? 0;
-    const inviteRank = ROLE_RANK[inv.role] ?? 99;
-    // Only a profile awaiting setup is claimable; a disabled ('inactive')
-    // profile must not be reactivated via a shared link.
-    const claimableStatus =
-      existingProfile.status === "active" ||
-      existingProfile.status === "invited";
-    if (
-      existingProfile.auth_user_id !== null ||
-      existingProfile.role === "super_admin" ||
-      // The link must not claim a profile more privileged than it grants.
-      existingRank < inviteRank ||
-      !claimableStatus
-    ) {
+  if (existingProfile) return fail("email_unavailable", 409);
+
+  try {
+    if (await emailHasAuthUser(service, email)) {
       return fail("email_unavailable", 409);
     }
-    // else: claimable roster profile at or below the link's level -> proceed
-    // to createUser + RPC (which relinks it).
-  } else {
-    try {
-      if (await emailHasAuthUser(service, email)) {
-        return fail("email_unavailable", 409);
-      }
-    } catch {
-      return fail("db_error", 500);
-    }
+  } catch {
+    return fail("db_error", 500);
   }
 
   // 3. Create the auth user with the chosen password (already email-confirmed
