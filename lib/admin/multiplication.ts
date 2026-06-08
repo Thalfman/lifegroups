@@ -171,6 +171,9 @@ export type CandidateView = {
   groupName: string;
   audience: GroupAudienceCategory | null;
   categoryId: string | null;
+  // The candidate's own category label (for re-displaying its type in the edit
+  // form even when the loaded type options omit it). null = Uncategorized.
+  categoryLabel: string | null;
   segment: string;
   targetYear: number | null;
   status: MultiplicationCandidateStatus;
@@ -237,6 +240,7 @@ export function buildPlannerSegments(
           : "(type only — no group yet)"),
       audience,
       categoryId: entry.candidate.category_id,
+      categoryLabel,
       segment,
       targetYear: entry.candidate.target_year,
       status: entry.candidate.status,

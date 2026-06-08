@@ -824,25 +824,35 @@ export async function fetchMultiplicationCandidatesForAdmin(
     ),
   ];
 
+  // When every candidate is a type-only watch, groupIds is empty. Short-circuit
+  // the group-keyed reads (an empty `.in("id", [])` is the edge other read paths
+  // here avoid) so a valid all-type-only pipeline still renders.
+  const noGroups = groupIds.length === 0;
   const [groupsRes, membershipsRes, leadersRes, apprenticesRes] =
     await Promise.all([
-      client
-        .from("groups")
-        .select(
-          "id, name, audience_category, category_id, launched_on, lifecycle_status"
-        )
-        .in("id", groupIds),
-      client
-        .from("group_memberships")
-        .select("group_id, status")
-        .in("group_id", groupIds)
-        .eq("status", "active"),
-      client
-        .from("group_leaders")
-        .select("group_id, assigned_at, role, active")
-        .in("group_id", groupIds)
-        .eq("role", "co_leader")
-        .eq("active", true),
+      noGroups
+        ? Promise.resolve({ data: [], error: null })
+        : client
+            .from("groups")
+            .select(
+              "id, name, audience_category, category_id, launched_on, lifecycle_status"
+            )
+            .in("id", groupIds),
+      noGroups
+        ? Promise.resolve({ data: [], error: null })
+        : client
+            .from("group_memberships")
+            .select("group_id, status")
+            .in("group_id", groupIds)
+            .eq("status", "active"),
+      noGroups
+        ? Promise.resolve({ data: [], error: null })
+        : client
+            .from("group_leaders")
+            .select("group_id, assigned_at, role, active")
+            .in("group_id", groupIds)
+            .eq("role", "co_leader")
+            .eq("active", true),
       apprenticeIds.length > 0
         ? client
             .from("leader_pipeline")

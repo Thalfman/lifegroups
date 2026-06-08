@@ -285,7 +285,8 @@ create or replace function public.admin_update_multiplication_candidate(
   p_leader_pipeline_id  uuid,
   p_manual_member_count integer,
   p_audience_category   public.group_audience_category,
-  p_category_id         uuid
+  p_category_id         uuid,
+  p_group_id            uuid
 )
 returns uuid
 language plpgsql
@@ -486,12 +487,12 @@ grant execute on function public.admin_create_multiplication_candidate(
 revoke all on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
   text, public.multiplication_meeting_time, uuid, integer,
-  public.group_audience_category, uuid
+  public.group_audience_category, uuid, uuid
 ) from public, anon, authenticated;
 grant execute on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
   text, public.multiplication_meeting_time, uuid, integer,
-  public.group_audience_category, uuid
+  public.group_audience_category, uuid, uuid
 ) to authenticated;
 
 comment on function public.admin_create_multiplication_candidate(
@@ -502,5 +503,5 @@ comment on function public.admin_create_multiplication_candidate(
 comment on function public.admin_update_multiplication_candidate(
   uuid, integer, public.multiplication_candidate_status, boolean, boolean, text,
   text, public.multiplication_meeting_time, uuid, integer,
-  public.group_audience_category, uuid
+  public.group_audience_category, uuid, uuid
 ) is 'Type-first admin write: updates a multiplication candidate, including moving it between cells and attaching/detaching its multiplying group + same-group apprentice link. Writes a paired audit_events row.';

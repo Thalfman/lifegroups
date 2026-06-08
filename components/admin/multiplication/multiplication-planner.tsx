@@ -129,6 +129,7 @@ function useCandidateTypeGroup(opts: {
   initialGroupId?: string | null;
   initialGroupName?: string | null;
   initialLeaderPipelineId?: string | null;
+  initialTypeLabel?: string | null;
 }) {
   const initialTypeKey =
     opts.initialAudience && opts.initialCategoryId
@@ -141,7 +142,37 @@ function useCandidateTypeGroup(opts: {
     opts.initialLeaderPipelineId ?? ""
   );
 
-  const selectedType = opts.typeOptions.find(
+  // Degraded-read safety (edit): if a category read failed or the candidate's
+  // cell was deactivated, its type is absent from the loaded options. Keep it
+  // selectable so editing other fields doesn't blank the now-required type and
+  // make the candidate unsaveable.
+  const typeOptions = useMemo(() => {
+    if (
+      !opts.initialAudience ||
+      !opts.initialCategoryId ||
+      opts.typeOptions.some(
+        (t) => groupTypeKey(t.audienceCategory, t.categoryId) === initialTypeKey
+      )
+    ) {
+      return opts.typeOptions;
+    }
+    return [
+      {
+        audienceCategory: opts.initialAudience,
+        categoryId: opts.initialCategoryId,
+        label: opts.initialTypeLabel ?? "Current type",
+      },
+      ...opts.typeOptions,
+    ];
+  }, [
+    opts.typeOptions,
+    opts.initialAudience,
+    opts.initialCategoryId,
+    opts.initialTypeLabel,
+    initialTypeKey,
+  ]);
+
+  const selectedType = typeOptions.find(
     (t) => groupTypeKey(t.audienceCategory, t.categoryId) === typeKey
   );
 
@@ -195,7 +226,7 @@ function useCandidateTypeGroup(opts: {
     categoryId: selectedType?.categoryId ?? null,
     groupsForType,
     apprenticeOptions,
-    typeOptions: opts.typeOptions,
+    typeOptions,
   };
 }
 
@@ -316,6 +347,7 @@ function CandidateEditForm({
     initialGroupId: c.groupId,
     initialGroupName: c.groupName,
     initialLeaderPipelineId: c.leaderPipelineId,
+    initialTypeLabel: c.categoryLabel,
   });
   const {
     state: archiveState,

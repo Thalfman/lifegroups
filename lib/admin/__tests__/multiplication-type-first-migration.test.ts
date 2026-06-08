@@ -23,12 +23,18 @@ const RPCS = [
   "admin_update_multiplication_candidate",
 ] as const;
 
-// The 12-arg signature the app now calls (…, uuid, integer,
-// group_audience_category, uuid).
-const ARGS_12 =
+// The new signatures the app now calls. Create keeps p_group_id as its first
+// arg (12 total: original 10 + audience + category); update appends p_group_id
+// after the cell (13 total) since group was previously immutable on update.
+const ARGS_CREATE =
   "uuid, integer, public.multiplication_candidate_status, boolean, boolean, " +
   "text, text, public.multiplication_meeting_time, uuid, integer, " +
   "public.group_audience_category, uuid";
+const ARGS_UPDATE = ARGS_CREATE + ", uuid";
+const ARGS_BY_FN: Record<(typeof RPCS)[number], string> = {
+  admin_create_multiplication_candidate: ARGS_CREATE,
+  admin_update_multiplication_candidate: ARGS_UPDATE,
+};
 
 let sql: MigrationSql;
 
@@ -135,8 +141,15 @@ describe("type-first migration — audited write path", () => {
     }
   });
 
-  it("locks EXECUTE on the new 12-arg RPCs down to authenticated only", () => {
-    for (const fn of RPCS) assertExecuteLockdown(sql, fn, ARGS_12);
+  it("locks EXECUTE on the new RPCs down to authenticated only", () => {
+    for (const fn of RPCS) assertExecuteLockdown(sql, fn, ARGS_BY_FN[fn]);
+  });
+
+  it("threads the optional p_group_id through the update RPC signature", () => {
+    // The update body attaches/detaches the multiplying group, and the app
+    // calls it with p_group_id, so the recreated signature must declare it.
+    const body = functionBody(sql, "admin_update_multiplication_candidate");
+    expect(body).toContain("p_group_id            uuid");
   });
 
   it("hardens the same-group trigger to reject an apprentice without a group", () => {
