@@ -1305,6 +1305,20 @@ describe("multiplication candidate payloads (Julian P4 / type-first)", () => {
     }
   });
 
+  it("accepts a group-attached candidate with no explicit type (derived from group)", () => {
+    // A legacy/uncategorized or retagged candidate posts a group but a blank
+    // cell; the RPC derives the cell from the group, so validation must allow it.
+    const r = validateCreateMultiplicationCandidatePayload({
+      group_id: UUID_A,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.audience_category).toBeNull();
+      expect(r.value.category_id).toBeNull();
+    }
+  });
+
   it("requires the group type (audience + category)", () => {
     expect(validateCreateMultiplicationCandidatePayload({}).ok).toBe(false);
     expect(

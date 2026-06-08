@@ -129,8 +129,8 @@ declare
   v_successor text;
   v_status public.multiplication_candidate_status;
   v_group_found boolean;
-  v_group_audience public.group_audience_category;
-  v_group_category uuid;
+  v_audience public.group_audience_category;
+  v_category uuid;
   v_apprentice_group uuid;
   v_new_id uuid;
 begin
@@ -163,38 +163,17 @@ begin
 
   v_status := coalesce(p_status, 'watching'::public.multiplication_candidate_status);
 
-  -- A candidate is anchored to a cell (audience × category). Both are required,
-  -- and the cell must be an ACTIVE, applied (non-archived) cell — the same the
-  -- Settings matrix exposes and the planner's type picker offers. This blocks a
-  -- stale or tampered form persisting a candidate into an unapplied/archived
-  -- cell (which the picker never offers).
-  if p_audience_category is null or p_category_id is null then
-    raise exception 'invalid_input';
-  end if;
-  if not exists (
-    select 1
-      from public.category_type_targets ctt
-      join public.group_categories gc on gc.id = ctt.category_id
-     where ctt.category_id = p_category_id
-       and ctt.audience_category = p_audience_category::text
-       and ctt.active
-       and gc.archived_at is null
-  ) then
-    raise exception 'inactive_cell';
-  end if;
-
   if p_group_id is not null then
-    -- A concrete group: it must exist, carry exactly the candidate's type, and
-    -- not already be another active candidate's group.
+    -- A concrete group is the source of truth for the candidate's cell: the
+    -- stored audience/category are read FROM the group (the picked type is only a
+    -- filter for the group dropdown). This keeps an attached candidate in step
+    -- with its group even after the group is retagged, so attaching never fails
+    -- on a stale or mismatched type.
     select true, audience_category, category_id
-      into v_group_found, v_group_audience, v_group_category
+      into v_group_found, v_audience, v_category
       from public.groups where id = p_group_id for update;
     if v_group_found is null then
       raise exception 'missing_group';
-    end if;
-    if v_group_audience is distinct from p_audience_category
-       or v_group_category is distinct from p_category_id then
-      raise exception 'group_type_mismatch';
     end if;
     if exists (
       select 1 from public.multiplication_candidates
@@ -216,8 +195,24 @@ begin
       end if;
     end if;
   else
-    -- Type-only watch: no group yet, so an apprentice link is meaningless, and a
-    -- cell carries at most one active type-only watch.
+    -- Type-only watch: the picked cell is the source of truth and must be an
+    -- ACTIVE, applied (non-archived) cell — the same the Settings matrix exposes
+    -- and the planner's type picker offers. No group yet, so an apprentice link
+    -- is meaningless, and a cell carries at most one active type-only watch.
+    if p_audience_category is null or p_category_id is null then
+      raise exception 'invalid_input';
+    end if;
+    if not exists (
+      select 1
+        from public.category_type_targets ctt
+        join public.group_categories gc on gc.id = ctt.category_id
+       where ctt.category_id = p_category_id
+         and ctt.audience_category = p_audience_category::text
+         and ctt.active
+         and gc.archived_at is null
+    ) then
+      raise exception 'inactive_cell';
+    end if;
     if p_leader_pipeline_id is not null then
       raise exception 'apprentice_requires_group';
     end if;
@@ -230,6 +225,8 @@ begin
     ) then
       raise exception 'type_candidate_exists';
     end if;
+    v_audience := p_audience_category;
+    v_category := p_category_id;
   end if;
 
   insert into public.multiplication_candidates (
@@ -241,7 +238,7 @@ begin
     p_group_id, p_target_year, v_status,
     coalesce(p_shepherd_willing, false), coalesce(p_needs_similar_stage, false),
     v_notes, v_successor, p_meeting_time, p_leader_pipeline_id,
-    p_manual_member_count, p_audience_category, p_category_id, v_actor, v_actor
+    p_manual_member_count, v_audience, v_category, v_actor, v_actor
   )
   returning id into v_new_id;
 
@@ -253,7 +250,7 @@ begin
     v_new_id,
     jsonb_build_object('after', jsonb_build_object(
       'group_id', p_group_id, 'has_group', p_group_id is not null,
-      'audience_category', p_audience_category, 'category_id', p_category_id,
+      'audience_category', v_audience, 'category_id', v_category,
       'target_year', p_target_year, 'status', v_status,
       'shepherd_willing', coalesce(p_shepherd_willing, false),
       'needs_similar_stage', coalesce(p_needs_similar_stage, false),
@@ -300,8 +297,8 @@ declare
   v_status public.multiplication_candidate_status;
   v_exists boolean;
   v_group_found boolean;
-  v_group_audience public.group_audience_category;
-  v_group_category uuid;
+  v_audience public.group_audience_category;
+  v_category uuid;
   v_apprentice_group uuid;
   v_before jsonb;
 begin
@@ -355,32 +352,17 @@ begin
     raise exception 'missing_candidate';
   end if;
 
-  -- Type required + active cell (same rule as create).
-  if p_audience_category is null or p_category_id is null then
-    raise exception 'invalid_input';
-  end if;
-  if not exists (
-    select 1
-      from public.category_type_targets ctt
-      join public.group_categories gc on gc.id = ctt.category_id
-     where ctt.category_id = p_category_id
-       and ctt.audience_category = p_audience_category::text
-       and ctt.active
-       and gc.archived_at is null
-  ) then
-    raise exception 'inactive_cell';
-  end if;
-
   if p_group_id is not null then
+    -- A concrete group is the source of truth for the candidate's cell: read the
+    -- stored audience/category FROM the group rather than requiring the form to
+    -- supply a matching type. This keeps editing an attached candidate working
+    -- when its group is Uncategorized (legacy null cell) or was retagged after
+    -- the candidate was created — neither can block an unrelated field edit.
     select true, audience_category, category_id
-      into v_group_found, v_group_audience, v_group_category
+      into v_group_found, v_audience, v_category
       from public.groups where id = p_group_id for update;
     if v_group_found is null then
       raise exception 'missing_group';
-    end if;
-    if v_group_audience is distinct from p_audience_category
-       or v_group_category is distinct from p_category_id then
-      raise exception 'group_type_mismatch';
     end if;
     if exists (
       select 1 from public.multiplication_candidates
@@ -402,6 +384,21 @@ begin
       end if;
     end if;
   else
+    -- Type-only watch: the picked cell is the source of truth and must be active.
+    if p_audience_category is null or p_category_id is null then
+      raise exception 'invalid_input';
+    end if;
+    if not exists (
+      select 1
+        from public.category_type_targets ctt
+        join public.group_categories gc on gc.id = ctt.category_id
+       where ctt.category_id = p_category_id
+         and ctt.audience_category = p_audience_category::text
+         and ctt.active
+         and gc.archived_at is null
+    ) then
+      raise exception 'inactive_cell';
+    end if;
     if p_leader_pipeline_id is not null then
       raise exception 'apprentice_requires_group';
     end if;
@@ -415,12 +412,14 @@ begin
     ) then
       raise exception 'type_candidate_exists';
     end if;
+    v_audience := p_audience_category;
+    v_category := p_category_id;
   end if;
 
   update public.multiplication_candidates
      set group_id            = p_group_id,
-         audience_category   = p_audience_category,
-         category_id         = p_category_id,
+         audience_category   = v_audience,
+         category_id         = v_category,
          target_year         = p_target_year,
          status              = v_status,
          shepherd_willing    = coalesce(p_shepherd_willing, false),
@@ -441,7 +440,7 @@ begin
     p_candidate_id,
     jsonb_build_object('before', v_before, 'after', jsonb_build_object(
       'group_id', p_group_id, 'has_group', p_group_id is not null,
-      'audience_category', p_audience_category, 'category_id', p_category_id,
+      'audience_category', v_audience, 'category_id', v_category,
       'target_year', p_target_year, 'status', v_status,
       'shepherd_willing', coalesce(p_shepherd_willing, false),
       'needs_similar_stage', coalesce(p_needs_similar_stage, false),

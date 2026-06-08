@@ -202,8 +202,15 @@ function useCandidateTypeGroup(opts: {
     initialTypeKey,
   ]);
 
+  // The group picker is revealed by the willing checkbox (the requested UX) —
+  // but a candidate that ALREADY has a group keeps the picker shown regardless,
+  // so editing an unrelated field on a not-yet-willing-but-grouped candidate
+  // never silently detaches its group. Detaching is then explicit (pick "none").
+  const showGroupPicker = willing || Boolean(opts.initialGroupId);
   const effectiveGroupId =
-    willing && groupsForType.some((g) => g.id === groupId) ? groupId : "";
+    showGroupPicker && groupsForType.some((g) => g.id === groupId)
+      ? groupId
+      : "";
   const apprenticeOptions = effectiveGroupId
     ? (opts.apprenticesByGroup[effectiveGroupId] ?? [])
     : [];
@@ -218,6 +225,7 @@ function useCandidateTypeGroup(opts: {
     setTypeKey,
     willing,
     setWilling,
+    showGroupPicker,
     groupId: effectiveGroupId,
     setGroupId,
     leaderPipelineId: effectiveLeaderPipelineId,
@@ -295,7 +303,7 @@ function WillingGroupField({
         />
         Leader willing to multiply
       </label>
-      {state.willing ? (
+      {state.showGroupPicker ? (
         <div>
           <label htmlFor={`${idPrefix}-group`} style={fieldLabelStyle}>
             Group multiplying

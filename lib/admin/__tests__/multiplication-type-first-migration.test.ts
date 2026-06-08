@@ -109,11 +109,14 @@ describe("type-first migration — audited write path", () => {
     }
   });
 
-  it("guards the optional group and the type-only path with clean tokens", () => {
+  it("derives the cell from an attached group and guards the type-only path", () => {
     for (const fn of RPCS) {
       const body = functionBody(sql, fn);
-      // A concrete group must match the candidate's type and exist.
-      expect(body).toContain("raise exception 'group_type_mismatch'");
+      // An attached group is the source of truth: its cell is read into
+      // v_audience/v_category rather than matched against a supplied type, so a
+      // legacy/uncategorized or retagged group never blocks the save.
+      expect(body).toContain("into v_group_found, v_audience, v_category");
+      expect(body).not.toContain("group_type_mismatch");
       expect(body).toContain("raise exception 'missing_group'");
       // Type-only: no apprentice without a group, one active watch per cell.
       expect(body).toContain("raise exception 'apprentice_requires_group'");

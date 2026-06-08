@@ -444,9 +444,11 @@ function isMultiplicationMeetingTime(
 const MULTIPLICATION_SUCCESSOR_MAX = 120;
 
 type MultiplicationCandidateFields = {
-  // Type-first: the candidate's cell (audience × category). Required.
-  audience_category: GroupAudienceCategory;
-  category_id: string;
+  // Type-first: the candidate's own cell (audience × category). Required for a
+  // type-only watch; when a group is attached the cell is derived from the group
+  // server-side, so the form may omit it (legacy/uncategorized/retagged groups).
+  audience_category: GroupAudienceCategory | null;
+  category_id: string | null;
   // The multiplying group, set only once a leader is willing and a group of the
   // candidate's type is picked. Null = type-only watch.
   group_id: string | null;
@@ -470,30 +472,8 @@ function validateMultiplicationCandidateFields(
   input: Record<string, unknown>,
   errors: string[]
 ): MultiplicationCandidateFields {
-  // Type-first: the cell (audience × category) is required. The picker only
-  // offers active cells; the RPC re-checks (inactive_cell) at the trust boundary.
-  let audienceCategory: GroupAudienceCategory = "men";
-  const audienceRaw = readOptionalString(input.audience_category);
-  if (audienceRaw === undefined) {
-    errors.push("Group type is required.");
-  } else if (!isAudienceCategory(audienceRaw)) {
-    errors.push("Audience category must be men, women, or mixed.");
-  } else {
-    audienceCategory = audienceRaw;
-  }
-
-  let categoryId: string = "";
-  const categoryRaw = readOptionalString(input.category_id);
-  if (categoryRaw === undefined) {
-    errors.push("Group type is required.");
-  } else if (!isUuid(categoryRaw)) {
-    errors.push("category_id must be a uuid.");
-  } else {
-    categoryId = normalizeUuid(categoryRaw);
-  }
-
   // The multiplying group is optional (type-only watch). When present it must
-  // be a uuid; group-type matching is enforced server-side (group_type_mismatch).
+  // be a uuid; the group is the source of truth for the cell server-side.
   let groupId: string | null = null;
   const groupRaw = readOptionalString(input.group_id);
   if (groupRaw !== undefined) {
@@ -502,6 +482,33 @@ function validateMultiplicationCandidateFields(
     } else {
       groupId = normalizeUuid(groupRaw);
     }
+  }
+
+  // The cell (audience × category) is required for a type-only watch; when a
+  // group is attached the RPC derives the cell from the group, so the form may
+  // omit it (e.g. editing a legacy/uncategorized or retagged candidate).
+  let audienceCategory: GroupAudienceCategory | null = null;
+  const audienceRaw = readOptionalString(input.audience_category);
+  if (audienceRaw !== undefined) {
+    if (!isAudienceCategory(audienceRaw)) {
+      errors.push("Audience category must be men, women, or mixed.");
+    } else {
+      audienceCategory = audienceRaw;
+    }
+  } else if (groupId === null) {
+    errors.push("Group type is required.");
+  }
+
+  let categoryId: string | null = null;
+  const categoryRaw = readOptionalString(input.category_id);
+  if (categoryRaw !== undefined) {
+    if (!isUuid(categoryRaw)) {
+      errors.push("category_id must be a uuid.");
+    } else {
+      categoryId = normalizeUuid(categoryRaw);
+    }
+  } else if (groupId === null) {
+    errors.push("Group type is required.");
   }
 
   let targetYear: number | null = null;

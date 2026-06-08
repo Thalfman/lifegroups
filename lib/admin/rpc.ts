@@ -415,9 +415,10 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
-    // The candidate's cell (audience × category). Required.
-    p_audience_category: GroupAudienceCategory;
-    p_category_id: string;
+    // The candidate's cell (audience × category). Null when a group is attached
+    // (the RPC derives the cell from the group); required for a type-only watch.
+    p_audience_category: GroupAudienceCategory | null;
+    p_category_id: string | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -437,10 +438,10 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_leader_pipeline_id: string | null;
     // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
     p_manual_member_count: number | null;
-    // The candidate's cell (audience × category). Required. Update may move the
-    // candidate between cells and attach/detach its group.
-    p_audience_category: GroupAudienceCategory;
-    p_category_id: string;
+    // The candidate's cell (audience × category). Null when a group is attached
+    // (the RPC derives the cell from the group); required for a type-only watch.
+    p_audience_category: GroupAudienceCategory | null;
+    p_category_id: string | null;
     // Type-first: optional multiplying group (null = type-only watch).
     p_group_id: string | null;
   }
