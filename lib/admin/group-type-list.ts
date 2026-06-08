@@ -1,5 +1,6 @@
 import type { GroupAudienceCategory } from "@/types/enums";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
+import type { CellCoverage } from "@/lib/admin/cell-coverage";
 
 // Settings › Groups create-flow + list helpers (#412 / ADR 0021). Pure functions
 // so the shared-catalog resolution and the list order are unit-testable with no
@@ -54,4 +55,42 @@ export function sortGroupTypeRows<
       a.label.localeCompare(b.label) ||
       AUDIENCE_ORDER[a.audienceCategory] - AUDIENCE_ORDER[b.audienceCategory]
   );
+}
+
+// One Audience board: the audience plus its active cells (sorted by label) and
+// the summed coverage across them. The Settings › Groups list folds the flat
+// per-cell rows into these three boards (Men's, Women's, Mixed) so a category
+// shared across audiences no longer renders as N separate top-level rows.
+export type AudienceBoard = {
+  audienceCategory: GroupAudienceCategory;
+  cells: CellCoverage[];
+  haveTotal: number;
+  targetTotal: number;
+};
+
+// Group the flat cell list into exactly the three Audience boards, in the
+// canonical AUDIENCE_CATEGORIES order — always all three, even when a board has
+// no active cells (so the UI never synthesizes the empty boards itself). Each
+// board's cells reuse sortGroupTypeRows' order (label, then audience), and its
+// totals sum the cells' have / target. Pure (ADR 0015): no React, no database.
+export function groupCellsByAudience(
+  cells: readonly CellCoverage[]
+): AudienceBoard[] {
+  const byAudience = new Map<GroupAudienceCategory, CellCoverage[]>();
+  for (const cell of cells) {
+    const bucket = byAudience.get(cell.audienceCategory);
+    if (bucket) bucket.push(cell);
+    else byAudience.set(cell.audienceCategory, [cell]);
+  }
+  return AUDIENCE_CATEGORIES.map((audienceCategory) => {
+    const boardCells = sortGroupTypeRows(
+      byAudience.get(audienceCategory) ?? []
+    );
+    return {
+      audienceCategory,
+      cells: boardCells,
+      haveTotal: boardCells.reduce((sum, c) => sum + c.have, 0),
+      targetTotal: boardCells.reduce((sum, c) => sum + c.target, 0),
+    };
+  });
 }
