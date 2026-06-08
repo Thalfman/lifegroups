@@ -412,6 +412,8 @@ export function rpcAdminCreateMultiplicationCandidate(
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
     p_leader_pipeline_id: string | null;
+    // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
+    p_manual_member_count: number | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_create_multiplication_candidate", args);
@@ -429,6 +431,8 @@ export function rpcAdminUpdateMultiplicationCandidate(
     p_successor_designate: string | null;
     p_meeting_time: MultiplicationMeetingTime | null;
     p_leader_pipeline_id: string | null;
+    // ADR 0022: Julian-fed headcount. Null falls back to the in-app roster count.
+    p_manual_member_count: number | null;
   }
 ): Promise<RpcResult> {
   return callUuidRpc(client, "admin_update_multiplication_candidate", args);

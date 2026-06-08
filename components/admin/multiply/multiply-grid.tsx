@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { P, fontDisplay, fontBody, fontMono } from "@/lib/pastoral";
 import { PLinkButton } from "@/components/pastoral/button";
 import type { ReadinessPillarKey } from "@/lib/admin/cell-readiness";
@@ -6,6 +7,7 @@ import {
   type MultiplyGrid,
   type MultiplyGridCell,
 } from "@/lib/admin/multiply-grid";
+import { segmentAnchorId, segmentLabel } from "@/lib/admin/multiplication";
 import type { GroupAudienceCategory } from "@/types/enums";
 
 // Presentational Multiply GRID (#403 / PRD §2.5). Rows = categories, columns = the
@@ -49,9 +51,16 @@ function ReadinessBadge({ ready }: { ready: boolean }) {
 }
 
 // One grid cell. A not-applied cell renders BLANK (an empty, muted cell). An
-// applied cell shows its readiness badge, the `have X of Y` coverage, and — when
-// not ready — a compact list of the required pillars holding it back.
-function GridCell({ cell }: { cell: MultiplyGridCell }) {
+// applied cell shows its readiness badge, the `have X of Y` coverage, when not
+// ready a compact list of the pillars holding it back, and a deep-link into the
+// Plan tab filtered to this cell's audience × category segment (#403 / ADR 0022).
+function GridCell({
+  cell,
+  categoryLabel,
+}: {
+  cell: MultiplyGridCell;
+  categoryLabel: string;
+}) {
   const typeLabel = TYPE_LABEL[cell.audienceCategory];
 
   if (!cell.applied || !cell.readout) {
@@ -69,6 +78,11 @@ function GridCell({ cell }: { cell: MultiplyGridCell }) {
 
   const { signal, coverage } = cell.readout;
   const blockers = signal.blockers.map((b) => BLOCKER_LABEL[b]).join(", ");
+  // Same key the planner buckets candidates by, so the anchor lands on this
+  // cell's segment in the Plan tab when one exists.
+  const planHref = `/admin/multiply?tab=plan#${segmentAnchorId(
+    segmentLabel(cell.audienceCategory, categoryLabel)
+  )}`;
 
   return (
     <td style={cellStyle}>
@@ -92,6 +106,18 @@ function GridCell({ cell }: { cell: MultiplyGridCell }) {
             Held back by: {blockers}.
           </span>
         )}
+        <Link
+          href={planHref}
+          aria-label={`View the plan for ${typeLabel} · ${categoryLabel}`}
+          style={{
+            fontFamily: fontBody,
+            fontSize: 11,
+            color: P.terra,
+            textDecoration: "underline",
+          }}
+        >
+          View plan →
+        </Link>
       </div>
     </td>
   );
@@ -171,7 +197,11 @@ export function MultiplyGridView({
                   {row.label}
                 </th>
                 {GRID_TYPES.map((type) => (
-                  <GridCell key={type} cell={row.cells[type]} />
+                  <GridCell
+                    key={type}
+                    cell={row.cells[type]}
+                    categoryLabel={row.label}
+                  />
                 ))}
               </tr>
             ))}

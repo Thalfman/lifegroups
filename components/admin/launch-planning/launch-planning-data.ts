@@ -121,7 +121,10 @@ const EMPTY_CAPACITY_MODEL: CapacityBoardModel = {
   segments: [],
 };
 
-type MultiplicationView = {
+// Exported so the Multiply area's thin Plan-tab loader
+// (components/admin/multiply/multiply-plan-data.ts) can shape the same planner
+// props without pulling in the heavy launch-planning forecast bundle.
+export type MultiplicationView = {
   segments: SegmentGroup[];
   availableGroups: { id: string; name: string }[];
   apprenticesByGroup: Record<string, ApprenticeOption[]>;
@@ -139,7 +142,8 @@ type PipelineData = NonNullable<
 
 // Shape the multiplication-candidate, group, and pipeline reads into the
 // planner's props. Only called once its three source reads have succeeded.
-function buildMultiplicationView(
+// Shared by this loader and the Multiply Plan-tab loader.
+export function buildMultiplicationView(
   candidates: CandidatesData,
   allGroups: AllGroupsData,
   pipeline: PipelineData,

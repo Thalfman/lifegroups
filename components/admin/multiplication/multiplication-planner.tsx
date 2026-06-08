@@ -11,6 +11,7 @@ import {
   CANDIDATE_STATUS_LABEL,
   CRITERION_LABEL,
   filterSegmentsByYear,
+  segmentAnchorId,
   summarizeTargetYears,
   type CandidateView,
   type MultiplicationCriterion,
@@ -194,6 +195,34 @@ function CandidateEditForm({
           </div>
         </div>
         <div>
+          <label htmlFor={fid("manual_member_count")} style={fieldLabelStyle}>
+            Members (entered)
+          </label>
+          <input
+            id={fid("manual_member_count")}
+            name="manual_member_count"
+            type="number"
+            min={0}
+            max={1000}
+            inputMode="numeric"
+            defaultValue={c.manualMemberCount ?? ""}
+            placeholder={String(c.activeMemberCount)}
+            style={fieldInputStyle}
+          />
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontFamily: fontBody,
+              fontSize: 11,
+              color: P.ink3,
+            }}
+          >
+            Julian&rsquo;s headcount for this group, used for the &ldquo;12+
+            members&rdquo; signal. Leave blank to use the in-app roster count (
+            {c.activeMemberCount}).
+          </p>
+        </div>
+        <div>
           <label htmlFor={fid("leader_pipeline_id")} style={fieldLabelStyle}>
             Linked apprentice
           </label>
@@ -313,8 +342,9 @@ function CandidateRow({
         <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
           {CANDIDATE_STATUS_LABEL[c.status]}
           {c.targetYear ? ` · target ${c.targetYear}` : " · year TBD"} ·{" "}
-          {c.activeMemberCount} members · {c.readiness.metCount}/
-          {c.readiness.totalCount} criteria
+          {c.memberCount} members
+          {c.manualMemberCount != null ? " (entered)" : ""} ·{" "}
+          {c.readiness.metCount}/{c.readiness.totalCount} criteria
         </span>
       </div>
       {facts.length > 0 ? (
@@ -448,6 +478,32 @@ function AddCandidateForm({
             ))}
           </select>
         </div>
+      </div>
+      <div>
+        <label htmlFor="mc-members" style={fieldLabelStyle}>
+          Members (entered)
+        </label>
+        <input
+          id="mc-members"
+          name="manual_member_count"
+          type="number"
+          min={0}
+          max={1000}
+          inputMode="numeric"
+          placeholder="e.g. 12"
+          style={fieldInputStyle}
+        />
+        <p
+          style={{
+            margin: "4px 0 0",
+            fontFamily: fontBody,
+            fontSize: 11,
+            color: P.ink3,
+          }}
+        >
+          Julian&rsquo;s headcount for this group. Leave blank to use the in-app
+          roster count.
+        </p>
       </div>
       <label style={checkboxLabelStyle}>
         <input type="checkbox" name="shepherd_willing" />
@@ -729,7 +785,13 @@ export function MultiplicationPlanner({
           </p>
         ) : (
           visible.map((seg) => (
-            <div key={seg.segment} style={{ display: "grid", gap: 8 }}>
+            <div
+              key={seg.segment}
+              id={segmentAnchorId(seg.segment)}
+              // Leave room above the anchor so a deep-linked segment isn't
+              // jammed against the viewport top after the hash scroll.
+              style={{ display: "grid", gap: 8, scrollMarginTop: 96 }}
+            >
               <h3
                 style={{
                   margin: 0,

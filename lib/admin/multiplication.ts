@@ -146,6 +146,19 @@ export function segmentLabel(
   return `${a} · ${label}`;
 }
 
+// ADR 0022: a stable DOM anchor id for a segment, so the Readiness grid can
+// deep-link a cell to the matching segment block in the Plan tab
+// (/admin/multiply?tab=plan#<id>). Derived from segmentLabel so the grid and the
+// planner agree on the same id without sharing state — lowercase, with any run of
+// non-alphanumeric characters collapsed to a single hyphen.
+export function segmentAnchorId(segment: string): string {
+  const slug = segment
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `seg-${slug || "uncategorized"}`;
+}
+
 // The per-candidate facts the planner surface renders: the group identity, the
 // editable planning fields, and the derived readiness. Computed once on the
 // server so the client component stays presentational.
@@ -161,7 +174,13 @@ export type CandidateView = {
   notes: string | null;
   successorDesignate: string | null;
   meetingTime: MultiplicationMeetingTime | null;
+  // The in-app roster count (active group_memberships).
   activeMemberCount: number;
+  // ADR 0022: Julian's manually-entered headcount, or null when unset.
+  manualMemberCount: number | null;
+  // The EFFECTIVE count the planner displays and the "12+ members" criterion
+  // reads: the manual value when Julian has entered one, else the roster count.
+  memberCount: number;
   readiness: ReadinessResult;
   // Capacity & Multiplication #184: the linked apprentice (leader_pipeline),
   // shown inline. Null when the candidate has no link.
@@ -191,6 +210,12 @@ export function buildPlannerSegments(
       entry.group?.audience_category ?? null,
       entry.group?.category_label ?? null
     );
+    // ADR 0022: Julian-fed headcount wins; fall back to the in-app roster count
+    // when he hasn't entered one (so seeded candidates aren't shown as "0
+    // members" until backfilled). The effective count drives both the display
+    // and the "12+ members" readiness criterion.
+    const memberCount =
+      entry.candidate.manual_member_count ?? entry.activeMemberCount;
     const view: CandidateView = {
       candidateId: entry.candidate.id,
       groupId: entry.candidate.group_id,
@@ -204,11 +229,13 @@ export function buildPlannerSegments(
       successorDesignate: entry.candidate.successor_designate,
       meetingTime: entry.candidate.meeting_time,
       activeMemberCount: entry.activeMemberCount,
+      manualMemberCount: entry.candidate.manual_member_count,
+      memberCount,
       leaderPipelineId: entry.candidate.leader_pipeline_id,
       linkedApprentice: entry.linkedApprentice,
       readiness: evaluateReadiness(
         {
-          activeMemberCount: entry.activeMemberCount,
+          activeMemberCount: memberCount,
           launchedOn: entry.group?.launched_on ?? null,
           coShepherdSince: entry.coShepherdSince,
           shepherdWilling: entry.candidate.shepherd_willing,

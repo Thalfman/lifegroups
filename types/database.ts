@@ -379,6 +379,10 @@ export interface MultiplicationCandidatesRow {
   // multiplied group. Source of truth for "who leads it"; successor_designate
   // is retained through the migration.
   leader_pipeline_id: UUID | null;
+  // ADR 0022: Julian-fed headcount for this group, taking precedence over the
+  // in-app roster count for the planner's display and the "12+ members"
+  // readiness criterion. Null = fall back to the computed roster count.
+  manual_member_count: number | null;
   archived_at: Timestamp | null;
   created_by: UUID | null;
   updated_by: UUID | null;
@@ -966,6 +970,7 @@ export interface Database {
           | "successor_designate"
           | "meeting_time"
           | "leader_pipeline_id"
+          | "manual_member_count"
         >;
         Update: Partial<MultiplicationCandidatesRow>;
         Relationships: [];

@@ -725,7 +725,8 @@ export async function fetchChurchAttendanceSnapshots(
 
 const MULTIPLICATION_CANDIDATE_COLUMNS =
   "id, group_id, target_year, status, shepherd_willing, needs_similar_stage, " +
-  "notes, successor_designate, meeting_time, leader_pipeline_id, archived_at, " +
+  "notes, successor_designate, meeting_time, leader_pipeline_id, " +
+  "manual_member_count, archived_at, " +
   "created_by, updated_by, created_at, updated_at";
 
 export type MultiplicationCandidateGroup = Pick<

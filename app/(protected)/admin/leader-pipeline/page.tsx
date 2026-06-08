@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { requireAdmin } from "@/lib/auth/session";
 import { loadLeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
@@ -42,39 +41,6 @@ export default async function AdminLeaderPipelinePage() {
               availableGroups={data.availableGroups}
             />
           )}
-
-          <nav
-            aria-label="Related admin surfaces"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              alignItems: "center",
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-            }}
-          >
-            <span style={{ color: P.ink3 }}>Related:</span>
-            <Link
-              href="/admin/capacity-board"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Capacity board
-            </Link>
-            <Link
-              href="/admin/multiplication"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Multiplication
-            </Link>
-            <Link
-              href="/admin/launch-planning"
-              style={{ color: P.ink, textDecoration: "underline" }}
-            >
-              Launch planning
-            </Link>
-          </nav>
         </div>
       </PageBody>
     </>
