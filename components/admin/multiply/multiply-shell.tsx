@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { type CSSProperties, type ReactNode } from "react";
 import { P, fontSans } from "@/lib/pastoral";
+import {
+  resolveMultiplyInitialTab,
+  type MultiplyTabKey,
+} from "@/components/admin/multiply/multiply-data";
 
 // The Multiply area's tabs (ADR 0022). Multiply unifies the three faces of the
 // church's multiplication tracking into one surface:
@@ -16,7 +21,7 @@ import { P, fontSans } from "@/lib/pastoral";
 // Planning tab / off-nav routes; this shell re-homes them into the visible
 // Multiply area (an intentional partial reversal of ADR 0016's hiding — the data
 // was always retained; only the surface moves).
-export type MultiplyTabKey = "plan" | "readiness" | "leaders";
+export type { MultiplyTabKey };
 
 export type MultiplyTab = {
   key: MultiplyTabKey;
@@ -27,24 +32,25 @@ export type MultiplyTab = {
   panel: ReactNode;
 };
 
-export function MultiplyShell({
-  tabs,
-  initialTab = "plan",
-}: {
-  tabs: MultiplyTab[];
-  initialTab?: MultiplyTabKey;
-}) {
-  const [active, setActive] = useState<MultiplyTabKey>(initialTab);
+export function MultiplyShell({ tabs }: { tabs: MultiplyTab[] }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // A deep-link (?tab=plan from a Readiness-grid cell, say) re-renders the page
-  // with a different initialTab. If React reuses the instance across the
-  // client-side transition, useState would keep the old tab. Re-seed active
-  // whenever initialTab changes (the documented "adjust state when a prop
-  // changes during render" pattern — no effect). Mirrors CareShell.
-  const [seededTab, setSeededTab] = useState<MultiplyTabKey>(initialTab);
-  if (seededTab !== initialTab) {
-    setSeededTab(initialTab);
-    setActive(initialTab);
+  // The active tab is driven by the URL's `?tab=` param (default "plan"), so a
+  // deep-link from a Readiness-grid cell (`?tab=plan#seg-…`) always opens the
+  // Plan panel — even after the admin has manually switched tabs. Tab buttons
+  // sync the URL through the History API, which Next integrates with
+  // useSearchParams, so switching tabs updates the URL (and makes the deep-link
+  // a real change) WITHOUT a server round-trip.
+  const active = resolveMultiplyInitialTab(
+    searchParams.get("tab") ?? undefined
+  );
+
+  function selectTab(key: MultiplyTabKey) {
+    if (key === active) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", key);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
   }
 
   return (
@@ -71,7 +77,7 @@ export function MultiplyShell({
             id={`multiply-tab-${tab.key}`}
             aria-selected={active === tab.key}
             aria-controls={`multiply-panel-${tab.key}`}
-            onClick={() => setActive(tab.key)}
+            onClick={() => selectTab(tab.key)}
             style={tabItemStyle(active === tab.key)}
           >
             {tab.label}

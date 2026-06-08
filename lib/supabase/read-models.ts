@@ -91,6 +91,23 @@ export async function fetchAllGroups(
   return { data: data ?? [], error: null };
 }
 
+// A group reference is the id, name, and lifecycle status — enough to list
+// active groups (e.g. a candidate/apprentice picker) without pulling the full
+// row's privacy-sensitive columns (e.g. admin_notes). Prefer this over
+// fetchAllGroups on read paths that only need to identify active groups.
+export type GroupRef = Pick<GroupsRow, "id" | "name" | "lifecycle_status">;
+
+export async function fetchGroupRefs(
+  client: ReadClient
+): Promise<ReadResult<GroupRef[]>> {
+  const { data, error } = await client
+    .from("groups")
+    .select("id, name, lifecycle_status")
+    .order("name", { ascending: true });
+  if (error) return { data: null, error: wrapError("fetchGroupRefs", error) };
+  return { data: (data ?? []) as GroupRef[], error: null };
+}
+
 export async function fetchGroupsByIds(
   client: ReadClient,
   ids: string[]

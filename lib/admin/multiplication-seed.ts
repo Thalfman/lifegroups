@@ -52,6 +52,10 @@ export type CandidateSeedRow = {
   successorDesignate: string | null;
   meetingTime: MultiplicationMeetingTime | null;
   notes: string | null;
+  // ADR 0022: the Doc's `(N)` count, fed into the structured manual_member_count
+  // column so seeded groups read Julian's headcount rather than the (unseeded →
+  // 0) in-app roster. Still mirrored in notes as provenance (buildCandidateNotes).
+  manualMemberCount: number | null;
 };
 
 // Compose the candidate's notes from everything the Doc carries that the
@@ -102,6 +106,7 @@ export function buildSeedRows(entries: MultiplicationSeedEntry[]): {
     successorDesignate: e.successor,
     meetingTime: e.meetingTime,
     notes: buildCandidateNotes(e),
+    manualMemberCount: e.memberCount,
   }));
 
   return { groups, candidates };
@@ -465,13 +470,13 @@ export function renderMultiplicationSeedSql(
     const candidateInsert =
       `insert into public.multiplication_candidates (\n` +
       `  group_id, target_year, status, shepherd_willing, needs_similar_stage,\n` +
-      `  notes, successor_designate, meeting_time\n` +
+      `  notes, successor_designate, meeting_time, manual_member_count\n` +
       `)\n` +
       `select g.id, ${candidate.targetYear ?? "null"}, ` +
       `'${candidate.status}'::public.multiplication_candidate_status, ` +
       `${candidate.shepherdWilling}, ${candidate.needsSimilarStage},\n` +
       `  ${sqlText(candidate.notes)}, ${sqlText(candidate.successorDesignate)}, ` +
-      `${sqlMeetingTime(candidate.meetingTime)}\n` +
+      `${sqlMeetingTime(candidate.meetingTime)}, ${candidate.manualMemberCount ?? "null"}\n` +
       `from public.groups g\n` +
       `where g.name = ${name}\n` +
       `  and not exists (\n` +

@@ -21,10 +21,10 @@ where not exists (select 1 from public.groups where name = 'George Kelly');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 9 members at time of plan. Doc bracket: Men''s "50''s – 60''s".', null, null
+  'Doc: 9 members at time of plan. Doc bracket: Men''s "50''s – 60''s".', null, null, 9
 from public.groups g
 where g.name = 'George Kelly'
   and not exists (
@@ -39,10 +39,10 @@ where not exists (select 1 from public.groups where name = 'Tim Boberg');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 13 members at time of plan. Doc bracket: Men''s "60''s – 70''s".', null, null
+  'Doc: 13 members at time of plan. Doc bracket: Men''s "60''s – 70''s".', null, null, 13
 from public.groups g
 where g.name = 'Tim Boberg'
   and not exists (
@@ -57,10 +57,10 @@ where not exists (select 1 from public.groups where name = 'Nate Baron');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 10 members at time of plan.', 'Tony L.', null
+  'Doc: 10 members at time of plan.', 'Tony L.', null, 10
 from public.groups g
 where g.name = 'Nate Baron'
   and not exists (
@@ -75,10 +75,10 @@ where not exists (select 1 from public.groups where name = 'Mike Irizarry');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan.', 'Jon H.', null
+  'Doc: 15 members at time of plan.', 'Jon H.', null, 15
 from public.groups g
 where g.name = 'Mike Irizarry'
   and not exists (
@@ -93,10 +93,10 @@ where not exists (select 1 from public.groups where name = 'George Diamond');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 6 members at time of plan.', null, null
+  'Doc: 6 members at time of plan.', null, null, 6
 from public.groups g
 where g.name = 'George Diamond'
   and not exists (
@@ -111,10 +111,10 @@ where not exists (select 1 from public.groups where name = 'Stephanie Hichox');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: Women''s "30''s – 40''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: Women''s "30''s – 40''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 15
 from public.groups g
 where g.name = 'Stephanie Hichox'
   and not exists (
@@ -129,10 +129,10 @@ where not exists (select 1 from public.groups where name = 'Diana Johnson');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', 'Cindy Kessaris', null
+  'Doc: 15 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', 'Cindy Kessaris', null, 15
 from public.groups g
 where g.name = 'Diana Johnson'
   and not exists (
@@ -147,10 +147,10 @@ where not exists (select 1 from public.groups where name = 'Christine Mathias');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc: 12 members at time of plan. Doc bracket: Women''s "50''s – 60''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 12
 from public.groups g
 where g.name = 'Christine Mathias'
   and not exists (
@@ -165,10 +165,10 @@ where not exists (select 1 from public.groups where name = 'Gail Blair');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 4 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc: 4 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 4
 from public.groups g
 where g.name = 'Gail Blair'
   and not exists (
@@ -183,10 +183,10 @@ where not exists (select 1 from public.groups where name = 'Donna Lawrence');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 13 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc: 13 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 13
 from public.groups g
 where g.name = 'Donna Lawrence'
   and not exists (
@@ -201,10 +201,10 @@ where not exists (select 1 from public.groups where name = 'Judi Tripp');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 9 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc: 9 members at time of plan. Doc bracket: Women''s "60''s – 70''s". Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, 9
 from public.groups g
 where g.name = 'Judi Tripp'
   and not exists (
@@ -219,10 +219,10 @@ where not exists (select 1 from public.groups where name = 'Sandra Lea');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null
+  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Section reconciliation: the Doc''s women''s header says "6 groups" but seven leaders are listed; the count and the listed leaders do not reconcile in the source.', null, null, null
 from public.groups g
 where g.name = 'Sandra Lea'
   and not exists (
@@ -237,10 +237,10 @@ where not exists (select 1 from public.groups where name = 'Keith and Joy Krispi
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 17 members at time of plan.', null, null
+  'Doc: 17 members at time of plan.', null, null, 17
 from public.groups g
 where g.name = 'Keith and Joy Krispin'
   and not exists (
@@ -255,10 +255,10 @@ where not exists (select 1 from public.groups where name = 'Mike and Mary Jo Bea
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null
+  'Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc note: on the same source line as the Krispins. Section reconciliation: the Doc''s mixed header says "18 groups"; the listed leaders do not cleanly reconcile to that count (e.g. the Beasley line shares a source line with the Krispins).', null, null, null
 from public.groups g
 where g.name = 'Mike and Mary Jo Beasley'
   and not exists (
@@ -273,10 +273,10 @@ where not exists (select 1 from public.groups where name = 'Caleb and Kate Senys
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 8 members at time of plan.', null, null
+  'Doc: 8 members at time of plan.', null, null, 8
 from public.groups g
 where g.name = 'Caleb and Kate Senyshyn'
   and not exists (
@@ -291,10 +291,10 @@ where not exists (select 1 from public.groups where name = 'Ben and Gracie Berts
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan.', null, null
+  'Doc: 12 members at time of plan.', null, null, 12
 from public.groups g
 where g.name = 'Ben and Gracie Bertsche'
   and not exists (
@@ -309,10 +309,10 @@ where not exists (select 1 from public.groups where name = 'Julian and Paula Gue
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 8 members at time of plan. Doc note: (closing in August).', null, null
+  'Doc: 8 members at time of plan. Doc note: (closing in August).', null, null, 8
 from public.groups g
 where g.name = 'Julian and Paula Guevara'
   and not exists (
@@ -327,10 +327,10 @@ where not exists (select 1 from public.groups where name = 'Calvin and Julianne 
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 14 members at time of plan.', null, null
+  'Doc: 14 members at time of plan.', null, null, 14
 from public.groups g
 where g.name = 'Calvin and Julianne Braker'
   and not exists (
@@ -345,10 +345,10 @@ where not exists (select 1 from public.groups where name = 'David and Megan Cahi
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan.', 'Gonzalez', null
+  'Doc: 12 members at time of plan.', 'Gonzalez', null, 12
 from public.groups g
 where g.name = 'David and Megan Cahill'
   and not exists (
@@ -363,10 +363,10 @@ where not exists (select 1 from public.groups where name = 'Andre and Lindsey Pa
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan.', 'Marshalls', null
+  'Doc: 12 members at time of plan.', 'Marshalls', null, 12
 from public.groups g
 where g.name = 'Andre and Lindsey Patrick'
   and not exists (
@@ -381,10 +381,10 @@ where not exists (select 1 from public.groups where name = 'Dennis Rens');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: "Families with young professional kids" (no exact life-stage value; mapped to families_with_adult_kids).', null, null
+  'Doc: 15 members at time of plan. Doc marked this entry `(?)` — unconfirmed; verify with Julian. Doc bracket: "Families with young professional kids" (no exact life-stage value; mapped to families_with_adult_kids).', null, null, 15
 from public.groups g
 where g.name = 'Dennis Rens'
   and not exists (
@@ -399,10 +399,10 @@ where not exists (select 1 from public.groups where name = 'Ron and Carole Lanie
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 10 members at time of plan.', null, null
+  'Doc: 10 members at time of plan.', null, null, 10
 from public.groups g
 where g.name = 'Ron and Carole Lanier'
   and not exists (
@@ -417,10 +417,10 @@ where not exists (select 1 from public.groups where name = 'Keith and Mary Lee')
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 10 members at time of plan.', null, null
+  'Doc: 10 members at time of plan.', null, null, 10
 from public.groups g
 where g.name = 'Keith and Mary Lee'
   and not exists (
@@ -435,10 +435,10 @@ where not exists (select 1 from public.groups where name = 'Tim and Sou Boberg')
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time
+  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time, 12
 from public.groups g
 where g.name = 'Tim and Sou Boberg'
   and not exists (
@@ -453,10 +453,10 @@ where not exists (select 1 from public.groups where name = 'Carol Dembkowski');
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 8 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'evening'::public.multiplication_meeting_time
+  'Doc: 8 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'evening'::public.multiplication_meeting_time, 8
 from public.groups g
 where g.name = 'Carol Dembkowski'
   and not exists (
@@ -471,10 +471,10 @@ where not exists (select 1 from public.groups where name = 'Phil and Karen Dicke
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time
+  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time, 12
 from public.groups g
 where g.name = 'Phil and Karen Dickert'
   and not exists (
@@ -489,10 +489,10 @@ where not exists (select 1 from public.groups where name = 'Jere and Jana Miller
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc note: (Vietmeier''s?) — ambiguous successor/over-shepherd, unconfirmed. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time
+  'Doc: 12 members at time of plan. Doc note: (Vietmeier''s?) — ambiguous successor/over-shepherd, unconfirmed. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time, 12
 from public.groups g
 where g.name = 'Jere and Jana Miller'
   and not exists (
@@ -507,10 +507,10 @@ where not exists (select 1 from public.groups where name = 'Phil and Karen Thatc
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 13 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'evening'::public.multiplication_meeting_time
+  'Doc: 13 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'evening'::public.multiplication_meeting_time, 13
 from public.groups g
 where g.name = 'Phil and Karen Thatcher'
   and not exists (
@@ -525,10 +525,10 @@ where not exists (select 1 from public.groups where name = 'Ray and Julie Herric
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time
+  'Doc: 12 members at time of plan. Doc bracket header hedge: "Retirement (some or most of them)".', null, 'during_the_day'::public.multiplication_meeting_time, 12
 from public.groups g
 where g.name = 'Ray and Julie Herrick'
   and not exists (
@@ -543,10 +543,10 @@ where not exists (select 1 from public.groups where name = 'Chris/Sydney Anderso
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 6 members at time of plan.', null, null
+  'Doc: 6 members at time of plan.', null, null, 6
 from public.groups g
 where g.name = 'Chris/Sydney Anderson'
   and not exists (
@@ -561,10 +561,10 @@ where not exists (select 1 from public.groups where name = 'Phil and Sandy Leman
 
 insert into public.multiplication_candidates (
   group_id, target_year, status, shepherd_willing, needs_similar_stage,
-  notes, successor_designate, meeting_time
+  notes, successor_designate, meeting_time, manual_member_count
 )
 select g.id, null, 'watching'::public.multiplication_candidate_status, false, false,
-  'Doc: 12 members at time of plan.', null, null
+  'Doc: 12 members at time of plan.', null, null, 12
 from public.groups g
 where g.name = 'Phil and Sandy Leman'
   and not exists (

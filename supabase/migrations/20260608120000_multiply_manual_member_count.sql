@@ -39,6 +39,22 @@ comment on column public.multiplication_candidates.manual_member_count is
   'ADR 0022: Julian-fed headcount for this group, taking precedence over the in-app roster count for the planner display and the "12+ members" readiness criterion. Null = fall back to the computed roster count.';
 
 -- ---------------------------------------------------------------------------
+-- 1b. Backfill already-seeded candidates. The multiplication seed (ADR 0006)
+--     previously stored the Doc's count only in the candidate notes
+--     ("Doc: N members at time of plan.") because there was no column for it,
+--     and it seeds no memberships — so without this lift, every seeded group
+--     would read the (0) in-app roster and fail the "12+ members" criterion.
+--     Idempotent: fills nulls only, where the provenance note is present. (Fresh
+--     seeds populate the column directly; this only catches pre-existing rows.)
+-- ---------------------------------------------------------------------------
+
+update public.multiplication_candidates
+   set manual_member_count =
+         (substring(notes from 'Doc: ([0-9]+) members at time of plan'))::int
+ where manual_member_count is null
+   and notes ~ 'Doc: [0-9]+ members at time of plan';
+
+-- ---------------------------------------------------------------------------
 -- 2. RPC: create (re-created to accept + persist the manual member count).
 -- ---------------------------------------------------------------------------
 

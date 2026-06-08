@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
-  fetchAllGroups,
+  fetchGroupRefs,
   fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
 } from "@/lib/supabase/read-models";
@@ -27,7 +27,9 @@ export type MultiplyPlanReads = {
   fetchMultiplicationCandidates: OmitClient<
     typeof fetchMultiplicationCandidatesForAdmin
   >;
-  fetchAllGroups: OmitClient<typeof fetchAllGroups>;
+  // Lean id/name/lifecycle projection — the planner only needs to list active
+  // groups, so we avoid pulling privacy-sensitive columns (admin_notes).
+  fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
   fetchLeaderPipeline: OmitClient<typeof fetchLeaderPipelineForAdmin>;
 };
 
@@ -36,7 +38,7 @@ export function supabaseMultiplyPlanReads(
 ): MultiplyPlanReads {
   return bindReads(client, {
     fetchMultiplicationCandidates: fetchMultiplicationCandidatesForAdmin,
-    fetchAllGroups,
+    fetchGroupRefs,
     fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
   });
 }
@@ -53,15 +55,15 @@ const EMPTY_VIEW: MultiplicationView = {
 export async function buildMultiplyPlanData(
   reads: MultiplyPlanReads
 ): Promise<MultiplyPlanData> {
-  const [candidatesRes, allGroupsRes, pipelineRes] = await Promise.all([
+  const [candidatesRes, groupRefsRes, pipelineRes] = await Promise.all([
     reads.fetchMultiplicationCandidates(),
-    reads.fetchAllGroups(),
+    reads.fetchGroupRefs(),
     reads.fetchLeaderPipeline(),
   ]);
 
   const error =
     candidatesRes.error?.message ??
-    allGroupsRes.error?.message ??
+    groupRefsRes.error?.message ??
     pipelineRes.error?.message ??
     null;
 
@@ -70,7 +72,7 @@ export async function buildMultiplyPlanData(
   const todayIso = new Date().toISOString().slice(0, 10);
   const view = buildMultiplicationView(
     candidatesRes.data ?? [],
-    allGroupsRes.data ?? [],
+    groupRefsRes.data ?? [],
     pipelineRes.data ?? [],
     todayIso
   );

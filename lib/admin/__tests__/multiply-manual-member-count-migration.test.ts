@@ -49,6 +49,16 @@ describe("manual member count migration — additive, nullable column", () => {
   it("never makes the column NOT NULL", () => {
     expect(sql.lower).not.toContain("manual_member_count integer not null");
   });
+
+  it("backfills seeded rows from the Doc provenance note, filling nulls only", () => {
+    // Lifts the Doc's count out of the seeded notes into the new column so
+    // pre-existing seeded candidates aren't stuck on the (0) in-app roster.
+    expect(sql.lower).toMatch(
+      /update public\.multiplication_candidates\s+set manual_member_count =/
+    );
+    expect(sql.lower).toContain("substring(notes from 'doc: ([0-9]+) members");
+    expect(sql.lower).toContain("where manual_member_count is null");
+  });
 });
 
 describe("manual member count migration — audited write path", () => {

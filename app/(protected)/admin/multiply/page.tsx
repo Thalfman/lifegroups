@@ -11,9 +11,7 @@ import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeli
 import {
   MultiplyShell,
   type MultiplyTab,
-  type MultiplyTabKey,
 } from "@/components/admin/multiply/multiply-shell";
-import { resolveMultiplyInitialTab } from "@/components/admin/multiply/multiply-data";
 
 // Multiply area (ADR 0016 / 0019 / 0022). One tabbed surface that unifies the
 // church's three faces of multiplication tracking, mirroring the Care tab shell:
@@ -26,10 +24,9 @@ import { resolveMultiplyInitialTab } from "@/components/admin/multiply/multiply-
 //   • Leaders — the apprentice pipeline (who's ready to lead the next group),
 //     re-homed from the off-nav /admin/leader-pipeline route.
 // The Plan + Leaders data/tables/routes are unchanged and still resolve by direct
-// URL; this re-homing surfaces them in the visible Multiply area (ADR 0022).
+// URL; this re-homing surfaces them in the visible Multiply area (ADR 0022). The
+// active tab is driven by the URL's `?tab=` param inside MultiplyShell.
 export const dynamic = "force-dynamic";
-
-type SearchParams = { tab?: string | string[] };
 
 // A compact, per-tab error note so one failed read degrades only its own tab
 // rather than blanking the whole surface (the Care-page pattern).
@@ -114,13 +111,7 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
   return { tabs };
 }
 
-export default async function AdminMultiplyPage({
-  searchParams,
-}: {
-  searchParams?: Promise<SearchParams>;
-}) {
-  const params = (await searchParams) ?? {};
-  const initialTab: MultiplyTabKey = resolveMultiplyInitialTab(params.tab);
+export default async function AdminMultiplyPage() {
   const { tabs } = await loadMultiplyPageData();
 
   return (
@@ -132,7 +123,7 @@ export default async function AdminMultiplyPage({
         lede="Which groups are slated to multiply, which cells are ready, and who's in the leader pipeline — in one place."
       />
       <PageBody>
-        <MultiplyShell tabs={tabs} initialTab={initialTab} />
+        <MultiplyShell tabs={tabs} />
       </PageBody>
     </>
   );

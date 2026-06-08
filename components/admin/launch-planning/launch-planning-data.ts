@@ -5,7 +5,7 @@ import {
   fetchLaunchPlanningScenariosForAdmin,
   fetchLeaderPipelineForAdmin,
   fetchMultiplicationCandidatesForAdmin,
-  fetchAllGroups,
+  type GroupRef,
   type LaunchPlanningInputsBundle,
 } from "@/lib/supabase/read-models";
 import {
@@ -133,19 +133,19 @@ export type MultiplicationView = {
 type CandidatesData = NonNullable<
   Awaited<ReturnType<typeof fetchMultiplicationCandidatesForAdmin>>["data"]
 >;
-type AllGroupsData = NonNullable<
-  Awaited<ReturnType<typeof fetchAllGroups>>["data"]
->;
 type PipelineData = NonNullable<
   Awaited<ReturnType<typeof fetchLeaderPipelineForAdmin>>["data"]
 >;
 
 // Shape the multiplication-candidate, group, and pipeline reads into the
 // planner's props. Only called once its three source reads have succeeded.
-// Shared by this loader and the Multiply Plan-tab loader.
+// Shared by this loader and the Multiply Plan-tab loader. `allGroups` only needs
+// id/name/lifecycle_status (a GroupRef), so callers may pass either the full
+// rows (launch planning's inputsBundle.groups) or the lean fetchGroupRefs
+// projection — the latter avoids pulling privacy-sensitive columns (admin_notes).
 export function buildMultiplicationView(
   candidates: CandidatesData,
-  allGroups: AllGroupsData,
+  allGroups: readonly GroupRef[],
   pipeline: PipelineData,
   todayIso: string
 ): MultiplicationView {

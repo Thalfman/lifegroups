@@ -1,7 +1,10 @@
 import type { GroupAudienceCategory } from "@/types/enums";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import { ministryYearOf } from "@/lib/admin/ministry-year";
-import type { MultiplyTabKey } from "@/components/admin/multiply/multiply-shell";
+
+// The Multiply area's tab keys. Defined here (not in the "use client" shell) so
+// both the shell and the server page can import them without a client boundary.
+export type MultiplyTabKey = "plan" | "readiness" | "leaders";
 
 // Shared Multiply constants (#380 → #403). The three top types (the canonical
 // Audience vocabulary) and their possessive per-type labels, plus the
