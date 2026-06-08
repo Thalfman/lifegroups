@@ -137,6 +137,19 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
       "Hide the 'Open follow-ups' item from the Home 'Needs attention' queue. Useful before launch, before any follow-ups have been created.",
     kind: "new_surface",
   },
+  // Member care list (the member half of the Care area). The backend
+  // (member_care_profiles / member_care_interactions + admin RPCs, admin-only
+  // RLS) ships regardless; this plain on/off flag governs whether the member
+  // care list SURFACES in the admin Care area. Default off ⇒ Care is leaders
+  // only, exactly as today. Flipping it on is a UI-surfacing change, not a
+  // schema change.
+  {
+    key: "care_member_list",
+    label: "Member care list",
+    description:
+      "Show the member care list in the admin Care area, alongside the leader care list. The admin-only member-care backend exists either way; this only controls whether the surface is shown. Default off ⇒ Care is leaders only.",
+    kind: "new_surface",
+  },
 ];
 
 // Maps each launch-optics mute flag to the dashboard "Needs attention" category
