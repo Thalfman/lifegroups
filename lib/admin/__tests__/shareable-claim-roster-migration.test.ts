@@ -62,6 +62,9 @@ describe("IL.4 migration — redeem_invitation roster claim", () => {
     expect(body).toContain("case v_existing_role");
     expect(body).toContain("case v_inv.role");
     expect(body).toContain("forbidden_target");
+    // Unranked/retired roles (e.g. staff_viewer) are rejected explicitly before
+    // the rank CASE, so the cap can't be bypassed via a NULL rank.
+    expect(body).toContain("v_existing_role not in");
     // The cap is evaluated before the relink update runs.
     expect(body.indexOf("case v_existing_role")).toBeLessThan(
       body.indexOf("auth_user_id = p_auth_user_id")

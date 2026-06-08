@@ -270,7 +270,9 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
           margin: 0,
         }}
       >
-        This sends a real invite and creates or links a real login profile.
+        Both create or link a real login profile. “Send invite” emails the setup
+        link (needs email delivery configured); “Copy invite link” gives you a
+        setup link to send yourself — use it if email isn’t set up yet.
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -344,8 +346,8 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
         <div style={{ display: "grid", gap: 6 }}>
           <p style={successTextStyle}>
             Invite created for {state.value.email}. They can follow the invite
-            email — or if it doesn&apos;t arrive, use “Copy invite link” above
-            to share a setup link directly, or have them use Forgot password.
+            email to set their password, or use Forgot password if the link
+            expires.
           </p>
           <p
             style={{

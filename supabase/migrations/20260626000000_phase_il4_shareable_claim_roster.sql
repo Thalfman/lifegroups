@@ -140,6 +140,20 @@ begin
       raise exception 'forbidden_target';
     end if;
 
+    -- 3b-i. Defense in depth: only known assignable roles are claimable. The
+    --       user_role enum still carries the retired 'staff_viewer' value, and
+    --       could gain others; reject any role outside the assignable set
+    --       explicitly so the rank CASE below never evaluates to NULL and lets
+    --       an unranked role fall through the privilege cap.
+    if v_existing_role not in (
+      'ministry_admin'::public.user_role,
+      'over_shepherd'::public.user_role,
+      'leader'::public.user_role,
+      'co_leader'::public.user_role
+    ) then
+      raise exception 'forbidden_target';
+    end if;
+
     -- 3b-ii. Privilege cap. A shared link is a low-trust credential with no
     --        email verification, so it must NOT be usable to seize a roster
     --        account MORE privileged than the link itself grants. Rank roles
