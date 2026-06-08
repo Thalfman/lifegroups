@@ -68,6 +68,19 @@ describe("IL.4 migration — redeem_invitation roster claim", () => {
     );
   });
 
+  it("refuses to claim a deactivated profile (status allowlist)", () => {
+    const body = functionBody(sql, "redeem_invitation");
+    // Only 'active'/'invited' (awaiting setup) are claimable; an 'inactive'
+    // (deliberately disabled) row must not be reactivated via a shared link.
+    expect(body).toContain("v_existing_status not in");
+    expect(body).toContain("'active'::public.profile_status");
+    expect(body).toContain("'invited'::public.profile_status");
+    // The status gate runs before the relink update activates the profile.
+    expect(body.indexOf("v_existing_status not in")).toBeLessThan(
+      body.indexOf("auth_user_id = p_auth_user_id")
+    );
+  });
+
   it("never changes role/group on a claim (group assignment gated on a fresh insert)", () => {
     const body = functionBody(sql, "redeem_invitation");
     // Group assignment runs only for a brand-new profile, never on a claim:

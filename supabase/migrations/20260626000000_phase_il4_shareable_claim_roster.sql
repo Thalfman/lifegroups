@@ -19,6 +19,13 @@
 --     (mapped to the generic `email_unavailable`, so a link holder can't tell
 --     a claimable roster row from a real account).
 --   * A `super_admin` roster row is NEVER claimable via a link -> `forbidden_target`.
+--   * Privilege cap: a link can only claim a profile at or BELOW the
+--     invitation's own role (rank super_admin..co_leader). A low-level link
+--     therefore can't seize a more-privileged roster row -> `forbidden_target`.
+--   * Status allowlist: only a profile awaiting setup is claimable
+--     ('active' = imported/roster without a login, or 'invited'). An 'inactive'
+--     (deliberately disabled) profile is NOT claimable, so a link can't undo an
+--     admin deactivation -> `forbidden_target`.
 --   * The claim KEEPS the profile's existing role. A shared link must not be
 --     able to elevate (or change) the role of a pre-existing person; the
 --     invitation's role only applies when inserting a brand-new profile.
@@ -158,6 +165,19 @@ begin
           when 'co_leader'::public.user_role      then 4
         end)
     then
+      raise exception 'forbidden_target';
+    end if;
+
+    -- 3b-iii. Only a profile awaiting setup is claimable. A shareable link must
+    --         NOT be able to undo a deliberate admin deactivation: reject any
+    --         status outside the allowlist. 'active' = imported/roster awaiting
+    --         login; 'invited' = pending invite. 'inactive' (disabled) is never
+    --         claimable; kept generic (forbidden_target -> email_unavailable) so
+    --         the link can't reveal that a disabled account exists.
+    if v_existing_status not in (
+      'active'::public.profile_status,
+      'invited'::public.profile_status
+    ) then
       raise exception 'forbidden_target';
     end if;
 

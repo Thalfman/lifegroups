@@ -245,18 +245,24 @@ Deno.serve(async (req: Request) => {
   //        stray same-email auth user is caught by createUser below.
   const { data: existingProfile, error: profileErr } = await service
     .from("profiles")
-    .select("auth_user_id, role")
+    .select("auth_user_id, role, status")
     .eq("email", email)
     .maybeSingle();
   if (profileErr) return fail("db_error", 500);
   if (existingProfile) {
     const existingRank = ROLE_RANK[existingProfile.role as string] ?? 0;
     const inviteRank = ROLE_RANK[inv.role] ?? 99;
+    // Only a profile awaiting setup is claimable; a disabled ('inactive')
+    // profile must not be reactivated via a shared link.
+    const claimableStatus =
+      existingProfile.status === "active" ||
+      existingProfile.status === "invited";
     if (
       existingProfile.auth_user_id !== null ||
       existingProfile.role === "super_admin" ||
       // The link must not claim a profile more privileged than it grants.
-      existingRank < inviteRank
+      existingRank < inviteRank ||
+      !claimableStatus
     ) {
       return fail("email_unavailable", 409);
     }
