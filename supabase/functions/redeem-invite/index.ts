@@ -34,6 +34,18 @@ type ResponseBody = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+// Role privilege rank (lower = more privileged). A shareable link is a
+// low-trust, unverified credential, so it must not be usable to claim a roster
+// profile MORE privileged than the invitation itself grants. The RPC enforces
+// the same ceiling; this mirror just avoids creating an auth user we'd delete.
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 0,
+  ministry_admin: 1,
+  over_shepherd: 2,
+  leader: 3,
+  co_leader: 4,
+};
+
 function jsonResponse(body: ResponseBody, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -238,13 +250,18 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
   if (profileErr) return fail("db_error", 500);
   if (existingProfile) {
+    const existingRank = ROLE_RANK[existingProfile.role as string] ?? 0;
+    const inviteRank = ROLE_RANK[inv.role] ?? 99;
     if (
       existingProfile.auth_user_id !== null ||
-      existingProfile.role === "super_admin"
+      existingProfile.role === "super_admin" ||
+      // The link must not claim a profile more privileged than it grants.
+      existingRank < inviteRank
     ) {
       return fail("email_unavailable", 409);
     }
-    // else: claimable roster profile -> proceed to createUser + RPC.
+    // else: claimable roster profile at or below the link's level -> proceed
+    // to createUser + RPC (which relinks it).
   } else {
     try {
       if (await emailHasAuthUser(service, email)) {

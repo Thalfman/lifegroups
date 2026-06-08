@@ -133,6 +133,34 @@ begin
       raise exception 'forbidden_target';
     end if;
 
+    -- 3b-ii. Privilege cap. A shared link is a low-trust credential with no
+    --        email verification, so it must NOT be usable to seize a roster
+    --        account MORE privileged than the link itself grants. Rank roles
+    --        (super_admin most privileged ... co_leader least) and reject when
+    --        the existing profile outranks the invitation's role. A link can
+    --        therefore only claim a profile at or below its own level (e.g. a
+    --        leader link can claim a leader/co_leader row, never a
+    --        ministry_admin/over_shepherd one). The role is kept as-is on claim,
+    --        so this is a hard ceiling, not an escalation.
+    if (case v_existing_role
+          when 'super_admin'::public.user_role    then 0
+          when 'ministry_admin'::public.user_role then 1
+          when 'over_shepherd'::public.user_role  then 2
+          when 'leader'::public.user_role         then 3
+          when 'co_leader'::public.user_role      then 4
+        end)
+       <
+       (case v_inv.role
+          when 'super_admin'::public.user_role    then 0
+          when 'ministry_admin'::public.user_role then 1
+          when 'over_shepherd'::public.user_role  then 2
+          when 'leader'::public.user_role         then 3
+          when 'co_leader'::public.user_role      then 4
+        end)
+    then
+      raise exception 'forbidden_target';
+    end if;
+
     -- 3c. Claimable roster profile: relink to the new auth user + activate.
     --     KEEP the existing role (do NOT apply the invitation role to a
     --     pre-existing profile). profiles.auth_user_id is UNIQUE: if the

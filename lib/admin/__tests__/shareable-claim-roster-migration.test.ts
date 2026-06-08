@@ -55,6 +55,19 @@ describe("IL.4 migration — redeem_invitation roster claim", () => {
     );
   });
 
+  it("caps a claim at the invitation's privilege level", () => {
+    const body = functionBody(sql, "redeem_invitation");
+    // Two role-rank CASE expressions (existing profile vs invitation) gate the
+    // claim so a low-privilege link can't seize a more-privileged roster row.
+    expect(body).toContain("case v_existing_role");
+    expect(body).toContain("case v_inv.role");
+    expect(body).toContain("forbidden_target");
+    // The cap is evaluated before the relink update runs.
+    expect(body.indexOf("case v_existing_role")).toBeLessThan(
+      body.indexOf("auth_user_id = p_auth_user_id")
+    );
+  });
+
   it("never changes role/group on a claim (group assignment gated on a fresh insert)", () => {
     const body = functionBody(sql, "redeem_invitation");
     // Group assignment runs only for a brand-new profile, never on a claim:

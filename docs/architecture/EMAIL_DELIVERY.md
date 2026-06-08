@@ -16,9 +16,11 @@ _accepted_ the request; the mail just never goes out.
 provider in the Supabase dashboard.** This is dashboard configuration, not code.
 
 > Until SMTP is configured, onboarding still works: the per-person "Invite user"
-> card always returns a **copyable setup link** ("Copy invite link", and a backup
-> link under "Send invite") that the admin can paste into their own email/text.
-> The shareable invite link does not depend on email at all.
+> card's **"Copy invite link"** button returns a copyable setup link — for both
+> brand-new people and those already on the roster with no login yet — that the
+> admin can paste into their own email/text. (Existing logins get no link: they
+> sign in or use Forgot password, which sends to their own mailbox.) The
+> shareable invite link does not depend on email at all.
 
 ## One-time setup (Supabase dashboard → project `Fvclifegroups`)
 

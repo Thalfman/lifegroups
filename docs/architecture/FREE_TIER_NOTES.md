@@ -18,8 +18,8 @@ Posture the app maintains to stay inside those tiers:
   heavily rate-limited and does not reliably deliver to real
   recipients, so invite emails silently fail to arrive without custom
   SMTP. See [EMAIL_DELIVERY.md](./EMAIL_DELIVERY.md) for the exact
-  setup. The per-person admin invite also always returns a copyable
-  setup link as a zero-dependency fallback.
+  setup. The per-person admin invite's "Copy invite link" button is a
+  zero-dependency fallback for onboarding new and rostered people.
 - RLS helper SQL functions are `security definer` + `stable` and only
   do small `select` lookups against `profiles` / `group_leaders`.
   Cheap at our row counts; revisit if a single group passes tens of

@@ -19,12 +19,11 @@
 //      relink-or-insert the profile, optionally upsert group_leaders,
 //      and write the audit_events row -- all in one transaction.
 //
-// A copyable setup `action_link` (a single-use credential) is returned in the
-// success body whenever one can be minted -- the invite link on the
-// delivery='link' new-user path, or a best-effort recovery link otherwise --
-// to the verified super_admin caller only; it is never logged. Otherwise this
-// function never returns passwords, tokens, the service-role key, auth headers,
-// or full env dumps. Errors are redacted of known secret values.
+// On the delivery='link' path the invite `action_link` (a single-use
+// credential) is returned in the success body to the verified super_admin
+// caller only; it is never logged. Otherwise this function never returns
+// passwords, tokens, the service-role key, auth headers, or full env
+// dumps. Errors are redacted of known secret values.
 
 // deno-lint-ignore-file no-explicit-any
 import {
@@ -69,33 +68,6 @@ function emailDomain(email: string): string | null {
   const at = email.lastIndexOf("@");
   if (at < 0 || at === email.length - 1) return null;
   return email.slice(at + 1).toLowerCase();
-}
-
-// Best-effort copyable "set your password" link for a user that ALREADY exists
-// in Supabase Auth (an existing login, or a brand-new user just created by
-// inviteUserByEmail). A `recovery` link is the right credential here: an
-// `invite` link can only be minted for a not-yet-existing user. The link lands
-// on /reset-password (via /auth/confirm, which accepts type=recovery) so the
-// person can set a password. Returns undefined on any failure -- the link is a
-// convenience backup, never required for the invite to succeed, and is never
-// logged.
-async function tryGenerateRecoveryLink(
-  service: SupabaseClient,
-  email: string,
-  redirectTo: string | undefined
-): Promise<string | undefined> {
-  try {
-    const { data, error } = await service.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      ...(redirectTo ? { options: { redirectTo } } : {}),
-    });
-    if (error) return undefined;
-    return (data as { properties?: { action_link?: string } } | null)
-      ?.properties?.action_link;
-  } catch {
-    return undefined;
-  }
 }
 
 type Role = "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
@@ -685,16 +657,9 @@ Deno.serve(async (req: Request) => {
   try {
     const existingAuth = await findAuthUserByEmail(service, payload.email);
     if (existingAuth) {
-      // Already-registered login. There is no invite link to mint, but we hand
-      // back a copyable password-recovery link so the super_admin always has a
-      // setup link to share (the person can also use Forgot password).
+      // New-users-only: an already-registered login gets no invite link.
       authId = existingAuth.id;
       authUserState = "existing_reused";
-      inviteLink = await tryGenerateRecoveryLink(
-        service,
-        payload.email,
-        resolvedRedirect
-      );
     } else if (payload.delivery === "link") {
       const { data, error } = await service.auth.admin.generateLink({
         type: "invite",
@@ -753,14 +718,6 @@ Deno.serve(async (req: Request) => {
       }
       authId = data.user.id;
       authUserState = "invited";
-      // The Supabase invite email carries the working link; also surface a
-      // copyable backup link so onboarding never hard-depends on email
-      // delivery. Best-effort: omitted if it can't be minted.
-      inviteLink = await tryGenerateRecoveryLink(
-        service,
-        payload.email,
-        resolvedRedirect
-      );
     }
   } catch (err) {
     logJson("error", {
@@ -885,8 +842,7 @@ Deno.serve(async (req: Request) => {
     warnings: [],
     errors: [],
   };
-  // Credential — a copyable setup link surfaced on every path when one could
-  // be minted (invite link for a new user, recovery link otherwise). Returned
+  // Credential — present only on the delivery='link' new-user path. Returned
   // to the verified super_admin; deliberately absent from all log lines.
   if (inviteLink) body.inviteLink = inviteLink;
   return jsonResponse(body, 200);

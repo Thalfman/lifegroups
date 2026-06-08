@@ -46,9 +46,8 @@ const GROUP_ASSIGNMENT_LABELS: Record<
 };
 
 const AUTH_USER_LABELS: Record<InviteUserSuccess["authUserState"], string> = {
-  invited: "invite sent — setup link below as backup",
-  existing_reused:
-    "existing login — share the reset link below or have them use Forgot password",
+  invited: "invite email sent",
+  existing_reused: "existing login reused",
 };
 
 export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
@@ -67,12 +66,12 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
   const [copied, setCopied] = useState(false);
 
   // useActionForm resets the <form> on success; the role select is React state.
-  // Surface the copyable setup link returned by the "Send invite" action so the
-  // admin always has a link to share even when email is slow or undelivered.
+  // Also clear any stale link UI so a copied link doesn't linger after the
+  // email path resets the form.
   useEffect(() => {
     if (state?.ok) {
       setRole("leader");
-      setInviteLink(state.value.inviteLink ?? null);
+      setInviteLink(null);
       setLinkNote(null);
       setLinkError(null);
       setCopied(false);
@@ -112,12 +111,10 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
           setTimeout(() => setCopied(false), 2000);
         }
       } else {
-        // The edge function normally returns a setup link for every case
-        // (invite link for new users, recovery link otherwise); reaching here
-        // means link minting failed this time.
+        // New-users-only: an existing login was reused, so no link exists.
         setInviteLink(null);
         setLinkNote(
-          "Couldn't generate a setup link this time. Ask them to use Forgot password to set their password, or try again."
+          "Existing login reused — no invite link to copy. Ask them to use Forgot password to set a new password."
         );
       }
     });
@@ -315,12 +312,40 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
         </p>
       ) : null}
 
+      {inviteLink ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          <span style={successTextStyle}>
+            Invite link generated and copied to your clipboard. Share it
+            directly — using it sets the person&apos;s password.
+          </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="text"
+              readOnly
+              value={inviteLink}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{ ...fieldInputStyle, fontSize: 12 }}
+              aria-label="Invite link"
+            />
+            <PButton
+              type="button"
+              tone="ghost"
+              size="sm"
+              onClick={handleCopyExisting}
+            >
+              <Icon name={copied ? "check" : "clipboard"} size={16} />
+              {copied ? "Copied!" : "Copy"}
+            </PButton>
+          </div>
+        </div>
+      ) : null}
+
       {state?.ok ? (
         <div style={{ display: "grid", gap: 6 }}>
           <p style={successTextStyle}>
             Invite created for {state.value.email}. They can follow the invite
-            email, or you can copy the setup link below and send it directly —
-            or they can use Forgot password if the link expires.
+            email — or if it doesn&apos;t arrive, use “Copy invite link” above
+            to share a setup link directly, or have them use Forgot password.
           </p>
           <p
             style={{
@@ -358,34 +383,6 @@ export function InviteUserForm({ groups }: { groups: GroupOption[] }) {
               ))}
             </ul>
           ) : null}
-        </div>
-      ) : null}
-
-      {inviteLink ? (
-        <div style={{ display: "grid", gap: 6 }}>
-          <span style={successTextStyle}>
-            Setup link ready — copy and share it directly. Using it lets them
-            set their password.
-          </span>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="text"
-              readOnly
-              value={inviteLink}
-              onFocus={(e) => e.currentTarget.select()}
-              style={{ ...fieldInputStyle, fontSize: 12 }}
-              aria-label="Invite link"
-            />
-            <PButton
-              type="button"
-              tone="ghost"
-              size="sm"
-              onClick={handleCopyExisting}
-            >
-              <Icon name={copied ? "check" : "clipboard"} size={16} />
-              {copied ? "Copied!" : "Copy"}
-            </PButton>
-          </div>
         </div>
       ) : null}
     </form>
