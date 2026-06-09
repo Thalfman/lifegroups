@@ -28,6 +28,7 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 | Class                      | Who may `SELECT`                                                | Predicate shape                                        |
 | -------------------------- | --------------------------------------------------------------- | ------------------------------------------------------ |
 | **ADMIN_READ**             | Super Admin + Ministry Admin (identical)                        | `auth_is_admin()`                                      |
+| **CONFIG_SCOPED**          | Admins read all keys; non-admins read one shared key            | `auth_is_admin() or setting_key = '...'`               |
 | **SUPER_ADMIN_ONLY**       | Super Admin only — **Ministry Admin excluded**                  | `auth_role() = 'super_admin'`                          |
 | **LEADER_SCOPED**          | Admins read all; a Leader reads their group's rows              | `auth_is_admin_or_staff() or auth_is_leader_of(...)`   |
 | **OVER_SHEPHERD_SCOPED**   | Admins read all; an Over-Shepherd reads their coverage          | `auth_is_admin[...]() or <coverage>`                   |
@@ -48,7 +49,13 @@ Read access is enforced in Postgres by RLS `USING` predicates, gating on
 `multiplication_readiness_rule`, `audience_readiness_rule`, `over_shepherds`,
 `launch_planning_scenarios`, `attention_reset_baselines`,
 `activity_reset_baselines`, `note_transparency_grants` (the transparency toggle
-table itself is admin-only), **`app_settings`** (see the fix note below).
+table itself is admin-only).
+
+### CONFIG_SCOPED — admins read all keys; non-admins read one shared key
+
+`app_settings` (see the fix note below). Admins read every `setting_key`;
+non-admins read **only** `metric_defaults`. `launch_planning_assumptions` (the
+fixed leak) and `group_health_rubric` stay admin-only, as does any future key.
 
 ### SUPER_ADMIN_ONLY — Ministry Admin excluded
 
@@ -125,16 +132,31 @@ auth_profile_id()`. The **Super Admin cannot read it** (the policy never
 (`app_settings_auth_read` → `using (auth.uid() is not null)`), yet it stores the
 `launch_planning_assumptions` row whose `notes` field is admin-only (the LP RPCs
 redact it from audit metadata). Migration
-`20260629000000_seal_app_settings_to_admin.sql` narrows SELECT to
-`auth_is_admin()`. Only `/admin` surfaces read `app_settings` today
-(`metric_defaults`, `group_health_rubric`, `launch_planning_assumptions`), so
-this breaks no read path.
+`20260629000000_seal_app_settings_to_admin.sql` scopes SELECT **per
+`setting_key`**:
 
-**Rule going forward:** if a lower tier ever needs a specific key, expose that
-narrow slice through a `SECURITY DEFINER` RPC — the precedent is
-`admin_read_feature_flags()`, which lets a Ministry Admin read the flags it needs
-out of the Super-Admin-only `platform_config` without widening that table's SELECT
-policy. **Do not widen `app_settings` back to all-authenticated.**
+```sql
+using (public.auth_is_admin() or setting_key = 'metric_defaults')
+```
+
+- **Admins** read every key.
+- **Non-admins** read **only `metric_defaults`** — the shared cadence /
+  check-in-due / health thresholds. Live lower-tier surfaces read this key under
+  their own RLS client: the Over-Shepherd care directory
+  (`app/(protected)/over-shepherd/page.tsx`) and the Leader check-in page
+  (`app/(protected)/leader/[groupId]/checkin/page.tsx`). It is also cached
+  cross-request via `unstable_cache` (`lib/supabase/cached-config.ts`), so a
+  blanket seal would let a non-admin cache the null fallback for everyone. Keeping
+  this key readable preserves those paths.
+- **`launch_planning_assumptions`** (the actual leak) and **`group_health_rubric`**
+  (read only by `/admin` today) stay admin-only, as does any **future** key
+  (default-deny for non-admins).
+
+**Rule going forward:** if a lower tier ever needs another key, add it to the
+allowlist, or expose a narrow slice through a `SECURITY DEFINER` RPC — the
+precedent is `admin_read_feature_flags()`, which lets a Ministry Admin read the
+flags it needs out of the Super-Admin-only `platform_config` without widening that
+table's SELECT policy. **Do not widen `app_settings` back to all-authenticated.**
 
 ## How this stays tied down
 

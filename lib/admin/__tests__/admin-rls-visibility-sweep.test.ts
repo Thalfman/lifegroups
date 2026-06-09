@@ -33,6 +33,7 @@ import {
 //
 // Visibility classes (who may SELECT):
 //   ADMIN_READ            — both admins (auth_is_admin / auth_is_admin_or_staff).
+//   CONFIG_SCOPED         — admins read all keys; non-admins read one shared key.
 //   SUPER_ADMIN_ONLY      — super_admin only; Ministry Admin EXCLUDED.
 //   LEADER_SCOPED         — admins read all; a leader reads their group's rows.
 //   OVER_SHEPHERD_SCOPED  — admins read all; an Over-Shepherd reads coverage.
@@ -43,6 +44,7 @@ import {
 
 type VisibilityClass =
   | "ADMIN_READ"
+  | "CONFIG_SCOPED"
   | "SUPER_ADMIN_ONLY"
   | "LEADER_SCOPED"
   | "OVER_SHEPHERD_SCOPED"
@@ -284,14 +286,16 @@ const MATRIX: readonly RlsExpectation[] = [
     expect: ADMIN,
     forbid: ["over_shepherd", "auth_role() = 'leader'"],
   },
-  // app_settings: sealed from world-readable to admin-only by the audit fix.
+  // app_settings: per-key scope (audit fix). Admins read all keys; non-admins
+  // read ONLY the shared metric_defaults thresholds. launch_planning_assumptions
+  // (the leak) and group_health_rubric stay admin-only; future keys default-deny.
   {
     table: "app_settings",
-    cls: "ADMIN_READ",
+    cls: "CONFIG_SCOPED",
     authoritativeMigration: M.appSettingsSeal,
-    policyName: "app_settings_admin_read",
-    expect: ADMIN,
-    forbid: ["auth.uid()", "auth_is_leader_of"],
+    policyName: "app_settings_read",
+    expect: ["public.auth_is_admin()", "setting_key = 'metric_defaults'"],
+    forbid: ["auth.uid()", "auth_is_leader_of", "launch_planning_assumptions"],
   },
 
   // --- SUPER_ADMIN_ONLY: Ministry Admin excluded (audit trail + danger zone). -
