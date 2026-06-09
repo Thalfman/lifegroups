@@ -77,6 +77,7 @@ function shellData(
     readiness: {
       ministryYear: 2026,
       rule: BUILT_IN_READINESS_RULE,
+      ruleFellBack: false,
       perType: {},
       cells: [],
     },
