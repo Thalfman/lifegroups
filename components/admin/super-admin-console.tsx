@@ -32,10 +32,10 @@ export type SuperAdminWorkspace = {
 
 // The page scrolls in the window under the shell's sticky TopBar (height 56,
 // z-index 10); the tab rail sticks just below it. Anchored sections inside a
-// workspace should use SUPER_ADMIN_STICKY_ANCHOR_OFFSET as scrollMarginTop so
-// an anchor jump clears both the TopBar and the stuck tab rail.
+// workspace should use SUPER_ADMIN_STICKY_ANCHOR_OFFSET (in the server-safe
+// super-admin-anchors module) as scrollMarginTop so an anchor jump clears
+// both the TopBar and the stuck tab rail.
 const TOP_BAR_HEIGHT = 56;
-export const SUPER_ADMIN_STICKY_ANCHOR_OFFSET = 120;
 
 export function SuperAdminConsole({
   statusRow,

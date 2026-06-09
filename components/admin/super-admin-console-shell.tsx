@@ -13,9 +13,9 @@ import {
 } from "@/lib/admin/audit-summary";
 import {
   SuperAdminConsole,
-  SUPER_ADMIN_STICKY_ANCHOR_OFFSET,
   type SuperAdminWorkspace,
 } from "@/components/admin/super-admin-console";
+import { SUPER_ADMIN_STICKY_ANCHOR_OFFSET } from "@/components/admin/super-admin-anchors";
 import { WorkspaceSectionNav } from "@/components/admin/workspace-section-nav";
 import {
   DangerZoneConsole,
