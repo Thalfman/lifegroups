@@ -14,8 +14,10 @@
 //   1. /auth/confirm sets PW_SETUP_COOKIE on a successful verify.
 //   2. Middleware pins the session to /reset-password while the cookie is
 //      present (shouldRedirectToPasswordSetup).
-//   3. resetPasswordAction clears the cookie once updateUser({ password })
-//      succeeds, releasing the session into the app.
+//   3. The marker is cleared the moment the session stops being
+//      password-setup-pending: resetPasswordAction clears it once
+//      updateUser({ password }) succeeds, loginAction clears it on a successful
+//      password sign-in, and logoutAction clears it on sign-out.
 //
 // This module is intentionally free of Next.js imports so the decision logic
 // stays pure and unit-testable; callers do the cookie read/write.
@@ -23,10 +25,16 @@
 export const PW_SETUP_COOKIE = "lg_pw_setup";
 export const PW_SETUP_COOKIE_VALUE = "1";
 
-// Recovery/invite sessions are short-lived and the set-password step takes
-// seconds. Bound the marker to 30 minutes so an abandoned attempt can't pin a
-// session indefinitely, while still comfortably covering a real completion.
-export const PW_SETUP_COOKIE_MAX_AGE_SECONDS = 30 * 60;
+// The gate must hold for the WHOLE auth session, not a fixed short window: the
+// verifyOtp session is a full session whose cookies can outlive a brief marker,
+// and if the marker lapsed first a password-less invited user could wait it out
+// and then wander into the app — recreating the stranding this guards against.
+// So the marker is cleared explicitly on completion / login / sign-out (see
+// above) rather than relied on to expire, and its max-age is only a generous
+// safety cap that comfortably outlives a normal session. /reset-password offers
+// a "sign out" escape so a long-lived marker can never trap a user who changed
+// their mind.
+export const PW_SETUP_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 // Paths a password-setup-pending session may reach. Everything else bounces to
 // /reset-password. Kept deliberately small: the set-password screen and its

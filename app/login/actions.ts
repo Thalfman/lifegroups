@@ -1,10 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { defaultLandingPathForRole, type UserRole } from "@/lib/auth/roles";
 import { log } from "@/lib/observability/logger";
 import { hashEmail, newCorrelationId } from "@/lib/observability/identifiers";
+import {
+  PW_SETUP_COOKIE,
+  passwordSetupCookieClearOptions,
+} from "@/lib/auth/password-setup";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
 
@@ -65,6 +70,14 @@ export async function loginAction(
     });
     return { error: "Invalid email or password." };
   }
+
+  // A successful password sign-in means this session is not (or no longer)
+  // password-setup-pending, so release any set-password gate marker. Without
+  // this, signing into a *different* account while a stale marker is present
+  // would bounce the new session to /reset-password and let the form retarget
+  // the wrong account.
+  const cookieStore = await cookies();
+  cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
 
   const {
     data: { user },

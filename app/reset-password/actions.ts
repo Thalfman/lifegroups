@@ -84,3 +84,22 @@ export async function resetPasswordAction(
   ctx.finish("ok");
   redirect("/login?reset=ok");
 }
+
+// Escape hatch for the set-password gate. A verified invite/recovery link
+// establishes a full session that middleware pins to this screen until a
+// password is saved; this lets a user who changed their mind leave cleanly
+// (clear the marker, drop the local session) instead of being stuck here.
+export async function abandonPasswordSetupAction(): Promise<void> {
+  const ctx = startActionLog("auth.abandon_password_setup");
+
+  const cookieStore = await cookies();
+  cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
+
+  const client = await createSupabaseServerClient();
+  if (client) {
+    await client.auth.signOut({ scope: "local" });
+  }
+
+  ctx.finish("ok");
+  redirect("/login");
+}
