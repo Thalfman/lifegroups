@@ -53,7 +53,12 @@ function emptyReads(
       error: null,
     }),
     fetchOverviewActivityCounts: async () => ({
-      data: { membersJoined: 0, followUpsCompleted: 0, careTouchpoints: 0 },
+      data: {
+        membersJoined: 0,
+        followUpsCompleted: 0,
+        careTouchpoints: 0,
+        prospectsAdded: 0,
+      },
       error: null,
     }),
     fetchAttentionResetBaselines: async () => ({ data: [], error: null }),
@@ -341,6 +346,7 @@ describe("buildAdminDashboardData", () => {
               membersJoined: 0,
               followUpsCompleted: 0,
               careTouchpoints: 0,
+              prospectsAdded: 0,
             },
             error: null,
           };
@@ -375,6 +381,7 @@ describe("buildAdminDashboardData", () => {
               membersJoined: 0,
               followUpsCompleted: 0,
               careTouchpoints: 0,
+              prospectsAdded: 0,
             },
             error: null,
           };
@@ -407,6 +414,7 @@ describe("buildAdminDashboardData", () => {
               membersJoined: 0,
               followUpsCompleted: 0,
               careTouchpoints: 0,
+              prospectsAdded: 0,
             },
             error: null,
           };
@@ -427,7 +435,7 @@ describe("buildAdminDashboardData", () => {
   it("keeps the page live but marks activity counts unavailable when that read errors", async () => {
     // The activity counts read is outside the firstError gate: a failure leaves
     // groupsLaunched/guestsWelcomed (derived from gated arrays) intact while the
-    // three productivity counts go null.
+    // four productivity counts go null.
     const result = await buildAdminDashboardData(
       emptyReads({
         fetchOverviewActivityCounts: async () => ({
@@ -442,7 +450,77 @@ describe("buildAdminDashboardData", () => {
     if (result.source !== "live") return;
     expect(result.data.activity.extendedAvailable).toBe(false);
     expect(result.data.activity.membersJoined).toBeNull();
+    // Prospects added (#471) rides the same read, so it degrades to "—" too —
+    // never a false zero.
+    expect(result.data.activity.prospectsAdded).toBeNull();
     // Derived-from-gated-arrays metrics still resolve to a number.
     expect(typeof result.data.activity.groupsLaunched).toBe("number");
+  });
+
+  it("scopes Prospects added to the selected period window (#471)", async () => {
+    // The new tile rides the SAME activity-counts read as the other extended
+    // counts, so the period slicer scopes it through the read's window: a month
+    // grain asks for [church-local month start, start of tomorrow) and the
+    // returned count is surfaced verbatim.
+    let capturedFrom: string | null | undefined = "unset";
+    let capturedTo: string | undefined;
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchOverviewActivityCounts: async ({ fromIso, toExclusiveIso }) => {
+          capturedFrom = fromIso;
+          capturedTo = toExclusiveIso;
+          return {
+            data: {
+              membersJoined: 0,
+              followUpsCompleted: 0,
+              careTouchpoints: 0,
+              prospectsAdded: 4,
+            },
+            error: null,
+          };
+        },
+      }),
+      { now: NOW, grain: "month" }
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(capturedFrom).toBe("2026-05-01");
+    expect(capturedTo).toBe("2026-05-19"); // start of tomorrow, church-local
+    expect(result.data.activity.prospectsAdded).toBe(4);
+  });
+
+  it("floors Prospects added at the activity-reset baseline like the other extended counts (#471)", async () => {
+    // activity-reset parity: the new tile's count read receives the SAME
+    // floored lower bound (day AFTER the baseline) as every other tile, so a
+    // reset zeroes Prospects added too.
+    let capturedFrom: string | null | undefined = "unset";
+    const result = await buildAdminDashboardData(
+      emptyReads({
+        fetchActivityResetBaseline: async () => ({
+          data: "2026-05-10",
+          error: null,
+        }),
+        fetchOverviewActivityCounts: async ({ fromIso }) => {
+          capturedFrom = fromIso;
+          return {
+            data: {
+              membersJoined: 0,
+              followUpsCompleted: 0,
+              careTouchpoints: 0,
+              prospectsAdded: 2,
+            },
+            error: null,
+          };
+        },
+      }),
+      { now: NOW } // all-time grain ⇒ the reset floor is the only lower bound
+    );
+
+    expect(result.source).toBe("live");
+    if (result.source !== "live") return;
+    expect(capturedFrom).toBe("2026-05-11");
+    expect(result.data.activity.prospectsAdded).toBe(2);
+    expect(result.data.activity.resetBaselineOn).toBe("2026-05-10");
   });
 });

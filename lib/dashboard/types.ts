@@ -235,13 +235,16 @@ export interface MultiplicationDashboardSummary {
 // "Activity this period" — the only period-scoped block on the landing, driven
 // by the week/month/quarter/year/all-time slicer. groupsLaunched + guestsWelcomed
 // are derived from arrays the dashboard already fetches (always available); the
-// remaining three come from a dedicated count read and are null when it fails
-// (extendedAvailable === false).
+// remaining four come from a dedicated count read and are null when it fails
+// (extendedAvailable === false). prospectsAdded (#471) counts live Interest
+// Funnel intake; guestsWelcomed stays for the frozen guests tile, which only
+// renders when that surface's flag is live.
 export interface OverviewActivitySummary {
   grain: OverviewGrain;
   label: string;
   groupsLaunched: number;
   guestsWelcomed: number;
+  prospectsAdded: number | null;
   membersJoined: number | null;
   followUpsCompleted: number | null;
   careTouchpoints: number | null;

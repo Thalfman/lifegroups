@@ -177,19 +177,23 @@ export type OverviewActivityCounts = {
   membersJoined: number;
   followUpsCompleted: number;
   careTouchpoints: number;
+  prospectsAdded: number;
 };
 
 // Counts of dated activity within [fromIso, toExclusiveIso) for the executive
 // overview's period band. `fromIso` null means all-time (upper bound only).
 // Head-only count queries keep this cheap. Groups launched and guests welcomed
 // are derived from arrays the dashboard already fetches, so they are NOT read
-// here.
+// here. Prospects added (#471) counts `prospects.created_at` — the live
+// Interest Funnel intake, replacing the frozen-guests "Guests welcomed" tile.
+// Archived Prospects still count: the tile measures intake activity in the
+// period, not the funnel's current state.
 //
 // joined_at and interaction_at are DATE columns (church-local calendar days),
-// so the YYYY-MM-DD bounds compare directly. completed_at is a timestamptz, so
-// its bounds are converted to the matching UTC instants of church-local
-// midnight — otherwise a late-evening-local completion (which Postgres reads as
-// the next UTC day) would land in the wrong period.
+// so the YYYY-MM-DD bounds compare directly. completed_at and created_at are
+// timestamptz, so their bounds are converted to the matching UTC instants of
+// church-local midnight — otherwise a late-evening-local row (which Postgres
+// reads as the next UTC day) would land in the wrong period.
 export async function fetchOverviewActivityCounts(
   client: ReadClient,
   range: { fromIso: string | null; toExclusiveIso: string }
@@ -218,14 +222,24 @@ export async function fetchOverviewActivityCounts(
   if (range.fromIso)
     interactionsQ = interactionsQ.gte("interaction_at", range.fromIso);
 
-  const [membersRes, followUpsRes, interactionsRes] = await Promise.all([
-    membersQ,
-    followUpsQ,
-    interactionsQ,
-  ]);
+  let prospectsQ = client
+    .from("prospects")
+    .select("id", { count: "exact", head: true })
+    .lt("created_at", churchDayStartUtcIso(range.toExclusiveIso));
+  if (range.fromIso)
+    prospectsQ = prospectsQ.gte(
+      "created_at",
+      churchDayStartUtcIso(range.fromIso)
+    );
+
+  const [membersRes, followUpsRes, interactionsRes, prospectsRes] =
+    await Promise.all([membersQ, followUpsQ, interactionsQ, prospectsQ]);
 
   const firstError =
-    membersRes.error || followUpsRes.error || interactionsRes.error;
+    membersRes.error ||
+    followUpsRes.error ||
+    interactionsRes.error ||
+    prospectsRes.error;
   if (firstError)
     return {
       data: null,
@@ -237,6 +251,7 @@ export async function fetchOverviewActivityCounts(
       membersJoined: membersRes.count ?? 0,
       followUpsCompleted: followUpsRes.count ?? 0,
       careTouchpoints: interactionsRes.count ?? 0,
+      prospectsAdded: prospectsRes.count ?? 0,
     },
     error: null,
   };

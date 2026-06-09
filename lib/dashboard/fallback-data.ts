@@ -119,6 +119,7 @@ const fallbackActivity: OverviewActivitySummary = {
   label: "All time",
   groupsLaunched: 6,
   guestsWelcomed: 23,
+  prospectsAdded: 9,
   membersJoined: 41,
   followUpsCompleted: 18,
   careTouchpoints: 35,

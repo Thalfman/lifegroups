@@ -285,8 +285,9 @@ function laterIso(a: string | null, b: string | null): string | null {
 }
 
 // "Activity this period" rollup. groupsLaunched + guestsWelcomed come from the
-// already-fetched (gated) group/guest arrays — no extra read — while the three
-// productivity counts come from fetchOverviewActivityCounts and degrade to null
+// already-fetched (gated) group/guest arrays — no extra read — while the four
+// productivity counts (incl. Prospects added, #471) come from
+// fetchOverviewActivityCounts and degrade to null
 // if that read fails (extendedAvailable=false). Date columns are YYYY-MM-DD, so
 // lexicographic comparison against the half-open [floorIso, toExclusiveIso)
 // window is correct. `floorIso` is the period start already folded with the
@@ -312,6 +313,7 @@ function buildActivitySummary(
     label: period.label,
     groupsLaunched: groups.filter((g) => inRange(g.launched_on)).length,
     guestsWelcomed: guests.filter((g) => inRange(g.first_attended_date)).length,
+    prospectsAdded: extended ? extended.prospectsAdded : null,
     membersJoined: extended ? extended.membersJoined : null,
     followUpsCompleted: extended ? extended.followUpsCompleted : null,
     careTouchpoints: extended ? extended.careTouchpoints : null,

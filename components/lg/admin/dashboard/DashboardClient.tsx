@@ -208,7 +208,7 @@ export function DashboardClient({
               <PeriodSlicer current={data.activity.grain} />
             </div>
           </div>
-          <ActivityBand activity={data.activity} />
+          <ActivityBand activity={data.activity} guestsLive={guestsLive} />
         </section>
       </div>
     </PageBody>
