@@ -45,7 +45,8 @@ export function HealthDistributionCard({
             color: P.ink3,
           }}
         >
-          No active groups yet.
+          No groups are meeting yet — the health pulse will gather here as
+          groups begin.
         </p>
       ) : (
         <div>

@@ -50,7 +50,7 @@ describe("ThisWeekCard", () => {
     const html = renderToStaticMarkup(
       <ThisWeekCard data={makeData({ dueFollowUpsThisWeekCount: 0 })} />
     );
-    expect(html).toContain("Nothing scheduled");
+    expect(html).toContain("The week ahead is clear");
     expect(html).not.toContain("Work follow-ups");
     expect(html).not.toContain("/admin/follow-ups");
   });

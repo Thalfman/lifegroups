@@ -46,6 +46,10 @@ export function GuestPipelineFunnelCard({
       title="Pipeline funnel"
       action={<OpenLink href="/admin/guests" label="Review guest pipeline" />}
     >
+      {/* Empty-state tone pass (#480): one calm pastoral voice across Home.
+          This frozen legacy card keeps "guests" — it counts rows of the frozen
+          `guests` table, not Prospects in the Interest Funnel — but drops the
+          mechanical "in the pipeline yet" phrasing. */}
       {barTotal === 0 ? (
         <p
           style={{
@@ -55,7 +59,7 @@ export function GuestPipelineFunnelCard({
             color: P.ink3,
           }}
         >
-          No guests in the pipeline yet.
+          No guests are waiting right now — new arrivals will gather here.
         </p>
       ) : (
         <div>

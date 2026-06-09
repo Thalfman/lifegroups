@@ -40,6 +40,17 @@ import {
   SettingsShell,
   type SettingsShellData,
 } from "@/components/admin/settings-shell";
+import { DashboardClient } from "@/components/lg/admin/dashboard/DashboardClient";
+import {
+  ADMIN_FALLBACK,
+  INTEREST_FUNNEL_FALLBACK,
+  MULTIPLY_READINESS_FALLBACK,
+} from "@/lib/dashboard/fallback-data";
+import type {
+  AdminDashboardData,
+  InterestFunnelDashboardSummary,
+  MultiplyReadinessDashboardSummary,
+} from "@/lib/dashboard/types";
 import { GroupHealthTriage } from "@/components/lg/admin/group-health-triage";
 import { SuperAdminCollapsibleSection } from "@/components/admin/super-admin-collapsible-section";
 import { SuperAdminSectionAnchors } from "@/components/admin/super-admin-section-anchors";
@@ -597,6 +608,91 @@ const SETTINGS_ERRORS_DATA: SettingsShellData = {
   },
 };
 
+// Home — the /admin landing (#480). Mounts the real DashboardClient with the
+// typed demo seeds the no-client preview renders (the same payload the
+// structure tests pin), under the DEFAULT nav flags (Groups / People / Planning
+// hidden, ADR 0016) — so the spec asserts the FINAL post-pivot card set: the
+// six #476 vital signs, the Care/Plan/Multiply overview cards, and no card or
+// link for a retired tab. canResetActivity mounts the Super-Admin
+// activity-reset control so its affordances are in the tree for the axe scan
+// (mirroring the Settings surface's isSuperAdmin: true).
+const HOME_DEFAULT_HIDDEN_NAV = [
+  "/admin/groups",
+  "/admin/people",
+  "/admin/planning",
+];
+
+// #480 tone pass: the all-quiet payload — every read succeeded and every count
+// is a TRUE zero — so each card renders its empty state and the spec can prove
+// the one calm, pastoral voice on the real rendered surface (and run axe over
+// the empty renderings). Distinct from `degraded`, which suppresses output.
+const HOME_QUIET_DATA: AdminDashboardData = {
+  ...ADMIN_FALLBACK,
+  summary: { ...ADMIN_FALLBACK.summary, activeGroupCount: 0 },
+  attentionItems: [],
+  healthSummary: {
+    submitted: [],
+    missing: [],
+    didNotMeet: [],
+    plannedPause: [],
+    needsFollowUp: [],
+    watch: [],
+    healthy: [],
+    counts: {
+      submitted: 0,
+      missing: 0,
+      did_not_meet: 0,
+      planned_pause: 0,
+      needs_follow_up: 0,
+      watch: 0,
+      healthy: 0,
+    },
+  },
+  setupGaps: {
+    noCapacity: [],
+    noLeader: [],
+    noMeetingDayTime: [],
+    noMembers: [],
+    counts: { noCapacity: 0, noLeader: 0, noMeetingDayTime: 0, noMembers: 0 },
+  },
+  followUps: [],
+  dueFollowUpsThisWeekCount: 0,
+  shepherdCare: {
+    ...ADMIN_FALLBACK.shepherdCare,
+    needsAttention: 0,
+    overdueTouchpoints: 0,
+    notContactedRecently: 0,
+    noCareProfile: 0,
+    unassignedCoverage: 0,
+    attentionItemsTotal: 0,
+  },
+  leaderPipeline: {
+    counts: { identified: 0, in_training: 0, ready_to_lead: 0, launched: 0 },
+    total: 0,
+    available: true,
+    error: null,
+  },
+  multiplication: {
+    counts: { watching: 0, planned: 0, launched: 0, deferred: 0 },
+    total: 0,
+    available: true,
+    error: null,
+  },
+};
+
+const HOME_QUIET_FUNNEL: InterestFunnelDashboardSummary = {
+  counts: { interested: 0, matched: 0, joined: 0, not_at_this_time: 0 },
+  available: true,
+  error: null,
+};
+
+const HOME_QUIET_READINESS: MultiplyReadinessDashboardSummary = {
+  readyCells: 0,
+  activeCells: 0,
+  available: true,
+  error: null,
+};
+
 // People surface (#270, Admin Interaction Model req 3). Proves the People page
 // defaults to the Directory view, with Add person and Assignments as secondary
 // views reached by explicit actions, and that group assignment happens in a
@@ -691,6 +787,8 @@ export function A11yHarnessClient() {
   const [, setSelected] = useState<MasterOccurrence | null>(null);
   // #469: whether the Settings surface renders the read-error payload.
   const [settingsReadErrors, setSettingsReadErrors] = useState(false);
+  // #480: whether the Home surface renders the all-quiet (empty-state) payload.
+  const [homeQuiet, setHomeQuiet] = useState(false);
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
@@ -965,6 +1063,38 @@ export function A11yHarnessClient() {
         <SettingsShell
           key={settingsReadErrors ? "read-errors" : "healthy"}
           data={settingsReadErrors ? SETTINGS_ERRORS_DATA : SETTINGS_DATA}
+        />
+      </Surface>
+
+      {/* Home — the /admin landing (#480). ONE instance only: DashboardClient
+          renders fixed section ids (home-needs-attention, exec-vital-signs, …),
+          so a second mounted copy would duplicate ids and trip axe. The toggle
+          (outside the surface, like the Settings one) swaps the instance to the
+          all-quiet payload so the spec can assert the unified empty-state voice
+          and run axe over the empty renderings; the key remount resets the
+          collapsible overview's open state. */}
+      <button
+        type="button"
+        data-testid="home-quiet-toggle"
+        aria-pressed={homeQuiet}
+        onClick={() => setHomeQuiet((v) => !v)}
+      >
+        Simulate an all-quiet Home
+      </button>
+      <Surface id="home" heading="Home (admin landing)">
+        <DashboardClient
+          key={homeQuiet ? "quiet" : "demo"}
+          data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
+          interestFunnel={
+            homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
+          }
+          multiplyReadiness={
+            homeQuiet ? HOME_QUIET_READINESS : MULTIPLY_READINESS_FALLBACK
+          }
+          guestsLive={false}
+          scopeId={null}
+          canResetActivity
+          hiddenNavAreas={HOME_DEFAULT_HIDDEN_NAV}
         />
       </Surface>
 
