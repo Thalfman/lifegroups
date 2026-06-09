@@ -788,7 +788,12 @@ export default async function AdminShepherdCareDetailPage({
         : "their group",
     });
     authoredGroupCareNotes = groupNoteRows.map(toAuthoredNote);
-    authoredGroupPrayerRequests = groupPrayerRows.map(toAuthoredNote);
+    // Prayer Requests additionally carry their pastoral status (#474) so the
+    // list can render the read-only "Answered" / "Archived" chip.
+    authoredGroupPrayerRequests = groupPrayerRows.map((r) => ({
+      ...toAuthoredNote(r),
+      status: r.status,
+    }));
   }
   const careNotesPanel = (
     <CareNotesSection

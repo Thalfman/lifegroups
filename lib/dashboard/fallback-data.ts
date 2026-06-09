@@ -1,8 +1,10 @@
 import type {
   AdminDashboardData,
+  InterestFunnelDashboardSummary,
   LeaderDashboardData,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
+  MultiplyReadinessDashboardSummary,
   OverviewActivitySummary,
   PipelineStageCount,
   ShepherdCareDashboardSummary,
@@ -112,6 +114,23 @@ const fallbackMultiplication: MultiplicationDashboardSummary = {
   error: null,
 };
 
+// Pivot overview demo seeds (#470). These travel as their own props (not
+// fields of ADMIN_FALLBACK) because the page loads each summary in parallel
+// with the dashboard read and degrades it per-card; the no-client preview
+// substitutes these typed seeds instead.
+export const INTEREST_FUNNEL_FALLBACK: InterestFunnelDashboardSummary = {
+  counts: { interested: 5, matched: 3, joined: 4, not_at_this_time: 2 },
+  available: true,
+  error: null,
+};
+
+export const MULTIPLY_READINESS_FALLBACK: MultiplyReadinessDashboardSummary = {
+  readyCells: 2,
+  activeCells: 6,
+  available: true,
+  error: null,
+};
+
 // Default-grain (all-time) activity for the period band when no Supabase client
 // is configured (e.g. /admin-preview sketches).
 const fallbackActivity: OverviewActivitySummary = {
@@ -119,6 +138,7 @@ const fallbackActivity: OverviewActivitySummary = {
   label: "All time",
   groupsLaunched: 6,
   guestsWelcomed: 23,
+  prospectsAdded: 9,
   membersJoined: 41,
   followUpsCompleted: 18,
   careTouchpoints: 35,

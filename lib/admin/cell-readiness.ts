@@ -228,68 +228,151 @@ function isLetter(value: unknown): value is ReadinessLetter {
   );
 }
 
-function boolOr(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
+// Each field decoder takes an optional `onFallback` callback, invoked whenever a
+// stored value could not be read and the fallback was used instead. The plain
+// decoders (no callback) keep their exact pre-#473 behavior; only the
+// decode-with-report path below passes one.
+
+function boolOr(
+  value: unknown,
+  fallback: boolean,
+  onFallback?: () => void
+): boolean {
+  if (typeof value === "boolean") return value;
+  onFallback?.();
+  return fallback;
 }
 
 // A non-negative integer headcount, defaulting a missing / invalid value to the
 // fallback. Interest is a count of PEOPLE, so it is floored at 0 and truncated.
-function minCountOr(value: unknown, fallback: number): number {
+// Truncating a fractional count is benign normalization, NOT a fallback.
+function minCountOr(
+  value: unknown,
+  fallback: number,
+  onFallback?: () => void
+): number {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return Math.trunc(value);
   }
+  onFallback?.();
+  return fallback;
+}
+
+function letterOr(
+  value: unknown,
+  fallback: ReadinessLetter,
+  onFallback?: () => void
+): ReadinessLetter {
+  if (isLetter(value)) return value;
+  onFallback?.();
   return fallback;
 }
 
 function decodeInterestRule(
   raw: unknown,
-  fallback: InterestRule
+  fallback: InterestRule,
+  onFallback?: () => void
 ): InterestRule {
-  if (!isRecord(raw)) return fallback;
+  if (!isRecord(raw)) {
+    onFallback?.();
+    return fallback;
+  }
   return {
-    required: boolOr(raw.required, fallback.required),
-    min: minCountOr(raw.min, fallback.min),
+    required: boolOr(raw.required, fallback.required, onFallback),
+    min: minCountOr(raw.min, fallback.min, onFallback),
   };
 }
 
 function decodeCapacityRule(
   raw: unknown,
-  fallback: CapacityRule
+  fallback: CapacityRule,
+  onFallback?: () => void
 ): CapacityRule {
-  if (!isRecord(raw)) return fallback;
-  return { required: boolOr(raw.required, fallback.required) };
+  if (!isRecord(raw)) {
+    onFallback?.();
+    return fallback;
+  }
+  return { required: boolOr(raw.required, fallback.required, onFallback) };
 }
 
-function decodeHealthRule(raw: unknown, fallback: HealthRule): HealthRule {
-  if (!isRecord(raw)) return fallback;
+function decodeHealthRule(
+  raw: unknown,
+  fallback: HealthRule,
+  onFallback?: () => void
+): HealthRule {
+  if (!isRecord(raw)) {
+    onFallback?.();
+    return fallback;
+  }
   return {
-    required: boolOr(raw.required, fallback.required),
-    min: isLetter(raw.min) ? raw.min : fallback.min,
+    required: boolOr(raw.required, fallback.required, onFallback),
+    min: letterOr(raw.min, fallback.min, onFallback),
   };
 }
 
-// Decode the stored GLOBAL rule jsonb into a full ReadinessRule, defaulting each
-// missing / malformed pillar fragment to the built-in.
-export function decodeReadinessRule(raw: unknown): ReadinessRule {
-  if (!isRecord(raw)) return BUILT_IN_READINESS_RULE;
-  return {
+// The decode-with-report shape for the stored GLOBAL rule (#473): the decoded
+// rule plus whether any part of a PRESENT stored payload was unreadable and fell
+// back to the built-in default. Lets the Settings Multiply tab and the Multiply
+// readiness surface warn that the stored trigger couldn't be read (and that
+// saving will overwrite it) instead of silently showing default values.
+export type ReadinessRuleDecode = {
+  rule: ReadinessRule;
+  fellBack: boolean;
+};
+
+// Decode the stored GLOBAL rule jsonb, REPORTING whether any of it fell back.
+//   * MISSING (null / undefined) is NOT corrupt — a fresh ministry has no stored
+//     rule until one is saved, so the built-in default is the legitimate value
+//     and fellBack stays false.
+//   * A present payload that is not an object, is missing a pillar, or carries a
+//     malformed field reports fellBack: true — the writes always store the full
+//     four-pillar rule, so anything less means the stored trigger couldn't be
+//     read faithfully.
+// The decoded rule VALUE is identical to decodeReadinessRule's — only the report
+// is added.
+export function decodeReadinessRuleWithReport(
+  raw: unknown
+): ReadinessRuleDecode {
+  if (raw === null || raw === undefined) {
+    return { rule: BUILT_IN_READINESS_RULE, fellBack: false };
+  }
+  if (!isRecord(raw)) {
+    return { rule: BUILT_IN_READINESS_RULE, fellBack: true };
+  }
+  let fellBack = false;
+  const flag = () => {
+    fellBack = true;
+  };
+  const rule: ReadinessRule = {
     interest: decodeInterestRule(
       raw.interest,
-      BUILT_IN_READINESS_RULE.interest
+      BUILT_IN_READINESS_RULE.interest,
+      flag
     ),
     capacity: decodeCapacityRule(
       raw.capacity,
-      BUILT_IN_READINESS_RULE.capacity
+      BUILT_IN_READINESS_RULE.capacity,
+      flag
     ),
     groupHealth: decodeHealthRule(
       raw.groupHealth,
-      BUILT_IN_READINESS_RULE.groupHealth
+      BUILT_IN_READINESS_RULE.groupHealth,
+      flag
     ),
     leaderHealth: decodeHealthRule(
       raw.leaderHealth,
-      BUILT_IN_READINESS_RULE.leaderHealth
+      BUILT_IN_READINESS_RULE.leaderHealth,
+      flag
     ),
   };
+  return { rule, fellBack };
+}
+
+// Decode the stored GLOBAL rule jsonb into a full ReadinessRule, defaulting each
+// missing / malformed pillar fragment to the built-in. The report-free shape of
+// decodeReadinessRuleWithReport — same fallback value, no fellBack flag.
+export function decodeReadinessRule(raw: unknown): ReadinessRule {
+  return decodeReadinessRuleWithReport(raw).rule;
 }
 
 // Decode the stored per-cell `trigger_overrides` jsonb into a CellReadinessOverride.

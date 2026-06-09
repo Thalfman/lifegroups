@@ -4,6 +4,7 @@ import {
   buildSettingsData,
   type SettingsReads,
 } from "@/components/admin/settings/settings-data";
+import { BUILT_IN_READINESS_RULE } from "@/lib/admin/cell-readiness";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -188,6 +189,8 @@ describe("buildSettingsData — Groups tab readiness rule (#402)", () => {
     expect(data.readiness?.rule.interest).toEqual({ required: true, min: 3 });
     expect(data.readiness?.rule.capacity).toEqual({ required: true });
     expect(data.readiness?.cells).toEqual([]);
+    // #473: a MISSING stored rule is the legitimate default — no warning.
+    expect(data.readiness?.ruleFellBack).toBe(false);
   });
 
   it("decodes the stored global rule", async () => {
@@ -214,6 +217,29 @@ describe("buildSettingsData — Groups tab readiness rule (#402)", () => {
       required: true,
       min: "B",
     });
+    // #473: a healthy stored rule decodes cleanly — no warning.
+    expect(data.readiness?.ruleFellBack).toBe(false);
+  });
+
+  it("flags a corrupt stored rule so the Multiply editor can warn (#473)", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchReadinessRule: async () =>
+          ok({
+            id: "rule-1",
+            ministry_year: 2026,
+            rule: "corrupt jsonb",
+            updated_at: "2026-06-06",
+          }),
+      }),
+      { isSuperAdmin: false }
+    );
+    // The fallback VALUE is unchanged (built-in default); only the report is
+    // added, and it is NOT a read error — the editor still renders, with a
+    // calm notice that saving will overwrite the stored trigger.
+    expect(data.readiness?.rule).toEqual(BUILT_IN_READINESS_RULE);
+    expect(data.readiness?.ruleFellBack).toBe(true);
+    expect(data.errors.readiness).toBeNull();
   });
 
   it("builds one override row per ACTIVE, live-category cell and decodes its overrides", async () => {

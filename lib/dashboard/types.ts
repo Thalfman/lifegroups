@@ -9,6 +9,7 @@ import type {
   GuestPipelineStage,
   LeaderReadinessStage,
   MultiplicationCandidateStatus,
+  ProspectState,
 } from "@/types/enums";
 import type { CapacityStatus } from "@/lib/admin/metrics";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
@@ -232,16 +233,45 @@ export interface MultiplicationDashboardSummary {
   error: string | null;
 }
 
+// Care/Plan/Multiply pivot overview summaries (#470, ADR 0016/0022). Both load
+// in app/(protected)/admin/page.tsx alongside the dashboard read (one round of
+// parallel reads) and travel to DashboardClient as their own props — not inside
+// AdminDashboardData — so each degrades per-card: a failed read flips
+// available:false and the card renders an unavailable state, never a false
+// zero.
+
+// Prospects by state for the Home Interest Funnel card. Counts come from the
+// narrow fetchProspectStateCounts read (state + archived only), not the full
+// board read; `joined` is the collapsed Joined roll-up count.
+export interface InterestFunnelDashboardSummary {
+  counts: Record<ProspectState, number>;
+  available: boolean;
+  error: string | null;
+}
+
+// "X of Y cells ready" for the Home Multiplication card, built purely over the
+// Multiply grid (buildMultiplyHomeSummary) so Home never disagrees with
+// /admin/multiply's per-cell readiness signals.
+export interface MultiplyReadinessDashboardSummary {
+  readyCells: number;
+  activeCells: number;
+  available: boolean;
+  error: string | null;
+}
+
 // "Activity this period" — the only period-scoped block on the landing, driven
 // by the week/month/quarter/year/all-time slicer. groupsLaunched + guestsWelcomed
 // are derived from arrays the dashboard already fetches (always available); the
-// remaining three come from a dedicated count read and are null when it fails
-// (extendedAvailable === false).
+// remaining four come from a dedicated count read and are null when it fails
+// (extendedAvailable === false). prospectsAdded (#471) counts live Interest
+// Funnel intake; guestsWelcomed stays for the frozen guests tile, which only
+// renders when that surface's flag is live.
 export interface OverviewActivitySummary {
   grain: OverviewGrain;
   label: string;
   groupsLaunched: number;
   guestsWelcomed: number;
+  prospectsAdded: number | null;
   membersJoined: number | null;
   followUpsCompleted: number | null;
   careTouchpoints: number | null;

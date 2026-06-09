@@ -338,3 +338,80 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     expectNoBlockingAxeViolations(results);
   });
 });
+
+// Issue #469: a failed Settings read renders a calm "couldn't load" notice —
+// never the "not set up yet" placeholder (which an operator with a saved
+// Health Rubric reads as data loss), and never an editor whose save could
+// overwrite configuration that failed to load. Each section names its OWN
+// failing read, so a single failed group-types read no longer blanks the
+// Groups and Multiply tabs with identical copy. The harness toggle swaps the
+// one Settings instance to the read-error payload.
+test.describe("settings read-error vs not-set-up split (issue 469)", () => {
+  const COULD_NOT_LOAD =
+    "couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.";
+  const NOT_CONFIGURED = "isn't configured in this environment yet";
+
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+    await page.getByTestId("settings-read-errors-toggle").click();
+    await expect(page.locator(SETTINGS)).toBeVisible();
+  });
+
+  test("a failed rubric read shows the couldn't-load notice with no editor", async ({
+    page,
+  }) => {
+    // Care is the default tab; both rubric reads failed in this payload.
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+    await expect(panel).toContainText(
+      `The Group Health Rubric ${COULD_NOT_LOAD}`
+    );
+    await expect(panel).toContainText(
+      `The Leader Health Rubric ${COULD_NOT_LOAD}`
+    );
+    // Never the "not configured" copy, and no editor over a failed read.
+    await expect(panel).not.toContainText(NOT_CONFIGURED);
+    expect(
+      await panel.getByRole("button", { name: "Save rubric" }).count()
+    ).toBe(0);
+  });
+
+  test("Groups and Multiply name their own failing reads", async ({ page }) => {
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Groups" })
+      .click();
+    await expect(panel).toContainText(`Your group types ${COULD_NOT_LOAD}`);
+    await expect(panel).not.toContainText(NOT_CONFIGURED);
+    expect(
+      await panel.getByRole("button", { name: "+ Add a group type" }).count()
+    ).toBe(0);
+
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Multiply" })
+      .click();
+    // Both the trigger read and the group-types read failed; the trigger's own
+    // failure wins the naming, and no trigger editor mounts.
+    await expect(panel).toContainText(
+      `The multiplication trigger ${COULD_NOT_LOAD}`
+    );
+    await expect(panel).not.toContainText(NOT_CONFIGURED);
+    expect(await panel.locator("#multiply-trigger-level").count()).toBe(0);
+  });
+
+  test("axe finds no critical or serious violations on the error rendering", async ({
+    page,
+  }) => {
+    // Only the active panel is mounted (by design), so scan each tab that
+    // renders a couldn't-load notice: Care (default), Groups, then Multiply.
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+    for (const tab of ["Care", "Groups", "Multiply"]) {
+      await page.locator(`${SETTINGS} [role="tab"]`, { hasText: tab }).click();
+      await expect(panel).toContainText(COULD_NOT_LOAD);
+      const results = await new AxeBuilder({ page })
+        .include(SETTINGS)
+        .analyze();
+      expectNoBlockingAxeViolations(results);
+    }
+  });
+});

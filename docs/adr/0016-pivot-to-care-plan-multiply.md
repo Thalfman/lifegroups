@@ -15,8 +15,8 @@ spine): the navigation collapses to **Home · Care · Plan · Multiply · Settin
   Leaders and group names; from a Leader you reach that Leader's care (Leader
   Care Status, Care Notes, Prayer Requests, Leader-Health Grade) and the group's
   Group-Health Grade. It absorbs the former Leader-care, Over-Shepherd-coverage,
-  and Group-Health surfaces. (Leaders → groups *coverage* assignments stay —
-  they are the backbone of the accordion; it is *group/member* assignments and
+  and Group-Health surfaces. (Leaders → groups _coverage_ assignments stay —
+  they are the backbone of the accordion; it is _group/member_ assignments and
   counts that go.)
 - **Plan** — the Interest Funnel: Prospects moving Interested → Matched → Joined,
   or parked Not at this time, with a single current Next Step and an armed
@@ -63,3 +63,12 @@ are unchanged and still bind.
   re-enable an off-by-default surface). These are Super-Admin-owned and audited
   like the rest of the flag store.
 - Adding a fourth area still requires its own ADR, exactly as ADR 0010 demands.
+- While the Groups tab stays hidden, Home's "Needs attention" / "Top next
+  actions" deliberately **suppress the Groups-bound rows** (groups without a
+  leader, setup gaps) rather than rank an action whose only destination is a
+  hidden tab. This is consistent with the pivot itself: group setup and
+  group/member assignment are Julian-managed off-app, so the app does not
+  nag about gaps it no longer hosts a visible surface for. The rows return
+  automatically when a Super Admin re-shows Groups (`nav_show_groups`).
+  Decided in #475 (suppression kept); the same rationale lives in the
+  `lib/dashboard/needs-attention.ts` module comment.

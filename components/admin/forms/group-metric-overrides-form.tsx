@@ -107,18 +107,13 @@ export function GroupMetricOverridesForm({
         >
           <input type="hidden" name="group_id" value={selected.id} />
           {/*
-            Check-ins are a frozen surface (ADR 0002), so this offset is no
-            longer editable here (#160). The upsert RPC is full-state, so we
-            still round-trip the stored value through a hidden field — omitting
-            it would let validation normalize the absent field to null and
-            silently wipe any existing per-group override on the next save of
-            an unrelated setting.
+            The check-in due-offset override is retired from this surface
+            (#472): check-ins are a frozen surface (ADR 0002) and nothing
+            visible consumes the offset, so the form no longer submits
+            check_in_due_offset_hours_override at all. The full-state upsert
+            RPC then normalizes the absent field to null — which is the clear
+            path: any stored override is wiped on the next save.
           */}
-          <input
-            type="hidden"
-            name="check_in_due_offset_hours_override"
-            value={currentSettings?.check_in_due_offset_hours_override ?? ""}
-          />
 
           <div className="lg-m-grid-stack" style={formGridStyle}>
             <div>

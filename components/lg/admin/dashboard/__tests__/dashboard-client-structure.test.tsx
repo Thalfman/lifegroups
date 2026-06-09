@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ComponentProps } from "react";
 import { DashboardClient } from "../DashboardClient";
-import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
+import {
+  ADMIN_FALLBACK,
+  INTEREST_FUNNEL_FALLBACK,
+  MULTIPLY_READINESS_FALLBACK,
+} from "@/lib/dashboard/fallback-data";
 
 // Home de-crowding structural invariant (#326). Render DashboardClient to static
 // markup (node env, no jsdom — the collapsible's persistence effects don't run
@@ -12,9 +17,16 @@ import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 // These assertions key off section anchors (aria-labelledby ids) and the cards'
 // own eyebrow labels rather than styling, so they stay robust to re-skins.
 
-function render() {
+function render(over: Partial<ComponentProps<typeof DashboardClient>> = {}) {
   return renderToStaticMarkup(
-    <DashboardClient data={ADMIN_FALLBACK} guestsLive={false} scopeId="p1" />
+    <DashboardClient
+      data={ADMIN_FALLBACK}
+      interestFunnel={INTEREST_FUNNEL_FALLBACK}
+      multiplyReadiness={MULTIPLY_READINESS_FALLBACK}
+      guestsLive={false}
+      scopeId="p1"
+      {...over}
+    />
   );
 }
 
@@ -71,14 +83,15 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     const collapsibleClose = indexOf(html, "</details>");
     expect(collapsibleClose).toBeGreaterThan(collapsibleOpen);
 
-    // The five deeper cards, identified by labels that render exactly once in
+    // The six deeper cards, identified by labels that render exactly once in
     // the markup (so indexOf can't latch onto an unrelated earlier match). Each
     // must live between the <details> open and close tags.
     const deeperCardMarkers = [
       "Leader care", // LeaderCareOverviewCard (eyebrow)
       "Launch planning", // LaunchPlanningOverviewCard (eyebrow)
       "Health pulse", // HealthDistributionCard (title)
-      "Pipeline funnel", // GuestPipelineFunnelCard (title)
+      "Interest Funnel", // InterestFunnelOverviewCard (title)
+      "Multiplication readiness", // MultiplyOverviewCard (title)
       "Leader pipeline", // LeaderPipelineOverviewCard (title)
     ];
 
@@ -110,24 +123,20 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
 
   // Care/Plan/Multiply pivot (ADR 0016, #372): Home must not present stats for a
   // tab the operator retired. When Planning / People are hidden, their snapshot
-  // cards drop with the tab; the Care-owned cards stay.
+  // cards drop with the tab; the Care/Plan/Multiply-owned cards stay.
   it("drops the launch-planning and leader-pipeline cards when their tab is hidden", () => {
-    const html = renderToStaticMarkup(
-      <DashboardClient
-        data={ADMIN_FALLBACK}
-        guestsLive={false}
-        scopeId="p1"
-        hiddenNavAreas={["/admin/planning", "/admin/people"]}
-      />
-    );
+    const html = render({
+      hiddenNavAreas: ["/admin/planning", "/admin/people"],
+    });
 
     expect(html).not.toContain("Launch planning"); // LaunchPlanningOverviewCard
     expect(html).not.toContain("Leader pipeline"); // LeaderPipelineOverviewCard
 
-    // Care-owned snapshot cards (and the frozen-gated guest funnel) stay.
+    // Care/Plan/Multiply-owned snapshot cards stay.
     expect(html).toContain("Leader care"); // LeaderCareOverviewCard
     expect(html).toContain("Health pulse"); // HealthDistributionCard
-    expect(html).toContain("Pipeline funnel"); // GuestPipelineFunnelCard
+    expect(html).toContain("Interest Funnel"); // InterestFunnelOverviewCard
+    expect(html).toContain("Multiplication readiness"); // MultiplyOverviewCard
   });
 
   // Home-link hygiene (ADR 0016): with the default hidden set (Groups, People,
@@ -136,14 +145,9 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
   // with the Planning-gated card and the now-removed "This week" milestone, and
   // group-health re-points to the active Care area.
   it("renders no links to hidden or off-nav surfaces under the default hidden set", () => {
-    const html = renderToStaticMarkup(
-      <DashboardClient
-        data={ADMIN_FALLBACK}
-        guestsLive={false}
-        scopeId="p1"
-        hiddenNavAreas={["/admin/groups", "/admin/people", "/admin/planning"]}
-      />
-    );
+    const html = render({
+      hiddenNavAreas: ["/admin/groups", "/admin/people", "/admin/planning"],
+    });
 
     expect(html).not.toContain("/admin/groups");
     expect(html).not.toContain("/admin/launch-planning");
@@ -151,5 +155,72 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     expect(html).not.toContain("View planning");
     // The Care-owned health link lands on the active area instead.
     expect(html).toContain("/admin/care");
+  });
+});
+
+// The pivot overview cards (#470): with default flags Home's snapshot must show
+// the two newest areas — the Interest Funnel (Plan) and Multiplication
+// readiness (Multiply) — with drill-in links, while the legacy guests card
+// stays gated behind its frozen-surface flag.
+describe("DashboardClient pivot overview cards (#470)", () => {
+  it("shows the Interest Funnel and Multiplication cards with their drill-in links by default", () => {
+    const html = render();
+
+    indexOf(html, "Interest Funnel");
+    indexOf(html, 'href="/admin/plan"');
+    indexOf(html, "Multiplication readiness");
+    indexOf(html, 'href="/admin/multiply"');
+
+    // Live demo counts render — the funnel's roll-up line and the readiness
+    // headline both derive from the typed seeds, not zeros.
+    indexOf(html, "joined a group");
+    indexOf(html, "Cells ready");
+  });
+
+  it("renders the legacy guests card only when the guests frozen surface is live", () => {
+    // Default (frozen): the Interest Funnel holds the slot; no guests card, no
+    // frozen placeholder, no off-nav guests link.
+    const frozen = render();
+    expect(frozen).not.toContain("Pipeline funnel");
+    expect(frozen).not.toContain("/admin/guests");
+
+    // Re-enabled-and-verified: the live guests card returns alongside the
+    // pivot cards.
+    const live = render({ guestsLive: true });
+    indexOf(live, "Pipeline funnel");
+    indexOf(live, "/admin/guests");
+    indexOf(live, "Interest Funnel");
+    indexOf(live, "Multiplication readiness");
+  });
+
+  it("degrades a failed funnel read to an unavailable card — never a zero count", () => {
+    const html = render({
+      interestFunnel: {
+        counts: { interested: 0, matched: 0, joined: 0, not_at_this_time: 0 },
+        available: false,
+        error: "fetchProspectStateCounts: boom",
+      },
+    });
+
+    indexOf(html, "Funnel data unavailable");
+    // The card must not present the failure as an empty-but-healthy funnel.
+    expect(html).not.toContain("No Prospects in the funnel yet.");
+    expect(html).not.toContain("0 in the funnel");
+  });
+
+  it("degrades a failed readiness read to an unavailable card — never a zero count", () => {
+    const html = render({
+      multiplyReadiness: {
+        readyCells: 0,
+        activeCells: 0,
+        available: false,
+        error: "grid read failed",
+      },
+    });
+
+    indexOf(html, "Readiness data unavailable");
+    // Neither the "no cells" empty state nor a 0-of-0 readout may render.
+    expect(html).not.toContain("No active cells yet.");
+    expect(html).not.toContain("Cells ready");
   });
 });

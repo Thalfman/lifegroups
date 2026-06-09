@@ -100,9 +100,20 @@ describe("resolveShepherdCareViewState", () => {
 });
 
 describe("buildShepherdCareViewHref", () => {
+  // #468: every emitted URL targets the canonical Care page, never the legacy
+  // /admin/shepherd-care alias (which still alias-renders for old bookmarks).
+  it("targets the canonical /admin/care base path", () => {
+    expect(buildShepherdCareViewHref({ view: "dashboard" })).toMatch(
+      /^\/admin\/care(\?|$)/
+    );
+    expect(buildShepherdCareViewHref({ view: "directory" })).toMatch(
+      /^\/admin\/care\?/
+    );
+  });
+
   it("omits the view param for the default dashboard view", () => {
     expect(buildShepherdCareViewHref({ view: "dashboard" })).toBe(
-      "/admin/shepherd-care"
+      "/admin/care"
     );
   });
 
@@ -114,7 +125,7 @@ describe("buildShepherdCareViewHref", () => {
         coverage: "unassigned",
       })
     ).toBe(
-      "/admin/shepherd-care?view=directory&filter=needs_attention&coverage=unassigned"
+      "/admin/care?view=directory&filter=needs_attention&coverage=unassigned"
     );
   });
 
@@ -125,30 +136,35 @@ describe("buildShepherdCareViewHref", () => {
         filter: "all",
         coverage: undefined,
       })
-    ).toBe("/admin/shepherd-care?view=directory");
+    ).toBe("/admin/care?view=directory");
     expect(
       buildShepherdCareViewHref({ view: "directory", coverage: null })
-    ).toBe("/admin/shepherd-care?view=directory");
+    ).toBe("/admin/care?view=directory");
   });
 
   it("carries a coverage uuid on a dashboard-rooted URL", () => {
     expect(
       buildShepherdCareViewHref({ view: "dashboard", coverage: UUID })
-    ).toBe(`/admin/shepherd-care?coverage=${UUID}`);
+    ).toBe(`/admin/care?coverage=${UUID}`);
   });
 });
 
-// #334 — the canonical Care shell keys tabs by the PRD IA names, but the
-// embedded Dashboard widgets still drill down via the legacy `view` / `coverage`
-// params against the /admin/shepherd-care alias. The alias landing must map those
-// params onto the matching initial tab, or every drill-down would reopen the
-// default tab. Pin that mapping (and that the builders above produce params this
-// resolver actually understands — i.e. the drill-down round-trips).
+// #334 / #468 — the canonical Care shell keys tabs by the PRD IA names; the
+// embedded Dashboard widgets and Home's Needs Attention actions drill down via
+// the `view` / `coverage` params (now against /admin/care itself, while the
+// /admin/shepherd-care and /admin/follow-ups aliases keep resolving the same
+// params for old bookmarks). The landing must map those params onto the
+// matching initial tab, or every drill-down would reopen the default tab. Pin
+// that mapping (and that the builders above produce params this resolver
+// actually understands — i.e. the drill-down round-trips).
 describe("resolveCareInitialTabFromParams", () => {
   it("falls back to the route default when no drill-down params are present", () => {
     expect(resolveCareInitialTabFromParams({}, "dashboard")).toBe("dashboard");
     expect(resolveCareInitialTabFromParams({}, "follow-ups")).toBe(
       "follow-ups"
+    );
+    expect(resolveCareInitialTabFromParams({}, "over-shepherds")).toBe(
+      "over-shepherds"
     );
   });
 
@@ -156,6 +172,30 @@ describe("resolveCareInitialTabFromParams", () => {
     expect(
       resolveCareInitialTabFromParams({ view: "directory" }, "dashboard")
     ).toBe("directory");
+  });
+
+  it("maps view=follow-ups onto the Follow-ups tab (#468)", () => {
+    expect(
+      resolveCareInitialTabFromParams({ view: "follow-ups" }, "over-shepherds")
+    ).toBe("follow-ups");
+    expect(
+      resolveCareInitialTabFromParams({ view: ["follow-ups"] }, "dashboard")
+    ).toBe("follow-ups");
+  });
+
+  it("maps an explicit view=dashboard onto the Dashboard tab (#468)", () => {
+    // Home's leaders-needing-care action lands where the attention queue is
+    // actionable — the Dashboard tab — so the param must override the
+    // canonical default (the Over-Shepherd accordion).
+    expect(
+      resolveCareInitialTabFromParams({ view: "dashboard" }, "over-shepherds")
+    ).toBe("dashboard");
+  });
+
+  it("leaves an unrecognised view on the route default", () => {
+    expect(
+      resolveCareInitialTabFromParams({ view: "nonsense" }, "over-shepherds")
+    ).toBe("over-shepherds");
   });
 
   it("maps any coverage filter onto the Coverage tab", () => {
@@ -188,7 +228,7 @@ describe("resolveCareInitialTabFromParams", () => {
   it("round-trips the builders' drill-down URLs to the intended tab", () => {
     // "View in Directory" / attention-queue link.
     const directory = buildShepherdCareViewHref({ view: "directory" });
-    expect(directory).toBe("/admin/shepherd-care?view=directory");
+    expect(directory).toBe("/admin/care?view=directory");
     expect(
       resolveCareInitialTabFromParams({ view: "directory" }, "dashboard")
     ).toBe("directory");
@@ -198,7 +238,7 @@ describe("resolveCareInitialTabFromParams", () => {
       kind: "needs_attention",
     });
     expect(needsAttention).toBe(
-      "/admin/shepherd-care?view=directory&filter=needs_attention"
+      "/admin/care?view=directory&filter=needs_attention"
     );
     expect(
       resolveCareInitialTabFromParams(
@@ -209,9 +249,7 @@ describe("resolveCareInitialTabFromParams", () => {
 
     // Unassigned-coverage tile + over-shepherd bucket.
     const unassigned = buildShepherdCareTriageLink({ kind: "unassigned" });
-    expect(unassigned).toBe(
-      "/admin/shepherd-care?view=directory&coverage=unassigned"
-    );
+    expect(unassigned).toBe("/admin/care?view=directory&coverage=unassigned");
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", coverage: "unassigned" },
@@ -223,9 +261,7 @@ describe("resolveCareInitialTabFromParams", () => {
       kind: "over_shepherd",
       overShepherdId: UUID,
     });
-    expect(overShepherd).toBe(
-      `/admin/shepherd-care?view=directory&coverage=${UUID}`
-    );
+    expect(overShepherd).toBe(`/admin/care?view=directory&coverage=${UUID}`);
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", coverage: UUID },
@@ -238,7 +274,7 @@ describe("resolveCareInitialTabFromParams", () => {
 describe("buildShepherdCareTriageLink", () => {
   it("maps needs_attention to the attention-filtered Directory URL", () => {
     expect(buildShepherdCareTriageLink({ kind: "needs_attention" })).toBe(
-      "/admin/shepherd-care?view=directory&filter=needs_attention"
+      "/admin/care?view=directory&filter=needs_attention"
     );
   });
 
@@ -248,12 +284,28 @@ describe("buildShepherdCareTriageLink", () => {
         kind: "over_shepherd",
         overShepherdId: UUID,
       })
-    ).toBe(`/admin/shepherd-care?view=directory&coverage=${UUID}`);
+    ).toBe(`/admin/care?view=directory&coverage=${UUID}`);
   });
 
   it("maps unassigned to the unassigned coverage param on the Directory", () => {
     expect(buildShepherdCareTriageLink({ kind: "unassigned" })).toBe(
-      "/admin/shepherd-care?view=directory&coverage=unassigned"
+      "/admin/care?view=directory&coverage=unassigned"
     );
+  });
+
+  it("only ever emits canonical /admin/care URLs (#468)", () => {
+    const links = [
+      buildShepherdCareTriageLink({ kind: "needs_attention" }),
+      buildShepherdCareTriageLink({ kind: "unassigned" }),
+      buildShepherdCareTriageLink({
+        kind: "over_shepherd",
+        overShepherdId: UUID,
+      }),
+    ];
+    for (const link of links) {
+      expect(link).toMatch(/^\/admin\/care\?/);
+      expect(link).not.toContain("/admin/shepherd-care");
+      expect(link).not.toContain("/admin/follow-ups");
+    }
   });
 });

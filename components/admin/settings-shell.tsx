@@ -63,6 +63,10 @@ export type SettingsShellData = {
   readiness?: {
     ministryYear: number;
     rule: ReadinessRule;
+    // #473: true when a STORED global rule was present but couldn't be read, so
+    // `rule` is the built-in fallback. The editor warns that saving overwrites
+    // the stored trigger. A MISSING stored rule is not a fallback (no warning).
+    ruleFellBack: boolean;
     perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>;
     cells: ReadinessCellSeed[];
   };
@@ -78,9 +82,9 @@ export type SettingsShellData = {
     overrides: string | null;
     // #378 / #374: a transient read failure for either health rubric must surface
     // (not silently fall back to a blank rubric), so an admin save can't overwrite
-    // a rubric that merely failed to load. It also lets a section that can't load —
-    // e.g. on an environment whose pivot tables aren't migrated yet — render a calm
-    // "not set up yet" placeholder in place of its editor, rather than tripping a
+    // a rubric that merely failed to load. A failed section renders a calm
+    // "couldn't load" notice in place of its editor (#469) — never the "not set
+    // up yet" copy, which would read as data loss — rather than tripping a
     // page-wide error banner.
     groupRubric: string | null;
     leaderRubric: string | null;
@@ -164,9 +168,8 @@ export function SettingsShell({
 
       {/* Care is the default tab: it carries the rubrics that define how leaders
           and groups are graded — the heart of what Settings configures now (ADR
-          0016). A section whose data failed to load (e.g. an environment without
-          the pivot tables) softens to a calm "not set up yet" placeholder rather
-          than tripping a page-wide error. */}
+          0016). A section whose read failed softens to a calm "couldn't load"
+          notice (#469) rather than tripping a page-wide error. */}
       <SettingsTabs tabs={tabs} defaultTabId={initialTabId ?? "care"} />
     </div>
   );
@@ -174,9 +177,9 @@ export function SettingsShell({
 
 // Care tab: the rubrics that define how leaders and groups are graded — the
 // configuration at the heart of Care (ADR 0016). The two A–F Health Rubrics
-// (group + leader; #374/#378, ADR 0018) live here. A rubric whose read failed —
-// e.g. on an environment whose pivot tables aren't migrated yet — softens to a
-// calm "not set up yet" placeholder instead of an editor that couldn't save.
+// (group + leader; #374/#378, ADR 0018) live here. A rubric whose read failed
+// softens to a calm "couldn't load" notice (#469) instead of an editor whose
+// empty seed could overwrite a saved rubric the admin can't see.
 function CarePanel({ data }: { data: SettingsShellData }) {
   return (
     <div style={{ display: "grid", gap: 36 }}>
@@ -191,7 +194,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
           description="Name the criteria and set each weight; they must total 100."
         />
         {data.errors.groupRubric ? (
-          <NotConfigured subject="The Group Health Rubric" />
+          <CouldNotLoad subject="The Group Health Rubric" />
         ) : (
           <Card>
             <HealthRubricEditor criteria={data.groupRubricCriteria} />
@@ -211,7 +214,7 @@ function CarePanel({ data }: { data: SettingsShellData }) {
           description="Name the criteria and set each weight; they must total 100. Distinct from a leader's Care Status."
         />
         {data.errors.leaderRubric ? (
-          <NotConfigured subject="The Leader Health Rubric" />
+          <CouldNotLoad subject="The Leader Health Rubric" />
         ) : (
           <Card>
             <HealthRubricEditor
@@ -232,8 +235,8 @@ function CarePanel({ data }: { data: SettingsShellData }) {
 // (Audience × category) cell is created in one step. Each row carries its target,
 // its coverage ("have X of Y"), a rename, and a remove. The trigger editor moved
 // to the Multiply sub-tab (#411); this tab is just the types. Softens to a
-// placeholder when its reads fail (e.g. an environment whose groups tables aren't
-// migrated yet).
+// "couldn't load" notice when its reads fail (#469) — saved group types are
+// intact, they just couldn't be read.
 function GroupsPanel({ data }: { data: SettingsShellData }) {
   // Categories still carried by at least one group (any audience / lifecycle).
   // Derived from the already-loaded groups, so the Delete-category cleanup never
@@ -252,7 +255,7 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
           description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
         />
         {data.errors.groupCategories ? (
-          <NotConfigured subject="Group types" />
+          <CouldNotLoad subject="Your group types" />
         ) : (
           <Card>
             <GroupsCatalogEditor
@@ -291,15 +294,23 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
           title="When a group type is ready to multiply"
           description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-group-type issue; Group and Leader Health are A–F letters."
         />
-        {data.errors.readiness ||
-        data.errors.groupCategories ||
-        !data.readiness ? (
+        {/* #469: each failing read names itself — a failed trigger read and a
+            failed group-types read (which feeds the per-cell rows) soften this
+            editor with distinct copy, so this tab never blames the wrong read.
+            Only a genuinely absent readiness shape (a build that hasn't wired
+            these reads) is "not set up yet". */}
+        {data.errors.readiness ? (
+          <CouldNotLoad subject="The multiplication trigger" />
+        ) : data.errors.groupCategories ? (
+          <CouldNotLoad subject="The group types this trigger depends on" />
+        ) : !data.readiness ? (
           <NotConfigured subject="The multiplication trigger" />
         ) : (
           <Card>
             <MultiplyTriggerEditor
               ministryYear={data.readiness.ministryYear}
               globalRule={data.readiness.rule}
+              storedRuleFellBack={data.readiness.ruleFellBack}
               perType={data.readiness.perType}
               cells={data.readiness.cells}
             />
@@ -627,17 +638,29 @@ function Empty({ title, description }: { title: string; description: string }) {
   );
 }
 
-// A calm placeholder for a configuration section whose data couldn't load —
-// typically because the feature's tables aren't provisioned in this environment
-// yet (the pivot is mid-migration). It reads as "coming soon," not "broken": no
-// alarm colour, no retry instruction, and crucially no editable controls that
-// would silently fail to save. This is the UI-only softening that replaces the
-// old page-wide "Some sections couldn't load" error banner.
+// A calm placeholder for a configuration section whose data genuinely isn't
+// there yet — no read error, the shape simply hasn't been wired in this build.
+// It reads as "coming soon," not "broken". A FAILED read never lands here
+// (#469): it renders CouldNotLoad below instead, so an operator with a saved
+// configuration never mistakes a transient failure for data loss.
 function NotConfigured({ subject }: { subject: string }) {
   return (
     <Empty
       title="Not set up yet"
       description={`${subject} isn't configured in this environment yet. It will appear here once it's ready.`}
+    />
+  );
+}
+
+// #469: the read-ERROR half of the old "not configured" placeholder. The saved
+// configuration still exists — it just couldn't be read — so the copy names the
+// failing section and reassures, and crucially no editor renders: a save over a
+// failed read could overwrite configuration the admin can't see.
+function CouldNotLoad({ subject }: { subject: string }) {
+  return (
+    <Empty
+      title="Couldn't load"
+      description={`${subject} couldn't be loaded right now. Your saved configuration is unchanged — refresh to try again.`}
     />
   );
 }

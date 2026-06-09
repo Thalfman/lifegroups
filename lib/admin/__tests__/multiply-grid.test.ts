@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMultiplyGrid,
+  buildMultiplyHomeSummary,
   GRID_TYPES,
   type GridCellInput,
 } from "@/lib/admin/multiply-grid";
@@ -262,5 +263,75 @@ describe("buildMultiplyGrid — per-cell readiness + coverage readout", () => {
     // women has no input → blank.
     expect(row.cells.women.applied).toBe(false);
     expect(row.cells.women.readout).toBeNull();
+  });
+});
+
+describe("buildMultiplyHomeSummary — Home's X of Y cells ready (#470)", () => {
+  // Readiness inputs that clear the built-in rule (interest ≥ 3, no capacity
+  // issue) vs inputs that block it.
+  const READY = inputs({ interestCount: 3, capacityIssue: false });
+  const NOT_READY = inputs({ interestCount: 0, capacityIssue: true });
+
+  it("counts ready cells over active cells across rows and types", () => {
+    const grid = buildMultiplyGrid(
+      [
+        { id: CAT, label: "20-30s" },
+        { id: "cat-fam", label: "Families" },
+      ],
+      [
+        cell({ audienceCategory: "men", active: true, inputs: READY }),
+        cell({ audienceCategory: "women", active: true, inputs: NOT_READY }),
+        cell({
+          audienceCategory: "mixed",
+          categoryId: "cat-fam",
+          active: true,
+          inputs: READY,
+        }),
+      ],
+      GLOBAL
+    );
+    expect(buildMultiplyHomeSummary(grid)).toEqual({
+      readyCells: 2,
+      activeCells: 3,
+    });
+  });
+
+  it("ignores blank (not-applied) cells on both sides of X of Y", () => {
+    // One applied-and-ready cell; the category's other two type cells are
+    // blank and the inactive cell below must not count as an active cell.
+    const grid = buildMultiplyGrid(
+      [{ id: CAT, label: "20-30s" }],
+      [
+        cell({ audienceCategory: "men", active: true, inputs: READY }),
+        cell({ audienceCategory: "women", active: false, inputs: READY }),
+      ],
+      GLOBAL
+    );
+    expect(buildMultiplyHomeSummary(grid)).toEqual({
+      readyCells: 1,
+      activeCells: 1,
+    });
+  });
+
+  it("returns 0 of 0 for an empty grid (no categories applied anywhere)", () => {
+    const grid = buildMultiplyGrid([], [], GLOBAL);
+    expect(buildMultiplyHomeSummary(grid)).toEqual({
+      readyCells: 0,
+      activeCells: 0,
+    });
+  });
+
+  it("reports 0 ready of N active when every active cell is blocked", () => {
+    const grid = buildMultiplyGrid(
+      [{ id: CAT, label: "20-30s" }],
+      GRID_TYPES.map((type) =>
+        cell({ audienceCategory: type, active: true, inputs: NOT_READY })
+      ),
+      GLOBAL
+    );
+    expect(buildMultiplyHomeSummary(grid)).toEqual({
+      readyCells: 0,
+      activeCells: 3,
+    });
   });
 });

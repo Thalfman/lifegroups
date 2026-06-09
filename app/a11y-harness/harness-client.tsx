@@ -34,6 +34,8 @@ import {
 } from "@/components/admin/people-management-shell";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
+import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -220,6 +222,36 @@ const COLLISION_GROUPS = [
   group({ id: "grp-ya-north", name: "Young Adults", location_area: "North" }),
   group({ id: "grp-ya-south", name: "Young Adults", location_area: "South" }),
 ];
+
+// Care accordion leader panels (#467): the per-Leader panel from the canonical
+// /admin/care Over-Shepherds view, now hosting the inline transparency toggle.
+// One sealed Leader and one granted Leader (with counts) so the care-actions
+// spec can assert the toggle's leader-contextual accessible name in both
+// states, that the panel stays counts-only (never note bodies), and the
+// pending state while a flip is in flight.
+const CARE_PANEL_LEADER_SEALED: CareAccordionLeader = {
+  profileId: "00000000-0000-4000-8000-0000000000a1",
+  fullName: "Anderson Lee",
+  groupNames: ["Anderson"],
+  ledGroups: [{ id: "grp-anderson", name: "Anderson", healthGrade: "B" }],
+  careStatus: "doing_well",
+  lastContactAt: "2026-05-12",
+  nextStepDue: "2026-05-26",
+  leaderHealthGrade: "A",
+  notes: { transparency: "sealed", careNoteCount: 0, prayerCount: 0 },
+};
+
+const CARE_PANEL_LEADER_GRANTED: CareAccordionLeader = {
+  profileId: "00000000-0000-4000-8000-0000000000a2",
+  fullName: "Bryant Cole",
+  groupNames: ["Bryant"],
+  ledGroups: [{ id: "grp-bryant", name: "Bryant", healthGrade: "C" }],
+  careStatus: "needs_follow_up",
+  lastContactAt: "2026-05-05",
+  nextStepDue: "2026-05-20",
+  leaderHealthGrade: "B",
+  notes: { transparency: "visible", careNoteCount: 2, prayerCount: 1 },
+};
 
 const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
   // Two follow-ups with the SAME title and status: titles are not unique, so
@@ -505,6 +537,8 @@ const SETTINGS_DATA: SettingsShellData = {
       groupHealth: { required: false, min: "C" },
       leaderHealth: { required: false, min: "C" },
     },
+    // #473: demo rule decodes cleanly — no stored-trigger-unreadable notice.
+    ruleFellBack: false,
     perType: {
       men: { interest: { required: true, min: 5 } },
     },
@@ -534,6 +568,21 @@ const SETTINGS_DATA: SettingsShellData = {
     leaderRubric: null,
     groupCategories: null,
     readiness: null,
+  },
+};
+
+// #469: the same Settings shell with every section read FAILED, so the spec
+// can prove the read-error split: each section renders the calm "couldn't
+// load" notice naming its own failing read — never the "not set up yet" copy,
+// and never an editor that could overwrite configuration that failed to load.
+const SETTINGS_ERRORS_DATA: SettingsShellData = {
+  ...SETTINGS_DATA,
+  errors: {
+    ...SETTINGS_DATA.errors,
+    groupRubric: "read failed",
+    leaderRubric: "read failed",
+    groupCategories: "read failed",
+    readiness: "read failed",
   },
 };
 
@@ -629,6 +678,8 @@ function Surface({
 
 export function A11yHarnessClient() {
   const [, setSelected] = useState<MasterOccurrence | null>(null);
+  // #469: whether the Settings surface renders the read-error payload.
+  const [settingsReadErrors, setSettingsReadErrors] = useState(false);
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
@@ -858,6 +909,20 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* Care accordion leader panels (#467). The transparency toggle moved
+          inline into the accordion's Care Notes & Prayer slot: a sealed
+          Leader renders the interactive toggle (off), a granted Leader keeps
+          the counts-only line next to the seal control. Both toggles must
+          carry the Leader's name in their accessible names since the control
+          repeats per Leader. */}
+      <Surface
+        id="care-accordion-panel"
+        heading="Care accordion (leader panels)"
+      >
+        <CareLeaderPanel leader={CARE_PANEL_LEADER_SEALED} />
+        <CareLeaderPanel leader={CARE_PANEL_LEADER_GRANTED} />
+      </Surface>
+
       <Surface id="group-health" heading="Group health (triage)">
         <GroupHealthTriage
           rows={GROUP_HEALTH_ROWS}
@@ -868,11 +933,28 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* #469: the toggle swaps the ONE Settings instance to the read-error
+          payload (a second mounted shell would duplicate the tablist's
+          settings-tab-* ids and trip axe's duplicate-id-aria). It sits outside
+          the surface so the settings-scoped scans see nothing new; the spec
+          clicks it, then asserts each section's "couldn't load" notice. The
+          key remounts the tabs so the swap lands back on the Care tab. */}
+      <button
+        type="button"
+        data-testid="settings-read-errors-toggle"
+        aria-pressed={settingsReadErrors}
+        onClick={() => setSettingsReadErrors((v) => !v)}
+      >
+        Simulate settings read failures
+      </button>
       <Surface
         id="settings"
         heading="Settings (rubrics, thresholds, overrides)"
       >
-        <SettingsShell data={SETTINGS_DATA} />
+        <SettingsShell
+          key={settingsReadErrors ? "read-errors" : "healthy"}
+          data={settingsReadErrors ? SETTINGS_ERRORS_DATA : SETTINGS_DATA}
+        />
       </Surface>
 
       {/* Super Admin Console collapsible sections (#261, Admin Interaction

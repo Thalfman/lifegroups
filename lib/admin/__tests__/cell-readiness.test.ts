@@ -4,6 +4,7 @@ import {
   decodeCellOverride,
   decodePerTypeRule,
   decodeReadinessRule,
+  decodeReadinessRuleWithReport,
   evaluateCellReadiness,
   resolveCellRule,
   resolveReadinessRule,
@@ -447,6 +448,101 @@ describe("decodeReadinessRule — trust boundary", () => {
       decodeReadinessRule({ interest: { required: true, min: 3.9 } }).interest
         .min
     ).toBe(3);
+  });
+});
+
+// #473: the decode-with-report path. The RULE VALUE must stay identical to
+// decodeReadinessRule's — only the fellBack report is added, so the Settings
+// Multiply tab and the Multiply readiness surface can warn when a stored
+// trigger couldn't be read (and would be overwritten by the next save).
+describe("decodeReadinessRuleWithReport — corrupt vs missing vs healthy (#473)", () => {
+  it("reports NO fallback for a MISSING stored rule (null / undefined = legit default)", () => {
+    expect(decodeReadinessRuleWithReport(null)).toEqual({
+      rule: BUILT_IN_READINESS_RULE,
+      fellBack: false,
+    });
+    expect(decodeReadinessRuleWithReport(undefined)).toEqual({
+      rule: BUILT_IN_READINESS_RULE,
+      fellBack: false,
+    });
+  });
+
+  it("reports NO fallback for a healthy stored rule", () => {
+    const stored = {
+      interest: { required: true, min: 5 },
+      capacity: { required: false },
+      groupHealth: { required: true, min: "B" },
+      leaderHealth: { required: false, min: "D" },
+    };
+    const decoded = decodeReadinessRuleWithReport(stored);
+    expect(decoded.fellBack).toBe(false);
+    expect(decoded.rule).toEqual(stored);
+  });
+
+  it("reports NO fallback for a healthy rule that happens to equal the built-in", () => {
+    // Equality with the built-in default must not read as a fallback — the
+    // report comes from the decode itself, not from comparing values.
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 3 },
+      capacity: { required: true },
+      groupHealth: { required: false, min: "C" },
+      leaderHealth: { required: false, min: "C" },
+    });
+    expect(decoded.fellBack).toBe(false);
+    expect(decoded.rule).toEqual(BUILT_IN_READINESS_RULE);
+  });
+
+  it("reports a fallback for a corrupt non-object payload", () => {
+    expect(decodeReadinessRuleWithReport("nope")).toEqual({
+      rule: BUILT_IN_READINESS_RULE,
+      fellBack: true,
+    });
+    expect(decodeReadinessRuleWithReport(7).fellBack).toBe(true);
+    expect(decodeReadinessRuleWithReport([]).fellBack).toBe(true);
+  });
+
+  it("reports a fallback when a pillar fragment is malformed or missing", () => {
+    const malformed = decodeReadinessRuleWithReport({
+      interest: { required: "yes", min: -4 },
+      capacity: { required: true },
+      groupHealth: { required: true, min: "Z" },
+      leaderHealth: { required: false, min: "C" },
+    });
+    expect(malformed.fellBack).toBe(true);
+
+    // Saves always store the full four-pillar rule, so a record missing a
+    // pillar is also "couldn't be read as stored" — it reports too.
+    const missingPillar = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 3 },
+    });
+    expect(missingPillar.fellBack).toBe(true);
+  });
+
+  it("keeps the fallback rule VALUE identical to decodeReadinessRule (reporting only)", () => {
+    const corrupt = {
+      interest: { required: "yes", min: -4 },
+      groupHealth: { required: true, min: "Z" },
+    };
+    expect(decodeReadinessRuleWithReport(corrupt).rule).toEqual(
+      decodeReadinessRule(corrupt)
+    );
+    expect(decodeReadinessRuleWithReport(null).rule).toEqual(
+      decodeReadinessRule(null)
+    );
+    expect(decodeReadinessRuleWithReport("nope").rule).toEqual(
+      decodeReadinessRule("nope")
+    );
+  });
+
+  it("does NOT report benign normalization (a fractional interest minimum truncates)", () => {
+    const decoded = decodeReadinessRuleWithReport({
+      interest: { required: true, min: 3.9 },
+      capacity: { required: true },
+      groupHealth: { required: false, min: "C" },
+      leaderHealth: { required: false, min: "C" },
+    });
+    expect(decoded.rule.interest.min).toBe(3);
+    expect(decoded.fellBack).toBe(false);
   });
 });
 

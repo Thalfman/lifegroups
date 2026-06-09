@@ -4,7 +4,6 @@ import {
   validateGroupMetricSettingsPayload,
   validateMetricDefaultsPayload,
   validateHealthRubricPayload,
-  validateMultiplicationConfigPayload,
   validateCreateGroupCategoryPayload,
   validateRenameGroupCategoryPayload,
   validateArchiveGroupCategoryPayload,
@@ -17,7 +16,6 @@ import {
   type GroupMetricSettingsPayload,
   type HealthRubricPayload,
   type MetricDefaultsPayload,
-  type MultiplicationConfigPayload,
   type CreateGroupCategoryPayload,
   type RenameGroupCategoryPayload,
   type ArchiveGroupCategoryPayload,
@@ -37,7 +35,6 @@ import {
 import {
   rpcAdminResetMetricDefaults,
   rpcAdminSetHealthRubric,
-  rpcAdminSetMultiplicationConfig,
   rpcAdminUpdateMetricDefaults,
   rpcAdminUpsertGroupMetricSettings,
   rpcAdminCreateGroupCategory,
@@ -67,9 +64,9 @@ const SETTINGS_REVALIDATE_PATHS = [
 
 // Check-in cadence keys (missed_checkin_warning_weeks, check_in_due_offset_hours)
 // are intentionally absent: their Settings form fields were retired (#160,
-// check-ins are a frozen surface per ADR 0002). They now appear read-only under
-// the Advanced thresholds disclosure (#221, "with their current defaults"). The
-// dead check_in_due_day_of_week field was dropped from the surface entirely (#221);
+// check-ins are a frozen surface per ADR 0002), and the read-only reference
+// rows that replaced them were retired from the surface too (#472). The dead
+// check_in_due_day_of_week field was dropped from the surface entirely (#221);
 // its metric_defaults column stays in the DB (no migration) and the reset RPC
 // still manages it. The underlying columns stay put and still feed the dormant
 // overdue calc, so none of these keys may be read from the submitted FormData.
@@ -84,6 +81,12 @@ const METRIC_DEFAULT_FIELDS = [
   "group_health_attendance_decline_margin_pct",
 ] as const;
 
+// check_in_due_offset_hours_override is intentionally absent (#472): the
+// hidden round-trip field was retired from the per-group form (check-ins are a
+// frozen surface, ADR 0002, and nothing visible consumes the offset). The key
+// is never read from the submitted FormData; the validator normalizes the
+// absent field to null, so the full-state upsert RPC clears any stored
+// override on the next save — the clear path for existing rows.
 const GROUP_METRIC_FIELDS = [
   "group_id",
   "capacity_override",
@@ -92,7 +95,6 @@ const GROUP_METRIC_FIELDS = [
   "manual_health_status_override",
   "exclude_from_capacity_metrics",
   "admin_metric_notes",
-  "check_in_due_offset_hours_override",
   "allow_over_capacity",
 ] as const;
 
@@ -213,6 +215,9 @@ const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
       p_manual_health_status_override: value.manual_health_status_override,
       p_exclude_from_capacity_metrics: value.exclude_from_capacity_metrics,
       p_admin_metric_notes: value.admin_metric_notes,
+      // Always null since #472 (the form no longer submits the key); the
+      // frozen full-state RPC still accepts it, so passing null keeps stored
+      // overrides clearable on every save.
       p_check_in_due_offset_hours_override:
         value.check_in_due_offset_hours_override,
       p_allow_over_capacity: value.allow_over_capacity,
@@ -290,47 +295,10 @@ export async function adminSetHealthRubric(
   return runAdminWriteAction(SET_HEALTH_RUBRIC_SPEC, prev, input);
 }
 
-// ----- adminSetMultiplicationConfig (#380, updated #401) -------------------
-// The Settings Multiply-pillars editor posts one group type's config for a
-// ministry year: the group_type, ministry_year, and two JSON payloads
-// (thresholds, trigger). #401 retired the fed-capacity payload — capacity is now a
-// derived per-cell issue, no longer fed. The validator decodes + normalizes them
-// before the audited RPC persists them. Ministry-Admin-owned, so the default
-// requireAdminSession path applies. Revalidates the Multiply boards as well as
-// Settings (the boards read this config).
-const MULTIPLICATION_CONFIG_REVALIDATE_PATHS = [
-  "/admin/settings",
-  "/admin/multiply",
-] as const;
-
-const SET_MULTIPLICATION_CONFIG_SPEC: AdminWriteActionSpec<
-  MultiplicationConfigPayload,
-  { id: string }
-> = {
-  name: "admin.settings.set_multiplication_config",
-  keys: ["group_type", "ministry_year", "thresholds", "trigger"],
-  validate: validateMultiplicationConfigPayload,
-  fields: (_actor, value) => ({
-    group_type: value.groupType,
-    ministry_year: value.ministryYear,
-  }),
-  rpc: (client, value) =>
-    rpcAdminSetMultiplicationConfig(client, {
-      p_group_type: value.groupType,
-      p_ministry_year: value.ministryYear,
-      p_thresholds: value.thresholds as unknown as Record<string, unknown>,
-      p_trigger: value.trigger as unknown as Record<string, unknown>,
-    }),
-  revalidate: () => MULTIPLICATION_CONFIG_REVALIDATE_PATHS,
-  noDataError: "The multiplication config was not saved. Please try again.",
-};
-
-export async function adminSetMultiplicationConfig(
-  prev: ActionResult<{ id: string }> | undefined,
-  input: unknown
-): Promise<ActionResult<{ id: string }>> {
-  return runAdminWriteAction(SET_MULTIPLICATION_CONFIG_SPEC, prev, input);
-}
+// adminSetMultiplicationConfig was deleted in #472: it was an orphan export
+// (retired by ADR 0019/#401, imported nowhere). The admin_set_multiplication_config
+// RPC and the multiplication_config table stay frozen in place — see
+// docs/architecture/DATABASE_SCHEMA.md.
 
 // ----- Group Category catalog + cell matrix (#396) ------------------------
 // The Settings > Groups editor posts free-form catalog CRUD (create / rename /

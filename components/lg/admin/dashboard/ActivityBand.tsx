@@ -2,13 +2,17 @@ import { MetricCard } from "@/components/dashboard/cards";
 import { P } from "@/lib/pastoral";
 import type { OverviewActivitySummary } from "@/lib/dashboard/types";
 
-// Activity within the selected period. Groups launched / guests welcomed are
-// always present; members joined / follow-ups completed / care touchpoints come
-// from the activity-counts read and show "—" when it's unavailable.
+// Activity within the selected period. Groups launched is always present;
+// Prospects added (#471, live Interest Funnel intake) / members joined /
+// follow-ups completed / care touchpoints come from the activity-counts read
+// and show "—" when it's unavailable. The frozen-guests "Guests welcomed" tile
+// renders only while that surface's flag is live.
 export function ActivityBand({
   activity,
+  guestsLive,
 }: {
   activity: OverviewActivitySummary;
+  guestsLive: boolean;
 }) {
   const dash = (n: number | null) =>
     n == null
@@ -17,6 +21,7 @@ export function ActivityBand({
   const meta = (empty: boolean) =>
     empty ? "Data unavailable" : activity.label;
 
+  const prospects = dash(activity.prospectsAdded);
   const members = dash(activity.membersJoined);
   const followUps = dash(activity.followUpsCompleted);
   const care = dash(activity.careTouchpoints);
@@ -38,12 +43,22 @@ export function ActivityBand({
         valueColor={P.ink}
       />
       <MetricCard
-        title="Guests welcomed"
-        value={String(activity.guestsWelcomed)}
-        meta={activity.label}
+        title="Prospects added"
+        value={prospects.value}
+        empty={prospects.empty}
+        meta={meta(prospects.empty)}
         accent={P.terra}
         valueColor={P.ink}
       />
+      {guestsLive ? (
+        <MetricCard
+          title="Guests welcomed"
+          value={String(activity.guestsWelcomed)}
+          meta={activity.label}
+          accent={P.terra}
+          valueColor={P.ink}
+        />
+      ) : null}
       <MetricCard
         title="Members joined"
         value={members.value}

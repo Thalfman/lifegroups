@@ -1,12 +1,18 @@
 import type { ReactNode } from "react";
 import { PageBody } from "@/components/lg/PageHeader";
 import { P, fontSans } from "@/lib/pastoral";
-import type { AdminDashboardData } from "@/lib/dashboard/types";
+import type {
+  AdminDashboardData,
+  InterestFunnelDashboardSummary,
+  MultiplyReadinessDashboardSummary,
+} from "@/lib/dashboard/types";
 import { VitalSignsBand } from "./VitalSignsBand";
 import { LeaderCareOverviewCard } from "./LeaderCareOverviewCard";
 import { LaunchPlanningOverviewCard } from "./LaunchPlanningOverviewCard";
 import { HealthDistributionCard } from "./HealthDistributionCard";
 import { GuestPipelineFunnelCard } from "./GuestPipelineFunnelCard";
+import { InterestFunnelOverviewCard } from "./InterestFunnelOverviewCard";
+import { MultiplyOverviewCard } from "./MultiplyOverviewCard";
 import { LeaderPipelineOverviewCard } from "./LeaderPipelineOverviewCard";
 import { NeedsAttentionArea } from "./NeedsAttentionArea";
 import { ThisWeekCard } from "./ThisWeekCard";
@@ -52,6 +58,8 @@ function SectionHeading({ children }: { children: ReactNode }) {
 
 export function DashboardClient({
   data,
+  interestFunnel,
+  multiplyReadiness,
   guestsLive,
   degraded,
   scopeId,
@@ -60,6 +68,11 @@ export function DashboardClient({
   hiddenNavAreas,
 }: {
   data: AdminDashboardData;
+  // Pivot overview summaries (#470), loaded in parallel with the dashboard
+  // read and degraded per-card: available:false renders an unavailable state,
+  // never a false zero.
+  interestFunnel: InterestFunnelDashboardSummary;
+  multiplyReadiness: MultiplyReadinessDashboardSummary;
   guestsLive: boolean;
   // True when the dashboard read failed and `data` is demo fallback.
   degraded?: boolean;
@@ -80,8 +93,10 @@ export function DashboardClient({
   // Launch-planning capacity drills into the Planning tab; the leader pipeline
   // drills into People. When their tab is hidden, their snapshot card would
   // report stats for a gone surface, so it drops out with the tab. Leader care
-  // (Care) and health distribution (Group-Health, now absorbed by Care) stay,
-  // and the guest funnel keeps its own frozen-surface gate (`guestsLive`).
+  // (Care), health distribution (Group-Health, now absorbed by Care), the
+  // Interest Funnel (Plan) and Multiplication readiness (Multiply) stay; the
+  // legacy guest funnel renders only when its frozen-surface flag is live
+  // (`guestsLive`, #470) — the Interest Funnel card holds its slot by default.
   const showLaunchPlanning = !hidden.has("/admin/planning");
   const showLeaderPipeline = !hidden.has("/admin/people");
   return (
@@ -156,11 +171,24 @@ export function DashboardClient({
               }}
             >
               <HealthDistributionCard counts={data.healthSummary.counts} />
-              <GuestPipelineFunnelCard
-                breakdown={data.guestPipelineBreakdown}
-                total={data.guestPipelineCount}
-                live={guestsLive}
+              {/* The pivot areas' overview cards (#470): the Interest Funnel
+                  takes the slot the frozen Guests placeholder held, and
+                  Multiplication readiness joins it — so Plan and Multiply are
+                  visible from the command center under default flags. The
+                  legacy guests card returns only when its frozen-surface flag
+                  is live (re-enabled-and-verified, #256). */}
+              <InterestFunnelOverviewCard summary={interestFunnel} />
+              <MultiplyOverviewCard
+                summary={multiplyReadiness}
+                multiplication={data.multiplication}
               />
+              {guestsLive ? (
+                <GuestPipelineFunnelCard
+                  breakdown={data.guestPipelineBreakdown}
+                  total={data.guestPipelineCount}
+                  live={guestsLive}
+                />
+              ) : null}
               {showLeaderPipeline ? (
                 <LeaderPipelineOverviewCard summary={data.leaderPipeline} />
               ) : null}
@@ -208,7 +236,7 @@ export function DashboardClient({
               <PeriodSlicer current={data.activity.grain} />
             </div>
           </div>
-          <ActivityBand activity={data.activity} />
+          <ActivityBand activity={data.activity} guestsLive={guestsLive} />
         </section>
       </div>
     </PageBody>

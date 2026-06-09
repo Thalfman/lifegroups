@@ -68,11 +68,17 @@ export type ReadinessCellSeed = {
 export function MultiplyTriggerEditor({
   ministryYear,
   globalRule,
+  storedRuleFellBack = false,
   perType,
   cells,
 }: {
   ministryYear: number;
   globalRule: ReadinessRule;
+  // #473: true when a STORED global rule existed but couldn't be read, so
+  // `globalRule` is the built-in fallback. Surfaces a calm notice — the admin
+  // should know a custom trigger existed and that saving overwrites it. A
+  // MISSING stored rule (fresh ministry) does not set this.
+  storedRuleFellBack?: boolean;
   perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>;
   cells: ReadinessCellSeed[];
 }) {
@@ -167,6 +173,12 @@ export function MultiplyTriggerEditor({
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      {storedRuleFellBack ? (
+        <p style={fallbackNoticeStyle}>
+          The stored multiplication trigger couldn&rsquo;t be read, so the
+          built-in default is shown. Saving will overwrite what&rsquo;s stored.
+        </p>
+      ) : null}
       <div style={{ display: "grid", gap: 6, maxWidth: 420 }}>
         <label htmlFor="multiply-trigger-level" style={fieldLabelStyle}>
           Configure trigger for
@@ -489,6 +501,20 @@ const noteStyle = {
   fontFamily: fontBody,
   fontSize: 13,
   color: P.ink2,
+  margin: 0,
+  lineHeight: 1.55,
+} as const;
+
+// #473: calm, non-alarm styling for the stored-trigger-unreadable notice — the
+// editor still works; this only explains what it is showing instead.
+const fallbackNoticeStyle = {
+  fontFamily: fontBody,
+  fontSize: 13,
+  color: P.ink2,
+  background: P.bg,
+  border: `1px solid ${P.line}`,
+  borderRadius: 8,
+  padding: "10px 14px",
   margin: 0,
   lineHeight: 1.55,
 } as const;
