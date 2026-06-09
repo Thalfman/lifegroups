@@ -13,17 +13,19 @@ import {
 import type { GroupHealthStatus } from "@/types/enums";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { useActionForm, FormStatus } from "./action-form";
+import {
+  GROUP_HEALTH_STATUSES,
+  GROUP_HEALTH_STATUS_LABEL,
+} from "@/lib/admin/health-status-labels";
 
+// #478 (P2.2): the status options come from the ONE canonical label map, so
+// this dropdown and the override summary in settings-shell can't drift.
 const HEALTH_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "none", label: "No manual override" },
-  { value: "healthy", label: "Healthy" },
-  { value: "watch", label: "Watch" },
-  { value: "needs_follow_up", label: "Needs follow-up" },
-  { value: "healthy_paused", label: "Healthy (paused)" },
-  { value: "restart_soon", label: "Restart soon" },
-  { value: "overdue_restart", label: "Overdue restart" },
-  { value: "capacity_full", label: "Capacity full" },
-  { value: "needs_leader_support", label: "Needs leader support" },
+  ...GROUP_HEALTH_STATUSES.map((status) => ({
+    value: status,
+    label: GROUP_HEALTH_STATUS_LABEL[status],
+  })),
 ];
 
 export function GroupMetricOverridesForm({

@@ -763,8 +763,9 @@ function RenameCategoryForm({
 }
 
 // The editable target group count (the "Y" in have X of Y) — tracking only, it
-// feeds no trigger. X (have) is read-only, derived from the live groups upstream.
-// Posts to the audited target-count RPC.
+// feeds no trigger (#478 says so in the visible helper too). X (have) is
+// read-only, derived from the live groups upstream. Posts to the audited
+// target-count RPC.
 function TargetForm({
   categoryId,
   label,
@@ -786,34 +787,45 @@ function TargetForm({
     Number.isInteger(parsed) &&
     parsed >= 0 &&
     parsed !== target;
+  const helpId = `target-help-${audienceCategory}-${categoryId}`;
 
   return (
-    <form action={formAction} style={inlineFormStyle}>
-      <input type="hidden" name="category_id" value={categoryId} />
-      <input type="hidden" name="audience_category" value={audienceCategory} />
-      <span style={inlineLabelStyle}>Target</span>
-      <input
-        aria-label={`Target for ${TYPE_LABEL[audienceCategory]} ${label}`}
-        name="target_count"
-        type="number"
-        min={0}
-        step={1}
-        inputMode="numeric"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        style={{ ...fieldInputStyle, width: 72, textAlign: "center" }}
-      />
-      <PButton
-        type="submit"
-        tone="ghost"
-        size="sm"
-        disabled={pending || !dirty}
-        aria-label={`Save target for ${TYPE_LABEL[audienceCategory]} ${label}`}
-      >
-        {pending ? "Saving…" : "Set"}
-      </PButton>
-      <FormStatus state={state} successText="Target saved." />
-    </form>
+    <div style={{ display: "grid", gap: 4 }}>
+      <form action={formAction} style={inlineFormStyle}>
+        <input type="hidden" name="category_id" value={categoryId} />
+        <input
+          type="hidden"
+          name="audience_category"
+          value={audienceCategory}
+        />
+        <span style={inlineLabelStyle}>Target</span>
+        <input
+          aria-label={`Target for ${TYPE_LABEL[audienceCategory]} ${label}`}
+          aria-describedby={helpId}
+          name="target_count"
+          type="number"
+          min={0}
+          step={1}
+          inputMode="numeric"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          style={{ ...fieldInputStyle, width: 72, textAlign: "center" }}
+        />
+        <PButton
+          type="submit"
+          tone="ghost"
+          size="sm"
+          disabled={pending || !dirty}
+          aria-label={`Save target for ${TYPE_LABEL[audienceCategory]} ${label}`}
+        >
+          {pending ? "Saving…" : "Set"}
+        </PButton>
+        <FormStatus state={state} successText="Target saved." />
+      </form>
+      <p id={helpId} style={targetHelpStyle}>
+        Tracking only — never feeds the multiplication trigger.
+      </p>
+    </div>
   );
 }
 
@@ -1105,6 +1117,16 @@ const inlineLabelStyle = {
   fontSize: 12,
   fontWeight: 600,
   color: P.ink3,
+} as const;
+
+// #478: the target is tracking only — say so right under the control, tied to
+// the input via aria-describedby so screen readers hear it too.
+const targetHelpStyle = {
+  fontFamily: fontBody,
+  fontSize: 11,
+  color: P.ink3,
+  margin: 0,
+  lineHeight: 1.4,
 } as const;
 
 const addFormStyle = {

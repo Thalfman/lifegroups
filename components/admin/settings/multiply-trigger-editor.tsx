@@ -190,7 +190,9 @@ export function MultiplyTriggerEditor({
           style={{ ...fieldInputStyle, appearance: "auto" }}
         >
           <option value="global">Global default</option>
-          <optgroup label="By type">
+          {/* #478: the per-type tier is named by the CONTEXT.md term for it —
+              Audience — not the internal "by type" phrasing. */}
+          <optgroup label="Audience">
             {AUDIENCE_CATEGORIES.map((a) => (
               <option key={a} value={`type:${a}`}>
                 {TRIGGER_TYPE_LABEL[a]} (all categories)
@@ -295,8 +297,10 @@ function LevelForm({
   );
 }
 
+// #478: Interest is labelled as a people-count right on the pillar — it is a
+// count (≥ N people) at every level, never a letter (CONTEXT.md, ADR 0021).
 const PILLAR_META: { key: ReadinessPillarKey; label: string }[] = [
-  { key: "interest", label: "Interest" },
+  { key: "interest", label: "Interest (people count)" },
   { key: "capacity", label: "Capacity" },
   { key: "groupHealth", label: "Group Health" },
   { key: "leaderHealth", label: "Leader Health" },
