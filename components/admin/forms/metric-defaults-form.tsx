@@ -102,11 +102,12 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         </div>
       </div>
 
-      {/* S1 (#221): the capacity / attendance thresholds plus the (frozen)
-          check-in cadence values sit behind a disclosure. The editable
-          thresholds stay mounted inside the form, so they still submit when
-          collapsed. The two check-in values are read-only — check-ins are a
-          frozen surface (ADR 0002, #160) — shown here as "current defaults". */}
+      {/* S1 (#221): the capacity / attendance thresholds sit behind a
+          disclosure. The editable thresholds stay mounted inside the form, so
+          they still submit when collapsed. The two read-only check-in cadence
+          reference rows were retired from this surface entirely (#472) —
+          check-ins are a frozen surface (ADR 0002, #160) and nothing consumes
+          those values here. */}
       <details style={detailsStyle}>
         <summary style={summaryStyle}>Advanced thresholds</summary>
         <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
@@ -224,21 +225,6 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               </p>
             </div>
           </div>
-
-          <div className="lg-m-grid-stack" style={formGridStyle}>
-            <ReadOnlyDefault
-              label="Check-in due offset (hours)"
-              value={`${defaults.check_in_due_offset_hours} hours`}
-            />
-            <ReadOnlyDefault
-              label="Missed check-in warning (weeks)"
-              value={`${defaults.missed_checkin_warning_weeks} weeks`}
-            />
-          </div>
-          <p style={hintStyle}>
-            Check-in timing is a frozen surface — these values are shown for
-            reference and aren&rsquo;t edited here.
-          </p>
         </div>
       </details>
 
@@ -249,27 +235,6 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         <FormStatus state={state} successText="Defaults saved." />
       </div>
     </form>
-  );
-}
-
-// A frozen check-in cadence value, shown read-only inside Advanced thresholds
-// so the operator can see the current default without an editable control.
-function ReadOnlyDefault({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span style={fieldLabelStyle}>{label}</span>
-      <div
-        style={{
-          ...fieldInputStyle,
-          background: P.bg,
-          color: P.ink2,
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        {value}
-      </div>
-    </div>
   );
 }
 

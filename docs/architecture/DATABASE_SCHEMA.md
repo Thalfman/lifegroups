@@ -159,3 +159,21 @@ and run `select count(*) from groups;`. Expected:
 - `anon` → 0 rows.
 - Leader Casey (after `supabase/dev/link_test_users.sql` is run) → 2 rows.
 - Ministry admin → 5 rows.
+
+## Retired columns (kept under frozen-schema discipline)
+
+These columns are dead — no app surface reads them — but stay in place
+because dropping columns and changing RPCs is out of scope (#472):
+
+- `check_in_due_day_of_week` (a key in the `app_settings` `metric_defaults`
+  row): never read; check-ins are a frozen surface (ADR 0002). The
+  metric-defaults RPCs still accept/manage the key.
+- `multiplication_config.thresholds` / `multiplication_config.trigger`:
+  retired by ADR 0019/#401 — the Multiply trigger now lives in the
+  readiness-rule cascade (ADR 0021). The audited
+  `admin_set_multiplication_config` RPC remains but nothing in the app
+  calls it.
+- `group_metric_settings.check_in_due_offset_hours_override`: retired from
+  the Settings per-group form in #472. The full-state upsert RPC still
+  accepts the parameter; the app now always passes null, which clears any
+  stored override on the next per-group save.
