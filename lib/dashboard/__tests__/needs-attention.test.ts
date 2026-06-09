@@ -111,18 +111,19 @@ describe("buildNeedsAttentionItems", () => {
     expect(followUps?.count).toBe(8);
   });
 
-  it("lands the care action on canonical Care's Dashboard tab (#468)", () => {
-    // Since #328 the Directory renders the full roster with no filter
-    // affordance, so the attention queue on Care's Dashboard tab is where the
-    // admin can actually act on each leader needing care. The href must carry
-    // an explicit view=dashboard so the param overrides the canonical default
-    // tab (the Over-Shepherd accordion).
+  it("lands the care action on the All-leaders tab, filtered to needs attention (#477)", () => {
+    // The six→four consolidation merged the Dashboard into the All-leaders
+    // tab and restored the roster's needs-attention filter, so Home's link
+    // finally lands filtered: the legacy view=directory param selects the
+    // merged tab and filter=needs_attention pre-applies the row filter.
     const d = allClearData();
     d.shepherdCare.needsAttention = 2;
     const care = buildNeedsAttentionItems(d).find(
       (i) => i.key === "care_attention"
     );
-    expect(care?.href).toBe("/admin/care?view=dashboard");
+    expect(care?.href).toBe(
+      "/admin/care?view=directory&filter=needs_attention"
+    );
   });
 
   it("lands the open-follow-ups action on canonical Care's Follow-ups tab (#468)", () => {
@@ -163,7 +164,9 @@ describe("buildNeedsAttentionItems", () => {
         "over-shepherds"
       );
     };
-    expect(tabFor(byKey.care_attention)).toBe("dashboard");
+    // #477: the care action lands on the merged All-leaders tab (where the
+    // page also pre-applies the needs-attention roster filter).
+    expect(tabFor(byKey.care_attention)).toBe("all-leaders");
     expect(tabFor(byKey.follow_ups)).toBe("follow-ups");
   });
 

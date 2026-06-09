@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildShepherdCareTriageLink,
   buildShepherdCareViewHref,
+  normalizeCareTabKey,
   resolveCareInitialTabFromParams,
   resolveCoverageFilter,
   resolveDirectoryFilter,
@@ -149,29 +150,76 @@ describe("buildShepherdCareViewHref", () => {
   });
 });
 
-// #334 / #468 — the canonical Care shell keys tabs by the PRD IA names; the
-// embedded Dashboard widgets and Home's Needs Attention actions drill down via
-// the `view` / `coverage` params (now against /admin/care itself, while the
-// /admin/shepherd-care and /admin/follow-ups aliases keep resolving the same
-// params for old bookmarks). The landing must map those params onto the
-// matching initial tab, or every drill-down would reopen the default tab. Pin
-// that mapping (and that the builders above produce params this resolver
-// actually understands — i.e. the drill-down round-trips).
+// #477 — the six-tab IA collapsed to four canonical tabs, but every legacy
+// tab key stays an accepted input forever: a bookmarked key must land on the
+// canonical tab that absorbed its surface, never 404 or select a tab that no
+// longer renders.
+describe("normalizeCareTabKey", () => {
+  it("passes the canonical four through unchanged", () => {
+    expect(normalizeCareTabKey("over-shepherds")).toBe("over-shepherds");
+    expect(normalizeCareTabKey("all-leaders")).toBe("all-leaders");
+    expect(normalizeCareTabKey("follow-ups")).toBe("follow-ups");
+    expect(normalizeCareTabKey("recent-interactions")).toBe(
+      "recent-interactions"
+    );
+  });
+
+  it("maps the legacy dashboard and directory keys onto All leaders", () => {
+    expect(normalizeCareTabKey("dashboard")).toBe("all-leaders");
+    expect(normalizeCareTabKey("directory")).toBe("all-leaders");
+  });
+
+  it("maps the legacy coverage key onto Over-Shepherds", () => {
+    expect(normalizeCareTabKey("coverage")).toBe("over-shepherds");
+  });
+});
+
+// #334 / #468 / #477 — the embedded widgets and Home's Needs Attention actions
+// drill down via the `view` / `filter` / `coverage` params (against /admin/care
+// itself, while the /admin/shepherd-care and /admin/follow-ups aliases keep
+// resolving the same params for old bookmarks). The landing must map those
+// params onto the matching canonical tab, or every drill-down would reopen the
+// default tab. Pin the full legacy param→tab matrix (and that the builders
+// above produce params this resolver actually understands — i.e. the
+// drill-down round-trips).
 describe("resolveCareInitialTabFromParams", () => {
   it("falls back to the route default when no drill-down params are present", () => {
-    expect(resolveCareInitialTabFromParams({}, "dashboard")).toBe("dashboard");
     expect(resolveCareInitialTabFromParams({}, "follow-ups")).toBe(
       "follow-ups"
     );
     expect(resolveCareInitialTabFromParams({}, "over-shepherds")).toBe(
       "over-shepherds"
     );
+    expect(resolveCareInitialTabFromParams({}, "recent-interactions")).toBe(
+      "recent-interactions"
+    );
   });
 
-  it("maps view=directory onto the Directory tab", () => {
+  it("normalizes a legacy fallback key onto its canonical tab", () => {
+    expect(resolveCareInitialTabFromParams({}, "dashboard")).toBe(
+      "all-leaders"
+    );
+    expect(resolveCareInitialTabFromParams({}, "directory")).toBe(
+      "all-leaders"
+    );
+    expect(resolveCareInitialTabFromParams({}, "coverage")).toBe(
+      "over-shepherds"
+    );
+  });
+
+  it("maps view=directory onto the All-leaders tab (#477)", () => {
     expect(
-      resolveCareInitialTabFromParams({ view: "directory" }, "dashboard")
-    ).toBe("directory");
+      resolveCareInitialTabFromParams({ view: "directory" }, "over-shepherds")
+    ).toBe("all-leaders");
+  });
+
+  it("maps view=dashboard onto the All-leaders tab (#477)", () => {
+    // The Dashboard's summary tiles + attention queue now lead the All-leaders
+    // tab, so the legacy param lands where that content lives — overriding the
+    // canonical default (the Over-Shepherd accordion).
+    expect(
+      resolveCareInitialTabFromParams({ view: "dashboard" }, "over-shepherds")
+    ).toBe("all-leaders");
   });
 
   it("maps view=follow-ups onto the Follow-ups tab (#468)", () => {
@@ -183,57 +231,72 @@ describe("resolveCareInitialTabFromParams", () => {
     ).toBe("follow-ups");
   });
 
-  it("maps an explicit view=dashboard onto the Dashboard tab (#468)", () => {
-    // Home's leaders-needing-care action lands where the attention queue is
-    // actionable — the Dashboard tab — so the param must override the
-    // canonical default (the Over-Shepherd accordion).
-    expect(
-      resolveCareInitialTabFromParams({ view: "dashboard" }, "over-shepherds")
-    ).toBe("dashboard");
-  });
-
   it("leaves an unrecognised view on the route default", () => {
     expect(
       resolveCareInitialTabFromParams({ view: "nonsense" }, "over-shepherds")
     ).toBe("over-shepherds");
   });
 
-  it("maps any coverage filter onto the Coverage tab", () => {
+  it("maps any coverage filter onto the Over-Shepherds tab (#477)", () => {
+    // The accordion absorbed the Coverage tab: the Unassigned pane and the
+    // coverage-management link live in the accordion region.
     expect(
-      resolveCareInitialTabFromParams({ coverage: "unassigned" }, "dashboard")
-    ).toBe("coverage");
+      resolveCareInitialTabFromParams(
+        { coverage: "unassigned" },
+        "recent-interactions"
+      )
+    ).toBe("over-shepherds");
     expect(
-      resolveCareInitialTabFromParams({ coverage: UUID }, "dashboard")
-    ).toBe("coverage");
+      resolveCareInitialTabFromParams({ coverage: UUID }, "recent-interactions")
+    ).toBe("over-shepherds");
   });
 
-  it("prefers Coverage over Directory for a coverage-rooted directory link", () => {
-    // The coverage drill-downs are dashboard-rooted (view stays "dashboard")
-    // but carry a coverage param; even an explicit view=directory + coverage
-    // resolves to the coverage triage surface.
+  it("prefers coverage over view for a coverage-rooted directory link", () => {
+    // The legacy coverage drill-downs are directory-rooted (view stays
+    // "directory") but carry a coverage param; coverage triage lives in the
+    // accordion, so the coverage param wins.
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", coverage: UUID },
-        "dashboard"
+        "recent-interactions"
       )
-    ).toBe("coverage");
+    ).toBe("over-shepherds");
   });
 
-  it("ignores an unrecognised coverage value (no false coverage tab)", () => {
+  it("ignores an unrecognised coverage value (no false coverage landing)", () => {
     expect(
-      resolveCareInitialTabFromParams({ coverage: "not-a-uuid" }, "dashboard")
-    ).toBe("dashboard");
+      resolveCareInitialTabFromParams(
+        { coverage: "not-a-uuid" },
+        "over-shepherds"
+      )
+    ).toBe("over-shepherds");
+  });
+
+  it("maps a bare filter=needs_attention onto the All-leaders tab (#477)", () => {
+    // The filter pre-applies to the roster, so it must land where the roster
+    // is — even without an accompanying view param.
+    expect(
+      resolveCareInitialTabFromParams(
+        { filter: "needs_attention" },
+        "over-shepherds"
+      )
+    ).toBe("all-leaders");
+    // An unrecognised filter value selects nothing.
+    expect(
+      resolveCareInitialTabFromParams({ filter: "bogus" }, "over-shepherds")
+    ).toBe("over-shepherds");
   });
 
   it("round-trips the builders' drill-down URLs to the intended tab", () => {
-    // "View in Directory" / attention-queue link.
+    // The roster's "All" filter chip.
     const directory = buildShepherdCareViewHref({ view: "directory" });
     expect(directory).toBe("/admin/care?view=directory");
     expect(
-      resolveCareInitialTabFromParams({ view: "directory" }, "dashboard")
-    ).toBe("directory");
+      resolveCareInitialTabFromParams({ view: "directory" }, "over-shepherds")
+    ).toBe("all-leaders");
 
-    // Needs-attention summary tile.
+    // Needs-attention summary tile / filter chip / Home action: lands on the
+    // All-leaders tab, where the page pre-applies the roster filter.
     const needsAttention = buildShepherdCareTriageLink({
       kind: "needs_attention",
     });
@@ -243,19 +306,19 @@ describe("resolveCareInitialTabFromParams", () => {
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", filter: "needs_attention" },
-        "dashboard"
+        "over-shepherds"
       )
-    ).toBe("directory");
+    ).toBe("all-leaders");
 
-    // Unassigned-coverage tile + over-shepherd bucket.
+    // Unassigned-coverage tile + over-shepherd bucket: land on the accordion.
     const unassigned = buildShepherdCareTriageLink({ kind: "unassigned" });
     expect(unassigned).toBe("/admin/care?view=directory&coverage=unassigned");
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", coverage: "unassigned" },
-        "dashboard"
+        "recent-interactions"
       )
-    ).toBe("coverage");
+    ).toBe("over-shepherds");
 
     const overShepherd = buildShepherdCareTriageLink({
       kind: "over_shepherd",
@@ -265,9 +328,9 @@ describe("resolveCareInitialTabFromParams", () => {
     expect(
       resolveCareInitialTabFromParams(
         { view: "directory", coverage: UUID },
-        "dashboard"
+        "recent-interactions"
       )
-    ).toBe("coverage");
+    ).toBe("over-shepherds");
   });
 });
 
