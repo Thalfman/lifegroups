@@ -10,6 +10,7 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import { rpcLogUsageEvent } from "@/lib/usage/rpc";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
 
@@ -156,6 +157,15 @@ export async function loginAction(
     email_hash: emailHash,
     actor_role: profile.role,
   });
+
+  // Best-effort usage telemetry. The RPC self-gates on the usage_tracking flag
+  // and no-ops when it's off, so this records a sign-in only while the Super
+  // Admin has tracking on — and never blocks or fails the sign-in.
+  try {
+    await rpcLogUsageEvent(client, { p_event_type: "login", p_area: null });
+  } catch {
+    // Telemetry must not affect auth.
+  }
 
   redirect(next ?? defaultLandingPathForRole(profile.role));
 }

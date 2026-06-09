@@ -128,6 +128,19 @@ describe("feature-flags", () => {
       ).toBe(true);
     });
 
+    it("registers usage tracking as a plain on/off new-surface flag, off by default", () => {
+      expect(getFeatureFlagDefinition("usage_tracking")?.kind).toBe(
+        "new_surface"
+      );
+      expect(isFrozenSurfaceFlag("usage_tracking")).toBe(false);
+      // Off by default: no stored config ⇒ nothing is recorded.
+      expect(resolveFlag({}, "usage_tracking")).toBe(false);
+      // On when explicitly enabled — no verify-before-flip for a new surface.
+      expect(
+        resolveFlag({ usage_tracking: { enabled: true } }, "usage_tracking")
+      ).toBe(true);
+    });
+
     it("registers the three nav-visibility flags as their own kind (not frozen)", () => {
       for (const { key } of NAV_VISIBILITY_FLAGS) {
         expect(getFeatureFlagDefinition(key)?.kind).toBe("nav_visibility");

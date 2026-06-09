@@ -23,6 +23,7 @@ import {
   fetchCoverageAssignableLeaders,
   fetchCurrentCoverageAssignments,
 } from "@/lib/supabase/super-admin-console-reads";
+import { fetchRecentUsageEvents } from "@/lib/supabase/usage-reads";
 import {
   fetchCleanSlateImpact,
   fetchAuditEventCount,
@@ -217,6 +218,7 @@ function buildNoClientData(): SuperAdminConsoleData {
     coverageLeaders: [],
     appConfig: BUILT_IN_APP_CONFIG,
     auditEvents: [],
+    usageEvents: [],
     cleanSlateImpact: null,
     latestCleanSlateSnapshot: null,
     historyResetState: null,
@@ -275,6 +277,7 @@ async function loadData(
     attentionResetResult,
     permanentDeletionTargets,
     recentTombstones,
+    usageResult,
   ] = await Promise.all([
     fetchProfilesForAdmin(client, { statuses: ["active", "inactive"] }),
     fetchAllGroups(client),
@@ -295,6 +298,7 @@ async function loadData(
     fetchAttentionResetState(client),
     fetchPermanentDeletionTargets(client),
     fetchRecentTombstones(client),
+    fetchRecentUsageEvents(client, { limit: 200 }),
   ]);
 
   const profiles = profilesResult.data ?? [];
@@ -347,6 +351,9 @@ async function loadData(
     coverageLeaders,
     appConfig: decodeAppConfig(platformConfigResult.data),
     auditEvents: auditEvents as AuditEventsRow[],
+    // Usage telemetry is a soft signal: on a read failure show an empty panel
+    // rather than alarming with a banner — it's optional, off-by-default data.
+    usageEvents: usageResult.data ?? [],
     cleanSlateImpact: cleanSlateResult.data,
     latestCleanSlateSnapshot: latestSnapshotResult.data,
     historyResetState: historyResetResult.data,

@@ -150,6 +150,19 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
       "Show the member care list in the admin Care area, alongside the leader care list. The admin-only member-care backend exists either way; this only controls whether the surface is shown. Default off ⇒ Care is leaders only.",
     kind: "new_surface",
   },
+  // Usage & login tracking (Phase USAGE.1). A plain on/off switch that gates
+  // ALL coarse usage telemetry: sign-ins and which top-level area each user
+  // opens. Default off ⇒ nothing is recorded. log_usage_event reads this flag
+  // server-side on every call, so turning it off stops recording immediately —
+  // anything after the toggle goes off is not monitored. Logs structural facts
+  // only (which area), never the content a user views.
+  {
+    key: "usage_tracking",
+    label: "Usage & login tracking",
+    description:
+      "Record coarse usage telemetry — sign-ins and which top-level area each user opens (Care / Plan / Multiply / Settings) — so you can see how early users are using the app. Default off; while off, nothing is recorded. Logs which area was opened, never the content viewed.",
+    kind: "new_surface",
+  },
 ];
 
 // Maps each launch-optics mute flag to the dashboard "Needs attention" category

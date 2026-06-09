@@ -64,6 +64,7 @@ import type {
   GroupsRow,
   MembersRow,
   ProfilesRow,
+  UsageEventsRow,
 } from "@/types/database";
 
 type StatusTone =
@@ -111,6 +112,11 @@ export type SuperAdminConsoleData = {
   // console's config tracer. Decodes to built-in defaults when unreadable.
   appConfig: AppConfig;
   auditEvents: AuditEventsRow[];
+  // Phase USAGE.1: recent coarse usage telemetry (logins + area views) for the
+  // Diagnostics Usage panel. Empty when tracking is off, the read failed, or
+  // there's no client — the panel reads the resolved usage_tracking flag to tell
+  // "off" apart from "on but quiet".
+  usageEvents: UsageEventsRow[];
   // PRD-SAC6 Danger Zone impact previews. Null when the read failed / no client.
   cleanSlateImpact: CleanSlateImpact | null;
   // PRD-SAC6 (#293/#294): the latest un-restored snapshot for the revert/export
@@ -617,6 +623,10 @@ export function SuperAdminConsoleShell({
   }
 
   const lastEvent = data.auditEvents[0] ?? null;
+  const usageTrackingOn = resolveFlag(
+    data.appConfig.featureFlags,
+    "usage_tracking"
+  );
   const nextAction = computeNextAction({
     errorCount,
     checklistWarningCount,
@@ -674,6 +684,16 @@ export function SuperAdminConsoleShell({
         value="Locked"
         tone="good"
         detail="Type-to-confirm on every action"
+      />
+      <StatusChip
+        label="Usage tracking"
+        value={usageTrackingOn ? "On" : "Off"}
+        tone={usageTrackingOn ? "active" : "planned"}
+        detail={
+          usageTrackingOn
+            ? "Recording logins + area views"
+            : "Off — nothing is recorded"
+        }
       />
     </div>
   );
@@ -1369,6 +1389,241 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
 // Workspace 4 — Diagnostics
 // ---------------------------------------------------------------------------
 
+// Prettify a usage area slug for display ("super-admin" -> "Super admin",
+// "shepherd-care" -> "Shepherd care"). The first segment is capitalised, the
+// rest stay lowercase and the hyphens become spaces — enough to read, without
+// pretending to be a curated label.
+function labelForArea(slug: string): string {
+  const spaced = slug.replace(/-/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+// Read-only usage telemetry: sign-ins and which top-level area each user opens,
+// recorded only while the usage_tracking flag is on (the panel resolves the flag
+// to tell "off" apart from "on but quiet"). Computed server-side from the recent
+// usage_events + the loaded profile map — no client interactivity needed.
+function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
+  const trackingOn = resolveFlag(data.appConfig.featureFlags, "usage_tracking");
+  const events = data.usageEvents;
+
+  const logins = events.filter((e) => e.event_type === "login");
+  const areaViews = events.filter((e) => e.event_type === "area_view");
+
+  // Distinct people seen across the loaded window (logins or area views).
+  const activeActors = new Set(
+    events.map((e) => e.actor_profile_id).filter((id): id is string => !!id)
+  );
+
+  // Area-view tally, busiest first.
+  const areaCounts = new Map<string, number>();
+  for (const view of areaViews) {
+    const area = view.area ?? "unknown";
+    areaCounts.set(area, (areaCounts.get(area) ?? 0) + 1);
+  }
+  const sortedAreas = [...areaCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const maxAreaCount = sortedAreas.length > 0 ? sortedAreas[0][1] : 0;
+
+  const recentLogins = logins.slice(0, 10).map((e) => {
+    const actor = e.actor_profile_id
+      ? data.profilesById.get(e.actor_profile_id)
+      : null;
+    return {
+      id: e.id,
+      name: actor?.full_name ?? "Unknown",
+      at: formatStatusTime(e.created_at),
+    };
+  });
+
+  return (
+    <Panel id="usage">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <PanelTitle>Usage &amp; logins</PanelTitle>
+        <StatusBadge
+          label={trackingOn ? "Tracking on" : "Tracking off"}
+          tone={trackingOn ? "active" : "disabled"}
+        />
+      </div>
+      <p
+        style={{
+          fontFamily: fontBody,
+          fontSize: 12.5,
+          color: P.ink2,
+          margin: 0,
+          lineHeight: 1.5,
+        }}
+      >
+        Coarse usage telemetry — sign-ins and which top-level area each user
+        opens. Recording is gated by the{" "}
+        <strong>Usage &amp; login tracking</strong> flag in Config → Feature
+        flags; while it&rsquo;s off, nothing is recorded. Areas are structural
+        facts only (which surface), never the content a user viewed.
+      </p>
+
+      {!trackingOn && events.length === 0 ? (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            color: P.ink3,
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          Tracking is off and nothing has been recorded. Turn on{" "}
+          <strong>Usage &amp; login tracking</strong> in Config → Feature flags
+          to start seeing logins and area usage here.
+        </p>
+      ) : events.length === 0 ? (
+        <p
+          style={{
+            fontFamily: fontBody,
+            fontSize: 12.5,
+            color: P.ink3,
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          Tracking is on. No activity has been recorded yet — events will appear
+          here as users sign in and move around the app.
+        </p>
+      ) : (
+        <>
+          <div className="lg-m-grid-stack" style={cardGridStyle}>
+            <div style={{ ...cardStyle, padding: "12px 14px" }}>
+              <MetricRow label="Sign-ins" value={logins.length} />
+              <MetricRow label="Area opens" value={areaViews.length} />
+              <MetricRow label="People seen" value={activeActors.size} />
+            </div>
+          </div>
+
+          <div
+            className="lg-m-grid-stack"
+            style={{ ...twoCardGridStyle, alignItems: "start" }}
+          >
+            <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+              <SubsectionHeader
+                title="Areas opened"
+                hint="How often each top-level area was entered, busiest first."
+              />
+              {sortedAreas.length === 0 ? (
+                <p
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 12,
+                    color: P.ink3,
+                    margin: 0,
+                  }}
+                >
+                  No area views recorded yet.
+                </p>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {sortedAreas.map(([area, count]) => (
+                    <div key={area} style={{ display: "grid", gap: 3 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          fontFamily: fontSans,
+                          fontSize: 12,
+                          color: P.ink2,
+                        }}
+                      >
+                        <span>{labelForArea(area)}</span>
+                        <strong style={{ color: P.ink }}>{count}</strong>
+                      </div>
+                      <div
+                        aria-hidden
+                        style={{
+                          height: 6,
+                          borderRadius: 999,
+                          background: P.line2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${
+                              maxAreaCount > 0
+                                ? Math.round((count / maxAreaCount) * 100)
+                                : 0
+                            }%`,
+                            background: P.sage,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+              <SubsectionHeader
+                title="Recent sign-ins"
+                hint="The latest logins, newest first."
+              />
+              {recentLogins.length === 0 ? (
+                <p
+                  style={{
+                    fontFamily: fontBody,
+                    fontSize: 12,
+                    color: P.ink3,
+                    margin: 0,
+                  }}
+                >
+                  No sign-ins recorded yet.
+                </p>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {recentLogins.map((login) => (
+                    <div
+                      key={login.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        fontFamily: fontSans,
+                        fontSize: 12,
+                        color: P.ink2,
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: P.ink,
+                          fontWeight: 600,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {login.name}
+                      </span>
+                      <span style={{ whiteSpace: "nowrap" }}>
+                        {login.at} UTC
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function DiagnosticsWorkspace({
   data,
   testAccountsPanel,
@@ -1380,9 +1635,10 @@ function DiagnosticsWorkspace({
     <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
       <WorkspaceHeader
         title="Diagnostics"
-        description="Read-only health checks, plus test tools kept separate from the normal app."
+        description="Read-only health checks, usage telemetry, plus test tools kept separate from the normal app."
       />
       <SystemStatusChecklist rows={data.checklist} />
+      <UsagePanel data={data} />
       <section
         id="test-tools"
         style={{
