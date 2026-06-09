@@ -48,6 +48,11 @@ import type {
 
 export const dynamic = "force-dynamic";
 
+// Wider than the 1240 shell default so the console doesn't strand hundreds of
+// px beside the sidebar on 1440/1920 screens (#449). This page only — other
+// admin pages keep the default.
+const CONSOLE_MAX_WIDTH = 1520;
+
 // Every active profile except super_admin is reassignable through this form.
 // Self-target and super_admin are both blocked (the bootstrap owner isn't
 // demoted from the app surface).
@@ -421,8 +426,9 @@ export default async function AdminSuperAdminPage() {
         eyebrow="Super admin"
         title="Super Admin"
         lede="Owner and operator console for launch readiness, access, configuration, diagnostics, audit, and guarded danger actions."
+        maxWidth={CONSOLE_MAX_WIDTH}
       />
-      <PageBody>
+      <PageBody maxWidth={CONSOLE_MAX_WIDTH}>
         <SuperAdminConsoleShell
           data={data}
           testAccountsSummary={testAccountsSummary}
