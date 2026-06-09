@@ -57,6 +57,7 @@ has been archived.
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints.                           |
 | [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0020; the pivot is 0016–0020).  |
 | [`agents/`](./agents/)                                                 | Agent/skill config: domain-doc rules, issue tracker, triage labels. |
+| [`runbooks/`](./runbooks/)                                             | Operator how-tos for turning on / configuring live surfaces.        |
 
 ## Archived
 
