@@ -49,6 +49,28 @@ function errorNote(message: string): ReactNode {
   );
 }
 
+// A calm, non-alarm notice for a degraded-but-working state (#473) — quieter
+// than errorNote: the surface still renders; this only explains what it is
+// showing instead.
+function calmNote(message: string): ReactNode {
+  return (
+    <p
+      style={{
+        margin: 0,
+        fontFamily: fontBody,
+        fontSize: 13,
+        color: P.ink2,
+        background: P.bg,
+        border: `1px solid ${P.line}`,
+        borderRadius: 8,
+        padding: "10px 14px",
+      }}
+    >
+      {message}
+    </p>
+  );
+}
+
 // Shared loader: run the admin guard once, then assemble the three tabs' data in
 // parallel so TTFB tracks the slowest read rather than their sum. Each tab owns
 // its own error so the others still render.
@@ -91,7 +113,19 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
       panel: grid.error ? (
         errorNote(grid.error)
       ) : (
-        <MultiplyGridView grid={grid.grid} ministryYear={grid.ministryYear} />
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* #473: the stored trigger existed but couldn't be read — readiness
+              below is evaluated against the built-in default, and saving the
+              trigger in Settings will overwrite what's stored. */}
+          {grid.ruleFellBack
+            ? calmNote(
+                "The stored multiplication trigger couldn't be read, so the " +
+                  "built-in default is in use here. Saving the trigger in " +
+                  "Settings will overwrite what's stored."
+              )
+            : null}
+          <MultiplyGridView grid={grid.grid} ministryYear={grid.ministryYear} />
+        </div>
       ),
     },
     {

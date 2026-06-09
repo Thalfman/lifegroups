@@ -6,10 +6,9 @@ import {
   type MultiplyGrid,
 } from "@/lib/admin/multiply-grid";
 import {
-  BUILT_IN_READINESS_RULE,
   decodeCellOverride,
   decodePerTypeRule,
-  decodeReadinessRule,
+  decodeReadinessRuleWithReport,
   type PerTypeReadinessRule,
 } from "@/lib/admin/cell-readiness";
 import {
@@ -56,12 +55,18 @@ import { interestForCell } from "@/lib/admin/prospect-interest";
 export type MultiplyGridData = {
   ministryYear: number;
   grid: MultiplyGrid;
+  // #473: true when a STORED global trigger rule was present but couldn't be
+  // read, so the grid evaluated against the built-in default. The Readiness tab
+  // shows a calm notice; a MISSING stored rule (fresh ministry) does not set
+  // this.
+  ruleFellBack: boolean;
   error: string | null;
 };
 
 export const EMPTY_MULTIPLY_GRID_DATA: MultiplyGridData = {
   ministryYear: new Date().getUTCFullYear(),
   grid: { rows: [] },
+  ruleFellBack: false,
   error: "The database is not configured in this environment.",
 };
 
@@ -106,9 +111,14 @@ export async function loadMultiplyGridData(
   const interest = interestResult.data ?? EMPTY_CELL_INTEREST;
   const cellSizes = cellSizesResult.data ?? EMPTY_CELL_ACTIVE_GROUP_SIZES;
   const cellHealth = cellHealthResult.data ?? EMPTY_CELL_HEALTH_GRADES;
-  const globalRule = decodeReadinessRule(
-    readinessResult.data?.rule ?? BUILT_IN_READINESS_RULE
+  // #473: decode the stored global trigger WITH a report. A missing stored rule
+  // decodes to the built-in default silently; a present-but-unreadable payload
+  // flags ruleFellBack so the Readiness tab can say so instead of presenting
+  // default-rule readiness as if it were the configured trigger.
+  const decodedRule = decodeReadinessRuleWithReport(
+    readinessResult.data?.rule ?? null
   );
+  const globalRule = decodedRule.rule;
 
   // The MIDDLE tier of the cascade (#410 / ADR 0021), keyed by top type. A type
   // with no row inherits the global rule for every pillar (the additive default —
@@ -196,6 +206,7 @@ export async function loadMultiplyGridData(
       globalRule,
       perTypeRules
     ),
+    ruleFellBack: decodedRule.fellBack,
     error:
       categoriesResult.error?.message ??
       targetCellsResult.error?.message ??

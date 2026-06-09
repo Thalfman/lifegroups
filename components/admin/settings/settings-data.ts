@@ -22,9 +22,8 @@ import {
   BUILT_IN_READINESS_RULE,
   decodeCellOverride,
   decodePerTypeRule,
-  decodeReadinessRule,
+  decodeReadinessRuleWithReport,
   type PerTypeReadinessRule,
-  type ReadinessRule,
 } from "@/lib/admin/cell-readiness";
 import type { ReadinessCellSeed } from "@/components/admin/settings/multiply-trigger-editor";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
@@ -194,6 +193,7 @@ export function emptySettingsData(isSuperAdmin: boolean): SettingsShellData {
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
       rule: BUILT_IN_READINESS_RULE,
+      ruleFellBack: false,
       perType: {},
       cells: [],
     },
@@ -248,6 +248,15 @@ export async function buildSettingsData(
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
+  // #473: decode the stored global trigger WITH a report. A missing stored rule
+  // (fresh ministry) decodes to the built-in default with no flag; a present-but-
+  // unreadable payload flags ruleFellBack so the Multiply editor can warn that
+  // the stored trigger couldn't be read (and that saving will overwrite it)
+  // instead of silently showing default values.
+  const decodedRule = decodeReadinessRuleWithReport(
+    readinessResult.data?.rule ?? null
+  );
+
   // The category-picker options for the Groups tab's inline edit drawer, grouped
   // by top type. A failed per-type read just drops to no options for that type
   // (the picker then only offers "Uncategorized") rather than failing the tab —
@@ -299,7 +308,8 @@ export async function buildSettingsData(
     // the target cells (which carry trigger_overrides).
     readiness: {
       ministryYear: currentMinistryYear(new Date()),
-      rule: decodeReadinessRule(readinessResult.data?.rule ?? null),
+      rule: decodedRule.rule,
+      ruleFellBack: decodedRule.fellBack,
       perType: buildPerTypeRules(audienceReadinessResult.data ?? []),
       cells: buildReadinessCells(
         categoriesResult.data ?? [],

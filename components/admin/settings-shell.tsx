@@ -63,6 +63,10 @@ export type SettingsShellData = {
   readiness?: {
     ministryYear: number;
     rule: ReadinessRule;
+    // #473: true when a STORED global rule was present but couldn't be read, so
+    // `rule` is the built-in fallback. The editor warns that saving overwrites
+    // the stored trigger. A MISSING stored rule is not a fallback (no warning).
+    ruleFellBack: boolean;
     perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>;
     cells: ReadinessCellSeed[];
   };
@@ -306,6 +310,7 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
             <MultiplyTriggerEditor
               ministryYear={data.readiness.ministryYear}
               globalRule={data.readiness.rule}
+              storedRuleFellBack={data.readiness.ruleFellBack}
               perType={data.readiness.perType}
               cells={data.readiness.cells}
             />

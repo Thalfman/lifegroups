@@ -537,6 +537,8 @@ const SETTINGS_DATA: SettingsShellData = {
       groupHealth: { required: false, min: "C" },
       leaderHealth: { required: false, min: "C" },
     },
+    // #473: demo rule decodes cleanly — no stored-trigger-unreadable notice.
+    ruleFellBack: false,
     perType: {
       men: { interest: { required: true, min: 5 } },
     },
