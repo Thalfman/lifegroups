@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import {
+  useCallback,
+  useState,
+  useTransition,
+  type CSSProperties,
+} from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { PButton } from "@/components/pastoral/button";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
@@ -64,6 +69,19 @@ function translateTestAccountError(raw: string): string {
     return "This session isn’t authorized to run test-account checks. Sign out and back in as the super admin.";
   }
   return "The test-account check returned an unexpected error.";
+}
+
+// Eyebrow label over each action cluster (#458): quiet ink for the read-only
+// half, terra ink for the admin-impacting half.
+function clusterLabelStyle(color: string): CSSProperties {
+  return {
+    fontFamily: fontSans,
+    fontSize: 10.5,
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+    fontWeight: 700,
+    color,
+  };
 }
 
 function StatePill({ state }: { state: string }) {
@@ -234,39 +252,73 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               Group B: <StatePill state={status?.groups?.b ?? "missing"} />
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <PButton
-              tone="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={pending !== null}
+          {/* Safe reads and admin-impacting actions sit in separately labeled
+              clusters so a glance tells them apart (#458). Enable/disable keep
+              their window.confirm gates and gain the terra (impacting)
+              treatment; the reads stay quiet ghost buttons. */}
+          <div
+            style={{
+              display: "flex",
+              gap: 18,
+              flexWrap: "wrap",
+              alignItems: "flex-end",
+            }}
+          >
+            <div
+              role="group"
+              aria-label="Read-only checks"
+              style={{ display: "grid", gap: 6 }}
             >
-              {pending === "refresh" ? "Refreshing…" : "Refresh status"}
-            </PButton>
-            <PButton
-              tone="ghost"
-              size="sm"
-              onClick={handleDiagnose}
-              disabled={pending !== null}
+              <span style={clusterLabelStyle(P.ink3)}>Read-only</span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <PButton
+                  tone="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={pending !== null}
+                >
+                  {pending === "refresh" ? "Refreshing…" : "Refresh status"}
+                </PButton>
+                <PButton
+                  tone="ghost"
+                  size="sm"
+                  onClick={handleDiagnose}
+                  disabled={pending !== null}
+                >
+                  {pending === "diagnose" ? "Diagnosing…" : "Diagnose"}
+                </PButton>
+              </div>
+            </div>
+            <div
+              role="group"
+              aria-label="Admin-impacting actions"
+              style={{ display: "grid", gap: 6 }}
             >
-              {pending === "diagnose" ? "Diagnosing…" : "Diagnose"}
-            </PButton>
-            <PButton
-              tone="solid"
-              size="sm"
-              onClick={handleEnable}
-              disabled={pending !== null}
-            >
-              {pending === "enable" ? "Enabling…" : "Enable test accounts"}
-            </PButton>
-            <PButton
-              tone="terra"
-              size="sm"
-              onClick={handleDisable}
-              disabled={pending !== null}
-            >
-              {pending === "disable" ? "Disabling…" : "Disable test accounts"}
-            </PButton>
+              <span style={clusterLabelStyle(P.terraTextStrong)}>
+                Admin-impacting · asks before running
+              </span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <PButton
+                  tone="terra"
+                  size="sm"
+                  onClick={handleEnable}
+                  disabled={pending !== null}
+                >
+                  {pending === "enable" ? "Enabling…" : "Enable test accounts"}
+                </PButton>
+                <PButton
+                  tone="ghost"
+                  size="sm"
+                  onClick={handleDisable}
+                  disabled={pending !== null}
+                  style={{ borderColor: P.terra, color: P.terraTextStrong }}
+                >
+                  {pending === "disable"
+                    ? "Disabling…"
+                    : "Disable test accounts"}
+                </PButton>
+              </div>
+            </div>
           </div>
         </div>
 

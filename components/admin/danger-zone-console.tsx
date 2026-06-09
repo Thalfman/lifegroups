@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { StatusBadge } from "@/components/admin/console-status";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 
 // Danger Zone chooser (Super Admin redesign).
@@ -20,6 +21,10 @@ export type DangerWorkflow = {
   label: string;
   // A one-line operator-facing note on what the workflow touches.
   riskNote?: string;
+  // Marks a workflow whose effect can't be undone from the app (no snapshot to
+  // restore). Carries the shared destructive treatment (#451) so its launcher
+  // can never read like the recoverable resets.
+  destructive?: boolean;
   node: ReactNode;
 };
 
@@ -45,10 +50,10 @@ export function DangerZoneConsole({
       <div style={{ display: "grid", gap: 6 }}>
         <h2 style={headingStyle}>Danger Zone</h2>
         <p style={ledeStyle}>
-          Guarded, reversible actions grouped by how much they touch. Pick one
-          workflow to open it — each is gated behind a type-to-confirm phrase
-          and captures a recoverable snapshot before anything is removed. Only
-          the workflow you select is shown.
+          Guarded actions grouped by how much they touch. The cards below are
+          launchers, not buttons — opening one only reveals its workflow.
+          Nothing runs until you type that workflow&rsquo;s confirmation phrase,
+          and resets capture a recoverable snapshot before anything is removed.
         </p>
       </div>
 
@@ -69,16 +74,39 @@ export function DangerZoneConsole({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setActiveId(selected ? null : workflow.id)}
-                    style={chooserButtonStyle(selected)}
+                    style={chooserButtonStyle(
+                      selected,
+                      Boolean(workflow.destructive)
+                    )}
                   >
-                    <span style={chooserButtonLabelStyle}>
-                      {workflow.label}
+                    <span
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 8,
+                      }}
+                    >
+                      <span style={chooserButtonLabelStyle}>
+                        {workflow.label}
+                      </span>
+                      <StatusBadge
+                        label={
+                          workflow.destructive ? "Permanent" : "Recoverable"
+                        }
+                        tone={workflow.destructive ? "destructive" : "guarded"}
+                      />
                     </span>
                     {workflow.riskNote ? (
                       <span style={chooserButtonNoteStyle}>
                         {workflow.riskNote}
                       </span>
                     ) : null}
+                    <span style={chooserOpenHintStyle(selected)}>
+                      {selected
+                        ? "Workflow open below ↓"
+                        : openWorkflowLabel(workflow.label)}
+                    </span>
                   </button>
                 );
               })}
@@ -96,11 +124,19 @@ export function DangerZoneConsole({
         </section>
       ) : (
         <p style={placeholderStyle}>
-          Select a workflow above to reveal its controls.
+          Select a workflow above to open it. Nothing runs until you type its
+          confirmation phrase inside.
         </p>
       )}
     </div>
   );
+}
+
+// "Open … workflow" copy applied generically (#459), so the launcher reads as
+// a door into a guarded workflow rather than a one-click action — and stays
+// correct however the workflows are grouped.
+function openWorkflowLabel(label: string): string {
+  return `Open ${label.charAt(0).toLowerCase()}${label.slice(1)} workflow`;
 }
 
 const headingStyle: CSSProperties = {
@@ -135,19 +171,27 @@ const chooserGridStyle: CSSProperties = {
   gap: 10,
 };
 
-function chooserButtonStyle(selected: boolean): CSSProperties {
+function chooserButtonStyle(
+  selected: boolean,
+  destructive: boolean
+): CSSProperties {
   return {
     appearance: "none",
     textAlign: "left",
     display: "grid",
-    gap: 4,
+    gap: 6,
+    alignContent: "start",
     padding: "12px 14px",
     borderRadius: 10,
     cursor: "pointer",
     background: selected ? P.terraSoft : P.surface,
-    border: `1px solid ${selected ? P.terra : P.line}`,
-    boxShadow: selected ? `inset 3px 0 0 ${P.terra}` : "none",
-    transition: "background .12s, border-color .12s",
+    // A destructive launcher keeps its terra border even at rest, so it never
+    // blends in with the recoverable resets.
+    border: `1px solid ${selected || destructive ? P.terra : P.line}`,
+    boxShadow: selected
+      ? `inset 3px 0 0 ${P.terra}, 0 0 0 1px ${P.terra}`
+      : "none",
+    transition: "background .12s, border-color .12s, box-shadow .12s",
   };
 }
 
@@ -164,6 +208,19 @@ const chooserButtonNoteStyle: CSSProperties = {
   color: P.ink2,
   lineHeight: 1.45,
 };
+
+// The launcher's action line: what clicking does (open, not run). Terra ink so
+// it reads as the card's interactive affordance; the selected card swaps it
+// for a "workflow open below" state line, keeping the chosen card obvious.
+function chooserOpenHintStyle(selected: boolean): CSSProperties {
+  return {
+    fontFamily: fontSans,
+    fontSize: 12,
+    fontWeight: 700,
+    color: P.terraTextStrong,
+    ...(selected ? null : { textDecoration: "underline" }),
+  };
+}
 
 const placeholderStyle: CSSProperties = {
   fontFamily: fontBody,

@@ -58,7 +58,11 @@ import {
   FEATURE_FLAG_DEFINITIONS,
   resolveFlag,
 } from "@/lib/admin/feature-flags";
-import { Icon, type IconName } from "@/components/lg/Icon";
+import {
+  StatusBadge,
+  STATUS_STYLE,
+  type StatusTone,
+} from "@/components/admin/console-status";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
@@ -68,24 +72,11 @@ import type {
   UsageEventsRow,
 } from "@/types/database";
 
-// The console's shared risk/status vocabulary (#451). Every state pairs a
-// consistent color + icon so badges read at a glance: good (sage/check),
-// guarded (sage outline/shield — protected on purpose), warning
-// (mustard/flag), blocked (terra/x), disabled (quiet/dots), active
-// (sage/spark), planned (quiet/cal), destructive (solid dark terra/alert —
-// must never read as an ordinary badge), readonly (quiet/book — a safe read).
-// Exported so the other console surfaces reuse this vocabulary instead of
-// inventing their own.
-export type StatusTone =
-  | "good"
-  | "guarded"
-  | "warning"
-  | "blocked"
-  | "disabled"
-  | "active"
-  | "planned"
-  | "destructive"
-  | "readonly";
+// The shared risk/status vocabulary (#451) lives in console-status so client
+// consoles can import it without pulling this server module graph; re-exported
+// here so existing importers keep working.
+export { StatusBadge, STATUS_STYLE } from "@/components/admin/console-status";
+export type { StatusTone } from "@/components/admin/console-status";
 
 export type SuperAdminTestAccountsSummary = {
   label: string;
@@ -159,69 +150,6 @@ export type SuperAdminConsoleData = {
   };
 };
 
-export const STATUS_STYLE: Record<
-  StatusTone,
-  { background: string; border: string; color: string; icon: IconName }
-> = {
-  good: {
-    background: P.sageSoft,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "check",
-  },
-  guarded: {
-    background: P.surface,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "shield",
-  },
-  warning: {
-    background: P.mustardSoft,
-    border: P.mustard,
-    color: P.mustardTextStrong,
-    icon: "flag",
-  },
-  blocked: {
-    background: P.terraSoft,
-    border: P.terra,
-    color: P.terraTextStrong,
-    icon: "x",
-  },
-  disabled: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink3,
-    icon: "dots",
-  },
-  active: {
-    background: P.sageSoft,
-    border: P.sage,
-    color: P.sageTextStrong,
-    icon: "spark",
-  },
-  planned: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink2,
-    icon: "cal",
-  },
-  // Solid dark terra fill — deliberately louder than every soft badge so a
-  // destructive action can't pass for an ordinary control. Cream-on-dark-terra
-  // keeps AA contrast at badge sizes.
-  destructive: {
-    background: P.terraTextStrong,
-    border: P.terraTextStrong,
-    color: P.surface,
-    icon: "alert",
-  },
-  readonly: {
-    background: P.surface,
-    border: P.line,
-    color: P.ink2,
-    icon: "book",
-  },
-};
-
 const cardStyle: CSSProperties = {
   background: P.surface,
   border: `1px solid ${P.line}`,
@@ -259,52 +187,46 @@ function formatStatusTime(iso: string): string {
   });
 }
 
-export function StatusBadge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: StatusTone;
-}) {
-  const s = STATUS_STYLE[tone];
+// A small "go do it" link rendered inside status cards. Plain anchor on
+// purpose: the workspace switcher already listens for hash changes (including
+// the legacy aliases like #test-tools), so `#diagnostics` both flips the tab
+// and scrolls to the named section — no new navigation machinery (#454).
+type StatusAction = { label: string; hash: string };
+
+function StatusActionLink({ action }: { action: StatusAction }) {
   return (
-    <span
+    <a
+      href={`#${action.hash}`}
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        border: `1px solid ${s.border}`,
-        borderRadius: 999,
-        background: s.background,
-        color: s.color,
         fontFamily: fontSans,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 700,
-        letterSpacing: 1.1,
-        lineHeight: 1,
-        padding: "6px 9px",
-        textTransform: "uppercase",
+        color: P.terraTextStrong,
+        textDecoration: "none",
         whiteSpace: "nowrap",
+        justifySelf: "start",
       }}
     >
-      <Icon name={s.icon} size={11} strokeWidth={2.4} />
-      {label}
-    </span>
+      {action.label} →
+    </a>
   );
 }
 
 // A compact chip for the always-visible status row: an eyebrow label, a status
-// badge, and a one-line detail.
+// badge, a one-line detail (the plain-language reason when something is
+// blocked), and — when the state needs attention — the next best action (#454).
 function StatusChip({
   label,
   value,
   tone,
   detail,
+  action,
 }: {
   label: string;
   value: string;
   tone: StatusTone;
   detail: string;
+  action?: StatusAction;
 }) {
   return (
     <div
@@ -314,6 +236,7 @@ function StatusChip({
         display: "grid",
         gap: 6,
         minWidth: 0,
+        alignContent: "start",
       }}
     >
       <div
@@ -348,6 +271,7 @@ function StatusChip({
       >
         {detail}
       </span>
+      {action ? <StatusActionLink action={action} /> : null}
     </div>
   );
 }
@@ -542,7 +466,14 @@ function ErrorBanner() {
   );
 }
 
-type NextAction = { title: string; body: string; tone: StatusTone };
+type NextAction = {
+  title: string;
+  body: string;
+  tone: StatusTone;
+  // The obvious next click, wired through the existing #hash → workspace
+  // mechanism (#454). Absent when there's nothing to open (e.g. launch-ready).
+  action?: StatusAction;
+};
 
 // The single most important thing to do right now, derived from the same
 // signals the status row uses. Surfaced at the top of the Readiness dashboard so
@@ -565,6 +496,7 @@ function computeNextAction(input: {
       title: "Check test-account tooling",
       body: "The test-account status check came back blocked. Open Diagnostics → Test tools to look into it.",
       tone: "warning",
+      action: { label: "Open Diagnostics", hash: "test-tools" },
     };
   }
   if (testAccountsSummary.label === "Active") {
@@ -572,6 +504,7 @@ function computeNextAction(input: {
       title: "Disable test accounts before launch",
       body: "Known-password test accounts are still enabled. Turn them off in Diagnostics → Test tools before going live.",
       tone: "warning",
+      action: { label: "Review test accounts", hash: "test-tools" },
     };
   }
   // Any remaining non-good test-account status (e.g. "Unknown" when the status
@@ -582,6 +515,7 @@ function computeNextAction(input: {
       title: "Confirm test-account status",
       body: "Couldn’t confirm whether known-password test accounts are disabled. Check Diagnostics → Test tools before launch.",
       tone: "warning",
+      action: { label: "Open Diagnostics", hash: "test-tools" },
     };
   }
   if (checklistWarningCount > 0) {
@@ -591,6 +525,7 @@ function computeNextAction(input: {
         checklistWarningCount === 1 ? "" : "s"
       } need attention. Review them in Diagnostics.`,
       tone: "warning",
+      action: { label: "Open Diagnostics", hash: "diagnostics" },
     };
   }
   return {
@@ -660,6 +595,7 @@ function NextActionCard({ action }: { action: NextAction }) {
       >
         {action.body}
       </p>
+      {action.action ? <StatusActionLink action={action.action} /> : null}
     </div>
   );
 }
@@ -702,9 +638,18 @@ export function SuperAdminConsoleShell({
         label="Readiness"
         value={readinessLabel}
         tone={readinessTone}
-        detail={`${checklistWarningCount} warning${
-          checklistWarningCount === 1 ? "" : "s"
-        } · ${errorCount} load error${errorCount === 1 ? "" : "s"}`}
+        detail={
+          readinessTone === "good"
+            ? "No warnings or load errors"
+            : `${checklistWarningCount} warning${
+                checklistWarningCount === 1 ? "" : "s"
+              } · ${errorCount} load error${errorCount === 1 ? "" : "s"}`
+        }
+        action={
+          readinessTone === "good"
+            ? undefined
+            : { label: "Open Diagnostics", hash: "diagnostics" }
+        }
       />
       <StatusChip
         label="Access"
@@ -720,12 +665,19 @@ export function SuperAdminConsoleShell({
         tone={testAccountsSummary.tone}
         detail={
           testAccountsSummary.label === "Active"
-            ? "Disable before launch"
+            ? "Known passwords are live — disable before launch"
             : testAccountsSummary.label === "Disabled"
               ? "Not enabled"
               : testAccountsSummary.label === "Blocked"
-                ? "Status check blocked"
-                : "Status unavailable"
+                ? "The status check couldn’t run"
+                : "Couldn’t confirm whether test accounts are off"
+        }
+        action={
+          testAccountsSummary.label === "Disabled"
+            ? undefined
+            : testAccountsSummary.label === "Active"
+              ? { label: "Review test accounts", hash: "test-tools" }
+              : { label: "Open Diagnostics", hash: "test-tools" }
         }
       />
       <StatusChip
@@ -741,6 +693,7 @@ export function SuperAdminConsoleShell({
               }`
             : "No actions recorded yet"
         }
+        action={lastEvent ? { label: "Open Audit", hash: "audit" } : undefined}
       />
       <StatusChip
         label="Danger actions"
@@ -954,11 +907,14 @@ function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
         title="Access"
         description="Roles, invitations, and account status. Guardrails are enforced for you: you can’t change your own role, super admin can’t be assigned from the app, and every action is audited."
       />
+      {/* Change role gets its own full-width row (#455): squeezed into the
+          auto-fit forms grid its 1fr/160px/auto columns collapsed the Profile
+          select and left tall dead space when a neighbour ran longer. */}
+      <Panel>
+        <PanelTitle>Change role</PanelTitle>
+        <RoleChangeForm profiles={data.assignableProfiles} />
+      </Panel>
       <div className="lg-m-grid-stack" style={formsGridStyle}>
-        <Panel>
-          <PanelTitle>Change role</PanelTitle>
-          <RoleChangeForm profiles={data.assignableProfiles} />
-        </Panel>
         <Panel>
           <InviteUserForm groups={data.inviteUserGroups} />
         </Panel>
@@ -1100,13 +1056,21 @@ function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
               <div
                 style={{
                   display: "flex",
-                  gap: 8,
+                  gap: 10,
                   alignItems: "flex-start",
                   flexWrap: "nowrap",
                 }}
               >
-                <ProfileStatusForm profileId={p.id} currentStatus={p.status} />
-                <PasswordResetForm profileId={p.id} email={p.email} />
+                <ProfileStatusForm
+                  profileId={p.id}
+                  profileName={p.full_name}
+                  currentStatus={p.status}
+                />
+                <PasswordResetForm
+                  profileId={p.id}
+                  profileName={p.full_name}
+                  email={p.email}
+                />
               </div>
             </div>
           ))}
@@ -1402,17 +1366,37 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                     label={frozen ? "Held" : navVis ? "Nav" : "New"}
                     tone={frozen ? "warning" : "planned"}
                   />
+                  {/* The effective state, readable before touching the
+                      switch (#457). Frozen surfaces distinguish "on but held
+                      pending verification" (warning) from "locked off"
+                      (guarded — protected on purpose). */}
                   <StatusBadge
                     label={
-                      resolved
-                        ? navVis
-                          ? "Shown"
-                          : "On"
-                        : navVis
-                          ? "Hidden"
-                          : "Off"
+                      frozen
+                        ? resolved
+                          ? "On"
+                          : enabled
+                            ? "Held off"
+                            : "Locked off"
+                        : resolved
+                          ? navVis
+                            ? "Shown"
+                            : "On"
+                          : navVis
+                            ? "Hidden"
+                            : "Off"
                     }
-                    tone={resolved ? "good" : "disabled"}
+                    tone={
+                      frozen
+                        ? resolved
+                          ? "good"
+                          : enabled
+                            ? "warning"
+                            : "guarded"
+                        : resolved
+                          ? "good"
+                          : "disabled"
+                    }
                   />
                 </div>
                 <p
@@ -1439,7 +1423,12 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                   </p>
                 ) : null}
               </div>
-              <FeatureFlagToggleForm flagKey={def.key} enabled={enabled} />
+              <FeatureFlagToggleForm
+                flagKey={def.key}
+                flagLabel={def.label}
+                enabled={enabled}
+                held={frozen}
+              />
             </div>
           );
         })}
@@ -1700,10 +1689,34 @@ function DiagnosticsWorkspace({
         title="Diagnostics"
         description="Read-only health checks, usage telemetry, plus test tools kept separate from the normal app."
       />
-      <SystemStatusChecklist rows={data.checklist} />
-      <UsagePanel data={data} />
+      {/* Safe reads grouped apart from the admin-impacting test-account
+          actions, so an operator can tell at a glance which half changes
+          nothing (#458). */}
+      <section
+        aria-label="Read-only checks"
+        style={{ display: "grid", gap: 14 }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <SubsectionHeader
+            title="Read-only checks"
+            hint="Safe to look at anytime — nothing on this half changes the app."
+          />
+          <StatusBadge label="Read-only" tone="readonly" />
+        </div>
+        <SystemStatusChecklist rows={data.checklist} />
+        <UsagePanel data={data} />
+      </section>
       <section
         id="test-tools"
+        aria-label="Admin-impacting test tools"
         style={{
           border: `1px solid ${P.mustard}`,
           borderRadius: 10,
@@ -1735,7 +1748,7 @@ function DiagnosticsWorkspace({
           >
             Test tools
           </h3>
-          <StatusBadge label="Isolated" tone="warning" />
+          <StatusBadge label="Admin-impacting" tone="warning" />
         </div>
         <p
           style={{
@@ -1746,9 +1759,10 @@ function DiagnosticsWorkspace({
             lineHeight: 1.5,
           }}
         >
-          These tools run on isolated test accounts, kept separate from the
-          normal app. Status reads as enabled, disabled, or missing — no secrets
-          are shown.
+          These tools manage real, known-password login accounts kept separate
+          from the normal app. Checking status is a safe read; enabling or
+          disabling changes who can sign in and asks for confirmation first. No
+          secrets are shown.
         </p>
         {testAccountsPanel}
       </section>
@@ -1910,7 +1924,9 @@ function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
         {
           id: "permanent",
           label: "Permanent deletion",
-          riskNote: "Physically remove a single curated record.",
+          riskNote:
+            "Physically remove a single curated record. Cannot be undone from the app.",
+          destructive: true,
           node: (
             <PermanentDeleteCard
               targets={data.permanentDeletionTargets}
