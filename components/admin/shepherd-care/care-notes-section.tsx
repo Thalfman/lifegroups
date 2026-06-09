@@ -1,4 +1,9 @@
+import type { CSSProperties } from "react";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
+import {
+  prayerRequestStatusChipLabel,
+  type PrayerRequestStatus,
+} from "@/lib/admin/prayer-request-status";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
@@ -45,14 +50,56 @@ const metaStyle = {
   marginTop: 6,
 };
 
+// Issue #474 (plan P2.3) — read-only status chip on a Prayer Request card.
+// Mirrors the ShepherdCareStatusBadge pill styling: answered reads as good
+// news (sage), archived as a quiet resting state (neutral). Open requests
+// render no chip at all — open is the default, not a signal.
+const chipBaseStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "2px 10px",
+  borderRadius: 999,
+  fontFamily: fontSans,
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: 0.4,
+  textTransform: "uppercase" as const,
+  marginBottom: 6,
+};
+
+const chipTones: Record<"answered" | "archived", CSSProperties> = {
+  answered: {
+    background: P.sageSoft,
+    color: P.sageTextStrong,
+    border: `1px solid ${P.line}`,
+  },
+  archived: {
+    background: "#ececea",
+    color: "#5c5852",
+    border: "1px solid #d8d4cd",
+  },
+};
+
+function PrayerStatusChip({ status }: { status: PrayerRequestStatus }) {
+  if (status === "open") return null;
+  return (
+    <span style={{ ...chipBaseStyle, ...chipTones[status] }}>
+      {prayerRequestStatusChipLabel(status)}
+    </span>
+  );
+}
+
 function NoteCard({
   body,
   createdAt,
   context,
+  prayerStatus,
 }: {
   body: string;
   createdAt: string;
   context?: string;
+  // Only Prayer Requests carry a status; Care Notes never pass this.
+  prayerStatus?: PrayerRequestStatus;
 }) {
   return (
     <li
@@ -63,6 +110,7 @@ function NoteCard({
         marginTop: 12,
       }}
     >
+      {prayerStatus ? <PrayerStatusChip status={prayerStatus} /> : null}
       <p style={bodyStyle}>{body}</p>
       <p style={metaStyle}>
         {context ? `${context} · ` : ""}
@@ -73,12 +121,14 @@ function NoteCard({
 }
 
 // Pivot slice 11 (#382 / ADR 0020): a Care Note / Prayer Request this leader
-// wrote ABOUT one of their groups. Carries the group name for context.
+// wrote ABOUT one of their groups. Carries the group name for context, and —
+// for Prayer Requests only (#474) — the pastoral status behind the chip.
 export type AuthoredGroupNote = {
   id: string;
   body: string;
   created_at: string;
   groupName: string;
+  status?: PrayerRequestStatus;
 };
 
 function AuthoredGroupNotes({
@@ -157,6 +207,7 @@ function AuthoredGroupNotes({
                 body={r.body}
                 createdAt={r.created_at}
                 context={r.groupName}
+                prayerStatus={r.status}
               />
             ))}
           </ul>
@@ -271,7 +322,12 @@ export function CareNotesSection({
             ) : (
               <ul style={{ margin: 0, padding: 0 }}>
                 {prayerRequests.map((r) => (
-                  <NoteCard key={r.id} body={r.body} createdAt={r.created_at} />
+                  <NoteCard
+                    key={r.id}
+                    body={r.body}
+                    createdAt={r.created_at}
+                    prayerStatus={r.status}
+                  />
                 ))}
               </ul>
             )}
