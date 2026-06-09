@@ -9,9 +9,17 @@ import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 //   - no empty headings on Settings;
 //   - every input has a visible label AND a programmatic label association;
 //   - related threshold fields stay grouped in a shared container;
-//   - Advanced thresholds (and the per-group overrides block) are collapsed by
-//     default, not shown — i.e. progressively disclosed;
+//   - the hidden-surface-only thresholds (and the per-group overrides block)
+//     are collapsed by default, not shown — i.e. progressively disclosed;
 //   - axe reports no critical/serious violations on Settings.
+//
+// Issue #478 (P1.7 + P2.2) layers the consumer-labelling + vocabulary pass on
+// top: every Thresholds field is grouped by what it DRIVES ("Drives Care &
+// Home today" vs the "Drives hidden surfaces" disclosure), the care pair reads
+// as Care cadence (CONTEXT.md), the Groups tab's target counts say they are
+// tracking only, the Multiply trigger speaks Audience and labels Interest as a
+// people-count, and the per-group override summary echoes the canonical
+// health-status labels.
 //
 // The label/heading assertions go beyond axe deliberately: axe flags a MISSING
 // label, but "visible label" (a <label> with text the eye can read, tied to the
@@ -118,9 +126,12 @@ async function openThresholdsTab(page: Page): Promise<void> {
   await page
     .locator(`${SETTINGS} [role="tab"]`, { hasText: "Thresholds" })
     .click();
-  // Wait for a defaults field to mount so subsequent inspection is stable.
+  // Wait for an always-visible defaults field to mount so subsequent
+  // inspection is stable. (The capacity fields live inside the collapsed
+  // "Drives hidden surfaces" disclosure post-#478, so wait on the Care
+  // cadence field instead.)
   await expect(
-    page.locator(`${SETTINGS} #default_group_capacity`)
+    page.locator(`${SETTINGS} #shepherd_care_stale_days_direct`)
   ).toBeVisible();
 }
 
@@ -142,20 +153,20 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     }
   });
 
-  test("advanced thresholds and per-group overrides are collapsed by default", async ({
+  test("hidden-surface thresholds and per-group overrides are collapsed by default", async ({
     page,
   }) => {
     // The metric defaults + overrides now live on the Thresholds tab (Care is the
     // default landing tab post-pivot), so open it before inspecting its
     // disclosures.
     await openThresholdsTab(page);
-    // Progressive disclosure: the rarely-touched thresholds and the per-group
-    // overrides block must NOT be expanded on load.
+    // Progressive disclosure: the hidden-surface-only thresholds and the
+    // per-group overrides block must NOT be expanded on load.
     const advancedClosed = await page
       .locator(SETTINGS)
-      .locator("summary", { hasText: "Advanced thresholds" })
+      .locator("summary", { hasText: "Drives hidden surfaces" })
       .evaluate((el) => !el.closest("details")?.open);
-    expect(advancedClosed, "Advanced thresholds open on load").toBe(true);
+    expect(advancedClosed, "Drives hidden surfaces open on load").toBe(true);
 
     const overridesClosed = await page
       .locator(SETTINGS)
@@ -173,7 +184,7 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     await openThresholdsTab(page);
     await page
       .locator(SETTINGS)
-      .locator("summary", { hasText: "Advanced thresholds" })
+      .locator("summary", { hasText: "Drives hidden surfaces" })
       .click();
     await page
       .locator(SETTINGS)
@@ -205,46 +216,27 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toEqual([]);
   });
 
-  test("related threshold fields stay grouped", async ({ page }) => {
+  test("related threshold fields stay grouped by their live consumer (issue 478)", async ({
+    page,
+  }) => {
     // The metric defaults live on the Thresholds tab post-pivot; open it first.
     await openThresholdsTab(page);
-    // req 5 grouping: the primary defaults (capacity + the two care-cadence
-    // windows) share one grouping container on the always-visible path.
-    const primary = await sharedGridGroup(page, [
-      "default_group_capacity",
+    // req 5 grouping + #478: the live-driving Care cadence pair shares one
+    // grouping container on the always-visible path.
+    const cadence = await sharedGridGroup(page, [
       "shepherd_care_stale_days_direct",
       "shepherd_care_stale_days_delegated",
     ]);
-    expect(primary.allFound, "primary default fields render").toBe(true);
-    expect(primary.sameGroup, "primary default fields share one group").toBe(
-      true
-    );
+    expect(cadence.allFound, "care cadence fields render").toBe(true);
+    expect(cadence.sameGroup, "care cadence fields share one group").toBe(true);
     expect(
-      primary.insideDetails,
-      "primary defaults are not hidden behind a disclosure"
+      cadence.insideDetails,
+      "care cadence fields are not hidden behind a disclosure"
     ).toBe(false);
 
-    // The capacity / attendance % thresholds share their own grouping container,
-    // and that group lives inside the Advanced thresholds disclosure. (The
-    // inputs stay mounted while collapsed, so no expand is needed to inspect
-    // the structure.)
-    const advanced = await sharedGridGroup(page, [
-      "capacity_warning_threshold_pct",
-      "capacity_full_threshold_pct",
-      "default_healthy_attendance_pct",
-    ]);
-    expect(advanced.allFound, "advanced threshold fields render").toBe(true);
-    expect(
-      advanced.sameGroup,
-      "advanced threshold fields share one group"
-    ).toBe(true);
-    expect(
-      advanced.insideDetails,
-      "advanced thresholds live inside the disclosure"
-    ).toBe(true);
-
-    // Admin IM 05 (#265): the two Group-health triage thresholds share their own
-    // grouping container, also inside the Advanced thresholds disclosure.
+    // Admin IM 05 (#265) / #478: the two Group-health triage thresholds drive
+    // the Watch filter + Home health distribution, so they share their own
+    // grouping container on the always-visible live path too.
     const groupHealth = await sharedGridGroup(page, [
       "group_health_watch_grade",
       "group_health_attendance_decline_margin_pct",
@@ -258,8 +250,141 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     ).toBe(true);
     expect(
       groupHealth.insideDetails,
-      "group-health thresholds live inside the disclosure"
+      "group-health thresholds are not hidden behind a disclosure"
+    ).toBe(false);
+
+    // #478: the hidden-surface-only capacity / attendance thresholds share one
+    // grouping container inside the "Drives hidden surfaces" disclosure. (The
+    // inputs stay mounted while collapsed, so no expand is needed to inspect
+    // the structure.)
+    const hidden = await sharedGridGroup(page, [
+      "default_group_capacity",
+      "capacity_warning_threshold_pct",
+      "capacity_full_threshold_pct",
+      "default_healthy_attendance_pct",
+    ]);
+    expect(hidden.allFound, "hidden-surface threshold fields render").toBe(
+      true
+    );
+    expect(
+      hidden.sameGroup,
+      "hidden-surface threshold fields share one group"
     ).toBe(true);
+    expect(
+      hidden.insideDetails,
+      "hidden-surface thresholds live inside the disclosure"
+    ).toBe(true);
+  });
+
+  test("every Thresholds field is labelled by its live consumer (issue 478)", async ({
+    page,
+  }) => {
+    await openThresholdsTab(page);
+    const surface = page.locator(SETTINGS);
+
+    // The two consumer groups name themselves: the live group as a visible
+    // fieldset legend, the hidden-surface-only group as its disclosure summary.
+    await expect(
+      surface.locator("legend", { hasText: "Drives Care & Home today" })
+    ).toBeVisible();
+    await expect(
+      surface.locator("summary", { hasText: "Drives hidden surfaces" })
+    ).toBeVisible();
+
+    // CONTEXT.md vocabulary: the stale-contact pair reads as Care cadence.
+    await expect(
+      surface.locator('label[for="shepherd_care_stale_days_direct"]')
+    ).toHaveText("Care cadence — directly overseen (days)");
+    await expect(
+      surface.locator('label[for="shepherd_care_stale_days_delegated"]')
+    ).toHaveText("Care cadence — delegated (days)");
+
+    // The two group-health thresholds say they feed the Home health
+    // distribution (their live consumer).
+    await expect(
+      surface.getByText("feed the Home health distribution").first()
+    ).toBeVisible();
+
+    // Expanding the disclosure reveals the short hidden-surface note.
+    await surface
+      .locator("summary", { hasText: "Drives hidden surfaces" })
+      .click();
+    await expect(
+      surface.getByText(
+        "Nothing on Care, Plan, Multiply, or Home reads them today."
+      )
+    ).toBeVisible();
+  });
+
+  test("the Groups tab marks target counts as tracking only (issue 478)", async ({
+    page,
+  }) => {
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Groups" })
+      .click();
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+
+    // Expand the first group-type row (a nested disclosure) to reveal its
+    // target control and the tracking-only helper.
+    await panel.locator("summary", { hasText: "20-30s" }).first().click();
+    const targetInput = panel.getByLabel("Target for Men's 20-30s", {
+      exact: true,
+    });
+    await expect(targetInput).toBeVisible();
+
+    // The helper is visible AND programmatically tied to the input.
+    await expect(
+      panel
+        .getByText("Tracking only — never feeds the multiplication trigger.")
+        .first()
+    ).toBeVisible();
+    await expect(targetInput).toHaveAccessibleDescription(
+      "Tracking only — never feeds the multiplication trigger."
+    );
+  });
+
+  test("the Multiply trigger speaks Audience and labels Interest as a people-count (issue 478)", async ({
+    page,
+  }) => {
+    await page
+      .locator(`${SETTINGS} [role="tab"]`, { hasText: "Multiply" })
+      .click();
+    const panel = page.locator(`${SETTINGS} [role="tabpanel"]`);
+    const level = panel.locator("#multiply-trigger-level");
+    await expect(level).toBeVisible();
+
+    // The per-type tier is grouped under the CONTEXT.md term Audience — the
+    // internal "By type" phrasing must not surface.
+    expect(await level.locator('optgroup[label="Audience"]').count()).toBe(1);
+    expect(await level.locator('optgroup[label="By type"]').count()).toBe(0);
+
+    // Interest is a people-count, never a letter: the pillar says so and the
+    // threshold control is a number input named in people.
+    await expect(
+      panel.getByText("Interest (people count)").first()
+    ).toBeVisible();
+    const interestMin = panel.getByLabel("Interest minimum people", {
+      exact: true,
+    });
+    await expect(interestMin).toBeVisible();
+    await expect(interestMin).toHaveAttribute("type", "number");
+  });
+
+  test("the per-group override summary echoes canonical health-status labels (issue 478)", async ({
+    page,
+  }) => {
+    await openThresholdsTab(page);
+    await page
+      .locator(SETTINGS)
+      .locator("summary", { hasText: "Per-group overrides" })
+      .click();
+    const surface = page.locator(SETTINGS);
+
+    // The harness seeds one manual health-status override (needs_follow_up);
+    // its summary chip must carry the canonical label, never de-underscored
+    // enum text.
+    await expect(surface.getByText("Health: Needs follow-up")).toBeVisible();
+    await expect(surface.getByText("Health: needs follow up")).toHaveCount(0);
   });
 
   test("presents the Care / Groups / Multiply / Thresholds / System tabs (pivot, ADR 0016)", async ({
@@ -325,7 +450,7 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
     await openThresholdsTab(page);
     await page
       .locator(SETTINGS)
-      .locator("summary", { hasText: "Advanced thresholds" })
+      .locator("summary", { hasText: "Drives hidden surfaces" })
       .click();
     await page
       .locator(SETTINGS)
