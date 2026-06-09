@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateProspect } from "@/app/(protected)/admin/plan/actions";
 import {
+  fieldErrorStyle,
   fieldInputStyle,
   fieldLabelStyle,
   formGridStyle,
@@ -13,6 +14,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { FULL_NAME_REQUIRED_MESSAGE } from "@/lib/admin/validation/prospect-form-client";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type { CategoryOptionsByAudience } from "@/lib/supabase/group-categories-reads";
 
@@ -45,6 +47,15 @@ export function ProspectCreateForm({
   const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
 
+  // Native `required` on the Full name field blocks an empty submit and moves
+  // focus, but that alone is too quiet (no app-level message). We surface a
+  // visible, accessible message via the field's `onInvalid` (which fires from
+  // the native constraint pass) without taking over submission — native still
+  // gates the empty case, we only upgrade the messaging.
+  const [fullNameError, setFullNameError] = useState<string | undefined>(
+    undefined
+  );
+
   // The "Prospect added." confirmation auto-dismisses. Otherwise it lingered as
   // a stale message at the top of the board after a later action on a different
   // card (e.g. moving a prospect), since this create form is a separate
@@ -62,6 +73,7 @@ export function ProspectCreateForm({
     if (!state?.ok) return;
     setAudience("");
     setCategoryId("");
+    setFullNameError(undefined);
     setShowSuccess(true);
     const timer = setTimeout(() => setShowSuccess(false), 5000);
     return () => clearTimeout(timer);
@@ -90,10 +102,33 @@ export function ProspectCreateForm({
             name="full_name"
             type="text"
             required
+            aria-required="true"
+            aria-invalid={fullNameError ? "true" : undefined}
+            aria-describedby="prospect-full_name-error"
+            onInvalid={(e) => {
+              // Suppress the native bubble and show our own accessible message;
+              // the field stays invalid, so native still blocks the submit.
+              e.preventDefault();
+              setFullNameError(FULL_NAME_REQUIRED_MESSAGE);
+            }}
+            onInput={() => {
+              if (fullNameError) setFullNameError(undefined);
+            }}
             autoComplete="off"
             style={fieldInputStyle}
             placeholder="Avery Bennett"
           />
+          {/* Stable live region: kept mounted (hidden when clear) so the
+              aria-describedby target is constant and role="alert" announces the
+              message when validation populates it. */}
+          <p
+            id="prospect-full_name-error"
+            role="alert"
+            style={fieldErrorStyle}
+            hidden={!fullNameError}
+          >
+            {fullNameError}
+          </p>
         </div>
         <div>
           <label htmlFor="prospect-email" style={fieldLabelStyle}>

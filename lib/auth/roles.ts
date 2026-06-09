@@ -99,6 +99,13 @@ export interface AdminArea {
 // Multiply→per-type multiplication boards (the former launch-planning/calendar
 // alias here), Home=cross-job triage, Settings=System utility. Plan and Multiply
 // ship as minimal "being built" shells until their feature slices land.
+//
+// Care has ONE nav entry (/admin/care). /admin/shepherd-care is an intentional
+// 200-alias of the same Care surface opened on a different default tab (the
+// triage Dashboard) — NOT a stale duplicate. It is deliberately omitted here so
+// the spine stays single-entry; the Home "Leader care" card links to it on
+// purpose for triage drill-downs. See ADR 0013 and the header comment in
+// app/(protected)/admin/shepherd-care/page.tsx.
 export const ADMIN_AREAS: readonly AdminArea[] = [
   { href: "/admin", label: "Home", icon: "sun" },
   { href: "/admin/care", label: "Care", icon: "heart" },

@@ -34,6 +34,15 @@ Both templates deliberately use `{{ .TokenHash }}` and link to
 so a mail-scanner's GET can't burn the single-use token and verification works
 cross-device. Keep them in sync with the files in `supabase/templates/`.
 
+> **Link host is pinned.** Both templates hard-code the public origin
+> `https://fvclifegroups.vercel.app` instead of `{{ .SiteURL }}`. The dashboard
+> Site URL drifted to a Vercel **preview** host (Supabase Branching pushes
+> preview auth config onto the project), which sent real users preview links.
+> Pinning the host in the template guarantees the public origin even if Site URL
+> drifts again. **After changing the origin, re-paste both templates into the
+> dashboard** — editing the repo files alone does not affect sent mail. If the
+> public domain ever changes, update the `href` in both files and re-paste.
+
 ### 2. Custom SMTP — Project Settings → Authentication → SMTP Settings
 
 Enable **Custom SMTP** and fill in a provider. Any SMTP provider works; the
@@ -57,8 +66,23 @@ batch isn't throttled.
 
 ### 4. URL configuration — Authentication → URL Configuration
 
-- **Site URL** = the production origin (e.g. the Vercel production URL).
-- **Redirect URLs** must include: `/reset-password`, `/auth/confirm`, `/login`.
+- **Site URL** = the public production origin, **`https://fvclifegroups.vercel.app`**
+  (not a preview/`*-projects.vercel.app` host). The pinned templates already hard-code
+  this host, but Site URL still governs server-action `redirectTo` validation and any
+  template that uses `{{ .SiteURL }}`, so keep it correct.
+- **Redirect URLs** must include, on that same host: `/reset-password`,
+  `/auth/confirm`, `/login`.
+- In the Vercel project, set `NEXT_PUBLIC_SITE_URL` (and/or `SITE_URL`) to
+  `https://fvclifegroups.vercel.app` so the app's invite/reset `redirectTo`
+  resolves to the public host (see `lib/shared/site-origin.ts`).
+
+#### Verify the link host
+
+After setting Site URL and re-pasting the templates, trigger a fresh reset
+(`/forgot-password`, or super-admin **Send reset link**) to an address you
+control and confirm the email's button links to
+`https://fvclifegroups.vercel.app/reset-password?...` — **not** a
+`*-projects.vercel.app` preview host.
 
 ## Verifying delivery
 

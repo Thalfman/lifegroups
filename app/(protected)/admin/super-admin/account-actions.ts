@@ -23,6 +23,7 @@ import {
   rpcSuperAdminSetProfileStatus,
   rpcSuperAdminLogPasswordReset,
 } from "@/lib/admin/rpc";
+import { resolveSiteOrigin } from "@/lib/shared/site-origin";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -82,13 +83,6 @@ function readForm(input: unknown): Record<string, unknown> {
   return {};
 }
 
-function resetRedirectUrl(): string {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const origin = base.replace(/\/$/, "");
-  return `${origin}/reset-password`;
-}
-
 export async function superAdminRequestPasswordReset(
   _prev: ActionResult<RequestPasswordResetSuccess> | undefined,
   input: unknown
@@ -109,9 +103,17 @@ export async function superAdminRequestPasswordReset(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
+  // Resolve the reset-link target the same way the invite + forgot-password
+  // flows do (lib/shared/site-origin). Prefers NEXT_PUBLIC_SITE_URL / SITE_URL,
+  // falling back to the request's forwarded host. A null origin (nothing
+  // resolvable) omits redirectTo so Supabase uses its configured Site URL,
+  // rather than emitting a relative "/reset-password" the old helper produced.
+  const origin = await resolveSiteOrigin();
+  const redirectTo = origin ? `${origin}/reset-password` : undefined;
+
   try {
     const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: resetRedirectUrl(),
+      redirectTo,
     });
     if (error) {
       return actionFail([
