@@ -5,10 +5,12 @@ import {
 
 // /admin/shepherd-care is a thin alias entry to the canonical Care surface
 // (/admin/care). It ALIAS-RENDERS — returns 200, never a 302 — the same Care
-// shell, opened on the Dashboard tab (ADR 0013, #328; re-keyed in #334 — the
-// former Needs Contact landing now lives inside the Dashboard's attention
-// queue). The admin guard runs in CarePageView via loadCarePageData(); there is
-// one loader and one shell, so no data path or component is duplicated. The
+// shell on the SAME default tab as /admin/care (the Over-Shepherd accordion,
+// #373), so the experience is identical regardless of which URL resolved it
+// (ADR 0013, #328). The landing page owns no view of its own, so it re-renders
+// CarePageView with no tab override and inherits the canonical default. The
+// admin guard runs in CarePageView via loadCarePageData(); there is one loader
+// and one shell, so no data path or component is duplicated. The
 // /admin/shepherd-care/[profileId] detail and /admin/shepherd-care/over-shepherds
 // sub-paths are untouched and still resolve on their own surfaces.
 //
@@ -24,5 +26,5 @@ export default async function AdminShepherdCarePage({
 }: {
   searchParams?: Promise<CareSearchParams>;
 }) {
-  return <CarePageView initialTab="dashboard" searchParams={searchParams} />;
+  return <CarePageView searchParams={searchParams} />;
 }
