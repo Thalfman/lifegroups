@@ -1,5 +1,6 @@
 import {
   differenceInDaysIso,
+  type AdminFollowUpEntry,
   type CareFollowUpCompletedRow,
   type CareFollowUpDashboardRow,
   type ShepherdCareDirectoryEntry,
@@ -264,4 +265,33 @@ export function buildCareArea(input: BuildCareAreaInput): CareArea {
   }
 
   return { needsContact, dueSoon, recentCare, completed };
+}
+
+// #479 — the Follow-ups tab badge: ONE combined open count across BOTH
+// follow-up queues (care follow-ups about Leaders, backed by
+// shepherd_care_follow_ups, plus the generic `follow_ups` queue for groups and
+// tasks). "Open" means not yet done — in-progress and snoozed work is still
+// open work, matching the generic queue's "Open items" default filter. This is
+// counting only, never a merge: the two queues stay separate models. When
+// either feed failed to load the badge is suppressed (undefined) rather than
+// reporting a false low count — the same graceful-degrade contract every Care
+// read follows.
+export function combinedOpenFollowUpCount(input: {
+  careFollowUps: Pick<CareFollowUpDashboardRow, "status">[];
+  careFollowUpsAvailable: boolean;
+  generalFollowUps: Pick<AdminFollowUpEntry, "status">[];
+  generalFollowUpsAvailable: boolean;
+}): number | undefined {
+  if (!input.careFollowUpsAvailable || !input.generalFollowUpsAvailable) {
+    return undefined;
+  }
+  // The care feed is already not-done at the database level; filter
+  // defensively anyway so a feed change can't quietly inflate the badge.
+  const openCare = input.careFollowUps.filter(
+    (fu) => fu.status !== "done"
+  ).length;
+  const openGeneral = input.generalFollowUps.filter(
+    (fu) => fu.status !== "done"
+  ).length;
+  return openCare + openGeneral;
 }
