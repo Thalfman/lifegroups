@@ -15,6 +15,8 @@ import {
   SuperAdminConsole,
   type SuperAdminWorkspace,
 } from "@/components/admin/super-admin-console";
+import { SUPER_ADMIN_STICKY_ANCHOR_OFFSET } from "@/components/admin/super-admin-anchors";
+import { WorkspaceSectionNav } from "@/components/admin/workspace-section-nav";
 import {
   DangerZoneConsole,
   type DangerWorkflowGroup,
@@ -330,7 +332,8 @@ function Panel({
   children: ReactNode;
   style?: CSSProperties;
   // Optional anchor id so a deep link (e.g. #people-import) can scroll to this
-  // panel once its workspace is active. scrollMarginTop keeps it off the edge.
+  // panel once its workspace is active. scrollMarginTop clears the sticky
+  // TopBar + tab rail so an anchor jump never hides the section under them.
   id?: string;
 }) {
   return (
@@ -340,7 +343,7 @@ function Panel({
         ...cardStyle,
         display: "grid",
         gap: 12,
-        ...(id ? { scrollMarginTop: 16 } : null),
+        ...(id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : null),
         ...style,
       }}
     >
@@ -372,7 +375,7 @@ function CommandCard({
         display: "grid",
         gap: 10,
         alignContent: "start",
-        ...(id ? { scrollMarginTop: 16 } : null),
+        ...(id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : null),
       }}
     >
       <div
@@ -770,16 +773,21 @@ export function SuperAdminConsoleShell({
   );
 }
 
-// The old console used 11 in-page anchors; the six-workspace console folds those
-// into workspaces. Map the legacy section ids to the workspace that now holds
-// them so existing deep links (e.g. Settings' "Open import" →
-// /admin/super-admin#people-import) keep landing on the right panel.
+// Section-id hash → the workspace that hosts it, so a deep link (e.g. Settings'
+// "Open import" → /admin/super-admin#people-import, or a copied section-nav
+// link) opens the right workspace before scrolling — only the active workspace
+// panel mounts, so a hash into an unopened workspace would otherwise be a dead
+// anchor. Covers the old console's legacy anchors plus the section-nav ids.
 const LEGACY_HASH_ALIASES: Record<string, string> = {
   overview: "readiness",
+  "change-role": "access",
+  invite: "access",
+  "account-status": "access",
   "people-import": "access",
   coverage: "access",
   features: "config",
   settings: "config",
+  "ministry-settings": "config",
   "test-tools": "diagnostics",
   maintenance: "diagnostics",
   "danger-zone": "danger",
@@ -900,17 +908,27 @@ function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
         title="Access"
         description="Roles, invitations, and account status. Guardrails are enforced for you: you can’t change your own role, super admin can’t be assigned from the app, and every action is audited."
       />
+      <WorkspaceSectionNav
+        ariaLabel="Access sections"
+        sections={[
+          { id: "change-role", label: "Change role" },
+          { id: "invite", label: "Invite user" },
+          { id: "account-status", label: "Account status" },
+          { id: "people-import", label: "People import" },
+          { id: "coverage", label: "Coverage" },
+        ]}
+      />
       {/* Change role gets its own full-width row (#455): squeezed into the
           auto-fit forms grid its 1fr/160px/auto columns collapsed the Profile
           select and left tall dead space when a neighbour ran longer. */}
-      <Panel>
+      <Panel id="change-role">
         <PanelTitle>Change role</PanelTitle>
         <RoleChangeForm profiles={data.assignableProfiles} />
       </Panel>
       {/* One unified invite card (#460): email invite and shareable link are
           a delivery choice inside the same workflow, so role/group are picked
           once instead of across two near-identical panels. */}
-      <Panel>
+      <Panel id="invite">
         <InviteWorkflowForm groups={data.inviteUserGroups} />
       </Panel>
       <AccountManagementCard data={data} />
@@ -968,7 +986,7 @@ function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
   return (
-    <Panel>
+    <Panel id="account-status">
       <PanelTitle>Account status</PanelTitle>
       <p
         style={{
@@ -1202,10 +1220,19 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
         title="Config"
         description="Feature flags, owner settings, and editable copy. Flags marked Held stay off until they pass a safety review; clearing a copy value falls back to its built-in default."
       />
+      <WorkspaceSectionNav
+        ariaLabel="Config sections"
+        sections={[
+          { id: "features", label: "Feature flags" },
+          { id: "settings", label: "Owner settings" },
+          { id: "ministry-settings", label: "Ministry settings" },
+        ]}
+      />
       <FeatureFlagsCard data={data} />
       <div className="lg-m-grid-stack" style={twoCardGridStyle}>
         <OwnerSettingsCard data={data} />
         <CommandCard
+          id="ministry-settings"
           title="Ministry settings"
           description="Capacity, check-in timing, and health thresholds stay in the day-to-day admin settings page."
           status={{ label: "Linked", tone: "active" }}
@@ -1782,7 +1809,7 @@ function DiagnosticsWorkspace({
           padding: "16px 20px",
           display: "grid",
           gap: 12,
-          scrollMarginTop: 16,
+          scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET,
         }}
       >
         <div
