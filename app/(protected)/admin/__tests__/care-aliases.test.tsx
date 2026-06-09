@@ -12,27 +12,32 @@ import {
 // and /admin/follow-ups are thin ALIAS entries that render the same canonical
 // Care shell and return 200, NOT a 302 redirect (ADR 0013). #334 re-keyed the
 // shell to the PRD IA names; #373 made the Over-Shepherd accordion
-// (`over-shepherds`) the canonical default landing tab. The shepherd-care
-// landing owns no view of its own, so it takes the canonical default (no tab
-// override) and lands identically to /admin/care; follow-ups still names its own
-// tab (`follow-ups`). These tests pin two invariants against the current keys:
+// (`over-shepherds`) the canonical default landing tab; #477 consolidated the
+// six tabs to four (Over-Shepherds · All leaders · Follow-ups · Recent
+// updates) while the legacy keys stay accepted `initialTab` inputs forever.
+// The shepherd-care landing owns no view of its own, so it takes the canonical
+// default (no tab override) and lands identically to /admin/care; follow-ups
+// still names its own tab (`follow-ups`). These tests pin three invariants
+// against the current keys:
 //   1. The shell honors `initialTab`, so an alias can open on its view, and the
 //      canonical default is the over-shepherds accordion.
-//   2. The alias page modules import the canonical CarePageView with the
+//   2. A legacy six-tab key normalizes onto the canonical tab that absorbed
+//      its surface — it never 404s and never selects a tab that no longer
+//      renders (#477).
+//   3. The alias page modules import the canonical CarePageView with the
 //      correct initialTab and never call redirect/permanentRedirect — i.e. they
 //      alias-render (200), they don't redirect (3xx).
 
-function tab(key: CareTabKey, label: string): CareTab {
+function tab(key: CareTab["key"], label: string): CareTab {
   return { key, label, panel: <div>{label} panel</div> };
 }
 
+// The canonical four (#477) — the shell renders exactly these.
 const TABS: CareTab[] = [
   tab("over-shepherds", "Over-Shepherds"),
-  tab("dashboard", "Dashboard"),
-  tab("directory", "Directory"),
+  tab("all-leaders", "All leaders"),
   tab("follow-ups", "Follow-ups"),
-  tab("coverage", "Coverage"),
-  tab("recent-interactions", "Recent interactions"),
+  tab("recent-interactions", "Recent updates"),
 ];
 
 // The selected tab is the only button with aria-selected="true". Pull its id so
@@ -49,7 +54,7 @@ function readAlias(relPath: string): string {
   );
 }
 
-describe("CareShell honors initialTab (#328, re-keyed #334, #373)", () => {
+describe("CareShell honors initialTab (#328, re-keyed #334, #373, #477)", () => {
   it("opens on the over-shepherds accordion by default (#373)", () => {
     const html = renderToStaticMarkup(<CareShell tabs={TABS} />);
     expect(selectedTabId(html)).toBe("care-tab-over-shepherds");
@@ -62,11 +67,20 @@ describe("CareShell honors initialTab (#328, re-keyed #334, #373)", () => {
     expect(selectedTabId(html)).toBe("care-tab-follow-ups");
   });
 
-  it("opens on the dashboard tab when asked", () => {
+  it("normalizes the legacy dashboard/directory keys onto All leaders (#477)", () => {
+    for (const legacy of ["dashboard", "directory"] satisfies CareTabKey[]) {
+      const html = renderToStaticMarkup(
+        <CareShell tabs={TABS} initialTab={legacy} />
+      );
+      expect(selectedTabId(html)).toBe("care-tab-all-leaders");
+    }
+  });
+
+  it("normalizes the legacy coverage key onto Over-Shepherds (#477)", () => {
     const html = renderToStaticMarkup(
-      <CareShell tabs={TABS} initialTab="dashboard" />
+      <CareShell tabs={TABS} initialTab="coverage" />
     );
-    expect(selectedTabId(html)).toBe("care-tab-dashboard");
+    expect(selectedTabId(html)).toBe("care-tab-over-shepherds");
   });
 });
 
@@ -86,9 +100,12 @@ describe("CareShell re-seeds the active tab when initialTab changes (#328)", () 
     "utf8"
   );
 
-  it("syncs active to a changed initialTab during render", () => {
-    expect(SHELL).toMatch(/if\s*\(\s*seededTab\s*!==\s*initialTab\s*\)/);
-    expect(SHELL).toContain("setActive(initialTab)");
+  it("syncs active to a changed (normalized) initialTab during render", () => {
+    // `target` is the legacy-normalized initialTab (#477) — the shell seeds
+    // and re-seeds from it so a stale legacy key can never select a
+    // no-longer-rendered tab.
+    expect(SHELL).toMatch(/if\s*\(\s*seededTab\s*!==\s*target\s*\)/);
+    expect(SHELL).toContain("setActive(target)");
   });
 });
 
