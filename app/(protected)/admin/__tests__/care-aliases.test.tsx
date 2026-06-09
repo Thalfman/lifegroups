@@ -10,10 +10,12 @@ import {
 
 // #328 — /admin/care is the canonical Care entry. /admin/shepherd-care (landing)
 // and /admin/follow-ups are thin ALIAS entries that render the same canonical
-// Care shell and return 200, NOT a 302 redirect (ADR 0013). They differ only by
-// which tab opens first. #334 re-keyed the shell to the PRD IA names; #373 made
-// the Over-Shepherd accordion (`over-shepherds`) the canonical default landing
-// tab. These tests pin two invariants against the current keys:
+// Care shell and return 200, NOT a 302 redirect (ADR 0013). #334 re-keyed the
+// shell to the PRD IA names; #373 made the Over-Shepherd accordion
+// (`over-shepherds`) the canonical default landing tab. The shepherd-care
+// landing owns no view of its own, so it takes the canonical default (no tab
+// override) and lands identically to /admin/care; follow-ups still names its own
+// tab (`follow-ups`). These tests pin two invariants against the current keys:
 //   1. The shell honors `initialTab`, so an alias can open on its view, and the
 //      canonical default is the over-shepherds accordion.
 //   2. The alias page modules import the canonical CarePageView with the
@@ -94,9 +96,11 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
   const SHEPHERD_CARE = readAlias("shepherd-care/page.tsx");
   const FOLLOW_UPS = readAlias("follow-ups/page.tsx");
 
-  it("the shepherd-care landing renders CarePageView on the dashboard tab", () => {
+  it("the shepherd-care landing renders the canonical CarePageView with no tab override (lands like /admin/care)", () => {
     expect(SHEPHERD_CARE).toContain("CarePageView");
-    expect(SHEPHERD_CARE).toContain('initialTab="dashboard"');
+    // No initialTab override: the landing inherits the canonical default
+    // (over-shepherds), so /admin/shepherd-care and /admin/care open the same tab.
+    expect(SHEPHERD_CARE).not.toContain("initialTab=");
   });
 
   it("the follow-ups page renders CarePageView on the follow-ups tab", () => {

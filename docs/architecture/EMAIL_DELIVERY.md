@@ -84,6 +84,32 @@ control and confirm the email's button links to
 `https://fvclifegroups.vercel.app/reset-password?...` — **not** a
 `*-projects.vercel.app` preview host.
 
+## Runbook: a sent reset/invite link shows a preview host
+
+The repo templates already hard-code `https://fvclifegroups.vercel.app`
+(`supabase/templates/recovery.html`, `invite.html`), so a preview host
+(`*-projects.vercel.app`) in a **sent** email means the **live dashboard
+template is stale** — the host pin only takes effect once the template is pasted
+in the dashboard. Editing the repo files alone never changes sent mail. Work the
+list in order and stop as soon as a fresh reset shows the public host:
+
+1. **Re-paste both templates — the decisive step.** Authentication → Email
+   Templates → **Reset Password** ← `supabase/templates/recovery.html`, and
+   **Invite user** ← `supabase/templates/invite.html` (§1 above). The pinned
+   `href` makes the link immune to Site URL drift, so this alone fixes the link.
+2. **Fix the Site URL** (§4 above): Authentication → URL Configuration →
+   **Site URL** = `https://fvclifegroups.vercel.app`, and confirm the **Redirect
+   URLs** list `/reset-password`, `/auth/confirm`, `/login` on that host.
+3. **Stop the drift at its source.** The Site URL drifts because **Supabase
+   Branching** pushes each preview branch's auth config onto the project. Clean
+   up stale preview branches (e.g. an `INACTIVE` branch left behind by a closed
+   PR — check Branches in the dashboard or `list_branches`) and confirm no open
+   preview branch is overwriting the production Site URL. The host pin in step 1
+   still protects the link if Branching reverts the Site URL again.
+4. **Verify.** Trigger a fresh reset and inspect the button `href` **without
+   clicking** (Outlook / Defender Safe Links prefetch burns the single-use
+   token). It must point to `https://fvclifegroups.vercel.app/reset-password?...`.
+
 ## Verifying delivery
 
 1. From `/admin/super-admin`, invite a real address you control via **Send invite**.
