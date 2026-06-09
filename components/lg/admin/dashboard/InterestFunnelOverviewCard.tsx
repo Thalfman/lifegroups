@@ -66,7 +66,8 @@ export function InterestFunnelOverviewCard({
             color: P.ink3,
           }}
         >
-          No Prospects in the funnel yet.
+          No Prospects in the Interest Funnel yet — new interest will gather
+          here.
         </p>
       ) : (
         <div>

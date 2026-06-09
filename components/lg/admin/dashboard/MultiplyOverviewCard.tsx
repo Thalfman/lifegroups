@@ -60,7 +60,8 @@ export function MultiplyOverviewCard({
             color: P.ink3,
           }}
         >
-          No active cells yet.
+          No active cells yet — readiness will gather here once group types are
+          set up in Settings.
         </p>
       ) : (
         <StatTileGrid>

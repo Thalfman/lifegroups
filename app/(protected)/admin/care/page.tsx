@@ -40,7 +40,10 @@ import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
-import { buildCareArea } from "@/lib/admin/care-area";
+import {
+  buildCareArea,
+  combinedOpenFollowUpCount,
+} from "@/lib/admin/care-area";
 import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import type { GroupsRow } from "@/types/database";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
@@ -55,6 +58,15 @@ const careGroupHeadingStyle = {
   textTransform: "uppercase",
   fontWeight: 700,
   color: P.ink3,
+} as const;
+
+// One-line lede at the top of the Follow-ups tab (#479): the tab stacks two
+// separate queues, so it opens by saying which is which before either renders.
+const followUpsLedeStyle = {
+  margin: 0,
+  fontFamily: fontBody,
+  fontSize: 13,
+  color: P.ink2,
 } as const;
 
 // Care area (ADR 0013, #301; re-keyed to the PRD IA in #334; consolidated to
@@ -230,6 +242,18 @@ export async function loadCarePageData({
     todayIso: today,
   });
 
+  // #479 — the Follow-ups tab badge: one combined open count across BOTH
+  // follow-up queues (open care follow-ups + open general follow-ups), so the
+  // tab answers "how much open follow-up work is waiting?" at a glance. When
+  // either feed failed to read, the badge is suppressed entirely rather than
+  // showing a false low number (the page-level error banner explains why).
+  const openFollowUpCount = combinedOpenFollowUpCount({
+    careFollowUps: care.outstandingFollowUps,
+    careFollowUpsAvailable: care.outstandingFollowUpsAvailable,
+    generalFollowUps: followUpsData.followUps,
+    generalFollowUpsAvailable: followUpsData.errors.followUps === null,
+  });
+
   // #373 — the canonical Care view: an Over-Shepherd accordion (ADR 0016).
   // Pure consolidation of data already loaded above (over-shepherds, active
   // coverage assignments, the care directory, group leaders + groups) — no new
@@ -343,51 +367,62 @@ export async function loadCarePageData({
     {
       key: "follow-ups",
       label: "Follow-ups",
+      // #479 — the combined open count across both queues below. Undefined
+      // (no badge) when either feed failed, never a false low number.
+      count: openFollowUpCount,
       // Two distinct follow-up sources live here, each clearly labelled so they
       // can't be mistaken for one another (#334 P1 — keep shepherd-care
-      // follow-ups visible). The shepherd-care buckets (dueSoon / completed,
-      // backed by shepherd_care_follow_ups) lead with their own CareItemList so
-      // due-soon-not-overdue and recently-completed care follow-ups stay
-      // actionable; the generic oversight queue (the `follow_ups` table) follows
-      // unchanged so neither host loses functionality.
+      // follow-ups visible; #479 — subject-first headings + a one-line lede
+      // stating the split, copy only, no queue merge). The shepherd-care
+      // buckets (dueSoon / completed, backed by shepherd_care_follow_ups) lead
+      // with their own CareItemList so due-soon-not-overdue and
+      // recently-completed care follow-ups stay actionable; the generic
+      // oversight queue (the `follow_ups` table) follows unchanged so neither
+      // host loses functionality.
       panel: (
-        <div style={{ display: "grid", gap: 36 }}>
-          <section style={{ display: "grid", gap: 18 }}>
-            <SectionHeader
-              eyebrow="Shepherd care"
-              title="Care follow-ups"
-              description="Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down — the two are tracked independently, so their counts won't match."
+        <div style={{ display: "grid", gap: 24 }}>
+          <p style={followUpsLedeStyle}>
+            Two queues live here: care follow-ups are about your leaders, and
+            general follow-ups cover groups and tasks.
+          </p>
+          <div style={{ display: "grid", gap: 36 }}>
+            <section style={{ display: "grid", gap: 18 }}>
+              <SectionHeader
+                eyebrow="Leader care"
+                title="Care follow-ups — about your leaders"
+                description="Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down — the two are tracked independently, so their counts won't match."
+              />
+              <div style={{ display: "grid", gap: 24 }}>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <h3 style={careGroupHeadingStyle}>
+                    Due-soon care follow-ups ({area.dueSoon.length})
+                  </h3>
+                  <CareItemList
+                    items={area.dueSoon}
+                    emptyTitle="No care follow-ups due soon"
+                    emptyDescription="No care follow-ups are overdue or due in the next week."
+                    isSuperAdmin={isSuperAdmin}
+                  />
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <h3 style={careGroupHeadingStyle}>
+                    Completed care follow-ups ({area.completed.length})
+                  </h3>
+                  <CareItemList
+                    items={area.completed}
+                    emptyTitle="No completed care follow-ups yet"
+                    emptyDescription="Care follow-ups you mark complete land here — not items from the general follow-up queue below."
+                    isSuperAdmin={isSuperAdmin}
+                  />
+                </div>
+              </div>
+            </section>
+            <AdminFollowUpsShell
+              data={followUpsData}
+              viewerId={session.profile.id}
+              isSuperAdmin={isSuperAdmin}
             />
-            <div style={{ display: "grid", gap: 24 }}>
-              <div style={{ display: "grid", gap: 10 }}>
-                <h3 style={careGroupHeadingStyle}>
-                  Due-soon care follow-ups ({area.dueSoon.length})
-                </h3>
-                <CareItemList
-                  items={area.dueSoon}
-                  emptyTitle="No care follow-ups due soon"
-                  emptyDescription="No care follow-ups are overdue or due in the next week."
-                  isSuperAdmin={isSuperAdmin}
-                />
-              </div>
-              <div style={{ display: "grid", gap: 10 }}>
-                <h3 style={careGroupHeadingStyle}>
-                  Completed care follow-ups ({area.completed.length})
-                </h3>
-                <CareItemList
-                  items={area.completed}
-                  emptyTitle="No completed care follow-ups yet"
-                  emptyDescription="Care follow-ups you mark complete land here — not items from the general follow-up queue below."
-                  isSuperAdmin={isSuperAdmin}
-                />
-              </div>
-            </div>
-          </section>
-          <AdminFollowUpsShell
-            data={followUpsData}
-            viewerId={session.profile.id}
-            isSuperAdmin={isSuperAdmin}
-          />
+          </div>
         </div>
       ),
     },

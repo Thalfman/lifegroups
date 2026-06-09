@@ -159,7 +159,9 @@ describe("The Follow-ups tab wires the shepherd-care buckets into the page (#334
   });
 
   it("labels the shepherd-care section so the two sources are distinguishable", () => {
-    expect(CARE_PAGE).toContain('eyebrow="Shepherd care"');
+    // #479 — the eyebrow says whose work this is in CONTEXT.md vocabulary
+    // ("Leader", never "Shepherd" in user-facing copy).
+    expect(CARE_PAGE).toContain('eyebrow="Leader care"');
   });
 
   it("scopes the bucket labels to care follow-ups so they can't read as a global done count", () => {
@@ -171,5 +173,45 @@ describe("The Follow-ups tab wires the shepherd-care buckets into the page (#334
     expect(CARE_PAGE).not.toMatch(
       />\s*Completed \(\{area\.completed\.length\}\)/
     );
+  });
+});
+
+describe("The two follow-up queues read as a legible split (#479, copy only)", () => {
+  const CARE_PAGE = readFileSync(
+    fileURLToPath(new URL("../care/page.tsx", import.meta.url)),
+    "utf8"
+  );
+  const FOLLOW_UPS_SHELL = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../../components/admin/follow-ups/follow-ups-shell.tsx",
+        import.meta.url
+      )
+    ),
+    "utf8"
+  );
+
+  it("the care section carries a subject-first heading", () => {
+    expect(CARE_PAGE).toContain('title="Care follow-ups — about your leaders"');
+  });
+
+  it("the general queue carries a subject-first heading", () => {
+    expect(FOLLOW_UPS_SHELL).toContain(
+      'title="General follow-ups — groups and tasks"'
+    );
+  });
+
+  it("the tab opens with a one-line lede stating the split", () => {
+    expect(CARE_PAGE).toContain("Two queues live here");
+    expect(CARE_PAGE).toContain("care follow-ups are about your leaders");
+    expect(CARE_PAGE).toContain("general follow-ups cover groups and tasks");
+  });
+
+  it("the tab badge is the combined open count across both queues", () => {
+    // The badge must come from the shared pure helper (so the count's
+    // definition of "open" and its failed-read suppression stay tested in
+    // lib/admin/__tests__/care-area.test.ts) and must be wired onto the tab.
+    expect(CARE_PAGE).toContain("combinedOpenFollowUpCount({");
+    expect(CARE_PAGE).toContain("count: openFollowUpCount");
   });
 });

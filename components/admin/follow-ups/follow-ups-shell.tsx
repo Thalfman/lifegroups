@@ -336,10 +336,13 @@ export function AdminFollowUpsShell({
       ) : null}
 
       <section style={{ display: "grid", gap: 18 }}>
+        {/* Subject-first heading (#479): this is the GENERAL queue — group and
+            task follow-ups — distinct from the care follow-ups about Leaders
+            that lead the Care Follow-ups tab above this shell. */}
         <SectionHeader
           eyebrow="Follow-ups"
-          title="The queue, open items first"
-          description="The status-grouped queue leads, sorted by due date. Add a follow-up or open the filters when you need them."
+          title="General follow-ups — groups and tasks"
+          description="The status-grouped queue leads with open items, sorted by due date. Add a follow-up or open the filters when you need them."
         />
         <div
           style={{

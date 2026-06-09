@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCareArea, type BuildCareAreaInput } from "@/lib/admin/care-area";
+import {
+  buildCareArea,
+  combinedOpenFollowUpCount,
+  type BuildCareAreaInput,
+} from "@/lib/admin/care-area";
 import type {
   CareFollowUpCompletedRow,
   CareFollowUpDashboardRow,
@@ -265,5 +269,70 @@ describe("buildCareArea", () => {
     const { dueSoon, completed } = buildCareArea(input);
     expect(dueSoon).toHaveLength(0);
     expect(completed).toHaveLength(0);
+  });
+});
+
+// #479 — the Follow-ups tab badge: one combined open count across BOTH
+// follow-up queues (care follow-ups about Leaders + the general `follow_ups`
+// queue for groups and tasks). Counting only — the two tables stay separate
+// models; a single-queue merge is explicitly out of scope.
+describe("combinedOpenFollowUpCount (#479)", () => {
+  const careFollowUps = [
+    { status: "open" as const },
+    { status: "in_progress" as const },
+    // The outstanding feed is not-done at the DB level; the defensive filter
+    // must still exclude a done row if one ever slips through.
+    { status: "done" as const },
+  ];
+  const generalFollowUps = [
+    { status: "open" as const },
+    { status: "in_progress" as const },
+    // Snoozed is still open work — it matches the queue's "Open items" filter.
+    { status: "snoozed" as const },
+    { status: "done" as const },
+  ];
+
+  it("adds the open (not-done) items of both queues", () => {
+    expect(
+      combinedOpenFollowUpCount({
+        careFollowUps,
+        careFollowUpsAvailable: true,
+        generalFollowUps,
+        generalFollowUpsAvailable: true,
+      })
+    ).toBe(5); // 2 open care + 3 open general
+  });
+
+  it("is 0 when both feeds loaded and are genuinely empty", () => {
+    expect(
+      combinedOpenFollowUpCount({
+        careFollowUps: [],
+        careFollowUpsAvailable: true,
+        generalFollowUps: [],
+        generalFollowUpsAvailable: true,
+      })
+    ).toBe(0);
+  });
+
+  it("suppresses the badge when the care feed failed (no false low count)", () => {
+    expect(
+      combinedOpenFollowUpCount({
+        careFollowUps: [],
+        careFollowUpsAvailable: false,
+        generalFollowUps,
+        generalFollowUpsAvailable: true,
+      })
+    ).toBeUndefined();
+  });
+
+  it("suppresses the badge when the general feed failed (no false low count)", () => {
+    expect(
+      combinedOpenFollowUpCount({
+        careFollowUps,
+        careFollowUpsAvailable: true,
+        generalFollowUps: [],
+        generalFollowUpsAvailable: false,
+      })
+    ).toBeUndefined();
   });
 });

@@ -27,8 +27,9 @@ export type CareTab = {
   // panels (#477: exactly four tabs, no two answering the same question).
   key: CanonicalCareTabKey;
   label: string;
-  // Optional count badge (omitted for the generic Follow-ups queue, which
-  // carries its own filters/counts).
+  // Optional count badge. Follow-ups carries the combined open count across
+  // its two queues (#479); a tab omits the badge when its backing read failed,
+  // so a badge never reports a false low number.
   count?: number;
   panel: ReactNode;
 };

@@ -7,6 +7,11 @@ import {
   INTEREST_FUNNEL_FALLBACK,
   MULTIPLY_READINESS_FALLBACK,
 } from "@/lib/dashboard/fallback-data";
+import type {
+  AdminDashboardData,
+  InterestFunnelDashboardSummary,
+  MultiplyReadinessDashboardSummary,
+} from "@/lib/dashboard/types";
 
 // Home de-crowding structural invariant (#326). Render DashboardClient to static
 // markup (node env, no jsdom — the collapsible's persistence effects don't run
@@ -206,7 +211,7 @@ describe("DashboardClient pivot overview cards (#470)", () => {
 
     indexOf(html, "Funnel data unavailable");
     // The card must not present the failure as an empty-but-healthy funnel.
-    expect(html).not.toContain("No Prospects in the funnel yet.");
+    expect(html).not.toContain("No Prospects in the Interest Funnel yet");
     expect(html).not.toContain("0 in the funnel");
   });
 
@@ -225,8 +230,133 @@ describe("DashboardClient pivot overview cards (#470)", () => {
     // (The "Cells ready<" needle is the card's StatTile label text node; the
     // vital-signs band's "Cells ready to multiply" title legitimately stays,
     // degraded to "—" by the same available:false.)
-    expect(html).not.toContain("No active cells yet.");
+    expect(html).not.toContain("No active cells yet");
     expect(html).not.toContain("Cells ready<");
+  });
+});
+
+// Empty-state tone pass (#480): when every read succeeded and every count is a
+// TRUE zero, each card renders its empty state — and all of them speak in the
+// same calm, pastoral voice as the queue's "Nothing needs your attention right
+// now." anchor: a quiet present + what will gather there. Vocabulary follows
+// CONTEXT.md — Prospects in the Interest Funnel, never guests/leads/pipeline.
+const QUIET_DATA: AdminDashboardData = {
+  ...ADMIN_FALLBACK,
+  summary: { ...ADMIN_FALLBACK.summary, activeGroupCount: 0 },
+  attentionItems: [],
+  healthSummary: {
+    submitted: [],
+    missing: [],
+    didNotMeet: [],
+    plannedPause: [],
+    needsFollowUp: [],
+    watch: [],
+    healthy: [],
+    counts: {
+      submitted: 0,
+      missing: 0,
+      did_not_meet: 0,
+      planned_pause: 0,
+      needs_follow_up: 0,
+      watch: 0,
+      healthy: 0,
+    },
+  },
+  setupGaps: {
+    noCapacity: [],
+    noLeader: [],
+    noMeetingDayTime: [],
+    noMembers: [],
+    counts: { noCapacity: 0, noLeader: 0, noMeetingDayTime: 0, noMembers: 0 },
+  },
+  followUps: [],
+  dueFollowUpsThisWeekCount: 0,
+  shepherdCare: {
+    ...ADMIN_FALLBACK.shepherdCare,
+    needsAttention: 0,
+    overdueTouchpoints: 0,
+    notContactedRecently: 0,
+    noCareProfile: 0,
+    unassignedCoverage: 0,
+    attentionItemsTotal: 0,
+  },
+  leaderPipeline: {
+    counts: { identified: 0, in_training: 0, ready_to_lead: 0, launched: 0 },
+    total: 0,
+    available: true,
+    error: null,
+  },
+  multiplication: {
+    counts: { watching: 0, planned: 0, launched: 0, deferred: 0 },
+    total: 0,
+    available: true,
+    error: null,
+  },
+};
+
+const QUIET_FUNNEL: InterestFunnelDashboardSummary = {
+  counts: { interested: 0, matched: 0, joined: 0, not_at_this_time: 0 },
+  available: true,
+  error: null,
+};
+
+const QUIET_READINESS: MultiplyReadinessDashboardSummary = {
+  readyCells: 0,
+  activeCells: 0,
+  available: true,
+  error: null,
+};
+
+const DEFAULT_HIDDEN = ["/admin/groups", "/admin/people", "/admin/planning"];
+
+// The unified voice, one line per card. Pinned verbatim so a future card edit
+// can't quietly drift back into mechanical "No X in the pipeline yet" phrasing.
+const CALM_EMPTY_LINES = [
+  "Nothing needs your attention right now.", // NeedsAttentionArea
+  "The week ahead is clear — no follow-ups are due.", // ThisWeekCard
+  "Care queue is clear.", // LeaderCareOverviewCard footer
+  "No groups are meeting yet — the health pulse will gather here as groups begin.", // HealthDistributionCard
+  "No Prospects in the Interest Funnel yet — new interest will gather here.", // InterestFunnelOverviewCard
+  "No active cells yet — readiness will gather here once group types are set up in Settings.", // MultiplyOverviewCard
+];
+
+describe("Home empty-state tone pass (#480)", () => {
+  function renderQuiet() {
+    return render({
+      data: QUIET_DATA,
+      interestFunnel: QUIET_FUNNEL,
+      multiplyReadiness: QUIET_READINESS,
+      hiddenNavAreas: DEFAULT_HIDDEN,
+    });
+  }
+
+  it("speaks in one calm pastoral voice when everything is quiet", () => {
+    const html = renderQuiet();
+    for (const line of CALM_EMPTY_LINES) indexOf(html, line);
+  });
+
+  it("never reverts to the retired mechanical phrasings", () => {
+    const html = renderQuiet();
+    for (const retired of [
+      "No Prospects in the funnel yet.",
+      "No active cells yet.",
+      "No active groups yet.",
+      "No guests in the pipeline yet.",
+      "No apprentices in the pipeline yet.",
+      "Nothing scheduled for the week ahead.",
+      "Nothing else needs attention.",
+    ]) {
+      expect(html).not.toContain(retired);
+    }
+  });
+
+  it("keeps guest/pipeline vocabulary off Home under the default flags", () => {
+    // CONTEXT.md: Prospects move through the Interest Funnel — "guest" and
+    // "pipeline" are retired words there. Under default flags (guests frozen,
+    // Leader-pipeline tab hidden) neither word may surface anywhere on Home.
+    const html = renderQuiet().toLowerCase();
+    expect(html).not.toContain("guest");
+    expect(html).not.toContain("pipeline");
   });
 });
 
