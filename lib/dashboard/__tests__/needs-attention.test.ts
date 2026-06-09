@@ -4,6 +4,7 @@ import {
   buildNeedsAttentionItems,
   buildTopNextActions,
 } from "@/lib/dashboard/needs-attention";
+import { resolveCareInitialTabFromParams } from "@/lib/admin/shepherd-care-view";
 import { resolveMutedAttentionKeys } from "@/lib/admin/feature-flags";
 import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
@@ -110,28 +111,60 @@ describe("buildNeedsAttentionItems", () => {
     expect(followUps?.count).toBe(8);
   });
 
-  it("links each action to its surface, filtered where the destination supports it", () => {
+  it("lands the care action on canonical Care's Dashboard tab (#468)", () => {
+    // Since #328 the Directory renders the full roster with no filter
+    // affordance, so the attention queue on Care's Dashboard tab is where the
+    // admin can actually act on each leader needing care. The href must carry
+    // an explicit view=dashboard so the param overrides the canonical default
+    // tab (the Over-Shepherd accordion).
     const d = allClearData();
     d.shepherdCare.needsAttention = 2;
     const care = buildNeedsAttentionItems(d).find(
       (i) => i.key === "care_attention"
     );
-    expect(care?.href).toBe(
-      "/admin/shepherd-care?view=directory&filter=needs_attention"
-    );
+    expect(care?.href).toBe("/admin/care?view=dashboard");
   });
 
-  it("opens the care tile in the filtered directory, not the scan dashboard", () => {
-    // An absent `view` resolves to the dashboard, where the needs_attention
-    // filter is ignored — so the tile must carry view=directory to land where
-    // the admin can act.
+  it("lands the open-follow-ups action on canonical Care's Follow-ups tab (#468)", () => {
+    // The off-nav /admin/follow-ups alias still resolves for old bookmarks,
+    // but Home emits the canonical Care URL with the follow-ups tab selected.
+    const d = allClearData();
+    d.followUps = baseData().followUps;
+    const followUps = buildNeedsAttentionItems(d).find(
+      (i) => i.key === "follow_ups"
+    );
+    expect(followUps?.href).toBe("/admin/care?view=follow-ups");
+  });
+
+  it("emits only canonical Care URLs — never the legacy aliases (#468)", () => {
     const d = allClearData();
     d.shepherdCare.needsAttention = 3;
-    const care = buildNeedsAttentionItems(d).find(
-      (i) => i.key === "care_attention"
+    d.followUps = baseData().followUps;
+    d.healthSummary.counts.missing = 1;
+    for (const item of buildNeedsAttentionItems(d)) {
+      expect(item.href).not.toContain("/admin/shepherd-care");
+      expect(item.href).not.toContain("/admin/follow-ups");
+    }
+  });
+
+  it("round-trips the Home action hrefs onto the intended Care tabs (#468)", () => {
+    // The emitted `view` params must be ones resolveCareInitialTabFromParams
+    // actually understands, or the action would reopen the default tab.
+    const d = allClearData();
+    d.shepherdCare.needsAttention = 1;
+    d.followUps = baseData().followUps;
+    const byKey = Object.fromEntries(
+      buildNeedsAttentionItems(d).map((i) => [i.key, i.href])
     );
-    expect(care?.href).toContain("view=directory");
-    expect(care?.href).toContain("filter=needs_attention");
+    const tabFor = (href: string) => {
+      const query = new URLSearchParams(href.split("?")[1] ?? "");
+      return resolveCareInitialTabFromParams(
+        Object.fromEntries(query.entries()),
+        "over-shepherds"
+      );
+    };
+    expect(tabFor(byKey.care_attention)).toBe("dashboard");
+    expect(tabFor(byKey.follow_ups)).toBe("follow-ups");
   });
 
   it("contributes nothing when the dashboard read degraded to fallback", () => {

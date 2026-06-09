@@ -1,5 +1,4 @@
 import type { AdminDashboardData } from "@/lib/dashboard/types";
-import { buildShepherdCareTriageLink } from "@/lib/admin/shepherd-care-view";
 
 // Dashboard "Needs attention" area derivation (Admin Interaction Model PRD
 // req 7, #260). Kept as a pure function in lib/ — apart from the rendering in
@@ -73,12 +72,12 @@ export function buildNeedsAttentionItems(
       key: "care_attention",
       label: "Leaders needing care attention",
       count: care.available ? care.needsAttention : 0,
-      // The directory applies the needs_attention filter only in its directory
-      // view; an absent `view` resolves to the (unfiltered) dashboard. Use the
-      // shared triage-link builder so the tile lands on the *filtered directory*
-      // (`view=directory&filter=needs_attention`), where the admin can act,
-      // rather than bouncing back to the scan dashboard.
-      href: buildShepherdCareTriageLink({ kind: "needs_attention" }),
+      // Land on the canonical Care page's Dashboard tab (#468): since #328 the
+      // Directory renders the full roster with no filter affordance, so the
+      // attention queue on the Dashboard tab is where each leader needing care
+      // is actually actionable. (Once a merged, filtered leaders tab lands,
+      // re-point this at it.)
+      href: "/admin/care?view=dashboard",
       tone: "primary",
     },
     {
@@ -94,7 +93,10 @@ export function buildNeedsAttentionItems(
       key: "follow_ups",
       label: "Open follow-ups",
       count: data.followUps.length,
-      href: "/admin/follow-ups",
+      // Land on the canonical Care page's Follow-ups tab (#468) rather than
+      // the off-nav /admin/follow-ups alias (which still alias-renders the
+      // same tab for old bookmarks).
+      href: "/admin/care?view=follow-ups",
       // The open-follow-ups read is capped, so present a full page as "N+".
       plus: data.followUps.length >= 8,
       tone: "primary",
@@ -116,6 +118,8 @@ export function buildNeedsAttentionItems(
   const GROUPS_BOUND_KEYS = new Set(["no_leader", "setup_gaps"]);
 
   // Drop any Super-Admin-muted categories (launch-optics mutes, #260 follow-up).
+  // The mute flags are toggled in the Super Admin Console UI
+  // (components/admin/super-admin-console-shell.tsx, Config → Feature flags).
   // Muting suppresses a time-based category from the queue entirely; only the
   // three time-based keys are ever mutable, so no_leader / setup_gaps are
   // unaffected by muting (they are governed by the Groups-hidden gate above).

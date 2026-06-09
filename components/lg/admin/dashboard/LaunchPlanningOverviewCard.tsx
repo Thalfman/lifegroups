@@ -41,9 +41,12 @@ function RiskPill({ label, tone }: { label: string; tone: string }) {
 }
 
 // Executive overview of capacity & launch outlook, with a compact
-// multiplication-candidate line (multiplication lives on /admin/launch-planning
-// per ADR 0010). Reuses the dashboard's launch snapshot so it matches the deep
-// page. Replaces the former near-white LaunchPlanningSnapshotCard.
+// multiplication-candidate line. The "View launch plan" action opens the
+// visible Multiply Plan tab (/admin/multiply?tab=plan) — ADR 0022 re-homed the
+// planner there; the frozen /admin/launch-planning shell still resolves by
+// direct URL but is no longer a link target. Reuses the dashboard's launch
+// snapshot so it matches the deep page. Replaces the former near-white
+// LaunchPlanningSnapshotCard.
 export function LaunchPlanningOverviewCard({
   snapshot,
   multiplication,
@@ -57,7 +60,7 @@ export function LaunchPlanningOverviewCard({
         eyebrow="Launch planning"
         title="Capacity & launch"
         action={
-          <OpenLink href="/admin/launch-planning" label="View launch plan" />
+          <OpenLink href="/admin/multiply?tab=plan" label="View launch plan" />
         }
       >
         <EmptyState
@@ -78,7 +81,7 @@ export function LaunchPlanningOverviewCard({
       eyebrow="Launch planning"
       title="Capacity & launch"
       action={
-        <OpenLink href="/admin/launch-planning" label="View launch plan" />
+        <OpenLink href="/admin/multiply?tab=plan" label="View launch plan" />
       }
     >
       <div style={{ marginBottom: 12 }}>

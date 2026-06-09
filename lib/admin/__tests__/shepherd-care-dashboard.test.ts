@@ -192,16 +192,17 @@ describe("buildShepherdCareDashboardModel", () => {
     const unassignedBucket = model.coverageBuckets.find((b) => b.isUnassigned)!;
     expect(unassignedBucket.shepherdCount).toBe(2);
     // Coverage tiles are triage entry points: they link into the Directory
-    // view with the coverage filter pre-applied (#180).
+    // view with the coverage filter pre-applied (#180), on the canonical Care
+    // page (#468).
     expect(unassignedBucket.href).toBe(
-      "/admin/shepherd-care?view=directory&coverage=unassigned"
+      "/admin/care?view=directory&coverage=unassigned"
     );
     const coachBucket = model.coverageBuckets.find(
       (b) => b.overShepherdId === OS_A
     )!;
     expect(coachBucket.shepherdCount).toBe(0);
     expect(coachBucket.href).toBe(
-      `/admin/shepherd-care?view=directory&coverage=${OS_A}`
+      `/admin/care?view=directory&coverage=${OS_A}`
     );
   });
 
