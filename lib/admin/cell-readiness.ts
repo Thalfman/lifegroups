@@ -119,22 +119,85 @@ const READINESS_PILLARS: readonly ReadinessPillarKey[] = [
   "leaderHealth",
 ];
 
+// ---------------------------------------------------------------------------
+// Cascade resolution — the ONE home of the three-tier fall-through (#487).
+// ---------------------------------------------------------------------------
+
+// Which TIER of the cascade a resolved pillar's value came from: the global
+// root, the Audience's per-type rule, or the cell's own override. The Multiply
+// grid evaluator ignores the source (it needs only the effective rule — see
+// resolveReadinessRule); the Settings trigger editor consumes it for its
+// "Inherits … (from …)" labels (lib/admin/multiply-trigger.ts).
+export type ReadinessRuleSource = "global" | "type" | "cell";
+
+// One pillar's resolved rule fragment plus where it came from.
+export type ResolvedReadinessPillar<R> = {
+  rule: R;
+  source: ReadinessRuleSource;
+};
+
+// The whole rule resolved PER PILLAR with source attribution.
+export type ResolvedReadinessRule = {
+  interest: ResolvedReadinessPillar<InterestRule>;
+  capacity: ResolvedReadinessPillar<CapacityRule>;
+  groupHealth: ResolvedReadinessPillar<HealthRule>;
+  leaderHealth: ResolvedReadinessPillar<HealthRule>;
+};
+
+// One pillar's fall-through: the cell override wins; else the per-type rule;
+// else the global rule — and the tier that supplied the value is the source.
+function resolvePillar<R>(
+  global: R,
+  perType: R | undefined,
+  cell: R | undefined
+): ResolvedReadinessPillar<R> {
+  if (cell !== undefined) return { rule: cell, source: "cell" };
+  if (perType !== undefined) return { rule: perType, source: "type" };
+  return { rule: global, source: "global" };
+}
+
 // Resolve a cell's EFFECTIVE rule down the THREE-TIER cascade (#410 / ADR 0021),
-// PER PILLAR: a per-cell override wins; else the per-type (Audience) rule; else
-// the global rule. Each tier above per-cell is a PARTIAL, so a pillar absent from
-// both the cell override and the per-type rule falls through to the global rule.
-// Pure — returns a fresh rule, mutating none of its inputs.
+// PER PILLAR, attributing each pillar's SOURCE: a per-cell override wins; else
+// the per-type (Audience) rule; else the global rule. Each tier above per-cell
+// is a PARTIAL, so a pillar absent from both the cell override and the per-type
+// rule falls through to the global rule. The canonical resolution every surface
+// shares (#487) — the evaluator path drops the sources via resolveReadinessRule;
+// the trigger editor's inheritance display reads them. Pure — returns a fresh
+// rule, mutating none of its inputs.
+export function resolveReadinessRuleWithSources(
+  global: ReadinessRule,
+  perType: PerTypeReadinessRule,
+  cell: CellReadinessOverride
+): ResolvedReadinessRule {
+  return {
+    interest: resolvePillar(global.interest, perType.interest, cell.interest),
+    capacity: resolvePillar(global.capacity, perType.capacity, cell.capacity),
+    groupHealth: resolvePillar(
+      global.groupHealth,
+      perType.groupHealth,
+      cell.groupHealth
+    ),
+    leaderHealth: resolvePillar(
+      global.leaderHealth,
+      perType.leaderHealth,
+      cell.leaderHealth
+    ),
+  };
+}
+
+// The source-IGNORING projection of resolveReadinessRuleWithSources — the shape
+// the evaluator runs (evaluateCellReadiness needs only the effective rule).
 export function resolveReadinessRule(
   global: ReadinessRule,
   perType: PerTypeReadinessRule,
   cell: CellReadinessOverride
 ): ReadinessRule {
+  const resolved = resolveReadinessRuleWithSources(global, perType, cell);
   return {
-    interest: cell.interest ?? perType.interest ?? global.interest,
-    capacity: cell.capacity ?? perType.capacity ?? global.capacity,
-    groupHealth: cell.groupHealth ?? perType.groupHealth ?? global.groupHealth,
-    leaderHealth:
-      cell.leaderHealth ?? perType.leaderHealth ?? global.leaderHealth,
+    interest: resolved.interest.rule,
+    capacity: resolved.capacity.rule,
+    groupHealth: resolved.groupHealth.rule,
+    leaderHealth: resolved.leaderHealth.rule,
   };
 }
 
