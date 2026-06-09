@@ -187,14 +187,24 @@ export const STATUS_STYLE: Record<
     color: P.terraTextStrong,
     icon: "x",
   },
-  disabled: { background: P.surface, border: P.line, color: P.ink3, icon: "dots" },
+  disabled: {
+    background: P.surface,
+    border: P.line,
+    color: P.ink3,
+    icon: "dots",
+  },
   active: {
     background: P.sageSoft,
     border: P.sage,
     color: P.sageTextStrong,
     icon: "spark",
   },
-  planned: { background: P.surface, border: P.line, color: P.ink2, icon: "cal" },
+  planned: {
+    background: P.surface,
+    border: P.line,
+    color: P.ink2,
+    icon: "cal",
+  },
   // Solid dark terra fill — deliberately louder than every soft badge so a
   // destructive action can't pass for an ordinary control. Cream-on-dark-terra
   // keeps AA contrast at badge sizes.
@@ -204,7 +214,12 @@ export const STATUS_STYLE: Record<
     color: P.surface,
     icon: "alert",
   },
-  readonly: { background: P.surface, border: P.line, color: P.ink2, icon: "book" },
+  readonly: {
+    background: P.surface,
+    border: P.line,
+    color: P.ink2,
+    icon: "book",
+  },
 };
 
 const cardStyle: CSSProperties = {

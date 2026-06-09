@@ -112,8 +112,8 @@ export function AuditWorkspace({
               lineHeight: 1.4,
             }}
           >
-            Matches the event description, the action name, the record type,
-            and the acting person.
+            Matches the event description, the action name, the record type, and
+            the acting person.
           </p>
         </div>
       </div>
@@ -135,7 +135,9 @@ export function AuditWorkspace({
             >
               {/* The active filter carries a check mark on top of the inverted
                   fill, so the selected state doesn't ride on color alone. */}
-              {selected ? <Icon name="check" size={11} strokeWidth={2.4} /> : null}
+              {selected ? (
+                <Icon name="check" size={11} strokeWidth={2.4} />
+              ) : null}
               {filter.label}
             </button>
           );

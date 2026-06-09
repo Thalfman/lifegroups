@@ -65,7 +65,9 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M9 12h6M9 16h4" />
     </>
   ),
-  spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M5.5 18.5l2.8-2.8M15.7 8.3l2.8-2.8" />,
+  spark: (
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M5.5 18.5l2.8-2.8M15.7 8.3l2.8-2.8" />
+  ),
   cal: (
     <>
       <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
@@ -123,7 +125,9 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   flag: <path d="M5 21V4M5 4h12l-2.5 4L17 12H5" />,
-  heart: <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" />,
+  heart: (
+    <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" />
+  ),
   sprout: (
     <>
       <path d="M12 21v-8" />
@@ -161,7 +165,9 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m14.8 9.2-3.8 1.6L9.2 14.8l3.8-1.6z" />
     </>
   ),
-  shield: <path d="M12 3 19 6v5.2c0 4.4-2.9 7.4-7 9.8-4.1-2.4-7-5.4-7-9.8V6z" />,
+  shield: (
+    <path d="M12 3 19 6v5.2c0 4.4-2.9 7.4-7 9.8-4.1-2.4-7-5.4-7-9.8V6z" />
+  ),
   alert: (
     <>
       <path d="M12 4 2.8 19.5h18.4z" />
