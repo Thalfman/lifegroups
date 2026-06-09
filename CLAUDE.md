@@ -78,18 +78,22 @@ typed shape to a stateful client **shell**. There are two paths:
 - **Read path.** A cookie-authenticated server client (`@supabase/ssr`, set up
   in `lib/supabase/`) runs every query through **Row Level Security**, scoped to
   the signed-in user. Reads go through the **reads seam** (ADR 0015) so tests can
-  inject in-memory adapters instead of a live database. Sensitive tables use
-  explicit **column allowlists** (named columns, never `select("*")`). Reads
-  **degrade gracefully** — a failed read suppresses derived output rather than
-  reporting a false zero. Public preview routes never call Supabase; they render
-  typed demo data.
+  inject in-memory adapters instead of a live database. The most sensitive
+  tables (e.g. shepherd-care) use explicit **column allowlists** (named columns,
+  not `select("*")`) — the target pattern; constraining the remaining broad
+  `select("*")` reads on `profiles` / `members` (e.g. `lib/auth/session.ts`) is
+  still **tracked debt**, not done. Reads **degrade gracefully** — a failed read
+  suppresses derived output rather than reporting a false zero. Public preview
+  routes never call Supabase; they render typed demo data.
 
 - **Write path.** Server Actions (`app/**/actions.ts`) follow a fixed pipeline:
   **validate → guard → RPC → `revalidatePath` → log**. Every app-driven write
-  goes through a narrow `public.admin_*` / `leader_*` / `over_shepherd_*` /
-  `super_admin_*` **`SECURITY DEFINER` RPC** (typed wrappers in `lib/**/rpc.ts`),
-  and each RPC writes a paired **`audit_events`** row **in the same
-  transaction**. The shared skeleton is the Write Action Runner (ADR 0001/0005);
+  goes through a narrow **`SECURITY DEFINER` RPC** — mostly the `public.admin_*`
+  / `leader_*` / `over_shepherd_*` / `super_admin_*` families, plus a few
+  purpose-named ones such as `set_note_transparency_grant` (typed wrappers in
+  `lib/**/rpc.ts`), and each RPC writes a paired **`audit_events`** row **in the
+  same transaction**. The shared skeleton is the Write Action Runner (ADR
+  0001/0005);
   per-surface adapters (`lib/admin/run-action.ts`, etc.) supply only the pure
   bits (validator, guard, RPC call, log fields, revalidate paths).
 
@@ -99,7 +103,8 @@ These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 "Security posture"). Treat them as non-negotiable.
 
 - **No service-role key in Next runtime code.** The service role is confined to
-  Supabase Edge Functions (`invite-user`, `manage-test-auth-users`).
+  Supabase Edge Functions (`invite-user`, `manage-test-auth-users`,
+  `redeem-invite`).
 - **All writes go through the narrow `SECURITY DEFINER` RPCs above.** Never write
   tables directly from app code, and never add broad write RLS policies or
   migrations that grant wider access than intended.
@@ -107,14 +112,18 @@ These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 - **No hard deletes** in normal workflows. **Archive** (soft — `archived_at` /
   status flags) is the default way anything leaves a surface. Permanent deletion
   is Super-Admin-only, writes a tombstone, and lives in the danger zone.
-- **Sensitive tables use explicit column allowlists**, not `select("*")`.
+- **Sensitive tables use explicit column allowlists**, not `select("*")` — the
+  target pattern; the remaining broad `profiles` / `members` reads are known,
+  tracked debt, not a green light to add more.
 - **Authorization is role-based.** No Julian/Tom UUIDs or emails are hardcoded
   in code, migrations, or RLS — gate on `profiles.role`.
 - **Respect the two visibility exceptions:** the Ministry Admin's **Private Care
   Note** (hidden even from the Super Admin) and author-private **Care Notes**
-  (readable by the Ministry Admin only via the per-person transparency toggle).
-  Never expose `admin_private_note` to leader routes; don't expand the
-  deprecated `staff_viewer` role.
+  (sealed to their author until the Ministry Admin flips that person's
+  transparency toggle — after which the Super Admin can read them too, per the
+  normal ladder; RLS gates both admins via `auth_is_admin()`). Never expose
+  `admin_private_note` to leader routes; don't expand the deprecated
+  `staff_viewer` role.
 
 ## Roles (oversight ladder)
 
@@ -187,8 +196,11 @@ identifiers, UX copy, and commit messages.
   [`0021`](./docs/adr/0021-three-tier-multiplication-trigger.md) (multiplication
   by type / trigger),
   [`0020`](./docs/adr/0020-leader-care-note-is-group-scoped.md) — delivered via
-  PRD #371 (slices #372–#382). `docs/adr/` holds the full decision record
-  (0001 onward; 0022 is the latest).
+  PRD #371 (slices #372–#382), then amended by
+  [`0022`](./docs/adr/0022-multiply-unifies-plan-readiness-leaders.md): Multiply
+  now hosts the **Plan**, **Readiness**, and **Leaders** tabs (target the visible
+  `/admin/multiply` surface, not the off-nav Planning / leader-pipeline hosts).
+  `docs/adr/` holds the full decision record (0001 onward).
 - **Engineering reference:**
   [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md),
   [`DATABASE_SCHEMA.md`](./docs/architecture/DATABASE_SCHEMA.md),
