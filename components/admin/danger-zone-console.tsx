@@ -7,10 +7,11 @@ import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 // Danger Zone chooser (Super Admin redesign).
 //
 // The seven destructive workflows used to render fully expanded at once, which
-// read as an overwhelming wall of confirm fields. This groups them by blast
-// radius and reveals exactly one workflow at a time: the operator picks a
-// workflow, and only that card mounts below. Switching workflows unmounts the
-// previous card, so a half-typed type-to-confirm phrase never carries over.
+// read as an overwhelming wall of confirm fields. This groups them by risk
+// level — lowest risk first, permanent deletion set apart last — and reveals
+// exactly one workflow at a time: the operator picks a workflow, and only that
+// card mounts below. Switching workflows unmounts the previous card, so a
+// half-typed type-to-confirm phrase never carries over.
 //
 // This component is purely a chooser — every type-to-confirm gate, disabled
 // button condition, and server action lives unchanged inside the workflow cards
@@ -30,8 +31,12 @@ export type DangerWorkflow = {
 
 export type DangerWorkflowGroup = {
   id: string;
-  // Blast-radius group label (e.g. "Launch reset", "Permanent delete").
+  // Risk-level group label (e.g. "Launch preparation", "Permanent deletion").
   label: string;
+  // Marks the highest-risk group (permanent deletion). Its chooser renders
+  // inside a terra-bordered panel set apart from the recoverable groups, so
+  // reaching it is a deliberate visual step — never just one more reset row.
+  destructive?: boolean;
   workflows: DangerWorkflow[];
 };
 
@@ -50,7 +55,7 @@ export function DangerZoneConsole({
       <div style={{ display: "grid", gap: 6 }}>
         <h2 style={headingStyle}>Danger Zone</h2>
         <p style={ledeStyle}>
-          Guarded actions grouped by how much they touch. The cards below are
+          Guarded actions grouped by risk, lowest first. The cards below are
           launchers, not buttons — opening one only reveals its workflow.
           Nothing runs until you type that workflow&rsquo;s confirmation phrase,
           and resets capture a recoverable snapshot before anything is removed.
@@ -63,8 +68,15 @@ export function DangerZoneConsole({
         style={{ display: "grid", gap: 14 }}
       >
         {groups.map((group) => (
-          <div key={group.id} style={{ display: "grid", gap: 8 }}>
-            <div style={groupLabelStyle}>{group.label}</div>
+          <div key={group.id} style={groupStyle(Boolean(group.destructive))}>
+            <div style={groupLabelRowStyle}>
+              <span style={groupLabelStyle(Boolean(group.destructive))}>
+                {group.label}
+              </span>
+              {group.destructive ? (
+                <StatusBadge label="Irreversible" tone="destructive" />
+              ) : null}
+            </div>
             <div className="lg-m-grid-stack" style={chooserGridStyle}>
               {group.workflows.map((workflow) => {
                 const selected = workflow.id === activeId;
@@ -156,14 +168,45 @@ const ledeStyle: CSSProperties = {
   maxWidth: 640,
 };
 
-const groupLabelStyle: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 700,
+// Recoverable groups stack as plain labelled rows; the destructive group
+// (permanent deletion) renders inside its own terra-bordered panel with extra
+// breathing room above — the same accent language the high-risk console
+// sections use (#451) — so the most dangerous work sits visually apart from
+// the reversible resets.
+function groupStyle(destructive: boolean): CSSProperties {
+  return {
+    display: "grid",
+    gap: 8,
+    ...(destructive
+      ? {
+          marginTop: 6,
+          padding: "14px 16px",
+          border: `1px solid ${P.terra}`,
+          borderRadius: 12,
+          boxShadow: `inset 0 3px 0 ${P.terra}`,
+          background: P.surface,
+        }
+      : null),
+  };
+}
+
+const groupLabelRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  flexWrap: "wrap",
+  gap: 8,
 };
+
+function groupLabelStyle(destructive: boolean): CSSProperties {
+  return {
+    fontFamily: fontSans,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: destructive ? P.terraTextStrong : P.ink3,
+    fontWeight: 700,
+  };
+}
 
 const chooserGridStyle: CSSProperties = {
   display: "grid",
