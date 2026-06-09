@@ -23,8 +23,7 @@ import {
   RoleChangeForm,
   type AssignableProfile,
 } from "@/components/admin/forms/role-change-form";
-import { InviteUserForm } from "@/components/admin/forms/invite-user-form";
-import { InviteLinkForm } from "@/components/admin/forms/invite-link-form";
+import { InviteWorkflowForm } from "@/components/admin/forms/invite-workflow-form";
 import { PlatformConfigTracerForm } from "@/components/admin/forms/platform-config-tracer-form";
 import { FeatureFlagToggleForm } from "@/components/admin/forms/feature-flag-toggle-form";
 import { ProfileStatusForm } from "@/components/admin/forms/profile-status-form";
@@ -166,12 +165,6 @@ const cardGridStyle: CSSProperties = {
 const twoCardGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 14,
-};
-
-const formsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   gap: 14,
 };
 
@@ -914,14 +907,12 @@ function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
         <PanelTitle>Change role</PanelTitle>
         <RoleChangeForm profiles={data.assignableProfiles} />
       </Panel>
-      <div className="lg-m-grid-stack" style={formsGridStyle}>
-        <Panel>
-          <InviteUserForm groups={data.inviteUserGroups} />
-        </Panel>
-        <Panel>
-          <InviteLinkForm groups={data.inviteUserGroups} />
-        </Panel>
-      </div>
+      {/* One unified invite card (#460): email invite and shareable link are
+          a delivery choice inside the same workflow, so role/group are picked
+          once instead of across two near-identical panels. */}
+      <Panel>
+        <InviteWorkflowForm groups={data.inviteUserGroups} />
+      </Panel>
       <AccountManagementCard data={data} />
 
       <section style={{ display: "grid", gap: 14 }}>

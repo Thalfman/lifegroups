@@ -12,11 +12,11 @@
 
 ## The model (what you're turning on)
 
-| Role | Note field | Stored in | Visibility |
-| --- | --- | --- | --- |
-| **Leader / Co-Leader** | Care Notes + Prayer Requests **about their group** | `care_notes` / `prayer_requests` (`subject_group_id`) | Author-private. Sealed by default. |
-| **Over-Shepherd** | Care Notes + Prayer Requests **about a covered leader** | `care_notes` / `prayer_requests` (`subject_profile_id`) | Author-private. Sealed by default. |
-| **Ministry Admin** | Encrypted **Private note** | `shepherd_care_private_notes` | Creator-only — even Super Admin cannot read it (ADR [0003](../adr/0003-private-care-note-encryption.md)). |
+| Role                   | Note field                                              | Stored in                                               | Visibility                                                                                                |
+| ---------------------- | ------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Leader / Co-Leader** | Care Notes + Prayer Requests **about their group**      | `care_notes` / `prayer_requests` (`subject_group_id`)   | Author-private. Sealed by default.                                                                        |
+| **Over-Shepherd**      | Care Notes + Prayer Requests **about a covered leader** | `care_notes` / `prayer_requests` (`subject_profile_id`) | Author-private. Sealed by default.                                                                        |
+| **Ministry Admin**     | Encrypted **Private note**                              | `shepherd_care_private_notes`                           | Creator-only — even Super Admin cannot read it (ADR [0003](../adr/0003-private-care-note-encryption.md)). |
 
 Admins read a leader's / over-shepherd's sealed notes **only** when that leader's
 per-person **transparency toggle** is ON (`note_transparency_grants`, Ministry-Admin
@@ -39,6 +39,7 @@ when `{ enabled: true, verified: true }` (`lib/admin/feature-flags.ts` → `reso
   (`app/(protected)/admin/super-admin/feature-flag-actions.ts`).
 
 **Action (Super Admin):**
+
 1. Open the **Super Admin Console** → **Feature flags** card
    (`components/admin/super-admin-console-shell.tsx`).
 2. Toggle **"Leader surface"** ON.
@@ -60,7 +61,7 @@ No feature flag. An over-shepherd needs three things to line up: the **role**, a
 1. **Add the roster row.** `/admin/shepherd-care/over-shepherds` → `OverShepherdCreateForm`
    (`admin_create_over_shepherd`). The **email** entered here is the bridge key.
 2. **Give the person the role.** Either invite them as **Over-shepherd**
-   (`components/admin/forms/invite-user-form.tsx`) or change an existing profile's role
+   (`components/admin/forms/invite-workflow-form.tsx`) or change an existing profile's role
    (`components/admin/forms/role-change-form.tsx` → `super_admin_update_profile_role`).
    - The profile email **must match the roster email** — case-insensitive, trimmed, and
      **exactly one** active roster row. Zero or multiple matches = no access
