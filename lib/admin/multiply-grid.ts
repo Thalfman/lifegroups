@@ -88,6 +88,34 @@ export type MultiplyGrid = {
   rows: MultiplyGridRow[];
 };
 
+// Home overview roll-up (#470): "X of Y cells ready", built purely over an
+// already-assembled grid. Y counts the ACTIVE (applied) cells; X counts those
+// whose readiness signal is ready. Because it derives from the same grid the
+// /admin/multiply surface renders, Home's headline can never disagree with the
+// Multiply grid's per-cell signals.
+export type MultiplyHomeSummary = {
+  readyCells: number;
+  activeCells: number;
+};
+
+export function buildMultiplyHomeSummary(
+  grid: MultiplyGrid
+): MultiplyHomeSummary {
+  let readyCells = 0;
+  let activeCells = 0;
+  for (const row of grid.rows) {
+    for (const type of GRID_TYPES) {
+      const cell = row.cells[type];
+      // Only an applied cell carries a readout; blank cells never count toward
+      // either side of "X of Y".
+      if (!cell.applied || cell.readout === null) continue;
+      activeCells += 1;
+      if (cell.readout.signal.ready) readyCells += 1;
+    }
+  }
+  return { readyCells, activeCells };
+}
+
 // A cell key matching the per-cell input keying (single colon), so the loader and
 // the grid agree without juggling tuples. (The capacity read uses a DOUBLE-colon
 // key of its own — see cellKeyString — so the loader maps between them.)

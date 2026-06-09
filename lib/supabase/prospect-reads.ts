@@ -85,6 +85,74 @@ export async function fetchProspects(
   return { data: decoded, error: null };
 }
 
+// ---------------------------------------------------------------------------
+// Home overview counts (#470) — a NARROW count read, deliberately not the full
+// board read above. The Home card renders counts only, so no identity or
+// contact column may cross this seam: the allowlist is `state, archived` and
+// nothing else. Rides the existing admin RLS on prospects — no policy change.
+// ---------------------------------------------------------------------------
+
+export type ProspectStateCounts = Record<ProspectState, number>;
+
+const PROSPECT_STATE_COUNT_COLUMNS = "state, archived";
+
+type ProspectStateCountRow = {
+  state: ProspectState;
+  archived: boolean;
+};
+
+export const EMPTY_PROSPECT_STATE_COUNTS: ProspectStateCounts = {
+  interested: 0,
+  matched: 0,
+  joined: 0,
+  not_at_this_time: 0,
+};
+
+/**
+ * Pure tally mirroring buildProspectBoard's partition rules so Home's counts
+ * can never disagree with the Plan board: joined rows (always archived) count
+ * toward the Joined roll-up; a cleanup-archived non-joined row counts nowhere;
+ * every other row counts under its state.
+ */
+export function tallyProspectStateCounts(
+  rows: ProspectStateCountRow[]
+): ProspectStateCounts {
+  const counts: ProspectStateCounts = { ...EMPTY_PROSPECT_STATE_COUNTS };
+  for (const row of rows) {
+    if (row.state === "joined") {
+      counts.joined += 1;
+      continue;
+    }
+    // Defensive parity with the board: the DB filter already excludes
+    // cleanup-archived rows, but a stray one must not inflate a live state.
+    if (row.archived) continue;
+    counts[row.state] += 1;
+  }
+  return counts;
+}
+
+/**
+ * Prospect counts by state for the Home Interest Funnel card. Same DB filter
+ * and page cap as fetchProspects (live rows OR joined roll-up rows, cleanup-
+ * archived rows excluded before the cap) so the card's counts agree with the
+ * board. On failure the caller degrades the card to unavailable — never a
+ * false zero.
+ */
+export async function fetchProspectStateCounts(
+  client: ReadClient
+): Promise<ReadResult<ProspectStateCounts>> {
+  const { data, error } = await client
+    .from("prospects")
+    .select(PROSPECT_STATE_COUNT_COLUMNS)
+    .or("archived.eq.false,state.eq.joined")
+    .range(0, PROSPECT_PAGE_LIMIT - 1)
+    .returns<ProspectStateCountRow[]>();
+  if (error) {
+    return { data: null, error: wrapError("fetchProspectStateCounts", error) };
+  }
+  return { data: tallyProspectStateCounts(data ?? []), error: null };
+}
+
 // Armed follow-ups that have come due, read DIRECTLY (not derived from the capped
 // board page). The board read is newest-first and capped at PROSPECT_PAGE_LIMIT,
 // so in a church with more prospects than the cap an older prospect's due

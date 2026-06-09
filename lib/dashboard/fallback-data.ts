@@ -1,8 +1,10 @@
 import type {
   AdminDashboardData,
+  InterestFunnelDashboardSummary,
   LeaderDashboardData,
   LeaderPipelineDashboardSummary,
   MultiplicationDashboardSummary,
+  MultiplyReadinessDashboardSummary,
   OverviewActivitySummary,
   PipelineStageCount,
   ShepherdCareDashboardSummary,
@@ -108,6 +110,23 @@ const fallbackLeaderPipeline: LeaderPipelineDashboardSummary = {
 const fallbackMultiplication: MultiplicationDashboardSummary = {
   counts: { watching: 3, planned: 2, launched: 1, deferred: 1 },
   total: 7,
+  available: true,
+  error: null,
+};
+
+// Pivot overview demo seeds (#470). These travel as their own props (not
+// fields of ADMIN_FALLBACK) because the page loads each summary in parallel
+// with the dashboard read and degrades it per-card; the no-client preview
+// substitutes these typed seeds instead.
+export const INTEREST_FUNNEL_FALLBACK: InterestFunnelDashboardSummary = {
+  counts: { interested: 5, matched: 3, joined: 4, not_at_this_time: 2 },
+  available: true,
+  error: null,
+};
+
+export const MULTIPLY_READINESS_FALLBACK: MultiplyReadinessDashboardSummary = {
+  readyCells: 2,
+  activeCells: 6,
   available: true,
   error: null,
 };
