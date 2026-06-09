@@ -1209,7 +1209,7 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <WorkspaceHeader
         title="Config"
-        description="Feature flags, owner settings, and editable copy. Held surfaces stay off until their routes and access are re-checked; clearing a copy value falls back to its built-in default."
+        description="Feature flags, owner settings, and editable copy. Flags marked Held stay off until they pass a safety review; clearing a copy value falls back to its built-in default."
       />
       <FeatureFlagsCard data={data} />
       <div className="lg-m-grid-stack" style={twoCardGridStyle}>
@@ -1301,10 +1301,11 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           lineHeight: 1.5,
         }}
       >
-        New surfaces toggle freely. Held surfaces stay off until re-checked, so
-        a stale toggle can’t re-expose a surface before its routes and access
-        are confirmed. Nav flags re-show a tab the Care/Plan/Multiply pivot
-        hides by default — the route resolves by direct URL either way.
+        Most flags take effect as soon as you flip them. Flags marked{" "}
+        <strong>Held</strong> only record your intent: the surface stays off
+        until it passes a safety review, so nothing is re-exposed by accident.
+        Flags marked <strong>Nav</strong> show or hide a tab in the admin
+        navigation — hiding a tab does not block access to its pages.
       </p>
       <div style={{ display: "grid", gap: 10 }}>
         {FEATURE_FLAG_DEFINITIONS.map((def) => {
@@ -1315,11 +1316,11 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           const navVis = def.kind === "nav_visibility";
           const frozenHeldOff = frozen && enabled && state?.verified !== true;
           const riskNote = frozenHeldOff
-            ? "Turned on, but held off until its routes and access are re-checked."
+            ? "Turned on, but held off until it passes its safety review."
             : frozen
-              ? "Held off — stays off until re-checked."
+              ? "Held — stays off until it passes a safety review, even when switched on."
               : navVis
-                ? "Hidden by default (Care/Plan/Multiply pivot). Turning this on re-shows the tab; its route resolves by direct URL either way."
+                ? "Hiding the tab does not block access — anyone with the page's address can still open it."
                 : null;
           return (
             <div
@@ -1362,8 +1363,10 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                   >
                     {def.label}
                   </span>
+                  {/* The flag kind in operator terms (#461): "Standard"
+                      rather than the internal "new-surface" kind name. */}
                   <StatusBadge
-                    label={frozen ? "Held" : navVis ? "Nav" : "New"}
+                    label={frozen ? "Held" : navVis ? "Nav" : "Standard"}
                     tone={frozen ? "warning" : "planned"}
                   />
                   {/* The effective state, readable before touching the
@@ -1433,7 +1436,70 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           );
         })}
       </div>
+      <FeatureFlagTechnicalNotes />
     </Panel>
+  );
+}
+
+// The engineering rationale behind the flag kinds (ADR references, RLS
+// re-verification, direct-URL route behavior) lives behind a plain disclosure
+// — the same native-<details> pattern as HelpAboutDetails — so the default
+// Config view reads as an admin console, not internal engineering notes
+// (#461). Real cautions stay visible in the rows above; only the rationale
+// moves down here.
+function FeatureFlagTechnicalNotes() {
+  return (
+    <details
+      style={{
+        border: `1px solid ${P.line}`,
+        borderRadius: 8,
+      }}
+    >
+      <summary
+        className="lg-sac-summary"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "10px 12px",
+          fontFamily: fontSans,
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: P.ink2,
+        }}
+      >
+        Technical notes — how flags are enforced
+      </summary>
+      <ul
+        style={{
+          margin: 0,
+          padding: "0 12px 12px 28px",
+          display: "grid",
+          gap: 6,
+          fontFamily: fontBody,
+          fontSize: 12,
+          color: P.ink2,
+          lineHeight: 1.5,
+        }}
+      >
+        <li>
+          Held flags gate surfaces frozen by ADR 0002. Under ADR 0009&rsquo;s
+          verify-before-flip rule the toggle only stores intent; the surface
+          turns on once its routes and RLS policies are re-verified, which sets
+          a separate verified marker the toggle itself can never write.
+        </li>
+        <li>
+          Nav flags govern the top-level tabs the Care · Plan · Multiply pivot
+          (ADR 0016) hides by default — Groups, People, and Planning. The flag
+          controls nav visibility only; the routes themselves keep resolving by
+          direct URL whether or not the tab is shown.
+        </li>
+        <li>
+          Every flip is a Super-Admin-only write through the audited
+          feature-flag action, so each change records a matching audit entry.
+        </li>
+      </ul>
+    </details>
   );
 }
 

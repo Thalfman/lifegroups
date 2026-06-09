@@ -45,7 +45,9 @@ export type FeatureFlagDefinition = {
   key: string;
   // Operator-facing label for the console.
   label: string;
-  // Operator-facing description of what the flag controls.
+  // Operator-facing description of what the flag controls. Plain operator
+  // language only (#461): ADR numbers, RLS, and route internals belong in the
+  // console's collapsed Technical-notes disclosure, not here.
   description: string;
   // New-surface (plain on/off) or frozen-surface (verify-before-flip).
   kind: FeatureFlagKind;
@@ -59,28 +61,28 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "home_hub_welcome_banner",
     label: "Home Hub welcome banner",
     description:
-      "Show a welcome banner in the Super Admin Console preview. A plain on/off new-surface flag used as the end-to-end tracer.",
+      "Show a welcome banner in the Super Admin Console preview. A simple on/off switch, handy for confirming that flag changes save and take effect.",
     kind: "new_surface",
   },
   {
     key: "leader_surface",
     label: "Leader surface",
     description:
-      "Re-enable the frozen Leader-facing surface (ADR 0002). Requires route + RLS re-verification before the toggle can take effect.",
+      "Let Leaders sign in and use their own surface. Held: turning this on records your intent, but the surface stays off until it passes a safety review.",
     kind: "frozen_surface",
   },
   {
     key: "check_ins",
     label: "Weekly check-ins",
     description:
-      "Re-enable the frozen weekly check-in surface (ADR 0002). Requires route + RLS re-verification before the toggle can take effect.",
+      "Bring back the weekly check-in surface. Held: turning this on records your intent, but the surface stays off until it passes a safety review.",
     kind: "frozen_surface",
   },
   {
     key: "guests",
     label: "Guests",
     description:
-      "Re-enable the frozen guest surface (ADR 0002). Requires route + RLS re-verification before the toggle can take effect.",
+      "Bring back the guest surface. Held: turning this on records your intent, but the surface stays off until it passes a safety review.",
     kind: "frozen_surface",
   },
   // Nav-visibility flags (ADR 0016). The Care/Plan/Multiply pivot hides the three
@@ -93,21 +95,21 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "nav_show_groups",
     label: "Show Groups tab",
     description:
-      "Re-show the Groups tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+      "Show the Groups tab in the admin navigation again. The tab is hidden by default.",
     kind: "nav_visibility",
   },
   {
     key: "nav_show_people",
     label: "Show People tab",
     description:
-      "Re-show the People tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+      "Show the People tab in the admin navigation again. The tab is hidden by default.",
     kind: "nav_visibility",
   },
   {
     key: "nav_show_planning",
     label: "Show Planning tab",
     description:
-      "Re-show the Planning tab in the admin nav. Hidden by default after the Care/Plan/Multiply pivot (ADR 0016); the route still resolves by direct URL whether or not this is on.",
+      "Show the Planning tab in the admin navigation again. The tab is hidden by default.",
     kind: "nav_visibility",
   },
   // Launch-optics mutes (#reset-attention-metrics). Plain on/off switches that
@@ -147,7 +149,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "care_member_list",
     label: "Member care list",
     description:
-      "Show the member care list in the admin Care area, alongside the leader care list. The admin-only member-care backend exists either way; this only controls whether the surface is shown. Default off ⇒ Care is leaders only.",
+      "Show the member care list in the admin Care area, alongside the Leader care list. Off by default — Care stays Leaders-only until this is on. Member care records are kept either way; this only controls whether the list is shown.",
     kind: "new_surface",
   },
   // Usage & login tracking (Phase USAGE.1). A plain on/off switch that gates
@@ -160,7 +162,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "usage_tracking",
     label: "Usage & login tracking",
     description:
-      "Record coarse usage telemetry — sign-ins and which top-level area each user opens (Care / Plan / Multiply / Settings) — so you can see how early users are using the app. Default off; while off, nothing is recorded. Logs which area was opened, never the content viewed.",
+      "Record sign-ins and which top-level area each user opens (Care / Plan / Multiply / Settings), so you can see how early users are using the app. Off by default; while off, nothing is recorded. Only the area opened is recorded — never the content viewed.",
     kind: "new_surface",
   },
 ];
