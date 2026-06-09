@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,6 +47,130 @@ export function loadMigration(fileName: string): MigrationSql {
     readFileSync(join(MIGRATIONS_DIR, fileName), "utf8"),
     fileName
   );
+}
+
+/**
+ * Every migration file name in `supabase/migrations/`, sorted ascending — which,
+ * because the names are timestamp-prefixed, is apply order. The whole-repo sweep
+ * (admin-rls-visibility-sweep) uses this to scan for RLS-enabled tables and to
+ * resolve cross-migration policy overrides; load each with {@link loadMigration}.
+ */
+export function listMigrations(): string[] {
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+}
+
+/**
+ * The set of table names that have `alter table ... enable row level security`
+ * across the given migrations. Deduped, so a table whose RLS is enabled in one
+ * migration and idempotently re-asserted in another (e.g. 20260518000000 and
+ * 20260518070000) counts once. This is the canonical "every RLS-enabled table"
+ * set the visibility matrix's coverage guard checks itself against.
+ */
+export function tablesWithRlsEnabled(
+  migrations: readonly MigrationSql[]
+): Set<string> {
+  const tables = new Set<string>();
+  const re = /alter table\s+(?:public\.)?(\w+)\s+enable row level security/g;
+  for (const sql of migrations) {
+    for (const match of sql.lower.matchAll(re)) {
+      tables.add(match[1]);
+    }
+  }
+  return tables;
+}
+
+/** A parsed `create policy ... for select` statement. */
+export interface ParsedPolicy {
+  /** Policy name. */
+  readonly name: string;
+  /** Table the policy is `on`. */
+  readonly table: string;
+  /** Lowercased, trimmed text inside the policy's outermost `using (...)`. */
+  readonly predicate: string;
+}
+
+/**
+ * Inner text of the balanced-paren group whose opening `(` is at `openIndex`
+ * (exclusive of the outer parens). Returns null if the parens never balance.
+ * Used to lift a policy's `using (...)` predicate whole, nested `exists(...)`
+ * subqueries included — the one piece of real parsing in this otherwise
+ * substring-based module.
+ */
+function balancedParens(text: string, openIndex: number): string | null {
+  let depth = 0;
+  for (let i = openIndex; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") {
+      depth--;
+      if (depth === 0) return text.slice(openIndex + 1, i);
+    }
+  }
+  return null;
+}
+
+/**
+ * Every `create policy <name> on public.<table> ... for select ... using
+ * (<predicate>)` in this one migration, for the given table. The header match
+ * tolerates the line wraps the migrations use (name / `on public.<table>` /
+ * `for select` / `to authenticated` / `using (` spread across lines). The
+ * predicate is the balanced-paren body of the first `using (` after the header,
+ * lowercased. `drop policy` statements are ignored. Returns [] if none.
+ */
+export function selectPolicies(
+  sql: MigrationSql,
+  table: string
+): ParsedPolicy[] {
+  const policies: ParsedPolicy[] = [];
+  const header = new RegExp(
+    `create policy\\s+(\\w+)\\s+on\\s+public\\.${escapeRegExp(table)}\\s+for\\s+select\\b`,
+    "g"
+  );
+  for (const match of sql.lower.matchAll(header)) {
+    const start = match.index;
+    if (start === undefined) continue;
+    const usingIdx = sql.lower.indexOf("using", start + match[0].length);
+    if (usingIdx === -1) continue;
+    const openParen = sql.lower.indexOf("(", usingIdx);
+    if (openParen === -1) continue;
+    const predicate = balancedParens(sql.lower, openParen);
+    if (predicate === null) continue;
+    policies.push({ name: match[1], table, predicate: predicate.trim() });
+  }
+  return policies;
+}
+
+/**
+ * The SELECT policies on `<table>` still in effect after replaying
+ * drop-then-create across `migrations` IN APPLY ORDER (pass
+ * `listMigrations().map(loadMigration)`). A policy dropped by a later migration
+ * (e.g. `audit_events_admin_read`, replaced by the super-admin-only read) is not
+ * counted; a re-created one is. This is the cross-migration safety net behind the
+ * matrix's per-table `authoritativeMigration` fast path — used by the
+ * SUPER_ADMIN_ONLY ladder check to prove no bare-admin SELECT survives.
+ */
+export function effectiveSelectPolicies(
+  migrations: readonly MigrationSql[],
+  table: string
+): ParsedPolicy[] {
+  const live = new Map<string, ParsedPolicy>();
+  const dropRe = new RegExp(
+    `drop policy\\s+(?:if exists\\s+)?(\\w+)\\s+on\\s+public\\.${escapeRegExp(table)}\\b`,
+    "g"
+  );
+  for (const sql of migrations) {
+    // Drops first, then creates: a file that drops X then re-creates X nets to
+    // X present, while a file that drops a stale X and creates a new Y nets to Y.
+    for (const match of sql.lower.matchAll(dropRe)) {
+      live.delete(match[1]);
+    }
+    for (const policy of selectPolicies(sql, table)) {
+      live.set(policy.name, policy);
+    }
+  }
+  return [...live.values()];
 }
 
 /**

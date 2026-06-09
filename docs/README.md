@@ -53,6 +53,7 @@ has been archived.
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md)       | Stack, routes, auth, RLS, read/write paths.                         |
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model.                                          |
+| [`architecture/RLS_VISIBILITY.md`](./architecture/RLS_VISIBILITY.md)   | The read-visibility matrix — what each tier can/can't `SELECT`.     |
 | [`architecture/DEPLOYMENT.md`](./architecture/DEPLOYMENT.md)           | Hosting, env vars, Edge Function setup.                             |
 | [`architecture/FREE_TIER_NOTES.md`](./architecture/FREE_TIER_NOTES.md) | Vercel Hobby + Supabase Free constraints.                           |
 | [`adr/`](./adr/)                                                       | Architecture Decision Records (0001–0020; the pivot is 0016–0020).  |
