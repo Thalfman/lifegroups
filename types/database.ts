@@ -341,6 +341,18 @@ export interface PlatformConfigRow {
   updated_at: Timestamp;
 }
 
+// Phase USAGE.1: coarse usage telemetry. `event_type` is "login" | "area_view"
+// (validated by log_usage_event); `area` is a bounded lowercase slug for an
+// area_view and null for a login. Super-Admin-only SELECT; written only via the
+// log_usage_event RPC, and only while the usage_tracking flag is on.
+export interface UsageEventsRow {
+  id: UUID;
+  actor_profile_id: UUID | null;
+  event_type: string;
+  area: string | null;
+  created_at: Timestamp;
+}
+
 export interface GroupMetricSettingsRow {
   group_id: UUID;
   capacity_override: number | null;
@@ -842,6 +854,12 @@ export interface Database {
         Update: Partial<AuditEventsRow>;
         Relationships: [];
       };
+      usage_events: {
+        Row: UsageEventsRow;
+        Insert: InsertOf<UsageEventsRow, "id" | "created_at" | "area">;
+        Update: Partial<UsageEventsRow>;
+        Relationships: [];
+      };
       app_settings: {
         Row: AppSettingsRow;
         Insert: InsertOf<AppSettingsRow, "id" | "created_at" | "updated_at">;
@@ -1325,6 +1343,10 @@ export interface Database {
       };
       super_admin_set_platform_config: {
         Args: { p_config: Record<string, unknown> };
+        Returns: UUID;
+      };
+      log_usage_event: {
+        Args: { p_event_type: string; p_area: string | null };
         Returns: UUID;
       };
       admin_upsert_group_metric_settings: {
