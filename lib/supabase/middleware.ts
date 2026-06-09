@@ -48,11 +48,34 @@ export async function updateSupabaseSession(
   // generic "Invalid email or password"). The marker cookie is set by
   // /auth/confirm on a successful verify and cleared by resetPasswordAction once
   // a password is saved.
+  const pwSetupAuthenticated = Boolean(claimsData?.claims);
+  const pwSetupMarkerPresent =
+    request.cookies.get(PW_SETUP_COOKIE)?.value === PW_SETUP_COOKIE_VALUE;
+
+  // Keep the marker tracking the auth session. Supabase rotates its session
+  // cookies on every request, so renew the marker on every authenticated request
+  // that carries it — including allowed setup paths like /reset-password, not
+  // just when we redirect — otherwise an idle session that keeps revisiting the
+  // setup screen could extend its Supabase cookies while the marker expires out
+  // from under it, and later slip past the gate. Limit to GET so this never
+  // races the POST server actions that deliberately clear the marker
+  // (completion / login / sign-out).
+  if (
+    pwSetupAuthenticated &&
+    pwSetupMarkerPresent &&
+    request.method === "GET"
+  ) {
+    response.cookies.set(
+      PW_SETUP_COOKIE,
+      PW_SETUP_COOKIE_VALUE,
+      passwordSetupCookieSetOptions()
+    );
+  }
+
   if (
     shouldRedirectToPasswordSetup({
-      authenticated: Boolean(claimsData?.claims),
-      hasSetupCookie:
-        request.cookies.get(PW_SETUP_COOKIE)?.value === PW_SETUP_COOKIE_VALUE,
+      authenticated: pwSetupAuthenticated,
+      hasSetupCookie: pwSetupMarkerPresent,
       pathname: request.nextUrl.pathname,
     })
   ) {
@@ -60,21 +83,11 @@ export async function updateSupabaseSession(
     target.pathname = "/reset-password";
     target.search = "";
     const redirectResponse = NextResponse.redirect(target);
-    // Carry over any session cookies getClaims() rotated above so the redirect
-    // doesn't drop a refreshed token.
+    // Carry over the session cookies getClaims() rotated above and the marker
+    // renewed above so the redirect drops neither.
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
-    // Refresh the marker on every gated request so its lifetime tracks the auth
-    // session (Supabase rotates its own session cookies the same way). Set last
-    // so it can't be clobbered by a carried-over cookie. Without this, a marker
-    // shorter-lived than the 400-day session cookies could expire first and let
-    // a still-authenticated password-less session slip past the gate.
-    redirectResponse.cookies.set(
-      PW_SETUP_COOKIE,
-      PW_SETUP_COOKIE_VALUE,
-      passwordSetupCookieSetOptions()
-    );
     return redirectResponse;
   }
 
