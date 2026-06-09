@@ -97,6 +97,8 @@ export function DashboardClient({
   // Interest Funnel (Plan) and Multiplication readiness (Multiply) stay; the
   // legacy guest funnel renders only when its frozen-surface flag is live
   // (`guestsLive`, #470) — the Interest Funnel card holds its slot by default.
+  // The vital-signs band's four retired launch-planning metrics ride the same
+  // Planning gate (#476): hidden by default, restored when Planning is shown.
   const showLaunchPlanning = !hidden.has("/admin/planning");
   const showLeaderPipeline = !hidden.has("/admin/people");
   return (
@@ -134,7 +136,11 @@ export function DashboardClient({
 
         {/* 3 — Ministry snapshot. Point-in-time vital signs + domain overview
             cards. Secondary to the urgent work above, so it sits lower and the
-            deeper cards collapse behind a disclosure. */}
+            deeper cards collapse behind a disclosure. The band is founded on
+            the Care/Plan/Multiply pivot signals (#476) and reuses the same
+            funnel/readiness summaries the overview cards render; its retired
+            launch-planning metrics ride the same Planning nav gate as the
+            LaunchPlanningOverviewCard below. */}
         <section
           aria-labelledby="home-snapshot"
           style={{ display: "grid", gap: 12 }}
@@ -142,7 +148,13 @@ export function DashboardClient({
           <SectionHeading>
             <span id="home-snapshot">Ministry snapshot</span>
           </SectionHeading>
-          <VitalSignsBand data={data} />
+          <VitalSignsBand
+            data={data}
+            interestFunnel={interestFunnel}
+            multiplyReadiness={multiplyReadiness}
+            showLaunchPlanning={showLaunchPlanning}
+            degraded={degraded}
+          />
 
           <CollapsibleOverview scopeId={scopeId}>
             <div

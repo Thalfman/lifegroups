@@ -1,39 +1,94 @@
 import { MetricCard } from "@/components/dashboard/cards";
 import { P } from "@/lib/pastoral";
-import type { AdminDashboardData } from "@/lib/dashboard/types";
+import type {
+  AdminDashboardData,
+  InterestFunnelDashboardSummary,
+  MultiplyReadinessDashboardSummary,
+} from "@/lib/dashboard/types";
+import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
 import { launchRiskDisplay } from "./overview-primitives";
 
 // The executive "vital signs" — the at-a-glance state of the ministry, in the
 // warm pastoral MetricCard language used across the other admin tabs. These are
 // point-in-time (current state); they don't change with the period slicer.
-export function VitalSignsBand({ data }: { data: AdminDashboardData }) {
+//
+// Re-founded on the Care/Plan/Multiply pivot (ADR 0016/0022, #476): the band
+// leads with six pivot signals — Active groups · Active leaders · Leaders
+// needing care · Prospects in funnel · Cells ready to multiply · Follow-ups
+// due this week. The funnel and readiness tiles reuse the same #470 summaries
+// the overview cards render (fetchProspectStateCounts / the Multiply grid), so
+// the band can never disagree with them.
+//
+// The four retired launch-planning metrics (% of church in groups, People in
+// groups, Capacity used, Launch outlook) are NOT deleted — frozen-surface
+// discipline: they render only when the Planning nav flag is re-shown
+// (`showLaunchPlanning`, the same gate the LaunchPlanningOverviewCard uses)
+// and return if the Super Admin re-shows Planning.
+//
+// Every tile degrades to "—" when its read failed — never a false zero: the
+// care-backed tiles key off `shepherdCare.available`, the funnel/readiness
+// tiles off their summaries' `available`, the launch tiles off
+// `launchPlanning.available`, and the dashboard-derived tiles off `degraded`
+// (the whole dashboard read fell back to demo data).
+export function VitalSignsBand({
+  data,
+  interestFunnel,
+  multiplyReadiness,
+  showLaunchPlanning = true,
+  degraded = false,
+}: {
+  data: AdminDashboardData;
+  // Pivot overview summaries (#470/#476), loaded alongside the dashboard read
+  // in app/(protected)/admin/page.tsx and degraded per-tile.
+  interestFunnel: InterestFunnelDashboardSummary;
+  multiplyReadiness: MultiplyReadinessDashboardSummary;
+  // True only when /admin/planning is NOT nav-hidden (ADR 0016).
+  showLaunchPlanning?: boolean;
+  // True when the dashboard read failed and `data` is demo fallback; the
+  // dashboard-derived tiles degrade to "—" rather than presenting demo counts.
+  degraded?: boolean;
+}) {
   const { launchPlanning: lp, shepherdCare: care, summary } = data;
 
+  const careOk = !degraded && care.available;
+  const leadersMeta = !careOk
+    ? "Care data unavailable"
+    : care.activeOverShepherds == null
+      ? "Coverage data unavailable"
+      : `${care.activeOverShepherds} over-shepherds`;
+  const needsCare = care.needsAttention;
+
+  // Prospects currently being worked in the Interest Funnel — the three live
+  // states; Joined is the collapsed roll-up, mirroring the Plan board's
+  // partition (and the Interest Funnel overview card's own sum).
+  const funnelOk = interestFunnel.available;
+  const prospectsInFunnel = ACTIVE_BOARD_STATES.reduce(
+    (sum, state) => sum + interestFunnel.counts[state],
+    0
+  );
+
+  const readinessOk = multiplyReadiness.available;
+
+  const dueThisWeek = data.dueFollowUpsThisWeekCount;
+
+  // --- Retired launch-planning metrics (render only when Planning is shown) —
+  // pre-pivot capacity-model figures, kept frozen rather than deleted. When
+  // launch-planning data is unavailable the snapshot degrades to zeros; show
+  // "—" rather than rendering those zeros as real figures.
+  const planning = !degraded && lp.available;
   const participation =
     lp.participationPct == null ? null : `${lp.participationPct}%`;
-
   const capacityUsedPct =
-    lp.effectiveTotalCapacity > 0
+    planning && lp.effectiveTotalCapacity > 0
       ? Math.round((lp.currentParticipants / lp.effectiveTotalCapacity) * 100)
       : null;
-
   const risk = launchRiskDisplay(lp.riskLevel);
-
-  // When launch-planning data is unavailable the snapshot degrades to zeros;
-  // show "—" rather than rendering those zeros as real figures (the launch
-  // card already says the data is unavailable).
-  const planning = lp.available;
   const participationMeta = !planning
     ? "Planning data unavailable"
     : participation == null
       ? "Set church attendance in Launch planning"
       : `${lp.currentParticipants} of ${lp.currentChurchAttendance} attending`;
   const participationValue = !planning ? "—" : (participation ?? "Not set");
-  const leadersMeta = !care.available
-    ? "Care data unavailable"
-    : care.activeOverShepherds == null
-      ? "Coverage data unavailable"
-      : `${care.activeOverShepherds} over-shepherds`;
 
   return (
     <section aria-labelledby="exec-vital-signs">
@@ -49,71 +104,135 @@ export function VitalSignsBand({ data }: { data: AdminDashboardData }) {
         }}
       >
         <MetricCard
-          title="% of church in groups"
-          value={participationValue}
-          empty={!planning || participation == null}
-          meta={participationMeta}
-          accent={P.sage}
-          valueColor={P.sageTextStrong}
-        />
-        <MetricCard
           title="Active groups"
-          value={String(summary.activeGroupCount)}
-          meta="Currently meeting"
-          accent={P.sage}
-          valueColor={P.ink}
-        />
-        <MetricCard
-          title="People in groups"
-          value={planning ? String(lp.currentParticipants) : "—"}
-          empty={!planning}
-          meta={planning ? "Active participants" : "Planning data unavailable"}
+          value={degraded ? "—" : String(summary.activeGroupCount)}
+          empty={degraded}
+          meta={degraded ? "Group data unavailable" : "Currently meeting"}
           accent={P.sage}
           valueColor={P.ink}
         />
         <MetricCard
           title="Active leaders"
-          value={care.available ? String(care.totalActiveShepherds) : "—"}
-          empty={!care.available}
+          value={careOk ? String(care.totalActiveShepherds) : "—"}
+          empty={!careOk}
           meta={leadersMeta}
           accent={P.sage}
           valueColor={P.ink}
         />
         <MetricCard
-          title="Capacity used"
-          value={capacityUsedPct == null ? "—" : `${capacityUsedPct}%`}
-          empty={capacityUsedPct == null}
+          title="Leaders needing care"
+          value={careOk ? String(needsCare) : "—"}
+          empty={!careOk}
           meta={
-            !planning
-              ? "Planning data unavailable"
-              : capacityUsedPct == null
-                ? "No capacity configured"
-                : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
+            !careOk
+              ? "Care data unavailable"
+              : needsCare > 0
+                ? `of ${care.totalActiveShepherds} active leaders`
+                : "Care queue is clear"
           }
-          accent={
-            capacityUsedPct != null && capacityUsedPct >= 85
-              ? P.mustard
-              : P.sage
+          accent={careOk && needsCare > 0 ? P.terra : P.sage}
+          valueColor={careOk && needsCare > 0 ? P.terraTextStrong : P.ink}
+        />
+        <MetricCard
+          title="Prospects in funnel"
+          value={funnelOk ? String(prospectsInFunnel) : "—"}
+          empty={!funnelOk}
+          meta={
+            funnelOk
+              ? `${interestFunnel.counts.joined} joined a group`
+              : "Funnel data unavailable"
           }
+          accent={P.sage}
+          valueColor={P.ink}
+        />
+        <MetricCard
+          title="Cells ready to multiply"
+          value={readinessOk ? String(multiplyReadiness.readyCells) : "—"}
+          empty={!readinessOk}
+          meta={
+            !readinessOk
+              ? "Readiness data unavailable"
+              : multiplyReadiness.activeCells === 0
+                ? "No active cells yet"
+                : `of ${multiplyReadiness.activeCells} active cells`
+          }
+          accent={P.sage}
           valueColor={
-            capacityUsedPct != null && capacityUsedPct >= 85
-              ? P.mustardTextStrong
+            readinessOk && multiplyReadiness.readyCells > 0
+              ? P.sageTextStrong
               : P.ink
           }
         />
         <MetricCard
-          title="Launch outlook"
-          value={lp.available ? risk.label : "—"}
+          title="Follow-ups due this week"
+          value={degraded ? "—" : String(dueThisWeek)}
+          empty={degraded}
           meta={
-            lp.available
-              ? lp.recommendedNewGroups > 0
-                ? `Recommend ${lp.recommendedNewGroups} new ${lp.recommendedNewGroups === 1 ? "group" : "groups"}`
-                : "Capacity holds for now"
-              : "Planning data unavailable"
+            degraded ? "Follow-up data unavailable" : "Due in the next 7 days"
           }
-          accent={risk.tone}
-          valueColor={risk.tone}
+          accent={!degraded && dueThisWeek > 0 ? P.mustard : P.sage}
+          valueColor={
+            !degraded && dueThisWeek > 0 ? P.mustardTextStrong : P.ink
+          }
         />
+        {showLaunchPlanning ? (
+          <>
+            <MetricCard
+              title="% of church in groups"
+              value={participationValue}
+              empty={!planning || participation == null}
+              meta={participationMeta}
+              accent={P.sage}
+              valueColor={P.sageTextStrong}
+            />
+            <MetricCard
+              title="People in groups"
+              value={planning ? String(lp.currentParticipants) : "—"}
+              empty={!planning}
+              meta={
+                planning ? "Active participants" : "Planning data unavailable"
+              }
+              accent={P.sage}
+              valueColor={P.ink}
+            />
+            <MetricCard
+              title="Capacity used"
+              value={capacityUsedPct == null ? "—" : `${capacityUsedPct}%`}
+              empty={capacityUsedPct == null}
+              meta={
+                !planning
+                  ? "Planning data unavailable"
+                  : capacityUsedPct == null
+                    ? "No capacity configured"
+                    : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
+              }
+              accent={
+                capacityUsedPct != null && capacityUsedPct >= 85
+                  ? P.mustard
+                  : P.sage
+              }
+              valueColor={
+                capacityUsedPct != null && capacityUsedPct >= 85
+                  ? P.mustardTextStrong
+                  : P.ink
+              }
+            />
+            <MetricCard
+              title="Launch outlook"
+              value={planning ? risk.label : "—"}
+              empty={!planning}
+              meta={
+                planning
+                  ? lp.recommendedNewGroups > 0
+                    ? `Recommend ${lp.recommendedNewGroups} new ${lp.recommendedNewGroups === 1 ? "group" : "groups"}`
+                    : "Capacity holds for now"
+                  : "Planning data unavailable"
+              }
+              accent={risk.tone}
+              valueColor={risk.tone}
+            />
+          </>
+        ) : null}
       </div>
     </section>
   );

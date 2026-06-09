@@ -79,6 +79,9 @@ describe("buildAdminDashboardData", () => {
     // succeed, even with no data behind them.
     expect(result.data.shepherdCare.available).toBe(true);
     expect(result.data.shepherdCare.totalActiveShepherds).toBe(0);
+    // The vital-signs band's "Leaders needing care" tile (#476) reads this
+    // count; with an empty-but-successful directory it is a true zero.
+    expect(result.data.shepherdCare.needsAttention).toBe(0);
     expect(result.data.launchPlanning.available).toBe(true);
   });
 
@@ -168,7 +171,9 @@ describe("buildAdminDashboardData", () => {
   it("keeps the page live but marks shepherd-care unavailable when only the directory read errors", async () => {
     // The shepherd-care directory is a spine read outside the firstError
     // gate: its failure must degrade only the shepherd-care card, leaving the
-    // rest of the dashboard live.
+    // rest of the dashboard live. available:false is what the vital-signs
+    // band keys "Active leaders" / "Leaders needing care" off (#476), so the
+    // zeroed counts below are never rendered — the tiles show "—" instead.
     const result = await buildAdminDashboardData(
       emptyReads({
         fetchShepherdCareDirectoryForAdmin: async () => ({
@@ -182,6 +187,7 @@ describe("buildAdminDashboardData", () => {
     expect(result.source).toBe("live");
     if (result.source !== "live") return;
     expect(result.data.shepherdCare.available).toBe(false);
+    expect(result.data.shepherdCare.needsAttention).toBe(0);
   });
 
   it("seeds leader-pipeline and multiplication rollups with stable, zeroed counts when their reads succeed empty", async () => {
