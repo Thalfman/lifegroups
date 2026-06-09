@@ -30,6 +30,13 @@ export type SuperAdminWorkspace = {
   node: ReactNode;
 };
 
+// The page scrolls in the window under the shell's sticky TopBar (height 56,
+// z-index 10); the tab rail sticks just below it. Anchored sections inside a
+// workspace should use SUPER_ADMIN_STICKY_ANCHOR_OFFSET as scrollMarginTop so
+// an anchor jump clears both the TopBar and the stuck tab rail.
+const TOP_BAR_HEIGHT = 56;
+export const SUPER_ADMIN_STICKY_ANCHOR_OFFSET = 120;
+
 export function SuperAdminConsole({
   statusRow,
   banner,
@@ -124,34 +131,36 @@ export function SuperAdminConsole({
       {banner}
       {statusRow}
 
-      <div
-        className="lg-super-admin-workspace-tabs"
-        role="tablist"
-        aria-label="Super admin workspaces"
-        style={tablistStyle}
-      >
-        {workspaces.map((workspace, index) => {
-          const selected = workspace.id === activeId;
-          return (
-            <button
-              key={workspace.id}
-              ref={(el) => {
-                tabRefs.current.set(workspace.id, el);
-              }}
-              type="button"
-              role="tab"
-              id={`super-admin-tab-${workspace.id}`}
-              aria-selected={selected}
-              aria-controls={`super-admin-panel-${workspace.id}`}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => setActiveId(workspace.id)}
-              onKeyDown={(event) => onKeyDown(event, index)}
-              style={tabStyleFor(selected, workspace.danger)}
-            >
-              {workspace.label}
-            </button>
-          );
-        })}
+      <div style={stickyTabsWrapperStyle}>
+        <div
+          className="lg-super-admin-workspace-tabs"
+          role="tablist"
+          aria-label="Super admin workspaces"
+          style={tablistStyle}
+        >
+          {workspaces.map((workspace, index) => {
+            const selected = workspace.id === activeId;
+            return (
+              <button
+                key={workspace.id}
+                ref={(el) => {
+                  tabRefs.current.set(workspace.id, el);
+                }}
+                type="button"
+                role="tab"
+                id={`super-admin-tab-${workspace.id}`}
+                aria-selected={selected}
+                aria-controls={`super-admin-panel-${workspace.id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setActiveId(workspace.id)}
+                onKeyDown={(event) => onKeyDown(event, index)}
+                style={tabStyleFor(selected, workspace.danger)}
+              >
+                {workspace.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {activeWorkspace ? (
@@ -168,6 +177,20 @@ export function SuperAdminConsole({
     </div>
   );
 }
+
+// Keeps the tab rail available in long workspaces: it sticks just below the
+// TopBar (z-index below the TopBar's 10 so it slides under, never over). The
+// page-background backing plus the padding/negative-margin bleed stop content
+// from peeking through around the rail's rounded corners; net layout spacing
+// is unchanged.
+const stickyTabsWrapperStyle: CSSProperties = {
+  position: "sticky",
+  top: TOP_BAR_HEIGHT,
+  zIndex: 5,
+  background: "var(--c-bg)",
+  padding: "8px 0",
+  margin: "-8px 0",
+};
 
 const tablistStyle: CSSProperties = {
   display: "flex",

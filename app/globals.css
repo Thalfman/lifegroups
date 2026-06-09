@@ -266,12 +266,18 @@
   .lg-m-form-2up {
     grid-template-columns: 1fr !important;
   }
-  /* Workspace switcher wraps to fill the row on mobile instead of clipping. */
+  /* Workspace switcher fills the row on mobile as a single horizontally
+     scrollable rail, so the sticky tab row stays one row tall instead of
+     wrapping into a multi-row band that covers content while stuck. */
   .lg-super-admin-workspace-tabs {
     width: 100% !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
   .lg-super-admin-workspace-tabs > button {
-    flex: 1 1 auto !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap;
   }
 
   /* New LG shell: sidebar collapses to drawer on mobile */
