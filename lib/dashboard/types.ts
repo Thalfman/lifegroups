@@ -238,7 +238,9 @@ export interface MultiplicationDashboardSummary {
 // parallel reads) and travel to DashboardClient as their own props — not inside
 // AdminDashboardData — so each degrades per-card: a failed read flips
 // available:false and the card renders an unavailable state, never a false
-// zero.
+// zero. The vital-signs band (#476) reuses the SAME summaries for its
+// "Prospects in funnel" and "Cells ready to multiply" tiles, degrading each
+// tile to "—" on available:false — no second read, no drift from the cards.
 
 // Prospects by state for the Home Interest Funnel card. Counts come from the
 // narrow fetchProspectStateCounts read (state + archived only), not the full
