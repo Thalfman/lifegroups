@@ -34,6 +34,38 @@ const STATE_DOT: Record<string, { color: string; label: string }> = {
   skipped: { color: P.mustard, label: "skipped" },
 };
 
+// Friendly nouns for the table names that show up in raw Edge Function
+// lookup errors (e.g. "group_leaders lookup failed: …").
+const LOOKUP_SUBJECT_LABELS: Record<string, string> = {
+  group_leaders: "group leader",
+  profiles: "profile",
+  groups: "group",
+  members: "member",
+};
+
+// Translate a raw test-account error into operator language (#452). The raw
+// string stays available behind the Details disclosure; this only chooses the
+// primary message. Copy only — the Edge Function and server actions are
+// untouched.
+function translateTestAccountError(raw: string): string {
+  if (/JSON object requested, multiple \(or no\) rows returned/i.test(raw)) {
+    const subject = raw.match(/^([a-z_]+) lookup failed/i)?.[1];
+    const friendly = subject
+      ? (LOOKUP_SUBJECT_LABELS[subject] ?? subject.replace(/_/g, " "))
+      : null;
+    return friendly
+      ? `The expected ${friendly} test record was not found, or more than one matching record exists.`
+      : "An expected test record was not found, or more than one matching record exists.";
+  }
+  if (/failed to fetch|fetch failed|network|econn|timed? ?out/i.test(raw)) {
+    return "The test-account service couldn’t be reached. It may be offline, or the network blocked the request.";
+  }
+  if (/not authoriz|unauthoriz|forbidden|\b401\b|\b403\b/i.test(raw)) {
+    return "This session isn’t authorized to run test-account checks. Sign out and back in as the super admin.";
+  }
+  return "The test-account check returned an unexpected error.";
+}
+
 function StatePill({ state }: { state: string }) {
   const cfg = STATE_DOT[state] ?? { color: P.ink3, label: state };
   return (
@@ -63,28 +95,40 @@ function StatePill({ state }: { state: string }) {
 }
 
 export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
-  const [status, setStatus] = useState<TestAccountsResponse | null>(initialStatus);
+  const [status, setStatus] = useState<TestAccountsResponse | null>(
+    initialStatus
+  );
   const [errors, setErrors] = useState<string[]>(initialErrors);
-  const [warnings, setWarnings] = useState<string[]>(initialStatus?.warnings ?? []);
+  const [warnings, setWarnings] = useState<string[]>(
+    initialStatus?.warnings ?? []
+  );
   const [pending, setPending] = useState<Pending>(null);
   const [, startTransition] = useTransition();
 
   const run = useCallback(
-    (action: "status" | "enable" | "disable" | "diagnose", confirmText: string | null) => {
+    (
+      action: "status" | "enable" | "disable" | "diagnose",
+      confirmText: string | null
+    ) => {
       if (confirmText && !window.confirm(confirmText)) return;
       const tag: Pending =
-        action === "status" ? "refresh"
-        : action === "diagnose" ? "diagnose"
-        : action;
+        action === "status"
+          ? "refresh"
+          : action === "diagnose"
+            ? "diagnose"
+            : action;
       setPending(tag);
       setErrors([]);
       setWarnings([]);
       startTransition(async () => {
         const result =
-          action === "status" ? await testAccountsStatus()
-          : action === "enable" ? await testAccountsEnable()
-          : action === "disable" ? await testAccountsDisable()
-          : await testAccountsDiagnose();
+          action === "status"
+            ? await testAccountsStatus()
+            : action === "enable"
+              ? await testAccountsEnable()
+              : action === "disable"
+                ? await testAccountsDisable()
+                : await testAccountsDiagnose();
         if (result.ok) {
           setStatus(result.value);
           setWarnings(result.value.warnings ?? []);
@@ -95,7 +139,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
         setPending(null);
       });
     },
-    [],
+    []
   );
 
   const handleEnable = useCallback(() => {
@@ -109,7 +153,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
   const handleDisable = useCallback(() => {
     run(
       "disable",
-      "Disable all known test accounts? Their logins will stop working immediately.",
+      "Disable all known test accounts? Their logins will stop working immediately."
     );
   }, [run]);
 
@@ -141,8 +185,9 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           color: P.ink,
         }}
       >
-        These are real user accounts that sign in through the normal /login page.
-        Passwords live only in the Edge Function environment — never displayed here.
+        These are real user accounts that sign in through the normal /login
+        page. Passwords live only in the Edge Function environment — never
+        displayed here.
       </div>
 
       <div
@@ -170,7 +215,9 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
             <span>
               Overall:{" "}
-              <StatePill state={status?.enabledOverall ? "active" : "missing"} />
+              <StatePill
+                state={status?.enabledOverall ? "active" : "missing"}
+              />
             </span>
             <span>
               Database target:{" "}
@@ -234,19 +281,31 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             }}
           >
             <thead>
-              <tr style={{ textAlign: "left", borderBottom: `1px solid ${P.line}` }}>
+              <tr
+                style={{
+                  textAlign: "left",
+                  borderBottom: `1px solid ${P.line}`,
+                }}
+              >
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Email</th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Role</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Auth user</th>
+                <th style={{ padding: "8px 6px", fontWeight: 600 }}>
+                  Auth user
+                </th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Profile</th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Group</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Group role</th>
+                <th style={{ padding: "8px 6px", fontWeight: 600 }}>
+                  Group role
+                </th>
                 <th style={{ padding: "8px 6px", fontWeight: 600 }}>Note</th>
               </tr>
             </thead>
             <tbody>
               {(status?.summary ?? []).map((row) => (
-                <tr key={row.key} style={{ borderBottom: `1px solid ${P.line2}` }}>
+                <tr
+                  key={row.key}
+                  style={{ borderBottom: `1px solid ${P.line2}` }}
+                >
                   <td style={{ padding: "8px 6px" }}>{row.email}</td>
                   <td style={{ padding: "8px 6px" }}>{row.role}</td>
                   <td style={{ padding: "8px 6px" }}>
@@ -266,7 +325,10 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               ))}
               {(status?.summary ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: "12px 6px", color: P.ink3 }}>
+                  <td
+                    colSpan={7}
+                    style={{ padding: "12px 6px", color: P.ink3 }}
+                  >
                     No status yet. Click Refresh status to load.
                   </td>
                 </tr>
@@ -292,16 +354,30 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             }}
           >
             <strong style={{ fontSize: 13 }}>Edge Function diagnostics</strong>
-            <div style={{ display: "grid", gap: 4, fontFamily: fontSans, fontSize: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gap: 4,
+                fontFamily: fontSans,
+                fontSize: 12,
+              }}
+            >
               <div>
                 Caller auth user id:{" "}
-                <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                <code
+                  style={{
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  }}
+                >
                   {status.diagnostics.callerAuthUserId ?? "(none)"}
                 </code>
               </div>
               <div>
                 Profile query succeeded:{" "}
-                <strong>{status.diagnostics.profileLookup.succeeded ? "yes" : "no"}</strong>
+                <strong>
+                  {status.diagnostics.profileLookup.succeeded ? "yes" : "no"}
+                </strong>
               </div>
               <div>
                 Profile row count:{" "}
@@ -310,11 +386,18 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               {status.diagnostics.profileLookup.profile ? (
                 <div>
                   Profile: email=
-                  <code>{status.diagnostics.profileLookup.profile.email ?? "(null)"}</code>
-                  {" "}role=
-                  <code>{status.diagnostics.profileLookup.profile.role ?? "(null)"}</code>
-                  {" "}status=
-                  <code>{status.diagnostics.profileLookup.profile.status ?? "(null)"}</code>
+                  <code>
+                    {status.diagnostics.profileLookup.profile.email ?? "(null)"}
+                  </code>{" "}
+                  role=
+                  <code>
+                    {status.diagnostics.profileLookup.profile.role ?? "(null)"}
+                  </code>{" "}
+                  status=
+                  <code>
+                    {status.diagnostics.profileLookup.profile.status ??
+                      "(null)"}
+                  </code>
                 </div>
               ) : null}
               {status.diagnostics.profileLookup.postgrestError ? (
@@ -329,33 +412,60 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                     gap: 2,
                   }}
                 >
-                  <div><strong>PostgREST error</strong></div>
+                  <div>
+                    <strong>PostgREST error</strong>
+                  </div>
                   {status.diagnostics.profileLookup.postgrestError.code ? (
-                    <div>code: <code>{status.diagnostics.profileLookup.postgrestError.code}</code></div>
+                    <div>
+                      code:{" "}
+                      <code>
+                        {status.diagnostics.profileLookup.postgrestError.code}
+                      </code>
+                    </div>
                   ) : null}
                   {status.diagnostics.profileLookup.postgrestError.message ? (
-                    <div>message: {status.diagnostics.profileLookup.postgrestError.message}</div>
+                    <div>
+                      message:{" "}
+                      {status.diagnostics.profileLookup.postgrestError.message}
+                    </div>
                   ) : null}
                   {status.diagnostics.profileLookup.postgrestError.details ? (
-                    <div>details: {status.diagnostics.profileLookup.postgrestError.details}</div>
+                    <div>
+                      details:{" "}
+                      {status.diagnostics.profileLookup.postgrestError.details}
+                    </div>
                   ) : null}
                   {status.diagnostics.profileLookup.postgrestError.hint ? (
-                    <div>hint: {status.diagnostics.profileLookup.postgrestError.hint}</div>
+                    <div>
+                      hint:{" "}
+                      {status.diagnostics.profileLookup.postgrestError.hint}
+                    </div>
                   ) : null}
                 </div>
               ) : null}
             </div>
             <div>
-              <strong style={{ fontSize: 12 }}>Env presence (names only)</strong>
-              <ul style={{ margin: "4px 0 0 18px", padding: 0, fontFamily: fontSans, fontSize: 12 }}>
-                {Object.entries(status.diagnostics.envPresent).map(([name, present]) => (
-                  <li key={name}>
-                    <code>{name}</code>:{" "}
-                    <span style={{ color: present ? P.sage : P.terra }}>
-                      {present ? "set" : "missing"}
-                    </span>
-                  </li>
-                ))}
+              <strong style={{ fontSize: 12 }}>
+                Env presence (names only)
+              </strong>
+              <ul
+                style={{
+                  margin: "4px 0 0 18px",
+                  padding: 0,
+                  fontFamily: fontSans,
+                  fontSize: 12,
+                }}
+              >
+                {Object.entries(status.diagnostics.envPresent).map(
+                  ([name, present]) => (
+                    <li key={name}>
+                      <code>{name}</code>:{" "}
+                      <span style={{ color: present ? P.sage : P.terra }}>
+                        {present ? "set" : "missing"}
+                      </span>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           </div>
@@ -390,18 +500,57 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               background: P.terraSoft,
               border: `1px solid ${P.terra}`,
               borderRadius: 8,
-              padding: "10px 12px",
+              padding: "12px 14px",
               fontFamily: fontBody,
               fontSize: 13,
               color: "#7d3621",
+              display: "grid",
+              gap: 8,
             }}
           >
-            <strong>Errors:</strong>
-            <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
-              {errors.map((e, i) => (
-                <li key={i}>{e}</li>
-              ))}
+            <strong>Test account check is blocked</strong>
+            <ul
+              style={{
+                margin: 0,
+                padding: "0 0 0 18px",
+                display: "grid",
+                gap: 2,
+              }}
+            >
+              {/* One plain-language line per distinct problem; identical raw
+                  errors that translate to the same message collapse to one. */}
+              {[...new Set(errors.map(translateTestAccountError))].map(
+                (msg) => (
+                  <li key={msg}>{msg}</li>
+                )
+              )}
             </ul>
+            <p style={{ margin: 0 }}>
+              Next step: run <strong>Diagnose</strong> above for a deeper check,
+              then review the test accounts table.
+            </p>
+            <details>
+              <summary
+                className="lg-sac-summary"
+                style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600 }}
+              >
+                Details
+              </summary>
+              <ul
+                style={{
+                  margin: "6px 0 0",
+                  padding: "0 0 0 18px",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12,
+                  display: "grid",
+                  gap: 2,
+                }}
+              >
+                {errors.map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
+            </details>
           </div>
         ) : null}
       </div>

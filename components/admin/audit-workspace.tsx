@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Icon } from "@/components/lg/Icon";
 import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type { AuditCategory } from "@/lib/admin/audit-summary";
 
@@ -90,6 +91,7 @@ export function AuditWorkspace({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by description, action, or person…"
+            aria-describedby="audit-search-help"
             style={{
               fontFamily: fontSans,
               fontSize: 13,
@@ -100,6 +102,19 @@ export function AuditWorkspace({
               padding: "9px 12px",
             }}
           />
+          <p
+            id="audit-search-help"
+            style={{
+              fontFamily: fontBody,
+              fontSize: 12,
+              color: P.ink3,
+              margin: 0,
+              lineHeight: 1.4,
+            }}
+          >
+            Matches the event description, the action name, the record type, and
+            the acting person.
+          </p>
         </div>
       </div>
 
@@ -118,6 +133,11 @@ export function AuditWorkspace({
               onClick={() => setCategory(filter.id)}
               style={chipStyle(selected)}
             >
+              {/* The active filter carries a check mark on top of the inverted
+                  fill, so the selected state doesn't ride on color alone. */}
+              {selected ? (
+                <Icon name="check" size={11} strokeWidth={2.4} />
+              ) : null}
               {filter.label}
             </button>
           );
@@ -193,9 +213,36 @@ function FilteredResults({
             fontFamily: fontBody,
             fontSize: 13,
             color: P.ink2,
+            display: "grid",
+            gap: 10,
+            justifyItems: "center",
           }}
         >
-          No audit events match these filters.
+          <p style={{ margin: 0, fontWeight: 600, color: P.ink }}>
+            No audit events match these filters.
+          </p>
+          <p style={{ margin: 0, lineHeight: 1.5 }}>
+            Try a shorter search term or a different category — searches match
+            the description, action, record type, and acting person.
+          </p>
+          <button
+            type="button"
+            onClick={onClear}
+            style={{
+              appearance: "none",
+              cursor: "pointer",
+              fontFamily: fontSans,
+              fontSize: 12,
+              fontWeight: 700,
+              color: P.terra,
+              background: "transparent",
+              border: `1px solid ${P.terra}`,
+              borderRadius: 999,
+              padding: "7px 14px",
+            }}
+          >
+            Clear filters and show all events
+          </button>
         </div>
       ) : (
         <ol
@@ -275,9 +322,12 @@ function chipStyle(selected: boolean): CSSProperties {
   return {
     appearance: "none",
     cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
     fontFamily: fontSans,
     fontSize: 12,
-    fontWeight: 600,
+    fontWeight: selected ? 700 : 600,
     padding: "6px 12px",
     borderRadius: 999,
     border: `1px solid ${selected ? P.ink : P.line}`,
