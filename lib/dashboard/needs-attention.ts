@@ -4,6 +4,15 @@ import type { AdminDashboardData } from "@/lib/dashboard/types";
 // req 7, #260). Kept as a pure function in lib/ — apart from the rendering in
 // components/lg/admin/dashboard/NeedsAttentionArea.tsx — so the category and
 // threshold rules are unit-testable on their own.
+//
+// Decision (#475, G-H6): while the Groups nav is hidden (the ADR 0016 pivot
+// default), the Groups-bound rows — no_leader and setup_gaps — are
+// deliberately suppressed here, and no other Home surface re-raises an unled
+// group or a setup gap. This is pivot-consistent: group setup and group/member
+// assignment are Julian-managed off-app now, so Home must not rank an action
+// the app no longer hosts a visible surface for. The rows return
+// automatically if a Super Admin re-shows Groups (nav_show_groups). The same
+// rationale is recorded in ADR 0016's Consequences.
 
 export type NeedsAttentionItem = {
   key: string;

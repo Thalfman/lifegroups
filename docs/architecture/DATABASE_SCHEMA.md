@@ -8,6 +8,7 @@ leader / super-admin RPCs, the shepherd-care surface, over-shepherd
 coverage, and launch-planning storage.
 
 ## Core model
+
 - **profiles**: app-login user records mapped to Supabase Auth users via
   nullable `auth_user_id`. Phase 4 reads this column when resolving the
   signed-in session. `profiles.role` uses the `user_role` enum with five
@@ -24,7 +25,7 @@ coverage, and launch-planning storage.
   in `members`, are linked to groups through `group_memberships`, and do
   not have `auth.users` rows. `group_memberships.role` uses the
   `role_in_group` enum (`member | leader | co_leader`) and describes the
-  person's role *within that specific group*, not an app-login role.
+  person's role _within that specific group_, not an app-login role.
 - **attendance_sessions** + **attendance_records**: one session per week per
   group, then per-member attendance rows.
 - **guests**: visitor pipeline.
@@ -47,6 +48,7 @@ coverage, and launch-planning storage.
   canonical default; the LP.1 baseline lives in `app_settings`.
 
 ## Auth identity vs. participant identity
+
 The schema deliberately separates two kinds of people:
 
 - **App-login users** live in `profiles` and are linked to a Supabase Auth
@@ -66,6 +68,7 @@ in `lib/supabase/read-models.ts` and the RPC sources in the migration
 files for the per-table contracts.
 
 ## Key relationships
+
 - `profiles.auth_user_id -> auth.users.id` (Supabase Auth, set manually
   via the bootstrap in `supabase/dev/README.md`).
 - `group_leaders.group_id -> groups.id`
@@ -78,6 +81,7 @@ files for the per-table contracts.
 - `follow_ups` can reference groups, members, guests, and assignees.
 
 ## Why lifecycle and health are separate
+
 - **Lifecycle** tracks the operating state (`active`, `planned_pause`,
   `closed`, etc.).
 - **Health** tracks ministry quality/risk (`healthy`, `watch`,
@@ -87,26 +91,31 @@ A group may be in a planned pause but still healthy paused. The separation
 keeps reporting clear.
 
 ## Attendance model
+
 - `attendance_sessions` stores weekly summary/submission state for each group.
 - `attendance_records` stores person-level outcomes for each session.
 - Constraint `unique(group_id, meeting_week)` prevents duplicate weekly
   sessions.
 
 ## Guest pipeline
+
 `guests.pipeline_stage` supports journey tracking from `new` through
 `placed`/`not_now` for ministry follow-up visibility.
 
 ## Follow-ups
+
 `follow_ups` provides a shared task queue with priority, status, due dates,
 assignees, and optional entity links.
 
 ## Row Level Security
+
 RLS is enabled on every operational table, and policies are
 **SELECT-only**. Writes flow through `SECURITY DEFINER` RPCs that
 perform their own role checks and write paired `audit_events` rows in
 the same transaction.
 
 ### Helper functions
+
 All SQL helpers live in the `public` schema, are `security definer` + `stable`,
 and are only executable by the `authenticated` role.
 
@@ -126,26 +135,27 @@ and are only executable by the `authenticated` role.
 
 ### Policy intent
 
-| Table                      | Admin (super_admin / ministry_admin) | Leader / Co-Leader                                              |
-|----------------------------|--------------------------------------|----------------------------------------------------------------|
-| profiles                   | All                                  | Self only (`auth_user_id = auth.uid()`)                        |
-| groups                     | All                                  | Groups where `auth_is_leader_of(id)`                            |
-| group_leaders              | All                                  | Self + peer leaders in same group                              |
-| members                    | All                                  | Members with an active membership in one of the leader's groups |
-| group_memberships          | All                                  | Memberships where `auth_is_leader_of(group_id)`                |
-| attendance_sessions        | All                                  | Sessions where `auth_is_leader_of(group_id)`                   |
-| attendance_records         | All                                  | Via parent session                                              |
-| guests                     | All                                  | Guests with first attended or assigned group the leader owns   |
-| follow_ups                 | All                                  | Follow-ups for the leader's groups or assigned to the leader   |
-| group_health_updates       | All                                  | Updates where `auth_is_leader_of(group_id)`                    |
-| group_status_history       | All                                  | History where `auth_is_leader_of(group_id)`                    |
-| shepherd_care_*            | All                                  | No access                                                       |
-| over_shepherds, coverage   | All                                  | No access                                                       |
-| launch_planning_scenarios  | All                                  | No access                                                       |
-| audit_events               | Admin only                           | No access                                                       |
-| app_settings               | Authenticated                        | Authenticated                                                   |
+| Table                     | Admin (super_admin / ministry_admin) | Leader / Co-Leader                                              |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------------- |
+| profiles                  | All                                  | Self only (`auth_user_id = auth.uid()`)                         |
+| groups                    | All                                  | Groups where `auth_is_leader_of(id)`                            |
+| group_leaders             | All                                  | Self + peer leaders in same group                               |
+| members                   | All                                  | Members with an active membership in one of the leader's groups |
+| group_memberships         | All                                  | Memberships where `auth_is_leader_of(group_id)`                 |
+| attendance_sessions       | All                                  | Sessions where `auth_is_leader_of(group_id)`                    |
+| attendance_records        | All                                  | Via parent session                                              |
+| guests                    | All                                  | Guests with first attended or assigned group the leader owns    |
+| follow_ups                | All                                  | Follow-ups for the leader's groups or assigned to the leader    |
+| group_health_updates      | All                                  | Updates where `auth_is_leader_of(group_id)`                     |
+| group_status_history      | All                                  | History where `auth_is_leader_of(group_id)`                     |
+| shepherd*care*\*          | All                                  | No access                                                       |
+| over_shepherds, coverage  | All                                  | No access                                                       |
+| launch_planning_scenarios | All                                  | No access                                                       |
+| audit_events              | Admin only                           | No access                                                       |
+| app_settings              | Authenticated                        | Authenticated                                                   |
 
 ### What's intentionally missing
+
 - **No table-level INSERT / UPDATE / DELETE policies.** All writes flow
   through the `admin_*` / `leader_*` / `super_admin_*` RPCs above.
 - **No anon read policies.** The publishable key client returns zero
@@ -153,6 +163,7 @@ and are only executable by the `authenticated` role.
   when no session is present.
 
 ## Verifying RLS in the database
+
 In the Supabase SQL editor, use the **Run as** dropdown to impersonate a user
 and run `select count(*) from groups;`. Expected:
 
@@ -160,20 +171,42 @@ and run `select count(*) from groups;`. Expected:
 - Leader Casey (after `supabase/dev/link_test_users.sql` is run) → 2 rows.
 - Ministry admin → 5 rows.
 
-## Retired columns (kept under frozen-schema discipline)
+## Retired columns (kept in place)
 
-These columns are dead — no app surface reads them — but stay in place
-because dropping columns and changing RPCs is out of scope (#472):
+These stored shapes are **dead by decision** but deliberately left in place —
+the frozen-schema discipline (ADR 0008/0009/0016: nothing is dropped just
+because a surface stopped reading it, so re-enabling a surface never needs a
+schema change). Recorded here per issues #472/#475:
 
-- `check_in_due_day_of_week` (a key in the `app_settings` `metric_defaults`
-  row): never read; check-ins are a frozen surface (ADR 0002). The
-  metric-defaults RPCs still accept/manage the key.
-- `multiplication_config.thresholds` / `multiplication_config.trigger`:
-  retired by ADR 0019/#401 — the Multiply trigger now lives in the
-  readiness-rule cascade (ADR 0021). The audited
-  `admin_set_multiplication_config` RPC remains but nothing in the app
-  calls it.
-- `group_metric_settings.check_in_due_offset_hours_override`: retired from
-  the Settings per-group form in #472. The full-state upsert RPC still
+- **`check_in_due_day_of_week`** — a key inside the `app_settings`
+  `metric_defaults` JSON row: the global check-in due-day default from the
+  frozen weekly check-in surface (ADR 0002). No app code reads it today; the
+  settings RPCs still accept and merge the key, and any stored value is
+  preserved.
+- **`multiplication_config.thresholds` / `.trigger_rubric`** — the
+  pre-cascade per-type pillar thresholds and letter-grade trigger rubric,
+  retired by ADR 0019/#401 and superseded by the tiered readiness-rule
+  cascade (ADR 0021: `multiplication_readiness_rule` →
+  `audience_readiness_rule` → `category_type_targets.trigger_overrides`).
+  No surface consumes these columns any more; the rows, columns, and their
+  audited write RPC stay in place (nothing in the app calls it).
+- **`group_metric_settings.check_in_due_offset_hours_override`** — retired
+  from the Settings per-group form in #472. The full-state upsert RPC still
   accepts the parameter; the app now always passes null, which clears any
   stored override on the next per-group save.
+
+## Member-care foundation (built; surfacing is flag-gated)
+
+**`member_care_profiles` + `member_care_interactions`** are the member half
+of the Care area — a deliberate parallel of the `shepherd_care_*` foundation
+for non-auth `members` rows
+(`supabase/migrations/20260624000000_phase_care_member_list_foundation.sql`).
+The backend is **complete**: admin-only RLS SELECT (`auth_is_admin()`; no
+leader / over-shepherd path), writes only via the audited
+`admin_upsert_member_care_profile` / `admin_log_member_care_interaction`
+RPCs (input validation lives in the RPC bodies), and column-allowlisted
+reads in `lib/supabase/member-care-reads.ts`. No UI consumes any of it yet:
+**surfacing is governed solely by the Super-Admin `care_member_list` flag**
+(`lib/admin/feature-flags.ts`, default off ⇒ Care is leaders-only). Flipping
+the flag is a UI-surfacing change only — no schema or policy change at flip
+time.

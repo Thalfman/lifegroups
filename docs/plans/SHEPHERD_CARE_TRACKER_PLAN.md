@@ -33,6 +33,7 @@ feature) and the **private-to-Julian notes tier (SC.4)** — `shepherd_care_priv
 with client-side zero-knowledge encryption — have since shipped.
 
 **RPCs.**
+
 - `admin_upsert_shepherd_care_profile`
 - `admin_log_shepherd_care_interaction` (also updates parent
   `last_contact_at` in the same transaction)
@@ -156,48 +157,48 @@ needs.
 
 ### `shepherd_care_profiles`
 
-| Column | Notes |
-|---|---|
-| `id` | uuid pk |
-| `shepherd_profile_id` | fk → `profiles.id` (the shepherd / leader) |
-| `current_status` | enum, e.g. `healthy` / `watch` / `needs_attention` |
-| `last_contact_at` | timestamptz; derived or denormalized for sort |
-| `next_touchpoint_due` | date or timestamptz |
-| `admin_summary` | text; Julian's running summary |
-| `created_at` | timestamptz |
-| `updated_at` | timestamptz |
-| `archived_at` | timestamptz, nullable (soft-archive) |
+| Column                | Notes                                              |
+| --------------------- | -------------------------------------------------- |
+| `id`                  | uuid pk                                            |
+| `shepherd_profile_id` | fk → `profiles.id` (the shepherd / leader)         |
+| `current_status`      | enum, e.g. `healthy` / `watch` / `needs_attention` |
+| `last_contact_at`     | timestamptz; derived or denormalized for sort      |
+| `next_touchpoint_due` | date or timestamptz                                |
+| `admin_summary`       | text; Julian's running summary                     |
+| `created_at`          | timestamptz                                        |
+| `updated_at`          | timestamptz                                        |
+| `archived_at`         | timestamptz, nullable (soft-archive)               |
 
 One row per shepherd profile.
 
 ### `shepherd_care_interactions`
 
-| Column | Notes |
-|---|---|
-| `id` | uuid pk |
-| `care_profile_id` | fk → `shepherd_care_profiles.id` |
-| `interaction_at` | timestamptz; when the touchpoint happened |
-| `interaction_type` | enum, e.g. `call` / `text` / `in_person` / `meeting` / `other` |
-| `notes` | text |
-| `created_by_profile_id` | fk → `profiles.id` (Julian) |
-| `created_at` | timestamptz |
+| Column                  | Notes                                                          |
+| ----------------------- | -------------------------------------------------------------- |
+| `id`                    | uuid pk                                                        |
+| `care_profile_id`       | fk → `shepherd_care_profiles.id`                               |
+| `interaction_at`        | timestamptz; when the touchpoint happened                      |
+| `interaction_type`      | enum, e.g. `call` / `text` / `in_person` / `meeting` / `other` |
+| `notes`                 | text                                                           |
+| `created_by_profile_id` | fk → `profiles.id` (Julian)                                    |
+| `created_at`            | timestamptz                                                    |
 
 Append-only. Normal workflow does not edit or hard-delete history.
 
 ### `shepherd_care_follow_ups` (optional, A1 only)
 
-| Column | Notes |
-|---|---|
-| `id` | uuid pk |
-| `care_profile_id` | fk → `shepherd_care_profiles.id` |
-| `title` | text |
-| `due_date` | date |
-| `status` | enum, e.g. `open` / `in_progress` / `done` |
-| `notes` | text |
-| `created_by_profile_id` | fk → `profiles.id` |
-| `created_at` | timestamptz |
-| `updated_at` | timestamptz |
-| `completed_at` | timestamptz, nullable |
+| Column                  | Notes                                      |
+| ----------------------- | ------------------------------------------ |
+| `id`                    | uuid pk                                    |
+| `care_profile_id`       | fk → `shepherd_care_profiles.id`           |
+| `title`                 | text                                       |
+| `due_date`              | date                                       |
+| `status`                | enum, e.g. `open` / `in_progress` / `done` |
+| `notes`                 | text                                       |
+| `created_by_profile_id` | fk → `profiles.id`                         |
+| `created_at`            | timestamptz                                |
+| `updated_at`            | timestamptz                                |
+| `completed_at`          | timestamptz, nullable                      |
 
 Care-specific task list. **Never** exposed to leaders. Separate from
 `follow_ups`.
@@ -323,7 +324,7 @@ The SC.3 dashboard surfaces the buckets above in summary cards.
 Each item below is a self-contained prompt outline for a subsequent
 implementation PR.
 
-> **Label note.** The `SC.1A`–`SC.1D` headings below are the *as-built*
+> **Label note.** The `SC.1A`–`SC.1D` headings below are the _as-built_
 > decomposition of the shipped SC.1 foundation (migration → RPCs → read models
 > → UI). They are **all shipped.** Two forward-looking items remain and are
 > spelled out at the end of this section: the **care-follow-ups feature**
@@ -331,6 +332,7 @@ implementation PR.
 > endorsed by Q6) and **SC.4** (private / encrypted notes — new, from Q8).
 
 ### SC.1A — Migration plan
+
 - Confirm schema with Julian's spreadsheet columns.
 - Write the migration for `shepherd_care_profiles` and
   `shepherd_care_interactions` (A2) or all three tables (A1).
@@ -338,10 +340,11 @@ implementation PR.
 - Add status enum if used.
 
 ### SC.1B — RPCs and audit
+
 - `admin_upsert_care_profile(shepherd_profile_id, summary, status,
-  next_touchpoint_due)`.
+next_touchpoint_due)`.
 - `admin_log_care_interaction(care_profile_id, interaction_at,
-  interaction_type, notes)` — inserts the interaction row **and**
+interaction_type, notes)` — inserts the interaction row **and**
   updates `last_contact_at` on the parent `shepherd_care_profiles` row in
   the same transaction, so the denormalized field used by the directory
   and dashboard (§ 7, § 8) stays accurate without per-read aggregation.
@@ -351,17 +354,20 @@ implementation PR.
   transaction.
 
 ### SC.1C — Read models
+
 - Add `SHEPHERD_CARE_PROFILE_COLUMNS`, `SHEPHERD_CARE_INTERACTION_COLUMNS`
   to `lib/supabase/read-models.ts` with JSDoc privacy contracts.
 - No leader read paths added.
 - Explicit `select(<columns>)` only.
 
 ### SC.1D — UI directory and drawer
+
 - Build `/admin/shepherd-care` route with directory + detail drawer.
 - Add-interaction form, status / next-touchpoint update form.
 - Filters listed in § 13.
 
 ### SC.3 — Dashboard
+
 - Build SC.3 summary cards (stale contact, active concerns, recent
   connections, overdue touchpoints).
 - Pure helper functions for recency / status bucketing, unit-tested.
@@ -369,6 +375,7 @@ implementation PR.
 SC.2 (over-shepherd coverage) is a separate prompt outline:
 
 ### SC.2 — Coverage tracking
+
 - Migration for `shepherd_assignments` (or equivalent).
 - RPCs `admin_assign_over_shepherd` / `admin_unassign_over_shepherd`
   with audit.
@@ -378,6 +385,7 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
 ---
 
 ### SC.1B (feature) — Care follow-ups — NOT BUILT
+
 - Add the `shepherd_care_follow_ups` table deferred by SC.1A (see § 7).
 - Admin-only RLS SELECT; writes via `admin_create_care_follow_up` /
   `admin_update_care_follow_up_status` with paired audit rows.
@@ -387,6 +395,7 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
 - **Endorsed by Julian's Q6 ("both"); A1 is the target model (§ 6).**
 
 ### SC.4 — Private / encrypted care notes — NEW (from Q8) — ✅ SHIPPED
+
 - Full design (archived): [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md);
   decision in [`adr/0003`](../adr/0003-private-care-note-encryption.md).
 - **Interpretation chosen: Tier 2** — client-side **zero-knowledge encryption**
@@ -398,3 +407,24 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
   creator-scoped read model, and a "Private notes (only you)" section on the care
   detail page. The super-admin read path was explicitly closed and proven (#114).
 - Never exposed to leaders / over-shepherds.
+
+### Member-care foundation — built, not surfaced (flag-gated) — decision #475
+
+The member half of the Care list (Julian's care workflow pointed at non-auth
+`members` rows) has a **complete backend and no UI**, and that is deliberate:
+
+- `member_care_profiles` + `member_care_interactions` (admin-only RLS, audited
+  `admin_upsert_member_care_profile` / `admin_log_member_care_interaction`
+  RPCs with in-body validation) — migration
+  `supabase/migrations/20260624000000_phase_care_member_list_foundation.sql`.
+- Column-allowlisted reads in `lib/supabase/member-care-reads.ts`.
+- **Surfacing is governed solely by the Super-Admin `care_member_list` flag**
+  (`lib/admin/feature-flags.ts`). Default off ⇒ the Care area stays
+  leaders-only, exactly as today; nothing else gates the surface. Flipping the
+  flag on is a UI-surfacing decision, not a schema change — the data layer is
+  always present and always admin-only.
+
+This is kept groundwork, not dead weight: it exists so the same care workflow
+can be turned on for the member roster later with no schema change at flip
+time. See also `docs/architecture/DATABASE_SCHEMA.md` ("Member-care
+foundation").
