@@ -1,6 +1,7 @@
 import type { SettingsShellData } from "@/components/admin/settings-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchAllGroupMetricSettings,
@@ -216,35 +217,40 @@ export async function buildSettingsData(
 ): Promise<SettingsShellData> {
   const { isSuperAdmin } = options;
 
-  const [
-    defaultsResult,
-    groupsResult,
-    settingsResult,
-    rubricResult,
-    leaderRubricResult,
-    categoriesResult,
-    targetCellsResult,
-    groupCellLifecycleResult,
-    readinessResult,
-    audienceReadinessResult,
-    menCatsResult,
-    womenCatsResult,
-    mixedCatsResult,
-  ] = await Promise.all([
-    reads.fetchMetricDefaults(),
-    reads.fetchAllGroups(),
-    reads.fetchAllGroupMetricSettings(),
-    reads.fetchGroupHealthRubric(),
-    reads.fetchLeaderHealthRubric(),
-    reads.fetchGroupCategories(),
-    reads.fetchCategoryTypeTargetCells(),
-    reads.fetchGroupCellLifecycleRows(),
-    reads.fetchReadinessRule(),
-    reads.fetchAudienceReadinessRules(),
-    reads.fetchCategoriesForAudience("men"),
-    reads.fetchCategoriesForAudience("women"),
-    reads.fetchCategoriesForAudience("mixed"),
-  ]);
+  // Gather every read through the batch combinator (ADR 0015); the per-tab
+  // error precedence is composed from `batch.errors` in the `errors` block
+  // below, as data rather than re-implemented control flow.
+  const batch = await readBatch({
+    defaults: () => reads.fetchMetricDefaults(),
+    groups: () => reads.fetchAllGroups(),
+    overrides: () => reads.fetchAllGroupMetricSettings(),
+    groupRubric: () => reads.fetchGroupHealthRubric(),
+    leaderRubric: () => reads.fetchLeaderHealthRubric(),
+    categories: () => reads.fetchGroupCategories(),
+    targetCells: () => reads.fetchCategoryTypeTargetCells(),
+    groupLifecycle: () => reads.fetchGroupCellLifecycleRows(),
+    readinessRule: () => reads.fetchReadinessRule(),
+    audienceReadiness: () => reads.fetchAudienceReadinessRules(),
+    menCats: () => reads.fetchCategoriesForAudience("men"),
+    womenCats: () => reads.fetchCategoriesForAudience("women"),
+    mixedCats: () => reads.fetchCategoriesForAudience("mixed"),
+  });
+
+  const {
+    defaults: defaultsResult,
+    groups: groupsResult,
+    overrides: settingsResult,
+    groupRubric: rubricResult,
+    leaderRubric: leaderRubricResult,
+    categories: categoriesResult,
+    targetCells: targetCellsResult,
+    groupLifecycle: groupCellLifecycleResult,
+    readinessRule: readinessResult,
+    audienceReadiness: audienceReadinessResult,
+    menCats: menCatsResult,
+    womenCats: womenCatsResult,
+    mixedCats: mixedCatsResult,
+  } = batch.results;
 
   const decoded = decodeMetricDefaults(defaultsResult.data ?? null);
 
@@ -317,30 +323,30 @@ export async function buildSettingsData(
       ),
     },
     isSuperAdmin,
+    // Per-tab error precedence, declared as data over the batch's per-key
+    // errors.
     errors: {
-      defaults: defaultsResult.error?.message ?? null,
-      groups: groupsResult.error?.message ?? null,
-      overrides: settingsResult.error?.message ?? null,
-      groupRubric: rubricResult.error?.message ?? null,
-      leaderRubric: leaderRubricResult.error?.message ?? null,
+      defaults: batch.errors.defaults,
+      groups: batch.errors.groups,
+      overrides: batch.errors.overrides,
+      groupRubric: batch.errors.groupRubric,
+      leaderRubric: batch.errors.leaderRubric,
       // #400 / #412 fold the catalog + coverage reads into one Groups-tab error
       // key: a failed catalog, target, or lifecycle read softens the whole tab to
       // the placeholder.
       groupCategories:
-        categoriesResult.error?.message ??
-        targetCellsResult.error?.message ??
-        groupCellLifecycleResult.error?.message ??
-        null,
+        batch.errors.categories ??
+        batch.errors.targetCells ??
+        batch.errors.groupLifecycle,
       // #402 / #410: a readiness read failure surfaces on its own key so the editor
       // softens to a placeholder rather than letting an admin save over a rule that
       // merely failed to load. Both the global rule and the per-type tier fold in
       // here (either failing softens the Multiply editor); the per-cell override rows
       // depend on the catalog + target reads, so those failures fold into
-      // groupCategories above.
-      readiness:
-        readinessResult.error?.message ??
-        audienceReadinessResult.error?.message ??
-        null,
+      // groupCategories above. The per-audience category-picker reads (menCats /
+      // womenCats / mixedCats) carry NO error key — a failure narrows the picker
+      // silently, same as the Groups page.
+      readiness: batch.errors.readinessRule ?? batch.errors.audienceReadiness,
     },
   };
 }

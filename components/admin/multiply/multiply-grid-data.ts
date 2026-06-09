@@ -1,4 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { currentMinistryYear } from "@/components/admin/multiply/multiply-data";
 import {
   buildMultiplyGrid,
@@ -70,12 +73,48 @@ export const EMPTY_MULTIPLY_GRID_DATA: MultiplyGridData = {
   error: "The database is not configured in this environment.",
 };
 
-export async function loadMultiplyGridData(
+// The reads this surface assembles, as one interface (ADR 0015). `loadX` binds
+// the live client; a test binds an in-memory adapter satisfying the same
+// interface. Two adapters, one seam.
+export type MultiplyGridReads = {
+  fetchGroupCategories: OmitClient<typeof fetchGroupCategories>;
+  fetchCategoryTypeTargetCells: OmitClient<typeof fetchCategoryTypeTargetCells>;
+  fetchGroupCellLifecycleRows: OmitClient<typeof fetchGroupCellLifecycleRows>;
+  fetchReadinessRule: OmitClient<typeof fetchReadinessRule>;
+  fetchAudienceReadinessRules: OmitClient<typeof fetchAudienceReadinessRules>;
+  fetchCellInterestCounts: OmitClient<typeof fetchCellInterestCounts>;
+  fetchCellActiveGroupSizes: OmitClient<typeof fetchCellActiveGroupSizes>;
+  fetchCellHealthGrades: OmitClient<typeof fetchCellHealthGrades>;
+};
+
+// Production adapter: binds the live Supabase client to every read this surface
+// needs.
+export function supabaseMultiplyGridReads(
+  client: AppSupabaseClient
+): MultiplyGridReads {
+  return bindReads(client, {
+    fetchGroupCategories,
+    fetchCategoryTypeTargetCells,
+    fetchGroupCellLifecycleRows,
+    fetchReadinessRule,
+    fetchAudienceReadinessRules,
+    fetchCellInterestCounts,
+    fetchCellActiveGroupSizes,
+    fetchCellHealthGrades,
+  });
+}
+
+// Pure assembly: gather the eight reads through the batch combinator, then
+// shape them into the grid. Every degrade path is reachable from a test through
+// an in-memory `reads` adapter. A failed read degrades to its empty input (the
+// grid still assembles from what loaded) and surfaces on `error` — the callers
+// (the Readiness tab, Home's overview card) gate on `error`, so a partial grid
+// is never presented as a false "0 of 0 ready".
+export async function buildMultiplyGridData(
+  reads: MultiplyGridReads,
   now: Date = new Date()
 ): Promise<MultiplyGridData> {
   const ministryYear = currentMinistryYear(now);
-  const client = await createSupabaseServerClient();
-  if (!client) return { ...EMPTY_MULTIPLY_GRID_DATA, ministryYear };
 
   // First-of-month ISO — the period the grade overrides resolve their this-month
   // expiry against (the rolled-up health pillars read effective letters).
@@ -85,38 +124,31 @@ export async function loadMultiplyGridData(
     .toISOString()
     .slice(0, 10);
 
-  const [
-    categoriesResult,
-    targetCellsResult,
-    groupLifecycleResult,
-    readinessResult,
-    perTypeReadinessResult,
-    interestResult,
-    cellSizesResult,
-    cellHealthResult,
-  ] = await Promise.all([
-    fetchGroupCategories(client),
-    fetchCategoryTypeTargetCells(client),
-    fetchGroupCellLifecycleRows(client),
-    fetchReadinessRule(client, ministryYear),
-    fetchAudienceReadinessRules(client, ministryYear),
-    fetchCellInterestCounts(client),
-    fetchCellActiveGroupSizes(client),
-    fetchCellHealthGrades(client, ministryYear, periodMonthIso),
-  ]);
+  // Declaration order is the error precedence (readBatch's firstError).
+  const batch = await readBatch({
+    categories: () => reads.fetchGroupCategories(),
+    targetCells: () => reads.fetchCategoryTypeTargetCells(),
+    groupLifecycle: () => reads.fetchGroupCellLifecycleRows(),
+    readinessRule: () => reads.fetchReadinessRule(ministryYear),
+    perTypeReadiness: () => reads.fetchAudienceReadinessRules(ministryYear),
+    interest: () => reads.fetchCellInterestCounts(),
+    cellSizes: () => reads.fetchCellActiveGroupSizes(),
+    cellHealth: () => reads.fetchCellHealthGrades(ministryYear, periodMonthIso),
+  });
 
-  const categories = categoriesResult.data ?? [];
-  const targetCells = targetCellsResult.data ?? [];
-  const groupRows = groupLifecycleResult.data ?? [];
-  const interest = interestResult.data ?? EMPTY_CELL_INTEREST;
-  const cellSizes = cellSizesResult.data ?? EMPTY_CELL_ACTIVE_GROUP_SIZES;
-  const cellHealth = cellHealthResult.data ?? EMPTY_CELL_HEALTH_GRADES;
+  const categories = batch.results.categories.data ?? [];
+  const targetCells = batch.results.targetCells.data ?? [];
+  const groupRows = batch.results.groupLifecycle.data ?? [];
+  const interest = batch.results.interest.data ?? EMPTY_CELL_INTEREST;
+  const cellSizes =
+    batch.results.cellSizes.data ?? EMPTY_CELL_ACTIVE_GROUP_SIZES;
+  const cellHealth = batch.results.cellHealth.data ?? EMPTY_CELL_HEALTH_GRADES;
   // #473: decode the stored global trigger WITH a report. A missing stored rule
   // decodes to the built-in default silently; a present-but-unreadable payload
   // flags ruleFellBack so the Readiness tab can say so instead of presenting
   // default-rule readiness as if it were the configured trigger.
   const decodedRule = decodeReadinessRuleWithReport(
-    readinessResult.data?.rule ?? null
+    batch.results.readinessRule.data?.rule ?? null
   );
   const globalRule = decodedRule.rule;
 
@@ -127,7 +159,7 @@ export async function loadMultiplyGridData(
   const perTypeRules: Partial<
     Record<GroupAudienceCategory, PerTypeReadinessRule>
   > = {};
-  for (const row of perTypeReadinessResult.data ?? []) {
+  for (const row of batch.results.perTypeReadiness.data ?? []) {
     perTypeRules[row.audience_category] = decodePerTypeRule(row.rule);
   }
 
@@ -207,15 +239,20 @@ export async function loadMultiplyGridData(
       perTypeRules
     ),
     ruleFellBack: decodedRule.fellBack,
-    error:
-      categoriesResult.error?.message ??
-      targetCellsResult.error?.message ??
-      groupLifecycleResult.error?.message ??
-      readinessResult.error?.message ??
-      perTypeReadinessResult.error?.message ??
-      interestResult.error?.message ??
-      cellSizesResult.error?.message ??
-      cellHealthResult.error?.message ??
-      null,
+    // The first failure in the batch's declaration order above.
+    error: batch.firstError,
   };
+}
+
+export async function loadMultiplyGridData(
+  now: Date = new Date()
+): Promise<MultiplyGridData> {
+  const client = await createSupabaseServerClient();
+  if (!client) {
+    return {
+      ...EMPTY_MULTIPLY_GRID_DATA,
+      ministryYear: currentMinistryYear(now),
+    };
+  }
+  return buildMultiplyGridData(supabaseMultiplyGridReads(client), now);
 }
