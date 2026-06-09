@@ -28,8 +28,10 @@ import type {
 import {
   callUuidRpc,
   callJsonRpc,
+  callTextRpc,
   type UuidRpcResult,
   type JsonRpcResult,
+  type TextRpcResult,
 } from "@/lib/shared/rpc";
 
 type RpcResult = UuidRpcResult;
@@ -181,13 +183,15 @@ export function rpcSuperAdminCreateInvitation(
 // super_admin satisfies, so no new RPC is needed.
 
 // Phase SAC.5 (#165) bulk people import. p_rows is the parsed + de-duped row
-// array from lib/admin/people-import.ts; the RPC returns the created count as
-// text via the shared uuid-string return channel.
+// array from lib/admin/people-import.ts; the RPC returns the created COUNT as a
+// `text` scalar (e.g. "0", "3") — NOT a uuid. It must use the text channel:
+// `callUuidRpc` would run the count through `readUuidRpcData`, which rejects any
+// non-uuid string as null, so every successful import would read as a failure.
 export function rpcSuperAdminBulkImportPeople(
   client: AppSupabaseClient,
   args: { p_rows: Array<Record<string, unknown>> }
-): Promise<RpcResult> {
-  return callUuidRpc(client, "super_admin_bulk_import_people", args);
+): Promise<TextRpcResult> {
+  return callTextRpc(client, "super_admin_bulk_import_people", args);
 }
 
 // PRD-SAC6 (#288) Clean Slate history wipe. Takes no arguments; the RPC

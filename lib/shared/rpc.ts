@@ -43,3 +43,24 @@ export async function callJsonRpc(
   const r = await client.rpc(name as never, args as never);
   return { data: r.data ?? null, error: r.error };
 }
+
+// A few RPCs return a plain `text` scalar that is NOT a uuid — e.g. the bulk
+// people-import returns a created COUNT ("0", "3"). Those must not go through
+// `callUuidRpc`: `readUuidRpcData` rejects any non-uuid string as null, which a
+// "did it succeed?" caller would misread as a failure even though the RPC
+// committed. This keeps the value as a string (or null when the driver returns a
+// non-string), and the caller parses it.
+export type TextRpcResult = {
+  data: string | null;
+  error: { message: string } | null;
+};
+
+export async function callTextRpc(
+  client: AppSupabaseClient,
+  name: string,
+  args: unknown = {}
+): Promise<TextRpcResult> {
+  const r = await client.rpc(name as never, args as never);
+  const data: unknown = r.data ?? null;
+  return { data: typeof data === "string" ? data : null, error: r.error };
+}
