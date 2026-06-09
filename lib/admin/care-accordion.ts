@@ -64,6 +64,18 @@ const SEALED_NOTE_STATE: CareAccordionNoteState = {
   prayerCount: 0,
 };
 
+// The grant boolean the inline transparency toggle renders from (#467).
+// "visible" IS the grant: RLS only returns note/prayer rows for granted
+// subjects, and buildNoteStateByLeaderId marks a Leader visible exactly when
+// the grant is on (or readable rows came back, which RLS only allows when
+// granted). Named here so the panel and tests share one mapping instead of
+// comparing the union string in the UI.
+export function isNoteTransparencyGranted(
+  notes: CareAccordionNoteState
+): boolean {
+  return notes.transparency === "visible";
+}
+
 // One Leader inside an Over-Shepherd pane (or the Unassigned pane). Carries the
 // pastoral Leader Care Status (null when the Leader has no care profile yet),
 // the resolved active groups they lead (with each group's health grade), an

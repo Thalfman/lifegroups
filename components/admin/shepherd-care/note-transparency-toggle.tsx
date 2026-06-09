@@ -17,9 +17,15 @@ import { P, fontBody } from "@/lib/pastoral";
 export function NoteTransparencyToggle({
   subjectProfileId,
   granted,
+  subjectName,
 }: {
   subjectProfileId: string;
   granted: boolean;
+  // When the toggle repeats across Leaders (the Care accordion, #467) the
+  // button's accessible name must carry record context — same invariant as
+  // every repeated admin control (Admin Interaction Model req 4). Optional so
+  // the single-toggle per-leader detail page keeps its plain visible label.
+  subjectName?: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     setNoteTransparencyGrant
@@ -27,6 +33,9 @@ export function NoteTransparencyToggle({
 
   // Submitting flips to the opposite of the current state.
   const next = !granted;
+  const buttonLabel = granted
+    ? "Turn off (seal)"
+    : "Turn on (let leadership read)";
 
   return (
     <form
@@ -55,12 +64,13 @@ export function NoteTransparencyToggle({
         tone={granted ? "ghost" : "terra"}
         size="sm"
         disabled={pending}
+        // Starts with the visible label (axe label-in-name) then adds the
+        // leader, mirroring FollowUpStatusControls' contextual-name pattern.
+        aria-label={
+          subjectName ? `${buttonLabel} for ${subjectName}` : undefined
+        }
       >
-        {pending
-          ? "Saving…"
-          : granted
-            ? "Turn off (seal)"
-            : "Turn on (let leadership read)"}
+        {pending ? "Saving…" : buttonLabel}
       </PButton>
       <FormStatus
         state={state}

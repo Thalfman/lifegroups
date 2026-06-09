@@ -34,6 +34,8 @@ import {
 } from "@/components/admin/people-management-shell";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
+import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -220,6 +222,36 @@ const COLLISION_GROUPS = [
   group({ id: "grp-ya-north", name: "Young Adults", location_area: "North" }),
   group({ id: "grp-ya-south", name: "Young Adults", location_area: "South" }),
 ];
+
+// Care accordion leader panels (#467): the per-Leader panel from the canonical
+// /admin/care Over-Shepherds view, now hosting the inline transparency toggle.
+// One sealed Leader and one granted Leader (with counts) so the care-actions
+// spec can assert the toggle's leader-contextual accessible name in both
+// states, that the panel stays counts-only (never note bodies), and the
+// pending state while a flip is in flight.
+const CARE_PANEL_LEADER_SEALED: CareAccordionLeader = {
+  profileId: "00000000-0000-4000-8000-0000000000a1",
+  fullName: "Anderson Lee",
+  groupNames: ["Anderson"],
+  ledGroups: [{ id: "grp-anderson", name: "Anderson", healthGrade: "B" }],
+  careStatus: "doing_well",
+  lastContactAt: "2026-05-12",
+  nextStepDue: "2026-05-26",
+  leaderHealthGrade: "A",
+  notes: { transparency: "sealed", careNoteCount: 0, prayerCount: 0 },
+};
+
+const CARE_PANEL_LEADER_GRANTED: CareAccordionLeader = {
+  profileId: "00000000-0000-4000-8000-0000000000a2",
+  fullName: "Bryant Cole",
+  groupNames: ["Bryant"],
+  ledGroups: [{ id: "grp-bryant", name: "Bryant", healthGrade: "C" }],
+  careStatus: "needs_follow_up",
+  lastContactAt: "2026-05-05",
+  nextStepDue: "2026-05-20",
+  leaderHealthGrade: "B",
+  notes: { transparency: "visible", careNoteCount: 2, prayerCount: 1 },
+};
 
 const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
   // Two follow-ups with the SAME title and status: titles are not unique, so
@@ -856,6 +888,20 @@ export function A11yHarnessClient() {
           current={null}
           leaderName="Anderson Lee"
         />
+      </Surface>
+
+      {/* Care accordion leader panels (#467). The transparency toggle moved
+          inline into the accordion's Care Notes & Prayer slot: a sealed
+          Leader renders the interactive toggle (off), a granted Leader keeps
+          the counts-only line next to the seal control. Both toggles must
+          carry the Leader's name in their accessible names since the control
+          repeats per Leader. */}
+      <Surface
+        id="care-accordion-panel"
+        heading="Care accordion (leader panels)"
+      >
+        <CareLeaderPanel leader={CARE_PANEL_LEADER_SEALED} />
+        <CareLeaderPanel leader={CARE_PANEL_LEADER_GRANTED} />
       </Surface>
 
       <Surface id="group-health" heading="Group health (triage)">

@@ -3,7 +3,11 @@ import type { CSSProperties, ReactNode } from "react";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
-import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
+import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
+import {
+  isNoteTransparencyGranted,
+  type CareAccordionLeader,
+} from "@/lib/admin/care-accordion";
 
 // The per-Leader detail inside a Care accordion pane (#373, ADR 0016). Opened
 // (it lives behind its own <details>), it shows an at-a-glance contact line
@@ -12,7 +16,11 @@ import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
 // the Group-Health Grade(s), the Leader-Health Grade, and the Care Notes /
 // Prayer Requests presence. The slots read from the accordion model's enrichment
 // (no per-leader reads here); the Leader name still links into the full
-// per-leader detail surface where the actual care work happens.
+// per-leader detail surface where the actual care work happens. The Care Notes
+// & Prayer slot also hosts the inline transparency toggle (#467) — the same
+// audited control the detail page uses — so the Ministry Admin can flip a
+// Leader's grant without leaving the accordion. The slot stays counts-only:
+// note and Prayer Request bodies never render here.
 
 const slotLabelStyle: CSSProperties = {
   margin: 0,
@@ -70,16 +78,11 @@ function Slot({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-// "N care note(s) · M prayer request(s)", or a sealed / none-yet line. Never a
-// note body — only counts behind the RLS transparency grant.
-function CareNotesValue({ notes }: { notes: CareAccordionLeader["notes"] }) {
-  if (notes.transparency === "sealed") {
-    return (
-      <span style={mutedTextStyle}>
-        Sealed — visible when this leader&rsquo;s toggle is on.
-      </span>
-    );
-  }
+// "N care note(s) · M prayer request(s)", or a none-yet line. Rendered only
+// when the Leader's transparency grant is on; never a note body — only counts
+// behind the RLS grant. Sealed Leaders skip this line entirely: the inline
+// toggle below carries the sealed state instead (#467).
+function CareNoteCounts({ notes }: { notes: CareAccordionLeader["notes"] }) {
   if (notes.careNoteCount === 0 && notes.prayerCount === 0) {
     return <span style={mutedTextStyle}>None yet.</span>;
   }
@@ -93,6 +96,7 @@ function CareNotesValue({ notes }: { notes: CareAccordionLeader["notes"] }) {
 export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
   const groupLabel =
     leader.groupNames.length > 0 ? leader.groupNames.join(", ") : "No group";
+  const granted = isNoteTransparencyGranted(leader.notes);
 
   return (
     <details
@@ -222,7 +226,19 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
           </Slot>
 
           <Slot label="Care Notes & Prayer">
-            <CareNotesValue notes={leader.notes} />
+            <div style={{ display: "grid", gap: 8 }}>
+              {granted ? <CareNoteCounts notes={leader.notes} /> : null}
+              {/* #467 — the same Ministry-Admin-controlled toggle the
+                  per-leader detail page renders (one audited write path:
+                  setNoteTransparencyGrant → set_note_transparency_grant
+                  RPC). Its revalidate list covers /admin/care, so a flip
+                  re-renders this panel in the new state. */}
+              <NoteTransparencyToggle
+                subjectProfileId={leader.profileId}
+                granted={granted}
+                subjectName={leader.fullName}
+              />
+            </div>
           </Slot>
         </div>
 

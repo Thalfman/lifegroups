@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCareAccordion,
   buildNoteStateByLeaderId,
+  isNoteTransparencyGranted,
   resolveGroupHealthByGroupId,
   resolveLeaderHealthByLeaderId,
   type CareAccordionGroupLeader,
@@ -399,5 +400,53 @@ describe("buildNoteStateByLeaderId", () => {
       prayerSubjectIds: [],
     });
     expect(map.size).toBe(0);
+  });
+});
+
+// #467 — the inline transparency toggle in the accordion renders from the
+// model's note state: granted (toggle "on", counts shown) vs sealed (toggle
+// "off"). isNoteTransparencyGranted is the single mapping the panel uses.
+describe("isNoteTransparencyGranted", () => {
+  it("maps visible → granted, sealed → not granted", () => {
+    expect(
+      isNoteTransparencyGranted({
+        transparency: "visible",
+        careNoteCount: 2,
+        prayerCount: 1,
+      })
+    ).toBe(true);
+    expect(
+      isNoteTransparencyGranted({
+        transparency: "sealed",
+        careNoteCount: 0,
+        prayerCount: 0,
+      })
+    ).toBe(false);
+  });
+
+  it("a granted Leader with zero notes still reads granted (toggle on, zero counts)", () => {
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: ["ldr-1"],
+      careNoteSubjectIds: [],
+      prayerSubjectIds: [],
+    });
+    const state = map.get("ldr-1")!;
+    expect(isNoteTransparencyGranted(state)).toBe(true);
+    expect(state.careNoteCount).toBe(0);
+    expect(state.prayerCount).toBe(0);
+  });
+
+  it("the accordion's default (no enrichment) state drives a sealed toggle", () => {
+    const panes = buildCareAccordion({
+      overShepherds: [overShepherd("os-1", "Olive Shepherd")],
+      assignments: [assignment("ldr-1", "os-1", "Olive Shepherd")],
+      groupLeaders: [],
+      groups: [],
+      careEntries: [entry("ldr-1", "Lance Leader", "doing_well")],
+    });
+    const leader = panes.find((p) => p.overShepherdId === "os-1")!.leaders[0]!;
+    // The panel feeds these two straight into NoteTransparencyToggle.
+    expect(leader.profileId).toBe("ldr-1");
+    expect(isNoteTransparencyGranted(leader.notes)).toBe(false);
   });
 });
