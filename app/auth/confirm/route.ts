@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { startActionLog } from "@/lib/observability/instrument";
+import {
+  PW_SETUP_COOKIE,
+  PW_SETUP_COOKIE_VALUE,
+  passwordSetupCookieSetOptions,
+} from "@/lib/auth/password-setup";
 import { isValidOtpType, safeNext } from "./safe-next";
 
 // Server-side verification endpoint for Supabase auth email links (password
@@ -31,6 +37,19 @@ function field(form: FormData, name: string): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+// A successful verify here establishes a full session, but for an invited
+// account no password is set yet. Mark the session so middleware pins it to the
+// set-password screen until resetPasswordAction saves a password — otherwise the
+// user could navigate into the app and strand the account password-less.
+async function markPasswordSetupPending(): Promise<void> {
+  const store = await cookies();
+  store.set(
+    PW_SETUP_COOKIE,
+    PW_SETUP_COOKIE_VALUE,
+    passwordSetupCookieSetOptions()
+  );
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.redirect(new URL("/reset-password", request.url));
 }
@@ -59,6 +78,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ctx.finish("denied", { error_code: error.code ?? "verify_otp_failed" });
       return seeOther(request, "/reset-password?status=invalid");
     }
+    await markPasswordSetupPending();
     ctx.finish("ok", { reason: "token_hash" });
     return seeOther(request, next);
   }
@@ -75,6 +95,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       return seeOther(request, "/reset-password?status=invalid");
     }
+    await markPasswordSetupPending();
     ctx.finish("ok", { reason: "code" });
     return seeOther(request, next);
   }

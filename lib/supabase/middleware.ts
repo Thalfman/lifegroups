@@ -1,5 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  PW_SETUP_COOKIE,
+  PW_SETUP_COOKIE_VALUE,
+  passwordSetupCookieSetOptions,
+  shouldRedirectToPasswordSetup,
+} from "@/lib/auth/password-setup";
 import { getSupabaseEnv } from "./config";
 
 export async function updateSupabaseSession(
@@ -33,6 +39,57 @@ export async function updateSupabaseSession(
   // revoked/deleted Auth user is rejected on the next request, not at token
   // expiry.
   const { data: claimsData } = await supabase.auth.getClaims();
+
+  // Pin a "password setup pending" session to the set-password screen. A session
+  // created by verifying an invite / password-reset email link (app/auth/confirm)
+  // is fully authenticated even when the account has no password yet, so without
+  // this gate an invited user could navigate into the app and strand their
+  // account with an empty password (every later sign-in then fails with the
+  // generic "Invalid email or password"). The marker cookie is set by
+  // /auth/confirm on a successful verify and cleared by resetPasswordAction once
+  // a password is saved.
+  const pwSetupAuthenticated = Boolean(claimsData?.claims);
+  const pwSetupMarkerPresent =
+    request.cookies.get(PW_SETUP_COOKIE)?.value === PW_SETUP_COOKIE_VALUE;
+
+  // Keep the marker tracking the auth session. Supabase rotates its session
+  // cookies on every request, so renew the marker on every authenticated request
+  // that carries it — including allowed setup paths like /reset-password, not
+  // just when we redirect — otherwise an idle session that keeps revisiting the
+  // setup screen could extend its Supabase cookies while the marker expires out
+  // from under it, and later slip past the gate. Limit to GET so this never
+  // races the POST server actions that deliberately clear the marker
+  // (completion / login / sign-out).
+  if (
+    pwSetupAuthenticated &&
+    pwSetupMarkerPresent &&
+    request.method === "GET"
+  ) {
+    response.cookies.set(
+      PW_SETUP_COOKIE,
+      PW_SETUP_COOKIE_VALUE,
+      passwordSetupCookieSetOptions()
+    );
+  }
+
+  if (
+    shouldRedirectToPasswordSetup({
+      authenticated: pwSetupAuthenticated,
+      hasSetupCookie: pwSetupMarkerPresent,
+      pathname: request.nextUrl.pathname,
+    })
+  ) {
+    const target = request.nextUrl.clone();
+    target.pathname = "/reset-password";
+    target.search = "";
+    const redirectResponse = NextResponse.redirect(target);
+    // Carry over the session cookies getClaims() rotated above and the marker
+    // renewed above so the redirect drops neither.
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
 
   // Serve the statically-generated /login document for anonymous visitors
   // landing on the bare domain. A rewrite (not a redirect) keeps the address

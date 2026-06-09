@@ -1,10 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { defaultLandingPathForRole, type UserRole } from "@/lib/auth/roles";
 import { log } from "@/lib/observability/logger";
 import { hashEmail, newCorrelationId } from "@/lib/observability/identifiers";
+import {
+  PW_SETUP_COOKIE,
+  passwordSetupCookieClearOptions,
+} from "@/lib/auth/password-setup";
 import { isSafeNextPath } from "./next-path";
 import type { ProfileStatus } from "@/types/enums";
 
@@ -14,13 +19,16 @@ const ROUTE = "login";
 
 export async function loginAction(
   _prev: LoginFormState,
-  formData: FormData,
+  formData: FormData
 ): Promise<LoginFormState> {
   const requestId = newCorrelationId();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const nextRaw = formData.get("next");
-  const next = typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
+  const next =
+    typeof nextRaw === "string" && isSafeNextPath(nextRaw) ? nextRaw : null;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -53,11 +61,23 @@ export async function loginAction(
       route_or_action: ROUTE,
       request_id: requestId,
       email_hash: emailHash,
-      // Stable code, no leak about whether the email exists.
-      error_code: "invalid_credentials",
+      // Record the real GoTrue code/status server-side (e.g. invalid_credentials
+      // vs email_not_confirmed vs over_request_rate_limit) so failures are
+      // triageable from logs. The user-facing message below stays deliberately
+      // generic so it never leaks whether the email is registered.
+      error_code: error.code ?? "invalid_credentials",
+      auth_status: error.status,
     });
     return { error: "Invalid email or password." };
   }
+
+  // A successful password sign-in means this session is not (or no longer)
+  // password-setup-pending, so release any set-password gate marker. Without
+  // this, signing into a *different* account while a stale marker is present
+  // would bounce the new session to /reset-password and let the form retarget
+  // the wrong account.
+  const cookieStore = await cookies();
+  cookieStore.set(PW_SETUP_COOKIE, "", passwordSetupCookieClearOptions());
 
   const {
     data: { user },
@@ -95,10 +115,16 @@ export async function loginAction(
     // Scope `local` so we only revoke the session we just created, not every
     // session the user has across other devices.
     await client.auth.signOut({ scope: "local" });
-    return { error: "Sign-in succeeded but we couldn't load your profile. Please try again." };
+    return {
+      error:
+        "Sign-in succeeded but we couldn't load your profile. Please try again.",
+    };
   }
 
-  const profile = profileQuery.data as { role: UserRole; status: ProfileStatus } | null;
+  const profile = profileQuery.data as {
+    role: UserRole;
+    status: ProfileStatus;
+  } | null;
 
   if (!profile) {
     log.warn({
