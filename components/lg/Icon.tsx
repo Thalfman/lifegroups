@@ -32,7 +32,9 @@ export type IconName =
   | "inbox"
   | "archive"
   | "sparkle"
-  | "compass";
+  | "compass"
+  | "shield"
+  | "alert";
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -157,6 +159,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="8" />
       <path d="m14.8 9.2-3.8 1.6L9.2 14.8l3.8-1.6z" />
+    </>
+  ),
+  shield: <path d="M12 3 19 6v5.2c0 4.4-2.9 7.4-7 9.8-4.1-2.4-7-5.4-7-9.8V6z" />,
+  alert: (
+    <>
+      <path d="M12 4 2.8 19.5h18.4z" />
+      <path d="M12 10.5v4M12 17h.01" />
     </>
   ),
 };
