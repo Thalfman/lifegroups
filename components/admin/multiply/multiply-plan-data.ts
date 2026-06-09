@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchApprenticePickerRefs,
@@ -50,56 +51,64 @@ export function supabaseMultiplyPlanReads(
   });
 }
 
-const EMPTY_VIEW: MultiplicationView = {
+// The documented empty shape: what the Plan tab degrades to when a blocking
+// read fails or the database is not configured.
+export const EMPTY_MULTIPLY_PLAN_VIEW: MultiplicationView = {
   segments: [],
   typeOptions: [],
   groupsByType: {},
   apprenticesByGroup: {},
 };
 
-// Pure assembly over the reads seam. A failure in any of the three source reads
-// blocks the planner (mirrors the launch-planning host): the apprentice picker
-// must not render with no options and silently clear leader_pipeline_id on save.
+// Pure assembly over the reads seam, gathered through the batch combinator. A
+// failure in any of the three source reads blocks the planner (mirrors the
+// launch-planning host): the apprentice picker must not render with no options
+// and silently clear leader_pipeline_id on save.
 export async function buildMultiplyPlanData(
   reads: MultiplyPlanReads
 ): Promise<MultiplyPlanData> {
-  const [
-    candidatesRes,
-    groupRefsRes,
-    apprenticeRefsRes,
-    menCatsRes,
-    womenCatsRes,
-    mixedCatsRes,
-  ] = await Promise.all([
-    reads.fetchMultiplicationCandidates(),
-    reads.fetchGroupRefs(),
-    reads.fetchApprenticeRefs(),
-    reads.fetchCategoriesForAudience("men"),
-    reads.fetchCategoriesForAudience("women"),
-    reads.fetchCategoriesForAudience("mixed"),
-  ]);
+  const batch = await readBatch({
+    candidates: () => reads.fetchMultiplicationCandidates(),
+    groupRefs: () => reads.fetchGroupRefs(),
+    apprenticeRefs: () => reads.fetchApprenticeRefs(),
+    menCats: () => reads.fetchCategoriesForAudience("men"),
+    womenCats: () => reads.fetchCategoriesForAudience("women"),
+    mixedCats: () => reads.fetchCategoriesForAudience("mixed"),
+  });
 
+  // Error precedence as data: only the three SOURCE reads block the planner,
+  // in this order. The category reads are deliberately excluded — they degrade
+  // to an empty type picker below.
   const error =
-    candidatesRes.error?.message ??
-    groupRefsRes.error?.message ??
-    apprenticeRefsRes.error?.message ??
+    batch.errors.candidates ??
+    batch.errors.groupRefs ??
+    batch.errors.apprenticeRefs ??
     null;
 
-  if (error) return { ...EMPTY_VIEW, error };
+  if (error) return { ...EMPTY_MULTIPLY_PLAN_VIEW, error };
 
   // The type picker degrades to empty rather than blocking the plan on a
   // category read failure — the edit form preserves a candidate's existing type.
   const typeOptions = buildGroupTypeOptions({
-    men: (menCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-    women: (womenCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
-    mixed: (mixedCatsRes.data ?? []).map((c) => ({ id: c.id, label: c.label })),
+    men: (batch.results.menCats.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
+    women: (batch.results.womenCats.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
+    mixed: (batch.results.mixedCats.data ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+    })),
   });
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const view = buildMultiplicationView(
-    candidatesRes.data ?? [],
-    groupRefsRes.data ?? [],
-    apprenticeRefsRes.data ?? [],
+    batch.results.candidates.data ?? [],
+    batch.results.groupRefs.data ?? [],
+    batch.results.apprenticeRefs.data ?? [],
     typeOptions,
     todayIso
   );
@@ -110,7 +119,7 @@ export async function loadMultiplyPlanData(): Promise<MultiplyPlanData> {
   const client = await createSupabaseServerClient();
   if (!client) {
     return {
-      ...EMPTY_VIEW,
+      ...EMPTY_MULTIPLY_PLAN_VIEW,
       error: "Database is not configured in this environment.",
     };
   }

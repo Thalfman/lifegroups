@@ -1,4 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
+import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   buildProspectBoard,
   fetchDueFollowUps,
@@ -18,6 +21,9 @@ import { churchTodayIso } from "@/lib/shared/church-time";
 // in one batch, then composes the active board + collapsed Joined roll-up
 // purely (buildProspectBoard). `activeGroups` feeds the Match/Join group picker;
 // `groupNamesById` resolves the roll-up's group labels.
+//
+// Assembly is a pure function of the reads seam (ADR 0015): `loadPlanData`
+// binds the live client; tests bind an in-memory adapter satisfying `PlanReads`.
 
 export type PlanGroupOption = { id: string; name: string };
 
@@ -56,33 +62,56 @@ export const EMPTY_PLAN_DATA: PlanData = {
   },
 };
 
-export async function loadPlanData(): Promise<PlanData> {
-  const client = await createSupabaseServerClient();
-  if (!client) return EMPTY_PLAN_DATA;
+// The reads this surface assembles, as one interface (ADR 0015). `loadPlanData`
+// binds the live client; a test binds an in-memory adapter.
+export type PlanReads = {
+  fetchProspects: OmitClient<typeof fetchProspects>;
+  fetchPlanGroupOptions: OmitClient<typeof fetchPlanGroupOptions>;
+  fetchDueFollowUps: OmitClient<typeof fetchDueFollowUps>;
+  fetchActiveCategoryOptionsByAudience: OmitClient<
+    typeof fetchActiveCategoryOptionsByAudience
+  >;
+};
 
-  const today = churchTodayIso();
+// Production adapter: binds the live Supabase client to every read this surface
+// needs.
+export function supabasePlanReads(client: AppSupabaseClient): PlanReads {
+  return bindReads(client, {
+    fetchProspects,
+    fetchPlanGroupOptions,
+    fetchDueFollowUps,
+    fetchActiveCategoryOptionsByAudience,
+  });
+}
+
+// Pure assembly: gather the four reads through the batch combinator, then
+// compose the board + pickers with a per-section error. Every degrade path is
+// reachable from a test through an in-memory `reads` adapter.
+export async function buildPlanData(
+  reads: PlanReads,
+  options: { todayIso: string }
+): Promise<PlanData> {
   // #379: due follow-ups are read DIRECTLY (filtered in the DB), not derived from
   // the board page — an older prospect's due step could otherwise fall off the
   // capped, newest-first board and the reminder be silently missed. Only
   // non-archived dated follow_up steps are eligible; connect_to_group_leader and
   // undated steps never appear (encoded in dueFollowUps).
-  const [prospectsResult, groupsResult, dueTasksResult, categoryOptionsResult] =
-    await Promise.all([
-      fetchProspects(client),
-      fetchPlanGroupOptions(client),
-      fetchDueFollowUps(client, today),
-      fetchActiveCategoryOptionsByAudience(client),
-    ]);
+  const batch = await readBatch({
+    prospects: () => reads.fetchProspects(),
+    groups: () => reads.fetchPlanGroupOptions(),
+    dueTasks: () => reads.fetchDueFollowUps(options.todayIso),
+    categoryOptions: () => reads.fetchActiveCategoryOptionsByAudience(),
+  });
 
-  const prospects = prospectsResult.data ?? [];
-  const groups = groupsResult.data ?? [];
+  const prospects = batch.results.prospects.data ?? [];
+  const groups = batch.results.groups.data ?? [];
 
   const groupNamesById: Record<string, string> = {};
   for (const g of groups) groupNamesById[g.id] = g.name;
 
   const board = buildProspectBoard(prospects, groupNamesById);
 
-  const dueTasks = dueTasksResult.data ?? [];
+  const dueTasks = batch.results.dueTasks.data ?? [];
 
   // Open groups (not closed) are the valid Match/Join targets.
   const activeGroups: PlanGroupOption[] = groups
@@ -99,12 +128,21 @@ export async function loadPlanData(): Promise<PlanData> {
     // the funnel — the prospect can still be added without naming a cell — but
     // the error is surfaced below so the degradation isn't silent.
     categoryOptionsByAudience:
-      categoryOptionsResult.data ?? EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
+      batch.results.categoryOptions.data ?? EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE,
+    // Per-section error precedence as data: the due-tasks read folds into the
+    // prospects key (both feed the board column), the rest map one-to-one.
     errors: {
-      prospects:
-        prospectsResult.error?.message ?? dueTasksResult.error?.message ?? null,
-      groups: groupsResult.error?.message ?? null,
-      categoryOptions: categoryOptionsResult.error?.message ?? null,
+      prospects: batch.errors.prospects ?? batch.errors.dueTasks,
+      groups: batch.errors.groups,
+      categoryOptions: batch.errors.categoryOptions,
     },
   };
+}
+
+export async function loadPlanData(): Promise<PlanData> {
+  const client = await createSupabaseServerClient();
+  if (!client) return EMPTY_PLAN_DATA;
+  return buildPlanData(supabasePlanReads(client), {
+    todayIso: churchTodayIso(),
+  });
 }
