@@ -204,7 +204,7 @@ export function NeedsAttentionArea({
         ))}
       </ol>
       {actions.length < 3 ? (
-        <AllClear>Nothing else needs attention.</AllClear>
+        <AllClear>Nothing else needs your attention right now.</AllClear>
       ) : null}
     </div>
   );

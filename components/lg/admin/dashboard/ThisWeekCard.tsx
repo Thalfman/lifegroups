@@ -101,7 +101,7 @@ export function ThisWeekCard({
             color: P.ink3,
           }}
         >
-          Nothing scheduled for the week ahead.
+          The week ahead is clear — no follow-ups are due.
         </p>
       ) : (
         <div>

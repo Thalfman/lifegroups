@@ -58,7 +58,8 @@ export function LeaderPipelineOverviewCard({
             color: P.ink3,
           }}
         >
-          No apprentices in the pipeline yet.
+          No apprentices yet — future Leaders will gather here as they are
+          identified.
         </p>
       ) : (
         <div>
