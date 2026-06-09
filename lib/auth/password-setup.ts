@@ -26,15 +26,19 @@ export const PW_SETUP_COOKIE = "lg_pw_setup";
 export const PW_SETUP_COOKIE_VALUE = "1";
 
 // The gate must hold for the WHOLE auth session, not a fixed short window: the
-// verifyOtp session is a full session whose cookies can outlive a brief marker,
-// and if the marker lapsed first a password-less invited user could wait it out
-// and then wander into the app — recreating the stranding this guards against.
-// So the marker is cleared explicitly on completion / login / sign-out (see
-// above) rather than relied on to expire, and its max-age is only a generous
-// safety cap that comfortably outlives a normal session. /reset-password offers
-// a "sign out" escape so a long-lived marker can never trap a user who changed
-// their mind.
-export const PW_SETUP_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// verifyOtp session is a full session whose cookies (@supabase/ssr defaults to a
+// 400-day max-age, refreshed on every request) can outlive a briefer marker. If
+// the marker lapsed first, a password-less invited user could wait it out and
+// then wander into the app — recreating the stranding this guards against. So:
+//   - the max-age matches Supabase's cookie lifetime (400 days), and middleware
+//     refreshes the marker whenever it gates a request, so it tracks the session
+//     instead of expiring out from under it;
+//   - it is cleared explicitly the moment the session stops being
+//     password-setup-pending (completion / login / sign-out), not relied on to
+//     expire;
+//   - /reset-password offers a "sign out" escape so a long-lived marker can
+//     never trap a user who changed their mind.
+export const PW_SETUP_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60; // 400 days; matches @supabase/ssr
 
 // Paths a password-setup-pending session may reach. Everything else bounces to
 // /reset-password. Kept deliberately small: the set-password screen and its

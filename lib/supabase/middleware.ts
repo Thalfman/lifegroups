@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   PW_SETUP_COOKIE,
   PW_SETUP_COOKIE_VALUE,
+  passwordSetupCookieSetOptions,
   shouldRedirectToPasswordSetup,
 } from "@/lib/auth/password-setup";
 import { getSupabaseEnv } from "./config";
@@ -64,6 +65,16 @@ export async function updateSupabaseSession(
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
+    // Refresh the marker on every gated request so its lifetime tracks the auth
+    // session (Supabase rotates its own session cookies the same way). Set last
+    // so it can't be clobbered by a carried-over cookie. Without this, a marker
+    // shorter-lived than the 400-day session cookies could expire first and let
+    // a still-authenticated password-less session slip past the gate.
+    redirectResponse.cookies.set(
+      PW_SETUP_COOKIE,
+      PW_SETUP_COOKIE_VALUE,
+      passwordSetupCookieSetOptions()
+    );
     return redirectResponse;
   }
 
