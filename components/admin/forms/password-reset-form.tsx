@@ -8,9 +8,13 @@ import { useActionForm, FormStatus } from "./action-form";
 // Supabase Auth (no service role). The send is audited server-side.
 export function PasswordResetForm({
   profileId,
+  profileName,
   email,
 }: {
   profileId: string;
+  // The person's name, folded into the accessible label so screen-reader users
+  // can tell the repeated row actions apart (#456).
+  profileName: string;
   email: string;
 }) {
   const { state, formAction, pending } = useActionForm<{ email: string }>(
@@ -21,7 +25,13 @@ export function PasswordResetForm({
     <form action={formAction} style={{ display: "grid", gap: 6 }}>
       <input type="hidden" name="profile_id" value={profileId} />
       <input type="hidden" name="email" value={email} />
-      <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
+      <PButton
+        type="submit"
+        tone="ghost"
+        size="sm"
+        disabled={pending}
+        aria-label={`Send password reset link to ${profileName}`}
+      >
         {pending ? "Sending…" : "Send reset link"}
       </PButton>
       <FormStatus state={state} successText="Reset email sent." />

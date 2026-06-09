@@ -58,11 +58,15 @@ export function RoleChangeForm({
         can&rsquo;t be assigned here. You can&rsquo;t change your own role here;
         every change records an audit event.
       </p>
+      {/* Profile gets the flexible column (with a real minimum so names +
+          roles stay readable); New role a fixed readable width; the submit
+          button sits at the end of the same row, aligned to the field
+          baseline. lg-m-grid-stack collapses to one column on small screens. */}
       <div
         className="lg-m-grid-stack"
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 160px auto",
+          gridTemplateColumns: "minmax(240px, 1fr) minmax(180px, 220px) auto",
           gap: 12,
           alignItems: "end",
         }}
