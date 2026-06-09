@@ -4,7 +4,6 @@ import { PSeal } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./reset-password-form";
-import { abandonPasswordSetupAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -189,34 +188,7 @@ export default async function ResetPasswordPage({
           </p>
 
           {view.kind === "form" ? (
-            <>
-              <ResetPasswordForm />
-              {/* Escape hatch: until a password is saved, middleware pins this
-                  session to /reset-password. Let someone who landed here by
-                  mistake (or changed their mind) sign out cleanly instead of
-                  being stuck. */}
-              <form
-                action={abandonPasswordSetupAction}
-                style={{ marginTop: 18, textAlign: "center" }}
-              >
-                <button
-                  type="submit"
-                  style={{
-                    border: 0,
-                    background: "transparent",
-                    color: P.ink2,
-                    fontFamily: fontSans,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    padding: 6,
-                  }}
-                >
-                  Not setting up your account? Sign out
-                </button>
-              </form>
-            </>
+            <ResetPasswordForm />
           ) : view.kind === "confirm" ? (
             <form method="post" action="/auth/confirm">
               {Object.entries(view.fields).map(([name, value]) => (

@@ -35,9 +35,13 @@ export const PW_SETUP_COOKIE_VALUE = "1";
 //     instead of expiring out from under it;
 //   - it is cleared explicitly the moment the session stops being
 //     password-setup-pending (completion / login / sign-out), not relied on to
-//     expire;
-//   - /reset-password offers a "sign out" escape so a long-lived marker can
-//     never trap a user who changed their mind.
+//     expire.
+// There is intentionally no "abandon" button: a password-less invited account
+// must finish setup (that's the whole point), and signing it out without saving
+// a password would only strand it — its single-use invite token is already
+// spent. A recovery user who has a password and changed their mind isn't
+// trapped either: /login is allow-listed, so they can sign in normally and
+// loginAction clears the marker.
 export const PW_SETUP_COOKIE_MAX_AGE_SECONDS = 400 * 24 * 60 * 60; // 400 days; matches @supabase/ssr
 
 // Paths a password-setup-pending session may reach. Everything else bounces to
