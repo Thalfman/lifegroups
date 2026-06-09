@@ -1838,10 +1838,15 @@ function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
 // ---------------------------------------------------------------------------
 
 function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
+  // Chooser groups ordered by risk (#462), lowest first: launch preparation,
+  // then the recoverable history/attention resets, then the audit log, and
+  // finally permanent deletion — set apart via the destructive group panel.
+  // Grouping, ordering, and labels only; every workflow card, type-to-confirm
+  // gate, snapshot, and server action is unchanged.
   const groups: DangerWorkflowGroup[] = [
     {
-      id: "launch-reset",
-      label: "Launch reset",
+      id: "launch-preparation",
+      label: "Launch preparation",
       workflows: [
         {
           id: "launch-prep",
@@ -1871,9 +1876,23 @@ function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
       ],
     },
     {
-      id: "history-reset",
-      label: "History reset",
+      id: "history-attention-resets",
+      label: "History and attention resets",
+      // Narrowest reset first: attention (Home cards only), one history
+      // category, then all history at once.
       workflows: [
+        {
+          id: "attention",
+          label: "Reset attention",
+          riskNote: "Fresh start for the time-based Home cards.",
+          node: <AttentionResetCard state={data.attentionResetState} />,
+        },
+        {
+          id: "history-category",
+          label: "Reset by category",
+          riskNote: "Clear one kind of history at a time.",
+          node: <HistoryResetCard state={data.historyResetState} />,
+        },
         {
           id: "clean-slate",
           label: "Clean slate",
@@ -1885,29 +1904,11 @@ function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
             />
           ),
         },
-        {
-          id: "history-category",
-          label: "Reset by category",
-          riskNote: "Clear one kind of history at a time.",
-          node: <HistoryResetCard state={data.historyResetState} />,
-        },
       ],
     },
     {
-      id: "attention-reset",
-      label: "Attention reset",
-      workflows: [
-        {
-          id: "attention",
-          label: "Reset attention",
-          riskNote: "Fresh start for the time-based Home cards.",
-          node: <AttentionResetCard state={data.attentionResetState} />,
-        },
-      ],
-    },
-    {
-      id: "audit-reset",
-      label: "Audit reset",
+      id: "audit-log-actions",
+      label: "Audit log actions",
       workflows: [
         {
           id: "audit",
@@ -1918,8 +1919,9 @@ function DangerWorkspace({ data }: { data: SuperAdminConsoleData }) {
       ],
     },
     {
-      id: "permanent-delete",
-      label: "Permanent delete",
+      id: "permanent-deletion",
+      label: "Permanent deletion",
+      destructive: true,
       workflows: [
         {
           id: "permanent",
