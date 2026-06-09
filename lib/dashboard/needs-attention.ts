@@ -81,12 +81,12 @@ export function buildNeedsAttentionItems(
       key: "care_attention",
       label: "Leaders needing care attention",
       count: care.available ? care.needsAttention : 0,
-      // Land on the canonical Care page's Dashboard tab (#468): since #328 the
-      // Directory renders the full roster with no filter affordance, so the
-      // attention queue on the Dashboard tab is where each leader needing care
-      // is actually actionable. (Once a merged, filtered leaders tab lands,
-      // re-point this at it.)
-      href: "/admin/care?view=dashboard",
+      // Land on the canonical Care page's merged All-leaders tab with the
+      // roster's needs-attention filter pre-applied (#477): the legacy
+      // `view=directory` param selects the tab and `filter=needs_attention`
+      // narrows the roster to the flagged leaders, so this link finally lands
+      // filtered instead of merely on the right tab.
+      href: "/admin/care?view=directory&filter=needs_attention",
       tone: "primary",
     },
     {

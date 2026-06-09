@@ -51,8 +51,11 @@ const COUNT: CSSProperties = {
   background: "rgba(255,255,255,0.18)",
 };
 
-// The filter chips live in the Directory view, so their links stay in the
-// Directory view (view=directory) while toggling the needs-attention filter.
+// The chips live on the All-leaders roster (#477). Their links carry the
+// legacy `view=directory` param — accepted forever, resolving back onto the
+// All-leaders tab — while toggling the needs-attention filter, so a click
+// re-navigates to the same tab with the roster filter applied (SSR-friendly,
+// no client state).
 function buildHref(params: {
   filter: DirectoryFilter;
   coverage: CoverageFilter | undefined;

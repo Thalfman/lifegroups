@@ -172,9 +172,11 @@ describe("DashboardClient pivot overview cards (#470)", () => {
     indexOf(html, 'href="/admin/multiply"');
 
     // Live demo counts render — the funnel's roll-up line and the readiness
-    // headline both derive from the typed seeds, not zeros.
+    // headline both derive from the typed seeds, not zeros. ("Cells ready<"
+    // pins the card's own StatTile label, distinct from the vital-signs
+    // band's "Cells ready to multiply" title.)
     indexOf(html, "joined a group");
-    indexOf(html, "Cells ready");
+    indexOf(html, "Cells ready<");
   });
 
   it("renders the legacy guests card only when the guests frozen surface is live", () => {
@@ -220,7 +222,51 @@ describe("DashboardClient pivot overview cards (#470)", () => {
 
     indexOf(html, "Readiness data unavailable");
     // Neither the "no cells" empty state nor a 0-of-0 readout may render.
+    // (The "Cells ready<" needle is the card's StatTile label text node; the
+    // vital-signs band's "Cells ready to multiply" title legitimately stays,
+    // degraded to "—" by the same available:false.)
     expect(html).not.toContain("No active cells yet.");
-    expect(html).not.toContain("Cells ready");
+    expect(html).not.toContain("Cells ready<");
+  });
+});
+
+// Vital signs on the pivot (#476): the band leads with the six Care/Plan/
+// Multiply signals; the four retired launch-planning metrics ride the SAME
+// Planning nav gate as the LaunchPlanningOverviewCard — hidden under the
+// default flags, restored (not re-built) when the Super Admin re-shows
+// Planning.
+describe("DashboardClient vital signs band (#476)", () => {
+  const PIVOT_TITLES = [
+    "Active groups",
+    "Active leaders",
+    "Leaders needing care",
+    "Prospects in funnel",
+    "Cells ready to multiply",
+    "Follow-ups due this week",
+  ];
+  const LAUNCH_TITLES = [
+    "% of church in groups",
+    "People in groups",
+    "Capacity used",
+    "Launch outlook",
+  ];
+
+  it("shows the six pivot metrics and no launch-planning metric under the default hidden set", () => {
+    const html = render({
+      hiddenNavAreas: ["/admin/groups", "/admin/people", "/admin/planning"],
+    });
+
+    for (const title of PIVOT_TITLES) indexOf(html, title);
+    for (const title of LAUNCH_TITLES) expect(html).not.toContain(title);
+  });
+
+  it("restores the launch-planning metrics when the Planning nav is re-shown", () => {
+    const html = render({
+      hiddenNavAreas: ["/admin/groups", "/admin/people"],
+    });
+
+    for (const title of [...PIVOT_TITLES, ...LAUNCH_TITLES]) {
+      indexOf(html, title);
+    }
   });
 });

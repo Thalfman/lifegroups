@@ -58,7 +58,7 @@ import {
   DEMO_SELECTED_WEEK,
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
-import { group } from "@/lib/dashboard/group-fixtures";
+import { group, settings } from "@/lib/dashboard/group-fixtures";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -484,7 +484,18 @@ const SETTINGS_DATA: SettingsShellData = {
   defaults: DEMO_METRIC_DEFAULTS,
   defaultsSource: "live",
   groups: DEMO_GROUPS,
-  groupMetricSettings: DEMO_METRIC_SETTINGS,
+  // #478 (P2.2): one extra row with a manual health-status override (kept out
+  // of the shared DEMO_METRIC_SETTINGS so the dashboard demo seed's health
+  // buckets stay untouched), so the "Currently overridden" summary's canonical
+  // status label ("Needs follow-up", never de-underscored enum text) is in the
+  // tree for the spec.
+  groupMetricSettings: [
+    ...DEMO_METRIC_SETTINGS,
+    settings({
+      group_id: "fb-cap-ok-1",
+      manual_health_status_override: "needs_follow_up",
+    }),
+  ],
   groupRubricCriteria: [
     { key: "attendance", label: "Attendance", weight: 60 },
     { key: "unity", label: "Unity", weight: 40 },

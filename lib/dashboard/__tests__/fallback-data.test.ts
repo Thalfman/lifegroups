@@ -4,8 +4,14 @@ import {
   getAdminDashboardData,
   getLeaderDashboardData,
 } from "@/lib/dashboard/queries";
-import { ADMIN_FALLBACK, LEADER_FALLBACK } from "@/lib/dashboard/fallback-data";
+import {
+  ADMIN_FALLBACK,
+  INTEREST_FUNNEL_FALLBACK,
+  LEADER_FALLBACK,
+  MULTIPLY_READINESS_FALLBACK,
+} from "@/lib/dashboard/fallback-data";
 import { GUEST_PIPELINE_STAGES } from "@/lib/supabase/read-models";
+import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
 
 // The dashboard read seam has two adapters: the live Supabase path and
 // the hand-built fallback returned when no client is configured. These
@@ -44,5 +50,52 @@ describe("fallback adapter — cross-field invariants the live adapter guarantee
     for (const row of ADMIN_FALLBACK.guestPipelineBreakdown) {
       expect(row.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// Vital signs on the pivot (#476): the band's six metrics render from these
+// seeds in the no-client preview, so every pivot tile must have available,
+// representative demo data behind it — and the seeds must stay internally
+// consistent with the boards/cards that share them.
+describe("fallback adapter — pivot vital-signs seeds (#476)", () => {
+  it("seeds every pivot metric available with representative counts", () => {
+    // Active groups (from the derived demo summary).
+    expect(ADMIN_FALLBACK.summary.activeGroupCount).toBeGreaterThan(0);
+    // Active leaders + Leaders needing care (shepherd-care seed).
+    expect(ADMIN_FALLBACK.shepherdCare.available).toBe(true);
+    expect(ADMIN_FALLBACK.shepherdCare.totalActiveShepherds).toBeGreaterThan(0);
+    expect(ADMIN_FALLBACK.shepherdCare.needsAttention).toBeGreaterThan(0);
+    // Prospects in funnel (the three live states; Joined is the roll-up).
+    expect(INTEREST_FUNNEL_FALLBACK.available).toBe(true);
+    const inFunnel = ACTIVE_BOARD_STATES.reduce(
+      (sum, state) => sum + INTEREST_FUNNEL_FALLBACK.counts[state],
+      0
+    );
+    expect(inFunnel).toBeGreaterThan(0);
+    // Cells ready to multiply.
+    expect(MULTIPLY_READINESS_FALLBACK.available).toBe(true);
+    expect(MULTIPLY_READINESS_FALLBACK.activeCells).toBeGreaterThan(0);
+  });
+
+  it("keeps Leaders needing care within the active-leader total", () => {
+    expect(ADMIN_FALLBACK.shepherdCare.needsAttention).toBeLessThanOrEqual(
+      ADMIN_FALLBACK.shepherdCare.totalActiveShepherds
+    );
+  });
+
+  it("keeps the readiness seed internally consistent (ready ≤ active)", () => {
+    expect(MULTIPLY_READINESS_FALLBACK.readyCells).toBeLessThanOrEqual(
+      MULTIPLY_READINESS_FALLBACK.activeCells
+    );
+  });
+
+  it("keeps the due-this-week seed consistent with the undated demo follow-ups", () => {
+    // Every demo follow-up is undated, so the band's "Follow-ups due this
+    // week" demo figure is a TRUE zero (a successful read of an empty window),
+    // not a degraded read presenting zero.
+    expect(ADMIN_FALLBACK.followUps.every((f) => f.dueDate === null)).toBe(
+      true
+    );
+    expect(ADMIN_FALLBACK.dueFollowUpsThisWeekCount).toBe(0);
   });
 });

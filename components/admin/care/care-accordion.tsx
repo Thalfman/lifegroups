@@ -9,7 +9,10 @@ import type { CareAccordionPane } from "@/lib/admin/care-accordion";
 // Over-Shepherd, COLLAPSED BY DEFAULT. Each pane expands to the Leaders that
 // Over-Shepherd covers; opening a Leader reveals their Leader Care Status and
 // the placeholder grade/notes/prayer slots (see CareLeaderPanel). An Unassigned
-// pane catches Leaders with no active Over-Shepherd coverage.
+// pane catches Leaders with no active Over-Shepherd coverage. Since the
+// four-tab consolidation (#477) this region is also the home of coverage
+// triage — the Unassigned pane and the "Manage coverage →" link below are
+// what remains of the retired Coverage tab.
 //
 // Built on native <details>/<summary> so the disclosure works without client
 // JS (and stays collapsed by default), matching the existing
@@ -144,7 +147,8 @@ export function CareAccordion({
     <div style={{ display: "grid", gap: 18 }}>
       {/* Coverage maintenance is NOT rebuilt here (#373 req 4): link out to the
           existing over-shepherd coverage surface, which still resolves under
-          /admin/shepherd-care (ADR 0008/0009). */}
+          /admin/shepherd-care (ADR 0008/0009). Since #477 this link is the
+          coverage-management entry the retired Coverage tab used to carry. */}
       <div
         style={{
           display: "flex",

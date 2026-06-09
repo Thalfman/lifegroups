@@ -117,7 +117,10 @@ const fallbackMultiplication: MultiplicationDashboardSummary = {
 // Pivot overview demo seeds (#470). These travel as their own props (not
 // fields of ADMIN_FALLBACK) because the page loads each summary in parallel
 // with the dashboard read and degrades it per-card; the no-client preview
-// substitutes these typed seeds instead.
+// substitutes these typed seeds instead. The vital-signs band (#476) renders
+// the same seeds for its "Prospects in funnel" (active states, Joined as the
+// roll-up meta) and "Cells ready to multiply" tiles, so the demo band always
+// agrees with the demo overview cards.
 export const INTEREST_FUNNEL_FALLBACK: InterestFunnelDashboardSummary = {
   counts: { interested: 5, matched: 3, joined: 4, not_at_this_time: 2 },
   available: true,
@@ -211,9 +214,10 @@ export const ADMIN_FALLBACK: AdminDashboardData = {
     },
   ],
   // The demo follow-ups above all have no due date, so none fall in the
-  // "this week" window — 0 keeps the demo card consistent with that list.
-  // (When the dashboard read actually failed the card is rendered degraded
-  // and suppresses this entirely; this value is for the no-client demo.)
+  // "this week" window — 0 keeps the demo card and the "Follow-ups due this
+  // week" vital sign (#476) consistent with that list. (When the dashboard
+  // read actually failed both render degraded — "—", never a false zero;
+  // this value is for the no-client demo.)
   dueFollowUpsThisWeekCount: 0,
   weekAheadCutoffIso: DEMO_WEEK_AHEAD_CUTOFF_ISO,
 };

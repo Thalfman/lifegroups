@@ -12,6 +12,7 @@ import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
 import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
+import { groupHealthStatusLabel } from "@/lib/admin/health-status-labels";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
@@ -321,12 +322,14 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
   );
 }
 
-// Thresholds tab: the older dashboard-warning number knobs — capacity, attendance
-// health, and leader-care cadence — that still drive the metric warnings on the
-// (flagged-off) number surfaces. They all live in the single MetricDefaultsForm
-// (primary defaults always visible; capacity/attendance/group-health thresholds
-// behind the Advanced thresholds disclosure). The rarely-used per-group
-// overrides stay demoted into their own collapsed disclosure below.
+// Thresholds tab: the dashboard-warning number knobs, grouped by their LIVE
+// consumer (#478): the Care cadence pair and the three group-health thresholds
+// (incl. the healthy-attendance cut line the rubric read overlays) drive Care
+// and Home today; the capacity set only drives the
+// (flagged-off) hidden surfaces. They all live in the single MetricDefaultsForm
+// (live-driving fields always visible; the hidden-surface-only set behind the
+// "Drives hidden surfaces" disclosure). The rarely-used per-group overrides
+// stay demoted into their own collapsed disclosure below.
 function ThresholdsPanel({
   data,
   settingsByGroupId,
@@ -342,7 +345,7 @@ function ThresholdsPanel({
         <SectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Ministry-wide defaults for capacity, attendance health, and leader-care cadence."
+          description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity set only drives hidden surfaces."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
@@ -506,9 +509,13 @@ function OverrideSummaryRow({
       label: `Healthy ≥ ${settings.healthy_attendance_pct_override}%`,
     });
   if (settings.manual_health_status_override) {
+    // #478 (P2.2): echo the CANONICAL status label (the same map the override
+    // form's dropdown offers), never de-underscored enum text.
     chips.push({
       key: "health",
-      label: `Health: ${settings.manual_health_status_override.replace(/_/g, " ")}`,
+      label: `Health: ${groupHealthStatusLabel(
+        settings.manual_health_status_override
+      )}`,
       tone: "watch",
     });
   }

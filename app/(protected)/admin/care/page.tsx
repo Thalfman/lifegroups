@@ -8,13 +8,17 @@ import { SectionHeader } from "@/components/layout/shell";
 import { ShepherdCareDashboardSummaryCards } from "@/components/admin/shepherd-care/dashboard-summary-cards";
 import { CareAttentionQueue } from "@/components/admin/shepherd-care/care-attention-queue";
 import { ShepherdCareDirectoryTable } from "@/components/admin/shepherd-care/directory-table";
-import { CoverageByOverShepherdCard } from "@/components/admin/shepherd-care/coverage-by-over-shepherd-card";
+import { ShepherdCareFilterChips } from "@/components/admin/shepherd-care/filter-chips";
 import {
   CareShell,
   type CareTab,
   type CareTabKey,
 } from "@/components/admin/care/care-shell";
-import { resolveCareInitialTabFromParams } from "@/lib/admin/shepherd-care-view";
+import {
+  resolveCareInitialTabFromParams,
+  resolveDirectoryFilter,
+  type DirectoryFilter,
+} from "@/lib/admin/shepherd-care-view";
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -53,29 +57,35 @@ const careGroupHeadingStyle = {
   color: P.ink3,
 } as const;
 
-// Care area (ADR 0013, #301; re-keyed to the PRD IA in #334). Care is the entry
-// point for Job 1 — "how are my leaders doing?" — and hosts the former Leader
-// care + Follow-ups surfaces as the five canonical tabs Dashboard, Directory,
-// Follow-ups, Coverage, Recent interactions. Every panel is backed by data
-// already loaded below (loadCarePageData) — the re-key introduces NO new reads:
-//   • Dashboard      — summary tiles + attention queue (the former Needs Contact
-//                      signal — "who needs contact" — now lives here).
-//   • Directory      — the full leader roster with coverage owner column.
+// Care area (ADR 0013, #301; re-keyed to the PRD IA in #334; consolidated to
+// FOUR tabs in #477 so no two tabs answer the same question). Care is the
+// entry point for Job 1 — "how are my leaders doing?". Every panel is backed
+// by data already loaded below (loadCarePageData) — the consolidation
+// introduces NO new reads:
+//   • Over-Shepherds — the default landing tab: the accordion of leaders
+//                      grouped by over-shepherd (#373). It absorbed the former
+//                      Coverage tab: the Unassigned pane and the
+//                      coverage-management link live in the accordion region.
+//   • All leaders    — the flat roster, with the former Dashboard's summary
+//                      tiles + attention queue above it and a needs-attention
+//                      filter chip restoring the row filter the #328
+//                      consolidation dropped (so Home's care-attention link
+//                      lands filtered).
 //   • Follow-ups     — BOTH follow-up sources, clearly labelled: a leading
 //                      shepherd-care section (the former Due Soon / Completed
 //                      buckets, backed by shepherd_care_follow_ups) plus the
 //                      generic open-task queue (the `follow_ups` table). They are
 //                      separate tables, not one queue's filters, so both render
 //                      here rather than collapsing into the generic queue.
-//   • Coverage       — over-shepherd buckets + an Unassigned bucket.
-//   • Recent interactions — the recent calls / notes / meetings feed (renamed
-//                      from Recent Care).
-// It is a NEW route: the frozen /admin/shepherd-care and /admin/follow-ups
-// paths, tables, and filenames are unchanged and still alias-render directly
-// (200, not 302) (ADR 0008/0009, #328). This is a navigation/layout
-// consolidation, not a data or route merge — care-note content stays on the
-// per-leader detail page and the generic queue stays on the generic follow_ups
-// table; the two only cross-link.
+//   • Recent updates — the recent calls / notes / meetings feed.
+// The legacy six-tab keys and the `view` / `filter` / `coverage` params remain
+// accepted inputs forever — resolveCareInitialTabFromParams maps them onto the
+// four tabs. The frozen /admin/shepherd-care and /admin/follow-ups paths,
+// tables, and filenames are unchanged and still alias-render directly (200,
+// not 302) (ADR 0008/0009, #328). This is a navigation/layout consolidation,
+// not a data or route merge — care-note content stays on the per-leader detail
+// page and the generic queue stays on the generic follow_ups table; the two
+// only cross-link.
 export const dynamic = "force-dynamic";
 
 // Resolve each leader's group name(s) from the active group_leaders rows joined
@@ -124,8 +134,14 @@ async function loadCareAccordionEnrichmentSafe(
 // /admin/follow-ups) all call this one function so there is a single data path
 // and a single set of tabs — the aliases only differ by which tab they open on
 // (ADR 0013, #328). It runs the admin guard so a thin alias page is a guarded
-// entry just like the canonical page.
-export async function loadCarePageData(): Promise<{
+// entry just like the canonical page. `rosterFilter` is the needs-attention
+// row filter (#477): when the request carried `filter=needs_attention` the
+// All-leaders roster renders pre-filtered to the flagged rows.
+export async function loadCarePageData({
+  rosterFilter = "all",
+}: {
+  rosterFilter?: DirectoryFilter;
+} = {}): Promise<{
   tabs: CareTab[];
   errorBanner: ReactNode;
 }> {
@@ -154,11 +170,11 @@ export async function loadCarePageData(): Promise<{
     followUpsData.groups
   );
 
-  // Dashboard model drives the Dashboard tab's summary tiles + attention queue
-  // (the former Needs Contact signal) and the Coverage tab's over-shepherd
-  // buckets. The attention queue keeps its default top-N slice for the scan
-  // surface; countAllAttentionItems gives the true total so the queue can render
-  // its "+N more in the Directory" footer.
+  // Dashboard model drives the summary tiles + attention queue (the former
+  // Needs Contact signal) that now lead the All-leaders tab (#477). The
+  // attention queue keeps its default top-N slice for the scan surface;
+  // countAllAttentionItems gives the true total so the queue can render its
+  // "+N more" footer pointing at the roster below.
   const dashboard = buildShepherdCareDashboardModel({
     entries: care.entries,
     assignments: care.assignments,
@@ -249,10 +265,23 @@ export async function loadCarePageData(): Promise<{
     </p>
   ) : null;
 
+  // #477 — the needs-attention roster filter, restored from the pre-#328
+  // directory. The chips re-navigate with `filter=needs_attention` (an
+  // SSR-friendly link, no client state), and the table renders only the
+  // flagged rows when it is active. The chip counts use the row-level
+  // needs_attention flag — deliberately narrower than totalAttention, whose
+  // extra reasons (no over-shepherd, overdue follow-up, …) surface in the
+  // attention queue above the roster instead.
+  const needsAttentionEntries = care.entries.filter((e) => e.needs_attention);
+  const rosterEntries =
+    rosterFilter === "needs_attention" ? needsAttentionEntries : care.entries;
+
   const tabs: CareTab[] = [
     {
       // #373 — canonical Care view, the default landing tab: the Over-Shepherd
-      // accordion (collapsed by default).
+      // accordion (collapsed by default). Since #477 it also hosts coverage
+      // triage: the accordion region carries the Unassigned pane and the
+      // "Manage coverage →" link the retired Coverage tab used to hold.
       key: "over-shepherds",
       label: "Over-Shepherds",
       panel: (
@@ -260,9 +289,14 @@ export async function loadCarePageData(): Promise<{
       ),
     },
     {
-      key: "dashboard",
-      label: "Dashboard",
-      count: totalAttention,
+      // #477 — the merged roster tab: the former Dashboard's summary tiles +
+      // attention queue lead, the flat roster of the SAME leaders the
+      // Over-Shepherds tab groups follows, with the needs-attention filter
+      // chips between them. One tab to scan AND act — the legacy `dashboard`
+      // and `directory` keys both normalize here.
+      key: "all-leaders",
+      label: "All leaders",
+      count: care.entries.length,
       panel: (
         <div style={{ display: "grid", gap: 18 }}>
           <ShepherdCareDashboardSummaryCards
@@ -273,35 +307,36 @@ export async function loadCarePageData(): Promise<{
           <CareAttentionQueue
             items={dashboard.attentionQueue}
             totalCount={totalAttention}
+            rosterFiltered={rosterFilter === "needs_attention"}
           />
-        </div>
-      ),
-    },
-    {
-      // The flat, sortable view of the SAME leaders the Over-Shepherds tab
-      // groups — labelled "All leaders" so the two read as two views of one
-      // roster, not competing homes. Key stays "directory" for the legacy
-      // ?view=directory drill-down deep links (ADR 0013).
-      key: "directory",
-      label: "All leaders",
-      count: care.entries.length,
-      panel: (
-        <div style={{ display: "grid", gap: 12 }}>
-          <p
-            style={{
-              margin: 0,
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-            }}
-          >
-            Every leader in one flat list — the same leaders the Over-Shepherds
-            tab groups by their over-shepherd.
-          </p>
-          <ShepherdCareDirectoryTable
-            entries={care.entries}
-            coverageByShepherdId={coverageByShepherdId}
-          />
+          <div style={{ display: "grid", gap: 12 }}>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: fontBody,
+                fontSize: 13,
+                color: P.ink2,
+              }}
+            >
+              Every leader in one flat list — the same leaders the
+              Over-Shepherds tab groups by their over-shepherd.
+            </p>
+            <ShepherdCareFilterChips
+              current={rosterFilter}
+              totalCount={care.entries.length}
+              needsAttentionCount={needsAttentionEntries.length}
+              coverage={undefined}
+            />
+            <ShepherdCareDirectoryTable
+              entries={rosterEntries}
+              coverageByShepherdId={coverageByShepherdId}
+              emptyText={
+                rosterFilter === "needs_attention"
+                  ? "No leaders are flagged for attention right now."
+                  : undefined
+              }
+            />
+          </div>
         </div>
       ),
     },
@@ -357,11 +392,6 @@ export async function loadCarePageData(): Promise<{
       ),
     },
     {
-      key: "coverage",
-      label: "Coverage",
-      panel: <CoverageByOverShepherdCard buckets={dashboard.coverageBuckets} />,
-    },
-    {
       // The spreadsheet's "Update of communication", across all leaders: the
       // recent calls / notes / meetings feed. Key unchanged for deep links.
       key: "recent-interactions",
@@ -381,11 +411,12 @@ export async function loadCarePageData(): Promise<{
   return { tabs, errorBanner };
 }
 
-// Legacy Leader-care drill-down params that the embedded Dashboard widgets
-// still emit (`?view=directory`, `?coverage=…`) against the frozen
-// /admin/shepherd-care alias. The shared entry resolves them to the matching
-// canonical tab so those deep links open Directory / Coverage instead of
-// reloading the default Dashboard (#334 — PRD "serves its deep links").
+// Legacy Leader-care drill-down params that the embedded widgets and Home's
+// Needs Attention actions still emit (`?view=…`, `?filter=…`, `?coverage=…`)
+// against both the canonical page and the frozen /admin/shepherd-care alias.
+// The shared entry resolves them to the matching canonical tab (and the
+// roster's needs-attention filter) so those deep links keep landing where the
+// work is (#334 — PRD "serves its deep links"; #477 — the four-tab matrix).
 export type CareSearchParams = {
   view?: string | string[];
   filter?: string | string[];
@@ -395,9 +426,10 @@ export type CareSearchParams = {
 // The canonical Care surface: one header, one shell. The alias entries render
 // this same view, only changing which tab opens first, so the experience is
 // identical regardless of which URL resolved it (ADR 0013, #328). `initialTab`
-// is the route's default landing tab; the legacy `view` / `coverage` drill-down
-// params (when present) override it so embedded-widget deep links resolve to the
-// right tab — see resolveCareInitialTabFromParams.
+// is the route's default landing tab; the legacy `view` / `filter` /
+// `coverage` params (when present) override it so deep links resolve to the
+// right tab — see resolveCareInitialTabFromParams. `filter=needs_attention`
+// additionally pre-applies the All-leaders roster filter (#477).
 export async function CarePageView({
   initialTab = "over-shepherds",
   searchParams,
@@ -407,7 +439,8 @@ export async function CarePageView({
 }) {
   const params = (await searchParams) ?? {};
   const resolvedTab = resolveCareInitialTabFromParams(params, initialTab);
-  const { tabs, errorBanner } = await loadCarePageData();
+  const rosterFilter = resolveDirectoryFilter(params.filter);
+  const { tabs, errorBanner } = await loadCarePageData({ rosterFilter });
 
   return (
     <>
@@ -418,10 +451,9 @@ export async function CarePageView({
         lede="Your leaders' care in one place, grouped by over-shepherd."
       />
       <PageBody>
-        {/* Page-level so a failed care read is visible from every tab, not just
-            the Dashboard — otherwise Directory / Coverage / Recent interactions
-            would show their normal empty state and falsely signal "no care
-            work". */}
+        {/* Page-level so a failed care read is visible from every tab —
+            otherwise Over-Shepherds / All leaders / Recent updates would show
+            their normal empty state and falsely signal "no care work". */}
         {errorBanner ? (
           <div style={{ marginBottom: 18 }}>{errorBanner}</div>
         ) : null}

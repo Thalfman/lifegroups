@@ -72,10 +72,12 @@ export function ShepherdCareDashboardSummaryCards({
     ? String(summary.unassignedCoverage)
     : "—";
 
-  // Tiles that map to a triage target render as Links into the Directory view
-  // with the matching filter pre-applied (#180) — the Dashboard scans, the
-  // Directory is where you act. Tiles without a clean filter mapping (totals,
-  // no-profile) stay as plain metric cards.
+  // Tiles that map to a triage target render as Links (#180, re-aimed by
+  // #477): the needs-attention tile reopens the All-leaders tab with the
+  // roster's needs-attention filter pre-applied, and the unassigned-coverage
+  // tile lands on the Over-Shepherds accordion, where the Unassigned pane
+  // lives. Tiles without a clean target (totals, no-profile) stay as plain
+  // metric cards.
   const needsAttentionHref = buildShepherdCareTriageLink({
     kind: "needs_attention",
   });
@@ -103,7 +105,7 @@ export function ShepherdCareDashboardSummaryCards({
         />
         <Link
           href={needsAttentionHref}
-          aria-label="Filter directory by needs attention"
+          aria-label="Filter the leader roster to needs attention"
           style={linkResetStyle}
         >
           <MetricCard
@@ -147,7 +149,7 @@ export function ShepherdCareDashboardSummaryCards({
         {coverageAvailable ? (
           <Link
             href={unassignedHref}
-            aria-label="Filter directory by unassigned coverage"
+            aria-label="Show unassigned coverage in the Over-Shepherds tab"
             style={linkResetStyle}
           >
             <MetricCard

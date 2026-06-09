@@ -1,17 +1,57 @@
 import { isUuid } from "@/lib/shared/uuid";
-import type { CareTabKey } from "@/components/admin/care/care-shell";
 
-// Single home for Leader-care (shepherd-care) view state. A `?view=` param
-// selects between a triage Dashboard and the searchable Directory. This module
-// is pure and unit-tested: it resolves the request params into a typed view
-// state and builds the bookmarkable URLs the toggle / cross-view links point
-// at. Every built URL targets the canonical Care page (`/admin/care`, #468);
-// the legacy `/admin/shepherd-care` / `/admin/follow-ups` aliases still accept
-// the same params and alias-render the same shell, so old bookmarks survive.
-// See #178 (the split) and #180 (cross-view filtered linking).
+// Single home for Leader-care (shepherd-care) view state. This module is pure
+// and unit-tested: it resolves the request params into a typed view state,
+// maps them onto the canonical Care tab the shell should open on, and builds
+// the bookmarkable URLs the filter chips / cross-view links point at. Every
+// built URL targets the canonical Care page (`/admin/care`, #468); the legacy
+// `/admin/shepherd-care` / `/admin/follow-ups` aliases still accept the same
+// params and alias-render the same shell, so old bookmarks survive. See #178
+// (the split), #180 (cross-view filtered linking), and #477 (the six→four tab
+// consolidation).
 
-// Which surface of the Leader-care page is shown. Dashboard is the default and
-// the fallback for any absent/unrecognised `view` value.
+// ——— Care shell tab keys (#477) ———
+
+// The canonical Care shell renders exactly four tabs (#477): the Over-Shepherd
+// accordion (default — it absorbed the Coverage tab's unassigned bucket and
+// coverage-management link), the All-leaders roster (it absorbed the
+// Dashboard's summary tiles + attention queue), Follow-ups, and Recent
+// updates.
+export type CanonicalCareTabKey =
+  | "over-shepherds"
+  | "all-leaders"
+  | "follow-ups"
+  | "recent-interactions";
+
+// Legacy tab keys from the six-tab IA (#334) stay accepted INPUTS forever — a
+// bookmarked deep link or stale caller must never 404 or select a tab that no
+// longer renders. normalizeCareTabKey maps them onto the canonical four.
+export type CareTabKey =
+  | CanonicalCareTabKey
+  | "dashboard"
+  | "directory"
+  | "coverage";
+
+// The legacy→canonical tab mapping (#477):
+//   • dashboard / directory → all-leaders   (one roster, one home)
+//   • coverage              → over-shepherds (the accordion hosts coverage
+//                             triage: the Unassigned pane + "Manage" link)
+export function normalizeCareTabKey(key: CareTabKey): CanonicalCareTabKey {
+  switch (key) {
+    case "dashboard":
+    case "directory":
+      return "all-leaders";
+    case "coverage":
+      return "over-shepherds";
+    default:
+      return key;
+  }
+}
+
+// The legacy `?view=` vocabulary (pre-#477 Dashboard/Directory split). Still
+// resolved — and still emitted by the roster's filter chips — because the
+// params are accepted inputs forever; both values now land on the merged
+// All-leaders tab.
 export type ShepherdCareView = "dashboard" | "directory";
 
 // The directory's needs-attention filter.
@@ -77,9 +117,12 @@ export type ShepherdCareTriageTarget =
 // bookmarks, but every URL this module emits lands on the canonical surface.
 const BASE_PATH = "/admin/care";
 
-// Build a bookmarkable Leader-care URL. Dashboard is the default view so it is
-// omitted from the query string; "all" filter and an absent coverage filter are
-// likewise omitted so the canonical URL stays clean.
+// Build a bookmarkable Leader-care URL. The emitted `view` / `filter` /
+// `coverage` params are the legacy vocabulary — accepted inputs forever, and
+// resolveCareInitialTabFromParams maps them onto the canonical tabs (#477).
+// Dashboard is the default view so it is omitted from the query string; "all"
+// filter and an absent coverage filter are likewise omitted so the canonical
+// URL stays clean.
 export function buildShepherdCareViewHref(state: {
   view: ShepherdCareView;
   filter?: DirectoryFilter;
@@ -95,50 +138,52 @@ export function buildShepherdCareViewHref(state: {
   return s.length === 0 ? BASE_PATH : `${BASE_PATH}?${s}`;
 }
 
-// Map the Leader-care view-state params (`view` / `filter` / `coverage`) onto
-// a canonical Care shell tab key (#334 drill-down fix, extended by #468). The
-// Dashboard widgets embedded in the Care shell (summary cards, attention
-// queue, coverage buckets) link via `buildShepherdCareViewHref` /
-// `buildShepherdCareTriageLink` to `/admin/care?view=directory…` /
-// `…?coverage=…`, and Home's Needs Attention actions emit
-// `/admin/care?view=dashboard` / `?view=follow-ups` (#468). The Care shell
-// keys tabs by the PRD IA names, so the landing must translate the params into
-// the matching initial tab, or every drill-down would reopen the default tab.
-// The legacy /admin/shepherd-care and /admin/follow-ups aliases run the same
-// resolution, so old bookmarks land on the same tabs.
+// Map the Leader-care params (`view` / `filter` / `coverage`) onto the
+// canonical Care tab the shell should open on (#334 drill-down fix, extended
+// by #468, consolidated to four tabs by #477). The embedded widgets link via
+// `buildShepherdCareViewHref` / `buildShepherdCareTriageLink`, and Home's
+// Needs Attention actions emit the same param vocabulary, so the landing must
+// translate the params into the matching tab or every drill-down would reopen
+// the default. The legacy /admin/shepherd-care and /admin/follow-ups aliases
+// run the same resolution, so old bookmarks land on the same tabs. The full
+// legacy matrix:
 //
-//   • view=directory                 → Directory  (the leader roster)
-//   • view=dashboard                 → Dashboard  (the triage scan surface,
-//                                       where the attention queue is actionable)
+//   • coverage=… (uuid / unassigned) → Over-Shepherds (the accordion absorbed
+//                                       the Coverage tab: the Unassigned pane
+//                                       + coverage-management link live there)
 //   • view=follow-ups                → Follow-ups (the follow-up queues)
-//   • coverage=… (uuid / unassigned) → Coverage   (the over-shepherd buckets,
-//                                       where coverage triage lives in the new IA)
-//   • otherwise                      → fall back to the route's default tab
+//   • view=dashboard | directory     → All leaders (the roster absorbed the
+//                                       Dashboard's tiles + attention queue)
+//   • filter=needs_attention         → All leaders (the filter pre-applies to
+//                                       the roster, so it must land there)
+//   • otherwise                      → the route's default tab (legacy keys
+//                                       normalized onto the canonical four)
 //
-// Coverage wins over view because the coverage drill-downs are dashboard-rooted
-// (`view` stays "dashboard") yet are coverage-triage targets in the new IA.
-// NOTE: the Directory / Coverage panels render the full set with no filter
-// affordance, so the `filter` / specific-`coverage` value can only select the
-// tab, not pre-apply a row filter — re-introducing directory filtering is a
-// separate, larger feature (the #328 consolidation dropped the filtered
-// directory). This restores the drill-down *navigation* without it.
+// Coverage wins over view because the legacy coverage drill-downs are
+// dashboard-/directory-rooted yet are coverage-triage targets, and coverage
+// triage lives in the accordion now. Unlike the post-#328 state, `filter` no
+// longer only selects the tab: the page pre-applies it to the roster (#477
+// restored the row filter that the #328 consolidation dropped).
 export function resolveCareInitialTabFromParams(
   params: Record<string, ParamValue>,
   fallback: CareTabKey
-): CareTabKey {
+): CanonicalCareTabKey {
   const coverage = resolveCoverageFilter(params.coverage);
-  if (coverage !== undefined) return "coverage";
+  if (coverage !== undefined) return "over-shepherds";
   const view = firstValue(params.view);
   if (view === "follow-ups") return "follow-ups";
-  if (view === "dashboard") return "dashboard";
-  if (view === "directory") return "directory";
-  return fallback;
+  if (view === "dashboard" || view === "directory") return "all-leaders";
+  if (resolveDirectoryFilter(params.filter) === "needs_attention") {
+    return "all-leaders";
+  }
+  return normalizeCareTabKey(fallback);
 }
 
-// Cross-view link builder (#180): map a Dashboard triage target to the
-// bookmarkable Directory-view URL with the matching filter / coverage param
-// pre-applied, so a click on a summary card or attention item lands you in the
-// Directory ready to act.
+// Cross-view link builder (#180): map a triage target to a bookmarkable URL
+// with the matching filter / coverage param pre-applied. Under the four-tab IA
+// (#477) the needs-attention link lands on the All-leaders roster with the row
+// filter applied, and the coverage links land on the Over-Shepherds accordion
+// — see resolveCareInitialTabFromParams.
 export function buildShepherdCareTriageLink(
   target: ShepherdCareTriageTarget
 ): string {

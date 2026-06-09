@@ -6,7 +6,6 @@ import type {
   CareAttentionItem,
   CareAttentionReason,
 } from "@/lib/admin/shepherd-care-dashboard";
-import { buildShepherdCareViewHref } from "@/lib/admin/shepherd-care-view";
 
 const REASON_LABEL: Record<CareAttentionReason, string> = {
   overdue_touchpoint: "Overdue",
@@ -102,32 +101,23 @@ function ReasonBadge({ reason }: { reason: CareAttentionReason }) {
 export function CareAttentionQueue({
   items,
   totalCount,
+  rosterFiltered = false,
 }: {
   items: CareAttentionItem[];
   totalCount: number;
+  rosterFiltered?: boolean;
 }) {
-  // The Dashboard scans; the Directory is where you act. The queue links into
-  // the *unfiltered* Directory view (#180): the triage queue includes reasons
-  // (no_over_shepherd, needs_encouragement, overdue follow-up) that don't set a
-  // row's `needs_attention` flag, so a `filter=needs_attention` target would
-  // hide the very rows the queue lists. The full list keeps them all visible.
+  // #477: the queue sits directly above the full roster on the All-leaders
+  // tab, so the former cross-tab "View in Directory" links are gone — the
+  // footer simply points at the roster below. The queue includes reasons
+  // (no_over_shepherd, needs_encouragement, overdue follow-up) that don't set
+  // a row's `needs_attention` flag, so the roster's needs-attention filter is
+  // deliberately narrower than this queue. While that filter is active some
+  // queued leaders are hidden from the roster, so the footer must point at
+  // the All chip instead of claiming everyone is visible below.
   const remaining = totalCount - items.length;
-  const directoryHref = buildShepherdCareViewHref({ view: "directory" });
   return (
-    <StatusCard
-      eyebrow="Triage queue"
-      title="Needs attention this week"
-      action={
-        items.length > 0 ? (
-          <Link
-            href={directoryHref}
-            style={{ color: "inherit", textDecoration: "none" }}
-          >
-            View in Directory →
-          </Link>
-        ) : undefined
-      }
-    >
+    <StatusCard eyebrow="Triage queue" title="Needs attention this week">
       {items.length === 0 ? (
         <EmptyState
           title="Nothing urgent right now"
@@ -195,9 +185,9 @@ export function CareAttentionQueue({
                 fontStyle: "italic",
               }}
             >
-              <Link href={directoryHref} style={{ color: "inherit" }}>
-                +{remaining} more in the Directory →
-              </Link>
+              {rosterFiltered
+                ? `+${remaining} more — switch the roster filter to All to see everyone`
+                : `+${remaining} more in the full roster below`}
             </div>
           ) : null}
         </div>
