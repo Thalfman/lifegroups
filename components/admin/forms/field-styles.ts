@@ -74,3 +74,15 @@ export const successTextStyle: CSSProperties = {
   borderRadius: 6,
   margin: 0,
 };
+
+// Inline, per-field error message that sits directly under an input. Lighter
+// than errorTextStyle (the form-summary block) — no background, smaller — so a
+// single-field hint reads as a field annotation, not a form-level alert. Reuses
+// the same terra ink for a consistent error voice.
+export const fieldErrorStyle: CSSProperties = {
+  fontFamily: fontBody,
+  fontSize: 12,
+  color: "#923220",
+  marginTop: 6,
+  marginBottom: 0,
+};

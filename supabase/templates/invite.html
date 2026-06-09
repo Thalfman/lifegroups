@@ -19,8 +19,15 @@
 
     2. {{ .TokenHash }} + type=invite drives the server-side verifyOtp() flow,
        which works cross-device (no PKCE code_verifier cookie required) and
-       does not depend on the Edge Function's redirectTo being set. The target
-       comes from {{ .SiteURL }} (Auth -> URL Configuration -> Site URL).
+       does not depend on the Edge Function's redirectTo being set.
+
+  The link host is PINNED to the public production origin
+  (https://fvclifegroups.vercel.app) rather than {{ .SiteURL }}. The dashboard
+  Site URL has drifted to a Vercel preview host (Supabase Branching pushes
+  preview auth config onto the project), which sent real invitees a preview
+  link. Pinning the host here guarantees invites always land on the public app.
+  If the public origin ever changes, update it here AND re-paste this template
+  into Auth -> Email Templates -> "Invite user".
 
   The invitee lands on /reset-password, confirms, verifyOtp establishes their
   session, and they choose their password (app/reset-password). See
@@ -51,7 +58,7 @@
   </p>
   <p style="margin: 0 0 24px">
     <a
-      href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=invite"
+      href="https://fvclifegroups.vercel.app/reset-password?token_hash={{ .TokenHash }}&type=invite"
       style="
         display: inline-block;
         background: #b5613f;

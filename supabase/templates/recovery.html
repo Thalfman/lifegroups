@@ -12,6 +12,14 @@
 
   {{ .TokenHash }} + type=recovery drives the server-side verifyOtp() flow,
   which works cross-device (no PKCE code_verifier cookie required).
+
+  The link host is PINNED to the public production origin
+  (https://fvclifegroups.vercel.app) rather than {{ .SiteURL }}. The dashboard
+  Site URL has drifted to a Vercel preview host (Supabase Branching pushes
+  preview auth config onto the project), which sent real users a preview link.
+  Pinning the host here guarantees recovery links always land on the public app.
+  If the public origin ever changes, update it here AND re-paste this template
+  into Auth → Email Templates → Reset Password.
 -->
 <div
   style="
@@ -37,7 +45,7 @@
   </p>
   <p style="margin: 0 0 24px">
     <a
-      href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery"
+      href="https://fvclifegroups.vercel.app/reset-password?token_hash={{ .TokenHash }}&type=recovery"
       style="
         display: inline-block;
         background: #b5613f;
