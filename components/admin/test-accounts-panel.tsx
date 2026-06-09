@@ -34,6 +34,38 @@ const STATE_DOT: Record<string, { color: string; label: string }> = {
   skipped: { color: P.mustard, label: "skipped" },
 };
 
+// Friendly nouns for the table names that show up in raw Edge Function
+// lookup errors (e.g. "group_leaders lookup failed: …").
+const LOOKUP_SUBJECT_LABELS: Record<string, string> = {
+  group_leaders: "group leader",
+  profiles: "profile",
+  groups: "group",
+  members: "member",
+};
+
+// Translate a raw test-account error into operator language (#452). The raw
+// string stays available behind the Details disclosure; this only chooses the
+// primary message. Copy only — the Edge Function and server actions are
+// untouched.
+function translateTestAccountError(raw: string): string {
+  if (/JSON object requested, multiple \(or no\) rows returned/i.test(raw)) {
+    const subject = raw.match(/^([a-z_]+) lookup failed/i)?.[1];
+    const friendly = subject
+      ? (LOOKUP_SUBJECT_LABELS[subject] ?? subject.replace(/_/g, " "))
+      : null;
+    return friendly
+      ? `The expected ${friendly} test record was not found, or more than one matching record exists.`
+      : "An expected test record was not found, or more than one matching record exists.";
+  }
+  if (/failed to fetch|fetch failed|network|econn|timed? ?out/i.test(raw)) {
+    return "The test-account service couldn’t be reached. It may be offline, or the network blocked the request.";
+  }
+  if (/not authoriz|unauthoriz|forbidden|\b401\b|\b403\b/i.test(raw)) {
+    return "This session isn’t authorized to run test-account checks. Sign out and back in as the super admin.";
+  }
+  return "The test-account check returned an unexpected error.";
+}
+
 function StatePill({ state }: { state: string }) {
   const cfg = STATE_DOT[state] ?? { color: P.ink3, label: state };
   return (
@@ -390,18 +422,49 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               background: P.terraSoft,
               border: `1px solid ${P.terra}`,
               borderRadius: 8,
-              padding: "10px 12px",
+              padding: "12px 14px",
               fontFamily: fontBody,
               fontSize: 13,
               color: "#7d3621",
+              display: "grid",
+              gap: 8,
             }}
           >
-            <strong>Errors:</strong>
-            <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
-              {errors.map((e, i) => (
-                <li key={i}>{e}</li>
+            <strong>Test account check is blocked</strong>
+            <ul style={{ margin: 0, padding: "0 0 0 18px", display: "grid", gap: 2 }}>
+              {/* One plain-language line per distinct problem; identical raw
+                  errors that translate to the same message collapse to one. */}
+              {[...new Set(errors.map(translateTestAccountError))].map((msg) => (
+                <li key={msg}>{msg}</li>
               ))}
             </ul>
+            <p style={{ margin: 0 }}>
+              Next step: run <strong>Diagnose</strong> above for a deeper
+              check, then review the test accounts table.
+            </p>
+            <details>
+              <summary
+                className="lg-sac-summary"
+                style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600 }}
+              >
+                Details
+              </summary>
+              <ul
+                style={{
+                  margin: "6px 0 0",
+                  padding: "0 0 0 18px",
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12,
+                  display: "grid",
+                  gap: 2,
+                }}
+              >
+                {errors.map((e, i) => (
+                  <li key={i}>{e}</li>
+                ))}
+              </ul>
+            </details>
           </div>
         ) : null}
       </div>
