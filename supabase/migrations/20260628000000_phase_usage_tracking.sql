@@ -31,6 +31,21 @@
 --     row: it is high-frequency telemetry, and auditing each call would both
 --     drown the audit log and (since audit_events is ministry_admin-readable)
 --     leak Super-Admin-only usage data across the platform_config boundary.
+--
+-- Trust model (deliberate). EXECUTE is granted to `authenticated` because the
+-- only writers are the app's own login action and the area-view beacon, and
+-- both run with the signed-in user's RLS-scoped client — there is no service-
+-- role identity in the Next runtime to call this instead. The function forces
+-- `actor_profile_id = auth_profile_id()`, so a caller can ONLY ever record
+-- events attributed to THEMSELVES: cross-user forgery is impossible, the table
+-- is Super-Admin-read-only, and there is no privilege escalation or data
+-- exposure. The residual surface is therefore only that a signed-in user could
+-- call the RPC directly and pollute their OWN coarse telemetry — an extra
+-- `login`, or an area they didn't actually open. That is ACCEPTED by design:
+-- usage_events is best-effort, self-attributed usage insight for a small set of
+-- trusted internal users, not an integrity or security boundary. Harden later
+-- (allowlist areas, dedupe, or role-aware area validation) only if the user
+-- base stops being trusted.
 
 -- ===========================================================================
 -- 1. usage_events table — append-only coarse telemetry
@@ -144,8 +159,9 @@ $$;
 -- ===========================================================================
 -- 3. Grants. Revoke from public/anon/authenticated, then grant execute to
 -- authenticated. The function body holds the (no-)gate: any authenticated
--- profile may log its OWN usage, but only when the flag is on. Granting execute
--- to authenticated only makes the function callable.
+-- profile may log its OWN usage (actor forced to auth_profile_id(); no cross-
+-- user forgery — see the Trust model note above), but only when the flag is on.
+-- Granting execute to authenticated only makes the function callable.
 -- ===========================================================================
 
 revoke all     on function public.log_usage_event(text, text) from public;
