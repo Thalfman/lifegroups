@@ -234,12 +234,15 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
       "care cadence fields are not hidden behind a disclosure"
     ).toBe(false);
 
-    // Admin IM 05 (#265) / #478: the two Group-health triage thresholds drive
-    // the Watch filter + Home health distribution, so they share their own
+    // Admin IM 05 (#265) / #478: the three Group-health thresholds — the two
+    // triage thresholds plus the healthy-attendance cut line that
+    // fetchGroupHealthRubric overlays into the live A–F rubric — drive the
+    // Watch filter + Home health distribution, so they share their own
     // grouping container on the always-visible live path too.
     const groupHealth = await sharedGridGroup(page, [
       "group_health_watch_grade",
       "group_health_attendance_decline_margin_pct",
+      "default_healthy_attendance_pct",
     ]);
     expect(groupHealth.allFound, "group-health threshold fields render").toBe(
       true
@@ -253,15 +256,14 @@ test.describe("settings semantics, grouping & disclosure (issue 258)", () => {
       "group-health thresholds are not hidden behind a disclosure"
     ).toBe(false);
 
-    // #478: the hidden-surface-only capacity / attendance thresholds share one
-    // grouping container inside the "Drives hidden surfaces" disclosure. (The
-    // inputs stay mounted while collapsed, so no expand is needed to inspect
-    // the structure.)
+    // #478: the hidden-surface-only capacity thresholds share one grouping
+    // container inside the "Drives hidden surfaces" disclosure. (The inputs
+    // stay mounted while collapsed, so no expand is needed to inspect the
+    // structure.)
     const hidden = await sharedGridGroup(page, [
       "default_group_capacity",
       "capacity_warning_threshold_pct",
       "capacity_full_threshold_pct",
-      "default_healthy_attendance_pct",
     ]);
     expect(hidden.allFound, "hidden-surface threshold fields render").toBe(
       true

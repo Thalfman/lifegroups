@@ -28,19 +28,20 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
         }}
       >
         Every threshold here is grouped by what it drives. The Care cadence pair
-        and the two group-health thresholds drive the live Care and Home
-        surfaces today; the capacity and attendance set only drives surfaces
-        currently hidden from navigation. Leave a field blank to keep its
-        current value.
+        and the three group-health thresholds drive the live Care and Home
+        surfaces today; the capacity set only drives surfaces currently hidden
+        from navigation. Leave a field blank to keep its current value.
       </p>
 
       {/* #478 (P1.7): fields are grouped by their LIVE consumer. This fieldset
           holds everything a visible surface reads today — the Care cadence
           pair (the Care dashboard's overdue-contact flags, CONTEXT.md "Care
-          cadence") and the two Group-health triage thresholds (Admin IM 05,
-          #265 — the Watch filter, which also feeds the Home health
-          distribution). The capacity/attendance knobs that only feed hidden
-          surfaces are disclosed separately below. */}
+          cadence") and the three Group-health thresholds: the two triage
+          thresholds (Admin IM 05, #265 — the Watch filter, which also feeds
+          the Home health distribution) and the healthy-attendance cut line,
+          which fetchGroupHealthRubric overlays into the live A–F rubric. The
+          capacity knobs that only feed hidden surfaces are disclosed
+          separately below. */}
       <fieldset style={consumerGroupStyle}>
         <legend style={consumerLegendStyle}>
           Drives Care &amp; Home today
@@ -142,24 +143,48 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               (Watch), feeding the Home health distribution.
             </p>
           </div>
+
+          <div>
+            <label
+              htmlFor="default_healthy_attendance_pct"
+              style={fieldLabelStyle}
+            >
+              Healthy attendance %
+            </label>
+            <input
+              id="default_healthy_attendance_pct"
+              name="default_healthy_attendance_pct"
+              type="number"
+              min={0}
+              max={100}
+              inputMode="numeric"
+              defaultValue={defaults.default_healthy_attendance_pct}
+              style={fieldInputStyle}
+            />
+            <p style={hintStyle}>
+              0–100. The A–F rubric&apos;s healthy-attendance cut line — grades
+              drive the Watch filter and feed the Home health distribution.
+            </p>
+          </div>
         </div>
       </fieldset>
 
-      {/* #478 (P1.7): the capacity/attendance set only drives the metric
-          warnings on surfaces hidden behind Super-Admin nav flags today, so it
-          sits behind a disclosure that says exactly that. The editable inputs
-          stay mounted inside the form, so they still submit when collapsed.
-          The two read-only check-in cadence reference rows were retired from
-          this surface entirely (#472) — check-ins are a frozen surface (ADR
-          0002, #160) and nothing consumes those values here. */}
+      {/* #478 (P1.7): the capacity set only drives the metric warnings on
+          surfaces hidden behind Super-Admin nav flags today, so it sits
+          behind a disclosure that says exactly that. (Healthy attendance %
+          lives in the live group above: fetchGroupHealthRubric overlays it
+          into the A–F rubric.) The editable inputs stay mounted inside the
+          form, so they still submit when collapsed. The two read-only
+          check-in cadence reference rows were retired from this surface
+          entirely (#472) — check-ins are a frozen surface (ADR 0002, #160)
+          and nothing consumes those values here. */}
       <details style={detailsStyle}>
         <summary style={summaryStyle}>Drives hidden surfaces</summary>
         <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
           <p style={hiddenNoteStyle}>
-            These capacity and attendance thresholds only drive warnings on
-            surfaces currently hidden behind Super-Admin nav flags (the old
-            Groups and Planning pages). Nothing on Care, Plan, Multiply, or Home
-            reads them today.
+            These capacity thresholds only drive warnings on surfaces currently
+            hidden behind Super-Admin nav flags (the old Groups and Planning
+            pages). Nothing on Care, Plan, Multiply, or Home reads them today.
           </p>
           <div className="lg-m-grid-stack" style={formGridStyle}>
             <div>
@@ -220,26 +245,6 @@ export function MetricDefaultsForm({ defaults }: { defaults: MetricDefaults }) {
               <p style={hintStyle}>
                 Mark as full at this % (1–300, ≥ warning).
               </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="default_healthy_attendance_pct"
-                style={fieldLabelStyle}
-              >
-                Healthy attendance %
-              </label>
-              <input
-                id="default_healthy_attendance_pct"
-                name="default_healthy_attendance_pct"
-                type="number"
-                min={0}
-                max={100}
-                inputMode="numeric"
-                defaultValue={defaults.default_healthy_attendance_pct}
-                style={fieldInputStyle}
-              />
-              <p style={hintStyle}>0–100. Below this is flagged as low.</p>
             </div>
           </div>
         </div>

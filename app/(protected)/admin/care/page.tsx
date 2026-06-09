@@ -307,6 +307,7 @@ export async function loadCarePageData({
           <CareAttentionQueue
             items={dashboard.attentionQueue}
             totalCount={totalAttention}
+            rosterFiltered={rosterFilter === "needs_attention"}
           />
           <div style={{ display: "grid", gap: 12 }}>
             <p

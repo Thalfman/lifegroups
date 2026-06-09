@@ -323,8 +323,9 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
 }
 
 // Thresholds tab: the dashboard-warning number knobs, grouped by their LIVE
-// consumer (#478): the Care cadence pair and the two group-health thresholds
-// drive Care and Home today; the capacity/attendance set only drives the
+// consumer (#478): the Care cadence pair and the three group-health thresholds
+// (incl. the healthy-attendance cut line the rubric read overlays) drive Care
+// and Home today; the capacity set only drives the
 // (flagged-off) hidden surfaces. They all live in the single MetricDefaultsForm
 // (live-driving fields always visible; the hidden-surface-only set behind the
 // "Drives hidden surfaces" disclosure). The rarely-used per-group overrides
@@ -344,7 +345,7 @@ function ThresholdsPanel({
         <SectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity and attendance set only drives hidden surfaces."
+          description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity set only drives hidden surfaces."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
