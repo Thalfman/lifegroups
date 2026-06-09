@@ -8,6 +8,7 @@ import {
   evaluateCellReadiness,
   resolveCellRule,
   resolveReadinessRule,
+  resolveReadinessRuleWithSources,
   type CellReadinessInputs,
   type CellReadinessOverride,
   type PerTypeReadinessRule,
@@ -383,6 +384,97 @@ describe("resolveReadinessRule — three-tier cascade (#410 / ADR 0021)", () => 
     expect(resolveCellRule(global, override)).toEqual(
       resolveReadinessRule(global, {}, override)
     );
+  });
+});
+
+// The ONE home of cascade resolution WITH source attribution (#487): every
+// surface — the Multiply grid evaluator (which drops the sources) and the
+// Settings trigger editor's inheritance display (which reads them) — consumes
+// this resolution, so the cascade is tested HERE, once, not per surface.
+describe("resolveReadinessRuleWithSources — source attribution (#487)", () => {
+  const global: ReadinessRule = {
+    interest: { required: true, min: 3 },
+    capacity: { required: true },
+    groupHealth: { required: false, min: "C" },
+    leaderHealth: { required: false, min: "C" },
+  };
+
+  it("ALL INHERIT: every pillar resolves to the global rule, source global", () => {
+    expect(resolveReadinessRuleWithSources(global, {}, {})).toEqual({
+      interest: { rule: global.interest, source: "global" },
+      capacity: { rule: global.capacity, source: "global" },
+      groupHealth: { rule: global.groupHealth, source: "global" },
+      leaderHealth: { rule: global.leaderHealth, source: "global" },
+    });
+  });
+
+  it("TYPE: a per-type pillar is attributed to the type tier; the rest stay global", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+    };
+    const resolved = resolveReadinessRuleWithSources(global, perType, {});
+    expect(resolved.interest).toEqual({
+      rule: { required: true, min: 5 },
+      source: "type",
+    });
+    expect(resolved.capacity).toEqual({
+      rule: global.capacity,
+      source: "global",
+    });
+    expect(resolved.groupHealth).toEqual({
+      rule: global.groupHealth,
+      source: "global",
+    });
+    expect(resolved.leaderHealth).toEqual({
+      rule: global.leaderHealth,
+      source: "global",
+    });
+  });
+
+  it("CELL BEATS TYPE: a cell pillar is attributed to the cell even when the type also overrides it", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+    };
+    const cell: CellReadinessOverride = {
+      interest: { required: true, min: 8 },
+    };
+    expect(
+      resolveReadinessRuleWithSources(global, perType, cell).interest
+    ).toEqual({ rule: { required: true, min: 8 }, source: "cell" });
+  });
+
+  it("MIXED PILLARS: each pillar carries its own tier's source independently", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+      groupHealth: { required: true, min: "B" },
+    };
+    const cell: CellReadinessOverride = {
+      interest: { required: true, min: 8 },
+      leaderHealth: { required: true, min: "A" },
+    };
+    expect(resolveReadinessRuleWithSources(global, perType, cell)).toEqual({
+      interest: { rule: { required: true, min: 8 }, source: "cell" },
+      capacity: { rule: { required: true }, source: "global" },
+      groupHealth: { rule: { required: true, min: "B" }, source: "type" },
+      leaderHealth: { rule: { required: true, min: "A" }, source: "cell" },
+    });
+  });
+
+  it("resolveReadinessRule is the source-ignoring projection the evaluator runs", () => {
+    const perType: PerTypeReadinessRule = {
+      interest: { required: true, min: 5 },
+      groupHealth: { required: true, min: "B" },
+    };
+    const cell: CellReadinessOverride = {
+      leaderHealth: { required: true, min: "A" },
+    };
+    const withSources = resolveReadinessRuleWithSources(global, perType, cell);
+    expect(resolveReadinessRule(global, perType, cell)).toEqual({
+      interest: withSources.interest.rule,
+      capacity: withSources.capacity.rule,
+      groupHealth: withSources.groupHealth.rule,
+      leaderHealth: withSources.leaderHealth.rule,
+    });
   });
 });
 
