@@ -569,6 +569,21 @@ const SETTINGS_DATA: SettingsShellData = {
   },
 };
 
+// #469: the same Settings shell with every section read FAILED, so the spec
+// can prove the read-error split: each section renders the calm "couldn't
+// load" notice naming its own failing read — never the "not set up yet" copy,
+// and never an editor that could overwrite configuration that failed to load.
+const SETTINGS_ERRORS_DATA: SettingsShellData = {
+  ...SETTINGS_DATA,
+  errors: {
+    ...SETTINGS_DATA.errors,
+    groupRubric: "read failed",
+    leaderRubric: "read failed",
+    groupCategories: "read failed",
+    readiness: "read failed",
+  },
+};
+
 // People surface (#270, Admin Interaction Model req 3). Proves the People page
 // defaults to the Directory view, with Add person and Assignments as secondary
 // views reached by explicit actions, and that group assignment happens in a
@@ -661,6 +676,8 @@ function Surface({
 
 export function A11yHarnessClient() {
   const [, setSelected] = useState<MasterOccurrence | null>(null);
+  // #469: whether the Settings surface renders the read-error payload.
+  const [settingsReadErrors, setSettingsReadErrors] = useState(false);
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
@@ -914,11 +931,28 @@ export function A11yHarnessClient() {
         />
       </Surface>
 
+      {/* #469: the toggle swaps the ONE Settings instance to the read-error
+          payload (a second mounted shell would duplicate the tablist's
+          settings-tab-* ids and trip axe's duplicate-id-aria). It sits outside
+          the surface so the settings-scoped scans see nothing new; the spec
+          clicks it, then asserts each section's "couldn't load" notice. The
+          key remounts the tabs so the swap lands back on the Care tab. */}
+      <button
+        type="button"
+        data-testid="settings-read-errors-toggle"
+        aria-pressed={settingsReadErrors}
+        onClick={() => setSettingsReadErrors((v) => !v)}
+      >
+        Simulate settings read failures
+      </button>
       <Surface
         id="settings"
         heading="Settings (rubrics, thresholds, overrides)"
       >
-        <SettingsShell data={SETTINGS_DATA} />
+        <SettingsShell
+          key={settingsReadErrors ? "read-errors" : "healthy"}
+          data={settingsReadErrors ? SETTINGS_ERRORS_DATA : SETTINGS_DATA}
+        />
       </Surface>
 
       {/* Super Admin Console collapsible sections (#261, Admin Interaction
