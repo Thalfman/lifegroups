@@ -22,6 +22,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import { AUDIENCE_CATEGORIES } from "@/lib/admin/audience";
 import {
   groupCellsByAudience,
@@ -252,6 +253,12 @@ function UnusedCategories({
 }
 
 // Deletes (archives) an unused category label via the audited archive RPC.
+
+// Exported so the copy stays byte-locked by the confirm-action-button test.
+export function deleteCategoryConfirmMessage(label: string): string {
+  return `Delete the category "${label}"? It's applied to no group type. It stops showing in Multiply and stays in history.`;
+}
+
 function DeleteCategoryForm({
   categoryId,
   label,
@@ -259,34 +266,18 @@ function DeleteCategoryForm({
   categoryId: string;
   label: string;
 }) {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminArchiveGroupCategory
-  );
-
-  function confirmDelete(e: FormEvent<HTMLFormElement>) {
-    if (
-      !window.confirm(
-        `Delete the category "${label}"? It's applied to no group type. It stops showing in Multiply and stays in history.`
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
-
   return (
-    <form action={formAction} onSubmit={confirmDelete} style={inlineFormStyle}>
-      <input type="hidden" name="category_id" value={categoryId} />
-      <PButton
-        type="submit"
-        tone="ghost"
-        size="sm"
-        disabled={pending}
-        aria-label={`Delete unused category ${label}`}
-      >
-        {pending ? "Deleting…" : "Delete category"}
-      </PButton>
-      <FormStatus state={state} successText="Category deleted." />
-    </form>
+    <ConfirmActionButton
+      action={adminArchiveGroupCategory}
+      confirmMessage={deleteCategoryConfirmMessage(label)}
+      hiddenFields={[{ name: "category_id", value: categoryId }]}
+      idleLabel="Delete category"
+      pendingLabel="Deleting…"
+      tone="ghost"
+      ariaLabel={`Delete unused category ${label}`}
+      successText="Category deleted."
+      gap={8}
+    />
   );
 }
 

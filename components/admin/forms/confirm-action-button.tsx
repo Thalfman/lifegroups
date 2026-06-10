@@ -17,14 +17,16 @@ import {
   type ServerAction,
 } from "./action-form";
 
-// The one deep confirm-action module (#489). Six admin button flows — Archive
-// group, Restore group, Deactivate profile, Deactivate member, Clear group
-// metric overrides, Reset metric defaults — used to re-wire the same
-// lifecycle by hand: useActionForm → window.confirm gate → hidden fields →
-// FormStatus, plus pending/aria handling. This module owns that lifecycle
-// once; the six buttons are declarative configs of it (action + confirmation
-// copy + hidden fields + labels). The pure decisions live in
-// lib/forms/confirm-action-view.ts so the lifecycle is unit-tested once.
+// The one deep confirm-action module (#489, widened by #494). Admin button
+// flows — Archive group, Restore group, Deactivate profile, Deactivate
+// member, Clear group metric overrides, Reset metric defaults, Archive
+// prospect, Archive/Restore over-shepherd, Archive care follow-up, Delete
+// unused category — used to re-wire the same lifecycle by hand:
+// useActionForm → window.confirm gate → hidden fields → FormStatus, plus
+// pending/aria handling. This module owns that lifecycle once; the buttons
+// are declarative configs of it (action + confirmation copy + hidden fields
+// + labels). The pure decisions live in lib/forms/confirm-action-view.ts so
+// the lifecycle is unit-tested once.
 
 // A hidden input serialized into the form, e.g. { name: "group_id", value: id }.
 export type ConfirmActionHiddenField = { name: string; value: string };
@@ -46,7 +48,9 @@ export function ConfirmActionButton<T>({
 }: {
   action: ServerAction<T>;
   // Passed verbatim to window.confirm before the submit is allowed through.
-  confirmMessage: string;
+  // Null means this direction needs no dialog (e.g. restoring an archived
+  // over-shepherd) — the submit goes straight through.
+  confirmMessage: string | null;
   hiddenFields?: readonly ConfirmActionHiddenField[];
   idleLabel: string;
   pendingLabel: string;
@@ -88,6 +92,7 @@ export function ConfirmActionButton<T>({
   });
 
   function confirmSubmit(e: FormEvent<HTMLFormElement>) {
+    if (confirmMessage === null) return;
     gateSubmitOnConfirm(window.confirm(confirmMessage), e);
   }
 
