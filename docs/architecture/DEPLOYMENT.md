@@ -2,13 +2,21 @@
 
 ## Hosting
 
-- Deploy to **Vercel** as a standard Next.js app.
-- Targets **Vercel Hobby** + **Supabase Free** — see
-  [`FREE_TIER_NOTES.md`](./FREE_TIER_NOTES.md) for the constraints
-  this implies.
+- Deploy to **Vercel** as a standard Next.js app. The Vercel project is
+  Git-integrated: merging to `main` builds and promotes production
+  automatically.
+- Targets **Vercel Hobby** + **Supabase Pro** (Pro is a production
+  requirement — daily backups, no auto-pause) — see
+  [`FREE_TIER_NOTES.md`](./FREE_TIER_NOTES.md) for the tier posture.
 - Supabase environment variables are **optional** for build. Without
   them, protected routes redirect to `/login` at request time and the
   build does not fail.
+
+> **Releases:** code deploys automatically; **migrations never do**. Every
+> release that includes a migration follows
+> [`../runbooks/RELEASE.md`](../runbooks/RELEASE.md). Go-live steps live in
+> [`../runbooks/LAUNCH_RUNBOOK.md`](../runbooks/LAUNCH_RUNBOOK.md); recovery
+> in [`../runbooks/BACKUP_AND_RESTORE.md`](../runbooks/BACKUP_AND_RESTORE.md).
 
 ## Environment variables
 
@@ -42,7 +50,10 @@ function secrets.
 ## Supabase project setup
 
 1. Create a Supabase project.
-2. Apply all migrations under `supabase/migrations/` in order. The
+2. Apply all migrations under `supabase/migrations/` in order
+   (`supabase link --project-ref <ref>` then `supabase db push` — the
+   CLI records each file under its repo version number, which is what
+   keeps local and remote histories comparable). The
    active schema includes profiles + role enum, groups, members,
    group memberships, attendance, guests, follow-ups, audit events,
    app settings, shepherd-care tables, over-shepherds + coverage

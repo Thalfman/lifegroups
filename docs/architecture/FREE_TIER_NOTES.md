@@ -1,13 +1,19 @@
-# Free Tier Notes
+# Tier Notes
 
 This project targets:
 
 - **Vercel Hobby**
-- **Supabase Free**
-- **Upstash Redis Free** (optional — used only for forgot-password
-  throttling)
+- **Supabase Pro** — upgraded for production (2026-06). Pro is what
+  provides daily automated backups and removes the Free tier's
+  ~1-week-inactivity auto-pause; both matter for a database holding
+  pastoral-care data. If the org ever shows "Free" again, treat it as a
+  P0 (see
+  [`../runbooks/BACKUP_AND_RESTORE.md`](../runbooks/BACKUP_AND_RESTORE.md)).
+- **Upstash Redis Free** (optional — used only for forgot-password and
+  invite-redeem throttling)
 
-Posture the app maintains to stay inside those tiers:
+The cost posture is otherwise unchanged: the app is built to run cheaply
+and must keep doing so. Posture the app maintains:
 
 - `@supabase/supabase-js` + `@supabase/ssr` for typed reads and
   cookie-aware auth. No service role key in the Next runtime.
