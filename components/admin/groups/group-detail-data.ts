@@ -4,12 +4,14 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
   fetchAllGroupLeaders,
+  fetchAllMembers,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
   fetchGroupMetricSettings,
   fetchGroupsByIds,
   fetchMembersByIds,
   fetchOpenFollowUps,
+  fetchPlatformConfig,
   fetchProfilesForAdmin,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
@@ -17,7 +19,14 @@ import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   fetchGroupHealthRatings,
   getGroupHealthOverviewForGroup,
+  type GroupHealthOverviewRow,
 } from "@/lib/admin/group-health-read";
+import { decodeAppConfig } from "@/lib/admin/app-config-decode";
+import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
+import {
+  fetchProspectSignalsForGroup,
+  type GroupProspectSignals,
+} from "@/lib/supabase/prospect-reads";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import {
   capacityStatus,
@@ -87,18 +96,35 @@ export type GroupOverviewTabData = {
   memberCount: number | null;
 };
 
-// People: leaders + active members (read-only roster). Each list is null when
-// a read feeding it failed — a failed read must not render an empty roster as
-// if authoritative.
+// People: the group's roster, now editable in place (assign / remove) rather
+// than read-only with a hop to /admin/people. Each list is null when a read
+// feeding it failed — a failed read must not render an empty roster as if
+// authoritative — and the assignable options fail closed the same way (null →
+// no assign control, degraded note instead).
 export type GroupPeopleTabData = {
   tab: "people";
+  // Archived (closed) groups get a read-only roster — restore first to edit.
+  archived: boolean;
   leaders: Array<{
     id: string;
+    // Drives the remove action (the row id alone can't — the RPC keys on the
+    // (group, profile) pair).
+    profileId: string;
     // null when the leader's profile row wasn't found (renders "(unknown)").
     name: string | null;
     isCoLeader: boolean;
   }> | null;
   members: Array<{ id: string; fullName: string }> | null;
+  // Active leader/co-leader profiles not already on this group's roster, for
+  // the inline assign control. null = the feeding read failed (or the group is
+  // archived, where no assign control renders at all).
+  assignableLeaders: Array<{ id: string; name: string }> | null;
+  // Active members not already on this group's roster.
+  assignableMembers: Array<{ id: string; name: string }> | null;
+  // This group's Interest Funnel view (group-level only — prospects carry no
+  // person FK). null = the read failed; the card shows a degraded note, never
+  // a false "no prospects".
+  prospectSignals: GroupProspectSignals | null;
 };
 
 // Health: the Group-Health Grade (Q12). Fails closed as a whole — a failed
@@ -115,6 +141,16 @@ export type GroupHealthTabData = {
   attendanceWeeksCounted: number;
   spiritualGrowthScore: number | null;
   groupQuestionScore: number | null;
+  // The full overview row the shared rating editor (GroupHealthEditorDrawer)
+  // renders from — the same shape the triage list feeds it. null when the
+  // health read failed or returned nothing: no row → no edit button, never an
+  // editor over unknown values.
+  editorRow: GroupHealthOverviewRow | null;
+  // The operator-editable rating question wordings, resolved with the same
+  // graceful placeholder fallback the triage uses (platform_config is
+  // Super-Admin-only via RLS; a ministry admin reads the placeholders).
+  spiritualGrowthLabel: string;
+  groupQuestionLabel: string;
 };
 
 // Attendance: historical / read-only (the check-in flow is frozen per ADR
@@ -170,16 +206,19 @@ export type GroupDetailOptions = {
 export type GroupDetailReads = {
   fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
   fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
+  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
   fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
   fetchGroupMetricSettings: OmitClient<typeof fetchGroupMetricSettings>;
   fetchGroupHealthOverview: OmitClient<typeof getGroupHealthOverviewForGroup>;
+  fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
   fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
   fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
   fetchGroupHealthRatings: OmitClient<typeof fetchGroupHealthRatings>;
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
   fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
   fetchGroupCalendarEvents: OmitClient<typeof fetchGroupCalendarEvents>;
+  fetchProspectSignalsForGroup: OmitClient<typeof fetchProspectSignalsForGroup>;
   // Not a client-bound read-model fetcher: the ADR-0009 frozen-surface flag
   // for weekly check-ins (it fails safe to false on its own).
   fetchCheckInsLive: () => Promise<boolean>;
@@ -194,16 +233,19 @@ export function supabaseGroupDetailReads(
     ...bindReads(client, {
       fetchGroupsByIds,
       fetchAllGroupLeaders,
+      fetchAllMembers,
       fetchActiveMemberships,
       fetchMetricDefaults: fetchMetricDefaultsCached,
       fetchGroupMetricSettings,
       fetchGroupHealthOverview: getGroupHealthOverviewForGroup,
+      fetchPlatformConfig,
       fetchProfilesForAdmin,
       fetchMembersByIds,
       fetchGroupHealthRatings,
       fetchAttendanceSessions,
       fetchOpenFollowUps,
       fetchGroupCalendarEvents,
+      fetchProspectSignalsForGroup,
     }),
     fetchCheckInsLive: () => isFrozenSurfaceLive("check_ins"),
   };
@@ -304,11 +346,20 @@ async function buildPeopleTab(
   reads: GroupDetailReads,
   group: GroupsRow
 ): Promise<GroupPeopleTabData> {
-  const [leadersRes, profilesRes, membershipsRes] = await Promise.all([
-    reads.fetchAllGroupLeaders({ activeOnly: true }),
-    reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
-    reads.fetchActiveMemberships({ groupId: group.id }),
-  ]);
+  const archived = lifecycleCategory(group.lifecycle_status) === "archived";
+
+  const [leadersRes, profilesRes, membershipsRes, allMembersRes, prospectsRes] =
+    await Promise.all([
+      reads.fetchAllGroupLeaders({ activeOnly: true }),
+      reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
+      reads.fetchActiveMemberships({ groupId: group.id }),
+      // The full active-member pool feeds the inline assign control; skip the
+      // read for an archived group, whose roster is read-only.
+      archived
+        ? Promise.resolve({ data: null, error: null })
+        : reads.fetchAllMembers(),
+      reads.fetchProspectSignalsForGroup(group.id),
+    ]);
 
   const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
   const membersRes = await reads.fetchMembersByIds(memberIds);
@@ -325,6 +376,7 @@ async function buildPeopleTab(
         .filter((l) => l.group_id === group.id && l.active)
         .map((l) => ({
           id: l.id,
+          profileId: l.profile_id,
           name: profilesById.get(l.profile_id)?.full_name ?? null,
           isCoLeader: l.role === "co_leader",
         }));
@@ -339,7 +391,43 @@ async function buildPeopleTab(
         .sort((a, b) => a.full_name.localeCompare(b.full_name))
         .map((m) => ({ id: m.id, fullName: m.full_name }));
 
-  return { tab: "people", leaders, members };
+  // Assignable options for the inline controls. Fail closed: without a
+  // trustworthy roster (or pool) the difference can't be computed, so the
+  // assign control is suppressed rather than offering wrong choices. An
+  // archived group skips options entirely (read-only roster).
+  const assignedProfileIds = new Set(
+    (leadersRes.data ?? [])
+      .filter((l) => l.group_id === group.id && l.active)
+      .map((l) => l.profile_id)
+  );
+  const assignableLeaders =
+    archived || leadersFailed
+      ? null
+      : (profilesRes.data ?? [])
+          .filter((p) => p.status === "active" && !assignedProfileIds.has(p.id))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name))
+          .map((p) => ({ id: p.id, name: p.full_name }));
+
+  const rosterMemberIds = new Set(memberIds);
+  const assignableMembers =
+    archived || membersFailed || allMembersRes.error
+      ? null
+      : (allMembersRes.data ?? [])
+          .filter((m) => m.status === "active" && !rosterMemberIds.has(m.id))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name))
+          .map((m) => ({ id: m.id, name: m.full_name }));
+
+  return {
+    tab: "people",
+    archived,
+    leaders,
+    members,
+    assignableLeaders,
+    assignableMembers,
+    // Fail closed: a failed funnel read shows a degraded note, never a false
+    // "no prospects matched to this group".
+    prospectSignals: prospectsRes.error ? null : prospectsRes.data,
+  };
 }
 
 async function buildHealthTab(
@@ -347,24 +435,34 @@ async function buildHealthTab(
   group: GroupsRow,
   periodMonth: string
 ): Promise<GroupHealthTabData> {
-  const [overviewRes, ratingsRes, defaultsRes] = await Promise.all([
-    // Single-group health read (#308) — same grade logic, O(1) reads.
-    reads.fetchGroupHealthOverview(group.id, periodMonth),
-    reads.fetchGroupHealthRatings(group.id, periodMonth),
-    reads.fetchMetricDefaults(),
-  ]);
+  const [overviewRes, ratingsRes, defaultsRes, platformConfigRes] =
+    await Promise.all([
+      // Single-group health read (#308) — same grade logic, O(1) reads.
+      reads.fetchGroupHealthOverview(group.id, periodMonth),
+      reads.fetchGroupHealthRatings(group.id, periodMonth),
+      reads.fetchMetricDefaults(),
+      // The operator-editable rating question wordings for the shared editor.
+      // Super-Admin-only via RLS: a ministry admin reads null and resolveCopy
+      // falls back to the documented placeholders — intended, not an error.
+      reads.fetchPlatformConfig(),
+    ]);
 
+  const failed = Boolean(
+    overviewRes.error || ratingsRes.error || defaultsRes.error
+  );
   const row = overviewRes.data ?? null;
   const watchGrade = decodeMetricDefaults(
     defaultsRes.data ?? null
   ).group_health_watch_grade;
   const grade = row?.computed_letter ?? null;
 
+  const editableCopy = decodeAppConfig(platformConfigRes.data).editableCopy;
+
   return {
     tab: "health",
     // Fail closed: a failed health/ratings read must not masquerade as a
     // genuine "Not assessed" / "Not rated" grade.
-    failed: Boolean(overviewRes.error || ratingsRes.error || defaultsRes.error),
+    failed,
     period: periodMonth,
     health: healthCategory(grade, watchGrade),
     grade,
@@ -373,6 +471,17 @@ async function buildHealthTab(
     attendanceWeeksCounted: row?.attendance_weeks_counted ?? 0,
     spiritualGrowthScore: ratingsRes.data?.spiritual_growth_score ?? null,
     groupQuestionScore: ratingsRes.data?.group_question_score ?? null,
+    // No editor over unknown values: the row only flows through when every
+    // status-feeding read succeeded.
+    editorRow: failed ? null : row,
+    spiritualGrowthLabel: resolveCopy(
+      editableCopy,
+      GROUP_HEALTH_COPY_KEYS.spiritualGrowth
+    ),
+    groupQuestionLabel: resolveCopy(
+      editableCopy,
+      GROUP_HEALTH_COPY_KEYS.groupQuestion
+    ),
   };
 }
 

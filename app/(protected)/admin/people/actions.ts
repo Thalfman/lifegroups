@@ -9,6 +9,8 @@ import {
   validateChangeLeaderRolePayload,
   validateDeactivateProfilePayload,
   validateDeactivateMemberPayload,
+  validateEndGroupMembershipPayload,
+  validateUnassignLeaderFromGroupPayload,
   guardAgainstSelfTarget,
 } from "@/lib/admin/validation";
 import { type ActionResult } from "@/lib/admin/action-result";
@@ -25,6 +27,8 @@ import {
   rpcAdminCreateMember,
   rpcAdminDeactivateMember,
   rpcAdminDeactivateProfile,
+  rpcAdminEndGroupMembership,
+  rpcAdminUnassignLeaderFromGroup,
 } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/people";
@@ -127,13 +131,13 @@ const ASSIGN_LEADER_SPEC: AdminWriteActionSpec<
       p_profile_id: value.profile_id,
       p_role: value.role,
     }),
-  // Placement can now be driven from a person's detail page (Group tab) as well
-  // as the People directory, so refresh both the People surface and that
-  // person's detail route — otherwise the detail page's server-rendered
-  // "Current group assignment" panel would keep showing the stale roster.
+  // Assignment can be driven from a person's detail page (Group tab), the
+  // People directory, or the group's own People tab, so refresh all three —
+  // otherwise a server-rendered roster panel would keep showing stale data.
   revalidate: (value) => [
     REVALIDATE_PATH,
     `/admin/people/profile/${value.profile_id}`,
+    `/admin/groups/${value.group_id}`,
   ],
   noDataError: "The assignment was not saved. Please try again.",
 };
@@ -168,6 +172,7 @@ const ASSIGN_MEMBER_SPEC: AdminWriteActionSpec<
   revalidate: (value) => [
     REVALIDATE_PATH,
     `/admin/people/member/${value.member_id}`,
+    `/admin/groups/${value.group_id}`,
   ],
   noDataError: "The assignment was not saved. Please try again.",
 };
@@ -177,6 +182,88 @@ export async function adminAssignMemberToGroup(
   input: ActionInput<AssignMemberPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ASSIGN_MEMBER_SPEC, prev, input);
+}
+
+// ----- 4b. adminUnassignLeaderFromGroup -------------------------------------
+//
+// Roster removal: take one leader off one group's roster (group_leaders.active
+// := false) without touching their profile status — the inverse of
+// adminAssignLeaderToGroup, driven from the group detail's People tab.
+
+type UnassignLeaderPayload = { group_id: string; profile_id: string };
+
+const UNASSIGN_LEADER_SPEC: AdminWriteActionSpec<
+  UnassignLeaderPayload,
+  { id: string }
+> = {
+  name: "admin.people.unassign_leader_from_group",
+  keys: ["group_id", "profile_id"],
+  validate: validateUnassignLeaderFromGroupPayload,
+  guard: (actor, value) => {
+    const error = guardAgainstSelfTarget(actor.id, value.profile_id);
+    return error ? { error, code: "self_guard" } : null;
+  },
+  fields: (_actor, value) => ({
+    target_group_id: value.group_id,
+    target_profile_id: value.profile_id,
+  }),
+  rpc: (client, value) =>
+    rpcAdminUnassignLeaderFromGroup(client, {
+      p_group_id: value.group_id,
+      p_profile_id: value.profile_id,
+    }),
+  revalidate: (value) => [
+    REVALIDATE_PATH,
+    `/admin/people/profile/${value.profile_id}`,
+    `/admin/groups/${value.group_id}`,
+  ],
+  noDataError: "The leader was not removed from the group. Please try again.",
+};
+
+export async function adminUnassignLeaderFromGroup(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<UnassignLeaderPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(UNASSIGN_LEADER_SPEC, prev, input);
+}
+
+// ----- 4c. adminEndGroupMembership ------------------------------------------
+//
+// Roster removal: end one member's active membership in one group (status →
+// inactive, ended_at = today) without touching the member's status — the
+// inverse of adminAssignMemberToGroup.
+
+type EndMembershipPayload = { group_id: string; member_id: string };
+
+const END_MEMBERSHIP_SPEC: AdminWriteActionSpec<
+  EndMembershipPayload,
+  { id: string }
+> = {
+  name: "admin.people.end_group_membership",
+  keys: ["group_id", "member_id"],
+  validate: validateEndGroupMembershipPayload,
+  fields: (_actor, value) => ({
+    target_group_id: value.group_id,
+    target_member_id: value.member_id,
+  }),
+  rpc: (client, value) =>
+    rpcAdminEndGroupMembership(client, {
+      p_group_id: value.group_id,
+      p_member_id: value.member_id,
+    }),
+  revalidate: (value) => [
+    REVALIDATE_PATH,
+    `/admin/people/member/${value.member_id}`,
+    `/admin/groups/${value.group_id}`,
+  ],
+  noDataError: "The member was not removed from the group. Please try again.",
+};
+
+export async function adminEndGroupMembership(
+  prev: ActionResult<{ id: string }> | undefined,
+  input: ActionInput<EndMembershipPayload>
+): Promise<ActionResult<{ id: string }>> {
+  return runAdminWriteAction(END_MEMBERSHIP_SPEC, prev, input);
 }
 
 // ----- 5. adminDeactivateProfile ------------------------------------------

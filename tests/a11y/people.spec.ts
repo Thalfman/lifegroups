@@ -2,20 +2,22 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
-// Issue 302 — People folds the former Leader Pipeline in as "Apprentices" and
-// presents five tabs: Directory (everyone), Leaders, Members, Apprentices, and
-// Add Person (reduction plan §6). Group placement moved off a standalone
-// Assignments view onto each person's detail page (Group tab), so the People
-// shell no longer renders the per-group assignment drawer. This suite gates:
+// People is two destinations plus an action: a Directory tab (everyone, with
+// an Everyone / Leaders / Members scope filter inside the list), an
+// Apprentices tab (the leader pipeline), and an "Add person" header button
+// that opens the standard editing drawer. The tabs are real role=tablist
+// controls driven by the URL's ?tab= param. This suite gates:
 //
-//   1. People defaults to the Directory view; all five tabs are explicit
-//      controls; the add forms and pipeline forms are not in the DOM until
-//      their tab is chosen.
-//   2. A no-results directory search leaves no large unrelated section visible.
-//   3. The Leaders / Members / Apprentices / Add Person tabs each reveal their
-//      own content.
-//   4. Each directory row carries a "View person" link.
-//   5. axe finds no critical/serious violations across the tabs.
+//   1. People defaults to the Directory tab; both tabs are role=tab controls;
+//      the add forms are not in the DOM until the drawer opens.
+//   2. The scope filter narrows the directory to Leaders / Members sections.
+//   3. A no-results directory search leaves no large unrelated section visible.
+//   4. Each directory row carries a "View person" link; destructive row
+//      actions keep record-context accessible names.
+//   5. The Add person drawer traps focus, closes on Escape, and returns focus
+//      to the trigger.
+//   6. axe finds no critical/serious violations across the tabs and with the
+//      drawer open.
 
 const SURFACE = '[data-a11y-surface="people"]';
 
@@ -24,7 +26,7 @@ test.describe("admin People tabs", () => {
     await gotoHarness(page);
   });
 
-  test("defaults to the Directory view; all five tabs are explicit controls", async ({
+  test("defaults to the Directory tab; both tabs are real tab controls", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
@@ -32,19 +34,20 @@ test.describe("admin People tabs", () => {
     // Directory is the default: its search is present.
     await expect(surface.getByLabel("Search people").first()).toBeVisible();
 
-    // The add-person forms are not rendered until their tab is chosen.
-    expect(await surface.getByText("Add leader profile").count()).toBe(0);
+    // Each tab's accessible name carries its count, so match on the prefix.
+    const directoryTab = surface.getByRole("tab", { name: /^Directory/ });
+    const apprenticesTab = surface.getByRole("tab", { name: /^Apprentices/ });
+    await expect(directoryTab).toBeVisible();
+    await expect(apprenticesTab).toBeVisible();
+    await expect(directoryTab).toHaveAttribute("aria-selected", "true");
 
-    // The view switcher exposes all five tabs as explicit controls.
-    for (const name of [
-      "Directory",
-      "Leaders",
-      "Members",
-      "Apprentices",
-      "Add Person",
-    ]) {
-      await expect(surface.getByRole("button", { name })).toBeVisible();
-    }
+    // The add-person forms live in the drawer, not the page.
+    expect(
+      await surface.getByRole("button", { name: "Add leader" }).count()
+    ).toBe(0);
+    expect(
+      await surface.getByRole("button", { name: "Add member" }).count()
+    ).toBe(0);
   });
 
   test("directory rows carry a View person link", async ({ page }) => {
@@ -116,52 +119,81 @@ test.describe("admin People tabs", () => {
       surface.getByText(/No leaders or oversight roles match/)
     ).toBeVisible();
     // The add forms are still not on the page.
-    expect(await surface.getByText("Add leader profile").count()).toBe(0);
+    expect(
+      await surface.getByRole("button", { name: "Add leader" }).count()
+    ).toBe(0);
   });
 
-  test("the Leaders tab filters to a Leaders and co-leaders section", async ({
+  test("the scope filter narrows to Leaders, then Members", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Leaders" }).click();
+    const scope = surface.getByLabel("People type");
 
+    await scope.selectOption("leaders");
     await expect(
       surface.getByRole("heading", { name: "Leaders and co-leaders" })
     ).toBeVisible();
-    // The members section is not mounted in the leaders scope.
-    expect(await surface.getByText("Participants").count()).toBe(0);
-  });
+    // The Members section is not mounted in the leaders scope.
+    expect(
+      await surface.getByRole("heading", { name: "Members" }).count()
+    ).toBe(0);
 
-  test("the Members tab shows only the participants section", async ({
-    page,
-  }) => {
-    const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Members" }).click();
-
-    await expect(surface.getByText("Participants")).toBeVisible();
+    await scope.selectOption("members");
+    await expect(
+      surface.getByRole("heading", { name: "Members" })
+    ).toBeVisible();
+    expect(
+      await surface
+        .getByRole("heading", { name: "Leaders and co-leaders" })
+        .count()
+    ).toBe(0);
   });
 
   test("the Apprentices tab reveals the leader pipeline", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Apprentices" }).click();
+    await surface.getByRole("tab", { name: /^Apprentices/ }).click();
 
     await expect(
       surface.getByRole("heading", { name: "Leader pipeline" })
     ).toBeVisible();
-    // The directory search is no longer mounted in this tab.
-    expect(await surface.getByLabel("Search people").count()).toBe(0);
+    await expect(
+      surface.getByRole("tab", { name: /^Apprentices/ })
+    ).toHaveAttribute("aria-selected", "true");
+    // The directory search is hidden in this tab.
+    await expect(surface.getByLabel("Search people")).toBeHidden();
   });
 
-  test("the Add Person tab reveals the add forms", async ({ page }) => {
+  test("Add person opens the drawer and returns focus on close", async ({
+    page,
+  }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: "Add Person" }).click();
+    const opener = surface.getByRole("button", { name: "Add person" });
+    await opener.click();
 
-    await expect(surface.getByText("Add leader profile")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
     await expect(
-      surface.getByRole("button", { name: "Add member" })
+      dialog.getByRole("heading", { name: "Add a person" })
     ).toBeVisible();
-    // The directory search is no longer mounted in this tab.
-    expect(await surface.getByLabel("Search people").count()).toBe(0);
+
+    // Leader is the default kind; the kind toggle switches to the member form.
+    await expect(
+      dialog.getByRole("button", { name: "Add leader" })
+    ).toBeVisible();
+    await dialog.getByRole("radio", { name: "Member" }).click();
+    await expect(
+      dialog.getByRole("button", { name: "Add member" })
+    ).toBeVisible();
+
+    const focusInside = await dialog.evaluate((node) =>
+      node.contains(document.activeElement)
+    );
+    expect(focusInside).toBe(true);
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(opener).toBeFocused();
   });
 
   test("axe finds no critical or serious violations across the People tabs", async ({
@@ -169,26 +201,27 @@ test.describe("admin People tabs", () => {
   }) => {
     const surface = page.locator(SURFACE);
 
-    // Scan each tab while it is mounted — a single scan after the loop would
-    // only cover whichever tab was last clicked, letting regressions in the
-    // earlier tabs (e.g. the Add Person forms) slip through. Directory is last
-    // so the row-level destructive affordances (Deactivate / Change role) and
-    // the View person links are also in the DOM when scanned.
-    //
-    // Scope each scan to the People surface (the harness renders every admin
-    // surface on one page); this keeps the five per-tab scans fast and stable
-    // as other surfaces grow, instead of re-analyzing the whole document each
-    // time and drifting toward the test timeout.
-    for (const name of [
-      "Leaders",
-      "Members",
-      "Apprentices",
-      "Add Person",
-      "Directory",
-    ]) {
-      await surface.getByRole("button", { name }).click();
+    // Scan each tab while it is mounted. Directory is last so the row-level
+    // destructive affordances (Deactivate / Change role) and the View person
+    // links are in the DOM when scanned. Scans scope to the People surface
+    // (the harness renders every admin surface on one page) to stay fast.
+    for (const name of [/^Apprentices/, /^Directory/]) {
+      await surface.getByRole("tab", { name }).click();
       const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
       expectNoBlockingAxeViolations(results);
     }
+  });
+
+  test("axe finds no critical or serious violations with the Add person drawer open", async ({
+    page,
+  }) => {
+    await page
+      .locator(SURFACE)
+      .getByRole("button", { name: "Add person" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expectNoBlockingAxeViolations(results);
   });
 });

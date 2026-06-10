@@ -78,6 +78,24 @@ export function rpcAdminDeactivateMember(
   return callUuidRpc(client, "admin_deactivate_member", args);
 }
 
+// Roster removal (Groups/People overhaul): take one person off one group's
+// roster without touching the person's status. Soft flags only — the inverse
+// of the two assign RPCs above, which revive these rows on re-assign.
+
+export function rpcAdminUnassignLeaderFromGroup(
+  client: AppSupabaseClient,
+  args: { p_group_id: string; p_profile_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_unassign_leader_from_group", args);
+}
+
+export function rpcAdminEndGroupMembership(
+  client: AppSupabaseClient,
+  args: { p_group_id: string; p_member_id: string }
+): Promise<RpcResult> {
+  return callUuidRpc(client, "admin_end_group_membership", args);
+}
+
 // Phase 5A.2 group management RPCs.
 
 export type GroupRpcArgs = {

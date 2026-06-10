@@ -12,7 +12,7 @@
 // the server page) so it never ships in a normal build. Later surface-
 // migration slices add their surface here and inherit the same gate.
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import {
   CalendarOccurrenceEditor,
@@ -32,6 +32,13 @@ import {
   type PeopleManagementData,
   type PeoplePipelineData,
 } from "@/components/admin/people-management-shell";
+import {
+  PersonDetailShell,
+  type PersonDetail,
+} from "@/components/admin/person-detail/person-detail-shell";
+import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
+// Type-only: the data module itself is server-side (reads seam).
+import type { GroupPeopleTabData } from "@/components/admin/groups/group-detail-data";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
@@ -862,6 +869,66 @@ const PEOPLE_PIPELINE: PeoplePipelineData = {
 
 const PEOPLE_NEEDS_CONTACT: ReadonlySet<string> = new Set();
 
+// Person detail shell: the leader variant carries the full tab ladder
+// (Overview / Group / Care / Activity / Access) and the URL-driven ?tab=
+// mechanism. One mount only — a second would duplicate the tab/panel element
+// ids and trip axe's duplicate-id-aria rule; the member variant's hidden-tab
+// fallback is unit-tested in person-tabs.test.ts.
+const PERSON_DETAIL_LEADER: PersonDetail = {
+  kind: "profile",
+  id: "people-leader-1",
+  fullName: "Priya Detail",
+  email: "priya@example.test",
+  phone: "(555) 010-2030",
+  status: "active",
+  roleLabel: "Leader",
+  isLoginBacked: true,
+  isLeader: true,
+  needsContact: true,
+  canPlaceInGroup: true,
+  groups: [
+    { id: "people-g-1", name: "Riverside Young Adults", roleInGroup: "leader" },
+  ],
+  careHref: "/admin/shepherd-care/people-leader-1",
+};
+
+const PERSON_DETAIL_GROUP_OPTIONS = [
+  { id: "people-g-2", name: "Downtown Twenties" },
+  { id: "people-g-3", name: "Westside Families" },
+];
+
+// Group detail People tab — the group-centric roster editor. Repeated Remove
+// controls must carry person + group context; the inline assign rows must be
+// labelled selects. Mirrors the live shape buildPeopleTab assembles.
+const GROUP_ROSTER_DATA: GroupPeopleTabData = {
+  tab: "people",
+  archived: false,
+  leaders: [
+    {
+      id: "roster-gl-1",
+      profileId: "roster-p-1",
+      name: "Avery Leader",
+      isCoLeader: false,
+    },
+    {
+      id: "roster-gl-2",
+      profileId: "roster-p-2",
+      name: "Blair Co",
+      isCoLeader: true,
+    },
+  ],
+  members: [
+    { id: "roster-m-1", fullName: "Casey Member" },
+    { id: "roster-m-2", fullName: "Drew Member" },
+  ],
+  assignableLeaders: [{ id: "roster-p-3", name: "Em Bench" }],
+  assignableMembers: [{ id: "roster-m-9", name: "Frankie Available" }],
+  prospectSignals: {
+    matched: [{ id: "roster-pr-1", full_name: "Morgan Prospect" }],
+    joinedCount: 2,
+  },
+};
+
 // Calendar occurrence editor (#324 a11y hardening sweep). The Groups calendar
 // modal is its own Radix Dialog (separate from the EditingSurface drawer), opened
 // from a programmatic trigger rather than a DialogTrigger, and it carries the
@@ -1067,14 +1134,36 @@ export function A11yHarnessClient() {
         </div>
       </Surface>
 
-      <Surface
-        id="people"
-        heading="People (directory / leaders / members / apprentices / add)"
-      >
-        <PeopleManagementShell
-          data={PEOPLE_DATA}
-          pipeline={PEOPLE_PIPELINE}
-          needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
+      <Surface id="people" heading="People (directory / apprentices)">
+        {/* The People shell reads its active tab from the URL (?tab=) via
+            useSearchParams, which a statically-rendered route must wrap in
+            Suspense. */}
+        <Suspense fallback={null}>
+          <PeopleManagementShell
+            data={PEOPLE_DATA}
+            pipeline={PEOPLE_PIPELINE}
+            needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
+          />
+        </Suspense>
+      </Surface>
+
+      <Surface id="person-detail" heading="Person detail (leader)">
+        {/* Same ?tab= mechanism as the People shell above; they share the
+            harness URL, which is fine — each resolves unknown values to its
+            own default tab. */}
+        <Suspense fallback={null}>
+          <PersonDetailShell
+            person={PERSON_DETAIL_LEADER}
+            availableGroups={PERSON_DETAIL_GROUP_OPTIONS}
+          />
+        </Suspense>
+      </Surface>
+
+      <Surface id="group-roster" heading="Group roster (detail People tab)">
+        <GroupRosterManager
+          groupId="roster-g-1"
+          groupName="Riverside Young Adults"
+          data={GROUP_ROSTER_DATA}
         />
       </Surface>
 

@@ -136,6 +136,55 @@ export function validateAssignMemberToGroupPayload(
   };
 }
 
+// Roster removal (Groups/People overhaul): the inverse of the two assign
+// payloads — one person off one group's roster, person status untouched.
+
+export type UnassignLeaderFromGroupPayload = {
+  group_id: string;
+  profile_id: string;
+};
+
+export function validateUnassignLeaderFromGroupPayload(
+  input: unknown
+): ValidationResult<UnassignLeaderFromGroupPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  if (!isUuid(input.profile_id)) errors.push("profile_id must be a uuid");
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      group_id: normalizeUuid(input.group_id as string),
+      profile_id: normalizeUuid(input.profile_id as string),
+    },
+  };
+}
+
+export type EndGroupMembershipPayload = {
+  group_id: string;
+  member_id: string;
+};
+
+export function validateEndGroupMembershipPayload(
+  input: unknown
+): ValidationResult<EndGroupMembershipPayload> {
+  const errors: string[] = [];
+  if (!isRecord(input))
+    return { ok: false, errors: ["payload must be an object"] };
+  if (!isUuid(input.group_id)) errors.push("group_id must be a uuid");
+  if (!isUuid(input.member_id)) errors.push("member_id must be a uuid");
+  if (errors.length > 0) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      group_id: normalizeUuid(input.group_id as string),
+      member_id: normalizeUuid(input.member_id as string),
+    },
+  };
+}
+
 export type DeactivateProfilePayload = { profile_id: string };
 
 export function validateDeactivateProfilePayload(

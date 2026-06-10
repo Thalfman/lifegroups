@@ -25,6 +25,7 @@ import {
 import {
   capacityCategory,
   healthCategory,
+  listTabDescription,
   matchesListTab,
   setupCategory,
   type GroupListTab,
@@ -91,14 +92,18 @@ import {
 
 // Each of the four independent status categories carries its own badge tone.
 // They are shown as four separate chips — never combined into one (issue #300).
+// No-news values (active, setup complete, no concerns, open) read as quiet
+// ghost chips so the only colored chips on a row are the ones asking for a
+// look — the four zones stay independent but no longer carry equal visual
+// weight.
 const LIFECYCLE_TONE: Record<GroupLifecycleCategory, BadgeTone> = {
-  active: STATUS_TONES.well,
-  paused: "ghost",
+  active: "ghost",
+  paused: "neutral",
   archived: "neutral",
 };
 
 const SETUP_TONE: Record<GroupSetupCategory, BadgeTone> = {
-  complete: STATUS_TONES.well,
+  complete: "ghost",
   needs_setup: STATUS_TONES.watch,
   needs_leader: STATUS_TONES.followUp,
   missing_meeting: STATUS_TONES.watch,
@@ -106,12 +111,12 @@ const SETUP_TONE: Record<GroupSetupCategory, BadgeTone> = {
 
 const HEALTH_TONE: Record<GroupHealthCategory, BadgeTone> = {
   not_assessed: "neutral",
-  no_concerns: STATUS_TONES.well,
+  no_concerns: "ghost",
   needs_attention: STATUS_TONES.followUp,
 };
 
 const CAPACITY_TONE: Record<GroupCapacityCategory, BadgeTone> = {
-  open: "neutral",
+  open: "ghost",
   near_full: STATUS_TONES.watch,
   full: STATUS_TONES.followUp,
 };
@@ -208,12 +213,27 @@ function isGroupsViewSnapshot(value: unknown): value is GroupsViewSnapshot {
 type ListTab = GroupListTab;
 
 const TABS: { key: ListTab; label: string }[] = [
-  { key: "all", label: "All Groups" },
-  { key: "needs_setup", label: "Needs Setup" },
-  { key: "needs_health_check", label: "Needs Health Check" },
-  { key: "needs_attention", label: "Needs Attention" },
+  { key: "all", label: "All groups" },
+  { key: "needs_setup", label: "Needs setup" },
+  { key: "needs_health_check", label: "Needs health check" },
+  { key: "needs_attention", label: "Needs attention" },
   { key: "archived", label: "Archived" },
 ];
+
+// What an empty tab means, in the operator's words — each list tab teaches its
+// own all-clear (or next step) instead of the generic "no groups match".
+// Search empties are handled separately, since "no match" there is about the
+// query, not the bucket.
+const EMPTY_TAB_COPY: Record<ListTab, string> = {
+  all: "No groups yet. Create your first with “New group” above.",
+  needs_setup:
+    "Nothing needs setup — every group has a leader, meeting details, and a capacity.",
+  needs_health_check:
+    "Nothing to check — every group has a Group-Health Grade and its required ratings.",
+  needs_attention: "Nothing needs attention right now.",
+  archived:
+    "No archived groups. Archiving is reversible — an archived group would appear here, ready to restore.",
+};
 
 // The four independent status categories for one group, derived from already-
 // assembled inputs (ADR 0011: per-surface assembly, reusing shared rules only).
@@ -482,6 +502,27 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     [deferredTab, statusByGroupId]
   );
 
+  // Per-tab membership counts, shown on the tab pills so the triage buckets
+  // read at a glance. Counts deliberately ignore the search box — they size
+  // the bucket, not the current query.
+  const tabCounts = useMemo(() => {
+    const counts: Record<ListTab, number> = {
+      all: 0,
+      needs_setup: 0,
+      needs_health_check: 0,
+      needs_attention: 0,
+      archived: 0,
+    };
+    for (const g of props.groups) {
+      const s = statusByGroupId.get(g.id);
+      if (!s) continue;
+      for (const t of TABS) {
+        if (matchesListTab(t.key, s)) counts[t.key] += 1;
+      }
+    }
+    return counts;
+  }, [props.groups, statusByGroupId]);
+
   const visible = useMemo(
     () =>
       props.groups
@@ -536,8 +577,6 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
     props.healthGradesByGroupId,
   ]);
 
-  const isArchivedTab = tab === "archived";
-
   return (
     <section className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -560,7 +599,15 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         </Button>
       </div>
 
-      <TabBar tab={tab} onTabChange={setTab} />
+      <div className="grid gap-2">
+        <TabBar tab={tab} onTabChange={setTab} counts={tabCounts} />
+        {/* The active tab's membership rule, in the operator's words — so a
+            group's presence in (or absence from) a bucket is explainable
+            without reading code. Urgent `tab`, so it flips with the click. */}
+        <p className="m-0 font-sans text-sm leading-normal text-ink3">
+          {listTabDescription(tab)}
+        </p>
+      </div>
 
       <div className="grid grid-cols-[minmax(220px,1fr)] items-center gap-3 rounded-md border border-line bg-surface px-3.5 py-3">
         <input
@@ -587,9 +634,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             listIsStale && "opacity-60"
           )}
         >
-          {isArchivedTab
-            ? "No archived groups."
-            : "No groups match the current tab."}
+          {trimmed
+            ? "No groups match your search on this tab. Clear the search to see the full list."
+            : EMPTY_TAB_COPY[deferredTab]}
         </div>
       ) : deferredMode === "table" ? (
         <div
@@ -664,9 +711,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 function TabBar({
   tab,
   onTabChange,
+  counts,
 }: {
   tab: ListTab;
   onTabChange: (t: ListTab) => void;
+  // Per-tab membership counts (Care shell's count-slot pattern) so each triage
+  // bucket's size reads at a glance without clicking into it.
+  counts: Record<ListTab, number>;
 }) {
   return (
     <div
@@ -691,6 +742,12 @@ function TabBar({
             )}
           >
             {t.label}
+            {/* Full-opacity count: an opacity-dimmed count drops ink3 below
+                WCAG AA (axe: 2.94:1), so it keeps the tab's own text color
+                and reads smaller instead. */}
+            <span className="ml-2 text-xs font-bold tabular-nums">
+              {counts[t.key]}
+            </span>
           </button>
         );
       })}

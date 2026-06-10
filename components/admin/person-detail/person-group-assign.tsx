@@ -105,13 +105,13 @@ export function PersonGroupAssign({
             size="sm"
             disabled={pending || noGroups}
           >
-            {pending ? "Placing…" : "Place in group"}
+            {pending ? "Assigning…" : "Assign to group"}
           </Button>
         </div>
       </div>
       {noGroups ? (
         <p className="m-0 font-sans text-xs text-ink3">
-          There are no active groups to place this person in yet.
+          There are no active groups to assign this person to yet.
         </p>
       ) : null}
       {state && !state.ok ? (
@@ -124,7 +124,7 @@ export function PersonGroupAssign({
         </ul>
       ) : null}
       {state?.ok ? (
-        <p className={successTextClassName}>Placed in group.</p>
+        <p className={successTextClassName}>Assigned to group.</p>
       ) : null}
     </form>
   );

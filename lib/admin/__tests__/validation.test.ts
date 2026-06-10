@@ -5,6 +5,8 @@ import {
   guardAgainstSuperAdminAssignment,
   validateAssignLeaderToGroupPayload,
   validateAssignShepherdCoveragePayload,
+  validateEndGroupMembershipPayload,
+  validateUnassignLeaderFromGroupPayload,
   validateChangeUserRolePayload,
   validateCreateLaunchPlanningScenarioPayload,
   validateCreateOverShepherdPayload,
@@ -204,6 +206,50 @@ describe("validateAssignLeaderToGroupPayload", () => {
       expect(r.ok).toBe(true);
       if (r.ok) expect(r.value.role).toBe(role);
     }
+  });
+});
+
+describe("validateUnassignLeaderFromGroupPayload", () => {
+  it("accepts a uuid pair and normalizes case", () => {
+    const r = validateUnassignLeaderFromGroupPayload({
+      group_id: UUID_A.toUpperCase(),
+      profile_id: UUID_B,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.profile_id).toBe(UUID_B);
+    }
+  });
+
+  it("rejects non-uuid ids", () => {
+    const r = validateUnassignLeaderFromGroupPayload({
+      group_id: "not-a-uuid",
+      profile_id: UUID_B,
+    });
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe("validateEndGroupMembershipPayload", () => {
+  it("accepts a uuid pair and normalizes case", () => {
+    const r = validateEndGroupMembershipPayload({
+      group_id: UUID_A,
+      member_id: UUID_B.toUpperCase(),
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.group_id).toBe(UUID_A);
+      expect(r.value.member_id).toBe(UUID_B);
+    }
+  });
+
+  it("rejects non-uuid ids", () => {
+    const r = validateEndGroupMembershipPayload({
+      group_id: UUID_A,
+      member_id: 42,
+    });
+    expect(r.ok).toBe(false);
   });
 });
 

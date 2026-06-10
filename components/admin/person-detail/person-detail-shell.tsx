@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 import { Card } from "@/components/lg/Card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PersonGroupAssign } from "@/components/admin/person-detail/person-group-assign";
+import {
+  personTabsFor,
+  resolvePersonTab,
+  type PersonTabKey,
+} from "@/components/admin/person-detail/person-tabs";
 
 // The person a detail page describes, flattened to a serializable shape so the
 // server page does the reads and this client shell only renders. `kind`
@@ -39,8 +45,6 @@ export type PersonDetail = {
   careHref: string | null;
 };
 
-type TabKey = "overview" | "group" | "care" | "activity" | "access";
-
 const ROLE_IN_GROUP_LABEL: Record<string, string> = {
   leader: "Leader",
   co_leader: "Co-leader",
@@ -57,25 +61,30 @@ export function PersonDetailShell({
   person: PersonDetail;
   availableGroups: { id: string; name: string }[];
 }) {
-  // Access tab: auth-backed login profiles only — members never sign in, so a
-  // member detail page must not show Access or any account affordance. Care
-  // tab: active leader / co-leader only — the care model is per-leader and the
-  // shepherd-care surface 404s inactive profiles, so inactive leaders and
-  // members get no Care tab (issue #302 boundaries).
-  const showCare = person.isLeader && person.status === "active";
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "group", label: "Group" },
-    ...(showCare ? [{ key: "care" as const, label: "Care" }] : []),
-    { key: "activity", label: "Activity" },
-    ...(person.isLoginBacked
-      ? [{ key: "access" as const, label: "Access" }]
-      : []),
-  ];
+  // Which tabs exist depends on the person (issue #302 boundaries) — the
+  // derivation lives in the pure person-tabs module, shared with its tests.
+  const tabs = personTabsFor({
+    isLeader: person.isLeader,
+    isActive: person.status === "active",
+    isLoginBacked: person.isLoginBacked,
+  });
 
-  const [active, setActive] = useState<TabKey>("overview");
+  // The active tab is driven by the URL's `?tab=` param (the Multiply/People
+  // mechanism), so a refresh keeps your place and "the Group tab of this
+  // person" is a shareable link. Resolution is against the person's *visible*
+  // tabs: a leader's `?tab=care` link opened on a member degrades to Overview.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const active = resolvePersonTab(searchParams.get("tab"), tabs);
 
-  const panels: Record<TabKey, ReactNode> = {
+  function selectTab(key: PersonTabKey) {
+    if (key === active) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", key);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  }
+
+  const panels: Record<PersonTabKey, ReactNode> = {
     overview: <OverviewPanel person={person} />,
     group: <GroupPanel person={person} availableGroups={availableGroups} />,
     care: <CarePanel person={person} />,
@@ -98,7 +107,7 @@ export function PersonDetailShell({
             id={`person-tab-${tab.key}`}
             aria-selected={active === tab.key}
             aria-controls={`person-panel-${tab.key}`}
-            onClick={() => setActive(tab.key)}
+            onClick={() => selectTab(tab.key)}
             className={cn(
               "inline-flex cursor-pointer items-center rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
               active === tab.key
@@ -143,7 +152,9 @@ function OverviewPanel({ person }: { person: PersonDetail }) {
         >
           {person.status === "active" ? "Active" : "Inactive"}
         </Badge>
-        {person.isLeader ? (
+        {/* Only an *active* leader's care cadence is tracked — an inactive
+            leader must not read a false "No current concerns". */}
+        {person.isLeader && person.status === "active" ? (
           <Badge
             tone={
               person.needsContact ? STATUS_TONES.followUp : STATUS_TONES.well
@@ -213,11 +224,11 @@ function GroupPanel({
       {person.canPlaceInGroup && person.status === "active" ? (
         <Card className="grid gap-3">
           <PanelHeading
-            title="Place in a group"
+            title="Assign to a group"
             caption={
               person.kind === "profile"
                 ? "Assign this leader to a group as leader or co-leader."
-                : "Add this member to a group."
+                : "Assign this member to a group."
             }
           />
           <PersonGroupAssign
@@ -269,10 +280,12 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
     <Card className="grid gap-3">
       <PanelHeading
         title="Activity"
-        caption="Recent group and admin activity."
+        caption="Where this person stands today."
       />
       {person.groups.length === 0 ? (
-        <p className={cn("m-0", EMPTY_TEXT)}>No recent activity recorded.</p>
+        <p className={cn("m-0", EMPTY_TEXT)}>
+          Not currently part of any group.
+        </p>
       ) : (
         <ul className="m-0 grid list-none gap-2 p-0">
           {person.groups.map((g) => (
@@ -290,9 +303,21 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
         </ul>
       )}
       <p className={cn("m-0", EMPTY_TEXT)}>
-        Detailed activity history (check-ins, edits) isn&rsquo;t tracked on this
-        page yet — it shows current standing only.
+        This page shows current standing; a detailed history (check-ins, edits)
+        isn&rsquo;t surfaced here yet.
       </p>
+      {/* Care touchpoints ARE recorded over time — point there rather than
+          dead-ending (leaders only; the care surface is guarded). */}
+      {person.careHref ? (
+        <p className="m-0">
+          <Link
+            href={person.careHref}
+            className="font-sans text-sm font-semibold text-clay no-underline hover:underline"
+          >
+            Care touchpoints live in this leader&rsquo;s care history →
+          </Link>
+        </p>
+      ) : null}
     </Card>
   );
 }

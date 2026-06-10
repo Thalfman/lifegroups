@@ -196,6 +196,83 @@ export async function fetchDueFollowUps(
   return { data: dueFollowUps(rows, todayIso), error: null };
 }
 
+// ---------------------------------------------------------------------------
+// Group-scoped funnel signals — the group detail People tab's view into the
+// Interest Funnel. GROUP-LEVEL ONLY, deliberately: prospects carry no
+// member/profile FK, so any per-person "came from prospect X" claim would be
+// a name-match guess, not a fact. The tab shows who is being matched to THIS
+// group and how many joined it through the funnel, nothing more.
+// ---------------------------------------------------------------------------
+
+export type GroupProspectSignals = {
+  // Matched (blue) prospects attached to this group — follow-up under way.
+  matched: Array<{ id: string; full_name: string }>;
+  // Joined prospects (always archived into the roll-up) whose group was this
+  // one — a count, since they're out of the active funnel.
+  joinedCount: number;
+};
+
+const GROUP_PROSPECT_SIGNAL_COLUMNS = "id, full_name, state, archived";
+
+type GroupProspectSignalRow = {
+  id: string;
+  full_name: string;
+  state: ProspectState;
+  archived: boolean;
+};
+
+/**
+ * Pure partition mirroring buildProspectBoard's rules so the group detail can
+ * never disagree with the Plan board: joined rows (always archived) count
+ * toward joinedCount; cleanup-archived non-joined rows count nowhere; live
+ * matched rows list by name. Interested / parked prospects aren't attached to
+ * a group, so they never appear here.
+ */
+export function partitionGroupProspectSignals(
+  rows: GroupProspectSignalRow[]
+): GroupProspectSignals {
+  const matched: GroupProspectSignals["matched"] = [];
+  let joinedCount = 0;
+  for (const row of rows) {
+    if (row.state === "joined") {
+      joinedCount += 1;
+      continue;
+    }
+    if (row.archived) continue;
+    if (row.state === "matched") {
+      matched.push({ id: row.id, full_name: row.full_name });
+    }
+  }
+  matched.sort((a, b) => a.full_name.localeCompare(b.full_name));
+  return { matched, joinedCount };
+}
+
+/**
+ * The funnel signals for one group, column-allowlisted (id / full_name /
+ * state / archived — never contact or note columns). Same DB filter as the
+ * board read: live rows OR joined roll-up rows; cleanup-archived rows are
+ * excluded before the cap.
+ */
+export async function fetchProspectSignalsForGroup(
+  client: ReadClient,
+  groupId: string
+): Promise<ReadResult<GroupProspectSignals>> {
+  const { data, error } = await client
+    .from("prospects")
+    .select(GROUP_PROSPECT_SIGNAL_COLUMNS)
+    .eq("group_id", groupId)
+    .or("archived.eq.false,state.eq.joined")
+    .range(0, PROSPECT_PAGE_LIMIT - 1)
+    .returns<GroupProspectSignalRow[]>();
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchProspectSignalsForGroup", error),
+    };
+  }
+  return { data: partitionGroupProspectSignals(data ?? []), error: null };
+}
+
 // Narrow group-option read for the Plan board's Match/Join picker + roll-up
 // labels. Allowlisted to id / name / lifecycle_status so the Interest Funnel
 // render path never pulls privacy-sensitive group columns (e.g. admin_notes)
