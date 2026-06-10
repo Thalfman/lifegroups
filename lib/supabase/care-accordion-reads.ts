@@ -135,8 +135,10 @@ async function fetchGrantedSubjectIds(
 }
 
 // The subject_profile_id of each profile-scoped Care Note the caller can read
-// (RLS returns rows only for granted subjects). One id per row, so the caller
-// can count notes per Leader. Group-subject notes are excluded.
+// (RLS returns rows for granted subjects PLUS the caller's own authored rows —
+// since ADR 0023 an admin can author, so readable is wider than granted and
+// must not be treated as a grant signal). One id per row, so the caller can
+// count notes per Leader. Group-subject notes are excluded.
 //
 // Known scale debt: this ships one row per readable note just to count in JS.
 // Acceptable while note volume is small-church scale; if it grows, replace

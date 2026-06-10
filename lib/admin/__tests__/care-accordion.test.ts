@@ -395,6 +395,24 @@ describe("buildNoteStateByLeaderId", () => {
     });
   });
 
+  it("keeps a sealed leader sealed when the viewer reads only their OWN authored rows (ADR 0023)", () => {
+    // Admins author notes now, and the author RLS arm returns those rows while
+    // the subject's grant is still off. Readable rows must NOT flip the toggle
+    // to "on" — that would make granting from the panel impossible and label
+    // author-only counts as leadership visibility.
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: [],
+      careNoteSubjectIds: ["ldr-1"],
+      prayerSubjectIds: ["ldr-1", "ldr-1"],
+    });
+    const state = map.get("ldr-1")!;
+    expect(state.transparency).toBe("sealed");
+    expect(isNoteTransparencyGranted(state)).toBe(false);
+    // Counts are still tallied; the panel hides them while sealed.
+    expect(state.careNoteCount).toBe(1);
+    expect(state.prayerCount).toBe(2);
+  });
+
   it("omits leaders with no grant and no readable notes (default sealed)", () => {
     const map = buildNoteStateByLeaderId({
       grantedSubjectIds: [],

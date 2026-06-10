@@ -65,11 +65,11 @@ const SEALED_NOTE_STATE: CareAccordionNoteState = {
 };
 
 // The grant boolean the inline transparency toggle renders from (#467).
-// "visible" IS the grant: RLS only returns note/prayer rows for granted
-// subjects, and buildNoteStateByLeaderId marks a Leader visible exactly when
-// the grant is on (or readable rows came back, which RLS only allows when
-// granted). Named here so the panel and tests share one mapping instead of
-// comparing the union string in the UI.
+// "visible" IS the grant — buildNoteStateByLeaderId marks a Leader visible
+// exactly when their note_transparency_grant row is on, never from readable
+// rows (see the ADR 0023 note on buildNoteStateByLeaderId). Named here so the
+// panel and tests share one mapping instead of comparing the union string in
+// the UI.
 export function isNoteTransparencyGranted(
   notes: CareAccordionNoteState
 ): boolean {
@@ -417,11 +417,15 @@ export function resolveGroupGradeSeed(
   };
 }
 
-// Build the Care Notes / Prayer Requests presence map (#381). A Leader is
-// "visible" when their transparency grant is on (or, defensively, when the
-// RLS-scoped reads returned any of their rows — which only happens when granted).
-// Counts come from the subject_profile_id of each readable row. Leaders absent
-// from every input default to sealed/0 in buildCareAccordion.
+// Build the Care Notes / Prayer Requests presence map (#381). The grant set is
+// the SOLE source of truth for "visible": since ADR 0023 admins author notes
+// themselves, the author RLS arm returns their OWN rows about a still-sealed
+// leader — so readable rows are no longer a proxy for the grant. Deriving
+// visibility from counts would render the toggle "on" for a sealed leader
+// (making it impossible to actually grant from the panel) and mislabel
+// author-only counts as leadership visibility. Counts still come from the
+// readable rows' subject_profile_id; the panel only shows them when granted.
+// Leaders absent from every input default to sealed/0 in buildCareAccordion.
 export function buildNoteStateByLeaderId(args: {
   grantedSubjectIds: Iterable<string>;
   careNoteSubjectIds: string[];
@@ -441,10 +445,7 @@ export function buildNoteStateByLeaderId(args: {
   for (const id of ids) {
     const careNoteCount = careCounts.get(id) ?? 0;
     const prayerCount = prayerCounts.get(id) ?? 0;
-    const transparency =
-      granted.has(id) || careNoteCount > 0 || prayerCount > 0
-        ? "visible"
-        : "sealed";
+    const transparency = granted.has(id) ? "visible" : "sealed";
     out.set(id, { transparency, careNoteCount, prayerCount });
   }
   return out;
