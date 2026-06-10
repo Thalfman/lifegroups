@@ -19,10 +19,16 @@ Code-only changes need nothing beyond the merge: Vercel builds and promotes
 
 ## Releasing a change that includes a migration
 
-1. **Merge the PR** (CI green: lint → typecheck → test:run + a11y).
+Schema first, then code — in that order, so production never serves code
+against a database that doesn't have the schema it expects:
+
+1. **Get the PR ready to merge** (CI green: lint → typecheck → test:run +
+   a11y; review done). Don't apply anything to production from a branch that
+   might still change.
+
 2. **Apply the migration(s)** to the production project
-   (`juvytverslrcqbkxgkvg`), in file order, using the Supabase CLI from a
-   checkout of `main`:
+   (`juvytverslrcqbkxgkvg`), in file order, using the Supabase CLI from the
+   approved branch:
 
    ```bash
    supabase link --project-ref juvytverslrcqbkxgkvg
@@ -36,7 +42,16 @@ Code-only changes need nothing beyond the merge: Vercel builds and promotes
    tooling that stamps its own version: that is exactly how the histories
    diverged before.
 
-3. **Verify parity.** The applied list must match the repo:
+   This ordering is safe because this repo's migrations are additive by
+   discipline (no drops, archive-only): deployed code simply ignores schema
+   it doesn't know about. If a migration ever _removes_ something deployed
+   code still reads, that needs a two-phase release (ship code that stops
+   reading it first), not a reorder of these steps.
+
+3. **Merge the PR.** Vercel builds and promotes `main` automatically; wait
+   for the deploy of the merge commit to show READY.
+
+4. **Verify parity.** The applied list must match the repo:
 
    ```bash
    supabase migration list   # local and remote columns must agree
@@ -45,12 +60,6 @@ Code-only changes need nothing beyond the merge: Vercel builds and promotes
    (Equivalent check from SQL: `select version, name from
 supabase_migrations.schema_migrations order by version;` against
    `ls supabase/migrations/`.)
-
-4. **Wait for the Vercel deploy of the merge commit** to be READY (it is
-   usually done before step 2 — that is fine as long as the app code
-   degrades gracefully, which the read/write seams guarantee for additive
-   changes; for breaking schema changes, apply the migration **before**
-   merging the code that depends on it).
 
 5. **Smoke-check** the touched surface signed in as a Ministry Admin, and
    re-run the Supabase advisors (Dashboard → Advisors, or the MCP
@@ -65,9 +74,11 @@ Edge Functions deploy separately from both halves above:
 supabase functions deploy invite-user redeem-invite
 ```
 
-Deploy only the functions in `supabase/config.toml`. Anything else found
-deployed in production (e.g. a scratch/test function) should be deleted, not
-left "just in case".
+Production runs **exactly these two**: `invite-user` and `redeem-invite`.
+`supabase/config.toml` also declares `manage-test-auth-users`, but that is
+local/test tooling — never deploy it to production (the launch runbook has
+it removed). Anything else found deployed in production (e.g. a scratch/test
+function) should be deleted, not left "just in case".
 
 ## When something goes wrong
 

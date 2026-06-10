@@ -30,6 +30,19 @@ describe("db hygiene — capture rls_auto_enable + advisor fixes", () => {
     );
   });
 
+  it("fails closed: a failed RLS enable re-raises and aborts the CREATE TABLE", () => {
+    // The captured production copy logged and continued, which could leave a
+    // new public table API-readable — the exact gap the net exists to close.
+    const handler = sql.lower.slice(
+      sql.lower.indexOf("when others then"),
+      sql.lower.indexOf("end;")
+    );
+    expect(handler).toContain(
+      "raise log 'rls_auto_enable: failed to enable rls on %'"
+    );
+    expect(handler).toMatch(/raise;/);
+  });
+
   it("revokes the pointless default EXECUTE grant", () => {
     expect(sql.lower).toContain(
       "revoke execute on function public.rls_auto_enable() from public, anon, authenticated"

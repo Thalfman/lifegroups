@@ -12,6 +12,13 @@
 --    revoke below drops the pointless default EXECUTE grant (and the Supabase
 --    advisor warning that came with it).
 --
+--    One deliberate change from the captured production copy: the original
+--    logged a failed `enable row level security` and let the CREATE TABLE
+--    commit anyway — leaving exactly the unprotected table this net exists to
+--    prevent (Supabase's default privileges grant API roles access to new
+--    public tables). This revision re-raises after logging, so a table that
+--    cannot be locked down fails to create at all: the net fails CLOSED.
+--
 -- 2. Pin `set_updated_at`'s search_path (advisor lint 0011): the Phase 2
 --    trigger function was the only remaining function with a role-mutable
 --    search_path. Body unchanged.
@@ -24,7 +31,8 @@
 set check_function_bodies = off;
 
 -- ---------------------------------------------------------------------------
--- 1. rls_auto_enable() + ensure_rls event trigger (mirrors production).
+-- 1. rls_auto_enable() + ensure_rls event trigger (captured from production,
+--    hardened to fail closed — see header).
 -- ---------------------------------------------------------------------------
 
 create or replace function public.rls_auto_enable()
@@ -48,7 +56,9 @@ begin
         raise log 'rls_auto_enable: enabled RLS on %', cmd.object_identity;
       exception
         when others then
+          -- Fail closed: a table we cannot lock down must not be created.
           raise log 'rls_auto_enable: failed to enable RLS on %', cmd.object_identity;
+          raise;
       end;
      else
         raise log 'rls_auto_enable: skip % (either system schema or not in enforced list: %.)', cmd.object_identity, cmd.schema_name;
@@ -58,7 +68,7 @@ end;
 $$;
 
 comment on function public.rls_auto_enable() is
-  'Safety net: event-trigger function that enables row level security on any table created in public, so a migration that forgets `enable row level security` yields a default-deny table instead of a world-readable one. Returns event_trigger, so it is not callable through the Data API.';
+  'Safety net: event-trigger function that enables row level security on any table created in public, so a migration that forgets `enable row level security` yields a default-deny table instead of a world-readable one. Fails closed — if RLS cannot be enabled, the CREATE TABLE aborts. Returns event_trigger, so it is not callable through the Data API.';
 
 -- Not callable via PostgREST anyway (event_trigger return type), but the
 -- default PUBLIC grant is noise — lock it down like every other function.
