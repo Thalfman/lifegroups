@@ -1280,6 +1280,14 @@ export interface Database {
         Args: { p_member_id: UUID };
         Returns: UUID;
       };
+      admin_unassign_leader_from_group: {
+        Args: { p_group_id: UUID; p_profile_id: UUID };
+        Returns: UUID;
+      };
+      admin_end_group_membership: {
+        Args: { p_group_id: UUID; p_member_id: UUID };
+        Returns: UUID;
+      };
       admin_create_group: {
         Args: {
           p_name: string;
