@@ -24,17 +24,22 @@ until Julian's explicit go-ahead.
 
 ## 2. Schema parity (the drift fix)
 
-- [ ] **Pending migrations applied** to `juvytverslrcqbkxgkvg` under their
+- [x] **Pending migrations applied** to `juvytverslrcqbkxgkvg` under their
       repo version numbers: `20260628_phase_usage_tracking`,
       `20260629_seal_app_settings_to_admin` (RLS fix — until applied,
-      `app_settings` is readable by every authenticated user),
-      `20260630_db_hygiene_capture_rls_auto_enable`. _Eng_
-- [ ] **Migration history repaired**: the two rows applied ad-hoc as
+      `app_settings` was readable by every authenticated user),
+      `20260630_db_hygiene_capture_rls_auto_enable` — applied + verified
+      2026-06-10. _Eng_
+- [x] **Migration history repaired**: the two rows applied ad-hoc as
       `202606091414xx` re-recorded as `20260627000000` / `20260627010000`
-      with repo-identical content, so `supabase migration list` shows local ≡
-      remote. _Eng_
-- [ ] **Advisors re-run clean**: no `app_settings` exposure, no mutable
-      `search_path`, no missing-PK INFO on `audit_events_archive`. _Eng_
+      (function bodies verified identical to the repo fixes first); remote
+      history now matches `supabase/migrations/` exactly, 112 ≡ 112 —
+      verified 2026-06-10. _Eng_
+- [x] **Post-fix probes clean**: `app_settings` sealed per-key
+      (`auth_is_admin() or setting_key = 'metric_defaults'`), `usage_events`
+      RLS on, `set_updated_at` search*path pinned, `audit_events_archive`
+      has a PK, `rls_auto_enable` EXECUTE revoked from API roles — verified
+      2026-06-10. \_Eng*
 - [ ] From now on, every release follows [`RELEASE.md`](./RELEASE.md) —
       schema and code ship together. _Everyone_
 
