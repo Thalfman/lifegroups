@@ -12,16 +12,20 @@ import { isUuid } from "@/lib/shared/uuid";
 
 // ——— Care shell tab keys (#477) ———
 
-// The canonical Care shell renders exactly four tabs (#477): the Over-Shepherd
-// accordion (default — it absorbed the Coverage tab's unassigned bucket and
-// coverage-management link), the All-leaders roster (it absorbed the
-// Dashboard's summary tiles + attention queue), Follow-ups, and Recent
-// updates.
+// The canonical Care shell renders exactly five tabs (#477, extended by
+// ADR 0023): the Over-Shepherd accordion (default — it absorbed the Coverage
+// tab's unassigned bucket and coverage-management link), the All-leaders
+// roster (it absorbed the Dashboard's summary tiles + attention queue),
+// Follow-ups, Recent updates, and Notes — the aggregate of every Care Note /
+// Prayer Request / broad note the viewer may read, plus sealed counts. Notes
+// answers "what's written that I may read", distinct from Recent updates'
+// "what care activity happened" interactions feed.
 export type CanonicalCareTabKey =
   | "over-shepherds"
   | "all-leaders"
   | "follow-ups"
-  | "recent-interactions";
+  | "recent-interactions"
+  | "notes";
 
 // Legacy tab keys from the six-tab IA (#334) stay accepted INPUTS forever — a
 // bookmarked deep link or stale caller must never 404 or select a tab that no
@@ -172,6 +176,8 @@ export function resolveCareInitialTabFromParams(
   if (coverage !== undefined) return "over-shepherds";
   const view = firstValue(params.view);
   if (view === "follow-ups") return "follow-ups";
+  // ADR 0023: the Notes tab's bookmarkable entry (/admin/care?view=notes).
+  if (view === "notes") return "notes";
   if (view === "dashboard" || view === "directory") return "all-leaders";
   if (resolveDirectoryFilter(params.filter) === "needs_attention") {
     return "all-leaders";

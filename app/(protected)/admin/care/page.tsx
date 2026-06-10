@@ -37,6 +37,13 @@ import {
 } from "@/lib/supabase/read-models";
 import { loadCareData } from "@/components/admin/care/care-data";
 import {
+  buildNotesFeedData,
+  supabaseNotesFeedReads,
+  EMPTY_NOTES_FEED,
+  type NotesFeedData,
+} from "@/components/admin/care/notes-feed-data";
+import { NotesFeedShell } from "@/components/admin/care/notes-feed-shell";
+import {
   buildShepherdCareDashboardModel,
   countAllAttentionItems,
 } from "@/lib/admin/shepherd-care-dashboard";
@@ -127,6 +134,21 @@ async function loadCareAccordionEnrichmentSafe(
   return loadCareAccordionEnrichment(client, { ministryYear, periodMonthIso });
 }
 
+// Load the Notes tab's feed (ADR 0023) behind its own client, seeded with the
+// names the page already resolved (leaders from the care directory, group
+// names from the follow-ups groups list) so the feed only fetches the author
+// names those maps don't cover. Degrades to the documented empty shape when
+// the DB is not configured.
+async function loadNotesFeedSafe(context: {
+  viewerProfileId: string;
+  nameByProfileId: ReadonlyMap<string, string>;
+  groupNameByGroupId: ReadonlyMap<string, string>;
+}): Promise<NotesFeedData> {
+  const client = await createSupabaseServerClient();
+  if (!client) return EMPTY_NOTES_FEED;
+  return buildNotesFeedData(supabaseNotesFeedReads(client), context);
+}
+
 // Shared loader + tab/banner builder for the canonical Care shell. The canonical
 // /admin/care page and the thin alias entries (/admin/shepherd-care landing and
 // /admin/follow-ups) all call this one function so there is a single data path
@@ -158,6 +180,19 @@ export async function loadCarePageData({
     loadCareData(today),
     loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
   ]);
+
+  // The Notes feed runs after the batch above because it seeds its name maps
+  // from the care directory + groups list (one follow-up read for whatever
+  // those don't cover, instead of re-reading every profile).
+  const notesFeed = await loadNotesFeedSafe({
+    viewerProfileId: session.profile.id,
+    nameByProfileId: new Map(
+      care.entries.map((e) => [e.profile.id, e.profile.full_name])
+    ),
+    groupNameByGroupId: new Map(
+      followUpsData.groups.map((g) => [g.id, g.name])
+    ),
+  });
 
   const ownerNameByShepherdId = new Map<string, string>();
   for (const a of care.assignments) {
@@ -408,6 +443,26 @@ export async function loadCarePageData({
           emptyTitle="No recent care logged"
           emptyDescription="Logged calls, notes, and meetings will appear here as they happen."
           isSuperAdmin={isSuperAdmin}
+        />
+      ),
+    },
+    {
+      // ADR 0023 — the All Notes feed: every Care Note / Prayer Request /
+      // broad note the viewer may read, in one newest-first list, plus the
+      // presence-only sealed counts with the inline transparency toggle.
+      // Distinct from Recent updates: that tab answers "what care activity
+      // happened" (interactions, no sealed content), this one "what's written
+      // that I may read". Badge = readable item count, suppressed when a feed
+      // read failed (#479 — never a false low number).
+      key: "notes",
+      label: "Notes",
+      count: notesFeed.feedAvailable ? notesFeed.items.length : undefined,
+      panel: (
+        <NotesFeedShell
+          items={notesFeed.items}
+          sealedSummary={notesFeed.sealedSummary}
+          feedAvailable={notesFeed.feedAvailable}
+          sealedAvailable={notesFeed.sealedAvailable}
         />
       ),
     },

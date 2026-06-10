@@ -1,4 +1,6 @@
+import type { CareNotesRow, PrayerRequestsRow } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
+import { CARE_NOTE_COLUMNS, PRAYER_REQUEST_COLUMNS } from "./care-note-reads";
 import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 
 // ADR 0023 — reads behind the admin "All Notes" feed. Sibling to
@@ -48,4 +50,166 @@ export async function fetchSealedNoteCounts(
     };
   }
   return { data: rows, error: null };
+}
+
+// ——— Cross-subject content reads (RLS-scoped, capped) ————————————————————
+
+// The feed renders the most recent N of each source rather than paginating;
+// v1 keeps this deliberately simple (fast-follow if the ministry outgrows it).
+const DEFAULT_FEED_LIMIT = 100;
+
+// Every care note the CALLER may read, newest first, across all subjects.
+// No subject filter on purpose: RLS scopes the rows to the viewer's own
+// authored notes plus notes whose gating leader's transparency grant is on.
+export async function fetchAllReadableCareNotes(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<CareNotesRow[]>> {
+  const { data, error } = await client
+    .from("care_notes")
+    .select(CARE_NOTE_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(options.limit ?? DEFAULT_FEED_LIMIT);
+  if (error)
+    return { data: null, error: wrapError("fetchAllReadableCareNotes", error) };
+  return { data: (data ?? []) as CareNotesRow[], error: null };
+}
+
+export async function fetchAllReadablePrayerRequests(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<PrayerRequestsRow[]>> {
+  const { data, error } = await client
+    .from("prayer_requests")
+    .select(PRAYER_REQUEST_COLUMNS)
+    .order("created_at", { ascending: false })
+    .limit(options.limit ?? DEFAULT_FEED_LIMIT);
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchAllReadablePrayerRequests", error),
+    };
+  return { data: (data ?? []) as PrayerRequestsRow[], error: null };
+}
+
+// An Over-Shepherd broad note surfaced in the feed: the interaction row's note
+// body plus the leader it is about. Broad notes are deliberately
+// ladder-readable (LDR.1, ADR 0002 — transparent upward, unlike author-private
+// care notes), so including `notes` here widens no boundary; the recent-updates
+// feed's body exclusion was a UX choice, not a privacy gate (ADR 0023 records
+// the distinction).
+export interface BroadNoteFeedRow {
+  id: string;
+  interaction_at: string;
+  created_at: string;
+  notes: string;
+  created_by_profile_id: string;
+  shepherd_profile_id: string;
+  shepherd_full_name: string;
+}
+
+// Mirrors SHEPHERD_CARE_RECENT_INTERACTION_COLUMNS (shepherd-care-reads.ts)
+// plus the `notes` body and the author column the feed attributes.
+const BROAD_NOTE_FEED_COLUMNS =
+  "id, interaction_at, notes, created_by_profile_id, created_at, " +
+  "care_profile:shepherd_care_profiles!shepherd_care_interactions_care_profile_id_fkey!inner ( " +
+  "shepherd_profile_id, " +
+  "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, status ) " +
+  ")";
+
+type BroadNoteJoinRow = {
+  id: string;
+  interaction_at: string;
+  notes: string | null;
+  created_by_profile_id: string;
+  created_at: string;
+  care_profile:
+    | {
+        shepherd_profile_id: string;
+        shepherd:
+          | { id: string; full_name: string }
+          | { id: string; full_name: string }[]
+          | null;
+      }
+    | {
+        shepherd_profile_id: string;
+        shepherd:
+          | { id: string; full_name: string }
+          | { id: string; full_name: string }[]
+          | null;
+      }[]
+    | null;
+};
+
+// Admin-only broad-note feed read: `interaction_type = 'other'` rows (the
+// over-shepherd broad-note write destination) with a non-empty body, joined to
+// the leader they are about. The admin-only RLS on shepherd_care_interactions
+// is the boundary; the active-shepherd filter prunes rows whose leader was
+// deactivated (matching fetchRecentShepherdCareInteractionsForAdmin).
+export async function fetchBroadNoteInteractionsForAdmin(
+  client: ReadClient,
+  options: { limit?: number } = {}
+): Promise<ReadResult<BroadNoteFeedRow[]>> {
+  const { data, error } = await client
+    .from("shepherd_care_interactions")
+    .select(BROAD_NOTE_FEED_COLUMNS)
+    .eq("interaction_type", "other")
+    .not("notes", "is", null)
+    .eq("care_profile.shepherd.status", "active")
+    .order("interaction_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(options.limit ?? DEFAULT_FEED_LIMIT);
+  if (error)
+    return {
+      data: null,
+      error: wrapError("fetchBroadNoteInteractionsForAdmin", error),
+    };
+  const out: BroadNoteFeedRow[] = [];
+  for (const r of (data ?? []) as unknown as BroadNoteJoinRow[]) {
+    const cp = Array.isArray(r.care_profile)
+      ? (r.care_profile[0] ?? null)
+      : r.care_profile;
+    if (cp === null) continue;
+    const shepherd = Array.isArray(cp.shepherd)
+      ? (cp.shepherd[0] ?? null)
+      : cp.shepherd;
+    if (shepherd === null) continue;
+    const body = (r.notes ?? "").trim();
+    if (body.length === 0) continue;
+    out.push({
+      id: r.id,
+      interaction_at: r.interaction_at,
+      created_at: r.created_at,
+      notes: body,
+      created_by_profile_id: r.created_by_profile_id,
+      shepherd_profile_id: cp.shepherd_profile_id,
+      shepherd_full_name: shepherd.full_name,
+    });
+  }
+  return { data: out, error: null };
+}
+
+// ——— Author-name resolution ————————————————————————————————————————————
+
+// id → full_name for the given profile ids (e.g. note authors who are
+// over-shepherds or admins and so absent from the care directory). Precedent:
+// the same projection in super-admin-console-reads.ts. Degrades to an empty
+// map — a missing name renders as a fallback label, never blocks the feed.
+export async function fetchProfileNamesByIds(
+  client: ReadClient,
+  ids: readonly string[]
+): Promise<ReadResult<Map<string, string>>> {
+  const unique = Array.from(new Set(ids.filter((id) => isUuid(id))));
+  if (unique.length === 0) return { data: new Map(), error: null };
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", unique);
+  if (error)
+    return { data: null, error: wrapError("fetchProfileNamesByIds", error) };
+  const out = new Map<string, string>();
+  for (const row of (data ?? []) as { id: string; full_name: string }[]) {
+    out.set(row.id, row.full_name);
+  }
+  return { data: out, error: null };
 }

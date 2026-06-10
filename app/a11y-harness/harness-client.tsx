@@ -35,6 +35,11 @@ import {
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
+import { NotesFeedShell } from "@/components/admin/care/notes-feed-shell";
+import type {
+  CareFeedItem,
+  SealedLeaderSummary,
+} from "@/lib/admin/care-note-feed";
 import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
 import {
   SettingsShell,
@@ -263,6 +268,64 @@ const CARE_PANEL_LEADER_GRANTED: CareAccordionLeader = {
   leaderHealthGrade: "B",
   notes: { transparency: "visible", careNoteCount: 2, prayerCount: 1 },
 };
+
+// All Notes feed fixtures (ADR 0023): one of each feed kind so the spec can
+// assert the kind badges, context lines, and labelled filters; two sealed
+// leaders so the repeated transparency toggles must carry leader context.
+const NOTES_FEED_ITEMS: CareFeedItem[] = [
+  {
+    kind: "care_note",
+    id: "note-1",
+    body: "Checked in after the move — settling in well.",
+    occurredAt: "2026-06-03T10:00:00+00:00",
+    authorProfileId: "00000000-0000-4000-8000-0000000000b1",
+    authorName: "Omar Shepherd",
+    viewerAuthored: false,
+    subjectKind: "leader",
+    subjectId: "00000000-0000-4000-8000-0000000000a1",
+    subjectName: "Anderson Lee",
+  },
+  {
+    kind: "prayer_request",
+    id: "prayer-1",
+    body: "Pray for the group's new families.",
+    occurredAt: "2026-06-02T10:00:00+00:00",
+    authorProfileId: "00000000-0000-4000-8000-0000000000a2",
+    authorName: "Bryant Cole",
+    viewerAuthored: false,
+    subjectKind: "group",
+    subjectId: "grp-bryant",
+    subjectName: "Bryant",
+    prayerStatus: "answered",
+  },
+  {
+    kind: "broad_note",
+    id: "broad-1",
+    body: "Grabbed coffee, doing well.",
+    occurredAt: "2026-06-01",
+    authorProfileId: "00000000-0000-4000-8000-0000000000c1",
+    authorName: "Julian Admin",
+    viewerAuthored: true,
+    subjectKind: "leader",
+    subjectId: "00000000-0000-4000-8000-0000000000a1",
+    subjectName: "Anderson Lee",
+  },
+];
+
+const NOTES_FEED_SEALED: SealedLeaderSummary[] = [
+  {
+    profileId: "00000000-0000-4000-8000-0000000000a1",
+    name: "Anderson Lee",
+    careNoteCount: 2,
+    prayerRequestCount: 1,
+  },
+  {
+    profileId: "00000000-0000-4000-8000-0000000000a2",
+    name: "Bryant Cole",
+    careNoteCount: 0,
+    prayerRequestCount: 2,
+  },
+];
 
 const CARE_FOLLOW_UPS: ShepherdCareFollowUpsRow[] = [
   // Two follow-ups with the SAME title and status: titles are not unique, so
@@ -1030,6 +1093,19 @@ export function A11yHarnessClient() {
       >
         <CareLeaderPanel leader={CARE_PANEL_LEADER_SEALED} />
         <CareLeaderPanel leader={CARE_PANEL_LEADER_GRANTED} />
+      </Surface>
+
+      {/* All Notes feed (ADR 0023). The Care area's Notes tab: labelled
+          filter selects, the readable-notes list (kind badges + context
+          lines), and the sealed-summary block whose per-leader transparency
+          toggles repeat and so must carry each leader's name. */}
+      <Surface id="care-notes-feed" heading="Care notes feed (All Notes)">
+        <NotesFeedShell
+          items={NOTES_FEED_ITEMS}
+          sealedSummary={NOTES_FEED_SEALED}
+          feedAvailable
+          sealedAvailable
+        />
       </Surface>
 
       <Surface id="group-health" heading="Group health (triage)">
