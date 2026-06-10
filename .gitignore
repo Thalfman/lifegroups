@@ -23,3 +23,6 @@ supabase/dev/link_super_admin.sql
 
 # Claude Code agent worktrees (transient, isolated)
 .claude/worktrees/
+
+# Graphify generated knowledge graph outputs
+/graphify-out/
