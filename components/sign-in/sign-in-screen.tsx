@@ -3,130 +3,44 @@ import { LoginForm } from "@/app/login/login-form";
 
 export function SignInScreen() {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "48px 24px",
-        background: "var(--c-bg)",
-        color: "var(--c-ink)",
-        fontFamily: "var(--font-body)",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 460,
-          display: "flex",
-          flexDirection: "column",
-          gap: 28,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
+    <main className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 py-12 font-sans text-ink">
+      <div className="flex w-full max-w-[460px] flex-col gap-7">
+        <div className="flex flex-col items-center text-center">
           <Image
             src="/logo.png"
             width={40}
             height={40}
             alt=""
             priority
-            style={{ display: "block" }}
+            className="block"
           />
-          <div
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 18,
-              fontWeight: 500,
-              color: "var(--c-ink)",
-              marginTop: 10,
-            }}
-          >
+          <div className="mt-2.5 font-display text-lg font-medium text-ink">
             Life Groups
           </div>
-          <div
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: 10.5,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "1.8px",
-              color: "var(--c-ink3)",
-              marginTop: 4,
-            }}
-          >
+          {/* The page kicker — the one tracked-uppercase voice per page. */}
+          <div className="mt-1 font-sans text-2xs font-semibold uppercase tracking-[0.16em] text-ink3">
             Fox Valley Church
           </div>
         </div>
 
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 30,
-            fontWeight: 400,
-            lineHeight: 1.15,
-            letterSpacing: "-0.3px",
-            color: "var(--c-ink)",
-            textAlign: "center",
-            margin: 0,
-          }}
-        >
+        <h1 className="m-0 text-center font-display text-3xl font-normal text-ink">
           Welcome back.
         </h1>
 
-        <div
-          style={{
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-line)",
-            borderRadius: 14,
-            padding: 28,
-            boxShadow: "var(--c-shadow)",
-          }}
-        >
+        {/* Card anatomy: border, no shadow (the ghost border+shadow combo retires). */}
+        <div className="rounded-lg border border-line bg-surface p-card md:p-7">
           <LoginForm />
         </div>
 
-        <aside
-          style={{
-            borderLeft: "2px solid var(--c-sage)",
-            padding: "16px 18px",
-          }}
-        >
-          <p
-            style={{
-              fontFamily: "var(--font-display)",
-              fontStyle: "italic",
-              fontSize: 14,
-              lineHeight: 1.6,
-              color: "var(--c-ink2)",
-              margin: 0,
-              textWrap: "pretty",
-            }}
-          >
+        {/* The verse — brand voice, restructured like the sidebar Verse
+            (soft sage panel, no left stripe). */}
+        <aside className="rounded-sm border border-line bg-sageTint px-4 py-3.5">
+          <p className="m-0 text-pretty font-display text-base italic leading-relaxed text-ink2">
             &ldquo;Jesus Christ is the one we proclaim, admonishing and teaching
             everyone with all wisdom, so that we may present everyone fully
             mature in Christ.&rdquo;
           </p>
-          <p
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: 10.5,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "1.6px",
-              color: "var(--c-ink3)",
-              marginTop: 10,
-              marginBottom: 0,
-            }}
-          >
+          <p className="mb-0 mt-2.5 border-t border-sageSoft pt-2.5 font-sans text-2xs font-semibold uppercase tracking-[0.12em] text-ink3">
             Colossians 1:28
           </p>
         </aside>

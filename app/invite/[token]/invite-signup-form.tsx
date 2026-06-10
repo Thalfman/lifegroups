@@ -1,34 +1,18 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PButton } from "@/components/pastoral/button";
+import {
+  errorTextClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+} from "@/components/admin/forms/field-styles";
 import { redeemInviteAction, type RedeemInviteState } from "./actions";
 
 const INITIAL_STATE: RedeemInviteState = {};
 
-const labelStyle = {
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  textTransform: "uppercase" as const,
-  color: P.ink2,
-  display: "block" as const,
-  marginBottom: 7,
-  fontWeight: 600,
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "13px 16px",
-  borderRadius: 10,
-  border: `1px solid ${P.line}`,
-  fontSize: 14,
-  fontFamily: fontBody,
-  background: P.surface,
-  color: P.ink,
-  outline: "none",
-};
+const showToggleClassName =
+  "absolute right-2.5 top-1/2 -translate-y-1/2 border-0 bg-transparent px-2 py-1.5 font-sans text-xs font-semibold text-ink3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
 
 export function InviteSignupForm({ token }: { token: string }) {
   const [state, formAction, pending] = useActionState(
@@ -38,11 +22,11 @@ export function InviteSignupForm({ token }: { token: string }) {
   const [show, setShow] = useState(false);
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 16 }}>
+    <form action={formAction} className="grid gap-4">
       <input type="hidden" name="token" value={token} />
 
       <div>
-        <label htmlFor="full_name" style={labelStyle}>
+        <label htmlFor="full_name" className={fieldLabelClassName}>
           Full name
         </label>
         <input
@@ -52,12 +36,12 @@ export function InviteSignupForm({ token }: { token: string }) {
           autoComplete="name"
           required
           disabled={pending}
-          style={{ ...inputStyle, opacity: pending ? 0.6 : 1 }}
+          className={`${fieldInputClassName} disabled:opacity-60`}
         />
       </div>
 
       <div>
-        <label htmlFor="email" style={labelStyle}>
+        <label htmlFor="email" className={fieldLabelClassName}>
           Email
         </label>
         <input
@@ -67,15 +51,15 @@ export function InviteSignupForm({ token }: { token: string }) {
           autoComplete="email"
           required
           disabled={pending}
-          style={{ ...inputStyle, opacity: pending ? 0.6 : 1 }}
+          className={`${fieldInputClassName} disabled:opacity-60`}
         />
       </div>
 
       <div>
-        <label htmlFor="password" style={labelStyle}>
+        <label htmlFor="password" className={fieldLabelClassName}>
           Password
         </label>
-        <div style={{ position: "relative" }}>
+        <div className="relative">
           <input
             id="password"
             name="password"
@@ -84,32 +68,14 @@ export function InviteSignupForm({ token }: { token: string }) {
             required
             minLength={8}
             disabled={pending}
-            style={{
-              ...inputStyle,
-              paddingRight: 76,
-              opacity: pending ? 0.6 : 1,
-            }}
+            className={`${fieldInputClassName} pr-20 disabled:opacity-60`}
           />
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
             disabled={pending}
             aria-label={show ? "Hide password" : "Show password"}
-            style={{
-              position: "absolute",
-              top: "50%",
-              right: 10,
-              transform: "translateY(-50%)",
-              border: 0,
-              background: "transparent",
-              color: P.terra,
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: pending ? "not-allowed" : "pointer",
-              opacity: pending ? 0.5 : 1,
-              padding: "6px 8px",
-            }}
+            className={showToggleClassName}
           >
             {show ? "Hide" : "Show"}
           </button>
@@ -117,7 +83,7 @@ export function InviteSignupForm({ token }: { token: string }) {
       </div>
 
       <div>
-        <label htmlFor="confirm" style={labelStyle}>
+        <label htmlFor="confirm" className={fieldLabelClassName}>
           Confirm password
         </label>
         <input
@@ -128,36 +94,17 @@ export function InviteSignupForm({ token }: { token: string }) {
           required
           minLength={8}
           disabled={pending}
-          style={{ ...inputStyle, opacity: pending ? 0.6 : 1 }}
+          className={`${fieldInputClassName} disabled:opacity-60`}
         />
       </div>
 
       {state.error ? (
-        <p
-          role="alert"
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderLeft: `3px solid ${P.terra}`,
-            borderRadius: 10,
-            padding: "10px 14px",
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: "#7d3621",
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
+        <p role="alert" className={errorTextClassName}>
           {state.error}
         </p>
       ) : null}
 
-      <PButton
-        type="submit"
-        tone="terra"
-        disabled={pending}
-        style={{ width: "100%", padding: "14px", fontSize: 14 }}
-      >
+      <PButton type="submit" tone="terra" disabled={pending} className="w-full">
         {pending ? "Creating your account…" : "Create account"}
       </PButton>
     </form>
