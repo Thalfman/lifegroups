@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import type { ProspectState } from "@/types/enums";
 import { PButton } from "@/components/pastoral/button";
 import {
@@ -18,6 +18,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import {
   PROSPECT_STATE_LABEL,
   canTransition,
@@ -269,48 +270,37 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
 // board entirely (it is not "joined", so it does not appear in the Joined
 // roll-up either). Distinct from the "Not at this time" move, which is a state
 // change that keeps the prospect on the board.
+
+// Exported so the copy stays byte-locked by the confirm-action-button test.
+export function archiveProspectConfirmMessage(fullName: string): string {
+  return `Archive ${fullName}? They leave the board (kept in history). Use "Not at this time" instead if you only want to park them.`;
+}
+
 function ArchiveProspectControl({
   prospect,
 }: {
   prospect: ProspectBoardEntry;
 }) {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminArchiveProspect
-  );
-
-  function confirmArchive(e: FormEvent<HTMLFormElement>) {
-    if (
-      !window.confirm(
-        `Archive ${prospect.full_name}? They leave the board (kept in history). Use "Not at this time" instead if you only want to park them.`
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
-
   return (
     <div
       style={{
         borderTop: `1px solid ${P.line}`,
         paddingTop: 8,
         marginTop: 2,
-        display: "grid",
-        gap: 4,
       }}
     >
-      <form action={formAction} onSubmit={confirmArchive}>
-        <input type="hidden" name="prospect_id" value={prospect.id} />
-        <PButton
-          type="submit"
-          tone="ghost"
-          size="sm"
-          disabled={pending}
-          aria-label={`Archive prospect ${prospect.full_name}`}
-        >
-          {pending ? "Archiving…" : "Archive"}
-        </PButton>
-      </form>
-      <FormStatus state={state} successText="Prospect archived." />
+      <ConfirmActionButton
+        action={adminArchiveProspect}
+        confirmMessage={archiveProspectConfirmMessage(prospect.full_name)}
+        hiddenFields={[{ name: "prospect_id", value: prospect.id }]}
+        idleLabel="Archive"
+        pendingLabel="Archiving…"
+        tone="ghost"
+        ariaLabel={`Archive prospect ${prospect.full_name}`}
+        successText="Prospect archived."
+        gap={4}
+        alignEnd={false}
+      />
     </div>
   );
 }
