@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { buttonClassName } from "@/components/ui/button";
 import { requireLeader } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -54,7 +56,7 @@ export default async function LeaderPage() {
         {groups.length === 0 ? (
           <EmptyState />
         ) : (
-          <div style={{ display: "grid", gap: 14 }}>
+          <div className="grid gap-3.5">
             {groups.map((group) => (
               <GroupCard key={group.id} group={group} />
             ))}
@@ -66,64 +68,29 @@ export default async function LeaderPage() {
 }
 
 function GroupCard({ group }: { group: LeaderSafeGroupRow }) {
-  const linkStyle: React.CSSProperties = {
-    fontFamily: "var(--font-sans)",
-    fontSize: 13,
-    color: "var(--c-ink)",
-    textDecoration: "none",
-    padding: "8px 14px",
-    borderRadius: 999,
-    border: "1px solid var(--c-line)",
-    background: "var(--c-bg)",
-  };
   return (
-    <section
-      style={{
-        border: "1px solid var(--c-line)",
-        background: "var(--c-surface)",
-        borderRadius: 12,
-        padding: "18px 20px",
-        display: "grid",
-        gap: 12,
-        maxWidth: 560,
-      }}
-    >
-      <div style={{ display: "grid", gap: 4 }}>
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: "var(--font-serif, var(--font-body))",
-            fontSize: 18,
-            color: "var(--c-ink)",
-          }}
-        >
+    <section className="grid max-w-[560px] gap-3 rounded-lg border border-line bg-surface p-card">
+      <div className="grid gap-1">
+        <h2 className="m-0 font-display text-lg font-medium text-ink">
           {group.name}
         </h2>
         {group.lifecycle_status === "closed" ? (
-          <span
-            style={{
-              fontFamily: "var(--font-sans)",
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: "var(--c-clay)",
-            }}
-          >
+          <Badge tone="clay" dot className="justify-self-start">
             Closed
-          </span>
+          </Badge>
         ) : null}
       </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap gap-2.5">
         <Link
           href={`/leader/${group.id}/care`}
-          style={linkStyle}
+          className={buttonClassName("ghost", "sm")}
           aria-label={`Care notes for ${group.name}`}
         >
           Care notes
         </Link>
         <Link
           href={`/leader/${group.id}/calendar`}
-          style={linkStyle}
+          className={buttonClassName("ghost", "sm")}
           aria-label={`Calendar for ${group.name}`}
         >
           Calendar
@@ -137,23 +104,9 @@ function EmptyState() {
   return (
     <div
       role="status"
-      style={{
-        border: "1px solid var(--c-line)",
-        background: "var(--c-surface)",
-        borderRadius: 12,
-        padding: "28px 26px",
-        maxWidth: 560,
-        fontFamily: "var(--font-body)",
-      }}
+      className="max-w-[560px] rounded-lg border border-line bg-surface px-6 py-7"
     >
-      <p
-        style={{
-          margin: 0,
-          fontSize: 14,
-          lineHeight: 1.55,
-          color: "var(--c-ink2)",
-        }}
-      >
+      <p className="m-0 font-sans text-base text-ink2">
         You&rsquo;re signed in, but you&rsquo;re not assigned to lead a group
         right now. When a ministry admin assigns you, your group&rsquo;s care
         space will appear here.

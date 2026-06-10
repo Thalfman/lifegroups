@@ -6,15 +6,15 @@ import {
   leaderWriteGroupPrayerRequest,
 } from "@/app/(protected)/leader/[groupId]/care/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formNoteClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { cn } from "@/lib/utils";
 
 // Pivot slice 11 (#382 / ADR 0020). Writes one author-private Care Note OR
 // Prayer Request about the leader's GROUP. The author is the signed-in leader;
@@ -45,37 +45,31 @@ export function GroupNoteWriteForm({
       : "How can we be praying for your group?";
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
+    <form ref={formRef} action={formAction} className="grid gap-3">
       <input type="hidden" name="group_id" value={groupId} />
-      <p style={formNoteStyle}>
+      <p className={formNoteClassName}>
         {label}s are private to you. The only way ministry leadership can read
         them is if an admin turns on transparency for you &mdash; that&apos;s
         their call, not something you set here.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor={`${idPrefix}-body`} style={fieldLabelStyle}>
-            {label} (max 4000 chars)
-          </label>
-          <textarea
-            id={`${idPrefix}-body`}
-            name="body"
-            rows={4}
-            required
-            maxLength={4000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 96 }}
-            placeholder={placeholder}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Saving…" : `Add ${label.toLowerCase()}`}
-          </PButton>
-        </div>
+      <div>
+        <label htmlFor={`${idPrefix}-body`} className={fieldLabelClassName}>
+          {label} (max 4000 chars)
+        </label>
+        <textarea
+          id={`${idPrefix}-body`}
+          name="body"
+          rows={4}
+          required
+          maxLength={4000}
+          className={cn(fieldInputClassName, "min-h-24 resize-y")}
+          placeholder={placeholder}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2.5">
+        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          {pending ? "Saving…" : `Add ${label.toLowerCase()}`}
+        </PButton>
       </div>
       <FormStatus state={state} successText={`${label} saved.`} />
     </form>
