@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/lg/Card";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
@@ -176,6 +176,60 @@ export function GroupRosterManager({
               ) : null}
             </>
           )}
+        </div>
+      </Card>
+
+      {/* This group's view into the Interest Funnel. GROUP-LEVEL ONLY:
+          prospects carry no member/profile FK, so no per-person "came from
+          prospect X" claim is made anywhere — that would be a name-match
+          guess, not a fact. */}
+      <Card>
+        <div className="grid gap-2.5">
+          <div className={LABEL_TEXT}>Interest Funnel</div>
+          {data.prospectSignals === null ? (
+            <p role="alert" className={READ_ERROR_TEXT}>
+              The Interest Funnel couldn&apos;t be read right now — this is not
+              a confirmation that no Prospects are matched to this group.
+            </p>
+          ) : (
+            <>
+              {data.prospectSignals.matched.length === 0 ? (
+                <p className={cn("m-0", BODY_TEXT)}>
+                  No Prospects are currently matched to this group.
+                </p>
+              ) : (
+                <ul className={LIST_RESET}>
+                  {data.prospectSignals.matched.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center gap-2 border-t border-lineSoft py-2 first:border-t-0"
+                    >
+                      <span className={BODY_TEXT}>{p.full_name}</span>
+                      <Badge tone={STATUS_TONES.info} dot>
+                        Matched
+                      </Badge>
+                      <span className="font-sans text-sm text-ink3">
+                        being matched to this group — follow-up under way
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {data.prospectSignals.joinedCount > 0 ? (
+                <p className={cn("m-0", BODY_TEXT, "text-sm")}>
+                  {data.prospectSignals.joinedCount}{" "}
+                  {data.prospectSignals.joinedCount === 1 ? "person" : "people"}{" "}
+                  joined this group through the Interest Funnel.
+                </p>
+              ) : null}
+            </>
+          )}
+          <Link
+            href="/admin/plan"
+            className="font-sans text-sm text-clay no-underline"
+          >
+            Open the Interest Funnel →
+          </Link>
         </div>
       </Card>
 

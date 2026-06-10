@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,18 @@ export function PeopleManagementShell({
           Add person
         </Button>
       </div>
+
+      {/* People is the active roster; intake lives in the Plan area. One quiet
+          pointer so the admin doesn't add a not-yet-joined person here. */}
+      <p className="m-0 -mt-3 font-sans text-sm text-ink3">
+        Looking for someone who hasn&rsquo;t joined yet? Prospects live in the{" "}
+        <Link
+          href="/admin/plan"
+          className="font-medium text-clay no-underline hover:underline"
+        >
+          Interest Funnel →
+        </Link>
+      </p>
 
       <div
         role="tabpanel"

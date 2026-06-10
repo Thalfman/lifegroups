@@ -135,6 +135,11 @@ function detailReads(
         },
       ] as never),
     fetchGroupCalendarEvents: async () => ok([] as never),
+    fetchProspectSignalsForGroup: async () =>
+      ok({
+        matched: [{ id: "pr-1", full_name: "Morgan Prospect" }],
+        joinedCount: 2,
+      }),
     fetchCheckInsLive: async () => false,
     ...overrides,
   };
@@ -282,7 +287,29 @@ describe("buildGroupDetailData", () => {
         // Active people NOT already on the roster; inactive people excluded.
         assignableLeaders: [{ id: "p-bench", name: "Drew Bench" }],
         assignableMembers: [{ id: "m-4", name: "Drew Available" }],
+        // This group's Interest Funnel view (group-level only).
+        prospectSignals: {
+          matched: [{ id: "pr-1", full_name: "Morgan Prospect" }],
+          joinedCount: 2,
+        },
       });
+    });
+
+    it("suppresses the funnel card when the prospect read fails", async () => {
+      const result = await buildGroupDetailData(
+        detailReads({
+          fetchProspectSignalsForGroup: async () => fail("prospects boom"),
+        }),
+        options("people")
+      );
+
+      if (result.kind !== "ok") throw new Error("expected ok");
+      if (result.tabData.tab !== "people") throw new Error("wrong tab");
+      // null → degraded note, never a false "no prospects matched".
+      expect(result.tabData.prospectSignals).toBeNull();
+      // The roster itself is unaffected.
+      expect(result.tabData.leaders).toHaveLength(1);
+      expect(result.tabData.members).toHaveLength(2);
     });
 
     it("suppresses the leaders list AND its assign options when the profiles read fails", async () => {

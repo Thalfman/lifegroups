@@ -923,6 +923,10 @@ const GROUP_ROSTER_DATA: GroupPeopleTabData = {
   ],
   assignableLeaders: [{ id: "roster-p-3", name: "Em Bench" }],
   assignableMembers: [{ id: "roster-m-9", name: "Frankie Available" }],
+  prospectSignals: {
+    matched: [{ id: "roster-pr-1", full_name: "Morgan Prospect" }],
+    joinedCount: 2,
+  },
 };
 
 // Calendar occurrence editor (#324 a11y hardening sweep). The Groups calendar

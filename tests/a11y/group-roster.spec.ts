@@ -55,6 +55,22 @@ test.describe("group roster manager", () => {
     ).toBeVisible();
   });
 
+  test("the Interest Funnel card lists matched prospects and links to Plan", async ({
+    page,
+  }) => {
+    const surface = page.locator(SURFACE);
+
+    await expect(surface.getByText("Morgan Prospect")).toBeVisible();
+    await expect(
+      surface.getByText(
+        "2 people joined this group through the Interest Funnel."
+      )
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("link", { name: "Open the Interest Funnel →" })
+    ).toBeVisible();
+  });
+
   test("axe finds no critical or serious violations", async ({ page }) => {
     const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);

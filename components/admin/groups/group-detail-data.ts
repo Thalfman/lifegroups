@@ -23,6 +23,10 @@ import {
 } from "@/lib/admin/group-health-read";
 import { decodeAppConfig } from "@/lib/admin/app-config-decode";
 import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
+import {
+  fetchProspectSignalsForGroup,
+  type GroupProspectSignals,
+} from "@/lib/supabase/prospect-reads";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import {
   capacityStatus,
@@ -117,6 +121,10 @@ export type GroupPeopleTabData = {
   assignableLeaders: Array<{ id: string; name: string }> | null;
   // Active members not already on this group's roster.
   assignableMembers: Array<{ id: string; name: string }> | null;
+  // This group's Interest Funnel view (group-level only — prospects carry no
+  // person FK). null = the read failed; the card shows a degraded note, never
+  // a false "no prospects".
+  prospectSignals: GroupProspectSignals | null;
 };
 
 // Health: the Group-Health Grade (Q12). Fails closed as a whole — a failed
@@ -210,6 +218,7 @@ export type GroupDetailReads = {
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
   fetchOpenFollowUps: OmitClient<typeof fetchOpenFollowUps>;
   fetchGroupCalendarEvents: OmitClient<typeof fetchGroupCalendarEvents>;
+  fetchProspectSignalsForGroup: OmitClient<typeof fetchProspectSignalsForGroup>;
   // Not a client-bound read-model fetcher: the ADR-0009 frozen-surface flag
   // for weekly check-ins (it fails safe to false on its own).
   fetchCheckInsLive: () => Promise<boolean>;
@@ -236,6 +245,7 @@ export function supabaseGroupDetailReads(
       fetchAttendanceSessions,
       fetchOpenFollowUps,
       fetchGroupCalendarEvents,
+      fetchProspectSignalsForGroup,
     }),
     fetchCheckInsLive: () => isFrozenSurfaceLive("check_ins"),
   };
@@ -338,7 +348,7 @@ async function buildPeopleTab(
 ): Promise<GroupPeopleTabData> {
   const archived = lifecycleCategory(group.lifecycle_status) === "archived";
 
-  const [leadersRes, profilesRes, membershipsRes, allMembersRes] =
+  const [leadersRes, profilesRes, membershipsRes, allMembersRes, prospectsRes] =
     await Promise.all([
       reads.fetchAllGroupLeaders({ activeOnly: true }),
       reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
@@ -348,6 +358,7 @@ async function buildPeopleTab(
       archived
         ? Promise.resolve({ data: null, error: null })
         : reads.fetchAllMembers(),
+      reads.fetchProspectSignalsForGroup(group.id),
     ]);
 
   const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
@@ -413,6 +424,9 @@ async function buildPeopleTab(
     members,
     assignableLeaders,
     assignableMembers,
+    // Fail closed: a failed funnel read shows a degraded note, never a false
+    // "no prospects matched to this group".
+    prospectSignals: prospectsRes.error ? null : prospectsRes.data,
   };
 }
 
