@@ -18,9 +18,10 @@ until Julian's explicit go-ahead.
       snapshot; skim [`BACKUP_AND_RESTORE.md`](./BACKUP_AND_RESTORE.md) so
       the restore ladder isn't read for the first time during an incident.
       _Tom_
-- [ ] **Branch protection on `main`**: require the CI checks (lint /
-      typecheck / test + a11y) before merge. GitHub → Settings → Branches.
-      _Tom_
+- [x] **Branch protection on `main`**: requires the CI checks
+      (`lint + typecheck + test` and
+      `accessible-name check (playwright + axe)`) before merge — verified
+      2026-06-10 via GitHub branch protection API. _Eng_
 
 ## 2. Schema parity (the drift fix)
 
