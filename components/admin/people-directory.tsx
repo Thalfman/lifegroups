@@ -162,9 +162,6 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
 
       {showLogin ? (
         <DirectorySection
-          headerEyebrow={
-            props.scope === "leaders" ? "Leaders" : "Leaders & oversight"
-          }
           headerTitle={
             props.scope === "leaders"
               ? "Leaders and co-leaders"
@@ -206,9 +203,8 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
 
       {showMembers ? (
         <DirectorySection
-          headerEyebrow="Members"
-          headerTitle="Participants"
-          headerDescription="Members are people in the directory. Leaders mark their attendance and admins place them in groups."
+          headerTitle="Members"
+          headerDescription="Members take part in groups but don’t sign in. Leaders record their attendance; admins assign them to groups."
           countLabel={`${visibleMembers.length} shown`}
           stale={listIsStale}
           empty={
@@ -279,7 +275,6 @@ function FilterBar({
 // ---------------------------------------------------------------------------
 
 function DirectorySection({
-  headerEyebrow,
   headerTitle,
   headerDescription,
   countLabel,
@@ -287,7 +282,6 @@ function DirectorySection({
   stale = false,
   children,
 }: {
-  headerEyebrow: string;
   headerTitle: string;
   headerDescription: string;
   countLabel?: string;
@@ -297,20 +291,19 @@ function DirectorySection({
   stale?: boolean;
   children: React.ReactNode;
 }) {
+  // No section eyebrow: the page header carries the one eyebrow per page
+  // (design direction §4) and the old eyebrows just echoed the title.
   return (
     <section className="grid gap-3.5">
       <div>
         <div className="flex items-baseline justify-between gap-3">
-          <div className="font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-ink3">
-            {headerEyebrow}
-          </div>
+          <h3 className="m-0 font-display text-xl font-medium text-ink">
+            {headerTitle}
+          </h3>
           {countLabel ? (
             <div className="font-sans text-2xs text-ink3">{countLabel}</div>
           ) : null}
         </div>
-        <h3 className="m-0 mt-1 font-display text-xl font-medium text-ink">
-          {headerTitle}
-        </h3>
         <p className="m-0 mt-1.5 max-w-lede font-sans text-sm text-ink2">
           {headerDescription}
         </p>
@@ -337,12 +330,12 @@ function DirectorySection({
 // Care / contact indicator
 // ---------------------------------------------------------------------------
 
-// The per-row Contact/Care indicator (reduction plan §6 person row). Every row
-// carries this field so the six-field layout is uniform across person types.
-// Leaders and co-leaders carry a real care cadence, so they read "Needs
-// contact" or "No current concerns". Everyone else — members and non-leader
-// login profiles (admins, over-shepherds) — has no per-leader care model, so
-// the field renders a neutral "No care model" placeholder rather than vanishing.
+// The per-row care indicator. Only an attention state renders: an active
+// leader / co-leader whose care cadence has lapsed reads "Needs contact";
+// everyone else shows nothing. The old uniform field ("No care model" on every
+// member, "No current concerns" on every quiet leader) was row noise — and the
+// positive state was a lie for inactive leaders, whose cadence isn't tracked.
+// The person detail Overview keeps the explicit positive state.
 function CareIndicator({
   hasCareModel,
   needsContact,
@@ -350,16 +343,10 @@ function CareIndicator({
   hasCareModel: boolean;
   needsContact: boolean;
 }) {
-  if (!hasCareModel) {
-    return (
-      <Badge tone="neutral" dot>
-        No care model
-      </Badge>
-    );
-  }
+  if (!hasCareModel || !needsContact) return null;
   return (
-    <Badge tone={needsContact ? STATUS_TONES.followUp : STATUS_TONES.well} dot>
-      {needsContact ? "Needs contact" : "No current concerns"}
+    <Badge tone={STATUS_TONES.followUp} dot>
+      Needs contact
     </Badge>
   );
 }
@@ -420,20 +407,21 @@ const ProfileRow = memo(function ProfileRow({
       <div className="min-w-0">
         <div className={ROW_BADGES_CLASS}>
           <div className={ROW_NAME_CLASS}>{profile.full_name}</div>
-          {/* Role and Status are distinct fields (reduction plan §6): a Role
-              badge always, plus a Status badge so an inactive leader still
-              reads its role rather than collapsing to "Inactive". */}
+          {/* A Role badge always; Status only when it's news (inactive) and
+              the care indicator only when contact has lapsed — active is the
+              norm, so a typical row carries one quiet badge, not three. */}
           <Badge tone="neutral" dot>
             {ROLE_LABELS[profile.role]}
           </Badge>
-          <Badge
-            tone={profile.status === "active" ? STATUS_TONES.well : "ghost"}
-            dot
-          >
-            {profile.status === "active" ? "Active" : "Inactive"}
-          </Badge>
+          {profile.status !== "active" ? (
+            <Badge tone="neutral" dot>
+              Inactive
+            </Badge>
+          ) : null}
           <CareIndicator
-            hasCareModel={isLeaderType}
+            // Only an *active* leader's cadence is tracked — an inactive one
+            // must not read as "no concerns" (or anything) here.
+            hasCareModel={isLeaderType && profile.status === "active"}
             needsContact={needsContact}
           />
         </div>
@@ -508,13 +496,13 @@ const MemberRow = memo(function MemberRow({
           <Badge tone="neutral" dot>
             Member
           </Badge>
-          <Badge
-            tone={member.status === "active" ? STATUS_TONES.well : "ghost"}
-            dot
-          >
-            {member.status === "active" ? "Active" : "Inactive"}
-          </Badge>
-          <CareIndicator hasCareModel={false} needsContact={false} />
+          {/* Status only when it's news; members carry no care model, so no
+              care indicator at all (the old "No care model" badge was noise). */}
+          {member.status !== "active" ? (
+            <Badge tone="neutral" dot>
+              Inactive
+            </Badge>
+          ) : null}
         </div>
         <div className={ROW_CONTACT_CLASS}>
           <span>{member.email ?? "—"}</span>

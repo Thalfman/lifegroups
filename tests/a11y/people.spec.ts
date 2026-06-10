@@ -128,17 +128,20 @@ test.describe("admin People tabs", () => {
     await expect(
       surface.getByRole("heading", { name: "Leaders and co-leaders" })
     ).toBeVisible();
-    // The members section is not mounted in the leaders scope.
-    expect(await surface.getByText("Participants").count()).toBe(0);
+    // The Members section is not mounted in the leaders scope (heading role,
+    // so the "Members" tab control itself doesn't count as a match).
+    expect(
+      await surface.getByRole("heading", { name: "Members" }).count()
+    ).toBe(0);
   });
 
-  test("the Members tab shows only the participants section", async ({
-    page,
-  }) => {
+  test("the Members tab shows only the Members section", async ({ page }) => {
     const surface = page.locator(SURFACE);
     await surface.getByRole("button", { name: "Members" }).click();
 
-    await expect(surface.getByText("Participants")).toBeVisible();
+    await expect(
+      surface.getByRole("heading", { name: "Members" })
+    ).toBeVisible();
   });
 
   test("the Apprentices tab reveals the leader pipeline", async ({ page }) => {
