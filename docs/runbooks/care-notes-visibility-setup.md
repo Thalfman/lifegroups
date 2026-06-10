@@ -26,25 +26,26 @@ no broader bypass. Logic lives in `lib/admin/care-note-visibility.ts`; RLS enfor
 
 ---
 
-## 1. Leader notes — flip one switch
+## 1. Leader notes — ON by default; verify, don't flip
 
 The Leader surface is behind the `leader_surface` **frozen-surface flag** (verify-before-flip,
 ADR [0009](../adr/0009-runtime-flags-may-reenable-frozen-surfaces.md)). It resolves live only
 when `{ enabled: true, verified: true }` (`lib/admin/feature-flags.ts` → `resolveFlag`).
 
-- `verified: true` was **already set** by migration
+- `verified: true` was set by migration
   `supabase/migrations/20260608040000_phase_pivot10_leader_surface.sql` (the route + RLS
   re-audit landed with it).
+- `enabled: true` is now **seeded by default** (ADR
+  [0024](../adr/0024-default-on-leader-surface-and-groups-people-nav.md), migration
+  `supabase/migrations/20260701020000_default_on_leader_surface_and_nav.sql`).
 - The Super Admin Console toggle **only ever sets `enabled`** — never `verified`
-  (`app/(protected)/admin/super-admin/feature-flag-actions.ts`).
+  (`app/(protected)/admin/super-admin/feature-flag-actions.ts`) — so it remains the
+  off-switch if you need to close Leader logins.
 
-**Action (Super Admin):**
+**Action (Super Admin):** none required. Confirm the **Super Admin Console** → **Feature
+flags** card shows **"Leader surface"** as On; toggle it OFF only to close the surface.
 
-1. Open the **Super Admin Console** → **Feature flags** card
-   (`components/admin/super-admin-console-shell.tsx`).
-2. Toggle **"Leader surface"** ON.
-
-Once ON, `requireLeader` (`lib/auth/session.ts`) admits active `leader` / `co_leader` users,
+While ON, `requireLeader` (`lib/auth/session.ts`) admits active `leader` / `co_leader` users,
 and `/leader/<groupId>/care` (`app/(protected)/leader/[groupId]/care/page.tsx`) renders the
 `GroupNoteWriteForm`.
 
@@ -91,9 +92,18 @@ The encrypted **Private note** is **Ministry-Admin-only and hidden from Super Ad
 - Want the admin note visible to Super Admin too? That is a deliberate boundary change to the
   creator-only encrypted model (ADR 0002 / 0003) and is a code task, not configuration.
 
+**Admins writing Care Notes / Prayer Requests (ADR
+[0023](../adr/0023-all-notes-feed-and-admin-authorship.md)):** a Ministry/Super Admin can now
+author the same author-private Care Notes + Prayer Requests about any active leader — inline
+from `/admin/care` (each leader panel's **"Grades & notes"** section hosts the write forms).
+Admin-authored notes follow the same model: private to their author until the subject's
+toggle is on.
+
 **Admins reading leader / over-shepherd notes:** on the leader's
-`/admin/shepherd-care/<profileId>` → **"Care notes & prayer"** tab, flip that leader's
-transparency toggle ON (`NoteTransparencyToggle`). Default OFF = sealed.
+`/admin/shepherd-care/<profileId>` → **"Care notes & prayer"** tab — or inline from the Care
+accordion or the **Notes** tab's sealed summary — flip that leader's transparency toggle ON
+(`NoteTransparencyToggle`). Default OFF = sealed. The **Notes** tab (`/admin/care?view=notes`)
+shows everything you can already read in one feed, plus counts of what stays sealed.
 
 ---
 
