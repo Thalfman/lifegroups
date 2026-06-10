@@ -896,9 +896,8 @@ function FilterBar({
       style={{
         background: P.surface,
         border: `1px solid ${P.line}`,
-        borderLeft: `3px solid ${P.terra}`,
         borderRadius: 14,
-        padding: "12px 14px 12px 17px",
+        padding: "12px 14px",
         display: "grid",
         gap: 10,
       }}

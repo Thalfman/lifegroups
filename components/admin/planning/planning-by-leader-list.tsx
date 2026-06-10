@@ -19,7 +19,6 @@ import {
   occurrenceNeedsCoverage,
   type LeaderGroup,
 } from "@/lib/admin/planning-views";
-import { statusStripeColor } from "@/components/admin/admin-master-calendar-status";
 
 function statusTone(status: MasterOccurrence["status"]): PTone {
   if (status === "off") return "pause";
@@ -130,7 +129,6 @@ function LeaderSection({
       style={{
         background: P.surface,
         border: `1px solid ${P.line}`,
-        borderLeft: `3px solid ${isUnassigned ? P.terra : P.sage}`,
         borderRadius: 14,
         padding: "14px 16px",
         display: "grid",
@@ -243,14 +241,12 @@ function OccurrenceRow({
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
-  const stripe = statusStripeColor(occurrence.status);
   const needsCoverage = occurrenceNeedsCoverage(occurrence);
   return (
     <li
       style={{
         background: P.bg,
         border: `1px solid ${P.line2}`,
-        borderLeft: `3px solid ${stripe}`,
         borderRadius: 10,
       }}
     >

@@ -111,9 +111,11 @@ function GridCellView({
   onSelect: (o: MasterOccurrence) => void;
   onMoreFromDay: (payload: DayClickPayload) => void;
 }) {
+  // Out-of-month cells are distinguished by background + a muted (but still
+  // AA-clearing) day color — never an opacity wash, which floors text
+  // contrast below 4.5:1.
   const baseBg = cell.inMonth ? P.bg : P.surface;
   const dayColor = cell.inMonth ? P.ink2 : P.ink3;
-  const opacity = cell.inMonth ? 1 : 0.55;
   const visible = occurrences.slice(0, MAX_PILLS_PER_CELL);
   const overflow = occurrences.length - visible.length;
 
@@ -126,7 +128,6 @@ function GridCellView({
         gap: 6,
         minHeight: 96,
         padding: "8px 8px 10px",
-        opacity,
         background: baseBg,
         border: `1px solid ${P.line}`,
         borderRadius: 10,
@@ -148,7 +149,7 @@ function GridCellView({
         {cell.isToday ? (
           <span
             style={{
-              fontSize: 9,
+              fontSize: 11,
               letterSpacing: 1,
               textTransform: "uppercase",
               color: P.terra,
@@ -223,13 +224,12 @@ function OccurrencePill({
         gap: 2,
         textAlign: "left",
         background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderLeft: `3px solid ${statusStripeColor(occurrence.status)}`,
+        // Status carried by a full border (legend-explained), not a stripe.
+        border: `1px solid ${statusStripeColor(occurrence.status)}`,
         borderRadius: 6,
         padding: "4px 6px",
         cursor: "pointer",
         fontFamily: fontBody,
-        boxShadow: "0 1px 0 rgba(58, 42, 26, 0.04)",
       }}
     >
       <span

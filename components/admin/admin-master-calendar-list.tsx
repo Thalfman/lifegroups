@@ -147,7 +147,6 @@ function OccurrenceCard({
   const clock = formatClock(occurrence.inheritedMeetingTime);
   const typeLabel = friendlyEventTypeLabel(occurrence.eventType);
   const tone = statusTone(occurrence.status);
-  const stripe = statusStripeColor(occurrence.status);
   // Explicit, meaningful accessible name (#322): without it the button's name
   // is the concatenated child text (group + status/type + clock + leaders),
   // which reads as a run-on. The shared helper leads with the group, then the
@@ -160,9 +159,8 @@ function OccurrenceCard({
       style={{
         background: P.bg,
         border: `1px solid ${P.line2}`,
-        borderLeft: `3px solid ${stripe}`,
         borderRadius: 10,
-        padding: "12px 12px 12px 15px",
+        padding: 12,
         display: "grid",
         gap: 8,
       }}

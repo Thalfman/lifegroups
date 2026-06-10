@@ -163,9 +163,10 @@ function GridCellView({
   disabledReason?: string;
   previewNotice?: string;
 }) {
+  // Out-of-month cells differ by background + a muted (AA-clearing) day
+  // color — never an opacity wash, which floors text contrast below 4.5:1.
   const baseBg = cell.inMonth ? P.bg : P.surface;
   const dayColor = cell.inMonth ? P.ink2 : P.ink3;
-  const opacity = cell.inMonth ? 1 : 0.55;
 
   const cellInner = (
     <div
@@ -176,7 +177,6 @@ function GridCellView({
         gap: 4,
         minHeight: 84,
         padding: "8px 8px 10px",
-        opacity,
       }}
     >
       <div
@@ -194,7 +194,7 @@ function GridCellView({
         {cell.isToday ? (
           <span
             style={{
-              fontSize: 9,
+              fontSize: 11,
               letterSpacing: 1,
               textTransform: "uppercase",
               color: P.terra,
