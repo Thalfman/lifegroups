@@ -12,13 +12,7 @@
 // margin) come from Settings, not hard-coded here — see matchesFilter and the
 // director sign-off recorded on the issue.
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type MutableRefObject,
-} from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import type { GroupHealthOverviewRow } from "@/lib/admin/group-health-read";
 import { gradeAtOrBelow } from "@/lib/admin/group-health";
@@ -31,18 +25,14 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-} from "@/components/admin/forms/field-styles";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
 import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PButton } from "@/components/pastoral/button";
+import { buttonClassName } from "@/components/ui/button";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { dateLabel } from "@/lib/calendar/occurrences";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // --- Triage filters (director-confirmed, Admin IM 05 / #265) ----------------
 //   * Not assessed — no rating has ever been recorded.
@@ -122,25 +112,20 @@ function dateCell(iso: string | null): string {
   return dateLabel(iso.slice(0, 10));
 }
 
-const thStyle: CSSProperties = {
-  padding: "0 14px 8px 0",
-  textAlign: "left",
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 700,
-};
+// DataTable conventions (docs/design-direction.md §4 Tables & lists): 12px
+// sentence-case ink3 header row, 13px cells, lineSoft row separators.
+const TH = "pb-2 pr-3.5 text-left font-sans text-xs font-semibold text-ink3";
 
-const tdStyle: CSSProperties = {
-  padding: "10px 14px 10px 0",
-  fontFamily: fontBody,
-  fontSize: 14,
-  color: P.ink,
-  borderTop: `1px solid ${P.line}`,
-  verticalAlign: "top",
-};
+const TD =
+  "border-t border-lineSoft py-2.5 pr-3.5 align-top font-sans text-sm text-ink";
+
+// Design-system form field classes (§4 Forms): tracked-uppercase survives in
+// form field labels; inputs are full-width, rounded-sm, line-bordered, with
+// the global focus ring. `lg-m-input` keeps the ≥16px mobile font guard.
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "lg-m-input w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 export function GroupHealthTriage({
   rows,
@@ -201,12 +186,11 @@ export function GroupHealthTriage({
   };
 
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div className="grid gap-[18px]">
       <div
-        className="lg-m-filterbar"
         role="group"
         aria-label="Filter groups"
-        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+        className="flex flex-col gap-2.5 md:flex-row md:flex-wrap md:gap-2"
       >
         {FILTERS.map((f) => {
           const active = filter === f.key;
@@ -216,17 +200,10 @@ export function GroupHealthTriage({
               type="button"
               aria-pressed={active}
               onClick={() => setFilter(f.key)}
-              style={{
-                padding: "7px 14px",
-                borderRadius: 999,
-                border: `1px solid ${active ? P.ink : P.line}`,
-                background: active ? P.ink : "transparent",
-                color: active ? P.surface : P.ink2,
-                fontFamily: fontSans,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
+              className={cn(
+                buttonClassName(active ? "solid" : "ghost", "sm"),
+                "w-full md:w-auto"
+              )}
             >
               {f.label}
             </button>
@@ -238,17 +215,17 @@ export function GroupHealthTriage({
           table cannot fit a 375px viewport, so the table scrolls inside its own
           region rather than forcing the whole page to scroll horizontally —
           matching the other admin tables (care directory, scenarios). */}
-      <div className="lg-m-table-wrap" style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th style={thStyle}>Group</th>
-              <th style={thStyle}>Last check-in</th>
-              <th style={thStyle}>Attendance (8-wk avg)</th>
-              <th style={thStyle}>Grade</th>
-              <th style={thStyle}>Missing ratings</th>
-              <th style={thStyle}>Last saved</th>
-              <th style={thStyle}>
+              <th className={TH}>Group</th>
+              <th className={TH}>Last check-in</th>
+              <th className={TH}>Attendance (8-wk avg)</th>
+              <th className={TH}>Grade</th>
+              <th className={TH}>Missing ratings</th>
+              <th className={TH}>Last saved</th>
+              <th className={TH}>
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -256,7 +233,7 @@ export function GroupHealthTriage({
           <tbody>
             {visible.length === 0 ? (
               <tr>
-                <td style={{ ...tdStyle, color: P.ink2 }} colSpan={7}>
+                <td className={cn(TD, "text-ink2")} colSpan={7}>
                   {rows.length === 0
                     ? "No active groups to assess yet."
                     : "No groups match this filter."}
@@ -271,40 +248,34 @@ export function GroupHealthTriage({
                 );
                 return (
                   <tr key={row.group_id}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    <td className={cn(TD, "font-semibold")}>
                       {row.group_name}
                     </td>
-                    <td style={tdStyle}>{dateCell(row.last_check_in_week)}</td>
-                    <td style={tdStyle}>
+                    <td className={TD}>{dateCell(row.last_check_in_week)}</td>
+                    <td className={TD}>
                       {row.attendance_pct === null
                         ? "—"
                         : `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`}
                       {row.stale ? (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 11,
-                            color: P.mustardTextStrong,
-                          }}
-                        >
+                        <span className="ml-1.5 text-2xs text-amberText">
                           stale
                         </span>
                       ) : null}
                     </td>
-                    <td style={tdStyle}>
+                    <td className={TD}>
                       {row.computed_letter ??
                         (row.unassessed ? "Not assessed" : "—")}
                     </td>
                     <td
-                      style={{
-                        ...tdStyle,
-                        color: missing.length ? P.terraTextStrong : P.ink3,
-                      }}
+                      className={cn(
+                        TD,
+                        missing.length ? "text-clayDeep" : "text-ink3"
+                      )}
                     >
                       {missing.length === 0 ? "None" : missing.join(", ")}
                     </td>
-                    <td style={tdStyle}>{dateCell(row.last_saved_at)}</td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                    <td className={TD}>{dateCell(row.last_saved_at)}</td>
+                    <td className={cn(TD, "text-right")}>
                       <PButton
                         tone="ghost"
                         size="sm"
@@ -441,18 +412,17 @@ function GroupHealthEditorBody({
         ref={ratings.formRef}
         action={ratings.formAction}
         onChange={markDirty}
-        style={{ display: "grid", gap: 16 }}
+        className="grid gap-4"
       >
         <input type="hidden" name="group_id" value={row.group_id} />
 
         <div>
-          <label htmlFor={`gh-growth-${row.group_id}`} style={fieldLabelStyle}>
+          <label htmlFor={`gh-growth-${row.group_id}`} className={FIELD_LABEL}>
             {spiritualGrowthLabel}
           </label>
           <input
             id={`gh-growth-${row.group_id}`}
-            className={fieldInputClass}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
             type="number"
             name="spiritual_growth_score"
             min={1}
@@ -464,14 +434,13 @@ function GroupHealthEditorBody({
         <div>
           <label
             htmlFor={`gh-question-${row.group_id}`}
-            style={fieldLabelStyle}
+            className={FIELD_LABEL}
           >
             {groupQuestionLabel}
           </label>
           <input
             id={`gh-question-${row.group_id}`}
-            className={fieldInputClass}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
             type="number"
             name="group_question_score"
             min={1}
@@ -481,13 +450,12 @@ function GroupHealthEditorBody({
         </div>
 
         <div>
-          <label htmlFor={`gh-note-${row.group_id}`} style={fieldLabelStyle}>
+          <label htmlFor={`gh-note-${row.group_id}`} className={FIELD_LABEL}>
             Spiritual-growth note
           </label>
           <textarea
             id={`gh-note-${row.group_id}`}
-            className={fieldInputClass}
-            style={{ ...fieldInputStyle, minHeight: 76, resize: "vertical" }}
+            className={cn(FIELD_INPUT, "min-h-[76px] resize-y")}
             name="spiritual_growth_note"
             maxLength={2000}
             defaultValue={row.spiritual_growth_note ?? ""}
@@ -496,15 +464,7 @@ function GroupHealthEditorBody({
 
         <label
           htmlFor={`gh-followup-${row.group_id}`}
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            fontFamily: fontBody,
-            fontSize: 14,
-            color: P.ink,
-            cursor: "pointer",
-          }}
+          className="flex cursor-pointer items-start gap-2 font-sans text-base text-ink"
         >
           <input
             id={`gh-followup-${row.group_id}`}
@@ -512,7 +472,7 @@ function GroupHealthEditorBody({
             name="needs_follow_up"
             defaultChecked={row.needs_follow_up}
             aria-label={`Flag ${row.group_name} as needing follow-up`}
-            style={{ marginTop: 3 }}
+            className="mt-[3px]"
           />
           {/* The currently-displayed flag (which may be carried from a prior
               month), so an empty "uncheck to close the action" save isn't
@@ -525,14 +485,7 @@ function GroupHealthEditorBody({
           />
           <span>
             Needs follow-up
-            <span
-              style={{
-                display: "block",
-                fontSize: 11,
-                color: P.ink3,
-                marginTop: 2,
-              }}
-            >
+            <span className="mt-0.5 block text-sm text-ink3">
               Keep this group on the follow-up filter until the action is
               closed.
             </span>
@@ -543,17 +496,7 @@ function GroupHealthEditorBody({
         <FormStatus state={recompute.state} successText="Grade saved." />
       </form>
 
-      <div
-        style={{
-          marginTop: 4,
-          paddingTop: 14,
-          borderTop: `1px solid ${P.line}`,
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
+      <div className="mt-1 flex flex-wrap justify-end gap-2.5 border-t border-line pt-3.5">
         {/* Recompute grades from the last *saved* ratings, so it's disabled while
             there are unsaved edits — otherwise it would silently discard them. */}
         <form action={recompute.formAction}>
@@ -582,44 +525,14 @@ function GroupHealthEditorBody({
       </div>
 
       {isSuperAdmin ? (
-        <div
-          style={{
-            marginTop: 14,
-            paddingTop: 14,
-            borderTop: `1px solid ${P.line}`,
-            display: "grid",
-            gap: 6,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: fontSans,
-                fontSize: 12,
-                fontWeight: 700,
-                color: P.ink,
-              }}
-            >
+        <div className="mt-3.5 grid gap-1.5 border-t border-line pt-3.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-sans text-xs font-bold text-ink">
               Reset attention
             </span>
             <SuperAdminOnlyBadge />
           </div>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              margin: 0,
-              lineHeight: 1.45,
-            }}
-          >
+          <p className="m-0 font-sans text-xs text-ink2">
             Clear this group from the “overdue or missing health checks” card
             with a fresh-start baseline and clear any open “needs follow-up”
             flag — it re-surfaces naturally once a new due week passes without a

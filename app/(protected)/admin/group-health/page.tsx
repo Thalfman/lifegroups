@@ -20,7 +20,7 @@ export default async function GroupHealthPage() {
       <>
         <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
-          <p style={{ fontFamily: "var(--font-body)", color: "var(--c-ink2)" }}>
+          <p className="font-sans text-base text-ink2">
             The database isn&apos;t configured, so grades can&apos;t be loaded.
           </p>
         </PageBody>
@@ -33,7 +33,7 @@ export default async function GroupHealthPage() {
       <>
         <PageHeader eyebrow="Groups" title="Group health" />
         <PageBody>
-          <p style={{ fontFamily: "var(--font-body)", color: "#923220" }}>
+          <p className="font-sans text-base text-rose">
             Couldn&apos;t load group-health grades. Refresh to try again.
           </p>
         </PageBody>

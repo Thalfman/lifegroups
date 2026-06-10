@@ -2,7 +2,8 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/layout/shell";
 import { PBadge, type PTone } from "@/components/pastoral/atoms";
 import { WeekSelector } from "@/components/admin/week-selector";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { buttonClassName } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   formatSubmittedAt,
   formatWeekLabel,
@@ -13,8 +14,6 @@ import {
   type WeekOption,
   type WeeklyReviewData,
 } from "@/lib/admin/check-ins";
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 function formatMeetingTime(value: string | null): string | null {
   if (!value) return null;
@@ -38,7 +37,7 @@ function meetingLine(day: string | null, time: string | null): string | null {
 
 function statusBadge(
   status: SessionReviewStatus,
-  isScheduledThisWeek: boolean,
+  isScheduledThisWeek: boolean
 ) {
   switch (status) {
     case "submitted":
@@ -70,11 +69,12 @@ function statusBadge(
   }
 }
 
-const PULSE_LABELS: Record<LeaderPulseDisplay, { label: string; tone: PTone }> = {
-  healthy: { label: "Healthy", tone: "healthy" },
-  watch: { label: "Watch", tone: "watch" },
-  needs_follow_up: { label: "Needs follow-up", tone: "followup" },
-};
+const PULSE_LABELS: Record<LeaderPulseDisplay, { label: string; tone: PTone }> =
+  {
+    healthy: { label: "Healthy", tone: "healthy" },
+    watch: { label: "Watch", tone: "watch" },
+    needs_follow_up: { label: "Needs follow-up", tone: "followup" },
+  };
 
 function pulseBadge(pulse: LeaderPulseDisplay | null) {
   if (!pulse) return null;
@@ -104,41 +104,24 @@ function SummaryTile({
   value: number;
   tone?: "missing" | "followup";
 }) {
-  const accent =
-    tone === "missing" || tone === "followup" ? P.terra : P.ink;
-  const labelColor =
-    tone === "missing" || tone === "followup" ? P.terra : P.ink3;
+  // Tone is carried by the figure color (clay = needs follow-up) — never a
+  // stripe. Sentence-case label, serif figure (design-direction §4 Cards).
+  const accented = tone === "missing" || tone === "followup";
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "14px 16px",
-        display: "grid",
-        gap: 4,
-      }}
-    >
+    <div className="grid gap-1 rounded-sm border border-line bg-surface px-4 py-3.5">
       <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 28,
-          fontWeight: 500,
-          color: accent,
-          lineHeight: 1.1,
-        }}
+        className={cn(
+          "font-display text-3xl font-medium tabular-nums leading-none",
+          accented ? "text-clay" : "text-ink"
+        )}
       >
         {value}
       </div>
       <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.6,
-          textTransform: "uppercase",
-          color: labelColor,
-          fontWeight: 600,
-        }}
+        className={cn(
+          "font-sans text-sm",
+          accented ? "text-clayDeep" : "text-ink3"
+        )}
       >
         {label}
       </div>
@@ -150,15 +133,7 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="alert"
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "12px 14px",
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: "#7d3621",
-      }}
+      className="rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
     >
       {children}
     </div>
@@ -167,35 +142,11 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
 
 function Empty({ title, description }: { title: string; description: string }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px dashed ${P.line}`,
-        borderRadius: 10,
-        padding: "22px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 16,
-          color: P.ink,
-          fontWeight: 500,
-          marginBottom: 6,
-        }}
-      >
+    <div className="rounded-sm border border-dashed border-line bg-surface px-6 py-[22px] text-center">
+      <div className="mb-1.5 font-display text-lg font-medium text-ink">
         {title}
       </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm leading-normal text-ink2">
         {description}
       </p>
     </div>
@@ -216,52 +167,21 @@ function ReviewCard({
           .filter(Boolean)
           .join(" · ")
       : null;
+  // Tone tints the whole card surface (token classes, no stripe): clay for a
+  // missing check-in, an amber border for an open follow-up flag.
   const highlight =
     row.sessionStatus === "missing" && row.isActive && row.isScheduledThisWeek
-      ? { borderColor: P.terra, background: P.terraSoft }
+      ? "border-clay bg-claySoft"
       : row.followUpNeeded
-        ? { borderColor: P.mustard, background: P.surface }
-        : { borderColor: P.line, background: P.surface };
+        ? "border-amber bg-surface"
+        : "border-line bg-surface";
 
   return (
-    <article
-      style={{
-        background: highlight.background,
-        border: `1px solid ${highlight.borderColor}`,
-        borderRadius: 12,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
-    >
-      <header
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: 12,
-          alignItems: "start",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontFamily: fontDisplay,
-                fontSize: 20,
-                fontWeight: 500,
-                color: P.ink,
-                letterSpacing: -0.3,
-              }}
-            >
+    <article className={cn("grid gap-3 rounded-lg border p-card", highlight)}>
+      <header className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-start">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="m-0 font-display text-lg font-medium text-ink">
               {row.groupName}
             </h3>
             {statusBadge(row.sessionStatus, row.isScheduledThisWeek)}
@@ -272,49 +192,23 @@ function ReviewCard({
             {pulseBadge(row.healthPulse)}
           </div>
           {row.leaderNames.length > 0 ? (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                marginTop: 4,
-              }}
-            >
+            <div className="mt-1 font-sans text-sm text-ink2">
               {row.leaderNames.join(" · ")}
             </div>
           ) : (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink3,
-                marginTop: 4,
-                fontStyle: "italic",
-              }}
-            >
+            <div className="mt-1 font-sans text-sm italic text-ink3">
               No leaders assigned
             </div>
           )}
           {meta ? (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink3,
-                marginTop: 2,
-              }}
-            >
-              {meta}
-            </div>
+            <div className="mt-0.5 font-sans text-sm text-ink3">{meta}</div>
           ) : null}
           {row.dueLabel ? (
             <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12.5,
-                color: row.isOverdue ? "#7d3621" : P.ink3,
-                marginTop: 4,
-              }}
+              className={cn(
+                "mt-1 font-sans text-sm",
+                row.isOverdue ? "text-clayDeep" : "text-ink3"
+              )}
             >
               {row.isOverdue
                 ? `Overdue · was due ${row.dueLabel}`
@@ -322,43 +216,16 @@ function ReviewCard({
               {row.dueRelative ? ` · ${row.dueRelative}` : ""}
             </div>
           ) : !row.isScheduledThisWeek && row.isActive ? (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12.5,
-                color: P.ink3,
-                marginTop: 4,
-                fontStyle: "italic",
-              }}
-            >
-              Bi-weekly off-parity &mdash; this group wasn&rsquo;t
-              scheduled to meet this week.
+            <div className="mt-1 font-sans text-sm italic text-ink3">
+              Bi-weekly off-parity &mdash; this group wasn&rsquo;t scheduled to
+              meet this week.
             </div>
           ) : null}
         </div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            alignItems: "flex-end",
-          }}
-        >
+        <div className="flex flex-col items-end gap-2">
           <Link
             href={`/admin/check-ins/${row.groupId}?week=${meetingWeek}`}
-            style={{
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: 0.4,
-              padding: "8px 14px",
-              background: P.surface,
-              color: P.ink,
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
+            className={buttonClassName("ghost", "sm")}
           >
             View details →
           </Link>
@@ -366,22 +233,16 @@ function ReviewCard({
       </header>
 
       {row.attendance ? (
-        <div
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-          }}
-        >
-          <strong style={{ color: P.ink, fontWeight: 600 }}>
+        <div className="font-sans text-sm text-ink2">
+          <strong className="font-semibold text-ink">
             {row.attendance.present}
           </strong>{" "}
           present ·{" "}
-          <strong style={{ color: P.ink, fontWeight: 600 }}>
+          <strong className="font-semibold text-ink">
             {row.attendance.absent}
           </strong>{" "}
           absent ·{" "}
-          <strong style={{ color: P.ink, fontWeight: 600 }}>
+          <strong className="font-semibold text-ink">
             {row.attendance.excused}
           </strong>{" "}
           excused
@@ -389,32 +250,14 @@ function ReviewCard({
       ) : null}
 
       {submittedLine ? (
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 0.4,
-            color: P.ink3,
-            textTransform: "uppercase",
-          }}
-        >
+        <div className="font-sans text-sm text-ink3">
           Submitted by {submittedLine}
         </div>
       ) : null}
 
       {row.leaderNotePreview ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13.5,
-            color: P.ink2,
-            lineHeight: 1.55,
-            fontStyle: "italic",
-            borderLeft: `2px solid ${P.line}`,
-            paddingLeft: 12,
-          }}
-        >
+        // Quote sits on a surfaceAlt strip — never a side stripe.
+        <p className="m-0 rounded-sm bg-surfaceAlt px-3.5 py-2.5 font-sans text-sm italic leading-normal text-ink2">
           &ldquo;{row.leaderNotePreview}&rdquo;
         </p>
       ) : null}
@@ -440,11 +283,10 @@ export function CheckInReviewShell({
     data.errors.health ||
     data.errors.settings;
 
-  const everyoneIn =
-    data.summary.totalActive > 0 && data.summary.missing === 0;
+  const everyoneIn = data.summary.totalActive > 0 && data.summary.missing === 0;
 
   return (
-    <div style={{ display: "grid", gap: 36 }}>
+    <div className="grid gap-9">
       {anyError ? (
         <ErrorBanner>
           Some sections couldn&rsquo;t load. The page below shows what we did
@@ -452,7 +294,7 @@ export function CheckInReviewShell({
         </ErrorBanner>
       ) : null}
 
-      <section style={{ display: "grid", gap: 18 }}>
+      <section className="grid gap-[18px]">
         <SectionHeader
           eyebrow="This week"
           title={formatWeekLabel(meetingWeek)}
@@ -464,14 +306,7 @@ export function CheckInReviewShell({
           formAction="/admin/check-ins"
           selectId="check-in-week"
         />
-        <div
-          className="lg-m-grid-stack"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">
           <SummaryTile label="Active groups" value={data.summary.totalActive} />
           <SummaryTile label="Submitted" value={data.summary.submitted} />
           <SummaryTile
@@ -480,7 +315,10 @@ export function CheckInReviewShell({
             tone={data.summary.missing > 0 ? "missing" : undefined}
           />
           <SummaryTile label="Did not meet" value={data.summary.didNotMeet} />
-          <SummaryTile label="Planned pause" value={data.summary.plannedPause} />
+          <SummaryTile
+            label="Planned pause"
+            value={data.summary.plannedPause}
+          />
           <SummaryTile
             label="Needs follow-up"
             value={data.summary.needsFollowUp}
@@ -489,26 +327,23 @@ export function CheckInReviewShell({
         </div>
       </section>
 
-      <section style={{ display: "grid", gap: 18 }}>
+      <section className="grid gap-[18px]">
         <SectionHeader
           eyebrow="Groups"
           title="The week in review"
           description="Missing groups float to the top. Tap a card to read the leader's full note and the member-by-member attendance."
         />
         {everyoneIn ? (
+          // All-clear tone is a sage status dot on a soft tint — never a side
+          // stripe (mirrors the dashboard AllClear row).
           <div
             role="status"
-            style={{
-              background: P.sageSoft,
-              border: `1px solid ${P.sage}`,
-              borderLeft: `3px solid ${P.sage}`,
-              borderRadius: 8,
-              padding: "12px 16px",
-              fontFamily: fontBody,
-              fontSize: 13.5,
-              color: "#3e4f29",
-            }}
+            className="flex items-center gap-3 rounded-sm border border-line bg-sageSoft px-4 py-3 font-sans text-sm text-sageDeep"
           >
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 shrink-0 rounded-pill bg-sage"
+            />
             Everyone is in for this week. Nothing missing across the active
             roster.
           </div>
@@ -519,9 +354,9 @@ export function CheckInReviewShell({
             description="Once you have at least one open Life Group, it'll appear here. Closed groups are intentionally hidden from the weekly review."
           />
         ) : (
-          <ul style={listResetStyle}>
+          <ul className="m-0 list-none p-0">
             {data.rows.map((row) => (
-              <li key={row.groupId} style={{ marginBottom: 14 }}>
+              <li key={row.groupId} className="mb-3.5">
                 <ReviewCard row={row} meetingWeek={meetingWeek} />
               </li>
             ))}
