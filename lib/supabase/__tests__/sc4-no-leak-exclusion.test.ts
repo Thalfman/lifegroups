@@ -159,17 +159,22 @@ describe("SC.4 no-leak — service-role edge functions never touch the tables", 
 
 describe("SC.4 no-leak — the creator-scoped readers are consumed only on the admin detail path", () => {
   // A future SC.2/SC.3 aggregate could import the reader by SYMBOL (not by the
-  // raw table name) and slip past the name scan. Pin who may call them.
+  // raw table name) and slip past the name scan. Pin who may call them. Since
+  // issue #488 the admin detail page's read-orchestration lives behind the
+  // reads seam (ADR 0015), so the seam module is the one place the readers may
+  // be bound — the page consumes only the assembled detail data.
   const READER_SYMBOLS = [
     "fetchShepherdCarePrivateNoteCiphertextForCreator",
     "fetchPrivateNoteKeySlotsForCreator",
   ];
+  const DETAIL_DATA_PATH =
+    "components/admin/shepherd-care/shepherd-care-detail-data.ts";
   const SYMBOL_ALLOWLIST = new Set([
     "lib/supabase/shepherd-care-reads.ts", // where they are defined
-    "app/(protected)/admin/shepherd-care/[profileId]/page.tsx", // the only consumer
+    DETAIL_DATA_PATH, // the admin detail page's reads seam — the only consumer
   ]);
 
-  it("no source outside the admin detail page uses the private-note readers", () => {
+  it("no source outside the admin detail reads seam uses the private-note readers", () => {
     const offenders: string[] = [];
     for (const file of sourceFiles) {
       const relPath = rel(file);
@@ -184,23 +189,45 @@ describe("SC.4 no-leak — the creator-scoped readers are consumed only on the a
     ).toEqual([]);
   });
 
-  it("the admin detail page invokes the readers only behind a ministry_admin gate", () => {
+  it("the admin detail page passes the ministry_admin gate into the seam loader", () => {
     // requireAdmin() admits super_admin, so the readers must not be CALLED on a
-    // super_admin request — not merely hidden from the UI. The page passes a
-    // ministry_admin gate into loadDetail and each reader call sits in that branch.
+    // super_admin request — not merely hidden from the UI. The page resolves
+    // the gate from the actor's role and hands it to the loader.
     const page = readFileSync(
       `${REPO_ROOT}app/(protected)/admin/shepherd-care/[profileId]/page.tsx`,
       "utf8"
     );
-    expect(page).toMatch(/loadDetail\([^)]*actorRole === "ministry_admin"/);
+    expect(page).toMatch(
+      /loadShepherdCareDetailData\(\{[^}]*canReadPrivateNotes: actorRole === "ministry_admin"/
+    );
+  });
+
+  it("the reads seam invokes the readers only behind the canReadPrivateNotes gate", () => {
+    const data = readFileSync(`${REPO_ROOT}${DETAIL_DATA_PATH}`, "utf8");
+    // The raw creator readers are only BOUND into the seam adapter — never
+    // invoked directly, so the gated seam methods are the sole read path.
     for (const sym of READER_SYMBOLS) {
-      const idx = page.indexOf(`${sym}(`);
-      expect(idx, `page must call ${sym}`).toBeGreaterThan(-1);
-      const before = page.slice(Math.max(0, idx - 160), idx);
+      expect(
+        data.includes(`${sym}(`),
+        `${sym} must not be invoked directly in the seam module`
+      ).toBe(false);
+    }
+    for (const call of [
+      "reads.fetchPrivateNoteKeySlots(",
+      "reads.fetchPrivateNoteCiphertext(",
+    ]) {
+      const idx = data.indexOf(call);
+      expect(idx, `seam must call ${call}…)`).toBeGreaterThan(-1);
+      const before = data.slice(Math.max(0, idx - 160), idx);
       expect(
         before,
-        `${sym} call must be gated by canReadPrivateNotes`
+        `${call}…) must be gated by canReadPrivateNotes`
       ).toContain("canReadPrivateNotes");
+      // The gate must guard EVERY call, so pin the single call site.
+      expect(
+        data.indexOf(call, idx + call.length),
+        `${call}…) must have exactly one (gated) call site`
+      ).toBe(-1);
     }
   });
 });
