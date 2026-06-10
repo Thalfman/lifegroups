@@ -195,12 +195,13 @@ export function Icon({
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      style={style}
+      // stroke via `style` so callers can pass var(--c-*) tokens (CSS vars
+      // aren't valid in SVG presentation attributes)
+      style={{ stroke: color, ...style }}
     >
       {PATHS[name]}
     </svg>

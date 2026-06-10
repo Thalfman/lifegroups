@@ -8,7 +8,8 @@
 // live in a visually separated panel so they never read as part of the wipe.
 
 import { useEffect, useState } from "react";
-import { PButton, pButtonStyle } from "@/components/pastoral/button";
+import { PButton } from "@/components/pastoral/button";
+import { buttonClassName } from "@/components/ui/button";
 import {
   superAdminCleanSlateWipe,
   superAdminCleanSlateRevert,
@@ -373,7 +374,7 @@ function CleanSlateRecovery({
             <a
               href={`/admin/super-admin/clean-slate/export/${snapshot.id}`}
               rel="nofollow noreferrer"
-              style={pButtonStyle("ghost", "md")}
+              className={buttonClassName("ghost", "md")}
             >
               Export snapshot file
             </a>
