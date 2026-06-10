@@ -5,8 +5,8 @@
 // here, out of the list flow, rather than in an inline form:
 //
 //   - Desktop: a right-side drawer anchored to the viewport edge.
-//   - Mobile (≤767px): a full-screen sheet (see .lg-m-editing-surface in
-//     app/globals.css), so the whole edit flow is reachable on a phone.
+//   - Mobile (≤767px): a full-screen sheet, so the whole edit flow is
+//     reachable on a phone.
 //
 // Focus & keyboard behaviour is delegated to Radix Dialog, which provides the
 // checklist the PRD verifies on every migrated surface:
@@ -30,7 +30,6 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export function EditingSurface({
   open,
@@ -46,7 +45,8 @@ export function EditingSurface({
   // Fires on every dismissal route. The caller decides whether to honour it
   // (e.g. confirm first when there are unsaved changes).
   onRequestClose: () => void;
-  // Small uppercase context line above the title (e.g. "Group health").
+  // Context line above the title (e.g. "Group health") — plain 13px ink3, not
+  // a tracked eyebrow.
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -70,14 +70,8 @@ export function EditingSurface({
       }}
     >
       <DialogPortal>
-        <DialogOverlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(58, 42, 26, 0.45)",
-            zIndex: 60,
-          }}
-        />
+        {/* Warm scrim — ink at 45%. */}
+        <DialogOverlay className="fixed inset-0 z-overlay bg-ink/45" />
         <DialogContent
           // Radix auto-associates the DialogDescription; when there is none,
           // opt out explicitly so it doesn't warn about a missing description.
@@ -95,70 +89,17 @@ export function EditingSurface({
               opener.focus();
             }
           }}
-          className="lg-m-editing-surface"
-          style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            height: "100dvh",
-            width: "min(460px, 94vw)",
-            overflowY: "auto",
-            background: P.bg,
-            borderLeft: `1px solid ${P.line}`,
-            padding: 0,
-            zIndex: 61,
-            boxShadow: "-18px 0 48px rgba(58, 42, 26, 0.22)",
-            display: "flex",
-            flexDirection: "column",
-          }}
+          className="fixed inset-y-0 right-0 z-drawer flex h-dvh w-full flex-col overflow-y-auto bg-bg shadow-softLg data-[state=open]:animate-[lg-drawer-in_200ms_ease-out] md:w-[min(460px,94vw)] md:border-l md:border-line"
         >
-          <header
-            style={{
-              padding: "18px 20px",
-              borderBottom: `1px solid ${P.line}`,
-              background: P.surface,
-              display: "grid",
-              gap: 6,
-              position: "relative",
-            }}
-          >
+          <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 py-[18px]">
             {eyebrow ? (
-              <span
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  letterSpacing: 1.8,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 700,
-                }}
-              >
-                {eyebrow}
-              </span>
+              <span className="font-sans text-sm text-ink3">{eyebrow}</span>
             ) : null}
-            <DialogTitle
-              style={{
-                fontFamily: fontBody,
-                fontSize: 18,
-                fontWeight: 600,
-                color: P.ink,
-                margin: 0,
-                lineHeight: 1.3,
-                paddingRight: 40,
-              }}
-            >
+            <DialogTitle className="m-0 pr-10 font-display text-lg font-medium leading-snug text-ink">
               {title}
             </DialogTitle>
             {description ? (
-              <DialogDescription
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  margin: 0,
-                  lineHeight: 1.45,
-                }}
-              >
+              <DialogDescription className="m-0 font-sans text-sm text-ink2">
                 {description}
               </DialogDescription>
             ) : null}
@@ -166,43 +107,16 @@ export function EditingSurface({
               type="button"
               onClick={onRequestClose}
               aria-label={closeLabel}
-              style={{
-                position: "absolute",
-                top: 14,
-                right: 14,
-                background: "transparent",
-                border: `1px solid ${P.line}`,
-                borderRadius: 999,
-                width: 32,
-                height: 32,
-                cursor: "pointer",
-                color: P.ink2,
-                fontFamily: fontSans,
-                fontSize: 18,
-                lineHeight: 1,
-              }}
+              className="absolute right-3.5 top-3.5 h-8 w-8 rounded-pill border border-line bg-transparent font-sans text-lg leading-none text-ink2 transition-colors duration-150 hover:bg-surfaceAlt"
             >
               ×
             </button>
           </header>
 
-          <div style={{ padding: "18px 20px", display: "grid", gap: 16 }}>
-            {children}
-          </div>
+          <div className="grid gap-4 px-5 py-[18px]">{children}</div>
 
           {footer ? (
-            <footer
-              style={{
-                marginTop: "auto",
-                borderTop: `1px solid ${P.line}`,
-                background: P.surface,
-                padding: "14px 20px",
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
+            <footer className="sticky bottom-0 mt-auto flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
               {footer}
             </footer>
           ) : null}
