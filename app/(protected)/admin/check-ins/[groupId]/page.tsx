@@ -1,49 +1,17 @@
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { CheckInDetailShell } from "@/components/admin/check-in-detail-shell";
+import { loadCheckInDetailData } from "@/components/admin/check-in-detail-data";
 import { requireAdmin } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchAdminCheckInDetail,
-  validateWeekParam,
-  type CheckInDetailData,
-} from "@/lib/admin/check-ins";
+import { validateWeekParam } from "@/lib/admin/check-ins";
 
 export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
 type SearchParams = { week?: string | string[] };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function emptyDetail(
-  groupId: string,
-  meetingWeek: string,
-  reason: string,
-): CheckInDetailData {
-  return {
-    groupId,
-    meetingWeek,
-    group: null,
-    leaderNames: [],
-    session: null,
-    sessionStatus: "missing",
-    submittedByName: null,
-    attendance: null,
-    health: null,
-    members: [],
-    errors: {
-      group: reason,
-      leaders: null,
-      profiles: null,
-      session: null,
-      records: null,
-      health: null,
-      memberships: null,
-      members: null,
-    },
-  };
-}
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function AdminCheckInDetailPage({
   params,
@@ -59,12 +27,12 @@ export default async function AdminCheckInDetailPage({
   const sp = (await searchParams) ?? {};
   const meetingWeek = validateWeekParam(sp.week);
 
-  const client = await createSupabaseServerClient();
-  const data = client
-    ? await fetchAdminCheckInDetail(client, groupId, meetingWeek)
-    : emptyDetail(groupId, meetingWeek, "The database is not configured in this environment.");
-
-  if (!data.errors.group && data.group === null && client) notFound();
+  // All reads live behind the reads seam (ADR 0015): the loader binds the live
+  // client once and runs the pure buildCheckInDetailData assembly, so this
+  // page is guard → load → shell.
+  const result = await loadCheckInDetailData({ groupId, meetingWeek });
+  if (result.kind === "not_found") notFound();
+  const data = result.data;
 
   return (
     <>
