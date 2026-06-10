@@ -22,6 +22,8 @@ import { Card } from "@/components/lg/Card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
+import { isSuperAdminRole } from "@/lib/auth/roles";
+import { GroupHealthEditButton } from "@/components/admin/group-detail/group-health-edit-button";
 import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
 import {
   loadGroupDetailData,
@@ -91,7 +93,10 @@ export default async function AdminGroupDetailPage({
   const search = (await searchParams) ?? {};
   const tab: GroupDetailTab = resolveTab(search.tab);
 
-  await requireAdmin();
+  const session = await requireAdmin();
+  // Gates the super-admin-only "Reset attention" control inside the shared
+  // health editor drawer.
+  const isSuperAdmin = isSuperAdminRole(session.profile.role);
 
   const detail = await loadGroupDetailData({
     groupId,
@@ -155,7 +160,9 @@ export default async function AdminGroupDetailPage({
               data={tabData}
             />
           ) : null}
-          {tabData.tab === "health" ? <HealthTab data={tabData} /> : null}
+          {tabData.tab === "health" ? (
+            <HealthTab data={tabData} isSuperAdmin={isSuperAdmin} />
+          ) : null}
           {tabData.tab === "attendance" ? (
             <AttendanceTab data={tabData} groupId={groupId} />
           ) : null}
@@ -253,7 +260,13 @@ function OverviewTab({
 
 // --- Health: the Group-Health Grade (Q12), folded in from Group Health ------
 
-function HealthTab({ data }: { data: GroupHealthTabData }) {
+function HealthTab({
+  data,
+  isSuperAdmin,
+}: {
+  data: GroupHealthTabData;
+  isSuperAdmin: boolean;
+}) {
   if (data.failed) {
     return (
       <div className="grid gap-3.5">
@@ -294,13 +307,26 @@ function HealthTab({ data }: { data: GroupHealthTabData }) {
             label="Group-question rating"
             value={data.groupQuestionScore?.toString() ?? "Not rated"}
           />
+          {/* The same editor drawer (and audited write path) as the Group
+              health triage, scoped to this group — no bounce to a second
+              surface to edit the grade this tab displays. */}
+          {data.editorRow ? (
+            <div>
+              <GroupHealthEditButton
+                row={data.editorRow}
+                period={data.period}
+                spiritualGrowthLabel={data.spiritualGrowthLabel}
+                groupQuestionLabel={data.groupQuestionLabel}
+                isSuperAdmin={isSuperAdmin}
+              />
+            </div>
+          ) : null}
         </div>
       </Card>
 
       <p className={cn("m-0", BODY_TEXT, "text-sm")}>
         Group health is recomputed live from attendance consistency and the
-        admin-entered 1–5 ratings. To edit this group&apos;s ratings, open it
-        from the{" "}
+        admin-entered 1–5 ratings. Edit them here, or review every group in the{" "}
         <Link href="/admin/group-health" className="text-clay">
           Group health triage
         </Link>

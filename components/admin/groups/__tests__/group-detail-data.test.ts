@@ -83,6 +83,9 @@ function detailReads(
     fetchMetricDefaults: async () => ok(null),
     fetchGroupMetricSettings: async () => ok(null),
     fetchGroupHealthOverview: async () => ok(HEALTH_ROW as never),
+    // Super-Admin-only via RLS: a ministry admin reads null and the labels
+    // fall back to the documented placeholders.
+    fetchPlatformConfig: async () => ok(null),
     fetchProfilesForAdmin: async () =>
       ok([
         { id: LEADER_PROFILE_ID, full_name: "Avery Leader", status: "active" },
@@ -365,7 +368,7 @@ describe("buildGroupDetailData", () => {
   });
 
   describe("health tab", () => {
-    it("carries the grade, attendance, and ratings on success", async () => {
+    it("carries the grade, ratings, and the shared editor's row + labels on success", async () => {
       const result = await buildGroupDetailData(
         detailReads(),
         options("health")
@@ -383,6 +386,12 @@ describe("buildGroupDetailData", () => {
         attendanceWeeksCounted: 6,
         spiritualGrowthScore: 4,
         groupQuestionScore: 3,
+        // The full overview row flows through for the shared editor drawer.
+        editorRow: HEALTH_ROW,
+        // platform_config read null (Super-Admin-only RLS) → the documented
+        // placeholder wordings, same fallback the triage uses.
+        spiritualGrowthLabel: "Spiritual growth (1–5)",
+        groupQuestionLabel: "Group engagement — leader-reported (1–5)",
       });
     });
 
@@ -396,8 +405,10 @@ describe("buildGroupDetailData", () => {
 
       if (result.kind !== "ok") throw new Error("expected ok");
       if (result.tabData.tab !== "health") throw new Error("wrong tab");
-      // A failed read must not masquerade as a genuine "Not rated" grade.
+      // A failed read must not masquerade as a genuine "Not rated" grade —
+      // and no editor opens over unknown values.
       expect(result.tabData.failed).toBe(true);
+      expect(result.tabData.editorRow).toBeNull();
     });
   });
 

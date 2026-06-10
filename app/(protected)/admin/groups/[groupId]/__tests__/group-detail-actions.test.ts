@@ -54,7 +54,10 @@ describe("group detail tab actions", () => {
     expect(PAGE).toContain('<TabAction href="/admin/care">Open Care →');
   });
 
-  it("keeps the Health tab pointed at Group health triage", () => {
+  it("lets the Health tab edit in place and keeps the triage cross-link", () => {
+    // The same shared editor drawer the triage uses, scoped to this group…
+    expect(PAGE).toContain("<GroupHealthEditButton");
+    // …with the all-groups triage still one link away.
     expect(PAGE).toContain('<Link href="/admin/group-health"');
     expect(PAGE).toContain("Group health triage");
   });

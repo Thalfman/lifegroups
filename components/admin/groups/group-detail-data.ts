@@ -11,6 +11,7 @@ import {
   fetchGroupsByIds,
   fetchMembersByIds,
   fetchOpenFollowUps,
+  fetchPlatformConfig,
   fetchProfilesForAdmin,
   type LeaderFollowUpRow,
 } from "@/lib/supabase/read-models";
@@ -18,7 +19,10 @@ import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
 import {
   fetchGroupHealthRatings,
   getGroupHealthOverviewForGroup,
+  type GroupHealthOverviewRow,
 } from "@/lib/admin/group-health-read";
+import { decodeAppConfig } from "@/lib/admin/app-config-decode";
+import { GROUP_HEALTH_COPY_KEYS, resolveCopy } from "@/lib/admin/editable-copy";
 import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import {
   capacityStatus,
@@ -129,6 +133,16 @@ export type GroupHealthTabData = {
   attendanceWeeksCounted: number;
   spiritualGrowthScore: number | null;
   groupQuestionScore: number | null;
+  // The full overview row the shared rating editor (GroupHealthEditorDrawer)
+  // renders from — the same shape the triage list feeds it. null when the
+  // health read failed or returned nothing: no row → no edit button, never an
+  // editor over unknown values.
+  editorRow: GroupHealthOverviewRow | null;
+  // The operator-editable rating question wordings, resolved with the same
+  // graceful placeholder fallback the triage uses (platform_config is
+  // Super-Admin-only via RLS; a ministry admin reads the placeholders).
+  spiritualGrowthLabel: string;
+  groupQuestionLabel: string;
 };
 
 // Attendance: historical / read-only (the check-in flow is frozen per ADR
@@ -189,6 +203,7 @@ export type GroupDetailReads = {
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
   fetchGroupMetricSettings: OmitClient<typeof fetchGroupMetricSettings>;
   fetchGroupHealthOverview: OmitClient<typeof getGroupHealthOverviewForGroup>;
+  fetchPlatformConfig: OmitClient<typeof fetchPlatformConfig>;
   fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
   fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
   fetchGroupHealthRatings: OmitClient<typeof fetchGroupHealthRatings>;
@@ -214,6 +229,7 @@ export function supabaseGroupDetailReads(
       fetchMetricDefaults: fetchMetricDefaultsCached,
       fetchGroupMetricSettings,
       fetchGroupHealthOverview: getGroupHealthOverviewForGroup,
+      fetchPlatformConfig,
       fetchProfilesForAdmin,
       fetchMembersByIds,
       fetchGroupHealthRatings,
@@ -405,24 +421,34 @@ async function buildHealthTab(
   group: GroupsRow,
   periodMonth: string
 ): Promise<GroupHealthTabData> {
-  const [overviewRes, ratingsRes, defaultsRes] = await Promise.all([
-    // Single-group health read (#308) — same grade logic, O(1) reads.
-    reads.fetchGroupHealthOverview(group.id, periodMonth),
-    reads.fetchGroupHealthRatings(group.id, periodMonth),
-    reads.fetchMetricDefaults(),
-  ]);
+  const [overviewRes, ratingsRes, defaultsRes, platformConfigRes] =
+    await Promise.all([
+      // Single-group health read (#308) — same grade logic, O(1) reads.
+      reads.fetchGroupHealthOverview(group.id, periodMonth),
+      reads.fetchGroupHealthRatings(group.id, periodMonth),
+      reads.fetchMetricDefaults(),
+      // The operator-editable rating question wordings for the shared editor.
+      // Super-Admin-only via RLS: a ministry admin reads null and resolveCopy
+      // falls back to the documented placeholders — intended, not an error.
+      reads.fetchPlatformConfig(),
+    ]);
 
+  const failed = Boolean(
+    overviewRes.error || ratingsRes.error || defaultsRes.error
+  );
   const row = overviewRes.data ?? null;
   const watchGrade = decodeMetricDefaults(
     defaultsRes.data ?? null
   ).group_health_watch_grade;
   const grade = row?.computed_letter ?? null;
 
+  const editableCopy = decodeAppConfig(platformConfigRes.data).editableCopy;
+
   return {
     tab: "health",
     // Fail closed: a failed health/ratings read must not masquerade as a
     // genuine "Not assessed" / "Not rated" grade.
-    failed: Boolean(overviewRes.error || ratingsRes.error || defaultsRes.error),
+    failed,
     period: periodMonth,
     health: healthCategory(grade, watchGrade),
     grade,
@@ -431,6 +457,17 @@ async function buildHealthTab(
     attendanceWeeksCounted: row?.attendance_weeks_counted ?? 0,
     spiritualGrowthScore: ratingsRes.data?.spiritual_growth_score ?? null,
     groupQuestionScore: ratingsRes.data?.group_question_score ?? null,
+    // No editor over unknown values: the row only flows through when every
+    // status-feeding read succeeded.
+    editorRow: failed ? null : row,
+    spiritualGrowthLabel: resolveCopy(
+      editableCopy,
+      GROUP_HEALTH_COPY_KEYS.spiritualGrowth
+    ),
+    groupQuestionLabel: resolveCopy(
+      editableCopy,
+      GROUP_HEALTH_COPY_KEYS.groupQuestion
+    ),
   };
 }
 
