@@ -37,6 +37,45 @@ const KIND_TONES: Record<CareFeedItemKind, BadgeTone> = {
 
 const ALL = "all";
 
+// One labelled filter <select> with a leading "All …" option — the three
+// filter controls below differ only by label, id, options, and setter.
+function FilterSelect({
+  id,
+  label,
+  allLabel,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  allLabel: string;
+  value: string;
+  options: readonly (readonly [string, string])[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className={fieldLabelClassName} htmlFor={id}>
+        {label}
+      </label>
+      <select
+        id={id}
+        className={fieldSelectClassName}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value={ALL}>{allLabel}</option>
+        {options.map(([key, name]) => (
+          <option key={key} value={key}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function FeedItemCard({ item }: { item: CareFeedItem }) {
   const about =
     item.subjectKind === "group"
@@ -141,11 +180,15 @@ export function NotesFeedShell({
   sealedSummary,
   feedAvailable,
   sealedAvailable,
+  namesAvailable,
 }: {
   items: CareFeedItem[];
   sealedSummary: SealedLeaderSummary[];
   feedAvailable: boolean;
   sealedAvailable: boolean;
+  // False when the author-name read failed: "Unknown person" labels then mean
+  // "couldn't load", not "nobody knows who this is" — the notice says so.
+  namesAvailable: boolean;
 }) {
   const [leaderId, setLeaderId] = useState<string>(ALL);
   const [groupId, setGroupId] = useState<string>(ALL);
@@ -174,14 +217,24 @@ export function NotesFeedShell({
     };
   }, [items]);
 
-  const visible = filterCareFeed(items, {
-    leaderId: leaderId === ALL ? undefined : leaderId,
-    groupId: groupId === ALL ? undefined : groupId,
-    kind: kind === ALL ? undefined : (kind as CareFeedItemKind),
-  });
+  const visible = useMemo(
+    () =>
+      filterCareFeed(items, {
+        leaderId: leaderId === ALL ? undefined : leaderId,
+        groupId: groupId === ALL ? undefined : groupId,
+        kind: kind === ALL ? undefined : (kind as CareFeedItemKind),
+      }),
+    [items, leaderId, groupId, kind]
+  );
 
   return (
     <div className="grid gap-5">
+      {!namesAvailable ? (
+        <p className={READ_FAILED_NOTE}>
+          Some names couldn&apos;t be loaded right now, so people here may show
+          as &ldquo;Unknown person&rdquo;. Try again shortly.
+        </p>
+      ) : null}
       <section className={cardClassName}>
         <h3 className={cardHeadingClassName}>Sealed notes</h3>
         <SealedSummaryBlock
@@ -199,65 +252,30 @@ export function NotesFeedShell({
           </p>
         ) : null}
         <div className="mb-4 mt-3 grid grid-cols-1 items-end gap-3.5 md:grid-cols-3">
-          <div>
-            <label className={fieldLabelClassName} htmlFor="notes-feed-leader">
-              Leader
-            </label>
-            <select
-              id="notes-feed-leader"
-              className={fieldSelectClassName}
-              value={leaderId}
-              onChange={(e) => setLeaderId(e.target.value)}
-            >
-              <option value={ALL}>All leaders</option>
-              {leaderOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={fieldLabelClassName} htmlFor="notes-feed-group">
-              Group
-            </label>
-            <select
-              id="notes-feed-group"
-              className={fieldSelectClassName}
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-            >
-              <option value={ALL}>All groups</option>
-              {groupOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={fieldLabelClassName} htmlFor="notes-feed-kind">
-              Type
-            </label>
-            <select
-              id="notes-feed-kind"
-              className={fieldSelectClassName}
-              value={kind}
-              onChange={(e) => setKind(e.target.value)}
-            >
-              <option value={ALL}>All types</option>
-              {(
-                Object.entries(CARE_FEED_KIND_LABELS) as [
-                  CareFeedItemKind,
-                  string,
-                ][]
-              ).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FilterSelect
+            id="notes-feed-leader"
+            label="Leader"
+            allLabel="All leaders"
+            value={leaderId}
+            options={leaderOptions}
+            onChange={setLeaderId}
+          />
+          <FilterSelect
+            id="notes-feed-group"
+            label="Group"
+            allLabel="All groups"
+            value={groupId}
+            options={groupOptions}
+            onChange={setGroupId}
+          />
+          <FilterSelect
+            id="notes-feed-kind"
+            label="Type"
+            allLabel="All types"
+            value={kind}
+            options={Object.entries(CARE_FEED_KIND_LABELS)}
+            onChange={setKind}
+          />
         </div>
         {visible.length === 0 ? (
           <p className={MUTED_NOTE}>

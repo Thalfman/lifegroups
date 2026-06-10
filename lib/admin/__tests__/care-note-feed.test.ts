@@ -157,6 +157,23 @@ describe("buildCareNoteFeed", () => {
     });
   });
 
+  it("interleaves same-day items by when they were recorded", () => {
+    // Broad notes carry a DATE-only occurredAt (interaction_at); a raw parse
+    // would pin them to UTC midnight, below every timed note that day. The
+    // sort compares the day first, then created_at — so a broad note recorded
+    // after a care note the same day lands above it.
+    const items = build({
+      careNotes: [careNote({ created_at: "2026-06-02T10:00:00+00:00" })],
+      broadNotes: [
+        broadNote({
+          interaction_at: "2026-06-02",
+          created_at: "2026-06-02T16:00:00+00:00",
+        }),
+      ],
+    });
+    expect(items.map((i) => i.kind)).toEqual(["broad_note", "care_note"]);
+  });
+
   it("sorts unparseable dates last instead of throwing", () => {
     const items = build({
       careNotes: [careNote({ created_at: "not-a-date" })],

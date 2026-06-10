@@ -91,15 +91,14 @@ function GradesAndNotes({
   gradeEntry: CareGradeEntryBundle;
 }) {
   const { ministryYear, periodMonthIso } = gradeEntry;
-  const leaderSeed =
-    ministryYear !== null
-      ? resolveLeaderGradeSeed(
-          gradeEntry.leaderGradeByProfileId.get(leader.profileId),
-          gradeEntry.leaderCriteria,
-          ministryYear,
-          periodMonthIso
-        )
-      : { scores: {}, overrideLetter: null, overrideScope: null };
+  // Off-season (null ministryYear) resolves to an empty seed inside the
+  // resolver; the editor renders its own closed state.
+  const leaderSeed = resolveLeaderGradeSeed(
+    gradeEntry.leaderGradeByProfileId.get(leader.profileId),
+    gradeEntry.leaderCriteria,
+    ministryYear,
+    periodMonthIso
+  );
 
   return (
     <details className="rounded-sm border border-lineSoft bg-bg/40">

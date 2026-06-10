@@ -40,6 +40,7 @@ import {
   buildNotesFeedData,
   supabaseNotesFeedReads,
   EMPTY_NOTES_FEED,
+  type NotesFeedContext,
   type NotesFeedData,
 } from "@/components/admin/care/notes-feed-data";
 import { NotesFeedShell } from "@/components/admin/care/notes-feed-shell";
@@ -139,11 +140,9 @@ async function loadCareAccordionEnrichmentSafe(
 // names from the follow-ups groups list) so the feed only fetches the author
 // names those maps don't cover. Degrades to the documented empty shape when
 // the DB is not configured.
-async function loadNotesFeedSafe(context: {
-  viewerProfileId: string;
-  nameByProfileId: ReadonlyMap<string, string>;
-  groupNameByGroupId: ReadonlyMap<string, string>;
-}): Promise<NotesFeedData> {
+async function loadNotesFeedSafe(
+  context: NotesFeedContext
+): Promise<NotesFeedData> {
   const client = await createSupabaseServerClient();
   if (!client) return EMPTY_NOTES_FEED;
   return buildNotesFeedData(supabaseNotesFeedReads(client), context);
@@ -175,24 +174,34 @@ export async function loadCarePageData({
   const ministryYear = currentMinistryYear();
   const periodMonthIso = currentPeriodMonthIso();
 
-  const [followUpsData, care, enrichment] = await Promise.all([
+  const batch = Promise.all([
     loadAdminFollowUpsData(),
     loadCareData(today),
     loadCareAccordionEnrichmentSafe(ministryYear, periodMonthIso),
   ]);
 
-  // The Notes feed runs after the batch above because it seeds its name maps
-  // from the care directory + groups list (one follow-up read for whatever
-  // those don't cover, instead of re-reading every profile).
-  const notesFeed = await loadNotesFeedSafe({
+  // The Notes feed starts NOW, concurrently with the batch: its content reads
+  // don't depend on the batch — only its name SEEDS do (the care directory +
+  // groups list, so the follow-up name read only fetches what those don't
+  // cover), and buildNotesFeedData awaits the seed promises after its own
+  // reads return.
+  const notesFeedPromise = loadNotesFeedSafe({
     viewerProfileId: session.profile.id,
-    nameByProfileId: new Map(
-      care.entries.map((e) => [e.profile.id, e.profile.full_name])
+    nameByProfileId: batch.then(
+      ([, care]) =>
+        new Map(care.entries.map((e) => [e.profile.id, e.profile.full_name]))
     ),
-    groupNameByGroupId: new Map(
-      followUpsData.groups.map((g) => [g.id, g.name])
+    groupNameByGroupId: batch.then(
+      ([followUps]) => new Map(followUps.groups.map((g) => [g.id, g.name]))
     ),
   });
+  // If the batch itself throws, the page errors at the await below before the
+  // feed is consumed — mark the feed promise handled so the mirrored rejection
+  // doesn't surface as unhandled.
+  void notesFeedPromise.catch(() => EMPTY_NOTES_FEED);
+
+  const [followUpsData, care, enrichment] = await batch;
+  const notesFeed = await notesFeedPromise;
 
   const ownerNameByShepherdId = new Map<string, string>();
   for (const a of care.assignments) {
@@ -467,6 +476,7 @@ export async function loadCarePageData({
           sealedSummary={notesFeed.sealedSummary}
           feedAvailable={notesFeed.feedAvailable}
           sealedAvailable={notesFeed.sealedAvailable}
+          namesAvailable={notesFeed.namesAvailable}
         />
       ),
     },

@@ -24,7 +24,9 @@ import {
 // source AND flags feedAvailable=false so the tab shows an error note (and the
 // tab badge is suppressed); a failed sealed-counts read suppresses the sealed
 // block entirely (sealedAvailable=false) rather than rendering "nothing
-// sealed".
+// sealed"; a failed author-name read keeps the feed but flags
+// namesAvailable=false so "Unknown person" reads as a load failure, not a
+// fact about the person.
 
 export type NotesFeedData = {
   items: CareFeedItem[];
@@ -34,6 +36,9 @@ export type NotesFeedData = {
   feedAvailable: boolean;
   // False when the sealed-counts read failed — the sealed block is suppressed.
   sealedAvailable: boolean;
+  // False when the supplemental author-name read failed — the shell shows a
+  // notice so "Unknown person" labels read as degraded, not authoritative.
+  namesAvailable: boolean;
 };
 
 export type NotesFeedReads = {
@@ -61,17 +66,27 @@ export const EMPTY_NOTES_FEED: NotesFeedData = {
   sealedSummary: [],
   feedAvailable: false,
   sealedAvailable: false,
+  namesAvailable: true,
+};
+
+export type NotesFeedContext = {
+  viewerProfileId: string;
+  // Names the page already has (the care directory's leaders, the groups
+  // list) — seeded so the author-name read only fetches what's missing.
+  // Promises are accepted so the feed's content reads can run concurrently
+  // with the page batch that produces the seeds: the seeds are only needed
+  // AFTER the content rows are back.
+  nameByProfileId:
+    | ReadonlyMap<string, string>
+    | Promise<ReadonlyMap<string, string>>;
+  groupNameByGroupId:
+    | ReadonlyMap<string, string>
+    | Promise<ReadonlyMap<string, string>>;
 };
 
 export async function buildNotesFeedData(
   reads: NotesFeedReads,
-  context: {
-    viewerProfileId: string;
-    // Names the page already has (the care directory's leaders, the groups
-    // list) — seeded so the author-name read only fetches what's missing.
-    nameByProfileId: ReadonlyMap<string, string>;
-    groupNameByGroupId: ReadonlyMap<string, string>;
-  }
+  context: NotesFeedContext
 ): Promise<NotesFeedData> {
   const [careNotesRes, prayerRequestsRes, broadNotesRes, sealedRes] =
     await Promise.all([
@@ -80,6 +95,10 @@ export async function buildNotesFeedData(
       reads.fetchBroadNotes(),
       reads.fetchSealedCounts(),
     ]);
+  const [seedNames, groupNameByGroupId] = await Promise.all([
+    context.nameByProfileId,
+    context.groupNameByGroupId,
+  ]);
 
   const careNotes = careNotesRes.data ?? [];
   const prayerRequests = prayerRequestsRes.data ?? [];
@@ -91,7 +110,7 @@ export async function buildNotesFeedData(
   // block's gating leaders.
   const unresolved = new Set<string>();
   const noteIds = (id: string | null) => {
-    if (id !== null && !context.nameByProfileId.has(id)) unresolved.add(id);
+    if (id !== null && !seedNames.has(id)) unresolved.add(id);
   };
   for (const n of careNotes) {
     noteIds(n.author_profile_id);
@@ -104,13 +123,14 @@ export async function buildNotesFeedData(
   for (const b of broadNotes) noteIds(b.created_by_profile_id);
   for (const c of sealedCounts) noteIds(c.gating_profile_id);
 
-  // A failed name read degrades to fallback labels — never blocks the feed.
-  const extraNames =
+  // A failed name read degrades to fallback labels — never blocks the feed —
+  // but is flagged via namesAvailable so the shell can say so.
+  const extraNamesRes =
     unresolved.size === 0
-      ? new Map<string, string>()
-      : ((await reads.fetchProfileNames([...unresolved])).data ??
-        new Map<string, string>());
-  const nameByProfileId = new Map([...context.nameByProfileId, ...extraNames]);
+      ? null
+      : await reads.fetchProfileNames([...unresolved]);
+  const extraNames = extraNamesRes?.data ?? new Map<string, string>();
+  const nameByProfileId = new Map([...seedNames, ...extraNames]);
 
   return {
     items: buildCareNoteFeed({
@@ -119,7 +139,7 @@ export async function buildNotesFeedData(
       broadNotes,
       viewerProfileId: context.viewerProfileId,
       nameByProfileId,
-      groupNameByGroupId: context.groupNameByGroupId,
+      groupNameByGroupId,
     }),
     sealedSummary:
       sealedRes.error === null
@@ -130,5 +150,6 @@ export async function buildNotesFeedData(
       prayerRequestsRes.error === null &&
       broadNotesRes.error === null,
     sealedAvailable: sealedRes.error === null,
+    namesAvailable: extraNamesRes === null || extraNamesRes.error === null,
   };
 }

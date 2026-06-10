@@ -20,8 +20,12 @@ export interface CareFeedItem {
   id: string;
   body: string;
   // When the note happened: created_at for care notes / prayer requests,
-  // interaction_at for broad notes.
+  // interaction_at (a DATE, no time) for broad notes.
   occurredAt: string;
+  // When the row was written (created_at for all three sources) — the
+  // same-day tiebreaker for the newest-first sort, since occurredAt carries
+  // no time-of-day for broad notes.
+  recordedAt: string;
   authorProfileId: string | null;
   authorName: string;
   // The viewer wrote this row — the feed labels it so an admin can tell their
@@ -44,9 +48,19 @@ export const CARE_FEED_KIND_LABELS: Record<CareFeedItemKind, string> = {
 const UNKNOWN_PERSON = "Unknown person";
 const UNKNOWN_GROUP = "Unknown group";
 
-function sortKey(item: CareFeedItem): number {
-  const t = Date.parse(item.occurredAt);
-  return Number.isNaN(t) ? 0 : t;
+// Newest-first ordering: by calendar DAY of occurredAt, then by recordedAt.
+// occurredAt mixes timestamptz strings (care notes / prayer requests) with
+// date-only strings (broad notes), so parsing it raw would pin every broad
+// note to UTC midnight — sorted below all of that day's timed notes. Comparing
+// the day first keeps same-day items together; recordedAt (created_at on all
+// three sources) breaks the tie. Unparseable values sort last (key 0).
+function feedSortKeys(item: CareFeedItem): { day: number; recorded: number } {
+  const day = Date.parse(item.occurredAt.slice(0, 10));
+  const recorded = Date.parse(item.recordedAt);
+  return {
+    day: Number.isNaN(day) ? 0 : day,
+    recorded: Number.isNaN(recorded) ? 0 : recorded,
+  };
 }
 
 function noteSubject(
@@ -97,6 +111,7 @@ export function buildCareNoteFeed(input: {
       id: n.id,
       body: n.body,
       occurredAt: n.created_at,
+      recordedAt: n.created_at,
       authorProfileId: n.author_profile_id,
       authorName: nameByProfileId.get(n.author_profile_id) ?? UNKNOWN_PERSON,
       viewerAuthored: n.author_profile_id === viewerProfileId,
@@ -110,6 +125,7 @@ export function buildCareNoteFeed(input: {
       id: r.id,
       body: r.body,
       occurredAt: r.created_at,
+      recordedAt: r.created_at,
       authorProfileId: r.author_profile_id,
       authorName: nameByProfileId.get(r.author_profile_id) ?? UNKNOWN_PERSON,
       viewerAuthored: r.author_profile_id === viewerProfileId,
@@ -124,6 +140,7 @@ export function buildCareNoteFeed(input: {
       id: b.id,
       body: b.notes,
       occurredAt: b.interaction_at,
+      recordedAt: b.created_at,
       authorProfileId: b.created_by_profile_id,
       authorName:
         nameByProfileId.get(b.created_by_profile_id) ?? UNKNOWN_PERSON,
@@ -134,9 +151,14 @@ export function buildCareNoteFeed(input: {
     });
   }
 
-  // Newest first; ties keep insertion order (stable sort), which already
-  // groups care notes before prayers before broad notes for identical stamps.
-  return items.sort((a, b) => sortKey(b) - sortKey(a));
+  // Newest first (day, then recorded time — see feedSortKeys); full ties keep
+  // insertion order (stable sort), which already groups care notes before
+  // prayers before broad notes for identical stamps. Keys are computed once
+  // per item, not per comparison.
+  return items
+    .map((item) => ({ item, ...feedSortKeys(item) }))
+    .sort((a, b) => (a.day === b.day ? b.recorded - a.recorded : b.day - a.day))
+    .map((e) => e.item);
 }
 
 // ——— Filters (client-side; the feed is already capped at read time) ———

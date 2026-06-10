@@ -255,6 +255,31 @@ export function buildCareAccordion(
 // a client; the read side (lib/supabase/care-accordion-reads.ts) fetches the
 // rows and calls these.
 
+// The override object the rubric resolvers expect, from a persisted grade
+// row — null unless the row carries one. A row without a period_month is
+// treated as set in the current period (matching the detail page's
+// resolution), so the resolver's expiry rules still apply.
+function persistedOverride<Letter>(
+  row: {
+    override_letter: Letter | null;
+    override_scope: GroupHealthOverrideScope | null;
+    override_period_month: string | null;
+  },
+  periodMonthIso: string
+): {
+  letter: Letter;
+  scope: GroupHealthOverrideScope;
+  period_month: string;
+} | null {
+  return row.override_letter !== null && row.override_scope !== null
+    ? {
+        letter: row.override_letter,
+        scope: row.override_scope,
+        period_month: row.override_period_month ?? periodMonthIso,
+      }
+    : null;
+}
+
 // One persisted Leader-Health Grade row, reduced to what resolving the letter
 // needs (the rubric engine recomputes the letter from scores + override).
 export type LeaderHealthGradeInput = {
@@ -274,18 +299,10 @@ export function resolveLeaderHealthByLeaderId(
 ): Map<string, LeaderHealthLetter | null> {
   const out = new Map<string, LeaderHealthLetter | null>();
   for (const row of rows) {
-    const override =
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null;
     const resolved = resolveLeaderGrade({
       rubric,
       scores: row.criterion_scores,
-      override,
+      override: persistedOverride(row, periodMonthIso),
       ministryYear,
       currentPeriodMonth: periodMonthIso,
     });
@@ -312,18 +329,10 @@ export function resolveGroupHealthByGroupId(
 ): Map<string, GroupHealthLetter | null> {
   const out = new Map<string, GroupHealthLetter | null>();
   for (const row of rows) {
-    const override =
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null;
     const grade = resolveGroupRubricGrade({
       rubric,
       scores: row.criterion_scores,
-      override,
+      override: persistedOverride(row, periodMonthIso),
       periodMonth: periodMonthIso,
     });
     out.set(row.group_id, grade.effective_letter);
@@ -368,21 +377,17 @@ const EMPTY_SEED = { scores: {}, overrideLetter: null, overrideScope: null };
 export function resolveLeaderGradeSeed(
   row: LeaderHealthGradeInput | undefined,
   criteria: Rubric["criteria"],
-  ministryYear: number,
+  // Null in the Jun–Jul off-season: there is no year to resolve against, so
+  // the seed is empty and the editor renders its own closed state. Centralised
+  // here so every surface hosting the editor gets the off-season rule for free.
+  ministryYear: number | null,
   periodMonthIso: string
 ): GradeEntrySeed<LeaderHealthLetter> {
-  if (!row) return EMPTY_SEED;
+  if (!row || ministryYear === null) return EMPTY_SEED;
   const resolved = resolveLeaderGrade({
     rubric: { criteria },
     scores: row.criterion_scores,
-    override:
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null,
+    override: persistedOverride(row, periodMonthIso),
     ministryYear,
     currentPeriodMonth: periodMonthIso,
   });
@@ -402,14 +407,7 @@ export function resolveGroupGradeSeed(
   const grade = resolveGroupRubricGrade({
     rubric: { criteria },
     scores: row.criterion_scores,
-    override:
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null,
+    override: persistedOverride(row, periodMonthIso),
     periodMonth: periodMonthIso,
   });
   return {

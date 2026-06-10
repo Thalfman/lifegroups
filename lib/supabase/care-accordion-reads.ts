@@ -137,6 +137,12 @@ async function fetchGrantedSubjectIds(
 // The subject_profile_id of each profile-scoped Care Note the caller can read
 // (RLS returns rows only for granted subjects). One id per row, so the caller
 // can count notes per Leader. Group-subject notes are excluded.
+//
+// Known scale debt: this ships one row per readable note just to count in JS.
+// Acceptable while note volume is small-church scale; if it grows, replace
+// with a count aggregate — but note the counts must stay RLS-scoped (what the
+// VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
+// the grant logic rather than lean on RLS. See docs/ui-followups.md.
 async function fetchProfileSubjectCareNoteIds(
   client: AppSupabaseClient
 ): Promise<ReadResult<string[]>> {

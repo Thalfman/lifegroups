@@ -324,6 +324,7 @@ const NOTES_FEED_ITEMS: CareFeedItem[] = [
     id: "note-1",
     body: "Checked in after the move — settling in well.",
     occurredAt: "2026-06-03T10:00:00+00:00",
+    recordedAt: "2026-06-03T10:00:00+00:00",
     authorProfileId: "00000000-0000-4000-8000-0000000000b1",
     authorName: "Omar Shepherd",
     viewerAuthored: false,
@@ -336,6 +337,7 @@ const NOTES_FEED_ITEMS: CareFeedItem[] = [
     id: "prayer-1",
     body: "Pray for the group's new families.",
     occurredAt: "2026-06-02T10:00:00+00:00",
+    recordedAt: "2026-06-02T10:00:00+00:00",
     authorProfileId: "00000000-0000-4000-8000-0000000000a2",
     authorName: "Bryant Cole",
     viewerAuthored: false,
@@ -349,6 +351,7 @@ const NOTES_FEED_ITEMS: CareFeedItem[] = [
     id: "broad-1",
     body: "Grabbed coffee, doing well.",
     occurredAt: "2026-06-01",
+    recordedAt: "2026-06-01T09:00:00+00:00",
     authorProfileId: "00000000-0000-4000-8000-0000000000c1",
     authorName: "Julian Admin",
     viewerAuthored: true,
@@ -1157,6 +1160,7 @@ export function A11yHarnessClient() {
           sealedSummary={NOTES_FEED_SEALED}
           feedAvailable
           sealedAvailable
+          namesAvailable
         />
       </Surface>
 

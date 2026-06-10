@@ -61,13 +61,21 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
    P3.17 "review →" stayed a text glyph (deliberate — matches the serif
    voice better than a lucide arrow); P3.18 mobile calendar pills now
    render at the 11px floor.
-9. **`LeaderGroupCard` is currently orphaned.** No route imports
-   `components/dashboard/leader-group-card.tsx` (the flag-gated leader
-   surface renders other components); it was restyled anyway so it lands
-   on-system when revived. Its hero overlays were re-tinted to `bg-ink/*`
-   for AA. Related gap: the a11y suite mounts admin surfaces only —
-   leader routes have no axe coverage, so add a leader spec in the PR
-   that flips `leader_surface`.
+9. **Care accordion note counts read one row per note.**
+   `lib/supabase/care-accordion-reads.ts` fetches every readable
+   `care_notes` / `prayer_requests` `subject_profile_id` and counts in
+   JS for the per-leader badges. Fine at small-church note volume;
+   when it grows, replace with a count aggregate — the counts are
+   RLS-scoped (what the viewer may read), so a `SECURITY DEFINER`
+   count RPC would have to re-encode the grant logic rather than lean
+   on RLS, which is why this wasn't done inline.
+10. **`LeaderGroupCard` is currently orphaned.** No route imports
+    `components/dashboard/leader-group-card.tsx` (the flag-gated leader
+    surface renders other components); it was restyled anyway so it lands
+    on-system when revived. Its hero overlays were re-tinted to `bg-ink/*`
+    for AA. Related gap: the a11y suite mounts admin surfaces only —
+    leader routes have no axe coverage, so add a leader spec in the PR
+    that flips `leader_surface`.
 
 ## Guardrails now active
 

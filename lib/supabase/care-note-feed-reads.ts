@@ -117,28 +117,23 @@ const BROAD_NOTE_FEED_COLUMNS =
   "shepherd:profiles!shepherd_care_profiles_shepherd_profile_id_fkey!inner ( id, full_name, status ) " +
   ")";
 
+// Supabase types embedded to-one joins as object-or-array depending on
+// client version; both arms (and null) are handled defensively below.
+type BroadNoteJoinCareProfile = {
+  shepherd_profile_id: string;
+  shepherd:
+    | { id: string; full_name: string }
+    | { id: string; full_name: string }[]
+    | null;
+};
+
 type BroadNoteJoinRow = {
   id: string;
   interaction_at: string;
   notes: string | null;
   created_by_profile_id: string;
   created_at: string;
-  care_profile:
-    | {
-        shepherd_profile_id: string;
-        shepherd:
-          | { id: string; full_name: string }
-          | { id: string; full_name: string }[]
-          | null;
-      }
-    | {
-        shepherd_profile_id: string;
-        shepherd:
-          | { id: string; full_name: string }
-          | { id: string; full_name: string }[]
-          | null;
-      }[]
-    | null;
+  care_profile: BroadNoteJoinCareProfile | BroadNoteJoinCareProfile[] | null;
 };
 
 // Admin-only broad-note feed read: `interaction_type = 'other'` rows (the
