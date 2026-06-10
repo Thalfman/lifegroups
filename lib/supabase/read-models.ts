@@ -80,13 +80,49 @@ function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
   return isUuid((v as Record<string, unknown>).group_id);
 }
 
+// Column allowlist for the full-row groups fetchers (#495). These are the
+// high-fan-out admin reads that return GroupsRow, so the list names every
+// GroupsRow column — same data as before, but a future groups column (which
+// could be sensitive, like admin_notes was) no longer flows to every caller
+// by default. Typed against GroupsRow so a renamed/removed column fails
+// typecheck; a pinning test freezes the exact set so widening this read must
+// be a deliberate diff. Leader routes must keep using LEADER_SAFE_GROUP_COLUMNS.
+export const GROUP_COLUMNS = [
+  "id",
+  "name",
+  "description",
+  "meeting_day",
+  "meeting_time",
+  "meeting_frequency",
+  "meeting_week_parity",
+  "location_area",
+  "address_optional",
+  "capacity",
+  "lifecycle_status",
+  "health_status",
+  "audience_category",
+  "category_id",
+  "launched_on",
+  "pause_reason",
+  "pause_start_date",
+  "expected_return_date",
+  "restart_reminder_date",
+  "admin_notes",
+  "created_at",
+  "updated_at",
+  "closed_at",
+] as const satisfies readonly (keyof GroupsRow)[];
+
+const GROUP_SELECT = GROUP_COLUMNS.join(", ");
+
 export async function fetchAllGroups(
   client: ReadClient
 ): Promise<ReadResult<GroupsRow[]>> {
   const { data, error } = await client
     .from("groups")
-    .select("*")
-    .order("name", { ascending: true });
+    .select(GROUP_SELECT)
+    .order("name", { ascending: true })
+    .returns<GroupsRow[]>();
   if (error) return { data: null, error: wrapError("fetchAllGroups", error) };
   return { data: data ?? [], error: null };
 }
@@ -119,9 +155,10 @@ export async function fetchGroupsByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("groups")
-    .select("*")
+    .select(GROUP_SELECT)
     .in("id", ids)
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })
+    .returns<GroupsRow[]>();
   if (error) return { data: null, error: wrapError("fetchGroupsByIds", error) };
   return { data: data ?? [], error: null };
 }
@@ -129,9 +166,10 @@ export async function fetchGroupsByIds(
 // Leader-safe group read: an ALLOWLISTED projection that excludes admin-only
 // columns (notably `admin_notes`, see AGENTS.md — admin notes must never reach a
 // leader route). The leader surfaces (dashboard, care, calendar) read their own
-// groups via the group RLS `auth_is_leader_of(id)` arm, so a plain `select("*")`
-// (fetchGroupsByIds) would pull admin_notes into a leader context. Leaders only
-// ever need identity + schedule, so this returns exactly those columns.
+// groups via the group RLS `auth_is_leader_of(id)` arm, so a full-GroupsRow
+// read (fetchGroupsByIds via GROUP_COLUMNS) would pull admin_notes into a
+// leader context. Leaders only ever need identity + schedule, so this returns
+// exactly those columns.
 export type LeaderSafeGroupRow = Pick<
   GroupsRow,
   | "id"
