@@ -85,8 +85,9 @@ export interface AdminArea {
 // (ADR 0016, superseding ADR 0013's six-area spine). This is the single source
 // of truth shared by every navigation surface — admin sidebar (adminNavGroups),
 // Home Hub launcher tiles (lib/auth/hub-tiles.ts), and the bottom-nav list
-// (navItemsForRole) — so all three stay consistent by construction. Rendered as
-// a flat list, no section headers.
+// (navItemsForRole) — so all three stay consistent by construction. The hub
+// tiles and bottom nav render this flat; the sidebar partitions it into
+// divider-separated sections (ADMIN_NAV_SECTIONS) without reordering it.
 //
 // The flag-resolved spine is Home · Care · Plan · Multiply · Groups · People ·
 // Settings: the Groups and People tabs carry a `navFlagKey` whose flag is
@@ -204,7 +205,12 @@ export function navItemsForRole(
   return items;
 }
 
-export type AdminNavGroupKey = "top" | "manage" | "shepherd" | "system";
+export type AdminNavGroupKey =
+  | "home"
+  | "top"
+  | "manage"
+  | "shepherd"
+  | "system";
 
 export type AdminNavItem = AdminArea;
 
@@ -214,23 +220,53 @@ export interface AdminNavGroup {
   items: AdminNavItem[];
 }
 
+// Sidebar sections, in render order: Home alone, the Care/Plan/Multiply job
+// spine, the management tabs, then system. Membership is by href so
+// ADMIN_AREAS stays the flat single source of truth for the other nav
+// surfaces; the "re-shows hidden tabs" test guards every area against falling
+// out of all sections.
+const ADMIN_NAV_SECTIONS: readonly {
+  group: AdminNavGroupKey;
+  hrefs: readonly string[];
+}[] = [
+  { group: "home", hrefs: ["/admin"] },
+  { group: "top", hrefs: ["/admin/care", "/admin/plan", "/admin/multiply"] },
+  {
+    group: "manage",
+    hrefs: ["/admin/groups", "/admin/people", "/admin/planning"],
+  },
+  { group: "system", hrefs: ["/admin/settings"] },
+];
+
 export function adminNavGroups(
   role: UserRole,
   hiddenAreas: ReadonlySet<string> = DEFAULT_HIDDEN_ADMIN_AREAS
 ): AdminNavGroup[] {
-  // Care/Plan/Multiply spine (ADR 0016): a single flat group with no section
-  // header (empty label) renders the visible areas as a flat list. Groups,
-  // People, and Planning are filtered out unless a Super Admin has re-shown them
-  // (hiddenAreas, from resolveHiddenNav); their routes still resolve by direct
-  // URL regardless (ADR 0008/0009). Super Admin is appended only for super_admin
-  // and is unchanged (ADR 0002).
-  const items: AdminNavItem[] = visibleAdminAreas(hiddenAreas).map((a) => ({
-    ...a,
-  }));
+  // Care/Plan/Multiply spine (ADR 0016), partitioned into the unlabeled
+  // ADMIN_NAV_SECTIONS — the Sidebar draws a hairline between groups instead of
+  // section headers. Groups, People, and Planning are filtered out unless a
+  // Super Admin has re-shown them (hiddenAreas, from resolveHiddenNav); their
+  // routes still resolve by direct URL regardless (ADR 0008/0009). Super Admin
+  // joins the system section only for super_admin (ADR 0002). Sections left
+  // empty by flag filtering are dropped so no stray divider renders.
+  const visible = visibleAdminAreas(hiddenAreas);
+  const groups: AdminNavGroup[] = ADMIN_NAV_SECTIONS.map(
+    ({ group, hrefs }) => ({
+      group,
+      label: "",
+      items: visible
+        .filter((a) => hrefs.includes(a.href))
+        .map((a) => ({ ...a })),
+    })
+  );
   if (role === "super_admin") {
-    items.push({ ...SUPER_ADMIN_AREA });
+    groups
+      .find((g) => g.group === "system")!
+      .items.push({
+        ...SUPER_ADMIN_AREA,
+      });
   }
-  return [{ group: "top", label: "", items }];
+  return groups.filter((g) => g.items.length > 0);
 }
 
 // Sidebar nav groups for the lg shell (LgAppShell), resolved per role so the
