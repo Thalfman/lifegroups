@@ -12,7 +12,7 @@
 // the server page) so it never ships in a normal build. Later surface-
 // migration slices add their surface here and inherit the same gate.
 
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import {
   CalendarOccurrenceEditor,
@@ -1067,15 +1067,17 @@ export function A11yHarnessClient() {
         </div>
       </Surface>
 
-      <Surface
-        id="people"
-        heading="People (directory / leaders / members / apprentices / add)"
-      >
-        <PeopleManagementShell
-          data={PEOPLE_DATA}
-          pipeline={PEOPLE_PIPELINE}
-          needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
-        />
+      <Surface id="people" heading="People (directory / apprentices)">
+        {/* The People shell reads its active tab from the URL (?tab=) via
+            useSearchParams, which a statically-rendered route must wrap in
+            Suspense. */}
+        <Suspense fallback={null}>
+          <PeopleManagementShell
+            data={PEOPLE_DATA}
+            pipeline={PEOPLE_PIPELINE}
+            needsContactProfileIds={PEOPLE_NEEDS_CONTACT}
+          />
+        </Suspense>
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">

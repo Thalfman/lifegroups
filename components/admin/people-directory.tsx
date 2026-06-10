@@ -21,15 +21,13 @@ import type {
   ProfilesRow,
 } from "@/types/database";
 
-// Directory = everyone; Leaders = login profiles filtered to leader/co-leader;
-// Members = participant (non-login) records. The People shell renders one of
-// these three scopes per tab (reduction plan §6). Directory keeps the
-// login/member type filter; the two scoped tabs lock it so the tab label and
-// the list can't disagree.
+// The directory's people scope: Everyone, Leaders (login profiles filtered to
+// leader/co-leader), or Members (participant, non-login records). Formerly
+// three separate People tabs; now one filter control inside the directory, so
+// the list is one destination and the scope is just a narrowing.
 export type DirectoryScope = "directory" | "leaders" | "members";
 
 type PeopleDirectoryProps = {
-  scope: DirectoryScope;
   profiles: ProfilesRow[];
   members: MembersRow[];
   groups: GroupsRow[];
@@ -57,13 +55,14 @@ const LEADER_ROLES = new Set(["leader", "co_leader"]);
 export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [scope, setScope] = useState<DirectoryScope>("directory");
 
   // Defer the inputs that drive the two list filters and the re-render of every
   // profile/member row. The search box (`query`) and the status select stay
   // bound to their urgent state for instant feedback, while the heavy filtering
   // keys off the deferred copies and runs as a low-priority, interruptible
   // render — keeping typing and filtering snappy (low INP) on a long directory
-  // without a fixed debounce delay. The type filter only toggles section
+  // without a fixed debounce delay. The scope filter only toggles section
   // visibility, so it stays urgent.
   const deferredQuery = useDeferredValue(query);
   const deferredStatusFilter = useDeferredValue(statusFilter);
@@ -102,7 +101,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   }, [props.memberships, groupsById]);
 
   const filterProfile = (p: ProfilesRow): boolean => {
-    if (props.scope === "leaders" && !LEADER_ROLES.has(p.role)) return false;
+    if (scope === "leaders" && !LEADER_ROLES.has(p.role)) return false;
     if (deferredStatusFilter !== "all" && p.status !== deferredStatusFilter)
       return false;
     if (trimmed) {
@@ -125,7 +124,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
   const visibleProfiles = useMemo(
     () => props.profiles.filter(filterProfile),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.profiles, props.scope, deferredStatusFilter, trimmed]
+    [props.profiles, scope, deferredStatusFilter, trimmed]
   );
 
   const visibleMembers = useMemo(
@@ -134,8 +133,8 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
     [props.members, deferredStatusFilter, trimmed]
   );
 
-  const showLogin = props.scope === "directory" || props.scope === "leaders";
-  const showMembers = props.scope === "directory" || props.scope === "members";
+  const showLogin = scope === "directory" || scope === "leaders";
+  const showMembers = scope === "directory" || scope === "members";
 
   const anyError =
     (showLogin && (props.errors.profiles || props.errors.leaders)) ||
@@ -146,8 +145,10 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       <FilterBar
         query={query}
         statusFilter={statusFilter}
+        scope={scope}
         onQueryChange={setQuery}
         onStatusFilterChange={setStatusFilter}
+        onScopeChange={setScope}
       />
 
       {anyError ? (
@@ -163,12 +164,12 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       {showLogin ? (
         <DirectorySection
           headerTitle={
-            props.scope === "leaders"
+            scope === "leaders"
               ? "Leaders and co-leaders"
               : "Leaders and oversight"
           }
           headerDescription={
-            props.scope === "leaders"
+            scope === "leaders"
               ? "Current leaders and co-leaders who shepherd their groups."
               : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
           }
@@ -179,12 +180,12 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               ? `Couldn't load profiles: ${props.errors.profiles}`
               : visibleProfiles.length === 0
                 ? trimmed || statusFilter !== "all"
-                  ? props.scope === "leaders"
+                  ? scope === "leaders"
                     ? "No leaders or co-leaders match the current filters."
                     : "No leaders or oversight roles match the current filters."
-                  : props.scope === "leaders"
-                    ? "No leaders or co-leaders yet. Add one from Add Person."
-                    : "No leaders or oversight roles yet. Add one from Add Person."
+                  : scope === "leaders"
+                    ? "No leaders or co-leaders yet. Add one with “Add person”."
+                    : "No leaders or oversight roles yet. Add one with “Add person”."
                 : null
           }
         >
@@ -213,7 +214,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
               : visibleMembers.length === 0
                 ? trimmed || statusFilter !== "all"
                   ? "No members match the current filters."
-                  : "No members yet. Add one from Add Person."
+                  : "No members yet. Add one with “Add person”."
                 : null
           }
         >
@@ -238,16 +239,20 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
 function FilterBar({
   query,
   statusFilter,
+  scope,
   onQueryChange,
   onStatusFilterChange,
+  onScopeChange,
 }: {
   query: string;
   statusFilter: StatusFilter;
+  scope: DirectoryScope;
   onQueryChange: (v: string) => void;
   onStatusFilterChange: (v: StatusFilter) => void;
+  onScopeChange: (v: DirectoryScope) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 items-center gap-2.5 rounded-md border border-line bg-surface p-3 md:grid-cols-[minmax(220px,1fr)_auto] md:gap-3 md:px-3.5">
+    <div className="grid grid-cols-1 items-center gap-2.5 rounded-md border border-line bg-surface p-3 md:grid-cols-[minmax(220px,1fr)_auto_auto] md:gap-3 md:px-3.5">
       <input
         type="search"
         value={query}
@@ -256,6 +261,17 @@ function FilterBar({
         aria-label="Search people"
         className={fieldInputClassName}
       />
+      {/* Scope narrows who's listed — formerly the Leaders / Members tabs. */}
+      <select
+        value={scope}
+        onChange={(e) => onScopeChange(e.target.value as DirectoryScope)}
+        aria-label="People type"
+        className={fieldSelectClassName}
+      >
+        <option value="directory">Everyone</option>
+        <option value="leaders">Leaders</option>
+        <option value="members">Members</option>
+      </select>
       <select
         value={statusFilter}
         onChange={(e) => onStatusFilterChange(e.target.value as StatusFilter)}

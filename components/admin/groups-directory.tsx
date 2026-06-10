@@ -742,12 +742,10 @@ function TabBar({
             )}
           >
             {t.label}
-            <span
-              className={cn(
-                "ml-2 text-xs font-bold",
-                active ? "opacity-90" : "opacity-70"
-              )}
-            >
+            {/* Full-opacity count: an opacity-dimmed count drops ink3 below
+                WCAG AA (axe: 2.94:1), so it keeps the tab's own text color
+                and reads smaller instead. */}
+            <span className="ml-2 text-xs font-bold tabular-nums">
               {counts[t.key]}
             </span>
           </button>
