@@ -13,6 +13,10 @@
     "test:a11y": "playwright test",
     "seed:test-auth": "tsx scripts/seed-test-auth-users.ts",
     "remove:test-auth": "tsx scripts/remove-test-auth-users.ts",
+    "graph:tree": "graphify tree",
+    "graph:flow": "graphify export callflow-html --output graphify-out/CALLFLOW.html",
+    "graph:health": "graphify diagnose multigraph && graphify benchmark",
+    "graph:rebuild": "graphify update . --force",
     "prepare": "husky"
   },
   "dependencies": {
