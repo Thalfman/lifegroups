@@ -70,12 +70,12 @@ until Julian's explicit go-ahead.
 ## 5. Real data in, test data out
 
 - [ ] **Audit the 7 existing accounts**: today production has 1
-      super*admin, 2 ministry_admins, 3 leaders, 0 over_shepherds. Keep
-      Tom (super_admin) + Julian (ministry_admin); remove or archive every
-      test/demo account and its profile. \_Tom + Julian*
+      `super_admin`, 2 `ministry_admin`s, 3 `leader`s, 0 `over_shepherd`s.
+      Keep Tom (`super_admin`) + Julian (`ministry_admin`); remove or archive
+      every test/demo account and its profile. _Tom + Julian_
 - [ ] **Load the real roster**: groups, leaders, members (Super-Admin bulk
-      import accepts CSV: full*name, email, phone, groups). Today: 21
-      groups but 1 member row — rosters are not loaded. \_Julian*
+      import accepts CSV: `full_name`, email, phone, groups). Today: 21
+      groups but 1 member row — rosters are not loaded. _Julian_
 - [ ] **Configure Settings**: Group + Leader health rubrics, care cadence,
       multiplication trigger (global → per-type → per-cell as Julian
       wants it). _Julian_
