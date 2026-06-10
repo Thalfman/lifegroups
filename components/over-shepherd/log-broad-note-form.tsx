@@ -3,9 +3,9 @@
 import { PButton } from "@/components/pastoral/button";
 import { overShepherdLogBroadNote } from "@/app/(protected)/over-shepherd/[profileId]/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formNoteStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formNoteClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -26,14 +26,14 @@ export function LogBroadNoteForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 10 }}>
+    <form action={formAction} className="grid gap-2.5">
       <input
         type="hidden"
         name="shepherd_profile_id"
         value={shepherdProfileId}
       />
       <div>
-        <label htmlFor="osbn-note" style={fieldLabelStyle}>
+        <label htmlFor="osbn-note" className={fieldLabelClassName}>
           Add a broad note
         </label>
         <textarea
@@ -42,10 +42,10 @@ export function LogBroadNoteForm({
           rows={3}
           maxLength={2000}
           required
-          style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+          className={`${fieldInputClassName} min-h-20 resize-y`}
           placeholder="A broad, shareable note on how this Leader is doing."
         />
-        <p style={formNoteStyle}>
+        <p className={`${formNoteClassName} mt-1.5`}>
           Broad notes are visible to ministry admins. Keep anything private out
           of this field.
         </p>
