@@ -7,6 +7,7 @@ import {
   isAdminRole,
   isLeaderRole,
   isOverShepherdRole,
+  navGroupsForRole,
   navItemsForRole,
 } from "@/lib/auth/roles";
 import {
@@ -78,8 +79,9 @@ describe("defaultLandingPathForRole", () => {
 });
 
 // Care/Plan/Multiply pivot (ADR 0016, superseding ADR 0013): the default-visible
-// spine is Home · Care · Plan · Multiply · Settings, as a flat list on every nav
-// surface. Groups, People, Planning are hidden by default (Super-Admin
+// spine is Home · Care · Plan · Multiply · Settings — flat on the bottom nav and
+// hub tiles, partitioned into divider-separated sidebar sections by
+// adminNavGroups. Groups, People, Planning are hidden by default (Super-Admin
 // nav-visibility flags). Super Admin is appended only for super_admin (ADR 0002).
 const VISIBLE_AREAS = [
   "/admin",
@@ -212,26 +214,67 @@ describe("navItemsForRole", () => {
 });
 
 describe("adminNavGroups", () => {
-  it("renders the visible spine as a single flat group with no section header", () => {
+  it("partitions the visible spine into unlabeled, divider-separated sections", () => {
     const groups = adminNavGroups("ministry_admin");
-    // Flat list: one group, empty label so the Sidebar renders no header.
-    expect(groups).toHaveLength(1);
-    expect(groups[0]!.label).toBe("");
-    expect(groups[0]!.items.map((i) => i.href)).toEqual(VISIBLE_AREAS);
-    expect(groups[0]!.items.map((i) => i.label)).toEqual([
-      "Home",
-      "Care",
-      "Plan",
-      "Multiply",
-      "Settings",
+    // Sections, not headers: the Sidebar draws a hairline between groups, so
+    // every label stays empty.
+    expect(groups.map((g) => g.group)).toEqual(["home", "top", "system"]);
+    expect(groups.every((g) => g.label === "")).toBe(true);
+    expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
+      ["Home"],
+      ["Care", "Plan", "Multiply"],
+      ["Settings"],
     ]);
+    expect(groups.flatMap((g) => g.items).map((i) => i.href)).toEqual(
+      VISIBLE_AREAS
+    );
   });
 
   it("re-shows hidden tabs when their flag is on (empty hidden set)", () => {
-    const hrefs = adminNavGroups("ministry_admin", NOTHING_HIDDEN)
-      .flatMap((g) => g.items)
-      .map((i) => i.href);
+    const groups = adminNavGroups("ministry_admin", NOTHING_HIDDEN);
+    expect(groups.map((g) => g.group)).toEqual([
+      "home",
+      "top",
+      "manage",
+      "system",
+    ]);
+    // Flattened order matches ADMIN_AREAS — sections never reorder the spine.
+    // This is also the drift guard: an area missing from every section would
+    // fall out of this list.
+    const hrefs = groups.flatMap((g) => g.items).map((i) => i.href);
     expect(hrefs).toEqual(ALL_AREAS);
+  });
+
+  it("drops sections emptied by flag filtering (no stray divider)", () => {
+    // Default hidden set empties the manage section entirely.
+    const groups = adminNavGroups("ministry_admin");
+    expect(groups.some((g) => g.group === "manage")).toBe(false);
+    expect(groups.every((g) => g.items.length > 0)).toBe(true);
+  });
+
+  it("keeps a partially re-shown manage section", () => {
+    const groups = adminNavGroups(
+      "ministry_admin",
+      new Set(["/admin/people", "/admin/planning"])
+    );
+    expect(groups.map((g) => g.group)).toEqual([
+      "home",
+      "top",
+      "manage",
+      "system",
+    ]);
+    expect(
+      groups.find((g) => g.group === "manage")!.items.map((i) => i.href)
+    ).toEqual(["/admin/groups"]);
+  });
+
+  it("places Super admin in the system section, after Settings", () => {
+    const system = (role: UserRole) =>
+      adminNavGroups(role)
+        .find((g) => g.group === "system")!
+        .items.map((i) => i.label);
+    expect(system("super_admin")).toEqual(["Settings", "Super admin"]);
+    expect(system("ministry_admin")).toEqual(["Settings"]);
   });
 
   it("appends the super-admin item only for super_admin", () => {
@@ -278,5 +321,26 @@ describe("adminNavGroups", () => {
         expect(hrefs).not.toContain(gone);
       }
     }
+  });
+});
+
+describe("navGroupsForRole", () => {
+  // Non-admin sidebars stay a single group — the Sidebar's section divider
+  // only ever renders between groups, so these surfaces show no hairline.
+  it("gives over_shepherd and leader roles a single unlabeled group", () => {
+    for (const role of ["over_shepherd", "leader", "co_leader"] as const) {
+      const groups = navGroupsForRole(role);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]!.label).toBe("");
+    }
+  });
+
+  it("hands admin roles the sectioned admin spine", () => {
+    expect(navGroupsForRole("ministry_admin")).toEqual(
+      adminNavGroups("ministry_admin")
+    );
+    expect(navGroupsForRole("super_admin")).toEqual(
+      adminNavGroups("super_admin")
+    );
   });
 });

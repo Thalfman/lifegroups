@@ -51,8 +51,14 @@ export function Sidebar({
       </div>
 
       <nav aria-label={navLabel} className="flex flex-col gap-3.5">
-        {navGroups.map((g) => (
-          <div key={g.group}>
+        {navGroups.map((g, i) => (
+          // A hairline above every group after the first separates the nav
+          // sections; the nav's gap-3.5 plus pt-3.5 keeps the line centered.
+          // A CSS border (not an <hr>) adds no separator role for axe to scan.
+          <div
+            key={g.group}
+            className={i > 0 ? "border-t border-line pt-3.5" : undefined}
+          >
             {g.label ? (
               <div className="px-2.5 py-1.5 text-2xs font-semibold uppercase tracking-[0.16em] text-ink3">
                 {g.label}
