@@ -1,8 +1,14 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
 import { adminDeactivateProfile } from "@/app/(protected)/admin/people/actions";
-import { useActionForm, FormStatus } from "./action-form";
+import { ConfirmActionButton } from "./confirm-action-button";
+
+// Exported so the copy stays byte-locked by the confirm-action-button test.
+export function deactivateProfileConfirmMessage(fullName?: string): string {
+  return fullName
+    ? `Deactivate ${fullName}? Their leader assignments will also be closed.`
+    : "Deactivate this profile? Their leader assignments will also be closed.";
+}
 
 export function DeactivateProfileButton({
   profileId,
@@ -13,37 +19,15 @@ export function DeactivateProfileButton({
   label?: string;
   fullName?: string;
 }) {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminDeactivateProfile
-  );
-
-  function confirmDeactivate(e: React.FormEvent<HTMLFormElement>) {
-    if (
-      !window.confirm(
-        fullName
-          ? `Deactivate ${fullName}? Their leader assignments will also be closed.`
-          : "Deactivate this profile? Their leader assignments will also be closed."
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
-
   return (
-    <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
-      <form action={formAction} onSubmit={confirmDeactivate}>
-        <input type="hidden" name="profile_id" value={profileId} />
-        <PButton
-          type="submit"
-          tone="terra"
-          size="sm"
-          disabled={pending}
-          aria-label={fullName ? `${label} ${fullName}` : undefined}
-        >
-          {pending ? "Deactivating…" : label}
-        </PButton>
-      </form>
-      <FormStatus state={state} />
-    </div>
+    <ConfirmActionButton
+      action={adminDeactivateProfile}
+      confirmMessage={deactivateProfileConfirmMessage(fullName)}
+      hiddenFields={[{ name: "profile_id", value: profileId }]}
+      idleLabel={label}
+      pendingLabel="Deactivating…"
+      tone="terra"
+      ariaLabel={fullName ? `${label} ${fullName}` : undefined}
+    />
   );
 }

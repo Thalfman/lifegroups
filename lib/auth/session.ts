@@ -48,6 +48,25 @@ const TRANSIENT_ERROR_MESSAGE =
 
 const VALID_PROFILE_STATUSES = new Set(["active", "inactive", "invited"]);
 
+// Column allowlist for the session profile read (#492). This read runs on
+// every protected request, so it is the trust seam the allowlist invariant
+// cares about most: name exactly the columns the session/role guards and
+// downstream session consumers use — never select("*"). The list is typed
+// against ProfilesRow so a renamed/removed column fails typecheck, and a
+// colocated test pins the exact set so adding a profiles column can never
+// silently widen this read. If a consumer legitimately needs a new column,
+// add it here AND update the pinning test deliberately.
+export const SESSION_PROFILE_COLUMNS = [
+  "id", // primary key; actor identity for guards/actions
+  "auth_user_id", // checked by the isProfilesRow trust-boundary guard
+  "full_name", // rendered in shells/layouts from session.profile
+  "email", // rendered in shells/layouts from session.profile
+  "role", // authorization: every role guard switches on this
+  "status", // authorization: guards require "active"
+] as const satisfies readonly (keyof ProfilesRow)[];
+
+const SESSION_PROFILE_SELECT = SESSION_PROFILE_COLUMNS.join(", ");
+
 function isProfilesRow(v: unknown): v is ProfilesRow {
   if (v === null || typeof v !== "object" || Array.isArray(v)) return false;
   const r = v as Record<string, unknown>;
@@ -87,7 +106,7 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
 
   const profileQuery = await client
     .from("profiles")
-    .select("*")
+    .select(SESSION_PROFILE_SELECT)
     .eq("auth_user_id", authUser.id)
     .maybeSingle();
   if (profileQuery.error) {
@@ -127,6 +146,9 @@ export const getCurrentSession = cache(async (): Promise<SessionResult> => {
   // generated row type is intentionally incompatible with our
   // hand-rolled ProfilesRow (see lib/admin/rpc.ts file-level note),
   // so an explicit assertion after the runtime guard is required.
+  // Note: the row carries only SESSION_PROFILE_COLUMNS at runtime — the
+  // unselected ProfilesRow columns (phone, created_at, updated_at) have no
+  // session consumer, and the pinning test keeps that contract explicit.
   const profile: ProfilesRow | null = (rawProfile ??
     null) as ProfilesRow | null;
 

@@ -84,14 +84,23 @@ describe("level encode / decode round-trips", () => {
   });
 });
 
-describe("resolveParent — the cascade a level inherits", () => {
-  it("a per-type level inherits straight from global, every pillar", () => {
+// resolveParent is a CONSUMER of the cascade home (#487) — the per-pillar
+// fall-through itself (resolveReadinessRuleWithSources) is tested once in
+// lib/admin/__tests__/cell-readiness.test.ts. These cover only the editor's
+// mapping: which tiers feed a level's parent, and the Audience source label.
+describe("resolveParent — the editor's consumer of the cascade home", () => {
+  it("the global level has no parent (it is the root)", () => {
+    expect(resolveParent({ kind: "global" }, GLOBAL, PER_TYPE)).toBeNull();
+  });
+
+  it("a per-type level's parent is the global-only resolution (its own tier excluded)", () => {
     const parent = resolveParent(
       { kind: "type", audience: "men" },
       GLOBAL,
       PER_TYPE
     );
-    expect(parent).not.toBeNull();
+    // Even pillars the Men's tier overrides inherit GLOBAL here — a level never
+    // inherits from itself.
     expect(parent?.interest).toEqual({
       rule: GLOBAL.interest,
       source: "global",
@@ -102,34 +111,22 @@ describe("resolveParent — the cascade a level inherits", () => {
     });
   });
 
-  it("a per-cell level inherits the per-type rule where it overrides, else global", () => {
+  it("a per-cell level relabels the home's type tier by its Audience, else global", () => {
     const parent = resolveParent(
       { kind: "cell", audience: "men", categoryId: "c1" },
       GLOBAL,
       PER_TYPE
     );
-    // Interest + Leader Health come from the Men's per-type rule…
+    // A pillar the home resolved at the per-type tier is named by the Audience…
     expect(parent?.interest).toEqual({
       rule: { required: true, min: 5 },
       source: "men",
     });
-    expect(parent?.leaderHealth).toEqual({
-      rule: { required: true, min: "C" },
-      source: "men",
-    });
-    // …Capacity + Group Health fall through to global.
+    // …and a pillar that fell through to the root keeps the global source.
     expect(parent?.capacity).toEqual({
       rule: GLOBAL.capacity,
       source: "global",
     });
-    expect(parent?.groupHealth).toEqual({
-      rule: GLOBAL.groupHealth,
-      source: "global",
-    });
-  });
-
-  it("the global level has no parent (it is the root)", () => {
-    expect(resolveParent({ kind: "global" }, GLOBAL, PER_TYPE)).toBeNull();
   });
 });
 

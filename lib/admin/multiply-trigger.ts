@@ -3,21 +3,24 @@
 // a LEVEL of the three-tier cascade (global → per-type → per-cell), shows the four
 // pillars with each either carrying its OWN value or INHERITING its parent (labelled
 // by source), and on save posts ONLY that level's payload to the matching audited
-// RPC. This module owns the cascade arithmetic the editor renders and submits — the
-// inheritance display, the seed values, and the per-level payloads — so all of it is
-// unit-testable without a DOM. Sibling of lib/admin/cell-readiness.ts (the evaluator
-// the Multiply grid runs); this is the editor-side resolver.
+// RPC. Cascade RESOLUTION lives in lib/admin/cell-readiness.ts — the ONE cascade
+// home (#487), shared with the Multiply grid evaluator — and this module CONSUMES
+// it: resolveParent maps the home's per-pillar { rule, source } to the editor's
+// inheritance display, and the rest is form-field mapping (seed values, per-level
+// payloads) — so all of it is unit-testable without a DOM.
 
 import type { GroupAudienceCategory } from "@/types/enums";
-import type {
-  CapacityRule,
-  CellReadinessOverride,
-  HealthRule,
-  InterestRule,
-  PerTypeReadinessRule,
-  ReadinessLetter,
-  ReadinessPillarKey,
-  ReadinessRule,
+import {
+  resolveReadinessRuleWithSources,
+  type CapacityRule,
+  type CellReadinessOverride,
+  type HealthRule,
+  type InterestRule,
+  type PerTypeReadinessRule,
+  type ReadinessLetter,
+  type ReadinessPillarKey,
+  type ReadinessRule,
+  type ResolvedReadinessPillar,
 } from "@/lib/admin/cell-readiness";
 
 // The possessive Audience labels the editor shows — "Men's", "Women's", "Mixed" —
@@ -182,7 +185,10 @@ export function togglesFromPartial(p: PerTypeReadinessRule): PillarToggles {
 // WHERE that inherited value comes from.
 // ---------------------------------------------------------------------------
 
-// The source of an inherited pillar: the global root, or a per-type (Audience) rule.
+// The source of an inherited pillar AS THE EDITOR LABELS IT: the global root, or a
+// per-type (Audience) rule. The cascade home attributes the TIER ("global" |
+// "type"); the editor names the type tier by its Audience so the "(from …)" copy
+// can say "from Men's" etc.
 export type PillarSource = "global" | GroupAudienceCategory;
 
 export function sourceLabel(source: PillarSource): string {
@@ -202,6 +208,11 @@ export type ParentRule = {
   leaderHealth: ResolvedPillar<HealthRule>;
 };
 
+// A CONSUMER of the cascade home (#487): a level's parent is the cascade resolved
+// WITHOUT that level's own tier — a per-type level inherits the global-only
+// resolution; a per-cell level inherits global + its Audience's per-type rule (no
+// cell override) — with the home's tier attribution relabelled by Audience for
+// the editor's "(from …)" copy.
 export function resolveParent(
   level: TriggerLevel,
   global: ReadinessRule,
@@ -209,35 +220,22 @@ export function resolveParent(
 ): ParentRule | null {
   if (level.kind === "global") return null;
 
-  if (level.kind === "type") {
-    return {
-      interest: { rule: global.interest, source: "global" },
-      capacity: { rule: global.capacity, source: "global" },
-      groupHealth: { rule: global.groupHealth, source: "global" },
-      leaderHealth: { rule: global.leaderHealth, source: "global" },
-    };
-  }
+  const parentPerType: PerTypeReadinessRule =
+    level.kind === "type" ? {} : (perType[level.audience] ?? {});
+  const resolved = resolveReadinessRuleWithSources(global, parentPerType, {});
 
-  // cell: per pillar, the per-type rule wins if it overrides that pillar; else global.
-  const pt = perType[level.audience] ?? {};
-  const a = level.audience;
+  // No cell override is passed above, so the home attributes only "global" or
+  // "type"; "type" is named by the level's Audience for the source label.
+  const label = <R>(p: ResolvedReadinessPillar<R>): ResolvedPillar<R> => ({
+    rule: p.rule,
+    source: p.source === "global" ? "global" : level.audience,
+  });
+
   return {
-    interest:
-      pt.interest !== undefined
-        ? { rule: pt.interest, source: a }
-        : { rule: global.interest, source: "global" },
-    capacity:
-      pt.capacity !== undefined
-        ? { rule: pt.capacity, source: a }
-        : { rule: global.capacity, source: "global" },
-    groupHealth:
-      pt.groupHealth !== undefined
-        ? { rule: pt.groupHealth, source: a }
-        : { rule: global.groupHealth, source: "global" },
-    leaderHealth:
-      pt.leaderHealth !== undefined
-        ? { rule: pt.leaderHealth, source: a }
-        : { rule: global.leaderHealth, source: "global" },
+    interest: label(resolved.interest),
+    capacity: label(resolved.capacity),
+    groupHealth: label(resolved.groupHealth),
+    leaderHealth: label(resolved.leaderHealth),
   };
 }
 
