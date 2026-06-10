@@ -1,11 +1,12 @@
 import { Icon, type IconName } from "@/components/lg/Icon";
-import { P, fontSans } from "@/lib/pastoral";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { P } from "@/lib/pastoral";
 
 // The console's shared risk/status vocabulary (#451). Every state pairs a
 // consistent color + icon so badges read at a glance: good (sage/check),
 // guarded (sage outline/shield — protected on purpose), warning
-// (mustard/flag), blocked (terra/x), disabled (quiet/dots), active
-// (sage/spark), planned (quiet/cal), destructive (solid dark terra/alert —
+// (amber/flag), blocked (rose/x), disabled (quiet/dots), active
+// (sage/spark), planned (quiet/cal), destructive (solid rose/alert —
 // must never read as an ordinary badge), readonly (quiet/book — a safe read).
 // Lives in its own module (no "use client") so server-rendered shell panels
 // and client consoles (danger zone, test accounts) share one vocabulary
@@ -21,6 +22,9 @@ export type StatusTone =
   | "destructive"
   | "readonly";
 
+// Legacy CSSProperties-style export kept for the surfaces that still consume
+// the raw color values (care directory, capacity board, calendar grid). New
+// code should use StatusBadge / STATUS_BADGE_TONE instead.
 export const STATUS_STYLE: Record<
   StatusTone,
   { background: string; border: string; color: string; icon: IconName }
@@ -67,9 +71,8 @@ export const STATUS_STYLE: Record<
     color: P.ink2,
     icon: "cal",
   },
-  // Solid dark terra fill — deliberately louder than every soft badge so a
-  // destructive action can't pass for an ordinary control. Cream-on-dark-terra
-  // keeps AA contrast at badge sizes.
+  // Solid rose fill — deliberately louder than every soft badge so a
+  // destructive action can't pass for an ordinary control.
   destructive: {
     background: P.terraTextStrong,
     border: P.terraTextStrong,
@@ -84,6 +87,24 @@ export const STATUS_STYLE: Record<
   },
 };
 
+// Map every console tone onto the design-system Badge (soft bg + deep fg);
+// className extras carry the few looks Badge's tone map doesn't have (the
+// outlined "guarded"/quiet tones and the solid destructive fill).
+const STATUS_BADGE_TONE: Record<
+  StatusTone,
+  { tone: BadgeTone; className?: string }
+> = {
+  good: { tone: "sage" },
+  guarded: { tone: "sage", className: "border border-sage bg-surface" },
+  warning: { tone: "amber" },
+  blocked: { tone: "rose" },
+  disabled: { tone: "ghost" },
+  active: { tone: "sage" },
+  planned: { tone: "ghost", className: "text-ink2" },
+  destructive: { tone: "rose", className: "bg-rose text-white" },
+  readonly: { tone: "ghost", className: "text-ink2" },
+};
+
 export function StatusBadge({
   label,
   tone,
@@ -91,29 +112,11 @@ export function StatusBadge({
   label: string;
   tone: StatusTone;
 }) {
-  const s = STATUS_STYLE[tone];
+  const t = STATUS_BADGE_TONE[tone];
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        border: `1px solid ${s.border}`,
-        borderRadius: 999,
-        background: s.background,
-        color: s.color,
-        fontFamily: fontSans,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: 1.1,
-        lineHeight: 1,
-        padding: "6px 9px",
-        textTransform: "uppercase",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <Icon name={s.icon} size={11} strokeWidth={2.4} />
+    <Badge tone={t.tone} className={t.className}>
+      <Icon name={STATUS_STYLE[tone].icon} size={11} strokeWidth={2.4} />
       {label}
-    </span>
+    </Badge>
   );
 }

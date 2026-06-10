@@ -8,7 +8,7 @@ import { Pill } from "@/components/lg/Pill";
 export function SuperAdminOnlyBadge() {
   return (
     <span title="Visible to the super admin only — hidden from other roles">
-      <Pill tone="clay" size="sm" style={{ fontWeight: 600 }}>
+      <Pill tone="clay" size="sm">
         Super admin only
       </Pill>
     </span>
@@ -34,18 +34,10 @@ export function SuperAdminOnlyMark({
     <span
       title={label}
       data-testid="super-admin-only-mark"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: size + 8,
-        height: size + 8,
-        borderRadius: 999,
-        background: "var(--c-claySoft)",
-        color: "var(--c-clay)",
-        flexShrink: 0,
-        ...style,
-      }}
+      className="inline-flex shrink-0 items-center justify-center rounded-pill bg-claySoft text-clay"
+      // The chip scales with the caller-supplied icon size — dynamic, so the
+      // dimensions stay inline.
+      style={{ width: size + 8, height: size + 8, ...style }}
     >
       <svg
         width={size}

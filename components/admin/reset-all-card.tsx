@@ -9,7 +9,7 @@
 // behind a RESET EVERYTHING type-to-confirm phrase, re-checked server-side.
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { superAdminResetAll } from "@/app/(protected)/admin/super-admin/reset-all-actions";
 import {
   RESET_ALL_CONFIRM_PHRASE,
@@ -30,31 +30,20 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        fontFamily: fontSans,
-        fontSize: 12,
-        color: P.ink2,
-      }}
-    >
+    <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
       <span>{label}</span>
-      <strong style={{ color: P.ink }}>{value}</strong>
+      <strong className="text-ink">{value}</strong>
     </div>
   );
 }
@@ -98,28 +87,12 @@ export function ResetAllCard({
       >
         {/* Impact preview. */}
         {impactUnavailable ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             Impact preview unavailable — the history counts couldn&rsquo;t be
             loaded. Reset everything is disabled until they read successfully.
           </p>
         ) : (
-          <div
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              background: P.bgDeep,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 6,
-            }}
-          >
+          <div className="grid gap-1.5 rounded-sm border border-line bg-surfaceAlt px-3 py-2.5">
             <SummaryRow
               label="Clear accumulated history"
               value={`${historyRows} row${historyRows === 1 ? "" : "s"}`}
@@ -146,9 +119,9 @@ export function ResetAllCard({
           </div>
         )}
 
-        <form action={formAction} style={{ display: "grid", gap: 10 }}>
+        <form action={formAction} className="grid gap-2.5">
           <div>
-            <label htmlFor="reset-all-confirm" style={fieldLabelStyle}>
+            <label htmlFor="reset-all-confirm" className={fieldLabelClassName}>
               Type {RESET_ALL_CONFIRM_PHRASE} to confirm
             </label>
             <input
@@ -159,21 +132,20 @@ export function ResetAllCard({
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={RESET_ALL_CONFIRM_PHRASE}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <PButton
+          <div className="flex items-center gap-2.5">
+            <Button
               type="submit"
-              tone="terra"
+              variant="destructive"
               size="md"
               disabled={pending || !phraseMatches || impactUnavailable}
             >
               {pending ? "Resetting…" : "Reset everything"}
-            </PButton>
+            </Button>
             {state?.ok ? (
-              <span style={successTextStyle}>
+              <span className={successTextClassName}>
                 {state.value.clearedRows > 0
                   ? `Cleared ${state.value.clearedRows} row${
                       state.value.clearedRows === 1 ? "" : "s"

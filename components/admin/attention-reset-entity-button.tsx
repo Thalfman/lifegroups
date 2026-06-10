@@ -8,6 +8,7 @@
 // Super Admin Console's reset card. The server action re-checks super-admin.
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetCareAttention,
@@ -19,7 +20,6 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import { P, fontBody } from "@/lib/pastoral";
 
 const RESET_ACTION = {
   care: superAdminResetCareAttention,
@@ -45,7 +45,7 @@ export function AttentionResetEntityButton({
 
   if (done) {
     return (
-      <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+      <span className="font-sans text-xs text-ink2">
         Reset — cleared from the queue. Undo from Super Admin → Danger Zone.
       </span>
     );
@@ -67,21 +67,21 @@ export function AttentionResetEntityButton({
   return (
     <form
       action={form.formAction}
-      style={{
-        display: "flex",
-        gap: 8,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
+      className="flex flex-wrap items-center gap-2"
     >
       <input type="hidden" name="scope" value="entity" />
       <input type="hidden" name="entityId" value={entityId} />
-      <span style={{ fontFamily: fontBody, fontSize: 12.5, color: P.ink }}>
+      <span className="font-sans text-sm text-ink">
         Reset {who} {clockLabel} clock? It re-surfaces naturally later.
       </span>
-      <PButton type="submit" tone="terra" size="sm" disabled={form.pending}>
+      <Button
+        type="submit"
+        variant="destructive"
+        size="sm"
+        disabled={form.pending}
+      >
         {form.pending ? "Resetting…" : "Confirm reset"}
-      </PButton>
+      </Button>
       <PButton
         type="button"
         tone="ghost"

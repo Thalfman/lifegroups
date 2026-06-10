@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  useCallback,
-  useState,
-  useTransition,
-  type CSSProperties,
-} from "react";
+import { useCallback, useState, useTransition } from "react";
 import { SectionHeader } from "@/components/layout/shell";
 import { PButton } from "@/components/pastoral/button";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
   testAccountsDiagnose,
   testAccountsDisable,
@@ -24,19 +19,21 @@ type Props = {
 
 type Pending = "enable" | "disable" | "refresh" | "diagnose" | null;
 
-const STATE_DOT: Record<string, { color: string; label: string }> = {
-  exists: { color: P.sage, label: "exists" },
-  active: { color: P.sage, label: "active" },
-  created: { color: P.sage, label: "created" },
-  updated: { color: P.sage, label: "updated" },
-  added: { color: P.sage, label: "added" },
-  archived: { color: P.ink3, label: "archived" },
-  missing: { color: P.terra, label: "missing" },
-  deleted: { color: P.ink3, label: "deleted" },
-  inactive: { color: P.ink3, label: "inactive" },
-  deactivated: { color: P.ink3, label: "deactivated" },
-  none: { color: P.ink3, label: "none" },
-  skipped: { color: P.mustard, label: "skipped" },
+// Status-dot vocabulary: sage = present/healthy, quiet ink = absent on
+// purpose, rose = missing (concern), amber = skipped (watch).
+const STATE_DOT: Record<string, { dot: string; label: string }> = {
+  exists: { dot: "bg-sage", label: "exists" },
+  active: { dot: "bg-sage", label: "active" },
+  created: { dot: "bg-sage", label: "created" },
+  updated: { dot: "bg-sage", label: "updated" },
+  added: { dot: "bg-sage", label: "added" },
+  archived: { dot: "bg-ink3", label: "archived" },
+  missing: { dot: "bg-rose", label: "missing" },
+  deleted: { dot: "bg-ink3", label: "deleted" },
+  inactive: { dot: "bg-ink3", label: "inactive" },
+  deactivated: { dot: "bg-ink3", label: "deactivated" },
+  none: { dot: "bg-ink3", label: "none" },
+  skipped: { dot: "bg-amber", label: "skipped" },
 };
 
 // Friendly nouns for the table names that show up in raw Edge Function
@@ -71,41 +68,13 @@ function translateTestAccountError(raw: string): string {
   return "The test-account check returned an unexpected error.";
 }
 
-// Eyebrow label over each action cluster (#458): quiet ink for the read-only
-// half, terra ink for the admin-impacting half.
-function clusterLabelStyle(color: string): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 10.5,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-    fontWeight: 700,
-    color,
-  };
-}
-
 function StatePill({ state }: { state: string }) {
-  const cfg = STATE_DOT[state] ?? { color: P.ink3, label: state };
+  const cfg = STATE_DOT[state] ?? { dot: "bg-ink3", label: state };
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontFamily: fontSans,
-        fontSize: 12,
-        color: P.ink,
-      }}
-    >
+    <span className="inline-flex items-center gap-1.5 font-sans text-xs text-ink">
       <span
         aria-hidden
-        style={{
-          display: "inline-block",
-          width: 8,
-          height: 8,
-          borderRadius: 999,
-          background: cfg.color,
-        }}
+        className={cn("inline-block h-2 w-2 rounded-pill", cfg.dot)}
       />
       {cfg.label}
     </span>
@@ -184,7 +153,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
   }, [run]);
 
   return (
-    <section style={{ display: "grid", gap: 18 }}>
+    <section className="grid gap-4">
       <SectionHeader
         eyebrow="Test accounts"
         title="Temporary login accounts for role and mobile testing"
@@ -193,44 +162,16 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
 
       <div
         role="note"
-        style={{
-          background: P.mustardSoft,
-          border: `1px solid ${P.mustard}`,
-          borderRadius: 8,
-          padding: "10px 14px",
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink,
-        }}
+        className="rounded-sm border border-amber bg-amberSoft px-3.5 py-2.5 font-sans text-sm text-ink"
       >
         These are real user accounts that sign in through the normal /login
         page. Passwords live only in the Edge Function environment — never
         displayed here.
       </div>
 
-      <div
-        style={{
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 10,
-          padding: "18px 22px",
-          display: "grid",
-          gap: 14,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 16,
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink2,
-          }}
-        >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+      <div className="grid gap-3.5 rounded-lg border border-line bg-surface p-card">
+        <div className="flex flex-wrap items-center justify-between gap-4 font-sans text-xs text-ink2">
+          <div className="flex flex-wrap gap-4">
             <span>
               Overall:{" "}
               <StatePill
@@ -254,23 +195,18 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           </div>
           {/* Safe reads and admin-impacting actions sit in separately labeled
               clusters so a glance tells them apart (#458). Enable/disable keep
-              their window.confirm gates and gain the terra (impacting)
+              their window.confirm gates and gain the amber (impacting)
               treatment; the reads stay quiet ghost buttons. */}
-          <div
-            style={{
-              display: "flex",
-              gap: 18,
-              flexWrap: "wrap",
-              alignItems: "flex-end",
-            }}
-          >
+          <div className="flex flex-wrap items-end gap-4">
             <div
               role="group"
               aria-label="Read-only checks"
-              style={{ display: "grid", gap: 6 }}
+              className="grid gap-1.5"
             >
-              <span style={clusterLabelStyle(P.ink3)}>Read-only</span>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span className="font-sans text-xs font-semibold text-ink3">
+                Read-only
+              </span>
+              <div className="flex flex-wrap gap-2">
                 <PButton
                   tone="ghost"
                   size="sm"
@@ -292,12 +228,12 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
             <div
               role="group"
               aria-label="Admin-impacting actions"
-              style={{ display: "grid", gap: 6 }}
+              className="grid gap-1.5"
             >
-              <span style={clusterLabelStyle(P.terraTextStrong)}>
+              <span className="font-sans text-xs font-semibold text-amberText">
                 Admin-impacting · asks before running
               </span>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="flex flex-wrap gap-2">
                 <PButton
                   tone="terra"
                   size="sm"
@@ -311,7 +247,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                   size="sm"
                   onClick={handleDisable}
                   disabled={pending !== null}
-                  style={{ borderColor: P.terra, color: P.terraTextStrong }}
+                  className="border-amber text-amberText"
                 >
                   {pending === "disable"
                     ? "Disabling…"
@@ -322,65 +258,59 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontFamily: fontSans,
-              fontSize: 13,
-              color: P.ink,
-            }}
-          >
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse font-sans text-sm text-ink">
             <thead>
-              <tr
-                style={{
-                  textAlign: "left",
-                  borderBottom: `1px solid ${P.line}`,
-                }}
-              >
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Email</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Role</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>
+              <tr className="border-b border-line text-left">
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
+                  Email
+                </th>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
+                  Role
+                </th>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
                   Auth user
                 </th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Profile</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Group</th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
+                  Profile
+                </th>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
+                  Group
+                </th>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
                   Group role
                 </th>
-                <th style={{ padding: "8px 6px", fontWeight: 600 }}>Note</th>
+                <th className="px-1.5 py-2 text-xs font-semibold text-ink3">
+                  Note
+                </th>
               </tr>
             </thead>
             <tbody>
               {(status?.summary ?? []).map((row) => (
                 <tr
                   key={row.key}
-                  style={{ borderBottom: `1px solid ${P.line2}` }}
+                  className="border-b border-lineSoft hover:bg-surfaceAlt"
                 >
-                  <td style={{ padding: "8px 6px" }}>{row.email}</td>
-                  <td style={{ padding: "8px 6px" }}>{row.role}</td>
-                  <td style={{ padding: "8px 6px" }}>
+                  <td className="px-1.5 py-2">{row.email}</td>
+                  <td className="px-1.5 py-2">{row.role}</td>
+                  <td className="px-1.5 py-2">
                     <StatePill state={row.authUser} />
                   </td>
-                  <td style={{ padding: "8px 6px" }}>
+                  <td className="px-1.5 py-2">
                     <StatePill state={row.profile} />
                   </td>
-                  <td style={{ padding: "8px 6px" }}>{row.groupName ?? "—"}</td>
-                  <td style={{ padding: "8px 6px" }}>
+                  <td className="px-1.5 py-2">{row.groupName ?? "—"}</td>
+                  <td className="px-1.5 py-2">
                     <StatePill state={row.groupAssignment} />
                   </td>
-                  <td style={{ padding: "8px 6px", color: P.ink2 }}>
+                  <td className="px-1.5 py-2 text-ink2">
                     {row.skipReason ?? ""}
                   </td>
                 </tr>
               ))}
               {(status?.summary ?? []).length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    style={{ padding: "12px 6px", color: P.ink3 }}
-                  >
+                  <td colSpan={7} className="px-1.5 py-3 text-ink3">
                     No status yet. Click Refresh status to load.
                   </td>
                 </tr>
@@ -393,35 +323,13 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
           <div
             role="region"
             aria-label="Edge Function diagnostics"
-            style={{
-              background: P.surface,
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              padding: "12px 14px",
-              fontFamily: fontSans,
-              fontSize: 13,
-              color: P.ink,
-              display: "grid",
-              gap: 10,
-            }}
+            className="grid gap-2.5 rounded-sm border border-line bg-surfaceAlt px-3.5 py-3 font-sans text-sm text-ink"
           >
-            <strong style={{ fontSize: 13 }}>Edge Function diagnostics</strong>
-            <div
-              style={{
-                display: "grid",
-                gap: 4,
-                fontFamily: fontSans,
-                fontSize: 12,
-              }}
-            >
+            <strong className="text-sm">Edge Function diagnostics</strong>
+            <div className="grid gap-1 font-sans text-xs">
               <div>
                 Caller auth user id:{" "}
-                <code
-                  style={{
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  }}
-                >
+                <code className="font-mono">
                   {status.diagnostics.callerAuthUserId ?? "(none)"}
                 </code>
               </div>
@@ -453,17 +361,7 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                 </div>
               ) : null}
               {status.diagnostics.profileLookup.postgrestError ? (
-                <div
-                  style={{
-                    background: P.terraSoft,
-                    border: `1px solid ${P.terra}`,
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    color: "#7d3621",
-                    display: "grid",
-                    gap: 2,
-                  }}
-                >
+                <div className="grid gap-0.5 rounded-sm border border-rose/40 bg-roseSoft px-2.5 py-2 text-rose">
                   <div>
                     <strong>PostgREST error</strong>
                   </div>
@@ -497,22 +395,15 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
               ) : null}
             </div>
             <div>
-              <strong style={{ fontSize: 12 }}>
-                Env presence (names only)
-              </strong>
-              <ul
-                style={{
-                  margin: "4px 0 0 18px",
-                  padding: 0,
-                  fontFamily: fontSans,
-                  fontSize: 12,
-                }}
-              >
+              <strong className="text-xs">Env presence (names only)</strong>
+              <ul className="mb-0 ml-0 mr-0 mt-1 list-disc p-0 pl-5 font-sans text-xs">
                 {Object.entries(status.diagnostics.envPresent).map(
                   ([name, present]) => (
                     <li key={name}>
                       <code>{name}</code>:{" "}
-                      <span style={{ color: present ? P.sage : P.terra }}>
+                      <span
+                        className={cn(present ? "text-sageDeep" : "text-rose")}
+                      >
                         {present ? "set" : "missing"}
                       </span>
                     </li>
@@ -526,18 +417,10 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
         {warnings.length > 0 ? (
           <div
             role="status"
-            style={{
-              background: P.mustardSoft,
-              border: `1px solid ${P.mustard}`,
-              borderRadius: 8,
-              padding: "10px 12px",
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink,
-            }}
+            className="rounded-sm border border-amber bg-amberSoft px-3 py-2.5 font-sans text-sm text-ink"
           >
             <strong>Warnings:</strong>
-            <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+            <ul className="mb-0 ml-0 mr-0 mt-1.5 list-disc p-0 pl-5">
               {warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
@@ -548,27 +431,10 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
         {errors.length > 0 ? (
           <div
             role="alert"
-            style={{
-              background: P.terraSoft,
-              border: `1px solid ${P.terra}`,
-              borderRadius: 8,
-              padding: "12px 14px",
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: "#7d3621",
-              display: "grid",
-              gap: 8,
-            }}
+            className="grid gap-2 rounded-sm border border-rose/40 bg-roseSoft px-3.5 py-3 font-sans text-sm text-rose"
           >
             <strong>Test account check is blocked</strong>
-            <ul
-              style={{
-                margin: 0,
-                padding: "0 0 0 18px",
-                display: "grid",
-                gap: 2,
-              }}
-            >
+            <ul className="m-0 grid list-disc gap-0.5 p-0 pl-5">
               {/* One plain-language line per distinct problem; identical raw
                   errors that translate to the same message collapse to one. */}
               {[...new Set(errors.map(translateTestAccountError))].map(
@@ -577,27 +443,15 @@ export function TestAccountsPanel({ initialStatus, initialErrors }: Props) {
                 )
               )}
             </ul>
-            <p style={{ margin: 0 }}>
+            <p className="m-0">
               Next step: run <strong>Diagnose</strong> above for a deeper check,
               then review the test accounts table.
             </p>
             <details>
-              <summary
-                className="lg-sac-summary"
-                style={{ fontFamily: fontSans, fontSize: 12, fontWeight: 600 }}
-              >
+              <summary className="lg-sac-summary font-sans text-xs font-semibold">
                 Details
               </summary>
-              <ul
-                style={{
-                  margin: "6px 0 0",
-                  padding: "0 0 0 18px",
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  fontSize: 12,
-                  display: "grid",
-                  gap: 2,
-                }}
-              >
+              <ul className="mb-0 ml-0 mr-0 mt-1.5 grid list-disc gap-0.5 p-0 pl-5 font-mono text-xs">
                 {errors.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}

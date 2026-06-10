@@ -9,6 +9,7 @@
 // server-side in the action.
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetHistoryCategory,
@@ -30,16 +31,14 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerPill,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Fixed locale + UTC so server and client render the same string (no hydration
 // mismatch). Mirrors the Clean Slate card's snapshot formatter.
@@ -64,19 +63,12 @@ export function HistoryResetCard({
       intro="Clear a single category of accumulated history at a time — useful before launch to remove invalid test data without wiping everything. Each reset captures a recoverable snapshot of just that category before deleting, and is audited. People, groups, leaders, memberships, settings, and other categories are untouched. To clear every category at once, use Clean Slate instead."
     >
       {state === null ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           Impact preview unavailable — the per-category counts couldn&rsquo;t be
           loaded. Resets are disabled until they read successfully.
         </p>
       ) : (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div className="grid gap-2.5">
           {state.categories.map((category) => (
             <CategoryResetRow key={category.category} category={category} />
           ))}
@@ -116,80 +108,35 @@ function CategoryResetRow({
   const snapshot = category.snapshot;
 
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        background: P.surface,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 700,
-              color: P.ink,
-            }}
-          >
+    <div className="grid gap-2.5 rounded-sm border border-line bg-surface px-3.5 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-sans text-sm font-semibold text-ink">
             {meta.label}
           </div>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              margin: "2px 0 0",
-              lineHeight: 1.45,
-            }}
-          >
+          <p className="m-0 mt-0.5 font-sans text-xs leading-snug text-ink2">
             {meta.description}
           </p>
         </div>
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink2,
-            whiteSpace: "nowrap",
-          }}
-        >
+        <div className="whitespace-nowrap font-sans text-xs text-ink2">
           {nothingToReset ? (
             "No rows"
           ) : (
             <>
-              <strong style={{ color: P.ink }}>{category.count}</strong> row
+              <strong className="text-ink">{category.count}</strong> row
               {category.count === 1 ? "" : "s"}
             </>
           )}
         </div>
       </div>
 
-      <form action={reset.formAction} style={{ display: "grid", gap: 8 }}>
+      <form action={reset.formAction} className="grid gap-2">
         <input type="hidden" name="category" value={category.category} />
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-end",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-40 flex-1 basis-44">
             <label
               htmlFor={`history-reset-confirm-${category.category}`}
-              style={fieldLabelStyle}
+              className={fieldLabelClassName}
             >
               Type {HISTORY_RESET_CONFIRM_PHRASE} to confirm
             </label>
@@ -201,27 +148,26 @@ function CategoryResetRow({
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={HISTORY_RESET_CONFIRM_PHRASE}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
               disabled={nothingToReset}
             />
           </div>
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="destructive"
             size="sm"
             disabled={reset.pending || !phraseMatches || nothingToReset}
           >
             {reset.pending ? "Clearing…" : "Reset"}
-          </PButton>
+          </Button>
         </div>
         {reset.state?.ok ? (
           reset.state.value.nothingToClear ? (
-            <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+            <span className="font-sans text-xs text-ink2">
               Already clear — there was nothing in this category to clear.
             </span>
           ) : (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Cleared {reset.state.value.totalRows} row
               {reset.state.value.totalRows === 1 ? "" : "s"}. A snapshot was
               saved for recovery.
@@ -232,61 +178,30 @@ function CategoryResetRow({
       </form>
 
       {snapshot ? (
+        // Recovery treatment: a sage-accented panel so the undo control reads
+        // as the safety net, distinct from the reset above.
         <form
           ref={revert.formRef}
           action={revert.formAction}
-          style={{
-            display: "grid",
-            gap: 8,
-            // Recovery treatment: a sage-accented panel so the undo control
-            // reads as the safety net, distinct from the reset above.
-            background: P.sageSoft,
-            border: `1px solid ${P.sage}`,
-            borderRadius: 8,
-            padding: "10px 12px",
-          }}
+          className="grid gap-2 rounded-sm border border-sage bg-sageSoft px-3 py-2.5"
         >
           <input type="hidden" name="snapshotId" value={snapshot.id} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                color: P.sageTextStrong,
-                fontWeight: 700,
-              }}
-            >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-sans text-sm font-semibold text-sageDeep">
               Recovery
             </span>
             <DangerPill label="Reversible" tone="reversible" />
           </div>
-          <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+          <div className="font-sans text-xs text-ink2">
             Recoverable snapshot: {snapshot.totalRows} row
             {snapshot.totalRows === 1 ? "" : "s"} captured{" "}
             {formatSnapshotTime(snapshot.createdAt)} UTC.
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-end",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-40 flex-1 basis-44">
               <label
                 htmlFor={`history-restore-confirm-${category.category}`}
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to restore
               </label>
@@ -298,8 +213,7 @@ function CategoryResetRow({
                 value={restoreConfirm}
                 onChange={(e) => setRestoreConfirm(e.target.value)}
                 placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-                className={fieldInputClass}
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
             </div>
             <PButton
@@ -312,7 +226,7 @@ function CategoryResetRow({
             </PButton>
           </div>
           {revert.state?.ok ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Restored {revert.state.value.totalRows} row
               {revert.state.value.totalRows === 1 ? "" : "s"} from the snapshot.
             </span>

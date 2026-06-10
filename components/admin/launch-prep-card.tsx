@@ -9,7 +9,7 @@
 // behind a PREPARE FOR LAUNCH type-to-confirm phrase re-checked server-side.
 
 import { useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { superAdminLaunchPrep } from "@/app/(protected)/admin/super-admin/launch-prep-actions";
 import {
   LAUNCH_PREP_CONFIRM_PHRASE,
@@ -26,16 +26,15 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // The Home "Needs attention" warning each launch-optics mute flag silences,
 // phrased as the operator sees it on Home (not the flag's "Mute: …" label).
@@ -88,68 +87,31 @@ export function LaunchPrepCard({
       >
         {/* Impact preview — history that will be cleared. */}
         {impactUnavailable ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             Impact preview unavailable — the history counts couldn&rsquo;t be
             loaded. Launch prep is disabled until they read successfully.
           </p>
         ) : (
-          <div
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              background: P.bgDeep,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                fontFamily: fontSans,
-                fontSize: 12,
-                color: P.ink2,
-              }}
-            >
+          <div className="grid gap-2 rounded-sm border border-line bg-surfaceAlt px-3 py-2.5">
+            <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
               <span>Clear accumulated history</span>
-              <strong style={{ color: P.ink }}>
+              <strong className="text-ink">
                 {historyRows} row{historyRows === 1 ? "" : "s"}
               </strong>
             </div>
-            <div style={{ display: "grid", gap: 4 }}>
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 12,
-                  color: P.ink2,
-                }}
-              >
+            <div className="grid gap-1">
+              <div className="font-sans text-xs text-ink2">
                 Hide launch warnings on Home
               </div>
               {warnings.map((w) => (
                 <div
                   key={w.key}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    fontFamily: fontSans,
-                    fontSize: 12,
-                    color: P.ink3,
-                    paddingLeft: 10,
-                  }}
+                  className="flex justify-between gap-3 pl-2.5 font-sans text-xs text-ink3"
                 >
                   <span>{w.label}</span>
-                  <strong style={{ color: w.alreadyMuted ? P.ink3 : P.ink }}>
+                  <strong
+                    className={cn(w.alreadyMuted ? "text-ink3" : "text-ink")}
+                  >
                     {w.alreadyMuted ? "already hidden" : "will hide"}
                   </strong>
                 </div>
@@ -158,9 +120,12 @@ export function LaunchPrepCard({
           </div>
         )}
 
-        <form action={formAction} style={{ display: "grid", gap: 10 }}>
+        <form action={formAction} className="grid gap-2.5">
           <div>
-            <label htmlFor="launch-prep-confirm" style={fieldLabelStyle}>
+            <label
+              htmlFor="launch-prep-confirm"
+              className={fieldLabelClassName}
+            >
               Type {LAUNCH_PREP_CONFIRM_PHRASE} to confirm
             </label>
             <input
@@ -171,21 +136,20 @@ export function LaunchPrepCard({
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={LAUNCH_PREP_CONFIRM_PHRASE}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <PButton
+          <div className="flex items-center gap-2.5">
+            <Button
               type="submit"
-              tone="terra"
+              variant="destructive"
               size="md"
               disabled={pending || !phraseMatches || impactUnavailable}
             >
               {pending ? "Preparing…" : "Prepare for launch"}
-            </PButton>
+            </Button>
             {state?.ok ? (
-              <span style={successTextStyle}>
+              <span className={successTextClassName}>
                 {state.value.clearedRows > 0
                   ? `Cleared ${state.value.clearedRows} row${
                       state.value.clearedRows === 1 ? "" : "s"
@@ -203,14 +167,7 @@ export function LaunchPrepCard({
 
         {/* When everything is already done, reassure rather than read as broken. */}
         {alreadyReady ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             Already launch-ready — there&rsquo;s no history to clear and the
             launch warnings are already hidden. Running it again is safe.
           </p>

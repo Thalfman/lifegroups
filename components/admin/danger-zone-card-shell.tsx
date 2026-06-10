@@ -1,10 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 
 // Shared presentational shell for the Danger Zone workflow cards (Super Admin
 // redesign).
 //
-// Every card reads in two visually distinct registers: a terra "destructive"
+// Every card reads in two visually distinct registers: a rose "destructive"
 // register for the delete/reset itself, and a calmer sage "recovery" register
 // for the snapshot/revert controls that undo it — so the action that destroys
 // data never blends into the controls that recover it.
@@ -19,53 +20,41 @@ export function DangerCard({
   children,
 }: {
   title: string;
-  // A string is rendered as the standard terra lede; pass a node for richer
-  // intros.
+  // A string is rendered as the standard lede; pass a node for richer intros.
   intro: ReactNode;
-  // The headline "Reset everything" card carries a heavier border.
+  // The headline "Reset everything" card carries a stronger border.
   emphasis?: boolean;
   children: ReactNode;
 }) {
   return (
     <div
-      style={{
-        background: P.terraSoft,
-        border: `${emphasis ? 2 : 1}px solid ${P.terra}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 14,
-      }}
+      className={cn(
+        "overflow-hidden rounded-lg border bg-surface",
+        emphasis ? "border-rose" : "border-rose/40"
+      )}
     >
-      <div style={{ display: "grid", gap: 8 }}>
-        <h3
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 18,
-            fontWeight: 600,
-            color: P.ink,
-            margin: 0,
-          }}
-        >
+      {/* roseSoft header strip + status dot — the danger register, carried by
+          a tinted full-width strip rather than a stripe. */}
+      <div
+        className={cn(
+          "grid gap-2 border-b bg-roseSoft px-5 py-4",
+          emphasis ? "border-rose" : "border-rose/40"
+        )}
+      >
+        <h3 className="m-0 flex items-center gap-2.5 font-display text-lg font-medium text-ink">
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 shrink-0 rounded-pill bg-rose"
+          />
           {title}
         </h3>
         {typeof intro === "string" ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.terraTextStrong,
-              lineHeight: 1.55,
-              margin: 0,
-            }}
-          >
-            {intro}
-          </p>
+          <p className="m-0 font-sans text-sm text-ink2">{intro}</p>
         ) : (
           intro
         )}
       </div>
-      {children}
+      <div className="grid gap-3.5 p-5">{children}</div>
     </div>
   );
 }
@@ -77,15 +66,18 @@ export type DangerPillTone =
   | "info"
   | "reversible";
 
-const PILL_STYLE: Record<
+// Map the danger-card pill tones onto the design-system Badge vocabulary:
+// sage = safe/reversible, amber = needs the confirmation phrase, quiet
+// outlines for locked/info.
+const PILL_TONE: Record<
   DangerPillTone,
-  { bg: string; border: string; color: string }
+  { tone: BadgeTone; className?: string }
 > = {
-  ready: { bg: P.sageSoft, border: P.sage, color: P.sageTextStrong },
-  reversible: { bg: P.sageSoft, border: P.sage, color: P.sageTextStrong },
-  locked: { bg: P.surface, border: P.line, color: P.ink3 },
-  confirm: { bg: P.mustardSoft, border: P.mustard, color: P.mustardTextStrong },
-  info: { bg: P.surface, border: P.line, color: P.ink2 },
+  ready: { tone: "sage" },
+  reversible: { tone: "sage" },
+  locked: { tone: "ghost", className: "bg-surface" },
+  confirm: { tone: "amber" },
+  info: { tone: "ghost", className: "bg-surface text-ink2" },
 };
 
 export function DangerPill({
@@ -95,28 +87,11 @@ export function DangerPill({
   label: string;
   tone: DangerPillTone;
 }) {
-  const s = PILL_STYLE[tone];
+  const t = PILL_TONE[tone];
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        border: `1px solid ${s.border}`,
-        borderRadius: 999,
-        background: s.bg,
-        color: s.color,
-        fontFamily: fontSans,
-        fontSize: 10.5,
-        fontWeight: 700,
-        letterSpacing: 1,
-        lineHeight: 1,
-        padding: "5px 8px",
-        textTransform: "uppercase",
-        whiteSpace: "nowrap",
-      }}
-    >
+    <Badge tone={t.tone} className={t.className}>
       {label}
-    </span>
+    </Badge>
   );
 }
 
@@ -141,52 +116,25 @@ export function DangerSection({
   const recovery = variant === "recovery";
   return (
     <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${recovery ? P.sage : P.line}`,
-        borderRadius: 8,
-        ...(recovery ? { boxShadow: `inset 3px 0 0 ${P.sage}` } : null),
-        padding: "12px 14px",
-        display: "grid",
-        gap: 10,
-        ...style,
-      }}
+      className={cn(
+        "grid gap-2.5 rounded-sm border px-3.5 py-3",
+        recovery ? "border-sage bg-sageSoft" : "border-line bg-surface"
+      )}
+      style={style}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: recovery ? P.sageTextStrong : P.ink3,
-            fontWeight: 700,
-          }}
+          className={cn(
+            "font-sans text-sm font-semibold",
+            recovery ? "text-sageDeep" : "text-ink3"
+          )}
         >
           {label}
         </span>
         {status ? <DangerPill label={status.label} tone={status.tone} /> : null}
       </div>
       {description ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            lineHeight: 1.5,
-            margin: 0,
-          }}
-        >
-          {description}
-        </p>
+        <p className="m-0 font-sans text-sm text-ink2">{description}</p>
       ) : null}
       {children}
     </section>

@@ -1,4 +1,4 @@
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { Badge } from "@/components/ui/badge";
 import { FROZEN_SURFACE_EXPLAINER } from "@/lib/admin/frozen-surface-copy";
 
 // The explicit "frozen" signal for ADR-0002 surfaces gated behind a default-off
@@ -11,57 +11,15 @@ export function FrozenSurfaceNotice({
   surfaceLabel: string;
 }) {
   return (
-    <div
-      style={{ display: "grid", placeItems: "center", padding: "48px 20px" }}
-    >
-      <div
-        style={{
-          maxWidth: 520,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 12,
-          padding: "28px 30px",
-          display: "grid",
-          gap: 12,
-          textAlign: "center",
-        }}
-      >
-        <span
-          style={{
-            justifySelf: "center",
-            fontFamily: fontSans,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: 1.4,
-            textTransform: "uppercase",
-            color: P.ink3,
-            border: `1px solid ${P.line}`,
-            borderRadius: 999,
-            padding: "5px 10px",
-          }}
-        >
+    <div className="grid place-items-center px-5 py-12">
+      <div className="grid max-w-[520px] gap-3 rounded-lg border border-line bg-surface px-7 py-7 text-center">
+        <Badge tone="ghost" className="justify-self-center">
           Frozen
-        </span>
-        <h1
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 22,
-            fontWeight: 600,
-            color: P.ink,
-            margin: 0,
-          }}
-        >
+        </Badge>
+        <h1 className="m-0 font-display text-2xl font-semibold text-ink">
           {surfaceLabel} is frozen
         </h1>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 14,
-            color: P.ink2,
-            lineHeight: 1.55,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-base text-ink2">
           {FROZEN_SURFACE_EXPLAINER}
         </p>
       </div>

@@ -8,6 +8,7 @@
 // and re-validated server-side in the RPC; the client gating is only UX.
 
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminPermanentDelete,
@@ -30,16 +31,15 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -116,9 +116,9 @@ export function PermanentDeleteCard({
         status={{ label: "Requires confirmation", tone: "confirm" }}
       >
         {/* Target pickers. */}
-        <div style={{ display: "grid", gap: 10 }}>
+        <div className="grid gap-2.5">
           <div>
-            <label htmlFor="perm-delete-type" style={fieldLabelStyle}>
+            <label htmlFor="perm-delete-type" className={fieldLabelClassName}>
               Record type
             </label>
             <select
@@ -128,8 +128,7 @@ export function PermanentDeleteCard({
                 setEntityType(e.target.value);
                 setSelectedId("");
               }}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldSelectClassName}
             >
               {targets.map((g) => (
                 <option key={g.entityType} value={g.entityType}>
@@ -139,15 +138,14 @@ export function PermanentDeleteCard({
             </select>
           </div>
           <div>
-            <label htmlFor="perm-delete-row" style={fieldLabelStyle}>
+            <label htmlFor="perm-delete-row" className={fieldLabelClassName}>
               Record
             </label>
             <select
               id="perm-delete-row"
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldSelectClassName}
             >
               <option value="">
                 Select a {activeGroup?.label ?? "record"}…
@@ -162,7 +160,7 @@ export function PermanentDeleteCard({
         </div>
 
         {/* Preflight. */}
-        <form action={preflight.formAction} style={{ display: "grid", gap: 8 }}>
+        <form action={preflight.formAction} className="grid gap-2">
           <input type="hidden" name="entityType" value={entityType} />
           <input type="hidden" name="id" value={selectedId} />
           <div>
@@ -184,12 +182,15 @@ export function PermanentDeleteCard({
         <form
           ref={del.formRef}
           action={del.formAction}
-          style={{ display: "grid", gap: 10 }}
+          className="grid gap-2.5"
         >
           <input type="hidden" name="entityType" value={entityType} />
           <input type="hidden" name="id" value={selectedId} />
           <div>
-            <label htmlFor="perm-delete-confirm" style={fieldLabelStyle}>
+            <label
+              htmlFor="perm-delete-confirm"
+              className={fieldLabelClassName}
+            >
               Type {PERMANENT_DELETE_CONFIRM_PHRASE} to confirm
             </label>
             <input
@@ -200,34 +201,26 @@ export function PermanentDeleteCard({
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={PERMANENT_DELETE_CONFIRM_PHRASE}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <PButton
+          <div className="flex items-center gap-2.5">
+            <Button
               type="submit"
-              tone="terra"
+              variant="destructive"
               size="md"
               disabled={del.pending || !canDelete}
             >
               {del.pending ? "Deleting…" : "Permanently delete"}
-            </PButton>
+            </Button>
             {del.state?.ok ? (
-              <span style={successTextStyle}>
+              <span className={successTextClassName}>
                 Deleted. A backup copy was captured for recovery.
               </span>
             ) : null}
           </div>
           {report !== null && !report.deletable ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink2,
-                margin: 0,
-              }}
-            >
+            <p className="m-0 font-sans text-xs text-ink2">
               This record can&rsquo;t be deleted yet — see the blockers above.
             </p>
           ) : null}
@@ -243,17 +236,7 @@ export function PermanentDeleteCard({
 function PreflightReport({ report }: { report: DeletionPreflight }) {
   if (report.confidential) {
     return (
-      <div
-        style={{
-          border: `1px solid ${P.line}`,
-          borderRadius: 8,
-          background: P.bgDeep,
-          padding: "10px 12px",
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-        }}
-      >
+      <div className="rounded-sm border border-line bg-surfaceAlt px-3 py-2.5 font-sans text-sm text-ink2">
         This person has confidential records and cannot be permanently deleted;
         disable instead.
       </div>
@@ -261,64 +244,36 @@ function PreflightReport({ report }: { report: DeletionPreflight }) {
   }
   if (report.forbidden) {
     return (
-      <div
-        style={{
-          border: `1px solid ${P.line}`,
-          borderRadius: 8,
-          background: P.bgDeep,
-          padding: "10px 12px",
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-        }}
-      >
+      <div className="rounded-sm border border-line bg-surfaceAlt px-3 py-2.5 font-sans text-sm text-ink2">
         That record can&rsquo;t be targeted for permanent deletion.
       </div>
     );
   }
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        background: P.bgDeep,
-        padding: "10px 12px",
-        display: "grid",
-        gap: 6,
-        fontFamily: fontSans,
-        fontSize: 12,
-        color: P.ink2,
-      }}
-    >
+    <div className="grid gap-1.5 rounded-sm border border-line bg-surfaceAlt px-3 py-2.5 font-sans text-xs text-ink2">
       {report.blockers.length > 0 ? (
         <>
-          <div style={{ fontWeight: 700, color: P.ink }}>
+          <div className="font-bold text-ink">
             Blocked by {report.blockers.length} dependent
             {report.blockers.length === 1 ? "" : "s"} — clear these first:
           </div>
           {report.blockers.map((b) => (
             <div
               key={`${b.table}.${b.column}`}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
+              className="flex justify-between gap-3"
             >
               <span>
                 {b.table}.{b.column} ({b.action})
               </span>
-              <strong style={{ color: P.ink }}>{b.count}</strong>
+              <strong className="text-ink">{b.count}</strong>
             </div>
           ))}
         </>
       ) : (
-        <div style={{ color: P.ink }}>
-          No blocking dependents — safe to delete.
-        </div>
+        <div className="text-ink">No blocking dependents — safe to delete.</div>
       )}
       {report.setNull.length > 0 ? (
-        <div style={{ marginTop: 4 }}>
+        <div className="mt-1">
           Will clear and back up{" "}
           {report.setNull.reduce((n, s) => n + s.count, 0)} linked reference
           {report.setNull.reduce((n, s) => n + s.count, 0) === 1
@@ -344,18 +299,11 @@ function TombstoneRecovery({ tombstones }: { tombstones: RecentTombstone[] }) {
       description="Restore a deleted record from its backup copy, re-linking the references the delete cleared. The backup is kept after restoring."
     >
       {tombstones.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           No backups yet — nothing has been permanently deleted.
         </p>
       ) : (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="grid gap-2">
           {tombstones.map((t) => (
             <TombstoneRow key={t.id} tombstone={t} />
           ))}
@@ -384,45 +332,22 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
     <form
       ref={restore.formRef}
       action={restore.formAction}
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        background: P.surface,
-        padding: "10px 12px",
-        display: "grid",
-        gap: 8,
-      }}
+      className="grid gap-2 rounded-sm border border-line bg-surface px-3 py-2.5"
     >
       <input type="hidden" name="tombstoneId" value={tombstone.id} />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          fontFamily: fontSans,
-          fontSize: 12,
-          color: P.ink2,
-        }}
-      >
+      <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
         <span>
-          <strong style={{ color: P.ink }}>{tombstone.label}</strong>{" "}
-          <span style={{ color: P.ink3 }}>({tombstone.entityType})</span>
+          <strong className="text-ink">{tombstone.label}</strong>{" "}
+          <span className="text-ink3">({tombstone.entityType})</span>
         </span>
         <span>{formatTime(tombstone.deletedAt)} UTC</span>
       </div>
       {alreadyRestored ? (
-        <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink3 }}>
+        <span className="font-sans text-xs text-ink3">
           Already restored {formatTime(tombstone.restoredAt as string)} UTC.
         </span>
       ) : (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="flex flex-wrap items-center gap-2">
           <input
             name="confirm"
             type="text"
@@ -430,8 +355,7 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder={TOMBSTONE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={{ ...fieldInputStyle, maxWidth: 220 }}
+            className={cnInput}
           />
           <PButton
             type="submit"
@@ -442,7 +366,7 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
             {restore.pending ? "Restoring…" : "Restore"}
           </PButton>
           {restore.state?.ok ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Restored ({restore.state.value.relinked} re-linked,{" "}
               {restore.state.value.skipped} skipped).
             </span>
@@ -453,3 +377,7 @@ function TombstoneRow({ tombstone }: { tombstone: RecentTombstone }) {
     </form>
   );
 }
+
+// The tombstone confirm input sits inline beside its Restore button, so it
+// keeps a bounded width instead of the full-width field default.
+const cnInput = `${fieldInputClassName} max-w-[220px]`;

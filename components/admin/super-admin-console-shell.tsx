@@ -1,5 +1,7 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/button";
 import { OwnerControlsOverview } from "@/components/admin/owner-controls-overview";
 import { AuditTrailSection } from "@/components/admin/audit-trail-section";
 import {
@@ -61,10 +63,8 @@ import {
 } from "@/lib/admin/feature-flags";
 import {
   StatusBadge,
-  STATUS_STYLE,
   type StatusTone,
 } from "@/components/admin/console-status";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   AuditEventsRow,
   GroupsRow,
@@ -151,24 +151,12 @@ export type SuperAdminConsoleData = {
   };
 };
 
-const cardStyle: CSSProperties = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  padding: "18px 22px",
-};
+// Card anatomy (design direction §4): surface, line border, no shadow.
+const CARD_CLASS = "rounded-lg border border-line bg-surface p-card";
 
-const cardGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 14,
-};
-
-const twoCardGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 14,
-};
+// Card grids stack on mobile, spread from md (replacing .lg-m-grid-stack).
+const CARD_GRID_CLASS = "grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-3.5";
+const TWO_CARD_GRID_CLASS = "grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3.5";
 
 // Fixed locale + UTC so the server-rendered status row matches whatever a later
 // re-render would produce (no hydration drift). Mirrors the danger cards.
@@ -192,23 +180,15 @@ function StatusActionLink({ action }: { action: StatusAction }) {
   return (
     <a
       href={`#${action.hash}`}
-      style={{
-        fontFamily: fontSans,
-        fontSize: 12,
-        fontWeight: 700,
-        color: P.terraTextStrong,
-        textDecoration: "none",
-        whiteSpace: "nowrap",
-        justifySelf: "start",
-      }}
+      className="justify-self-start whitespace-nowrap font-sans text-sm font-semibold text-clay no-underline"
     >
       {action.label} →
     </a>
   );
 }
 
-// A compact chip for the always-visible status row: an eyebrow label, a status
-// badge, a one-line detail (the plain-language reason when something is
+// A compact chip for the always-visible status row: a sentence-case label, a
+// status badge, a one-line detail (the plain-language reason when something is
 // blocked), and — when the state needs attention — the next best action (#454).
 function StatusChip({
   label,
@@ -224,48 +204,14 @@ function StatusChip({
   action?: StatusAction;
 }) {
   return (
-    <div
-      style={{
-        ...cardStyle,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 6,
-        minWidth: 0,
-        alignContent: "start",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 700,
-          }}
-        >
+    <div className="grid min-w-0 content-start gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-sans text-xs font-semibold text-ink3">
           {label}
         </span>
         <StatusBadge label={value} tone={tone} />
       </div>
-      <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink2,
-          lineHeight: 1.4,
-        }}
-      >
-        {detail}
-      </span>
+      <span className="font-sans text-xs leading-snug text-ink2">{detail}</span>
       {action ? <StatusActionLink action={action} /> : null}
     </div>
   );
@@ -279,29 +225,11 @@ function WorkspaceHeader({
   description: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <h2
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 20,
-          fontWeight: 600,
-          letterSpacing: -0.2,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
+    <div className="grid gap-1.5">
+      <h2 className="m-0 font-display text-xl font-semibold text-ink">
         {title}
       </h2>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          lineHeight: 1.55,
-          margin: 0,
-          maxWidth: 680,
-        }}
-      >
+      <p className="m-0 max-w-[680px] font-sans text-sm text-ink2">
         {description}
       </p>
     </div>
@@ -310,15 +238,7 @@ function WorkspaceHeader({
 
 function PanelTitle({ children }: { children: ReactNode }) {
   return (
-    <h3
-      style={{
-        fontFamily: fontDisplay,
-        fontSize: 16,
-        fontWeight: 600,
-        color: P.ink,
-        margin: 0,
-      }}
-    >
+    <h3 className="m-0 font-display text-lg font-medium text-ink">
       {children}
     </h3>
   );
@@ -326,11 +246,11 @@ function PanelTitle({ children }: { children: ReactNode }) {
 
 function Panel({
   children,
-  style,
+  className,
   id,
 }: {
   children: ReactNode;
-  style?: CSSProperties;
+  className?: string;
   // Optional anchor id so a deep link (e.g. #people-import) can scroll to this
   // panel once its workspace is active. scrollMarginTop clears the sticky
   // TopBar + tab rail so an anchor jump never hides the section under them.
@@ -339,13 +259,10 @@ function Panel({
   return (
     <div
       id={id}
-      style={{
-        ...cardStyle,
-        display: "grid",
-        gap: 12,
-        ...(id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : null),
-        ...style,
-      }}
+      className={cn(CARD_CLASS, "grid gap-3", className)}
+      style={
+        id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : undefined
+      }
     >
       {children}
     </div>
@@ -370,49 +287,20 @@ function CommandCard({
   return (
     <div
       id={id}
-      style={{
-        ...cardStyle,
-        display: "grid",
-        gap: 10,
-        alignContent: "start",
-        ...(id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : null),
-      }}
+      className={cn(CARD_CLASS, "grid content-start gap-2.5")}
+      style={
+        id ? { scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET } : undefined
+      }
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 10,
-        }}
-      >
-        <h3
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 18,
-            fontWeight: 600,
-            letterSpacing: -0.2,
-            color: P.ink,
-            margin: 0,
-          }}
-        >
+      <div className="flex items-start justify-between gap-2.5">
+        <h3 className="m-0 font-display text-lg font-medium text-ink">
           {title}
         </h3>
         {status ? (
           <StatusBadge label={status.label} tone={status.tone} />
         ) : null}
       </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          lineHeight: 1.5,
-          margin: 0,
-        }}
-      >
-        {description}
-      </p>
+      <p className="m-0 font-sans text-sm text-ink2">{description}</p>
       {children}
     </div>
   );
@@ -426,18 +314,9 @@ function MetricRow({
   value: string | number;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        fontFamily: fontSans,
-        fontSize: 12,
-        color: P.ink2,
-      }}
-    >
+    <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
       <span>{label}</span>
-      <strong style={{ color: P.ink }}>{value}</strong>
+      <strong className="text-ink">{value}</strong>
     </div>
   );
 }
@@ -446,15 +325,7 @@ function ErrorBanner() {
   return (
     <div
       role="alert"
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "12px 14px",
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: P.terraTextStrong,
-      }}
+      className="rounded-sm border border-rose/40 bg-roseSoft px-3.5 py-3 font-sans text-sm text-rose"
     >
       Some data couldn&rsquo;t load. The workspaces below show what did load;
       retry in a moment or check the database connection.
@@ -469,6 +340,33 @@ type NextAction = {
   // The obvious next click, wired through the existing #hash → workspace
   // mechanism (#454). Absent when there's nothing to open (e.g. launch-ready).
   action?: StatusAction;
+};
+
+// Soft background + matching border per tone for the Next-step card (status
+// vocabulary: sage = well, amber = watch, rose = concern); the label picks up
+// the deep foreground of the same hue.
+const NEXT_ACTION_CARD_CLASS: Record<StatusTone, string> = {
+  good: "border-sage bg-sageSoft",
+  guarded: "border-sage bg-surface",
+  warning: "border-amber bg-amberSoft",
+  blocked: "border-rose/40 bg-roseSoft",
+  disabled: "border-line bg-surface",
+  active: "border-sage bg-sageSoft",
+  planned: "border-line bg-surface",
+  destructive: "border-rose bg-roseSoft",
+  readonly: "border-line bg-surface",
+};
+
+const NEXT_ACTION_LABEL_CLASS: Record<StatusTone, string> = {
+  good: "text-sageDeep",
+  guarded: "text-sageDeep",
+  warning: "text-amberText",
+  blocked: "text-rose",
+  disabled: "text-ink3",
+  active: "text-sageDeep",
+  planned: "text-ink2",
+  destructive: "text-rose",
+  readonly: "text-ink2",
 };
 
 // The single most important thing to do right now, derived from the same
@@ -532,35 +430,19 @@ function computeNextAction(input: {
 }
 
 function NextActionCard({ action }: { action: NextAction }) {
-  const s = STATUS_STYLE[action.tone];
   return (
     <div
-      style={{
-        background: s.background,
-        border: `1px solid ${s.border}`,
-        borderRadius: 10,
-        padding: "16px 20px",
-        display: "grid",
-        gap: 6,
-      }}
+      className={cn(
+        "grid gap-1.5 rounded-lg border px-5 py-4",
+        NEXT_ACTION_CARD_CLASS[action.tone]
+      )}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
+      <div className="flex items-center justify-between gap-2.5">
         <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: s.color,
-            fontWeight: 700,
-          }}
+          className={cn(
+            "font-sans text-xs font-semibold",
+            NEXT_ACTION_LABEL_CLASS[action.tone]
+          )}
         >
           Next step
         </span>
@@ -569,28 +451,10 @@ function NextActionCard({ action }: { action: NextAction }) {
           tone={action.tone}
         />
       </div>
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
+      <h3 className="m-0 font-display text-lg font-medium text-ink">
         {action.title}
       </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          lineHeight: 1.5,
-          margin: 0,
-        }}
-      >
-        {action.body}
-      </p>
+      <p className="m-0 font-sans text-sm text-ink2">{action.body}</p>
       {action.action ? <StatusActionLink action={action.action} /> : null}
     </div>
   );
@@ -629,7 +493,7 @@ export function SuperAdminConsoleShell({
   });
 
   const statusRow = (
-    <div className="lg-m-grid-stack" style={statusRowGridStyle}>
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
       <StatusChip
         label="Readiness"
         value={readinessLabel}
@@ -793,12 +657,6 @@ const LEGACY_HASH_ALIASES: Record<string, string> = {
   "danger-zone": "danger",
 };
 
-const statusRowGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-  gap: 12,
-};
-
 // ---------------------------------------------------------------------------
 // Workspace 1 — Readiness (default)
 // ---------------------------------------------------------------------------
@@ -823,13 +681,13 @@ function ReadinessWorkspace({
   nextAction: NextAction;
 }) {
   return (
-    <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+    <div className="grid min-w-0 gap-4">
       <WorkspaceHeader
         title="Readiness"
         description="Whether the platform is ready, and the one thing worth doing next. The rest of the controls live in the workspaces above."
       />
       <NextActionCard action={nextAction} />
-      <div className="lg-m-grid-stack" style={cardGridStyle}>
+      <div className={CARD_GRID_CLASS}>
         <CommandCard
           title="Readiness signal"
           description={`${checklistWarningCount} readiness warning${
@@ -868,29 +726,11 @@ function ReadinessWorkspace({
 // dashboard stays compact.
 function HelpAboutDetails() {
   return (
-    <details
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-      }}
-    >
-      <summary
-        className="lg-sac-summary"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "12px 18px",
-          fontFamily: fontSans,
-          fontSize: 13,
-          fontWeight: 600,
-          color: P.ink2,
-        }}
-      >
+    <details className="rounded-lg border border-line bg-surface">
+      <summary className="lg-sac-summary flex items-center gap-2 px-[18px] py-3 font-sans text-sm font-semibold text-ink2">
         About this console
       </summary>
-      <div style={{ padding: "4px 18px 18px" }}>
+      <div className="px-[18px] pb-[18px] pt-1">
         <OwnerControlsOverview />
       </div>
     </details>
@@ -903,7 +743,7 @@ function HelpAboutDetails() {
 
 function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
   return (
-    <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+    <div className="grid min-w-0 gap-4">
       <WorkspaceHeader
         title="Access"
         description="Roles, invitations, and account status. Guardrails are enforced for you: you can’t change your own role, super admin can’t be assigned from the app, and every action is audited."
@@ -933,12 +773,12 @@ function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
       </Panel>
       <AccountManagementCard data={data} />
 
-      <section style={{ display: "grid", gap: 14 }}>
+      <section className="grid gap-3.5">
         <SubsectionHeader
           title="People Ops"
           hint="Bulk-add people and manage over-shepherd coverage."
         />
-        <div className="lg-m-grid-stack" style={twoCardGridStyle}>
+        <div className={TWO_CARD_GRID_CLASS}>
           <PeopleImportCard />
           <CoverageManagementCard data={data} />
         </div>
@@ -949,29 +789,9 @@ function AccessWorkspace({ data }: { data: SuperAdminConsoleData }) {
 
 function SubsectionHeader({ title, hint }: { title: string; hint: string }) {
   return (
-    <div style={{ display: "grid", gap: 4 }}>
-      <h3
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 17,
-          fontWeight: 600,
-          color: P.ink,
-          margin: 0,
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
-        {hint}
-      </p>
+    <div className="grid gap-1">
+      <h3 className="m-0 font-display text-lg font-medium text-ink">{title}</h3>
+      <p className="m-0 font-sans text-sm text-ink2">{hint}</p>
     </div>
   );
 }
@@ -988,88 +808,32 @@ function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
   return (
     <Panel id="account-status">
       <PanelTitle>Account status</PanelTitle>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink2">
         Disable or re-enable a profile, or send a password-reset email. Every
         action is audited. You can&rsquo;t disable yourself or the super admin.
       </p>
       {profiles.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            margin: 0,
-          }}
-        >
-          No profiles loaded.
-        </p>
+        <p className="m-0 font-sans text-sm text-ink3">No profiles loaded.</p>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: 1,
-            background: P.line2,
-            border: `1px solid ${P.line}`,
-            borderRadius: 8,
-            overflow: "hidden",
-          }}
-        >
+        <div className="grid gap-px overflow-hidden rounded-sm border border-line bg-lineSoft">
           {profiles.map((p) => (
             <div
               key={p.id}
-              className="lg-m-grid-stack"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                background: P.surface,
-                padding: "10px 14px",
-              }}
+              className="flex min-h-11 flex-wrap items-center justify-between gap-3 bg-surface px-3.5 py-2.5"
             >
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: P.ink,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 font-sans text-sm font-semibold text-ink">
                   {p.full_name}
                   <StatusBadge
                     label={p.status === "active" ? "Active" : "Disabled"}
                     tone={p.status === "active" ? "good" : "disabled"}
                   />
                 </div>
-                <div
-                  style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
-                >
-                  {p.email}
-                </div>
+                <div className="font-sans text-xs text-ink2">{p.email}</div>
               </div>
               {/* nowrap keeps the two small actions on one line rather than
                   stacking into two-line buttons (Admin Interaction Model). */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  flexWrap: "nowrap",
-                }}
-              >
+              <div className="flex flex-nowrap items-start gap-2.5">
                 <ProfileStatusForm
                   profileId={p.id}
                   profileName={p.full_name}
@@ -1093,15 +857,7 @@ function PeopleImportCard() {
   return (
     <Panel id="people-import">
       <PanelTitle>People import</PanelTitle>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink2">
         Paste CSV to create leader profiles and member records in one audited
         batch. Parsing and de-duplication run before any write; skipped rows are
         reported back.
@@ -1113,20 +869,7 @@ function PeopleImportCard() {
         <a
           href="/admin/super-admin/people-import-template"
           download
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 14px",
-            borderRadius: 999,
-            fontFamily: fontSans,
-            fontSize: 12,
-            fontWeight: 500,
-            color: P.ink,
-            background: "transparent",
-            border: `1px solid ${P.line}`,
-            textDecoration: "none",
-          }}
+          className={buttonClassName("ghost", "sm")}
         >
           Download CSV template
         </a>
@@ -1141,15 +884,7 @@ function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
   return (
     <Panel id="coverage">
       <PanelTitle>Coverage</PanelTitle>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink2">
         Assign or end Over-Shepherd → Leader coverage. Edits write to the same
         records the cadence tiers and over-shepherd scoping already read.
       </p>
@@ -1157,46 +892,22 @@ function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
         overShepherds={data.overShepherds}
         leaders={data.coverageLeaders}
       />
-      <div style={{ display: "grid", gap: 8 }}>
+      <div className="grid gap-2">
         {data.coverageAssignments.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink3">
             No active coverage assignments.
           </p>
         ) : (
           data.coverageAssignments.map((a) => (
             <div
               key={a.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                border: `1px solid ${P.line}`,
-                borderRadius: 8,
-                padding: "10px 12px",
-              }}
+              className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-line px-3 py-2.5"
             >
               <div>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: P.ink,
-                  }}
-                >
+                <div className="font-sans text-sm font-semibold text-ink">
                   {a.shepherd_name} → {a.over_shepherd_name}
                 </div>
-                <div
-                  style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
-                >
+                <div className="font-sans text-xs text-ink2">
                   since {a.assigned_at}
                 </div>
               </div>
@@ -1215,7 +926,7 @@ function CoverageManagementCard({ data }: { data: SuperAdminConsoleData }) {
 
 function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
   return (
-    <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+    <div className="grid min-w-0 gap-4">
       <WorkspaceHeader
         title="Config"
         description="Feature flags, owner settings, and editable copy. Flags marked Held stay off until they pass a safety review; clearing a copy value falls back to its built-in default."
@@ -1229,7 +940,7 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
         ]}
       />
       <FeatureFlagsCard data={data} />
-      <div className="lg-m-grid-stack" style={twoCardGridStyle}>
+      <div className={TWO_CARD_GRID_CLASS}>
         <OwnerSettingsCard data={data} />
         <CommandCard
           id="ministry-settings"
@@ -1239,13 +950,7 @@ function ConfigWorkspace({ data }: { data: SuperAdminConsoleData }) {
         >
           <Link
             href="/admin/settings"
-            style={{
-              color: P.terra,
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
+            className="font-sans text-sm font-semibold text-clay no-underline"
           >
             Open admin settings
           </Link>
@@ -1271,24 +976,16 @@ function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
         // The form is intentionally withheld on a failed read: the built-in
         // fallback would render the field empty, and saving that would
         // overwrite the real stored value.
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.terraTextStrong,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-rose">
           Couldn’t load owner settings ({data.errors.platformConfig}). Editing
           is disabled until the value reads successfully, so a failed read can’t
           silently overwrite it.
         </p>
       ) : (
         <>
-          <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+          <div className="font-sans text-xs text-ink2">
             Current value:{" "}
-            <strong style={{ color: P.ink }}>
+            <strong className="text-ink">
               {data.appConfig.consoleTracerNote
                 ? data.appConfig.consoleTracerNote
                 : "(empty)"}
@@ -1303,29 +1000,21 @@ function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
 
 // Real feature-flag list with resolved state + toggles. Each row reads as a
 // switch with a name, badges (kind + resolved On/Off), a short risk note, and
-// the toggle. Frozen-surface rows are visually distinct so they don't read as
-// ordinary toggles.
+// the toggle. Frozen-surface rows carry the amber "watch" tint so they don't
+// read as ordinary toggles.
 function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
   const flags = data.appConfig.featureFlags;
   return (
     <Panel id="features">
       <PanelTitle>Feature flags</PanelTitle>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink2">
         Most flags take effect as soon as you flip them. Flags marked{" "}
         <strong>Held</strong> only record your intent: the surface stays off
         until it passes a safety review, so nothing is re-exposed by accident.
         Flags marked <strong>Nav</strong> show or hide a tab in the admin
         navigation — hiding a tab does not block access to its pages.
       </p>
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid gap-2.5">
         {FEATURE_FLAG_DEFINITIONS.map((def) => {
           const resolved = resolveFlag(flags, def.key);
           const state = flags[def.key];
@@ -1343,42 +1032,16 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
           return (
             <div
               key={def.key}
-              className="lg-m-grid-stack"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 12,
-                border: `1px solid ${frozen ? P.mustard : P.line}`,
-                borderRadius: 8,
-                padding: "10px 12px",
-                // Frozen rows carry a distinct accent so they don't read as
-                // ordinary toggles.
-                ...(frozen
-                  ? {
-                      background: P.mustardSoft,
-                      boxShadow: `inset 3px 0 0 ${P.mustard}`,
-                    }
-                  : null),
-              }}
+              className={cn(
+                "flex flex-wrap items-start justify-between gap-3 rounded-sm border p-3",
+                // Frozen rows carry a distinct amber tint so they don't read
+                // as ordinary toggles (tinted surface, not a stripe).
+                frozen ? "border-amber bg-amberSoft" : "border-line"
+              )}
             >
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: P.ink,
-                    }}
-                  >
+              <div className="min-w-0 flex-1 basis-56">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-sans text-sm font-semibold text-ink">
                     {def.label}
                   </span>
                   {/* The flag kind in operator terms (#461): "Standard"
@@ -1420,25 +1083,15 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
                     }
                   />
                 </div>
-                <p
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink2,
-                    margin: "4px 0 0",
-                    lineHeight: 1.45,
-                  }}
-                >
+                <p className="m-0 mt-1 font-sans text-xs leading-snug text-ink2">
                   {def.description}
                 </p>
                 {riskNote ? (
                   <p
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 12,
-                      color: frozenHeldOff ? P.terraTextStrong : P.ink2,
-                      margin: "4px 0 0",
-                    }}
+                    className={cn(
+                      "m-0 mt-1 font-sans text-xs",
+                      frozenHeldOff ? "text-amberText" : "text-ink2"
+                    )}
                   >
                     {riskNote}
                   </p>
@@ -1467,39 +1120,11 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
 // moves down here.
 function FeatureFlagTechnicalNotes() {
   return (
-    <details
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-      }}
-    >
-      <summary
-        className="lg-sac-summary"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "10px 12px",
-          fontFamily: fontSans,
-          fontSize: 12.5,
-          fontWeight: 600,
-          color: P.ink2,
-        }}
-      >
+    <details className="rounded-sm border border-line">
+      <summary className="lg-sac-summary flex items-center gap-2 px-3 py-2.5 font-sans text-sm font-semibold text-ink2">
         Technical notes — how flags are enforced
       </summary>
-      <ul
-        style={{
-          margin: 0,
-          padding: "0 12px 12px 28px",
-          display: "grid",
-          gap: 6,
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink2,
-          lineHeight: 1.5,
-        }}
-      >
+      <ul className="m-0 grid gap-1.5 pb-3 pl-7 pr-3 pt-0 font-sans text-xs leading-relaxed text-ink2">
         <li>
           Held flags gate surfaces frozen by ADR 0002. Under ADR 0009&rsquo;s
           verify-before-flip rule the toggle only stores intent; the surface
@@ -1572,30 +1197,14 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
 
   return (
     <Panel id="usage">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <PanelTitle>Usage &amp; logins</PanelTitle>
         <StatusBadge
           label={trackingOn ? "Tracking on" : "Tracking off"}
           tone={trackingOn ? "active" : "disabled"}
         />
       </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink2">
         Coarse usage telemetry — sign-ins and which top-level area each user
         opens. Recording is gated by the{" "}
         <strong>Usage &amp; login tracking</strong> flag in Config → Feature
@@ -1604,97 +1213,56 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
       </p>
 
       {!trackingOn && events.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink3">
           Tracking is off and nothing has been recorded. Turn on{" "}
           <strong>Usage &amp; login tracking</strong> in Config → Feature flags
           to start seeing logins and area usage here.
         </p>
       ) : events.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink3,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink3">
           Tracking is on. No activity has been recorded yet — events will appear
           here as users sign in and move around the app.
         </p>
       ) : (
         <>
-          <div className="lg-m-grid-stack" style={cardGridStyle}>
-            <div style={{ ...cardStyle, padding: "12px 14px" }}>
+          <div className={CARD_GRID_CLASS}>
+            <div className="grid gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-3">
               <MetricRow label="Sign-ins" value={logins.length} />
               <MetricRow label="Area opens" value={areaViews.length} />
               <MetricRow label="People seen" value={activeActors.size} />
             </div>
           </div>
 
-          <div
-            className="lg-m-grid-stack"
-            style={{ ...twoCardGridStyle, alignItems: "start" }}
-          >
-            <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+          <div className={cn(TWO_CARD_GRID_CLASS, "items-start")}>
+            <div className="grid min-w-0 gap-2">
               <SubsectionHeader
                 title="Areas opened"
                 hint="How often each top-level area was entered, busiest first."
               />
               {sortedAreas.length === 0 ? (
-                <p
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink3,
-                    margin: 0,
-                  }}
-                >
+                <p className="m-0 font-sans text-sm text-ink3">
                   No area views recorded yet.
                 </p>
               ) : (
-                <div style={{ display: "grid", gap: 6 }}>
+                <div className="grid gap-1.5">
                   {sortedAreas.map(([area, count]) => (
-                    <div key={area} style={{ display: "grid", gap: 3 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          fontFamily: fontSans,
-                          fontSize: 12,
-                          color: P.ink2,
-                        }}
-                      >
+                    <div key={area} className="grid gap-1">
+                      <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
                         <span>{labelForArea(area)}</span>
-                        <strong style={{ color: P.ink }}>{count}</strong>
+                        <strong className="text-ink">{count}</strong>
                       </div>
                       <div
                         aria-hidden
-                        style={{
-                          height: 6,
-                          borderRadius: 999,
-                          background: P.line2,
-                          overflow: "hidden",
-                        }}
+                        className="h-1.5 overflow-hidden rounded-pill bg-lineSoft"
                       >
                         <div
+                          className="h-full bg-sage"
                           style={{
-                            height: "100%",
                             width: `${
                               maxAreaCount > 0
                                 ? Math.round((count / maxAreaCount) * 100)
                                 : 0
                             }%`,
-                            background: P.sage,
                           }}
                         />
                       </div>
@@ -1704,50 +1272,26 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
               )}
             </div>
 
-            <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+            <div className="grid min-w-0 gap-2">
               <SubsectionHeader
                 title="Recent sign-ins"
                 hint="The latest logins, newest first."
               />
               {recentLogins.length === 0 ? (
-                <p
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink3,
-                    margin: 0,
-                  }}
-                >
+                <p className="m-0 font-sans text-sm text-ink3">
                   No sign-ins recorded yet.
                 </p>
               ) : (
-                <div style={{ display: "grid", gap: 6 }}>
+                <div className="grid gap-1.5">
                   {recentLogins.map((login) => (
                     <div
                       key={login.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        fontFamily: fontSans,
-                        fontSize: 12,
-                        color: P.ink2,
-                      }}
+                      className="flex justify-between gap-3 font-sans text-xs text-ink2"
                     >
-                      <span
-                        style={{
-                          color: P.ink,
-                          fontWeight: 600,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <span className="truncate font-semibold text-ink">
                         {login.name}
                       </span>
-                      <span style={{ whiteSpace: "nowrap" }}>
-                        {login.at} UTC
-                      </span>
+                      <span className="whitespace-nowrap">{login.at} UTC</span>
                     </div>
                   ))}
                 </div>
@@ -1768,7 +1312,7 @@ function DiagnosticsWorkspace({
   testAccountsPanel: ReactNode;
 }) {
   return (
-    <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+    <div className="grid min-w-0 gap-5">
       <WorkspaceHeader
         title="Diagnostics"
         description="Read-only health checks, usage telemetry, plus test tools kept separate from the normal app."
@@ -1776,19 +1320,8 @@ function DiagnosticsWorkspace({
       {/* Safe reads grouped apart from the admin-impacting test-account
           actions, so an operator can tell at a glance which half changes
           nothing (#458). */}
-      <section
-        aria-label="Read-only checks"
-        style={{ display: "grid", gap: 14 }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+      <section aria-label="Read-only checks" className="grid gap-3.5">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
           <SubsectionHeader
             title="Read-only checks"
             hint="Safe to look at anytime — nothing on this half changes the app."
@@ -1798,51 +1331,21 @@ function DiagnosticsWorkspace({
         <SystemStatusChecklist rows={data.checklist} />
         <UsagePanel data={data} />
       </section>
+      {/* Admin-impacting half: an amber "watch" border (no stripe) sets it
+          apart from the read-only checks above. */}
       <section
         id="test-tools"
         aria-label="Admin-impacting test tools"
-        style={{
-          border: `1px solid ${P.mustard}`,
-          borderRadius: 10,
-          background: P.surface,
-          boxShadow: `inset 4px 0 0 ${P.mustard}`,
-          padding: "16px 20px",
-          display: "grid",
-          gap: 12,
-          scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET,
-        }}
+        className="grid gap-3 rounded-lg border border-amber bg-surface p-card"
+        style={{ scrollMarginTop: SUPER_ADMIN_STICKY_ANCHOR_OFFSET }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 17,
-              fontWeight: 600,
-              color: P.ink,
-              margin: 0,
-            }}
-          >
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <h3 className="m-0 font-display text-lg font-medium text-ink">
             Test tools
           </h3>
           <StatusBadge label="Admin-impacting" tone="warning" />
         </div>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           These tools manage real, known-password login accounts kept separate
           from the normal app. Checking status is a safe read; enabling or
           disabling changes who can sign in and asks for confirmation first. No
@@ -1886,7 +1389,7 @@ function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
   // surfaces the error itself — render it directly (no filter UI) so a filter
   // interaction can't mask the failure behind a misleading "no matches" state.
   if (data.errors.audit) {
-    return <div style={{ minWidth: 0 }}>{auditSection}</div>;
+    return <div className="min-w-0">{auditSection}</div>;
   }
 
   // The Map-dependent summaries are computed here, server-side, so the client
@@ -1911,7 +1414,7 @@ function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
   });
 
   return (
-    <div style={{ minWidth: 0 }}>
+    <div className="min-w-0">
       <AuditWorkspace entries={entries} fullList={auditSection} />
     </div>
   );

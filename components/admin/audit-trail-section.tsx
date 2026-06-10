@@ -1,5 +1,4 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
   AUDIT_ACTION_LABELS,
   summarizeAuditEvent,
@@ -36,7 +35,7 @@ export function AuditTrailSection({
   error: string | null;
 }) {
   return (
-    <section style={{ display: "grid", gap: 18 }}>
+    <section className="grid gap-4">
       <SectionHeader
         eyebrow="Audit trail"
         title="Every change is recorded"
@@ -50,19 +49,7 @@ export function AuditTrailSection({
           description="Once you add or assign someone above, the change will land here for the record."
         />
       ) : (
-        <ol
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 1,
-            background: P.line2,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            overflow: "hidden",
-          }}
-        >
+        <ol className="m-0 grid list-none gap-px overflow-hidden rounded-md border border-line bg-lineSoft p-0">
           {events.map((event) => {
             const actor = event.actor_profile_id
               ? profilesById.get(event.actor_profile_id)
@@ -73,43 +60,17 @@ export function AuditTrailSection({
             return (
               <li
                 key={event.id}
-                className="lg-m-grid-stack"
-                style={{
-                  background: P.surface,
-                  padding: "12px 16px",
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: 12,
-                  alignItems: "center",
-                }}
+                className="grid min-h-11 grid-cols-1 items-center gap-3 bg-surface px-4 py-3 md:grid-cols-[1fr_auto]"
               >
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontFamily: fontDisplay,
-                      fontSize: 14,
-                      color: P.ink,
-                      fontWeight: 500,
-                      marginBottom: 2,
-                    }}
-                  >
+                <div className="min-w-0">
+                  <div className="mb-0.5 font-sans text-base font-medium text-ink">
                     {summarizeAuditEvent(event, {
                       profilesById,
                       membersById,
                       groupsById,
                     })}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 11,
-                      color: P.ink3,
-                      letterSpacing: 0.3,
-                      display: "flex",
-                      gap: 8,
-                      flexWrap: "wrap",
-                    }}
-                  >
+                  <div className="flex flex-wrap gap-2 font-sans text-sm text-ink3">
                     <span>
                       {AUDIT_ACTION_LABELS[event.action] ?? event.action} ·{" "}
                       {event.entity_type}
@@ -117,14 +78,7 @@ export function AuditTrailSection({
                     {actorLabel ? <span>by {actorLabel}</span> : null}
                   </div>
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    color: P.ink3,
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <div className="whitespace-nowrap font-sans text-xs text-ink3">
                   {formatTimestamp(event.created_at)}
                 </div>
               </li>
@@ -138,54 +92,18 @@ export function AuditTrailSection({
 
 function Empty({ title, description }: { title: string; description: string }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px dashed ${P.line}`,
-        borderRadius: 10,
-        padding: "22px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 16,
-          color: P.ink,
-          fontWeight: 500,
-          marginBottom: 6,
-        }}
-      >
+    <div className="rounded-md border border-dashed border-line bg-surface px-6 py-5 text-center">
+      <div className="mb-1.5 font-display text-lg font-medium text-ink">
         {title}
       </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
-        {description}
-      </p>
+      <p className="m-0 font-sans text-sm text-ink2">{description}</p>
     </div>
   );
 }
 
 function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "12px 14px",
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: "#7d3621",
-      }}
-    >
+    <div className="rounded-sm border border-rose/40 bg-roseSoft px-3.5 py-3 font-sans text-sm text-rose">
       {children}
     </div>
   );

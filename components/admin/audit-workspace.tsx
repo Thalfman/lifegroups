@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/lg/Icon";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/button";
+import {
+  fieldHintClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+} from "@/components/admin/forms/field-styles";
 import type { AuditCategory } from "@/lib/admin/audit-summary";
 
 // Audit workspace filter scaffolding (Super Admin redesign).
@@ -61,67 +67,30 @@ export function AuditWorkspace({
   }, [entries, filtering, category, trimmed]);
 
   return (
-    <section style={{ display: "grid", gap: 16, minWidth: 0 }}>
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) auto",
-          gap: 12,
-          alignItems: "end",
-        }}
-      >
-        <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-          <label
-            htmlFor="audit-search"
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 700,
-            }}
-          >
-            Search audit events
-          </label>
-          <input
-            id="audit-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by description, action, or person…"
-            aria-describedby="audit-search-help"
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              color: P.ink,
-              background: P.surface,
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              padding: "9px 12px",
-            }}
-          />
-          <p
-            id="audit-search-help"
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              margin: 0,
-              lineHeight: 1.4,
-            }}
-          >
-            Matches the event description, the action name, the record type, and
-            the acting person.
-          </p>
-        </div>
+    <section className="grid min-w-0 gap-4">
+      <div className="grid min-w-0 gap-1">
+        <label htmlFor="audit-search" className={fieldLabelClassName}>
+          Search audit events
+        </label>
+        <input
+          id="audit-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by description, action, or person…"
+          aria-describedby="audit-search-help"
+          className={fieldInputClassName}
+        />
+        <p id="audit-search-help" className={fieldHintClassName}>
+          Matches the event description, the action name, the record type, and
+          the acting person.
+        </p>
       </div>
 
       <div
         role="group"
         aria-label="Filter audit events by category"
-        style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
+        className="flex flex-wrap gap-1.5"
       >
         {CATEGORY_FILTERS.map((filter) => {
           const selected = filter.id === category;
@@ -131,7 +100,12 @@ export function AuditWorkspace({
               type="button"
               aria-pressed={selected}
               onClick={() => setCategory(filter.id)}
-              style={chipStyle(selected)}
+              className={cn(
+                "inline-flex cursor-pointer appearance-none items-center gap-1.5 rounded-pill border px-3 py-1.5 font-sans text-xs font-semibold transition-colors duration-150",
+                selected
+                  ? "border-ink bg-ink text-bg"
+                  : "border-line bg-surface text-ink2 hover:bg-surfaceAlt"
+              )}
             >
               {/* The active filter carries a check mark on top of the inverted
                   fill, so the selected state doesn't ride on color alone. */}
@@ -170,144 +144,56 @@ function FilteredResults({
   onClear: () => void;
 }) {
   return (
-    <section style={{ display: "grid", gap: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+    <section className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="font-sans text-xs text-ink2">
           Showing {visible.length} of {total} event
           {total === 1 ? "" : "s"}
         </span>
         <button
           type="button"
           onClick={onClear}
-          style={{
-            appearance: "none",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: fontSans,
-            fontSize: 12,
-            fontWeight: 700,
-            color: P.terra,
-            padding: 0,
-          }}
+          className="cursor-pointer appearance-none border-none bg-transparent p-0 font-sans text-xs font-semibold text-clay"
         >
           Clear filters
         </button>
       </div>
       {visible.length === 0 ? (
-        <div
-          style={{
-            background: P.surface,
-            border: `1px dashed ${P.line}`,
-            borderRadius: 10,
-            padding: "22px 24px",
-            textAlign: "center",
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            display: "grid",
-            gap: 10,
-            justifyItems: "center",
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 600, color: P.ink }}>
+        <div className="grid justify-items-center gap-2.5 rounded-md border border-dashed border-line bg-surface px-6 py-5 text-center font-sans text-sm text-ink2">
+          <p className="m-0 font-semibold text-ink">
             No audit events match these filters.
           </p>
-          <p style={{ margin: 0, lineHeight: 1.5 }}>
+          <p className="m-0">
             Try a shorter search term or a different category — searches match
             the description, action, record type, and acting person.
           </p>
           <button
             type="button"
             onClick={onClear}
-            style={{
-              appearance: "none",
-              cursor: "pointer",
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 700,
-              color: P.terra,
-              background: "transparent",
-              border: `1px solid ${P.terra}`,
-              borderRadius: 999,
-              padding: "7px 14px",
-            }}
+            className={buttonClassName("ghost", "sm")}
           >
             Clear filters and show all events
           </button>
         </div>
       ) : (
-        <ol
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 1,
-            background: P.line2,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            overflow: "hidden",
-          }}
-        >
+        <ol className="m-0 grid list-none gap-px overflow-hidden rounded-md border border-line bg-lineSoft p-0">
           {visible.map((entry) => (
             <li
               key={entry.id}
-              className="lg-m-grid-stack"
-              style={{
-                background: P.surface,
-                padding: "12px 16px",
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 12,
-                alignItems: "center",
-              }}
+              className="grid min-h-11 grid-cols-1 items-center gap-3 bg-surface px-4 py-3 md:grid-cols-[1fr_auto]"
             >
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: 14,
-                    color: P.ink,
-                    fontWeight: 500,
-                    marginBottom: 2,
-                  }}
-                >
+              <div className="min-w-0">
+                <div className="mb-0.5 font-sans text-base font-medium text-ink">
                   {entry.summary}
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    color: P.ink3,
-                    letterSpacing: 0.3,
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div className="flex flex-wrap gap-2 font-sans text-sm text-ink3">
                   <span>
                     {entry.actionLabel} · {entry.entityType}
                   </span>
                   {entry.actorLabel ? <span>by {entry.actorLabel}</span> : null}
                 </div>
               </div>
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  color: P.ink3,
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div className="whitespace-nowrap font-sans text-xs text-ink3">
                 {entry.timestamp}
               </div>
             </li>
@@ -316,23 +202,4 @@ function FilteredResults({
       )}
     </section>
   );
-}
-
-function chipStyle(selected: boolean): CSSProperties {
-  return {
-    appearance: "none",
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 5,
-    fontFamily: fontSans,
-    fontSize: 12,
-    fontWeight: selected ? 700 : 600,
-    padding: "6px 12px",
-    borderRadius: 999,
-    border: `1px solid ${selected ? P.ink : P.line}`,
-    background: selected ? P.ink : P.surface,
-    color: selected ? P.surface : P.ink2,
-    transition: "background .12s, color .12s, border-color .12s",
-  };
 }
