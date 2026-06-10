@@ -40,7 +40,6 @@ const UUID_B = "22222222-2222-2222-2222-222222222222";
 describe("validateInviteUserPayload", () => {
   it("rejects super_admin as an assignable role", () => {
     const r = validateInviteUserPayload({
-      full_name: "X",
       email: "x@example.com",
       role: "super_admin",
     });
@@ -52,7 +51,6 @@ describe("validateInviteUserPayload", () => {
 
   it("rejects an unknown / retired role as an assignable role", () => {
     const r = validateInviteUserPayload({
-      full_name: "X",
       email: "x@example.com",
       role: "retired_role",
     });
@@ -61,7 +59,6 @@ describe("validateInviteUserPayload", () => {
 
   it("rejects ministry_admin paired with a group_id", () => {
     const r = validateInviteUserPayload({
-      full_name: "Admin Alice",
       email: "alice@example.com",
       role: "ministry_admin",
       group_id: UUID_A,
@@ -78,14 +75,12 @@ describe("validateInviteUserPayload", () => {
 
   it("accepts a valid leader invite with a group_id and canonicalizes", () => {
     const r = validateInviteUserPayload({
-      full_name: "  Leader Lee  ",
       email: "  Lee@Example.COM  ",
       role: "leader",
       group_id: UUID_A.toUpperCase(),
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.full_name).toBe("Leader Lee");
       expect(r.value.email).toBe("lee@example.com");
       expect(r.value.role).toBe("leader");
       expect(r.value.group_id).toBe(UUID_A);
@@ -94,7 +89,6 @@ describe("validateInviteUserPayload", () => {
 
   it("accepts a co_leader invite", () => {
     const r = validateInviteUserPayload({
-      full_name: "Co Lee",
       email: "co@example.com",
       role: "co_leader",
       group_id: UUID_A,
@@ -102,9 +96,30 @@ describe("validateInviteUserPayload", () => {
     expect(r.ok).toBe(true);
   });
 
+  // The invitee chooses their own name at account setup (ADR 0025) — the
+  // payload neither requires nor carries one.
+  it("accepts a payload without full_name", () => {
+    const r = validateInviteUserPayload({
+      email: "x@example.com",
+      role: "leader",
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("ignores a stray full_name field", () => {
+    const r = validateInviteUserPayload({
+      full_name: "Typed By Inviter",
+      email: "x@example.com",
+      role: "leader",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect("full_name" in r.value).toBe(false);
+    }
+  });
+
   it("rejects invalid email shape", () => {
     const r = validateInviteUserPayload({
-      full_name: "X",
       email: "not-an-email",
       role: "leader",
     });
@@ -115,7 +130,6 @@ describe("validateInviteUserPayload", () => {
   // the app (docs/adr/0002-oversight-ladder-and-leader-gating.md, Codex #3).
   it("accepts an over_shepherd invite (no group assignment)", () => {
     const r = validateInviteUserPayload({
-      full_name: "Coach Casey",
       email: "casey@example.com",
       role: "over_shepherd",
     });
@@ -128,7 +142,6 @@ describe("validateInviteUserPayload", () => {
 
   it("rejects over_shepherd paired with a group_id (coaches lead no group)", () => {
     const r = validateInviteUserPayload({
-      full_name: "Coach Casey",
       email: "casey@example.com",
       role: "over_shepherd",
       group_id: UUID_A,
