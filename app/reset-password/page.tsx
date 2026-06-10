@@ -3,6 +3,7 @@ import { paperGrain } from "@/lib/pastoral";
 import { PSeal } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readOwnNameState } from "@/lib/account/own-name";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,11 @@ function first(value: string | string[] | undefined): string | undefined {
 // below, so an email-provider link scanner's GET of this page burns nothing.
 type View =
   | { kind: "not_configured" }
-  | { kind: "form" } // recovery session already established (post /auth/confirm)
+  // recovery session already established (post /auth/confirm). namePending is
+  // the choose-your-name step (ADR 0025): an invited person picks their name
+  // here alongside their password; namePrefill carries an existing name (the
+  // relink case) for them to confirm or edit.
+  | { kind: "form"; namePending: boolean; namePrefill: string }
   | { kind: "confirm"; fields: Record<string, string> } // valid-looking link → show the button
   | { kind: "invalid" }; // missing/used/expired link → resend CTA
 
@@ -42,7 +47,16 @@ async function resolveView(params: {
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (user) return { kind: "form" };
+  if (user) {
+    // A failed read degrades to a password-only form — never block password
+    // setup on it; the /welcome gate catches a missed pending name later.
+    const nameState = await readOwnNameState(client, user.id);
+    return {
+      kind: "form",
+      namePending: nameState?.pending ?? false,
+      namePrefill: nameState?.prefill ?? "",
+    };
+  }
 
   if (params.status === "invalid") return { kind: "invalid" };
 
@@ -101,7 +115,9 @@ export default async function ResetPasswordPage({
           </div>
           <h1 className="m-0 mb-3.5 font-display text-3xl font-normal text-ink md:text-4xl">
             {view.kind === "form"
-              ? "Set a new password"
+              ? view.namePending
+                ? "Set up your account"
+                : "Set a new password"
               : view.kind === "confirm"
                 ? "Confirm it's you"
                 : view.kind === "not_configured"
@@ -110,7 +126,9 @@ export default async function ResetPasswordPage({
           </h1>
           <p className="mb-6 mt-0 font-sans text-base text-ink2">
             {view.kind === "form"
-              ? "Choose a new password for your account. Must be at least 8 characters."
+              ? view.namePending
+                ? "Tell us your name and choose a password for your account. Password must be at least 8 characters."
+                : "Choose a new password for your account. Must be at least 8 characters."
               : view.kind === "confirm"
                 ? "For your security, confirm below to continue resetting your password. Reset links can only be used once."
                 : view.kind === "not_configured"
@@ -119,7 +137,10 @@ export default async function ResetPasswordPage({
           </p>
 
           {view.kind === "form" ? (
-            <ResetPasswordForm />
+            <ResetPasswordForm
+              namePending={view.namePending}
+              namePrefill={view.namePrefill}
+            />
           ) : view.kind === "confirm" ? (
             <form method="post" action="/auth/confirm">
               {Object.entries(view.fields).map(([name, value]) => (
