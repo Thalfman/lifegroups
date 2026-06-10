@@ -262,9 +262,6 @@
   .lg-m-userpill-text {
     display: none !important;
   }
-  .lg-m-signout-hide {
-    display: none !important;
-  }
 
   /* Layout helpers ------------------------------------------------------- */
   .lg-m-grid-stack {
@@ -296,25 +293,8 @@
     white-space: nowrap;
   }
 
-  /* New LG shell: sidebar collapses to drawer on mobile */
-  .lg-shell-sidebar {
-    display: none !important;
-  }
-  .lg-shell-main {
-    grid-column: 1 / -1 !important;
-  }
-  .lg-shell-mobile-trigger {
-    display: inline-flex !important;
-  }
-  .lg-shell-pageheader {
-    padding: 22px 16px 16px !important;
-  }
-  .lg-shell-pagebody {
-    padding: 0 16px 32px !important;
-  }
-  .lg-shell-pageheader h1 {
-    font-size: calc(30px * var(--font-scale)) !important;
-  }
+  /* New LG shell grid helpers (DashboardClient still consumes these; they
+     retire with the Home slice). */
   .lg-shell-grid-2 {
     grid-template-columns: 1fr !important;
   }
@@ -329,9 +309,6 @@
   }
   .lg-shell-grid-7 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .lg-shell-topbar {
-    padding: 0 16px !important;
   }
 
   /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */
@@ -419,12 +396,5 @@
     max-width: 100% !important;
     height: 100dvh !important;
     border-left: none !important;
-  }
-}
-
-/* Desktop: hide the mobile trigger button */
-@media (min-width: 768px) {
-  .lg-shell-mobile-trigger {
-    display: none !important;
   }
 }

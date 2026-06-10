@@ -8,6 +8,7 @@ import { Verse } from "./Verse";
 import { NavLinkStatus } from "./NavLinkStatus";
 import type { AdminNavGroup } from "@/lib/auth/roles";
 import { isActiveNavHref } from "@/lib/nav/active-nav";
+import { cn } from "@/lib/utils";
 
 export function Sidebar({
   navGroups,
@@ -38,59 +39,26 @@ export function Sidebar({
 
   return (
     <aside
-      className={asDrawer ? undefined : "lg-shell-sidebar"}
-      style={{
-        width: 232,
-        flexShrink: 0,
-        background: "var(--c-sidebar)",
-        borderRight: asDrawer ? "none" : "1px solid var(--c-line)",
-        padding: "22px 16px 16px",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "var(--font-body)",
-        minHeight: asDrawer ? "100vh" : undefined,
-        height: "100vh",
-        position: asDrawer ? "static" : "sticky",
-        top: 0,
-        overflowY: "auto",
-      }}
+      className={cn(
+        "h-screen w-[232px] shrink-0 flex-col overflow-y-auto bg-sidebar px-4 pb-4 pt-[22px] font-sans",
+        asDrawer
+          ? "flex min-h-screen"
+          : "sticky top-0 hidden border-r border-line md:flex"
+      )}
     >
-      <div
-        style={{
-          padding: "0 6px 24px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
+      <div className="flex items-center gap-2.5 px-1.5 pb-6">
         <Wordmark href={homeHref} />
       </div>
 
-      <nav
-        aria-label={navLabel}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 14,
-        }}
-      >
+      <nav aria-label={navLabel} className="flex flex-col gap-3.5">
         {navGroups.map((g) => (
           <div key={g.group}>
             {g.label ? (
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: 1.8,
-                  textTransform: "uppercase",
-                  color: "var(--c-ink4)",
-                  padding: "6px 10px",
-                  fontWeight: 600,
-                }}
-              >
+              <div className="px-2.5 py-1.5 text-2xs font-semibold uppercase tracking-[0.16em] text-ink3">
                 {g.label}
               </div>
             ) : null}
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <div className="flex flex-col gap-px">
               {g.items.map((item) => {
                 const active = isActiveNavHref(pathname, item.href);
                 return (
@@ -106,20 +74,12 @@ export function Sidebar({
                     // window in next.config.ts to throttle re-prefetching.
                     prefetch={true}
                     aria-current={active ? "page" : undefined}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: active ? "var(--c-surface)" : "transparent",
-                      border: `1px solid ${active ? "var(--c-line)" : "transparent"}`,
-                      color: active ? "var(--c-ink)" : "var(--c-ink2)",
-                      fontSize: 13.5,
-                      fontWeight: active ? 600 : 500,
-                      textDecoration: "none",
-                      fontFamily: "var(--font-body)",
-                    }}
+                    className={cn(
+                      "flex min-h-9 items-center gap-2.5 rounded-sm border px-2.5 py-2 text-base font-medium no-underline transition-colors duration-150",
+                      active
+                        ? "border-line bg-surface font-semibold text-ink"
+                        : "border-transparent text-ink2 hover:bg-surface/60"
+                    )}
                   >
                     <Icon
                       name={item.icon as IconName}
@@ -136,7 +96,8 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div style={{ marginTop: "auto", paddingTop: 16 }}>
+      {/* The verse is brand, not decoration — it stays at the sidebar foot. */}
+      <div className="mt-auto pt-4">
         <Verse />
       </div>
     </aside>
