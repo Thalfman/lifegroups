@@ -30,12 +30,9 @@ import {
   type GroupTypeOption,
   type GroupTypeRef,
 } from "@/lib/admin/audience";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-} from "@/components/admin/forms/field-styles";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   useActionForm,
   FormStatus,
@@ -49,6 +46,16 @@ import type {
 // Capacity & Multiplication #184: a same-group apprentice the candidate can be
 // linked to. `label` already includes the readiness stage for the picker.
 export type ApprenticeOption = { id: string; label: string };
+
+// Design-system form field classes (12px uppercase label → full-width input
+// with the global focus ring), plus the small shared helper-text and
+// checkbox-label styles the planner's forms repeat.
+const LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+const HINT = "m-0 mt-1 font-sans text-xs text-ink3";
+const CHECKBOX_LABEL = "flex items-center gap-2 font-sans text-sm text-ink";
 
 export type { CandidateView, SegmentGroup };
 
@@ -79,25 +86,14 @@ const CRITERIA_ORDER: MultiplicationCriterion[] = [
 
 function ReadinessChips({ readiness }: { readiness: ReadinessResult }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    <div className="flex flex-wrap gap-1.5">
       {CRITERIA_ORDER.map((c) => {
         const met = readiness.criteria[c];
         return (
-          <span
-            key={c}
-            style={{
-              fontFamily: fontBody,
-              fontSize: 11,
-              padding: "2px 8px",
-              borderRadius: 999,
-              border: `1px solid ${met ? P.sage : P.line}`,
-              background: met ? P.sageSoft : P.bg,
-              color: met ? P.ink : P.ink3,
-            }}
-          >
+          <Badge key={c} tone={met ? "sage" : "ghost"}>
             {met ? "✓ " : "· "}
             {CRITERION_LABEL[c]}
-          </span>
+          </Badge>
         );
       })}
     </div>
@@ -251,14 +247,14 @@ function TypeField({
 }) {
   return (
     <div>
-      <label htmlFor={`${idPrefix}-type`} style={fieldLabelStyle}>
+      <label htmlFor={`${idPrefix}-type`} className={LABEL}>
         Group type
       </label>
       <select
         id={`${idPrefix}-type`}
         value={state.typeKey}
         onChange={(e) => state.setTypeKey(e.target.value)}
-        style={fieldSelectStyle}
+        className={INPUT}
       >
         <option value="" disabled>
           Select a type…
@@ -293,8 +289,8 @@ function WillingGroupField({
   state: TypeGroupState;
 }) {
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <label style={checkboxLabelStyle}>
+    <div className="grid gap-2">
+      <label className={CHECKBOX_LABEL}>
         <input
           type="checkbox"
           name="shepherd_willing"
@@ -305,7 +301,7 @@ function WillingGroupField({
       </label>
       {state.showGroupPicker ? (
         <div>
-          <label htmlFor={`${idPrefix}-group`} style={fieldLabelStyle}>
+          <label htmlFor={`${idPrefix}-group`} className={LABEL}>
             Group multiplying
           </label>
           <select
@@ -318,7 +314,7 @@ function WillingGroupField({
             // group has no type but its current group is injected as an option;
             // a disabled control wouldn't submit, silently dropping the group.
             disabled={state.groupsForType.length === 0}
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             <option value="">Select a group…</option>
             {state.groupsForType.map((g) => (
@@ -327,7 +323,7 @@ function WillingGroupField({
               </option>
             ))}
           </select>
-          <p style={hintStyle}>
+          <p className={HINT}>
             {state.groupsForType.length > 0
               ? "Groups that carry the selected type. Leave unset to track the type only."
               : state.typeKey
@@ -370,16 +366,13 @@ function CandidateEditForm({
   // to its control even when several candidates render their edit forms at once.
   const fid = (name: string) => `mc-edit-${c.candidateId}-${name}`;
   return (
-    <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-      <form action={formAction} style={{ display: "grid", gap: 10 }}>
+    <div className="mt-2.5 grid gap-2.5">
+      <form action={formAction} className="grid gap-2.5">
         <input type="hidden" name="candidate_id" value={c.candidateId} />
         <TypeField idPrefix={`mc-edit-${c.candidateId}`} state={typeGroup} />
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label htmlFor={fid("target_year")} style={fieldLabelStyle}>
+            <label htmlFor={fid("target_year")} className={LABEL}>
               Target year
             </label>
             <input
@@ -391,18 +384,18 @@ function CandidateEditForm({
               inputMode="numeric"
               defaultValue={c.targetYear ?? ""}
               placeholder="2026"
-              style={fieldInputStyle}
+              className={INPUT}
             />
           </div>
           <div>
-            <label htmlFor={fid("status")} style={fieldLabelStyle}>
+            <label htmlFor={fid("status")} className={LABEL}>
               Status
             </label>
             <select
               id={fid("status")}
               name="status"
               defaultValue={c.status}
-              style={fieldSelectStyle}
+              className={INPUT}
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -412,12 +405,9 @@ function CandidateEditForm({
             </select>
           </div>
         </div>
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label htmlFor={fid("successor_designate")} style={fieldLabelStyle}>
+            <label htmlFor={fid("successor_designate")} className={LABEL}>
               Successor / leader-designate
             </label>
             <input
@@ -427,18 +417,18 @@ function CandidateEditForm({
               maxLength={120}
               defaultValue={c.successorDesignate ?? ""}
               placeholder="e.g. Tony L."
-              style={fieldInputStyle}
+              className={INPUT}
             />
           </div>
           <div>
-            <label htmlFor={fid("meeting_time")} style={fieldLabelStyle}>
+            <label htmlFor={fid("meeting_time")} className={LABEL}>
               Meeting time
             </label>
             <select
               id={fid("meeting_time")}
               name="meeting_time"
               defaultValue={c.meetingTime ?? ""}
-              style={fieldSelectStyle}
+              className={INPUT}
             >
               <option value="">Unset</option>
               {MEETING_TIME_OPTIONS.map((m) => (
@@ -450,7 +440,7 @@ function CandidateEditForm({
           </div>
         </div>
         <div>
-          <label htmlFor={fid("manual_member_count")} style={fieldLabelStyle}>
+          <label htmlFor={fid("manual_member_count")} className={LABEL}>
             Members (entered)
           </label>
           <input
@@ -462,16 +452,9 @@ function CandidateEditForm({
             inputMode="numeric"
             defaultValue={c.manualMemberCount ?? ""}
             placeholder={String(c.activeMemberCount)}
-            style={fieldInputStyle}
+            className={INPUT}
           />
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontFamily: fontBody,
-              fontSize: 11,
-              color: P.ink3,
-            }}
-          >
+          <p className={HINT}>
             Julian&rsquo;s headcount for this group, used for the &ldquo;12+
             members&rdquo; signal. Leave blank to use the in-app roster count (
             {c.activeMemberCount}).
@@ -482,7 +465,7 @@ function CandidateEditForm({
           state={typeGroup}
         />
         <div>
-          <label htmlFor={fid("leader_pipeline_id")} style={fieldLabelStyle}>
+          <label htmlFor={fid("leader_pipeline_id")} className={LABEL}>
             Linked apprentice
           </label>
           <select
@@ -491,7 +474,7 @@ function CandidateEditForm({
             value={typeGroup.leaderPipelineId}
             onChange={(e) => typeGroup.setLeaderPipelineId(e.target.value)}
             disabled={!typeGroup.groupId}
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             <option value="">No apprentice linked</option>
             {typeGroup.apprenticeOptions.map((a) => (
@@ -500,13 +483,13 @@ function CandidateEditForm({
               </option>
             ))}
           </select>
-          <p style={hintStyle}>
+          <p className={HINT}>
             {typeGroup.groupId
               ? "Only apprentices in the multiplying group can lead its next group. Add one in People → Apprentices."
               : "Pick the multiplying group above to link one of its apprentices."}
           </p>
         </div>
-        <label style={{ ...checkboxLabelStyle }}>
+        <label className={CHECKBOX_LABEL}>
           <input
             type="checkbox"
             name="needs_similar_stage"
@@ -515,7 +498,7 @@ function CandidateEditForm({
           Need for a similar-stage group
         </label>
         <div>
-          <label htmlFor={fid("notes")} style={fieldLabelStyle}>
+          <label htmlFor={fid("notes")} className={LABEL}>
             Notes
           </label>
           <input
@@ -524,10 +507,10 @@ function CandidateEditForm({
             type="text"
             maxLength={2000}
             defaultValue={c.notes ?? ""}
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
           </PButton>
@@ -565,27 +548,10 @@ function CandidateRow({
   }
   if (c.meetingTime) facts.push(MEETING_TIME_LABEL[c.meetingTime]);
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "baseline",
-        }}
-      >
-        <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
-          {c.groupName}
-        </strong>
-        <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+    <div className="grid gap-2 rounded-sm border border-line px-3.5 py-3">
+      <div className="flex items-baseline justify-between gap-2.5">
+        <strong className="font-sans text-base text-ink">{c.groupName}</strong>
+        <span className="font-sans text-sm text-ink2">
           {CANDIDATE_STATUS_LABEL[c.status]}
           {c.targetYear ? ` · target ${c.targetYear}` : " · year TBD"} ·{" "}
           {c.memberCount} members
@@ -594,18 +560,18 @@ function CandidateRow({
         </span>
       </div>
       {facts.length > 0 ? (
-        <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-          {facts.join(" · ")}
-        </span>
+        <span className="font-sans text-sm text-ink3">{facts.join(" · ")}</span>
       ) : null}
       <ReadinessChips readiness={c.readiness} />
-      <button
+      <Button
         type="button"
+        variant="subtle"
+        size="sm"
+        className="justify-self-start"
         onClick={() => setEditing((v) => !v)}
-        style={linkButtonStyle}
       >
         {editing ? "Close" : "Edit"}
-      </button>
+      </Button>
       {editing ? (
         <CandidateEditForm
           c={c}
@@ -633,23 +599,18 @@ function AddCandidateForm({
   });
   if (typeOptions.length === 0) {
     return (
-      <p
-        style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3, margin: 0 }}
-      >
+      <p className="m-0 font-sans text-sm text-ink3">
         No active group types yet. Add one in Settings → Groups, then it will be
         selectable here.
       </p>
     );
   }
   return (
-    <form action={formAction} style={{ display: "grid", gap: 10 }}>
-      <div
-        className="lg-m-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}
-      >
+    <form action={formAction} className="grid gap-2.5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr] md:gap-2.5">
         <TypeField idPrefix="mc-add" state={typeGroup} />
         <div>
-          <label htmlFor="mc-year" style={fieldLabelStyle}>
+          <label htmlFor="mc-year" className={LABEL}>
             Target year
           </label>
           <input
@@ -660,18 +621,18 @@ function AddCandidateForm({
             max={2100}
             inputMode="numeric"
             placeholder="2026"
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
         <div>
-          <label htmlFor="mc-status" style={fieldLabelStyle}>
+          <label htmlFor="mc-status" className={LABEL}>
             Status
           </label>
           <select
             id="mc-status"
             name="status"
             defaultValue="watching"
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -681,12 +642,9 @@ function AddCandidateForm({
           </select>
         </div>
       </div>
-      <div
-        className="lg-m-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-      >
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         <div>
-          <label htmlFor="mc-successor" style={fieldLabelStyle}>
+          <label htmlFor="mc-successor" className={LABEL}>
             Successor / leader-designate
           </label>
           <input
@@ -695,18 +653,18 @@ function AddCandidateForm({
             type="text"
             maxLength={120}
             placeholder="e.g. Tony L."
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
         <div>
-          <label htmlFor="mc-meeting-time" style={fieldLabelStyle}>
+          <label htmlFor="mc-meeting-time" className={LABEL}>
             Meeting time
           </label>
           <select
             id="mc-meeting-time"
             name="meeting_time"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             <option value="">Unset</option>
             {MEETING_TIME_OPTIONS.map((m) => (
@@ -718,7 +676,7 @@ function AddCandidateForm({
         </div>
       </div>
       <div>
-        <label htmlFor="mc-members" style={fieldLabelStyle}>
+        <label htmlFor="mc-members" className={LABEL}>
           Members (entered)
         </label>
         <input
@@ -729,20 +687,20 @@ function AddCandidateForm({
           max={1000}
           inputMode="numeric"
           placeholder="e.g. 12"
-          style={fieldInputStyle}
+          className={INPUT}
         />
-        <p style={hintStyle}>
+        <p className={HINT}>
           Julian&rsquo;s headcount for the multiplying group. Leave blank to use
           the in-app roster count.
         </p>
       </div>
       <WillingGroupField idPrefix="mc-add" state={typeGroup} />
-      <label style={checkboxLabelStyle}>
+      <label className={CHECKBOX_LABEL}>
         <input type="checkbox" name="needs_similar_stage" />
         Need for a similar-stage group
       </label>
       <div>
-        <label htmlFor="mc-notes" style={fieldLabelStyle}>
+        <label htmlFor="mc-notes" className={LABEL}>
           Notes
         </label>
         <input
@@ -750,10 +708,10 @@ function AddCandidateForm({
           name="notes"
           type="text"
           maxLength={2000}
-          style={fieldInputStyle}
+          className={INPUT}
         />
       </div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="flex items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Adding…" : "Add to pipeline"}
         </PButton>
@@ -792,7 +750,7 @@ function YearFilterBar({
     <div
       role="group"
       aria-label="Filter by target year"
-      style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+      className="flex flex-wrap gap-2"
     >
       {chips.map((chip) => {
         const isActive = chip.value === active;
@@ -802,17 +760,12 @@ function YearFilterBar({
             type="button"
             aria-pressed={isActive}
             onClick={() => onChange(chip.value)}
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              padding: "4px 12px",
-              borderRadius: 999,
-              cursor: "pointer",
-              border: `1px solid ${isActive ? P.terra : P.line}`,
-              background: isActive ? P.terraSoft : P.surface,
-              color: isActive ? "#7d3621" : P.ink2,
-              fontWeight: isActive ? 600 : 400,
-            }}
+            className={cn(
+              "cursor-pointer rounded-pill border px-3 py-1 font-sans text-xs transition-colors duration-150",
+              isActive
+                ? "border-clay bg-claySoft font-semibold text-clayDeep"
+                : "border-line bg-surface font-normal text-ink2 hover:bg-surfaceAlt"
+            )}
           >
             {chip.label}
           </button>
@@ -829,76 +782,37 @@ function SuggestionsPanel({
 }) {
   if (suggestions.length === 0) return null;
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "20px 22px",
-        display: "grid",
-        gap: 12,
-      }}
-    >
+    <section className="grid gap-3 rounded-lg border border-line bg-surface p-card">
       <header>
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
+        <span className="font-sans text-xs text-ink3">
           Suggested candidates
         </span>
-        <p
-          style={{
-            margin: "6px 0 0",
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 mt-1.5 font-sans text-sm leading-normal text-ink3">
           Groups at or over target with an apprentice ready to lead. Readiness
           is shown as context (&ldquo;meets N/5&rdquo;), not a gate &mdash; a
           group does not need to meet each criterion.
         </p>
       </header>
       {suggestions.map((s) => (
+        // Tone (well/ready) rides a leading sage dot and the sageDeep "meets
+        // N/N" figure — the card itself stays neutral (no tinted surface).
         <div
           key={s.groupId}
-          style={{
-            border: `1px solid ${P.sage}`,
-            background: P.sageSoft,
-            borderRadius: 10,
-            padding: "10px 14px",
-            display: "grid",
-            gap: 4,
-          }}
+          className="grid gap-1 rounded-sm border border-line bg-surface px-3.5 py-2.5"
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10,
-              alignItems: "baseline",
-              flexWrap: "wrap",
-            }}
-          >
-            <strong
-              style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}
-            >
+          <div className="flex flex-wrap items-baseline justify-between gap-2.5">
+            <strong className="flex items-baseline gap-2 font-sans text-base text-ink">
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 shrink-0 self-center rounded-pill bg-sage"
+              />
               {s.groupName}
             </strong>
-            <span
-              style={{ fontFamily: fontBody, fontSize: 12, color: "#3e4f29" }}
-            >
+            <span className="font-sans text-sm font-medium tabular-nums text-sageDeep">
               meets {s.metCount}/{s.totalCount}
             </span>
           </div>
-          <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+          <span className="font-sans text-sm text-ink2">
             {s.segment} · {s.activeMemberCount}/{s.effectiveTarget ?? "—"} ·{" "}
             {CAPACITY_STATUS_LABEL[s.status]} · {s.readyApprentice.displayName}{" "}
             ready to lead
@@ -926,51 +840,15 @@ export function MultiplicationPlanner({
     [segments, yearFilter]
   );
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <SuggestionsPanel suggestions={suggestions} />
-      <section
-        style={{
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 14,
-          padding: "22px 24px",
-          display: "grid",
-          gap: 18,
-        }}
-      >
+      <section className="grid gap-5 rounded-lg border border-line bg-surface p-card">
         <header>
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
-            Multiplication
-          </span>
-          <h2
-            style={{
-              margin: "4px 0 0",
-              fontFamily: fontBody,
-              fontSize: 18,
-              color: P.ink,
-              fontWeight: 600,
-            }}
-          >
+          <span className="font-sans text-xs text-ink3">Multiplication</span>
+          <h2 className="m-0 mt-1 font-display text-lg font-medium text-ink">
             Candidate pipeline
           </h2>
-          <p
-            style={{
-              margin: "6px 0 0",
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              lineHeight: 1.5,
-            }}
-          >
+          <p className="m-0 mt-1.5 font-sans text-sm leading-normal text-ink3">
             Groups slated to multiply, grouped by audience and life stage.
             Readiness chips reflect Julian&rsquo;s criteria; a group does not
             need to meet all of them. Filter by target year to resolve the 2026
@@ -993,25 +871,11 @@ export function MultiplicationPlanner({
         )}
 
         {segments.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             No candidates yet. Add a group above to start the pipeline.
           </p>
         ) : visible.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             No candidates match this target year.
           </p>
         ) : (
@@ -1021,21 +885,11 @@ export function MultiplicationPlanner({
               id={segmentAnchorId(seg.segment)}
               // Leave room above the anchor so a deep-linked segment isn't
               // jammed against the viewport top after the hash scroll.
-              style={{ display: "grid", gap: 8, scrollMarginTop: 96 }}
+              className="grid scroll-mt-24 gap-2"
             >
-              <h3
-                style={{
-                  margin: 0,
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                  color: P.ink2,
-                  fontWeight: 600,
-                }}
-              >
+              <h3 className="m-0 font-sans text-xs font-semibold text-ink2">
                 {seg.segment}
-                <span style={{ color: P.ink3, fontWeight: 400 }}>
+                <span className="font-normal tabular-nums text-ink3">
                   {" "}
                   · {seg.candidates.length}
                 </span>
@@ -1056,31 +910,3 @@ export function MultiplicationPlanner({
     </div>
   );
 }
-
-const checkboxLabelStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink,
-} as const;
-
-const hintStyle = {
-  margin: "4px 0 0",
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-} as const;
-
-const linkButtonStyle = {
-  justifySelf: "start",
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.terra,
-  background: "none",
-  border: "none",
-  padding: 0,
-  cursor: "pointer",
-  textDecoration: "underline",
-} as const;

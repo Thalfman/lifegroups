@@ -3,7 +3,6 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { loadPlanData } from "@/components/admin/plan/plan-data";
 import { ProspectBoardView } from "@/components/admin/plan/prospect-board";
 import { ProspectCreateForm } from "@/components/admin/plan/prospect-create-form";
-import { P, fontBody } from "@/lib/pastoral";
 
 // Plan area — the Interest Funnel (ADR 0016, #375). Prospects move
 // Interested → Matched → Joined (or parked Not at this time). Matched/Joined
@@ -28,15 +27,8 @@ export default async function AdminPlanPage() {
         lede="Where people interested in joining a group move from first interest to a real group. Matched and Joined need a group; Joined drops off the active board."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 24 }}>
-          <section
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 12,
-              background: P.surface,
-              padding: "20px 22px",
-            }}
-          >
+        <div className="grid gap-6">
+          <section className="rounded-lg border border-line bg-surface p-card">
             <ProspectCreateForm
               categoryOptionsByAudience={data.categoryOptionsByAudience}
             />
@@ -45,15 +37,7 @@ export default async function AdminPlanPage() {
           {error ? (
             <p
               role="status"
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
+              className="m-0 rounded-md bg-roseSoft px-3.5 py-2.5 font-sans text-sm text-rose"
             >
               {error}
             </p>

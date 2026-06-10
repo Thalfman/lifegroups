@@ -4,19 +4,19 @@ import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateProspect } from "@/app/(protected)/admin/plan/actions";
 import {
-  fieldErrorStyle,
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
-import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import { FULL_NAME_REQUIRED_MESSAGE } from "@/lib/admin/validation/prospect-form-client";
 import type { GroupAudienceCategory } from "@/types/enums";
 import type { CategoryOptionsByAudience } from "@/lib/supabase/group-categories-reads";
+
+// Design-system form field classes (12px uppercase label → full-width input
+// with the global focus ring).
+const LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 // The three top types, in board order, with their display labels.
 const TOP_TYPES: { value: GroupAudienceCategory; label: string }[] = [
@@ -83,18 +83,14 @@ export function ProspectCreateForm({
     audience === "" ? [] : categoryOptionsByAudience[audience];
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
-      <p style={formNoteStyle}>
+    <form ref={formRef} action={formAction} className="grid gap-3">
+      <p className="m-0 mb-3 font-sans text-sm leading-normal text-ink2">
         Only the name is required. New prospects start as <em>Interested</em>;
         move them to Matched once you have a group.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div>
-          <label htmlFor="prospect-full_name" style={fieldLabelStyle}>
+          <label htmlFor="prospect-full_name" className={LABEL}>
             Full name
           </label>
           <input
@@ -115,7 +111,7 @@ export function ProspectCreateForm({
               if (fullNameError) setFullNameError(undefined);
             }}
             autoComplete="off"
-            style={fieldInputStyle}
+            className={INPUT}
             placeholder="Avery Bennett"
           />
           {/* Stable live region: kept mounted (hidden when clear) so the
@@ -124,14 +120,14 @@ export function ProspectCreateForm({
           <p
             id="prospect-full_name-error"
             role="alert"
-            style={fieldErrorStyle}
+            className="mb-0 mt-1.5 font-sans text-sm text-rose"
             hidden={!fullNameError}
           >
             {fullNameError}
           </p>
         </div>
         <div>
-          <label htmlFor="prospect-email" style={fieldLabelStyle}>
+          <label htmlFor="prospect-email" className={LABEL}>
             Email (optional)
           </label>
           <input
@@ -139,12 +135,12 @@ export function ProspectCreateForm({
             name="email"
             type="email"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={INPUT}
             placeholder="avery@example.com"
           />
         </div>
         <div>
-          <label htmlFor="prospect-phone" style={fieldLabelStyle}>
+          <label htmlFor="prospect-phone" className={LABEL}>
             Phone (optional)
           </label>
           <input
@@ -152,15 +148,12 @@ export function ProspectCreateForm({
             name="phone"
             type="tel"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={INPUT}
             placeholder="(555) 555-0100"
           />
         </div>
         <div>
-          <label
-            htmlFor="prospect-desired_audience_category"
-            style={fieldLabelStyle}
-          >
+          <label htmlFor="prospect-desired_audience_category" className={LABEL}>
             Interested in: top type (optional)
           </label>
           <select
@@ -172,7 +165,7 @@ export function ProspectCreateForm({
               // Reset the dependent category whenever the top type changes.
               setCategoryId("");
             }}
-            style={fieldInputStyle}
+            className={INPUT}
           >
             <option value="">— None —</option>
             {TOP_TYPES.map((t) => (
@@ -183,7 +176,7 @@ export function ProspectCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="prospect-desired_category_id" style={fieldLabelStyle}>
+          <label htmlFor="prospect-desired_category_id" className={LABEL}>
             Interested in: category (optional)
           </label>
           <select
@@ -192,7 +185,7 @@ export function ProspectCreateForm({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             disabled={audience === "" || categoryOptions.length === 0}
-            style={fieldInputStyle}
+            className={INPUT}
           >
             <option value="">
               {audience === ""

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth/session";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
-import { P, fontBody } from "@/lib/pastoral";
 import { loadMultiplyGridData } from "@/components/admin/multiply/multiply-grid-data";
 import { MultiplyGridView } from "@/components/admin/multiply/multiply-grid";
 import { loadMultiplyPlanData } from "@/components/admin/multiply/multiply-plan-data";
@@ -32,18 +31,7 @@ export const dynamic = "force-dynamic";
 // rather than blanking the whole surface (the Care-page pattern).
 function errorNote(message: string): ReactNode {
   return (
-    <p
-      style={{
-        margin: 0,
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: "#7d3621",
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "10px 14px",
-      }}
-    >
+    <p className="m-0 rounded-md bg-roseSoft px-3.5 py-2.5 font-sans text-sm text-rose">
       {message}
     </p>
   );
@@ -54,18 +42,7 @@ function errorNote(message: string): ReactNode {
 // showing instead.
 function calmNote(message: string): ReactNode {
   return (
-    <p
-      style={{
-        margin: 0,
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: P.ink2,
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        padding: "10px 14px",
-      }}
-    >
+    <p className="m-0 rounded-md border border-line bg-bg px-3.5 py-2.5 font-sans text-sm text-ink2">
       {message}
     </p>
   );
@@ -113,7 +90,7 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
       panel: grid.error ? (
         errorNote(grid.error)
       ) : (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div className="grid gap-4">
           {/* #473: the stored trigger existed but couldn't be read — readiness
               below is evaluated against the built-in default, and saving the
               trigger in Settings will overwrite what's stored. */}
