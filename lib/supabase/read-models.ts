@@ -80,13 +80,49 @@ function isGroupMetricSettingsRow(v: unknown): v is GroupMetricSettingsRow {
   return isUuid((v as Record<string, unknown>).group_id);
 }
 
+// Column allowlist for the full-row groups fetchers (#495). These are the
+// high-fan-out admin reads that return GroupsRow, so the list names every
+// GroupsRow column — same data as before, but a future groups column (which
+// could be sensitive, like admin_notes was) no longer flows to every caller
+// by default. Typed against GroupsRow so a renamed/removed column fails
+// typecheck; a pinning test freezes the exact set so widening this read must
+// be a deliberate diff. Leader routes must keep using LEADER_SAFE_GROUP_COLUMNS.
+export const GROUP_COLUMNS = [
+  "id",
+  "name",
+  "description",
+  "meeting_day",
+  "meeting_time",
+  "meeting_frequency",
+  "meeting_week_parity",
+  "location_area",
+  "address_optional",
+  "capacity",
+  "lifecycle_status",
+  "health_status",
+  "audience_category",
+  "category_id",
+  "launched_on",
+  "pause_reason",
+  "pause_start_date",
+  "expected_return_date",
+  "restart_reminder_date",
+  "admin_notes",
+  "created_at",
+  "updated_at",
+  "closed_at",
+] as const satisfies readonly (keyof GroupsRow)[];
+
+const GROUP_SELECT = GROUP_COLUMNS.join(", ");
+
 export async function fetchAllGroups(
   client: ReadClient
 ): Promise<ReadResult<GroupsRow[]>> {
   const { data, error } = await client
     .from("groups")
-    .select("*")
-    .order("name", { ascending: true });
+    .select(GROUP_SELECT)
+    .order("name", { ascending: true })
+    .returns<GroupsRow[]>();
   if (error) return { data: null, error: wrapError("fetchAllGroups", error) };
   return { data: data ?? [], error: null };
 }
@@ -119,9 +155,10 @@ export async function fetchGroupsByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("groups")
-    .select("*")
+    .select(GROUP_SELECT)
     .in("id", ids)
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })
+    .returns<GroupsRow[]>();
   if (error) return { data: null, error: wrapError("fetchGroupsByIds", error) };
   return { data: data ?? [], error: null };
 }
@@ -129,9 +166,10 @@ export async function fetchGroupsByIds(
 // Leader-safe group read: an ALLOWLISTED projection that excludes admin-only
 // columns (notably `admin_notes`, see AGENTS.md — admin notes must never reach a
 // leader route). The leader surfaces (dashboard, care, calendar) read their own
-// groups via the group RLS `auth_is_leader_of(id)` arm, so a plain `select("*")`
-// (fetchGroupsByIds) would pull admin_notes into a leader context. Leaders only
-// ever need identity + schedule, so this returns exactly those columns.
+// groups via the group RLS `auth_is_leader_of(id)` arm, so a full-GroupsRow
+// read (fetchGroupsByIds via GROUP_COLUMNS) would pull admin_notes into a
+// leader context. Leaders only ever need identity + schedule, so this returns
+// exactly those columns.
 export type LeaderSafeGroupRow = Pick<
   GroupsRow,
   | "id"
@@ -257,19 +295,38 @@ export async function fetchOverviewActivityCounts(
   };
 }
 
+// Column allowlist for the attendance-session fetcher (#495); every
+// AttendanceSessionsRow column (the admin review surfaces render both the
+// leader_note and admin_note), pinned by a colocated test.
+export const ATTENDANCE_SESSION_COLUMNS = [
+  "id",
+  "group_id",
+  "meeting_week",
+  "meeting_date",
+  "status",
+  "submitted_by",
+  "submitted_at",
+  "leader_note",
+  "admin_note",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof AttendanceSessionsRow)[];
+
+const ATTENDANCE_SESSION_SELECT = ATTENDANCE_SESSION_COLUMNS.join(", ");
+
 export async function fetchAttendanceSessions(
   client: ReadClient,
   options: { groupId?: string; meetingWeek?: string; limit?: number } = {}
 ): Promise<ReadResult<AttendanceSessionsRow[]>> {
   let query = client
     .from("attendance_sessions")
-    .select("*")
+    .select(ATTENDANCE_SESSION_SELECT)
     .order("meeting_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.meetingWeek)
     query = query.eq("meeting_week", options.meetingWeek);
   if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<AttendanceSessionsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchAttendanceSessions", error) };
   return { data: data ?? [], error: null };
@@ -290,6 +347,18 @@ export async function fetchLatestMeetingWeek(
   return { data: data[0].meeting_week, error: null };
 }
 
+// Column allowlist for the attendance-record fetcher (#495); every
+// AttendanceRecordsRow column, pinned by a colocated test.
+export const ATTENDANCE_RECORD_COLUMNS = [
+  "id",
+  "session_id",
+  "member_id",
+  "attendance_status",
+  "created_at",
+] as const satisfies readonly (keyof AttendanceRecordsRow)[];
+
+const ATTENDANCE_RECORD_SELECT = ATTENDANCE_RECORD_COLUMNS.join(", ");
+
 export async function fetchAttendanceRecordsForSessions(
   client: ReadClient,
   sessionIds: string[]
@@ -300,9 +369,10 @@ export async function fetchAttendanceRecordsForSessions(
   // even at modest deployment sizes; explicit range keeps results stable.
   const { data, error } = await client
     .from("attendance_records")
-    .select("*")
+    .select(ATTENDANCE_RECORD_SELECT)
     .in("session_id", sessionIds)
-    .range(0, 9999);
+    .range(0, 9999)
+    .returns<AttendanceRecordsRow[]>();
   if (error)
     return {
       data: null,
@@ -419,21 +489,53 @@ export async function fetchOpenFollowUpsDueCount(
   return { data: count ?? 0, error: null };
 }
 
+// Column allowlist for the group-health-update fetcher (#495); every
+// GroupHealthUpdatesRow column (the admin review renders leader_note and
+// admin_note side by side), pinned by a colocated test.
+export const GROUP_HEALTH_UPDATE_COLUMNS = [
+  "id",
+  "group_id",
+  "submitted_by",
+  "update_week",
+  "pulse",
+  "follow_up_needed",
+  "leader_note",
+  "admin_note",
+  "created_at",
+] as const satisfies readonly (keyof GroupHealthUpdatesRow)[];
+
+const GROUP_HEALTH_UPDATE_SELECT = GROUP_HEALTH_UPDATE_COLUMNS.join(", ");
+
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
   options: { groupId?: string; updateWeek?: string } = {}
 ): Promise<ReadResult<GroupHealthUpdatesRow[]>> {
   let query = client
     .from("group_health_updates")
-    .select("*")
+    .select(GROUP_HEALTH_UPDATE_SELECT)
     .order("update_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.updateWeek) query = query.eq("update_week", options.updateWeek);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupHealthUpdatesRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchLatestHealthUpdates", error) };
   return { data: data ?? [], error: null };
 }
+
+// Column allowlist for the active-membership fetcher (#495); every
+// GroupMembershipsRow column, pinned by a colocated test.
+export const GROUP_MEMBERSHIP_COLUMNS = [
+  "id",
+  "group_id",
+  "member_id",
+  "role",
+  "status",
+  "joined_at",
+  "ended_at",
+  "created_at",
+] as const satisfies readonly (keyof GroupMembershipsRow)[];
+
+const GROUP_MEMBERSHIP_SELECT = GROUP_MEMBERSHIP_COLUMNS.join(", ");
 
 export async function fetchActiveMemberships(
   client: ReadClient,
@@ -441,14 +543,32 @@ export async function fetchActiveMemberships(
 ): Promise<ReadResult<GroupMembershipsRow[]>> {
   let query = client
     .from("group_memberships")
-    .select("*")
+    .select(GROUP_MEMBERSHIP_SELECT)
     .eq("status", "active");
   if (options.groupId) query = query.eq("group_id", options.groupId);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupMembershipsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchActiveMemberships", error) };
   return { data: data ?? [], error: null };
 }
+
+// Column allowlist for the full-row members fetchers (#495). Names every
+// MembersRow column so the directory surfaces keep their data, while a future
+// members column (members carry pastoral signals like care_sensitivity_flag)
+// no longer flows to every caller by default. Pinned by a colocated test.
+export const MEMBER_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "household_name",
+  "status",
+  "care_sensitivity_flag",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof MembersRow)[];
+
+const MEMBER_SELECT = MEMBER_COLUMNS.join(", ");
 
 export async function fetchMembersByIds(
   client: ReadClient,
@@ -457,8 +577,9 @@ export async function fetchMembersByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("members")
-    .select("*")
-    .in("id", ids);
+    .select(MEMBER_SELECT)
+    .in("id", ids)
+    .returns<MembersRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchMembersByIds", error) };
   return { data: data ?? [], error: null };
@@ -482,6 +603,26 @@ export async function fetchAssignedGroupIdsForProfile(
   return { data: (data ?? []).map((row) => row.group_id), error: null };
 }
 
+// Column allowlist for the full-row guests fetcher (#495); every GuestsRow
+// column, pinned by a colocated test. The admin directory read above uses the
+// narrower GUEST_DIRECTORY_COLUMNS projection instead.
+export const GUEST_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "first_attended_group_id",
+  "first_attended_date",
+  "pipeline_stage",
+  "assigned_group_id",
+  "follow_up_owner_id",
+  "notes",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof GuestsRow)[];
+
+const GUEST_SELECT = GUEST_COLUMNS.join(", ");
+
 export async function fetchNewGuestsForGroupSince(
   client: ReadClient,
   groupId: string,
@@ -489,9 +630,10 @@ export async function fetchNewGuestsForGroupSince(
 ): Promise<ReadResult<GuestsRow[]>> {
   const { data, error } = await client
     .from("guests")
-    .select("*")
+    .select(GUEST_SELECT)
     .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
-    .gte("first_attended_date", sinceIsoDate);
+    .gte("first_attended_date", sinceIsoDate)
+    .returns<GuestsRow[]>();
   if (error)
     return {
       data: null,
@@ -526,13 +668,37 @@ export type CalendarEventReadOptions = {
 // produce some groups evaluated as if they had no calendar override.
 const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
 
+// Column allowlist for the group-calendar fetcher (#495); every
+// GroupCalendarEventsRow column, pinned by a colocated test. This read is
+// reachable from both admin and leader calendar surfaces, so the pin matters
+// doubly: a future admin-only calendar column added to the table cannot flow
+// into a leader context without showing up as a deliberate diff here.
+export const GROUP_CALENDAR_EVENT_COLUMNS = [
+  "id",
+  "group_id",
+  "event_date",
+  "start_time",
+  "end_time",
+  "event_type",
+  "status",
+  "title",
+  "description",
+  "created_by",
+  "updated_by",
+  "created_at",
+  "updated_at",
+  "archived_at",
+] as const satisfies readonly (keyof GroupCalendarEventsRow)[];
+
+const GROUP_CALENDAR_EVENT_SELECT = GROUP_CALENDAR_EVENT_COLUMNS.join(", ");
+
 export async function fetchGroupCalendarEvents(
   client: ReadClient,
   options: CalendarEventReadOptions = {}
 ): Promise<ReadResult<GroupCalendarEventsRow[]>> {
   let query = client
     .from("group_calendar_events")
-    .select("*")
+    .select(GROUP_CALENDAR_EVENT_SELECT)
     .order("event_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
   if (options.groupId) query = query.eq("group_id", options.groupId);
@@ -548,7 +714,7 @@ export async function fetchGroupCalendarEvents(
     query = query.is("archived_at", null);
   }
   query = query.range(0, CALENDAR_EVENTS_PAGE_LIMIT - 1);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupCalendarEventsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
   return { data: data ?? [], error: null };
@@ -583,19 +749,38 @@ export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
 // super_admin / ministry_admin via the Phase 4 policies.
 // -------------------------------------------------------------------------
 
+// Column allowlist for the admin profiles directory read (#495). Names every
+// ProfilesRow column — the directory renders contact + role/status and the
+// row type is the trust boundary — so a future profiles column cannot
+// silently widen this high-fan-out read. The per-request session profile
+// read has its own narrower allowlist in lib/auth/session.ts (#492).
+export const PROFILE_COLUMNS = [
+  "id",
+  "auth_user_id",
+  "full_name",
+  "email",
+  "phone",
+  "role",
+  "status",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof ProfilesRow)[];
+
+const PROFILE_SELECT = PROFILE_COLUMNS.join(", ");
+
 export async function fetchProfilesForAdmin(
   client: ReadClient,
   options: { roles?: UserRole[]; statuses?: ProfileStatus[] } = {}
 ): Promise<ReadResult<ProfilesRow[]>> {
   let query = client
     .from("profiles")
-    .select("*")
+    .select(PROFILE_SELECT)
     .order("full_name", { ascending: true });
   if (options.roles && options.roles.length > 0)
     query = query.in("role", options.roles);
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<ProfilesRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchProfilesForAdmin", error) };
   return { data: data ?? [], error: null };
@@ -607,28 +792,56 @@ export async function fetchAllMembers(
 ): Promise<ReadResult<MembersRow[]>> {
   let query = client
     .from("members")
-    .select("*")
+    .select(MEMBER_SELECT)
     .order("full_name", { ascending: true });
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<MembersRow[]>();
   if (error) return { data: null, error: wrapError("fetchAllMembers", error) };
   return { data: data ?? [], error: null };
 }
+
+// Column allowlist for the group-leader assignment read (#495); every
+// GroupLeadersRow column, pinned by a colocated test.
+export const GROUP_LEADER_COLUMNS = [
+  "id",
+  "group_id",
+  "profile_id",
+  "role",
+  "assigned_at",
+  "active",
+  "created_at",
+] as const satisfies readonly (keyof GroupLeadersRow)[];
+
+const GROUP_LEADER_SELECT = GROUP_LEADER_COLUMNS.join(", ");
 
 export async function fetchAllGroupLeaders(
   client: ReadClient,
   options: { activeOnly?: boolean } = {}
 ): Promise<ReadResult<GroupLeadersRow[]>> {
-  let query = client.from("group_leaders").select("*");
+  let query = client.from("group_leaders").select(GROUP_LEADER_SELECT);
   if (options.activeOnly) query = query.eq("active", true);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupLeadersRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
   return { data: data ?? [], error: null };
 }
 
 // Phase 5A.4: Settings readers.
+
+// Column allowlist for the keyed app_settings readers (#495); every
+// AppSettingsRow column, pinned by a colocated test. Shared by the
+// metric-defaults, group-health-rubric, and launch-planning-assumptions
+// readers — they all fetch one keyed row and guard it with isAppSettingsRow.
+export const APP_SETTINGS_COLUMNS = [
+  "id",
+  "setting_key",
+  "setting_value",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof AppSettingsRow)[];
+
+const APP_SETTINGS_SELECT = APP_SETTINGS_COLUMNS.join(", ");
 
 // Returns the single `metric_defaults` row from `app_settings`. The row is
 // seeded by the Phase 5A.4 migration and never deleted; a `null` return
@@ -639,7 +852,7 @@ export async function fetchMetricDefaults(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select("*")
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
   if (error)
@@ -712,7 +925,7 @@ export async function fetchGroupHealthRubricSetting(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select("*")
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "group_health_rubric")
     .maybeSingle();
   if (error)
@@ -1276,12 +1489,31 @@ export async function fetchCapacityBoardExtras(
 // reads to super_admin / ministry_admin, so calling this from any
 // non-admin context will surface as an empty result. Admin pages call
 // this once at load time and join client-side by group_id.
+// Column allowlist for the per-group metric-override readers (#495); every
+// GroupMetricSettingsRow column, pinned by a colocated test.
+export const GROUP_METRIC_SETTINGS_COLUMNS = [
+  "group_id",
+  "capacity_override",
+  "capacity_warning_threshold_pct_override",
+  "healthy_attendance_pct_override",
+  "manual_health_status_override",
+  "exclude_from_capacity_metrics",
+  "admin_metric_notes",
+  "check_in_due_offset_hours_override",
+  "allow_over_capacity",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof GroupMetricSettingsRow)[];
+
+const GROUP_METRIC_SETTINGS_SELECT = GROUP_METRIC_SETTINGS_COLUMNS.join(", ");
+
 export async function fetchAllGroupMetricSettings(
   client: ReadClient
 ): Promise<ReadResult<GroupMetricSettingsRow[]>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select("*");
+    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .returns<GroupMetricSettingsRow[]>();
   if (error)
     return {
       data: null,
@@ -1296,7 +1528,7 @@ export async function fetchGroupMetricSettings(
 ): Promise<ReadResult<GroupMetricSettingsRow | null>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select("*")
+    .select(GROUP_METRIC_SETTINGS_SELECT)
     .eq("group_id", groupId)
     .maybeSingle();
   if (error)
@@ -1316,20 +1548,17 @@ export async function fetchGroupMetricSettings(
 // ---------------------------------------------------------------------------
 //
 // Reads the single `launch_planning_assumptions` row from app_settings.
-// Uses an explicit column allowlist (no select("*") on launch-planning
-// paths) and the same `isAppSettingsRow` trust-boundary guard as the
-// metric_defaults reader. A `null` data return means either the row was
-// never seeded (treat as "use built-in defaults") or the shape guard
-// rejected the row.
-const LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS =
-  "id, setting_key, setting_value, created_at, updated_at";
-
+// Uses the shared APP_SETTINGS_COLUMNS allowlist (no select("*") on
+// launch-planning paths) and the same `isAppSettingsRow` trust-boundary
+// guard as the metric_defaults reader. A `null` data return means either
+// the row was never seeded (treat as "use built-in defaults") or the shape
+// guard rejected the row.
 export async function fetchLaunchPlanningAssumptions(
   client: ReadClient
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS)
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "launch_planning_assumptions")
     .maybeSingle();
   if (error)
