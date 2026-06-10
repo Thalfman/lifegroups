@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { ReadClient } from "@/lib/supabase/read-core";
 import {
+  ATTENDANCE_RECORD_COLUMNS,
+  ATTENDANCE_SESSION_COLUMNS,
+  fetchActiveMemberships,
   fetchAllGroupLeaders,
   fetchAllGroups,
   fetchAllMembers,
+  fetchAttendanceRecordsForSessions,
+  fetchAttendanceSessions,
   fetchGroupsByIds,
+  fetchLatestHealthUpdates,
   fetchMembersByIds,
   fetchProfilesForAdmin,
   GROUP_COLUMNS,
+  GROUP_HEALTH_UPDATE_COLUMNS,
   GROUP_LEADER_COLUMNS,
+  GROUP_MEMBERSHIP_COLUMNS,
   MEMBER_COLUMNS,
   PROFILE_COLUMNS,
 } from "@/lib/supabase/read-models";
@@ -239,6 +247,128 @@ describe("group_leaders read column allowlist (#495)", () => {
     });
     expect(calls.get("group_leaders")).toEqual([
       PINNED_GROUP_LEADER_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── group_memberships ────────────────────────────────────────────────────────
+
+const PINNED_GROUP_MEMBERSHIP_COLUMNS = [
+  "id",
+  "group_id",
+  "member_id",
+  "role",
+  "status",
+  "joined_at",
+  "ended_at",
+  "created_at",
+] as const;
+
+describe("group_memberships read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the memberships read must be a deliberate diff here", () => {
+    expect([...GROUP_MEMBERSHIP_COLUMNS]).toEqual([
+      ...PINNED_GROUP_MEMBERSHIP_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_MEMBERSHIP_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the memberships read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchActiveMemberships(client);
+    });
+    expect(calls.get("group_memberships")).toEqual([
+      PINNED_GROUP_MEMBERSHIP_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── attendance_sessions / attendance_records ─────────────────────────────────
+
+const PINNED_ATTENDANCE_SESSION_COLUMNS = [
+  "id",
+  "group_id",
+  "meeting_week",
+  "meeting_date",
+  "status",
+  "submitted_by",
+  "submitted_at",
+  "leader_note",
+  "admin_note",
+  "created_at",
+  "updated_at",
+] as const;
+
+const PINNED_ATTENDANCE_RECORD_COLUMNS = [
+  "id",
+  "session_id",
+  "member_id",
+  "attendance_status",
+  "created_at",
+] as const;
+
+describe("attendance read column allowlists (#495)", () => {
+  it("pins the exact allowlists — widening the attendance reads must be a deliberate diff here", () => {
+    expect([...ATTENDANCE_SESSION_COLUMNS]).toEqual([
+      ...PINNED_ATTENDANCE_SESSION_COLUMNS,
+    ]);
+    expect([...ATTENDANCE_RECORD_COLUMNS]).toEqual([
+      ...PINNED_ATTENDANCE_RECORD_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(ATTENDANCE_SESSION_COLUMNS).not.toContain("*");
+    expect(ATTENDANCE_RECORD_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlists to the attendance reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchAttendanceSessions(client);
+      await fetchAttendanceRecordsForSessions(client, [UUID_A]);
+    });
+    expect(calls.get("attendance_sessions")).toEqual([
+      PINNED_ATTENDANCE_SESSION_COLUMNS.join(", "),
+    ]);
+    expect(calls.get("attendance_records")).toEqual([
+      PINNED_ATTENDANCE_RECORD_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── group_health_updates ─────────────────────────────────────────────────────
+
+const PINNED_GROUP_HEALTH_UPDATE_COLUMNS = [
+  "id",
+  "group_id",
+  "submitted_by",
+  "update_week",
+  "pulse",
+  "follow_up_needed",
+  "leader_note",
+  "admin_note",
+  "created_at",
+] as const;
+
+describe("group_health_updates read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the health-updates read must be a deliberate diff here", () => {
+    expect([...GROUP_HEALTH_UPDATE_COLUMNS]).toEqual([
+      ...PINNED_GROUP_HEALTH_UPDATE_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_HEALTH_UPDATE_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the health-updates read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchLatestHealthUpdates(client);
+    });
+    expect(calls.get("group_health_updates")).toEqual([
+      PINNED_GROUP_HEALTH_UPDATE_COLUMNS.join(", "),
     ]);
   });
 });

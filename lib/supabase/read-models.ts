@@ -295,19 +295,38 @@ export async function fetchOverviewActivityCounts(
   };
 }
 
+// Column allowlist for the attendance-session fetcher (#495); every
+// AttendanceSessionsRow column (the admin review surfaces render both the
+// leader_note and admin_note), pinned by a colocated test.
+export const ATTENDANCE_SESSION_COLUMNS = [
+  "id",
+  "group_id",
+  "meeting_week",
+  "meeting_date",
+  "status",
+  "submitted_by",
+  "submitted_at",
+  "leader_note",
+  "admin_note",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof AttendanceSessionsRow)[];
+
+const ATTENDANCE_SESSION_SELECT = ATTENDANCE_SESSION_COLUMNS.join(", ");
+
 export async function fetchAttendanceSessions(
   client: ReadClient,
   options: { groupId?: string; meetingWeek?: string; limit?: number } = {}
 ): Promise<ReadResult<AttendanceSessionsRow[]>> {
   let query = client
     .from("attendance_sessions")
-    .select("*")
+    .select(ATTENDANCE_SESSION_SELECT)
     .order("meeting_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.meetingWeek)
     query = query.eq("meeting_week", options.meetingWeek);
   if (options.limit) query = query.limit(options.limit);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<AttendanceSessionsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchAttendanceSessions", error) };
   return { data: data ?? [], error: null };
@@ -328,6 +347,18 @@ export async function fetchLatestMeetingWeek(
   return { data: data[0].meeting_week, error: null };
 }
 
+// Column allowlist for the attendance-record fetcher (#495); every
+// AttendanceRecordsRow column, pinned by a colocated test.
+export const ATTENDANCE_RECORD_COLUMNS = [
+  "id",
+  "session_id",
+  "member_id",
+  "attendance_status",
+  "created_at",
+] as const satisfies readonly (keyof AttendanceRecordsRow)[];
+
+const ATTENDANCE_RECORD_SELECT = ATTENDANCE_RECORD_COLUMNS.join(", ");
+
 export async function fetchAttendanceRecordsForSessions(
   client: ReadClient,
   sessionIds: string[]
@@ -338,9 +369,10 @@ export async function fetchAttendanceRecordsForSessions(
   // even at modest deployment sizes; explicit range keeps results stable.
   const { data, error } = await client
     .from("attendance_records")
-    .select("*")
+    .select(ATTENDANCE_RECORD_SELECT)
     .in("session_id", sessionIds)
-    .range(0, 9999);
+    .range(0, 9999)
+    .returns<AttendanceRecordsRow[]>();
   if (error)
     return {
       data: null,
@@ -457,21 +489,53 @@ export async function fetchOpenFollowUpsDueCount(
   return { data: count ?? 0, error: null };
 }
 
+// Column allowlist for the group-health-update fetcher (#495); every
+// GroupHealthUpdatesRow column (the admin review renders leader_note and
+// admin_note side by side), pinned by a colocated test.
+export const GROUP_HEALTH_UPDATE_COLUMNS = [
+  "id",
+  "group_id",
+  "submitted_by",
+  "update_week",
+  "pulse",
+  "follow_up_needed",
+  "leader_note",
+  "admin_note",
+  "created_at",
+] as const satisfies readonly (keyof GroupHealthUpdatesRow)[];
+
+const GROUP_HEALTH_UPDATE_SELECT = GROUP_HEALTH_UPDATE_COLUMNS.join(", ");
+
 export async function fetchLatestHealthUpdates(
   client: ReadClient,
   options: { groupId?: string; updateWeek?: string } = {}
 ): Promise<ReadResult<GroupHealthUpdatesRow[]>> {
   let query = client
     .from("group_health_updates")
-    .select("*")
+    .select(GROUP_HEALTH_UPDATE_SELECT)
     .order("update_week", { ascending: false });
   if (options.groupId) query = query.eq("group_id", options.groupId);
   if (options.updateWeek) query = query.eq("update_week", options.updateWeek);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupHealthUpdatesRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchLatestHealthUpdates", error) };
   return { data: data ?? [], error: null };
 }
+
+// Column allowlist for the active-membership fetcher (#495); every
+// GroupMembershipsRow column, pinned by a colocated test.
+export const GROUP_MEMBERSHIP_COLUMNS = [
+  "id",
+  "group_id",
+  "member_id",
+  "role",
+  "status",
+  "joined_at",
+  "ended_at",
+  "created_at",
+] as const satisfies readonly (keyof GroupMembershipsRow)[];
+
+const GROUP_MEMBERSHIP_SELECT = GROUP_MEMBERSHIP_COLUMNS.join(", ");
 
 export async function fetchActiveMemberships(
   client: ReadClient,
@@ -479,10 +543,10 @@ export async function fetchActiveMemberships(
 ): Promise<ReadResult<GroupMembershipsRow[]>> {
   let query = client
     .from("group_memberships")
-    .select("*")
+    .select(GROUP_MEMBERSHIP_SELECT)
     .eq("status", "active");
   if (options.groupId) query = query.eq("group_id", options.groupId);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupMembershipsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchActiveMemberships", error) };
   return { data: data ?? [], error: null };
