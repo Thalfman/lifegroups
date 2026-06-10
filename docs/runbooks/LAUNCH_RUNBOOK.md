@@ -37,9 +37,9 @@ until Julian's explicit go-ahead.
       verified 2026-06-10. _Eng_
 - [x] **Post-fix probes clean**: `app_settings` sealed per-key
       (`auth_is_admin() or setting_key = 'metric_defaults'`), `usage_events`
-      RLS on, `set_updated_at` search*path pinned, `audit_events_archive`
+      RLS on, `set_updated_at` `search_path` pinned, `audit_events_archive`
       has a PK, `rls_auto_enable` EXECUTE revoked from API roles — verified
-      2026-06-10. \_Eng*
+      2026-06-10. _Eng_
 - [ ] From now on, every release follows [`RELEASE.md`](./RELEASE.md) —
       schema and code ship together. _Everyone_
 
