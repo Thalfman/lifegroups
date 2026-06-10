@@ -168,9 +168,13 @@ raw file searching. The graph keeps itself updated:
   stages the refreshed graph into the same commit (skipped on partial commits
   with unstaged changes);
 - a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
-  installs the CLI if needed (version pinned there — bump deliberately),
-  registers the `graph.json` merge driver, and refreshes the graph in the
-  background.
+  installs the CLI if needed (pinned via `.graphify-version` — bump
+  deliberately; both hooks refuse to write graph artifacts with any other
+  version), registers the `graph.json` merge driver, and refreshes the graph
+  in the background.
+
+Corpus scope is controlled by `.graphifyignore` (tooling dirs, secrets, and —
+until fixed upstream — `*.sh` are excluded; see comments there).
 
 Manual refresh: `graphify update .`. If a `graph.json` merge conflicts on a
 machine without graphify, take either side and regenerate. `graphify-out/cache/`

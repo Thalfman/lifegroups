@@ -6,9 +6,11 @@
 # session. Log: graphify-out/.update.log (gitignored).
 cd "$(dirname "$0")/.." || exit 0
 
-# Pinned so an auto-run hook never pulls an unreviewed upstream release.
-# Bump deliberately (and re-verify the graph build) to take a new version.
-GRAPHIFY_VERSION="0.8.36"
+# Pinned (single source of truth: .graphify-version) so an auto-run hook
+# never pulls an unreviewed upstream release and so every machine writes
+# graph artifacts with the same version. Bump deliberately and re-verify.
+GRAPHIFY_VERSION="$(cat .graphify-version 2>/dev/null)"
+[ -n "$GRAPHIFY_VERSION" ] || exit 0
 
 (
   export PATH="$HOME/.local/bin:$PATH"
@@ -27,7 +29,11 @@ GRAPHIFY_VERSION="0.8.36"
     # JSON-aware merge for graph.json (see .gitattributes); absolute path so
     # merges work in shells where ~/.local/bin isn't on PATH.
     git config merge.graphify.driver "$(command -v graphify) merge-driver %O %A %B"
-    [ -f graphify-out/graph.json ] && graphify update .
+    if [ "$(graphify --version 2>/dev/null | awk '{print $2}')" = "$GRAPHIFY_VERSION" ]; then
+      [ -f graphify-out/graph.json ] && graphify update .
+    else
+      echo "graphify on PATH is not $GRAPHIFY_VERSION; skipping auto-update so graph artifacts stay reproducible"
+    fi
   fi
 ) >graphify-out/.update.log 2>&1 &
 

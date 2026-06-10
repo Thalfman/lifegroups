@@ -1,16 +1,16 @@
 # Graph Report - lifegroups  (2026-06-10)
 
 ## Corpus Check
-- 1225 files · ~1,190,179 words
+- 1021 files · ~858,544 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 9977 nodes · 21193 edges · 594 communities (531 shown, 63 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 157 edges (avg confidence: 0.8)
+- 6589 nodes · 15656 edges · 306 communities (288 shown, 18 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 102 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `515a99cc`
+- Built from commit: `8ce9882d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -108,54 +108,37 @@
 - [[_COMMUNITY_Community 90|Community 90]]
 - [[_COMMUNITY_Community 91|Community 91]]
 - [[_COMMUNITY_Community 92|Community 92]]
-- [[_COMMUNITY_Community 93|Community 93]]
 - [[_COMMUNITY_Community 94|Community 94]]
 - [[_COMMUNITY_Community 95|Community 95]]
 - [[_COMMUNITY_Community 96|Community 96]]
 - [[_COMMUNITY_Community 97|Community 97]]
-- [[_COMMUNITY_Community 98|Community 98]]
 - [[_COMMUNITY_Community 99|Community 99]]
 - [[_COMMUNITY_Community 100|Community 100]]
 - [[_COMMUNITY_Community 101|Community 101]]
-- [[_COMMUNITY_Community 102|Community 102]]
-- [[_COMMUNITY_Community 103|Community 103]]
-- [[_COMMUNITY_Community 104|Community 104]]
-- [[_COMMUNITY_Community 105|Community 105]]
 - [[_COMMUNITY_Community 106|Community 106]]
 - [[_COMMUNITY_Community 107|Community 107]]
 - [[_COMMUNITY_Community 108|Community 108]]
-- [[_COMMUNITY_Community 109|Community 109]]
 - [[_COMMUNITY_Community 110|Community 110]]
 - [[_COMMUNITY_Community 111|Community 111]]
 - [[_COMMUNITY_Community 112|Community 112]]
 - [[_COMMUNITY_Community 113|Community 113]]
-- [[_COMMUNITY_Community 114|Community 114]]
-- [[_COMMUNITY_Community 115|Community 115]]
-- [[_COMMUNITY_Community 116|Community 116]]
 - [[_COMMUNITY_Community 117|Community 117]]
-- [[_COMMUNITY_Community 118|Community 118]]
 - [[_COMMUNITY_Community 119|Community 119]]
 - [[_COMMUNITY_Community 120|Community 120]]
 - [[_COMMUNITY_Community 121|Community 121]]
 - [[_COMMUNITY_Community 122|Community 122]]
 - [[_COMMUNITY_Community 123|Community 123]]
-- [[_COMMUNITY_Community 124|Community 124]]
 - [[_COMMUNITY_Community 125|Community 125]]
 - [[_COMMUNITY_Community 126|Community 126]]
 - [[_COMMUNITY_Community 127|Community 127]]
 - [[_COMMUNITY_Community 128|Community 128]]
-- [[_COMMUNITY_Community 129|Community 129]]
 - [[_COMMUNITY_Community 130|Community 130]]
-- [[_COMMUNITY_Community 131|Community 131]]
 - [[_COMMUNITY_Community 132|Community 132]]
 - [[_COMMUNITY_Community 133|Community 133]]
 - [[_COMMUNITY_Community 134|Community 134]]
 - [[_COMMUNITY_Community 135|Community 135]]
 - [[_COMMUNITY_Community 136|Community 136]]
 - [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
 - [[_COMMUNITY_Community 141|Community 141]]
 - [[_COMMUNITY_Community 142|Community 142]]
 - [[_COMMUNITY_Community 143|Community 143]]
@@ -164,16 +147,12 @@
 - [[_COMMUNITY_Community 146|Community 146]]
 - [[_COMMUNITY_Community 147|Community 147]]
 - [[_COMMUNITY_Community 148|Community 148]]
-- [[_COMMUNITY_Community 149|Community 149]]
-- [[_COMMUNITY_Community 150|Community 150]]
 - [[_COMMUNITY_Community 151|Community 151]]
 - [[_COMMUNITY_Community 152|Community 152]]
 - [[_COMMUNITY_Community 153|Community 153]]
 - [[_COMMUNITY_Community 154|Community 154]]
-- [[_COMMUNITY_Community 155|Community 155]]
 - [[_COMMUNITY_Community 156|Community 156]]
 - [[_COMMUNITY_Community 157|Community 157]]
-- [[_COMMUNITY_Community 158|Community 158]]
 - [[_COMMUNITY_Community 159|Community 159]]
 - [[_COMMUNITY_Community 160|Community 160]]
 - [[_COMMUNITY_Community 161|Community 161]]
@@ -191,34 +170,21 @@
 - [[_COMMUNITY_Community 173|Community 173]]
 - [[_COMMUNITY_Community 174|Community 174]]
 - [[_COMMUNITY_Community 175|Community 175]]
-- [[_COMMUNITY_Community 176|Community 176]]
 - [[_COMMUNITY_Community 177|Community 177]]
 - [[_COMMUNITY_Community 178|Community 178]]
-- [[_COMMUNITY_Community 179|Community 179]]
-- [[_COMMUNITY_Community 180|Community 180]]
 - [[_COMMUNITY_Community 181|Community 181]]
 - [[_COMMUNITY_Community 182|Community 182]]
 - [[_COMMUNITY_Community 183|Community 183]]
 - [[_COMMUNITY_Community 184|Community 184]]
-- [[_COMMUNITY_Community 185|Community 185]]
-- [[_COMMUNITY_Community 186|Community 186]]
-- [[_COMMUNITY_Community 187|Community 187]]
 - [[_COMMUNITY_Community 188|Community 188]]
 - [[_COMMUNITY_Community 189|Community 189]]
 - [[_COMMUNITY_Community 190|Community 190]]
-- [[_COMMUNITY_Community 191|Community 191]]
-- [[_COMMUNITY_Community 192|Community 192]]
-- [[_COMMUNITY_Community 193|Community 193]]
 - [[_COMMUNITY_Community 194|Community 194]]
 - [[_COMMUNITY_Community 195|Community 195]]
 - [[_COMMUNITY_Community 196|Community 196]]
 - [[_COMMUNITY_Community 197|Community 197]]
 - [[_COMMUNITY_Community 198|Community 198]]
-- [[_COMMUNITY_Community 199|Community 199]]
 - [[_COMMUNITY_Community 200|Community 200]]
-- [[_COMMUNITY_Community 201|Community 201]]
-- [[_COMMUNITY_Community 202|Community 202]]
-- [[_COMMUNITY_Community 203|Community 203]]
 - [[_COMMUNITY_Community 204|Community 204]]
 - [[_COMMUNITY_Community 205|Community 205]]
 - [[_COMMUNITY_Community 206|Community 206]]
@@ -226,25 +192,12 @@
 - [[_COMMUNITY_Community 208|Community 208]]
 - [[_COMMUNITY_Community 209|Community 209]]
 - [[_COMMUNITY_Community 210|Community 210]]
-- [[_COMMUNITY_Community 211|Community 211]]
 - [[_COMMUNITY_Community 212|Community 212]]
-- [[_COMMUNITY_Community 213|Community 213]]
 - [[_COMMUNITY_Community 214|Community 214]]
-- [[_COMMUNITY_Community 215|Community 215]]
-- [[_COMMUNITY_Community 216|Community 216]]
-- [[_COMMUNITY_Community 217|Community 217]]
 - [[_COMMUNITY_Community 218|Community 218]]
 - [[_COMMUNITY_Community 219|Community 219]]
 - [[_COMMUNITY_Community 220|Community 220]]
 - [[_COMMUNITY_Community 221|Community 221]]
-- [[_COMMUNITY_Community 222|Community 222]]
-- [[_COMMUNITY_Community 223|Community 223]]
-- [[_COMMUNITY_Community 224|Community 224]]
-- [[_COMMUNITY_Community 225|Community 225]]
-- [[_COMMUNITY_Community 226|Community 226]]
-- [[_COMMUNITY_Community 227|Community 227]]
-- [[_COMMUNITY_Community 228|Community 228]]
-- [[_COMMUNITY_Community 229|Community 229]]
 - [[_COMMUNITY_Community 230|Community 230]]
 - [[_COMMUNITY_Community 231|Community 231]]
 - [[_COMMUNITY_Community 232|Community 232]]
@@ -256,14 +209,6 @@
 - [[_COMMUNITY_Community 238|Community 238]]
 - [[_COMMUNITY_Community 239|Community 239]]
 - [[_COMMUNITY_Community 240|Community 240]]
-- [[_COMMUNITY_Community 241|Community 241]]
-- [[_COMMUNITY_Community 242|Community 242]]
-- [[_COMMUNITY_Community 243|Community 243]]
-- [[_COMMUNITY_Community 244|Community 244]]
-- [[_COMMUNITY_Community 245|Community 245]]
-- [[_COMMUNITY_Community 246|Community 246]]
-- [[_COMMUNITY_Community 247|Community 247]]
-- [[_COMMUNITY_Community 248|Community 248]]
 - [[_COMMUNITY_Community 249|Community 249]]
 - [[_COMMUNITY_Community 250|Community 250]]
 - [[_COMMUNITY_Community 251|Community 251]]
@@ -273,21 +218,6 @@
 - [[_COMMUNITY_Community 255|Community 255]]
 - [[_COMMUNITY_Community 256|Community 256]]
 - [[_COMMUNITY_Community 257|Community 257]]
-- [[_COMMUNITY_Community 258|Community 258]]
-- [[_COMMUNITY_Community 259|Community 259]]
-- [[_COMMUNITY_Community 260|Community 260]]
-- [[_COMMUNITY_Community 261|Community 261]]
-- [[_COMMUNITY_Community 262|Community 262]]
-- [[_COMMUNITY_Community 263|Community 263]]
-- [[_COMMUNITY_Community 264|Community 264]]
-- [[_COMMUNITY_Community 265|Community 265]]
-- [[_COMMUNITY_Community 266|Community 266]]
-- [[_COMMUNITY_Community 267|Community 267]]
-- [[_COMMUNITY_Community 268|Community 268]]
-- [[_COMMUNITY_Community 269|Community 269]]
-- [[_COMMUNITY_Community 270|Community 270]]
-- [[_COMMUNITY_Community 271|Community 271]]
-- [[_COMMUNITY_Community 272|Community 272]]
 - [[_COMMUNITY_Community 273|Community 273]]
 - [[_COMMUNITY_Community 274|Community 274]]
 - [[_COMMUNITY_Community 275|Community 275]]
@@ -295,82 +225,13 @@
 - [[_COMMUNITY_Community 277|Community 277]]
 - [[_COMMUNITY_Community 278|Community 278]]
 - [[_COMMUNITY_Community 279|Community 279]]
-- [[_COMMUNITY_Community 280|Community 280]]
-- [[_COMMUNITY_Community 281|Community 281]]
 - [[_COMMUNITY_Community 282|Community 282]]
-- [[_COMMUNITY_Community 283|Community 283]]
-- [[_COMMUNITY_Community 284|Community 284]]
-- [[_COMMUNITY_Community 285|Community 285]]
 - [[_COMMUNITY_Community 286|Community 286]]
-- [[_COMMUNITY_Community 287|Community 287]]
 - [[_COMMUNITY_Community 288|Community 288]]
 - [[_COMMUNITY_Community 289|Community 289]]
 - [[_COMMUNITY_Community 290|Community 290]]
-- [[_COMMUNITY_Community 291|Community 291]]
-- [[_COMMUNITY_Community 292|Community 292]]
 - [[_COMMUNITY_Community 293|Community 293]]
-- [[_COMMUNITY_Community 294|Community 294]]
-- [[_COMMUNITY_Community 295|Community 295]]
-- [[_COMMUNITY_Community 296|Community 296]]
 - [[_COMMUNITY_Community 297|Community 297]]
-- [[_COMMUNITY_Community 298|Community 298]]
-- [[_COMMUNITY_Community 299|Community 299]]
-- [[_COMMUNITY_Community 300|Community 300]]
-- [[_COMMUNITY_Community 301|Community 301]]
-- [[_COMMUNITY_Community 302|Community 302]]
-- [[_COMMUNITY_Community 303|Community 303]]
-- [[_COMMUNITY_Community 304|Community 304]]
-- [[_COMMUNITY_Community 305|Community 305]]
-- [[_COMMUNITY_Community 306|Community 306]]
-- [[_COMMUNITY_Community 307|Community 307]]
-- [[_COMMUNITY_Community 308|Community 308]]
-- [[_COMMUNITY_Community 309|Community 309]]
-- [[_COMMUNITY_Community 310|Community 310]]
-- [[_COMMUNITY_Community 311|Community 311]]
-- [[_COMMUNITY_Community 312|Community 312]]
-- [[_COMMUNITY_Community 313|Community 313]]
-- [[_COMMUNITY_Community 314|Community 314]]
-- [[_COMMUNITY_Community 315|Community 315]]
-- [[_COMMUNITY_Community 316|Community 316]]
-- [[_COMMUNITY_Community 317|Community 317]]
-- [[_COMMUNITY_Community 318|Community 318]]
-- [[_COMMUNITY_Community 319|Community 319]]
-- [[_COMMUNITY_Community 320|Community 320]]
-- [[_COMMUNITY_Community 321|Community 321]]
-- [[_COMMUNITY_Community 322|Community 322]]
-- [[_COMMUNITY_Community 323|Community 323]]
-- [[_COMMUNITY_Community 324|Community 324]]
-- [[_COMMUNITY_Community 325|Community 325]]
-- [[_COMMUNITY_Community 326|Community 326]]
-- [[_COMMUNITY_Community 327|Community 327]]
-- [[_COMMUNITY_Community 328|Community 328]]
-- [[_COMMUNITY_Community 329|Community 329]]
-- [[_COMMUNITY_Community 330|Community 330]]
-- [[_COMMUNITY_Community 331|Community 331]]
-- [[_COMMUNITY_Community 332|Community 332]]
-- [[_COMMUNITY_Community 333|Community 333]]
-- [[_COMMUNITY_Community 334|Community 334]]
-- [[_COMMUNITY_Community 335|Community 335]]
-- [[_COMMUNITY_Community 336|Community 336]]
-- [[_COMMUNITY_Community 337|Community 337]]
-- [[_COMMUNITY_Community 338|Community 338]]
-- [[_COMMUNITY_Community 339|Community 339]]
-- [[_COMMUNITY_Community 340|Community 340]]
-- [[_COMMUNITY_Community 341|Community 341]]
-- [[_COMMUNITY_Community 342|Community 342]]
-- [[_COMMUNITY_Community 343|Community 343]]
-- [[_COMMUNITY_Community 344|Community 344]]
-- [[_COMMUNITY_Community 345|Community 345]]
-- [[_COMMUNITY_Community 346|Community 346]]
-- [[_COMMUNITY_Community 347|Community 347]]
-- [[_COMMUNITY_Community 348|Community 348]]
-- [[_COMMUNITY_Community 349|Community 349]]
-- [[_COMMUNITY_Community 350|Community 350]]
-- [[_COMMUNITY_Community 351|Community 351]]
-- [[_COMMUNITY_Community 352|Community 352]]
-- [[_COMMUNITY_Community 353|Community 353]]
-- [[_COMMUNITY_Community 354|Community 354]]
-- [[_COMMUNITY_Community 355|Community 355]]
 - [[_COMMUNITY_Community 356|Community 356]]
 - [[_COMMUNITY_Community 357|Community 357]]
 - [[_COMMUNITY_Community 358|Community 358]]
@@ -383,14 +244,7 @@
 - [[_COMMUNITY_Community 365|Community 365]]
 - [[_COMMUNITY_Community 366|Community 366]]
 - [[_COMMUNITY_Community 367|Community 367]]
-- [[_COMMUNITY_Community 368|Community 368]]
-- [[_COMMUNITY_Community 369|Community 369]]
-- [[_COMMUNITY_Community 370|Community 370]]
 - [[_COMMUNITY_Community 371|Community 371]]
-- [[_COMMUNITY_Community 372|Community 372]]
-- [[_COMMUNITY_Community 373|Community 373]]
-- [[_COMMUNITY_Community 374|Community 374]]
-- [[_COMMUNITY_Community 375|Community 375]]
 - [[_COMMUNITY_Community 376|Community 376]]
 - [[_COMMUNITY_Community 377|Community 377]]
 - [[_COMMUNITY_Community 378|Community 378]]
@@ -403,14 +257,8 @@
 - [[_COMMUNITY_Community 385|Community 385]]
 - [[_COMMUNITY_Community 386|Community 386]]
 - [[_COMMUNITY_Community 387|Community 387]]
-- [[_COMMUNITY_Community 388|Community 388]]
 - [[_COMMUNITY_Community 389|Community 389]]
-- [[_COMMUNITY_Community 390|Community 390]]
-- [[_COMMUNITY_Community 391|Community 391]]
-- [[_COMMUNITY_Community 392|Community 392]]
 - [[_COMMUNITY_Community 393|Community 393]]
-- [[_COMMUNITY_Community 394|Community 394]]
-- [[_COMMUNITY_Community 395|Community 395]]
 - [[_COMMUNITY_Community 396|Community 396]]
 - [[_COMMUNITY_Community 397|Community 397]]
 - [[_COMMUNITY_Community 398|Community 398]]
@@ -423,13 +271,7 @@
 - [[_COMMUNITY_Community 405|Community 405]]
 - [[_COMMUNITY_Community 406|Community 406]]
 - [[_COMMUNITY_Community 407|Community 407]]
-- [[_COMMUNITY_Community 408|Community 408]]
-- [[_COMMUNITY_Community 409|Community 409]]
-- [[_COMMUNITY_Community 410|Community 410]]
 - [[_COMMUNITY_Community 411|Community 411]]
-- [[_COMMUNITY_Community 412|Community 412]]
-- [[_COMMUNITY_Community 413|Community 413]]
-- [[_COMMUNITY_Community 414|Community 414]]
 - [[_COMMUNITY_Community 415|Community 415]]
 - [[_COMMUNITY_Community 416|Community 416]]
 - [[_COMMUNITY_Community 417|Community 417]]
@@ -440,163 +282,38 @@
 - [[_COMMUNITY_Community 422|Community 422]]
 - [[_COMMUNITY_Community 423|Community 423]]
 - [[_COMMUNITY_Community 424|Community 424]]
-- [[_COMMUNITY_Community 425|Community 425]]
-- [[_COMMUNITY_Community 426|Community 426]]
 - [[_COMMUNITY_Community 427|Community 427]]
-- [[_COMMUNITY_Community 428|Community 428]]
-- [[_COMMUNITY_Community 429|Community 429]]
 - [[_COMMUNITY_Community 430|Community 430]]
 - [[_COMMUNITY_Community 431|Community 431]]
 - [[_COMMUNITY_Community 432|Community 432]]
 - [[_COMMUNITY_Community 433|Community 433]]
-- [[_COMMUNITY_Community 434|Community 434]]
-- [[_COMMUNITY_Community 435|Community 435]]
-- [[_COMMUNITY_Community 436|Community 436]]
-- [[_COMMUNITY_Community 437|Community 437]]
-- [[_COMMUNITY_Community 438|Community 438]]
-- [[_COMMUNITY_Community 439|Community 439]]
-- [[_COMMUNITY_Community 440|Community 440]]
-- [[_COMMUNITY_Community 441|Community 441]]
-- [[_COMMUNITY_Community 442|Community 442]]
-- [[_COMMUNITY_Community 443|Community 443]]
-- [[_COMMUNITY_Community 444|Community 444]]
-- [[_COMMUNITY_Community 445|Community 445]]
-- [[_COMMUNITY_Community 446|Community 446]]
-- [[_COMMUNITY_Community 447|Community 447]]
-- [[_COMMUNITY_Community 448|Community 448]]
-- [[_COMMUNITY_Community 449|Community 449]]
-- [[_COMMUNITY_Community 450|Community 450]]
-- [[_COMMUNITY_Community 451|Community 451]]
-- [[_COMMUNITY_Community 452|Community 452]]
-- [[_COMMUNITY_Community 453|Community 453]]
-- [[_COMMUNITY_Community 454|Community 454]]
-- [[_COMMUNITY_Community 455|Community 455]]
-- [[_COMMUNITY_Community 456|Community 456]]
-- [[_COMMUNITY_Community 457|Community 457]]
-- [[_COMMUNITY_Community 458|Community 458]]
-- [[_COMMUNITY_Community 459|Community 459]]
-- [[_COMMUNITY_Community 460|Community 460]]
-- [[_COMMUNITY_Community 461|Community 461]]
-- [[_COMMUNITY_Community 462|Community 462]]
-- [[_COMMUNITY_Community 463|Community 463]]
-- [[_COMMUNITY_Community 464|Community 464]]
-- [[_COMMUNITY_Community 465|Community 465]]
-- [[_COMMUNITY_Community 466|Community 466]]
-- [[_COMMUNITY_Community 467|Community 467]]
 - [[_COMMUNITY_Community 468|Community 468]]
 - [[_COMMUNITY_Community 469|Community 469]]
 - [[_COMMUNITY_Community 470|Community 470]]
-- [[_COMMUNITY_Community 471|Community 471]]
-- [[_COMMUNITY_Community 472|Community 472]]
 - [[_COMMUNITY_Community 473|Community 473]]
-- [[_COMMUNITY_Community 474|Community 474]]
-- [[_COMMUNITY_Community 475|Community 475]]
 - [[_COMMUNITY_Community 476|Community 476]]
-- [[_COMMUNITY_Community 477|Community 477]]
-- [[_COMMUNITY_Community 478|Community 478]]
-- [[_COMMUNITY_Community 479|Community 479]]
-- [[_COMMUNITY_Community 480|Community 480]]
-- [[_COMMUNITY_Community 481|Community 481]]
-- [[_COMMUNITY_Community 482|Community 482]]
-- [[_COMMUNITY_Community 483|Community 483]]
 - [[_COMMUNITY_Community 484|Community 484]]
 - [[_COMMUNITY_Community 485|Community 485]]
-- [[_COMMUNITY_Community 486|Community 486]]
 - [[_COMMUNITY_Community 487|Community 487]]
-- [[_COMMUNITY_Community 488|Community 488]]
-- [[_COMMUNITY_Community 489|Community 489]]
-- [[_COMMUNITY_Community 490|Community 490]]
-- [[_COMMUNITY_Community 491|Community 491]]
-- [[_COMMUNITY_Community 492|Community 492]]
-- [[_COMMUNITY_Community 493|Community 493]]
-- [[_COMMUNITY_Community 494|Community 494]]
-- [[_COMMUNITY_Community 495|Community 495]]
-- [[_COMMUNITY_Community 496|Community 496]]
-- [[_COMMUNITY_Community 497|Community 497]]
-- [[_COMMUNITY_Community 498|Community 498]]
-- [[_COMMUNITY_Community 499|Community 499]]
-- [[_COMMUNITY_Community 500|Community 500]]
-- [[_COMMUNITY_Community 501|Community 501]]
-- [[_COMMUNITY_Community 502|Community 502]]
-- [[_COMMUNITY_Community 503|Community 503]]
-- [[_COMMUNITY_Community 504|Community 504]]
-- [[_COMMUNITY_Community 505|Community 505]]
-- [[_COMMUNITY_Community 506|Community 506]]
-- [[_COMMUNITY_Community 507|Community 507]]
-- [[_COMMUNITY_Community 508|Community 508]]
-- [[_COMMUNITY_Community 509|Community 509]]
-- [[_COMMUNITY_Community 510|Community 510]]
-- [[_COMMUNITY_Community 511|Community 511]]
-- [[_COMMUNITY_Community 512|Community 512]]
 - [[_COMMUNITY_Community 513|Community 513]]
 - [[_COMMUNITY_Community 514|Community 514]]
 - [[_COMMUNITY_Community 515|Community 515]]
 - [[_COMMUNITY_Community 517|Community 517]]
 - [[_COMMUNITY_Community 518|Community 518]]
 - [[_COMMUNITY_Community 520|Community 520]]
-- [[_COMMUNITY_Community 521|Community 521]]
 - [[_COMMUNITY_Community 522|Community 522]]
 - [[_COMMUNITY_Community 523|Community 523]]
 - [[_COMMUNITY_Community 524|Community 524]]
-- [[_COMMUNITY_Community 525|Community 525]]
-- [[_COMMUNITY_Community 526|Community 526]]
-- [[_COMMUNITY_Community 527|Community 527]]
-- [[_COMMUNITY_Community 528|Community 528]]
-- [[_COMMUNITY_Community 529|Community 529]]
-- [[_COMMUNITY_Community 530|Community 530]]
-- [[_COMMUNITY_Community 531|Community 531]]
-- [[_COMMUNITY_Community 532|Community 532]]
-- [[_COMMUNITY_Community 533|Community 533]]
-- [[_COMMUNITY_Community 534|Community 534]]
-- [[_COMMUNITY_Community 535|Community 535]]
-- [[_COMMUNITY_Community 536|Community 536]]
-- [[_COMMUNITY_Community 537|Community 537]]
-- [[_COMMUNITY_Community 538|Community 538]]
-- [[_COMMUNITY_Community 539|Community 539]]
-- [[_COMMUNITY_Community 540|Community 540]]
-- [[_COMMUNITY_Community 541|Community 541]]
-- [[_COMMUNITY_Community 542|Community 542]]
-- [[_COMMUNITY_Community 543|Community 543]]
-- [[_COMMUNITY_Community 544|Community 544]]
-- [[_COMMUNITY_Community 545|Community 545]]
-- [[_COMMUNITY_Community 546|Community 546]]
-- [[_COMMUNITY_Community 547|Community 547]]
-- [[_COMMUNITY_Community 548|Community 548]]
-- [[_COMMUNITY_Community 549|Community 549]]
-- [[_COMMUNITY_Community 550|Community 550]]
-- [[_COMMUNITY_Community 551|Community 551]]
-- [[_COMMUNITY_Community 552|Community 552]]
-- [[_COMMUNITY_Community 553|Community 553]]
-- [[_COMMUNITY_Community 554|Community 554]]
-- [[_COMMUNITY_Community 555|Community 555]]
-- [[_COMMUNITY_Community 556|Community 556]]
-- [[_COMMUNITY_Community 557|Community 557]]
-- [[_COMMUNITY_Community 558|Community 558]]
-- [[_COMMUNITY_Community 561|Community 561]]
-- [[_COMMUNITY_Community 563|Community 563]]
-- [[_COMMUNITY_Community 564|Community 564]]
-- [[_COMMUNITY_Community 565|Community 565]]
 - [[_COMMUNITY_Community 566|Community 566]]
 - [[_COMMUNITY_Community 567|Community 567]]
 - [[_COMMUNITY_Community 568|Community 568]]
 - [[_COMMUNITY_Community 572|Community 572]]
-- [[_COMMUNITY_Community 577|Community 577]]
 - [[_COMMUNITY_Community 578|Community 578]]
 - [[_COMMUNITY_Community 580|Community 580]]
 - [[_COMMUNITY_Community 581|Community 581]]
-- [[_COMMUNITY_Community 582|Community 582]]
-- [[_COMMUNITY_Community 583|Community 583]]
 - [[_COMMUNITY_Community 584|Community 584]]
-- [[_COMMUNITY_Community 585|Community 585]]
 - [[_COMMUNITY_Community 586|Community 586]]
 - [[_COMMUNITY_Community 587|Community 587]]
-- [[_COMMUNITY_Community 588|Community 588]]
-- [[_COMMUNITY_Community 589|Community 589]]
-- [[_COMMUNITY_Community 590|Community 590]]
-- [[_COMMUNITY_Community 591|Community 591]]
-- [[_COMMUNITY_Community 592|Community 592]]
-- [[_COMMUNITY_Community 593|Community 593]]
-- [[_COMMUNITY_Community 594|Community 594]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `useActionForm()` - 141 edges
@@ -625,79 +342,79 @@
 ## Import Cycles
 - None detected.
 
-## Communities (594 total, 63 thin omitted)
+## Communities (306 total, 18 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.03
+Cohesion: 0.02
 Nodes (114): AdminAddPrivateNoteKeySlotArgs, AdminAssignShepherdToOverShepherdArgs, AdminCreateFollowUpArgs, AdminCreateGroupCalendarEventArgs, AdminCreateGuestArgs, AdminCreateLaunchPlanningScenarioArgs, AdminCreateOverShepherdArgs, AdminCreateShepherdCareFollowUpArgs (+106 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.04
-Nodes (68): rpcAdminArchiveLaunchPlanningScenario(), rpcAdminArchiveMultiplicationCandidate(), rpcAdminCreateLaunchPlanningScenario(), rpcAdminCreateMultiplicationCandidate(), rpcAdminRecordChurchAttendanceSnapshot(), rpcAdminSetCurrentLaunchPlanningScenario(), rpcAdminSetGroupCapacityTarget(), rpcAdminUpdateLaunchPlanningAssumptions() (+60 more)
+Cohesion: 0.07
+Nodes (38): rpcAdminArchiveMultiplicationCandidate(), rpcAdminCreateMultiplicationCandidate(), rpcAdminRecordChurchAttendanceSnapshot(), rpcAdminSetGroupCapacityTarget(), rpcAdminUpdateLaunchPlanningAssumptions(), rpcAdminUpdateMultiplicationCandidate(), adminArchiveMultiplicationCandidate(), adminRecordChurchAttendanceSnapshot() (+30 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.06
-Nodes (41): CAPACITY_STATUS_LABEL, SuggestedMultiplicationGroup, LaunchPlanningAssumptions, percentToRatio(), ratioToPercent(), STATUS_OPTIONS, STATUS_STYLE, TargetEditor() (+33 more)
+Cohesion: 0.08
+Nodes (24): rpcAdminArchiveLaunchPlanningScenario(), rpcAdminCreateLaunchPlanningScenario(), rpcAdminSetCurrentLaunchPlanningScenario(), rpcAdminUpdateLaunchPlanningScenario(), adminArchiveLaunchPlanningScenario(), adminCreateLaunchPlanningScenario(), adminSetCurrentLaunchPlanningScenario(), adminUpdateLaunchPlanningScenario() (+16 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.06
-Nodes (73): mapRpcError, RPC_ERROR_MESSAGES, isAttentionResetScope(), DeletionBlocker, LAUNCH_MUTE_FLAG_KEYS, isInlineDeletableEntityType(), rpcSuperAdminCleanSlateImport(), rpcSuperAdminCleanSlateRevert() (+65 more)
+Nodes (80): mapRpcError, RPC_ERROR_MESSAGES, isAttentionResetScope(), LAUNCH_MUTE_FLAG_KEYS, isInlineDeletableEntityType(), rpcSuperAdminBulkImportPeople(), rpcSuperAdminCleanSlateImport(), rpcSuperAdminCleanSlateRevert() (+72 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.04
-Nodes (45): asNumber(), asString(), AUDIT_ACTION_LABELS, AuditSummaryMaps, categorizeAuditAction(), interactionTypeLabel(), isRecord(), summarizeAuditEvent() (+37 more)
+Cohesion: 0.03
+Nodes (54): asNumber(), asString(), AUDIT_ACTION_LABELS, AuditCategory, AuditSummaryMaps, categorizeAuditAction(), interactionTypeLabel(), isRecord() (+46 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.04
-Nodes (83): applyPlaceholderSizingStyles(), buildCollapsible(), buildColorModels(), buildRadiiModels(), buildSvelteExpressionTextMap(), buildSveltePropValuesFromLiveElement(), buildTypographyModels(), clearSteerFocusRecoverTimer() (+75 more)
+Cohesion: 0.06
+Nodes (34): groupCellsByAudience(), groupHealthStatusLabel(), hasActiveOverrides(), OverrideSummaryRow(), SettingsTab, SettingsTabs(), CategoriesByAudience, CategoryOption (+26 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.03
-Nodes (108): formatWeekLabel(), GroupHealthSignals, GroupManagementData, effectiveHealthStatus(), hasActiveOverrides(), MetricDefaults, SettingsShell(), SettingsShellData (+100 more)
+Cohesion: 0.07
+Nodes (51): formatCheckInDueRelative(), capacityStatus, AdminGroupModel, ATTENTION_LABELS, ATTENTION_PRIORITY, buildAttentionDetail(), buildAttentionItems(), buildCapacitySummary() (+43 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.04
-Nodes (90): base64ToBytes(), ADD_KEY_SLOT_SPEC, AddKeySlotInput, adminSetOverShepherdActive(), adminUpdateOverShepherd(), ARCHIVE_CARE_FOLLOW_UP_KEYS, ARCHIVE_CARE_FOLLOW_UP_SPEC, ASSIGN_COVERAGE_KEYS (+82 more)
+Cohesion: 0.03
+Nodes (80): rpcAdminSetOverShepherdActive(), rpcAdminUpdateShepherdCareFollowUp(), ADD_KEY_SLOT_SPEC, AddKeySlotInput, adminArchiveShepherdCareFollowUp(), adminAssignShepherdCoverage(), adminCreateOverShepherd(), adminCreateShepherdCareFollowUp() (+72 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.17
-Nodes (23): ab(), bytesToBase64Url(), CROCKFORD_DECODE, crockfordDecode(), crockfordEncode(), decryptNote(), deriveKek(), deriveKekFromRecoveryCode() (+15 more)
+Cohesion: 0.11
+Nodes (40): createPrivateNotesSession(), PrivateNoteSavedNote, PrivateNotesSession, PrivateNotesSessionActions, PrivateNotesSessionConfig, PrivateNotesSessionState, ab(), buildNoteAad() (+32 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.03
-Nodes (126): loadCheckInDetailData(), buildCalendarEventsByGroup(), expectedMeetingDateForWeek(), formatCheckInDueRelative(), pickCalendarOverrideForOccurrence(), addDaysIsoForWeek(), AttendanceCounts, buildCheckInDetailData() (+118 more)
+Cohesion: 0.04
+Nodes (83): fetchAdminWeeklyCheckInReview(), fetchGroupHealthRubric(), getGroupHealthOverviewForGroup(), listGroupHealthOverview(), wrapError(), decodeMetricDefaults(), CheckInPage(), buildGroupManagementData() (+75 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.12
-Nodes (24): addMinutesToChurchClock(), CalendarEventLite, CalendarOverride, CheckInDueInput, CheckInDueResult, CHURCH_DATE_PARTS_FMT, ChurchClockParts, churchWallClockMinutes() (+16 more)
+Nodes (26): addMinutesToChurchClock(), buildCalendarEventsByGroup(), CalendarEventLite, CalendarOverride, CheckInDueInput, CheckInDueResult, CHURCH_DATE_PARTS_FMT, ChurchClockParts (+18 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.08
-Nodes (24): buildCareNoteFeed(), buildSealedSummary(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject() (+16 more)
+Cohesion: 0.07
+Nodes (32): buildCareNoteFeed(), buildSealedSummary(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject() (+24 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.05
-Nodes (30): cadenceLabel(), CAPACITY_TONE, COLUMN_MENU_LABELS, ColumnVisibilityMenu(), DENSITY_CELL_CLASS, DENSITY_HEADER_CLASS, DENSITY_LABELS, EMPTY_TAB_COPY (+22 more)
+Nodes (33): cadenceLabel(), CAPACITY_TONE, COLUMN_MENU_LABELS, ColumnVisibilityMenu(), DENSITY_CELL_CLASS, DENSITY_HEADER_CLASS, DENSITY_LABELS, EMPTY_TAB_COPY (+25 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.04
-Nodes (84): borderColorsFromStyle(), borderWidthsFromStyle(), checkBorders(), checkClippedOverflow(), checkCreamPalette(), checkElementBorders(), checkElementBordersDOM(), checkElementClippedOverflow() (+76 more)
+Cohesion: 0.05
+Nodes (39): AuthoredGroupNote, CareNotesSection(), CHIP_TONES, NoteCard(), fetchAuthoredGroupCareNotes(), fetchAuthoredGroupPrayerRequests(), fetchNoteTransparencyGrant(), noteRow (+31 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.04
-Nodes (68): buildCellCoverage(), cellKey(), countsTowardCoverage(), COVERAGE_LIFECYCLE_STATES, CoverageCellInput, CoverageGroupInput, sortByLargestShortfall(), boolOr() (+60 more)
+Cohesion: 0.07
+Nodes (28): BUILT_IN_READINESS_RULE, buildPerTypeRules(), buildReadinessCells(), buildSettingsData(), emptySettingsData(), loadSettingsData(), SettingsReads, supabaseSettingsReads() (+20 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.08
-Nodes (43): countActiveMembersByGroup(), indexOverridesByGroup(), jsonInt(), jsonIntOrNull(), JsonSource, applyBaselineSilentDefaults(), buildLaunchPlanningInputs(), buildScenarioComparison() (+35 more)
+Cohesion: 0.09
+Nodes (39): countActiveMembersByGroup(), indexOverridesByGroup(), applyBaselineSilentDefaults(), buildLaunchPlanningInputs(), buildScenarioComparison(), buildStaffingForecast(), BUILT_IN_LAUNCH_PLANNING_ASSUMPTIONS, clampNonNegative() (+31 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.08
-Nodes (26): DEMO_LAUNCH_PLANNING, DEMO_METRIC_DEFAULTS, demoAdminModelInput(), ADMIN_FALLBACK, DEMO_WEEK_AHEAD_CUTOFF_ISO, FALLBACK_PIPELINE_COUNTS, fallbackActivity, fallbackGuestPipelineCount (+18 more)
+Cohesion: 0.07
+Nodes (26): DashboardClient(), DEMO_LAUNCH_PLANNING, DEMO_WEEK_AHEAD_CUTOFF_ISO, FALLBACK_PIPELINE_COUNTS, fallbackActivity, fallbackGuestPipelineCount, fallbackLeaderPipeline, fallbackLeaderUpcoming (+18 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.06
-Nodes (40): SWATCHES, statusStripeColor(), LaunchPlanningInputs, LaunchPlanningOutputs, linkStyle, navStyle, promptStyle, WorkspaceSection (+32 more)
+Cohesion: 0.09
+Nodes (27): LaunchPlanningInputs, LaunchPlanningOutputs, StaffingForecast, LaunchPlanningPageData, LaunchPlanningPanels, CapacityBoard, ChurchAttendanceCard, LaunchPlanningAssumptionsForm (+19 more)
 
 ### Community 18 - "Community 18"
 Cohesion: 0.08
@@ -705,7 +422,7 @@ Nodes (61): addLabels(), addReactionIfMissing(), apiPath(), CODEX_ACTOR, collect
 
 ### Community 19 - "Community 19"
 Cohesion: 0.07
-Nodes (27): GROUP_HEALTH_STATUS_LABEL, GROUP_HEALTH_STATUSES, groupHealthStatusLabel(), OverrideSummaryRow(), SettingsTab, SettingsTabs(), ArchiveGroupButton(), archiveGroupConfirmMessage() (+19 more)
+Nodes (37): DirectoryScope, DirectorySection(), LEADER_ROLES, MemberRow, NO_GROUPS, PeopleDirectoryProps, PROFILE_SECTIONS, ProfileRow (+29 more)
 
 ### Community 20 - "Community 20"
 Cohesion: 0.15
@@ -713,299 +430,291 @@ Nodes (11): RPCS, sql, RPCS, assertExecuteLockdown(), assertPairedAuditInsert(),
 
 ### Community 21 - "Community 21"
 Cohesion: 0.12
-Nodes (20): GroupRubricGradeInput, GroupRubricOverride, BUILT_IN_RUBRIC_BANDS, ComputedRubricGrade, computeGrade(), letterForNumeric(), Rubric, RubricBands (+12 more)
+Nodes (26): GroupRubricGrade, GroupRubricGradeInput, GroupRubricOverride, getGroupRubricGrade(), PersistedRubricGrade, resolveGroupRubricGrade(), BUILT_IN_RUBRIC_BANDS, ComputedRubricGrade (+18 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.08
-Nodes (33): GroupRubricGrade, getGroupRubricGrade(), GroupRubricGradeView, PersistedRubricGrade, decodeRubricCriteria(), decodeScores(), fetchLeaderHealthRubric(), fetchLeaderRubricGrade() (+25 more)
+Cohesion: 0.17
+Nodes (19): persistedOverride(), resolveGroupHealthByGroupId(), resolveLeaderHealthByLeaderId(), decodeRubricCriteria(), decodeScores(), fetchLeaderHealthRubric(), fetchLeaderRubricGrade(), PersistedLeaderGrade (+11 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.13
-Nodes (20): HISTORY_RESET_CATEGORIES, HISTORY_RESET_CATEGORY_KEYS, HISTORY_RESET_CATEGORY_META, HISTORY_RESET_TABLES, HistoryResetCategory, isHistoryResetCategory(), AttentionResetEntitySnapshot, AttentionResetSurfaceState (+12 more)
+Cohesion: 0.07
+Nodes (35): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACE_META, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetScope, AttentionResetSurface, buildSurfaceBaselines(), EMPTY_ATTENTION_BASELINES (+27 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.09
-Nodes (27): ApprenticeView, buildPipelineRollup(), LEADER_READINESS_STAGES, nextStage(), PipelineGroupGap, PipelineGroupRef, PipelineRollup, PipelineStageGroup (+19 more)
+Cohesion: 0.08
+Nodes (28): ApprenticeView, buildPipelineRollup(), LEADER_READINESS_STAGES, nextStage(), PipelineGroupGap, PipelineGroupRef, PipelineRollup, PipelineStageGroup (+20 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.07
-Nodes (51): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), analyzeVisualContrast(), analyzeVisualContrastCandidate(), blendRgba(), browserFindingsFromMap(), buildSelectorSegment() (+43 more)
+Cohesion: 0.08
+Nodes (26): groupTypeKey(), GroupTypeOption, buildPlannerSegments(), buildGroupTypeOptions(), buildMultiplicationView(), CandidatesData, EMPTY_CAPACITY_MODEL, emptyData() (+18 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.12
-Nodes (48): abortSvelteComponentInjection(), cancelEditing(), cancelEditingToPicking(), cancelInsertConfigure(), cleanup(), cleanupAcceptedSession(), clearAnnotations(), clearHandled() (+40 more)
+Cohesion: 0.09
+Nodes (20): EditingSurface(), GroupAssignmentsManager(), listResetStyle, pillListStyle, pillStyle, useEditingDrawer(), AssignLeaderForm(), AssignMemberForm() (+12 more)
 
 ### Community 27 - "Community 27"
-Cohesion: 0.07
-Nodes (60): AdminMasterCalendarShell(), loadMasterCalendar(), MasterCalendarData, weekdayIndexFromIso(), Params, Search, Params, Search (+52 more)
+Cohesion: 0.10
+Nodes (40): AdminMasterCalendarShell(), loadMasterCalendar(), MasterCalendarData, MasterCalendarGroupSummary, MasterCalendarLeader, weekdayIndexFromIso(), Params, Search (+32 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.06
-Nodes (54): attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines(), decodeGroupHealthRubric() (+46 more)
+Cohesion: 0.09
+Nodes (34): attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines(), decodeGroupHealthRubric() (+26 more)
 
 ### Community 29 - "Community 29"
 Cohesion: 0.06
-Nodes (47): buildCapacityBoard(), buildCapacityBoardModel(), buildMultiplicationSuggestions(), buildReadinessByGroup(), CapacityBoardApprentice, CapacityBoardFilter, CapacityBoardRow, filterBoard() (+39 more)
+Nodes (40): buildCapacityBoard(), buildCapacityBoardModel(), buildMultiplicationSuggestions(), buildReadinessByGroup(), CAPACITY_STATUS_LABEL, CapacityBoardApprentice, CapacityBoardFilter, CapacityBoardModel (+32 more)
 
 ### Community 30 - "Community 30"
-Cohesion: 0.11
-Nodes (54): _(), ae(), be(), bt(), Ce(), Ct(), de(), dt() (+46 more)
+Cohesion: 0.10
+Nodes (24): followUpPriorityLabel(), followUpTypeLabel(), adminCreateFollowUp(), FollowUpCreateForm(), PRIORITIES, TYPES, DUE_FILTER_VALUES, DUE_FILTERS (+16 more)
 
 ### Community 31 - "Community 31"
-Cohesion: 0.12
-Nodes (25): SuperAdminConsoleData, SuperAdminTestAccountsSummary, AssignableProfile, fetchRecentAuditEvents(), fetchAttentionResetState(), fetchAuditEventCount(), fetchCleanSlateImpact(), fetchLatestCleanSlateSnapshot() (+17 more)
+Cohesion: 0.13
+Nodes (26): requireSuperAdmin(), AssignableProfile, fetchRecentAuditEvents(), fetchAttentionResetState(), fetchAuditEventCount(), fetchCleanSlateImpact(), fetchHistoryResetState(), fetchLatestCleanSlateSnapshot() (+18 more)
 
 ### Community 32 - "Community 32"
 Cohesion: 0.08
-Nodes (26): Params, ResolvedOccurrence, capacityCategoryLabel(), healthCategoryLabel(), lifecycleCategoryLabel(), setupCategoryLabel(), GroupHealthEditButton(), AdminGroupDetailPage() (+18 more)
+Nodes (25): Params, ResolvedOccurrence, capacityCategoryLabel(), healthCategoryLabel(), lifecycleCategoryLabel(), setupCategoryLabel(), AdminGroupDetailPage(), AttendanceTab() (+17 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.12
-Nodes (17): BASE64_LOOKUP, bytesToBase64(), pgHexToBase64(), pgHexToBytes(), byteaToBase64(), fetchPrivateNoteKeySlotsForCreator(), fetchShepherdCarePrivateNoteCiphertextForCreator(), nullableByteaToBase64() (+9 more)
+Cohesion: 0.13
+Nodes (22): BASE64_LOOKUP, base64ToBytes(), bytesToBase64(), pgHexToBase64(), pgHexToBytes(), b64(), passkeyFields, b64() (+14 more)
 
 ### Community 34 - "Community 34"
 Cohesion: 0.09
-Nodes (50): allEntryIds(), argVal(), buildRepairBatch(), candidatesForEntry(), changedFilesSinceSnapshot(), clearAppliedEntries(), collectApplyOwnedFiles(), collectRollbackFiles() (+42 more)
+Nodes (25): rpcAdminArchiveProspect(), rpcAdminCreateProspect(), rpcAdminSetProspectNextStep(), rpcAdminTransitionProspect(), rpcAdminUpdateProspect(), ARCHIVE_PROSPECT_KEYS, ARCHIVE_PROSPECT_SPEC, CREATE_PROSPECT_KEYS (+17 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.18
-Nodes (17): extractClientIp(), forgotPasswordAction(), ForgotPasswordState, getSiteUrl(), getSalt(), hashEmail(), newCorrelationId(), ActionLog (+9 more)
+Cohesion: 0.16
+Nodes (17): extractClientIp(), forgotPasswordAction(), ForgotPasswordState, getSiteUrl(), ForgotPasswordForm(), INITIAL_STATE, loginAction(), LoginFormState (+9 more)
 
 ### Community 36 - "Community 36"
-Cohesion: 0.08
-Nodes (38): buildCareAccordion(), BuildCareAccordionInput, buildLedGroupsByLeaderId(), buildNoteStateByLeaderId(), CareAccordionGroupLeader, CareAccordionLeaderGroup, CareAccordionNoteState, CareAccordionPane (+30 more)
+Cohesion: 0.11
+Nodes (18): buildCareAccordion(), BuildCareAccordionInput, buildLedGroupsByLeaderId(), buildNoteStateByLeaderId(), CareAccordionGroupLeader, CareAccordionLeader, CareAccordionLeaderGroup, CareAccordionNoteState (+10 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.13
-Nodes (14): buildLaunchPlanningPanels(), CreateScenarioForm, eyebrowStyle, panelTitleStyle, PlanLaunchWidget(), PlanningShell(), PlanningTabKey, TABS (+6 more)
+Cohesion: 0.09
+Nodes (27): AdminCalendarPage(), pickMonthParam(), SearchParams, buildLaunchPlanningPanels(), AdminLaunchPlanningPage(), pickMonthParam(), SearchParams, AdminPlanningPage() (+19 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.04
-Nodes (67): ARCHIVE_EVENT_SPEC, CREATE_EVENT_SPEC, RESTORE_EVENT_SPEC, UPDATE_EVENT_SPEC, ActionInput, leaderArchiveCalendarEvent(), leaderCreateCalendarEvent(), leaderRestoreCalendarEvent() (+59 more)
+Cohesion: 0.08
+Nodes (26): ARCHIVE_EVENT_SPEC, CREATE_EVENT_SPEC, RESTORE_EVENT_SPEC, UPDATE_EVENT_SPEC, ActionInput, ownershipGuard(), rawGroupId(), requireOwnedGroupId() (+18 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.07
-Nodes (36): assembleLiveBrowserScript(), assertLiveBrowserScriptParts(), LIVE_BROWSER_SCRIPT_PARTS, readLiveBrowserScriptParts(), resolveLiveBrowserScriptParts(), summarizeManualApplyFailures(), removeAllSvelteComponentSessions(), acknowledgePendingEvent() (+28 more)
+Cohesion: 0.13
+Nodes (20): isExcludedFromCapacityMetrics(), capacityCategory(), healthCategory(), lifecycleCategory(), addDaysIso(), buildAttendanceTab(), buildFollowUpsTab(), buildGroupDetailData() (+12 more)
 
 ### Community 40 - "Community 40"
-Cohesion: 0.14
-Nodes (34): DrawerBody(), statusTone(), AdminMasterCalendarGrid(), DayClickPayload, GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard() (+26 more)
+Cohesion: 0.13
+Nodes (35): DrawerBody(), statusTone(), GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard(), statusTone(), statusStripeColor() (+27 more)
 
 ### Community 41 - "Community 41"
 Cohesion: 0.04
-Nodes (63): ATTENTION_RESET_SURFACE_META, AttentionResetSurface, AttentionResetCard(), CONFIRM_PHRASE, formatSnapshotTime(), impactLabel(), RESET_ACTION, SurfaceResetRow() (+55 more)
+Nodes (58): AttentionResetCard(), CONFIRM_PHRASE, formatSnapshotTime(), impactLabel(), RESET_ACTION, SurfaceResetRow(), AuditResetCard(), CleanSlateCard() (+50 more)
 
 ### Community 42 - "Community 42"
-Cohesion: 0.10
-Nodes (32): detectUrl(), runVisualContrastFallback(), finding(), getAP(), createDetectorProfile(), extractFindingIds(), profileFindings(), profileFindingsAsync() (+24 more)
+Cohesion: 0.11
+Nodes (20): readFrozenSurfaceFlagForLeader(), leaderArchiveCalendarEvent(), leaderCreateCalendarEvent(), leaderRestoreCalendarEvent(), leaderUpdateCalendarEvent(), checkInsFrozenGate(), LeaderCheckinActionResult, leaderQuickMarkDidNotMeet() (+12 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.12
-Nodes (17): devDependencies, autoprefixer, @axe-core/playwright, eslint, eslint-config-next, @eslint/eslintrc, lint-staged, @playwright/test (+9 more)
+Cohesion: 0.04
+Nodes (47): dependencies, clsx, lucide-react, next, @radix-ui/react-dialog, react, react-dom, @supabase/ssr (+39 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.16
-Nodes (23): ALL_OVERRIDDEN, decodeLevel(), describeCapacity(), describeHealth(), describeInterest(), encodeLevel(), fieldsFromRule(), isAudience() (+15 more)
+Cohesion: 0.09
+Nodes (39): InterestRule, ReadinessLetter, resolvePillar(), resolveReadinessRuleWithSources(), ALL_OVERRIDDEN, buildPartial(), decodeLevel(), describeCapacity() (+31 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.06
-Nodes (57): applyOriginalAttrsToSvelteAnchor(), applyPlaceholderDimensions(), applySavedSessionMeta(), buildInsertPlaceholderSnapshotFromDom(), captureAndEmit(), checkpointPayload(), clampVariantIndex(), commitAcceptedSvelteComponentToDom() (+49 more)
+Cohesion: 0.11
+Nodes (16): AttentionResetEntityButton(), RESET_ACTION, AttentionResetSuccess, GroupHealthOverviewRow, dateCell(), FILTER_KEYS, FilterKey, FILTERS (+8 more)
 
 ### Community 46 - "Community 46"
 Cohesion: 0.03
-Nodes (66): A11yHarnessClient(), CALENDAR_EDITOR_ACTIONS, CALENDAR_GRID_ACTIONS, CALENDAR_GROUPS, CALENDAR_LEADERS, CARE_FOLLOW_UPS, CARE_PANEL_GRADE_ENTRY, CARE_PANEL_LEADER_GRANTED (+58 more)
+Nodes (72): A11yHarnessClient(), CALENDAR_EDITOR_ACTIONS, CALENDAR_GRID_ACTIONS, CALENDAR_GROUPS, CALENDAR_LEADERS, CARE_FOLLOW_UPS, CARE_PANEL_GRADE_ENTRY, CARE_PANEL_LEADER_GRANTED (+64 more)
 
 ### Community 47 - "Community 47"
-Cohesion: 0.04
-Nodes (58): AUDIENCE_CATEGORIES, AUDIENCE_LABEL, groupTypeKey(), GroupTypeOption, GroupTypeRef, CapacityBoardModel, bucketGroupsBySegment(), buildPlannerSegments() (+50 more)
+Cohesion: 0.07
+Nodes (32): GroupTypeRef, bucketGroupsBySegment(), CandidateView, CRITERION_LABEL, evaluateReadiness(), filterSegmentsByYear(), GroupSegmentBucket, MultiplicationCriterion (+24 more)
 
 ### Community 48 - "Community 48"
-Cohesion: 0.04
-Nodes (68): CareRecentInteraction, UpcomingEventsStrip(), HealthBadgeProps, healthToTone, LifecycleBadgeProps, lifecycleToBadge, mapHealthToBadge(), mapLifecycleToBadge() (+60 more)
+Cohesion: 0.07
+Nodes (33): CareRecentInteraction, countPipeline(), HealthBadgeProps, healthToTone, LifecycleBadgeProps, lifecycleToBadge, mapHealthToBadge(), BadgeLifecycle (+25 more)
 
 ### Community 49 - "Community 49"
-Cohesion: 0.06
-Nodes (33): CareCadenceWindows, AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), buildGuestsData(), EMPTY_GUESTS_DATA (+25 more)
+Cohesion: 0.05
+Nodes (38): AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), AdminFollowUpsData, GroupManagementReads, buildGuestsData() (+30 more)
 
 ### Community 50 - "Community 50"
-Cohesion: 0.10
-Nodes (42): appendCssToSvelteStyle(), appendSanitizedCssRule(), applyDeferredSvelteComponentAccepts(), bakeParamValuesInCss(), buildInsertVariantStub(), buildPropContract(), buildPropsScript(), buildVariantStub() (+34 more)
+Cohesion: 0.09
+Nodes (20): addDaysIsoForWeek(), AttendanceCounts, buildCheckInDetailData(), CheckInDetailErrors, countAttendance(), deriveSessionStatus(), EMPTY_DETAIL_ERRORS, EMPTY_SUMMARY (+12 more)
 
 ### Community 51 - "Community 51"
-Cohesion: 0.11
-Nodes (22): averageRgb01(), buildAnnotationsForCapture(), buildPinElement(), captureChromeNodes(), captureElementFromRenderedAncestor(), captureElementToBlob(), collectFontCssText(), cssColorToRgb01() (+14 more)
+Cohesion: 0.14
+Nodes (15): ActionInput, CARE_NOTE_SPEC, leaderWriteGroupCareNote(), leaderWriteGroupPrayerRequest(), PRAYER_REQUEST_SPEC, isRecord(), LeaderGroupNotePayload, trimString() (+7 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.13
-Nodes (36): buildSvelteComponentCssAuthoring(), scaffoldSvelteComponentInsertSession(), shouldUseSvelteComponentInjection(), argVal(), buildInsertWrapperLines(), computeInsertLine(), INSERT_POSITIONS, insertCli() (+28 more)
+Cohesion: 0.11
+Nodes (16): getFeatureFlagDefinition(), rpcSuperAdminResetAuditLogs(), rpcSuperAdminSetPlatformConfig(), ValidationResult, AuditResetPayload, RESET_AUDIT_LOGS_SPEC, superAdminResetAuditLogs(), readBool() (+8 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.08
-Nodes (35): addOpToManualApplyChunk(), APPLY_EVENT_HARD_TIMEOUT_MS, APPLY_EVENT_SOFT_DEADLINE_MS, buildManualApplyAgentAction(), clearManualApplyTransaction(), collectManualApplyFiles(), compactManualApplyBatch(), compactManualApplyCandidates() (+27 more)
+Cohesion: 0.15
+Nodes (12): CheckInDetailShell(), EmptySessionCard(), formatMeetingTime(), meetingLine(), statusBadge(), CheckInReviewShell(), CheckInDetailData, CheckInDetailMember (+4 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.12
-Nodes (19): CANDIDATE_STATUS_LABEL, ActivityBand(), EmptyState(), StatusCard(), GuestPipelineFunnelCard(), HealthDistributionCard(), InterestFunnelOverviewCard(), LaunchPlanningOverviewCard() (+11 more)
+Cohesion: 0.09
+Nodes (31): SWATCHES, LaunchPlanningRiskLevel, CANDIDATE_STATUS_LABEL, ActivityBand(), EmptyState(), StatusCard(), GuestPipelineFunnelCard(), HealthDistributionCard() (+23 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.06
-Nodes (31): APPRENTICE, ATTENDANCE_RECORD, ATTENDANCE_SESSION, CALENDAR_EVENT, CareSubjectEmbed, CHURCH_ATTENDANCE_SNAPSHOT, CLEAN_SLATE_SNAPSHOT, findPermanentDeletionEntity() (+23 more)
+Nodes (35): APPRENTICE, ATTENDANCE_RECORD, ATTENDANCE_SESSION, CALENDAR_EVENT, CareSubjectEmbed, CHURCH_ATTENDANCE_SNAPSHOT, CLEAN_SLATE_SNAPSHOT, findPermanentDeletionEntity() (+27 more)
 
 ### Community 56 - "Community 56"
 Cohesion: 0.07
 Nodes (31): cellInterestKey(), CellInterestTally, interestForCell(), InterestProspectRow, tallyCellInterest(), ActiveCellRow, CellActiveGroupSizes, CellGroupRow (+23 more)
 
 ### Community 57 - "Community 57"
-Cohesion: 0.05
-Nodes (41): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load the action's reference, 4. Plan three variants: identity first, then mode, then axes, 5. Apply the freeform prompt (if present), 6. Write all variants in a single edit, 7. Parameters (composition-sized, 0–4 per variant), 8. Signal done (+33 more)
+Cohesion: 0.12
+Nodes (15): rpcAdminWriteCareNote(), rpcAdminWritePrayerRequest(), rpcSetNoteTransparencyGrant(), adminWriteCareNote(), adminWritePrayerRequest(), SET_GRANT_KEYS, SET_GRANT_SPEC, setNoteTransparencyGrant() (+7 more)
 
 ### Community 58 - "Community 58"
-Cohesion: 0.20
-Nodes (12): DEFAULT_HIDDEN_NAV_AREAS, DEFINITIONS_BY_KEY, FEATURE_FLAG_DEFINITIONS, FeatureFlagDefinition, FeatureFlagKind, FeatureFlagState, isFrozenSurfaceFlag(), MUTE_FLAG_TO_ATTENTION_KEY (+4 more)
+Cohesion: 0.15
+Nodes (14): BoardColumn, DueFollowUpRawRow, EMPTY_PROSPECT_STATE_COUNTS, fetchProspectSignalsForGroup(), fetchProspectStateCounts(), GroupProspectSignalRow, GroupProspectSignals, JoinedRollupEntry (+6 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.11
-Nodes (24): CapacityRule, CellReadinessInputs, CellReadinessOverride, evaluateCellReadiness(), HealthRule, InterestRule, isLetter(), letterAtLeast() (+16 more)
+Cohesion: 0.12
+Nodes (28): boolOr(), CapacityRule, CellReadinessOverride, CellReadinessSignal, decodeCapacityRule(), decodeCellOverride(), decodeHealthRule(), decodeInterestRule() (+20 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.09
-Nodes (29): CareDashboardSummary, buildShepherdCareTriageLink(), buildShepherdCareViewHref(), CanonicalCareTabKey, CareTabKey, CoverageFilter, DirectoryFilter, firstValue() (+21 more)
+Cohesion: 0.10
+Nodes (25): buildShepherdCareViewHref(), CanonicalCareTabKey, CareTabKey, CoverageFilter, DirectoryFilter, firstValue(), normalizeCareTabKey(), ParamValue (+17 more)
 
 ### Community 61 - "Community 61"
 Cohesion: 0.05
 Nodes (39): Admin workflow, App Completion Roadmap: Life Groups Ministry Operations, Architecture Assessment, Audit trail, Auth / RLS, Best Next Prompt (Copy/Paste), Current App Map, Current state (5 bullets) (+31 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.07
-Nodes (38): checkBorders(), checkClippedOverflow(), checkElementBorders(), checkElementBordersDOM(), checkElementClippedOverflow(), checkElementClippedOverflowDOM(), checkElementItalicSerif(), checkElementItalicSerifDOM() (+30 more)
+Cohesion: 0.14
+Nodes (14): ASSIGNABLE_ROLES, AUTH_USER_LABELS, Delivery, DELIVERY_HINTS, DELIVERY_OPTIONS, EXPIRY_OPTIONS, formatExpiry(), GROUP_ASSIGNMENT_LABELS (+6 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.09
-Nodes (36): applySvelteKitLiveAdapter(), buildSvelteLiveRootComponent(), defaultSvelteLayout(), detectSvelteKitProject(), ensureSvelteLiveRootComponent(), escapeRegExp(), fileIncludes(), findSvelteKitAppHtml() (+28 more)
+Cohesion: 0.22
+Nodes (10): PeopleManagementData, PeoplePipelineData, buildPeopleDirectoryData(), buildPeopleNeedsContact(), buildPeoplePipelineData(), EMPTY_DIRECTORY(), loadPeoplePageData(), PeoplePageData (+2 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.12
-Nodes (27): CheckInReviewShell(), buildWeekOptions(), validateWeekParam(), WeeklyReviewData, GroupManagementShell(), Params, isSuperAdminRole(), requireAdmin() (+19 more)
+Cohesion: 0.13
+Nodes (25): isSuperAdminRole(), requireAdmin(), GroupHealthPage(), AdminGroupsPage(), AdminGuestsPage(), AdminLeaderPipelinePage(), PageBody(), PageHeader() (+17 more)
 
 ### Community 65 - "Community 65"
 Cohesion: 0.12
-Nodes (21): ComputedGroupGrade, GroupGradeBoard, ResolvedGroupGrade, resolveGroupGradeBoard(), GROUP_HEALTH_GRADE_LADDER, GradeOverride, GradeOverrideScope, isOverrideActive() (+13 more)
+Nodes (20): ComputedGroupGrade, GroupGradeBoard, ResolvedGroupGrade, resolveGroupGradeBoard(), GROUP_HEALTH_GRADE_LADDER, GradeOverride, GradeOverrideScope, isOverrideActive() (+12 more)
 
 ### Community 66 - "Community 66"
 Cohesion: 0.07
-Nodes (23): AdminCalendarLegend(), AdminMasterCalendarDrawer(), AdminMasterCalendarList(), ActiveChip, ALL_TYPE_OPTIONS, CalendarViewSnapshot, isCalendarViewSnapshot(), isPlanningViewKey() (+15 more)
+Nodes (22): AdminCalendarLegend(), AdminMasterCalendarDrawer(), AdminMasterCalendarGrid(), DayClickPayload, AdminMasterCalendarList(), ActiveChip, ALL_TYPE_OPTIONS, CalendarViewSnapshot (+14 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.10
-Nodes (33): HEALTH_GRADE_LADDER, BUILT_IN_PILLAR_THRESHOLDS, computePillars(), conditionClears(), decodeBands(), decodeCondition(), decodePillarThresholds(), decodeTriggerRubric() (+25 more)
+Cohesion: 0.11
+Nodes (27): BUILT_IN_PILLAR_THRESHOLDS, computePillars(), conditionClears(), decodeBands(), decodeCondition(), decodePillarThresholds(), evaluateTrigger(), gradeNumericPillar() (+19 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.11
-Nodes (32): HomePage(), adminTiles(), HubTile, hubTilesForRole(), OVER_SHEPHERD_TILES, SUPER_ADMIN_CONSOLE_TILE, ADMIN_AREAS, ADMIN_ROLES (+24 more)
+Cohesion: 0.06
+Nodes (52): STATUS_BADGE_TONE, STATUS_STYLE, StatusTone, HomePage(), adminTiles(), HubTile, hubTilesForRole(), OVER_SHEPHERD_TILES (+44 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.08
-Nodes (23): FORBIDDEN_MANUAL_EDIT_TEXT_CHARS, INSERT_POSITIONS, isValidId(), isValidVariantId(), validateAnnotationFields(), validateEvent(), validateInsertGenerate(), validateManualEditEvent() (+15 more)
+Cohesion: 0.20
+Nodes (8): currentPeriodMonthIso(), buildGroupHealthData(), GroupHealthOverviewRow, GroupHealthReads, GroupHealthView, loadGroupHealthData(), supabaseGroupHealthReads(), WatchGrade
 
 ### Community 70 - "Community 70"
-Cohesion: 0.12
-Nodes (32): createBrowserDetector(), confirm(), detectCli(), formatFindings(), handleStdin(), printUsage(), buildImportGraph(), detectFrameworkConfig() (+24 more)
+Cohesion: 0.16
+Nodes (13): stateRequiresGroup(), NEXT_STEP_TYPE_LABEL, NEXT_STEP_TYPES, NextStepType, adminArchiveProspect(), adminSetProspectNextStep(), adminTransitionProspect(), adminUpdateProspect() (+5 more)
 
 ### Community 71 - "Community 71"
 Cohesion: 0.06
 Nodes (35): 10. Care follow-up concept, 11. Over-shepherd / coach coverage concept, 12. Privacy model, 13. Suggested UI, 14. Integration points, 15. What not to build yet, 16. Suggested phased implementation prompts, 1. Purpose (+27 more)
 
 ### Community 72 - "Community 72"
-Cohesion: 0.09
-Nodes (23): CheckInDetailShell(), EmptySessionCard(), formatMeetingTime(), meetingLine(), statusBadge(), PULSE_LABELS, formatMeetingTime(), lifecycleBadge() (+15 more)
+Cohesion: 0.17
+Nodes (13): PULSE_LABELS, formatMeetingTime(), lifecycleBadge(), meetingLine(), pulseBadge(), ReviewCard(), statusBadge(), SummaryTile() (+5 more)
 
 ### Community 73 - "Community 73"
-Cohesion: 0.10
-Nodes (28): CalendarOccurrenceEditor(), CalendarOccurrenceEditorActions, CalendarOccurrenceEditorOccurrence, ServerAction, CalendarEventWritablePayload, coerceEventType(), EVENT_STATUS_LABELS, EVENT_STATUS_OPTIONS (+20 more)
+Cohesion: 0.09
+Nodes (29): CalendarOccurrenceEditor(), CalendarOccurrenceEditorActions, CalendarOccurrenceEditorOccurrence, ServerAction, CalendarEventWritablePayload, coerceEventType(), EVENT_STATUS_LABELS, EVENT_STATUS_OPTIONS (+21 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.16
-Nodes (20): actionLabel(), buildConfigureRow(), buildConfirmedRow(), buildCyclingRow(), buildDots(), buildGeneratingRow(), buildInsertConfigureRow(), buildPlaceholderResizeHandles() (+12 more)
+Cohesion: 0.15
+Nodes (4): buildModel(), DEFAULTS, NOW, GroupHealthUpdatesRow
 
 ### Community 75 - "Community 75"
-Cohesion: 0.14
-Nodes (29): archiveTestGroup(), isDryRun(), main(), ProfileRow, REMOVABLE_ROLES, DEMO_SAFE_GROUP_NAMES_A, DEMO_SAFE_GROUP_NAMES_B, GroupRow (+21 more)
+Cohesion: 0.12
+Nodes (33): archiveTestGroup(), isDryRun(), main(), ProfileRow, REMOVABLE_ROLES, DEMO_SAFE_GROUP_NAMES_A, DEMO_SAFE_GROUP_NAMES_B, GroupRow (+25 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.12
 Nodes (10): FORBIDDEN_GENERIC_NAMES, AxeResults, expectNoBlockingAxeViolations(), gotoHarness(), LAUNCH_VITAL_SIGNS, PIVOT_VITAL_SIGNS, PHONE, SURFACE_IDS (+2 more)
 
 ### Community 77 - "Community 77"
-Cohesion: 0.15
-Nodes (32): buildColor(), CANONICAL_SECTIONS, collectBullets(), collectColorValues(), collectParagraphs(), detectFormat(), extractColors(), extractComponents() (+24 more)
+Cohesion: 0.31
+Nodes (8): loadCheckInDetailData(), CheckInDetailResult, emptyCheckInDetail(), supabaseCheckInDetailReads(), validateWeekParam(), Params, AdminCheckInDetailPage(), SearchParams
 
 ### Community 78 - "Community 78"
-Cohesion: 0.06
-Nodes (32): Accent Color Application, Accessibility, Alpha Is A Design Smell, Assess Color Opportunity, Background & Surfaces, Balance & Refinement, Borders & Accents, Building Functional Palettes (+24 more)
+Cohesion: 0.20
+Nodes (6): CheckInDetailReads, GROUP, MEMBERS, OPTIONS, RECORDS, SESSION
 
 ### Community 79 - "Community 79"
-Cohesion: 0.13
-Nodes (30): acceptCli(), argVal(), buildCarbonizeReplacement(), decodeHtmlAttr(), deindentContent(), detectCommentSyntax(), escapeRegExp(), expandReplaceRange() (+22 more)
+Cohesion: 0.33
+Nodes (8): CARE_STATUS_COPY_KEYS, DEFINITIONS_BY_KEY, EDITABLE_COPY_DEFINITIONS, EditableCopyConfig, EditableCopyDefinition, getEditableCopyDefinition(), GROUP_HEALTH_COPY_KEYS, resolveCopy()
 
 ### Community 80 - "Community 80"
-Cohesion: 0.08
-Nodes (30): rpcAdminCreateFollowUp(), rpcAdminUpdateFollowUpStatus(), adminCreateFollowUp(), adminUpdateFollowUpStatus(), CREATE_FOLLOW_UP_KEYS, CREATE_FOLLOW_UP_SPEC, REVALIDATE_PATHS, UPDATE_STATUS_KEYS (+22 more)
+Cohesion: 0.12
+Nodes (24): AdminActor, mapRpcError, leaderUpdateFollowUpStatus(), payloadFromInput(), requireLeaderActor(), RequireLeaderResult, REVALIDATE_PATHS, revalidateAll() (+16 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.09
 Nodes (24): Action, DEMO_SAFE_GROUP_NAMES, DiagnosticsReport, DuplicateProfileInfo, emptyResponse(), findAuthUserByEmail(), GroupsSummary, handleDisable() (+16 more)
 
 ### Community 82 - "Community 82"
-Cohesion: 0.06
-Nodes (31): Apply Clarity Principles, Assess Current Copy, Avoid Redundant Copy, Button & CTA Text, Confirmation Dialogs, Confirmation Dialogs: Use Sparingly, Consistency: The Terminology Problem, Don't Blame the User (+23 more)
+Cohesion: 0.27
+Nodes (6): adminCreateProspect(), ProspectCreateForm(), TOP_TYPES, CategoryOptionsByAudience, OPTIONS, prospectFormClientErrors
 
 ### Community 83 - "Community 83"
-Cohesion: 0.09
-Nodes (34): buildUpdateDirective(), cli(), compareSemver(), computeUpdateDirective(), DESIGN_NAMES, extractRegister(), FALLBACK_DIRS, fetchLatestSkillVersion() (+26 more)
+Cohesion: 0.22
+Nodes (7): DueFollowUp, PlanGroupOption, JoinedRollup(), ProspectBoardView(), STATE_TONES, ProspectBoard, badgeDotClassName()
 
 ### Community 84 - "Community 84"
-Cohesion: 0.11
-Nodes (31): attachSteerFocusGuard(), barPaletteForTheme(), brandMarkSvg(), buildDesignHeader(), buildParamsPanel(), connectSSE(), designPanelCss(), detectPageTheme() (+23 more)
+Cohesion: 0.36
+Nodes (4): currentMinistryYear(), isInMinistryYear(), ministryYearOf, RUBRIC
 
 ### Community 85 - "Community 85"
-Cohesion: 0.13
-Nodes (30): applyMockWrites(), buildCopyEditBatchPrompt(), checkFrameworkSourceSyntax(), chooseCopyEditAgent(), COMMAND_AUTH_CACHE, commandAuthed(), commandExists(), compactBatchForPrompt() (+22 more)
+Cohesion: 0.47
+Nodes (5): buildWeekOptions(), WeeklyReviewData, AdminCheckInsPage(), EMPTY_DATA(), SearchParams
 
 ### Community 86 - "Community 86"
 Cohesion: 0.05
-Nodes (55): DirectoryScope, DirectorySection(), LEADER_ROLES, MemberRow, NO_GROUPS, PeopleDirectoryProps, PROFILE_SECTIONS, ProfileRow (+47 more)
+Nodes (49): CareGradeEntryBundle, isNoteTransparencyGranted(), resolveLeaderGradeSeed(), PeopleImportCard(), CareAccordion(), CarePane(), leaderCountLabel(), CareLeaderPanel() (+41 more)
 
 ### Community 87 - "Community 87"
 Cohesion: 0.10
 Nodes (30): buildCareArea(), BuildCareAreaInput, CareArea, careDetailHref(), CareItem, CareItemActionLabel, CareItemDueTone, daysFromToday() (+22 more)
 
 ### Community 88 - "Community 88"
-Cohesion: 0.04
-Nodes (62): rpcAdminArchiveProspect(), rpcAdminCreateProspect(), rpcAdminSetProspectNextStep(), rpcAdminTransitionProspect(), rpcAdminUpdateProspect(), rpcSuperAdminUpdateProfileRole(), isUserRole(), isProfilesRow() (+54 more)
+Cohesion: 0.06
+Nodes (47): rpcSuperAdminUpdateProfileRole(), isUserRole(), isProfilesRow(), ROLE_CHANGE_KEYS, superAdminUpdateProfileRole(), UPDATE_PROFILE_ROLE_SPEC, RoleInGroup, validateCreateGuestPayload() (+39 more)
 
 ### Community 89 - "Community 89"
-Cohesion: 0.16
-Nodes (29): clearStoredManualApplyState(), copyToClipboard(), fetchPendingCount(), handleManualEditActivity(), hidePendingApplyDock(), manualApplyLoadingText(), manualApplyStateKey(), manualEditEventForCurrentPage() (+21 more)
+Cohesion: 0.33
+Nodes (5): linkStyle, navStyle, promptStyle, WorkspaceSection, WorkspaceSectionNav()
 
 ### Community 90 - "Community 90"
-Cohesion: 0.10
-Nodes (20): STATUS_BADGE_TONE, STATUS_STYLE, StatusTone, AdminNavGroup, Avatar(), AvatarTone, TONES, Icon() (+12 more)
+Cohesion: 0.60
+Nodes (3): jsonInt(), jsonIntOrNull(), JsonSource
 
 ### Community 91 - "Community 91"
-Cohesion: 0.04
-Nodes (89): isAudienceCategory(), decodeReadinessRule(), validateRubric(), GroupRpcArgs, rpcAdminCloseGroup(), rpcAdminCreateGroup(), rpcAdminReopenGroup(), rpcAdminUpdateGroup() (+81 more)
-
-### Community 92 - "Community 92"
-Cohesion: 0.11
-Nodes (31): activeElementDeep(), attachSteerFocusDebug(), buildSteerProcessingDots(), clearSteerAwaitTimer(), collapsePageChat(), expandPageChat(), finishVoiceSession(), focusConfigureInput() (+23 more)
-
-### Community 93 - "Community 93"
-Cohesion: 0.12
-Nodes (23): resolveVarRefs(), applyStaticDeclaration(), buildBorderOverrideMap(), compareStaticPriority(), cssPropToCamel(), expandStaticBoxValues(), expandStaticDeclaration(), extractStaticColor() (+15 more)
+Cohesion: 0.06
+Nodes (68): isUuid(), readUuidRpcData(), ACTIONS, GROUP_OVERRIDES_FORM, METRIC_DEFAULTS_FORM, validateNoteWritePayload(), validateSetNoteTransparencyGrantPayload(), validateWriteCareNotePayload() (+60 more)
 
 ### Community 94 - "Community 94"
-Cohesion: 0.09
-Nodes (25): OwnNameState, readOwnNameState(), ForgotPasswordForm(), paperGrain, PAvatarTone, POrnament(), PSeal(), TONE_TO_BADGE (+17 more)
+Cohesion: 0.08
+Nodes (28): OwnNameState, readOwnNameState(), rpcSetOwnFullName(), OwnFullNameResult, validateOwnFullName(), paperGrain, PSeal(), resetPasswordAction() (+20 more)
 
 ### Community 95 - "Community 95"
 Cohesion: 0.09
@@ -1019,61 +728,37 @@ Nodes (11): WRITE_RPCS, WRITE_RPCS, WRITE_RPCS, assertAuditContentFree(), assert
 Cohesion: 0.07
 Nodes (27): Acceptance criteria, Attendance validation, Audit feed OR-filter, Audit log (super_admin only), Authorization (negative paths), Automated checks, Clearing a previously-saved pulse, Concurrent first-time submit (leader + co-leader race) (+19 more)
 
-### Community 98 - "Community 98"
-Cohesion: 0.07
-Nodes (27): Accessibility Considerations, Anti-reflexes worth defending against, Assess Current Typography, Classic Typography Principles, Establish Hierarchy, Fix Readability, Fluid Type, Font Selection (+19 more)
-
 ### Community 99 - "Community 99"
 Cohesion: 0.07
 Nodes (26): 0. Source, 1. Visual principles from the prototype, 2. Color, typography, spacing, card, badge, navigation patterns, 3. Safe to reuse (route-scoped, no globals), 4. Risky for this app (needs scoping, not in first PR), 5. Do **not** implement directly (high-risk), 6. Route-by-route adaptation plan, 7. Explicit grouping (+18 more)
 
 ### Community 100 - "Community 100"
-Cohesion: 0.02
-Nodes (99): getFeatureFlagDefinition(), rpcAdminArchiveGroupCalendarEvent(), rpcAdminAssignShepherdToOverShepherd(), rpcAdminCreateGroupCalendarEvent(), rpcAdminEndShepherdCoverageAssignment(), rpcAdminRestoreGroupCalendarEvent(), rpcAdminSetLeaderRubricGrade(), rpcAdminUpdateGroupCalendarEvent() (+91 more)
+Cohesion: 0.04
+Nodes (84): isAudienceCategory(), decodeTriggerRubric(), rpcAdminArchiveGroupCategory(), rpcAdminAssignShepherdToOverShepherd(), rpcAdminEndShepherdCoverageAssignment(), rpcAdminRenameGroupCategory(), rpcAdminSetAudienceReadinessRule(), rpcAdminSetCategoryTypeCell() (+76 more)
 
 ### Community 101 - "Community 101"
 Cohesion: 0.08
 Nodes (16): AuthUserState, CallerProfileLookup, Delivery, DuplicateProfileInfo, EdgeLogContext, GroupAssignmentState, InvitePayload, jitterMs() (+8 more)
 
-### Community 102 - "Community 102"
-Cohesion: 0.08
-Nodes (42): firstExisting(), getDesignSidecarCandidates(), getDesignSidecarPath(), getImpeccableDir(), getLegacyLiveConfigPath(), getLegacyLiveServerPath(), getLegacyLiveSessionsDir(), getLiveAnnotationsDir() (+34 more)
-
-### Community 103 - "Community 103"
-Cohesion: 0.08
-Nodes (25): Assess Adaptation Challenge, Breakpoints: Content-Driven, Content Adaptation, Desktop Adaptation (Mobile → Desktop), Detect Input Method, Not Just Screen Size, Email Adaptation (Web → Email), Implement Adaptations, Layout Adaptation Patterns (+17 more)
-
-### Community 104 - "Community 104"
-Cohesion: 0.10
-Nodes (28): addManualContextText(), applyEditing(), buildLocatorForLeaf(), canRestoreManualEditElement(), contextElementForManualEdit(), copyEditContainerContext(), copyEditLeafContext(), directMixedTextRestoreNodes() (+20 more)
-
-### Community 105 - "Community 105"
-Cohesion: 0.14
-Nodes (24): analyzeSourceHint(), buildCandidatesForOp(), buildContextHintsByRef(), collectSearchFiles(), countOps(), escapeRegExp(), findContextMatches(), findLiteralMatches() (+16 more)
-
 ### Community 106 - "Community 106"
-Cohesion: 0.13
-Nodes (22): namePendingRedirectTarget(), AuthUser, getCurrentSession, isLeaderRowArray(), logGuardBackendError(), requireAdminSession(), requireLeaderActor(), requireOverShepherd() (+14 more)
+Cohesion: 0.07
+Nodes (35): namePendingRedirectTarget(), AuthUser, CurrentSession, getCurrentSession, isLeaderRowArray(), logGuardBackendError(), requireAdminSession(), requireLeaderActor() (+27 more)
 
 ### Community 107 - "Community 107"
-Cohesion: 0.14
-Nodes (13): ATTENDANCE_OPTIONS, AttendanceStatus, CheckInForm(), Member, MemberRow, Prefill, Pulse, PULSE_OPTIONS (+5 more)
+Cohesion: 0.15
+Nodes (12): ATTENDANCE_OPTIONS, AttendanceStatus, CheckInForm(), Member, MemberRow, Prefill, Pulse, PULSE_OPTIONS (+4 more)
 
 ### Community 108 - "Community 108"
 Cohesion: 0.08
 Nodes (24): 10. Success criteria, 1. The problem, 2. Persona & scope, 3.1 Target size & capacity status — 🟡, 3.2 Leader Pipeline & Apprentice — 🆕, 3.3 Multiplication Candidate — 🟡, 3.4 Launch Plan / Forecast — ✅, 3. Core concepts (ubiquitous language) (+16 more)
 
-### Community 109 - "Community 109"
-Cohesion: 0.08
-Nodes (24): Component translation rules, Narrative mapping, Pitfalls, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Seed mode, Step 1: Confirm seed mode, Step 1: Find the design assets (+16 more)
-
 ### Community 110 - "Community 110"
-Cohesion: 0.07
-Nodes (28): buildPlanData(), EMPTY_PLAN_DATA, loadPlanData(), PlanData, PlanReads, supabasePlanReads(), EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE, BoardColumn (+20 more)
+Cohesion: 0.15
+Nodes (14): buildPlanData(), EMPTY_PLAN_DATA, loadPlanData(), PlanData, PlanReads, supabasePlanReads(), EMPTY_CATEGORY_OPTIONS_BY_AUDIENCE, buildProspectBoard() (+6 more)
 
 ### Community 111 - "Community 111"
 Cohesion: 0.09
-Nodes (28): CareAccordionLeader, SuperAdminOnlyBadge(), SuperAdminOnlyMark(), CareLeaderPanel(), GradesAndNotes(), LetterBadge(), GroupRubricGradeEntry(), shepherdCareStatusLabel() (+20 more)
+Nodes (32): fetchOverShepherdCoverageForCaller(), isCoverageShape(), isCoveredShepherd(), MyCareNotes(), NoteCard(), MyShepherdsTable(), roleLabel, OverShepherdPage() (+24 more)
 
 ### Community 112 - "Community 112"
 Cohesion: 0.08
@@ -1083,33 +768,17 @@ Nodes (23): 10. Known limitations, 11. Future scenario modeling (LP.2), 12. Sugg
 Cohesion: 0.08
 Nodes (23): Admin role, Desktop, Edited files, Filters, Generated occurrence model, Implementation summary, Known limitations, Leader role (+15 more)
 
-### Community 114 - "Community 114"
-Cohesion: 0.16
-Nodes (16): createPrivateNotesSession(), PrivateNoteSavedNote, PrivateNotesSession, PrivateNotesSessionActions, PrivateNotesSessionConfig, PrivateNotesSessionState, buildNoteAad(), buildWrapAad() (+8 more)
-
-### Community 115 - "Community 115"
-Cohesion: 0.18
-Nodes (22): completionAckForAcceptResult(), completionTypeForAcceptResult(), augmentEventWithAcceptHandling(), buildAcceptScriptArgs(), buildPollReplyPayload(), EVENT_TYPES_NEEDING_AGENT_REPLY, fetchNextEvent(), fetchServerStatus() (+14 more)
-
-### Community 116 - "Community 116"
-Cohesion: 0.18
-Nodes (20): summarizeManualDiagnostics(), createManualEditRoutes(), sendJson(), summarizePendingManualEditBatch(), countByPage(), getBufferPath(), readBuffer(), readBufferInternal() (+12 more)
-
 ### Community 117 - "Community 117"
 Cohesion: 0.09
 Nodes (22): 1. Summary cards (6), 2. Attention queue, 3. Coverage by over-shepherd, 4. Upcoming touchpoints, 5. Recent interactions, Added, Coverage assignments, Dashboard model (+14 more)
 
-### Community 118 - "Community 118"
-Cohesion: 0.09
-Nodes (22): Assess Onboarding Needs, Context Over Ceremony, Contextual Help, Design Onboarding Experiences, Documentation & Help, Empty State Design, Feature Discovery & Adoption, Guided Tours & Walkthroughs (+14 more)
-
 ### Community 119 - "Community 119"
-Cohesion: 0.09
-Nodes (22): ADMIN, ALL, authoritativePolicy(), CARE_NOTE, LEADER, MATRIX, PRIVATE, RlsExpectation (+14 more)
+Cohesion: 0.10
+Nodes (23): ADMIN, ALL, authoritativePolicy(), CARE_NOTE, LEADER, M, MATRIX, PRIVATE (+15 more)
 
 ### Community 120 - "Community 120"
-Cohesion: 0.11
-Nodes (17): gradeAtOrBelow(), GroupHealthOverviewRow, dateCell(), FILTER_KEYS, FilterKey, FILTERS, GroupHealthTriage(), matchesFilter() (+9 more)
+Cohesion: 0.24
+Nodes (8): GroupHealthTriage(), parseStoredPreference(), serializePreference(), viewPreferenceKey(), CollapsibleOverview(), AdminFollowUpsShell(), usePersistedViewState(), Snap
 
 ### Community 121 - "Community 121"
 Cohesion: 0.09
@@ -1120,20 +789,16 @@ Cohesion: 0.09
 Nodes (21): 1. Purpose, 2. Pivot rationale (Julian's feedback), 3. Current app state, 4. North-star links, 5. Active roadmap, 6. New signals from Julian's 2026-05-27 inputs, Appendix A — Reliability / security debt track, Definition of done (+13 more)
 
 ### Community 123 - "Community 123"
-Cohesion: 0.19
-Nodes (16): decodeNextStep(), DueFollowUp, dueFollowUps(), isFollowUpDue(), isNextStepType(), NEXT_STEP_TYPE_LABEL, NEXT_STEP_TYPES, NextStep (+8 more)
-
-### Community 124 - "Community 124"
-Cohesion: 0.20
-Nodes (22): checkColors(), checkElementAIPaletteDOM(), checkElementColors(), checkElementColorsDOM(), checkElementGlow(), checkElementGlowDOM(), checkElementIconTile(), checkElementIconTileDOM() (+14 more)
+Cohesion: 0.31
+Nodes (11): decodeNextStep(), dueFollowUps(), isFollowUpDue(), isNextStepType(), NextStep, NextStepError, NextStepResult, normalizeAdditionalNote() (+3 more)
 
 ### Community 125 - "Community 125"
 Cohesion: 0.10
 Nodes (20): Action result token, `/admin/groups`, `/admin/people`, `/admin/settings` (NEW), Architecture parity, Helpers (pure, no I/O), Navigation, New / changed app code (+12 more)
 
 ### Community 126 - "Community 126"
-Cohesion: 0.15
-Nodes (19): CAPACITY_RANK, CHECKIN_RANK, checkinRankForStatus(), compareColumnValue(), compareGroupsBy(), compareOptionalDimension(), DAY_NAME_INDEX, gradeRank() (+11 more)
+Cohesion: 0.13
+Nodes (21): CAPACITY_RANK, CHECKIN_RANK, checkinRankForStatus(), compareColumnValue(), compareGroupsBy(), compareOptionalDimension(), DAY_NAME_INDEX, gradeRank() (+13 more)
 
 ### Community 127 - "Community 127"
 Cohesion: 0.16
@@ -1143,25 +808,17 @@ Nodes (16): buildNeedsAttentionItems(), buildTopNextActions(), imperativeAction(
 Cohesion: 0.10
 Nodes (20): 1. Overview, 2. Colors: The Warm Pastoral Palette, 3. Typography, 4. Elevation, 5. Components, 6. Do's and Don'ts, Buttons, Cards (+12 more)
 
-### Community 129 - "Community 129"
-Cohesion: 0.20
-Nodes (21): checkColors(), checkElementAIPaletteDOM(), checkElementColors(), checkElementColorsDOM(), checkElementGlow(), checkElementGlowDOM(), checkElementIconTile(), checkElementIconTileDOM() (+13 more)
-
 ### Community 130 - "Community 130"
 Cohesion: 0.10
 Nodes (20): 1. Color tokens (canonical: `--c-*` OKLCH in `globals.css`), 2. Type scale (fixed rem, ratio ≈1.2 — no fluid clamp), 3. Spacing, radius, elevation, depth, motion, 4. Component conventions, 5. The Home screen, specifically (worst audit offender), 6. What does not change, 7. Implementation architecture (summary — full sequencing in the approved plan), Accents (same hues, committed depth) (+12 more)
 
-### Community 131 - "Community 131"
-Cohesion: 0.10
-Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, For data-heavy interfaces, For functional UI, For performance-critical UI, For visual/marketing surfaces, Implement with Discipline, Interact with the device (+12 more)
-
 ### Community 132 - "Community 132"
-Cohesion: 0.10
-Nodes (25): combinedOpenFollowUpCount(), buildNotesFeedData(), EMPTY_NOTES_FEED, NotesFeedContext, NotesFeedData, NotesFeedReads, supabaseNotesFeedReads(), buildGroupNameByShepherdId() (+17 more)
+Cohesion: 0.15
+Nodes (15): combinedOpenFollowUpCount(), CareDashboardSummary, buildShepherdCareTriageLink(), buildNotesFeedData(), supabaseNotesFeedReads(), buildGroupNameByShepherdId(), CareSearchParams, loadCareAccordionEnrichmentSafe() (+7 more)
 
 ### Community 133 - "Community 133"
-Cohesion: 0.23
-Nodes (13): bucketFollowUp(), canTransitionFollowUpStatus(), CareFollowUpBucket, CareFollowUpCounts, CareFollowUpLike, compareFollowUpUrgency(), followUpCompletionEffect(), isFollowUpOverdue() (+5 more)
+Cohesion: 0.20
+Nodes (14): bucketFollowUp(), canTransitionFollowUpStatus(), CareFollowUpBucket, CareFollowUpCounts, CareFollowUpLike, compareFollowUpUrgency(), followUpCompletionEffect(), isFollowUpOverdue() (+6 more)
 
 ### Community 134 - "Community 134"
 Cohesion: 0.10
@@ -1179,25 +836,17 @@ Nodes (19): ATTENDANCE_VALUES, isAttendanceValue(), isIsoDate(), isPulse(), isRe
 Cohesion: 0.10
 Nodes (19): Attendance-consistency definition, Cadence, Candidate grading dimensions (to confirm with Julian), Design-space notes (retained for context), Dimensions (fixed in code), Group-health grading rubric, Group-question dimension (relayed), Locked rubric decisions (+11 more)
 
-### Community 138 - "Community 138"
-Cohesion: 0.10
-Nodes (19): Accessibility, Assess Animation Opportunities, CSS Animations, Delight Moments, Entrance Animations, Feedback & Guidance, Implement Animations, JavaScript Animation (+11 more)
-
-### Community 139 - "Community 139"
-Cohesion: 0.10
-Nodes (19): Clean Up, Code Quality, Color & Contrast, Content & Copy, Design System Discovery, Edge Cases & Error States, Final Verification, Forms & Inputs (+11 more)
-
 ### Community 141 - "Community 141"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 142 - "Community 142"
-Cohesion: 0.15
-Nodes (15): rpcAdminCreateGuest(), rpcAdminUpdateGuestPipeline(), adminCreateGuest(), adminUpdateGuestPipeline(), CREATE_GUEST_KEYS, CREATE_GUEST_SPEC, REVALIDATE_PATHS, UPDATE_GUEST_KEYS (+7 more)
+Cohesion: 0.05
+Nodes (36): rpcAdminCreateFollowUp(), rpcAdminCreateGuest(), rpcAdminSetLeaderRubricGrade(), rpcAdminUpdateFollowUpStatus(), rpcAdminUpdateGuestPipeline(), ActionInput, AdminWriteActionSpec, AuthGate (+28 more)
 
 ### Community 143 - "Community 143"
-Cohesion: 0.14
-Nodes (19): ARCHIVED_STATES, canTransition(), GROUP_REQUIRED_STATES, LEGAL_TRANSITIONS, mapGuestStageToProspectState(), PROSPECT_STATE_LABEL, PROSPECT_STATE_ORDER, stateIsArchived() (+11 more)
+Cohesion: 0.13
+Nodes (17): ARCHIVED_STATES, canTransition(), GROUP_REQUIRED_STATES, LEGAL_TRANSITIONS, mapGuestStageToProspectState(), PROSPECT_STATE_LABEL, PROSPECT_STATE_ORDER, stateIsArchived() (+9 more)
 
 ### Community 144 - "Community 144"
 Cohesion: 0.11
@@ -1219,14 +868,6 @@ Nodes (18): Audit visibility TODO, Automated checks, `grep -rn "\.delete(" "app/
 Cohesion: 0.11
 Nodes (18): Decisions owed by Julian, PRD — Life Group Operations, Q10 — When is a group "full" / ready to multiply?, Q11 — Launch by season, or as capacity fills?, Q12 — What makes the tool genuinely useful, week to week, Q1 — A blank care spreadsheet (headers/structure), Q2 — Categories for "how a leader is doing", Q3 — What to remember after connecting with a leader (+10 more)
 
-### Community 149 - "Community 149"
-Cohesion: 0.11
-Nodes (18): Appropriate to Context, Assess Delight Opportunities, Celebration Moments, Compound Over Time, Delight Amplifies, Never Blocks, Delight Principles, Delight Techniques, Easter Eggs & Hidden Delights (+10 more)
-
-### Community 150 - "Community 150"
-Cohesion: 0.13
-Nodes (16): LaunchPlanningRiskLevel, ThisWeekCard(), AdminDashboardData, AttentionReason, CapacitySource, DashboardResult, DashboardSource, HealthBucket (+8 more)
-
 ### Community 151 - "Community 151"
 Cohesion: 0.11
 Nodes (17): 10. Regression smoke (other routes), 11. Empty-state polish (UX), 12. Sign-off, 1. Automated checks, 2. Security greps, 2a. No service role / secret-key usage in app code, 2b. No client-side deletes in admin or leader routes, 2c. `admin_private_note` exposure surface (+9 more)
@@ -1243,10 +884,6 @@ Nodes (17): 1. Why this memo exists, 2.1 `/admin` landing, 2.2 Sidebar nav, 2.3 
 Cohesion: 0.11
 Nodes (17): Archived files, Docs Archive, Julian spine implementation specs (shipped), Old completion roadmaps (superseded), Old roadmap doc (superseded), One-shot design handoffs (shipped), Phase 5A.5–5A.7 — schedule intelligence and calendars (shipped), Phase 5A — admin people & group management (shipped) (+9 more)
 
-### Community 155 - "Community 155"
-Cohesion: 0.25
-Nodes (8): checkRepeatedSectionKickers(), checkRepeatedSectionKickersDOM(), checkRepeatedSectionKickersFromDoc(), cleanInlineText(), collectRepeatedSectionKickerCandidates(), isRepeatedKickerCandidate(), isRepeatedKickerCardContext(), makeStaticStyle()
-
 ### Community 156 - "Community 156"
 Cohesion: 0.11
 Nodes (17): Appendix: mapping the UX review to this PRD, Could-Have (P2), Editing Pattern (decided), Goals, Guiding Principle, Must-Have (P0), Non-Goals, Open Questions (+9 more)
@@ -1255,17 +892,13 @@ Nodes (17): Appendix: mapping the UX review to this PRD, Could-Have (P2), Editin
 Cohesion: 0.11
 Nodes (17): 1.1 Scope, 1.2 Migration, 1.3 App layer, 1.4 UI, 1.5 Audit action tokens, 1.6 Edge cases, Confirmed product decisions, Context & motivation (+9 more)
 
-### Community 158 - "Community 158"
-Cohesion: 0.11
-Nodes (17): CSS Anchor Positioning, Destructive Actions: Undo > Confirm, Dropdown & Overlay Positioning, Fixed Positioning Fallback, Focus Rings: Do Them Right, Form Design: The Non-Obvious, Gesture Discoverability, Interaction Design (+9 more)
-
 ### Community 159 - "Community 159"
-Cohesion: 0.11
-Nodes (16): buildCandidateNotes(), buildSeedRows(), CandidateSeedRow, GroupSeedRow, MULTIPLICATION_SEED_ENTRIES, MultiplicationSeedEntry, renderMultiplicationSeedFile(), renderMultiplicationSeedSql() (+8 more)
+Cohesion: 0.18
+Nodes (11): buildCandidateNotes(), buildSeedRows(), CandidateSeedRow, GroupSeedRow, MULTIPLICATION_SEED_ENTRIES, MultiplicationSeedEntry, renderMultiplicationSeedFile(), renderMultiplicationSeedSql() (+3 more)
 
 ### Community 160 - "Community 160"
-Cohesion: 0.16
-Nodes (15): build(), buildRedeemLimiter(), checkInviteRedeemLimit(), ForgotPasswordLimitInput, ForgotPasswordLimitResult, getLimiters(), InviteRedeemLimitInput, InviteRedeemLimitResult (+7 more)
+Cohesion: 0.10
+Nodes (23): build(), buildRedeemLimiter(), checkInviteRedeemLimit(), ForgotPasswordLimitInput, ForgotPasswordLimitResult, getLimiters(), InviteRedeemLimitInput, InviteRedeemLimitResult (+15 more)
 
 ### Community 161 - "Community 161"
 Cohesion: 0.12
@@ -1297,7 +930,7 @@ Nodes (16): Audit behavior, Auth user invite behavior, Data flow, Existing Auth 
 
 ### Community 168 - "Community 168"
 Cohesion: 0.05
-Nodes (45): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetScope, buildSurfaceBaselines(), EMPTY_ATTENTION_BASELINES, careCadenceWindowsFromDefaults(), buildCareData() (+37 more)
+Nodes (43): GroupRubricGradeView, LeaderRubricGradeRow, buildDetailCore(), buildShepherdCareDetailData(), loadShepherdCareDetailData(), ShepherdCareDetailCore, ShepherdCareDetailData, ShepherdCareDetailOptions (+35 more)
 
 ### Community 169 - "Community 169"
 Cohesion: 0.12
@@ -1327,25 +960,13 @@ Nodes (15): Context, Fonts, `lib/auth/roles.ts`, Phase 7.0 — Design refresh: w
 Cohesion: 0.12
 Nodes (15): Adding Edge Function secrets from Supabase mobile/browser, Before-launch cleanup checklist, From the panel, Interpreting panel errors, Known limitations, Known test users, One-time setup, Phone walkthrough (+7 more)
 
-### Community 176 - "Community 176"
-Cohesion: 0.12
-Nodes (15): Absolute bans, Color, Color & Theme, Commands, Design guidance, General rules, Interaction, Layout (+7 more)
-
 ### Community 177 - "Community 177"
-Cohesion: 0.26
-Nodes (10): LeaderPipeline(), MultiplicationPlanner(), MultiplyTabKey, resolveMultiplyInitialTab(), MultiplyShell(), MultiplyTab, AdminMultiplyPage(), calmNote() (+2 more)
+Cohesion: 0.10
+Nodes (26): decodePerTypeRule(), LeaderPipeline(), MultiplicationPlanner(), currentMinistryYear(), MULTIPLY_TAB_KEYS, MULTIPLY_TYPE_LABEL, MultiplyTabKey, resolveMultiplyInitialTab() (+18 more)
 
 ### Community 178 - "Community 178"
-Cohesion: 0.08
-Nodes (30): rpcAdminAdvanceApprenticeStage(), rpcAdminArchiveApprentice(), rpcAdminCreateApprentice(), rpcAdminUpdateApprentice(), adminAdvanceApprenticeStage(), adminArchiveApprentice(), adminCreateApprentice(), adminUpdateApprentice() (+22 more)
-
-### Community 179 - "Community 179"
 Cohesion: 0.12
-Nodes (15): Anti-Goals, Brief Structure, Constraints, Content & Data, Design Direction, How to use the probes, Important limits, Interview cadence (+7 more)
-
-### Community 180 - "Community 180"
-Cohesion: 0.12
-Nodes (15): 1. Concrete Transformation Patterns, 2. Error-First Structure, 3. Quantified Impact, 4. Self-Contained Examples, 5. Semantic Naming, Code Example Standards, Comments, Impact Level Guidelines (+7 more)
+Nodes (21): rpcAdminAdvanceApprenticeStage(), rpcAdminArchiveApprentice(), rpcAdminCreateApprentice(), rpcAdminUpdateApprentice(), ADVANCE_STAGE_SPEC, APPRENTICE_REVALIDATE, ARCHIVE_APPRENTICE_SPEC, CREATE_APPRENTICE_SPEC (+13 more)
 
 ### Community 181 - "Community 181"
 Cohesion: 0.13
@@ -1363,18 +984,6 @@ Nodes (14): A. Platform & access, B. Shepherd Care — Julian's admin OS, C. Lau
 Cohesion: 0.13
 Nodes (14): `admin_private_note` redaction, Audit-trail labels, Context, File map, Five new SECURITY DEFINER RPCs, Modified routes, Nav, New admin routes (+6 more)
 
-### Community 185 - "Community 185"
-Cohesion: 0.16
-Nodes (15): analyzeVisualContrast(), analyzeVisualContrastCandidate(), buildSelectorSegment(), checkElementTextOverflowDOM(), classSelector(), collectVisualContrastCandidates(), collectVisualContrastReasons(), contrastRatio() (+7 more)
-
-### Community 186 - "Community 186"
-Cohesion: 0.20
-Nodes (15): blendRgba(), clampByte(), firstCssUrl(), getLayerValue(), loadVisualContrastImage(), parseObjectPosition(), parsePositionPair(), parsePositionToken() (+7 more)
-
-### Community 187 - "Community 187"
-Cohesion: 0.67
-Nodes (4): postSerializedFindings(), renderBrowserFindings(), scanResultMeta(), serializeFindings()
-
 ### Community 188 - "Community 188"
 Cohesion: 0.13
 Nodes (14): 1. Main gaps by tab, 2. Definition of done by tab, 3. Prioritized implementation slices, 4. Files/areas likely to change, 5. Risks, 6. Validation plan & acceptance criteria, Care (`/admin/care`, six tabs via `components/admin/care/care-shell.tsx`), Finish-Line Plan — Home · Care · Settings (+6 more)
@@ -1387,21 +996,9 @@ Nodes (14): 1. The problem, 2.1 Groups are a **matrix**, not a tree 🆕, 2.2 A 
 Cohesion: 0.13
 Nodes (14): How data loads, Implementation history, Life Group Operations, Local development, Personas, Routes, Scripts, Security posture (+6 more)
 
-### Community 191 - "Community 191"
-Cohesion: 0.13
-Nodes (14): 1. Accessibility (A11y), 2. Performance, 3. Theming, 4. Responsive Design, 5. Anti-Patterns (CRITICAL), Anti-Patterns Verdict, Audit Health Score, Detailed Findings by Severity (+6 more)
-
-### Community 192 - "Community 192"
-Cohesion: 0.13
-Nodes (14): Brand bans (on top of the shared absolute bans), Brand permissions, Brand register, Color, Font selection procedure, Imagery, Layout, Motion (+6 more)
-
-### Community 193 - "Community 193"
-Cohesion: 0.13
-Nodes (14): Accessibility & Inclusion, Brand & Personality, Init Flow, Interview mode, not confirmation mode, Minimum viable interview, Register (ask first; it shapes everything below), Step 1: Load current state, Step 2: Explore the codebase (+6 more)
-
 ### Community 194 - "Community 194"
-Cohesion: 0.08
-Nodes (32): rpcSuperAdminCreateInvitation(), ASSIGNABLE_ROLES, AUTH_USER_LABELS, Delivery, DELIVERY_HINTS, DELIVERY_OPTIONS, EXPIRY_OPTIONS, formatExpiry() (+24 more)
+Cohesion: 0.12
+Nodes (22): rpcSuperAdminLogPasswordReset(), rpcSuperAdminSetProfileStatus(), resolveSiteOrigin(), readForm(), RequestPasswordResetSuccess, SET_PROFILE_STATUS_SPEC, superAdminRequestPasswordReset(), superAdminSetProfileStatus() (+14 more)
 
 ### Community 195 - "Community 195"
 Cohesion: 0.14
@@ -1419,37 +1016,21 @@ Nodes (13): Access control, Attention queue ordering, Automated checks, Cross-ro
 Cohesion: 0.14
 Nodes (13): Desktop preservation, Files changed (summary), Files intentionally not changed, How the override layer works, Known limitations, Manual verification checklist, Mobile breakpoint, Mobile nav drawer (+5 more)
 
-### Community 199 - "Community 199"
-Cohesion: 0.14
-Nodes (13): Call-graph collapse, Candidate card, Cross-section (good for layered shallowness), Diagram patterns, Hand-built boxes-and-arrows (when Mermaid's layout fights you), Header, HTML Report Format, Mass diagram (good for "interface as wide as implementation") (+5 more)
-
 ### Community 200 - "Community 200"
-Cohesion: 0.05
-Nodes (54): AppConfig, BUILT_IN_APP_CONFIG, decodeAppConfig(), decodeFeatureFlags(), isRecord(), readEditableCopy(), readFeatureFlags(), readJsonString() (+46 more)
-
-### Community 201 - "Community 201"
-Cohesion: 0.14
-Nodes (13): 1. State the question and pick N, 2. Generate radically different variants, 3. Wire them together, 4. Build the floating switcher, 5. Hand it over, 6. Capture the answer and clean up, Anti-patterns, Process (+5 more)
-
-### Community 202 - "Community 202"
-Cohesion: 0.14
-Nodes (13): Assess Current Layout, Break Card Grid Monotony, Choose the Right Layout Tool, Create Visual Rhythm, Establish a Spacing System, Improve Layout Systematically, Live-mode signature params, Manage Depth & Elevation (+5 more)
-
-### Community 203 - "Community 203"
-Cohesion: 0.14
-Nodes (13): Animation Performance, Assess Performance Issues, Core Web Vitals Optimization, Cumulative Layout Shift (CLS < 0.1), First Input Delay (FID < 100ms) / INP (< 200ms), Largest Contentful Paint (LCP < 2.5s), Loading Performance, Network Optimization (+5 more)
+Cohesion: 0.13
+Nodes (31): AppConfig, BUILT_IN_APP_CONFIG, decodeAppConfig(), decodeFeatureFlags(), isRecord(), readEditableCopy(), readFeatureFlags(), readJsonString() (+23 more)
 
 ### Community 204 - "Community 204"
-Cohesion: 0.25
-Nodes (9): rpcSetOwnFullName(), OwnFullNameResult, validateOwnFullName(), resetPasswordAction(), ResetPasswordState, INITIAL_STATE, ResetPasswordForm(), chooseNameAction() (+1 more)
+Cohesion: 0.09
+Nodes (15): CoverageResult, OverShepherdCoverage, OverShepherdLogBroadNoteArgs, rpcOverShepherdLogBroadNote(), callTextRpc(), JsonRpcResult, TextRpcResult, UuidRpcResult (+7 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.04
-Nodes (71): ActivityResetSuccess, listResetStyle, pillListStyle, pillStyle, ServerAction, ActivityResetControl(), INITIAL_STATE, FormStatus() (+63 more)
+Cohesion: 0.06
+Nodes (63): ArchivedRestoreButton(), ServerAction, ActivityResetControl(), Action, FollowUpStatusControls(), transitionsFor(), FormStatus(), useActionForm() (+55 more)
 
 ### Community 206 - "Community 206"
-Cohesion: 0.07
-Nodes (26): parsePeopleImport(), PeopleImportResult, PersonImportRole, PersonImportRow, PersonImportRowError, RECOGNISED_COLUMNS, RecognisedColumn, splitCsvLine() (+18 more)
+Cohesion: 0.18
+Nodes (8): parsePeopleImport(), PeopleImportResult, PersonImportRole, PersonImportRow, PersonImportRowError, RECOGNISED_COLUMNS, RecognisedColumn, splitCsvLine()
 
 ### Community 207 - "Community 207"
 Cohesion: 0.15
@@ -1467,37 +1048,17 @@ Nodes (12): Architecture & data flow, Code conventions, Commands, Domain vocabul
 Cohesion: 0.15
 Nodes (12): aliases, components, utils, rsc, $schema, style, tailwind, baseColor (+4 more)
 
-### Community 211 - "Community 211"
-Cohesion: 0.18
-Nodes (16): checkCreamPalette(), checkElementQuality(), checkElementQualityDOM(), checkQuality(), colorsNearlyMatch(), creamFromClassList(), cssColorAlpha(), cssColorIsTransparent() (+8 more)
-
 ### Community 212 - "Community 212"
 Cohesion: 0.15
 Nodes (12): Anti-patterns verdict (Assessment A + B convergence), Design health score (Nielsen heuristics, 0–4), Executive summary, P1 — major (the redesign's core backlog), P2 — minor, P3 — polish, Persona red flags, Priority issues (+4 more)
 
-### Community 213 - "Community 213"
-Cohesion: 0.31
-Nodes (11): getCritiqueDir(), kebab(), listSnapshotsForSlug(), main(), nowFilenameStamp(), parseFrontmatter(), readLatestSnapshot(), readTrend() (+3 more)
-
 ### Community 214 - "Community 214"
-Cohesion: 0.18
-Nodes (13): CellReadinessSignal, ReadinessRule, buildMultiplyGrid(), cellKey(), GRID_TYPES, GridCategoryInput, GridCellInput, GridCellReadout (+5 more)
-
-### Community 215 - "Community 215"
-Cohesion: 0.22
-Nodes (13): beginEditPin(), cancelEditingPin(), clampPlaceholderSize(), finalizeEditingPin(), localCoords(), onAnnotDown(), onAnnotInputKey(), onAnnotMove() (+5 more)
-
-### Community 216 - "Community 216"
-Cohesion: 0.15
-Nodes (12): 1. Detect package manager, 2. Install dependencies, 3. Initialize Husky, 4. Create `.husky/pre-commit`, 5. Create `.lintstagedrc`, 6. Create `.prettierrc` (if missing), 7. Verify, 8. Commit (+4 more)
-
-### Community 217 - "Community 217"
-Cohesion: 0.15
-Nodes (12): edges, layers, nodes, project, analyzedAt, description, frameworks, gitCommitHash (+4 more)
+Cohesion: 0.11
+Nodes (22): AUDIENCE_CATEGORIES, AUDIENCE_LABEL, CellReadinessInputs, ReadinessPillarKey, ReadinessRule, buildMultiplyGrid(), cellKey(), GRID_TYPES (+14 more)
 
 ### Community 218 - "Community 218"
-Cohesion: 0.22
-Nodes (12): GroupListTab, GroupTabInput, GroupTriageSignals, LIST_TAB_DESCRIPTIONS, matchesListTab(), needsAttention(), needsHealthCheck(), setupCategory() (+4 more)
+Cohesion: 0.25
+Nodes (11): GroupListTab, GroupTabInput, GroupTriageSignals, LIST_TAB_DESCRIPTIONS, listTabDescription(), matchesListTab(), needsAttention(), needsHealthCheck() (+3 more)
 
 ### Community 219 - "Community 219"
 Cohesion: 0.17
@@ -1510,38 +1071,6 @@ Nodes (11): Access control, Badge taxonomy, Data architecture, File map, One add
 ### Community 221 - "Community 221"
 Cohesion: 0.17
 Nodes (11): Care concepts, Deletion concepts, Group concepts, Health concepts, Interest funnel concepts, Language, Life Group Operations, Multiplication concepts (+3 more)
-
-### Community 222 - "Community 222"
-Cohesion: 0.17
-Nodes (11): Diagnose, Iterate on the loop itself, Non-deterministic bugs, Phase 1 — Build a feedback loop, Phase 2 — Reproduce, Phase 3 — Hypothesise, Phase 4 — Instrument, Phase 5 — Fix + regression test (+3 more)
-
-### Community 223 - "Community 223"
-Cohesion: 0.17
-Nodes (11): 1. State the question, 2. Pick the language, 3. Isolate the logic in a portable module, 4. Build the smallest TUI that exposes the state, 5. Make it runnable in one command, 6. Hand it over, 7. Capture the answer, Anti-patterns (+3 more)
-
-### Community 224 - "Community 224"
-Cohesion: 0.17
-Nodes (11): Amplify the Design, Assess Current State, Color Intensification, Composition Boldness, Motion & Animation, Plan Amplification, Register, Spatial Drama (+3 more)
-
-### Community 225 - "Community 225"
-Cohesion: 0.17
-Nodes (11): Assess Current State, Code Simplification, Content Simplification, Document Removed Complexity, Information Architecture, Interaction Simplification, Layout Simplification, Plan Simplification (+3 more)
-
-### Community 226 - "Community 226"
-Cohesion: 0.17
-Nodes (11): Accessibility Resilience, Assess Hardening Needs, Edge Cases & Boundary Conditions, Error Handling, Hardening Dimensions, Input Validation & Sanitization, Internationalization (i18n), Performance Resilience (+3 more)
-
-### Community 227 - "Community 227"
-Cohesion: 0.33
-Nodes (4): CareAttentionItem, CareAttentionQueue(), REASON_LABEL, REASON_TONE
-
-### Community 228 - "Community 228"
-Cohesion: 0.17
-Nodes (11): 1. Gather context, 2. Explore the codebase (optional), 3. Draft vertical slices, 4. Quiz the user, 5. Publish the issues to the issue tracker, Acceptance criteria, Blocked by, Parent (+3 more)
-
-### Community 229 - "Community 229"
-Cohesion: 0.17
-Nodes (11): Bad agent brief, Behavioral, not procedural, Complete acceptance criteria, Durability over precision, Examples, Explicit scope boundaries, Good agent brief (bug), Good agent brief (enhancement) (+3 more)
 
 ### Community 230 - "Community 230"
 Cohesion: 0.18
@@ -1587,45 +1116,13 @@ Nodes (10): Cleared reliability/security debt, ⏳ Genuinely remaining (engineer
 Cohesion: 0.24
 Nodes (13): isGroupsViewSnapshot(), DEFAULT_GROUPS_TABLE_COLUMNS, GROUPS_TABLE_DENSITIES, GROUPS_TABLE_OPTIONAL_COLUMNS, GroupsTableDensity, GroupsTableOptionalColumn, isColumnShown(), isGroupsTableDensity() (+5 more)
 
-### Community 241 - "Community 241"
-Cohesion: 0.18
-Nodes (10): 1. Listen and lightly clarify, 2. Explore the codebase in the background, 3. Assess scope: single issue or breakdown?, 4. File the GitHub issue(s), 5. Continue the session, For a breakdown (multiple issues), For a single issue, For each issue the user raises (+2 more)
-
-### Community 242 - "Community 242"
-Cohesion: 0.18
-Nodes (10): Craft Flow, Gates: do not compress, Production bar, Step 0: Project Foundation, Step 1: Shape the Design, Step 2: Load References, Step 3: Visual Direction & Assets (Harness-Gated), Step 4: Build to Production Quality (+2 more)
-
-### Community 243 - "Community 243"
-Cohesion: 0.18
-Nodes (10): Action Summary, Ask the User, Assessment A: Design Review, Assessment B: Detector + Browser Evidence, Assessment Orchestration, Hard Invariants, Persist the Snapshot, Purpose (+2 more)
-
-### Community 244 - "Community 244"
-Cohesion: 0.18
-Nodes (11): 10. Help and Documentation, 1. Visibility of System Status, 2. Match Between System and Real World, 3. User Control and Freedom, 4. Consistency and Standards, 5. Error Prevention, 6. Recognition Rather Than Recall, 7. Flexibility and Efficiency of Use (+3 more)
-
-### Community 245 - "Community 245"
-Cohesion: 0.18
-Nodes (10): Assess Current State, Color Refinement, Composition Refinement, Motion Reduction, Plan Refinement, Refine the Design, Register, Simplification (+2 more)
-
-### Community 246 - "Community 246"
-Cohesion: 0.20
-Nodes (10): detectCsp(), INLINE_HEADER_SIGNALS, LAYOUT_EXTS, MONOREPO_HELPER_SIGNALS, NUXT_ROUTE_RULES_SIGNALS, NUXT_SECURITY_SIGNALS, SCAN_EXTS, SKIP_DIRS (+2 more)
-
-### Community 247 - "Community 247"
-Cohesion: 0.24
-Nodes (7): args, buildWeights(), hashUnit(), pickSeed(), seed, SEEDS, weightedPick()
-
-### Community 248 - "Community 248"
-Cohesion: 0.23
-Nodes (11): __dirname, findHarnessDirs(), findProjectRoot(), generatePinnedSkill(), HARNESS_DIRS, loadCommandMetadata(), pin(), root (+3 more)
-
 ### Community 249 - "Community 249"
-Cohesion: 0.20
-Nodes (11): addDaysIso(), GRAIN_CHIP, GRAIN_LABEL, OVERVIEW_GRAINS, OverviewGrain, overviewGrainChip(), overviewPeriodRange, pad2() (+3 more)
+Cohesion: 0.10
+Nodes (35): addDaysIso(), GRAIN_CHIP, GRAIN_LABEL, OVERVIEW_GRAINS, OverviewGrain, overviewGrainChip(), overviewPeriodRange, pad2() (+27 more)
 
 ### Community 250 - "Community 250"
-Cohesion: 0.15
-Nodes (9): LaunchPlanningScenarioComparisonEntry, byScenarioId(), CreateScenarioForm, EditScenarioForm, eyebrowStyle, ScenariosPanel(), ScenariosPanelProps, sectionStyle (+1 more)
+Cohesion: 0.07
+Nodes (20): LaunchPlanningAssumptions, LaunchPlanningScenario, LaunchPlanningScenarioComparisonEntry, CreateScenarioForm, eyebrowStyle, panelTitleStyle, TabKey, TABS (+12 more)
 
 ### Community 251 - "Community 251"
 Cohesion: 0.20
@@ -1655,66 +1152,6 @@ Nodes (10): 9. Final Simplified Structure, Care, Group Detail, Groups, Home, Lea
 Cohesion: 0.20
 Nodes (9): 1. Crypto module public API (the verifiable surface), 2. Final table schemas (as built), 3. Wrapped-DEK slot-record shape (the `p_slots` jsonb element), 4. AAD construction (fixed), 5. DEK-stays-re-wrappable decision, 6. Deviations from the spec (reconcile in #113/#114), 6a. Post-review hardening (Codex P1/P2, shipped in #112), 7. Reuse points for #113 / #114 (+1 more)
 
-### Community 258 - "Community 258"
-Cohesion: 0.20
-Nodes (9): 1. Gather Requirements, 2. Generate Designs (Parallel Sub-Agents), 3. Present Designs, 4. Compare Designs, 5. Synthesize, Anti-Patterns, Design an Interface, Evaluation Criteria (+1 more)
-
-### Community 259 - "Community 259"
-Cohesion: 0.20
-Nodes (9): Challenge against the glossary, Cross-reference with code, Discuss concrete scenarios, Domain awareness, During the session, File structure, Offer ADRs sparingly, Sharpen fuzzy language (+1 more)
-
-### Community 260 - "Community 260"
-Cohesion: 0.20
-Nodes (9): `as Type` → `fromPartial()`, `as unknown as Type` → `fromAny()`, Install, Large objects with few needed properties, Migrate to Shoehorn, Migration patterns, When to use each, Why shoehorn? (+1 more)
-
-### Community 261 - "Community 261"
-Cohesion: 0.20
-Nodes (9): Create a new note, Find index notes, Find related notes, Linking, Naming conventions, Obsidian Vault, Search for notes, Vault location (+1 more)
-
-### Community 262 - "Community 262"
-Cohesion: 0.15
-Nodes (11): ReadinessLetter, buildPartial(), ParentRule, TRIGGER_TYPE_LABEL, TriggerLevel, LETTERS, LetterSelect(), LevelAction (+3 more)
-
-### Community 263 - "Community 263"
-Cohesion: 0.16
-Nodes (12): loginAction(), LoginFormState, INITIAL_STATE, LoginForm(), isSafeNextPath(), SignInScreen(), ProfileStatus, recordAreaView() (+4 more)
-
-### Community 264 - "Community 264"
-Cohesion: 0.20
-Nodes (9): After This File, Codex: Visual Direction & Asset Production, Four stop points before code, Step A: Explore Directions with the User, Step B: Generate the Brand Palette First, Step C: Generate 1-3 Visual Mocks Against the Palette, Step D: Approval Loop, Step E: Mock Fidelity Inventory (+1 more)
-
-### Community 265 - "Community 265"
-Cohesion: 0.20
-Nodes (10): Anti-Patterns Verdict, Design Health Score, Generate Combined Critique Report, Minor Observations, Overall Impression, Persona Red Flags, Priority Issues, Questions to Consider (+2 more)
-
-### Community 266 - "Community 266"
-Cohesion: 0.20
-Nodes (9): Color, Components, Layout, Motion, Product bans (on top of the shared absolute bans), Product permissions, Product register, The product slop test (+1 more)
-
-### Community 267 - "Community 267"
-Cohesion: 0.20
-Nodes (9): 1. Query Performance (query), 2. Connection Management (conn), 3. Security & RLS (security), 4. Schema Design (schema), 5. Concurrency & Locking (lock), 6. Data Access Patterns (data), 7. Monitoring & Diagnostics (monitor), 8. Advanced Features (advanced) (+1 more)
-
-### Community 268 - "Community 268"
-Cohesion: 0.20
-Nodes (9): 1. Planning, 2. Tracer Bullet, 3. Incremental Loop, 4. Refactor, Anti-Pattern: Horizontal Slices, Checklist Per Cycle, Philosophy, Test-Driven Development (+1 more)
-
-### Community 269 - "Community 269"
-Cohesion: 0.20
-Nodes (8): ClientState, CO_LEADER_FIXTURE, loadSession(), { mockCreateClient, mockReadFrozenSurfaceFlag }, PROFILE_ADMIN, PROFILE_LEADER, PROFILE_OVER_SHEPHERD, ProfileFixture
-
-### Community 270 - "Community 270"
-Cohesion: 0.20
-Nodes (9): Invocation, Needs-info template, Quick state override, Reference docs, Resuming a previous session, Roles, Show what needs attention, Triage (+1 more)
-
-### Community 271 - "Community 271"
-Cohesion: 0.27
-Nodes (11): applyParamDefaults(), applyParamValue(), closedClipPath(), hideParamsPanel(), openTunePopover(), parseVariantParams(), popoverDirection(), positionParamsPanel() (+3 more)
-
-### Community 272 - "Community 272"
-Cohesion: 0.36
-Nodes (8): acceptedDomAlreadyClean(), ensureAcceptedDomClean(), findAcceptedRuntimeWrappers(), markSessionHandled(), maybeCompleteAcceptedSession(), reloadAfterMissingAcceptedDom(), restoreAcceptedDomFromSnapshot(), scheduleAcceptCleanup()
-
 ### Community 273 - "Community 273"
 Cohesion: 0.22
 Nodes (8): ADR 0001: Admin write-action runner, Consequences, Context, Decision, Follow-ups, Invariants preserved (see AGENTS.md), Spec extensions for the remaining files, Why this overrides the note in `lib/observability/instrument.ts`
@@ -1743,33 +1180,13 @@ Nodes (8): Automated, Browser dev-tools spot check, Mobile (≤ 768 px), Phase 7
 Cohesion: 0.22
 Nodes (9): 7. Planning, Actionable Changes, Calendar UI Direction, Found, Merge Into Planning, Planning Tab Definitions, Planning Tabs, Purpose (+1 more)
 
-### Community 281 - "Community 281"
-Cohesion: 0.12
-Nodes (19): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), browserFindingsFromMap(), checkElementOversizedH1(), checkElementOversizedH1DOM(), checkHtmlPatterns(), checkOversizedH1() (+11 more)
-
 ### Community 282 - "Community 282"
 Cohesion: 0.22
 Nodes (8): Bootstrap steps, How to verify RLS is enforced, Manual test checklist (Phase 4.1 + Phase 5A.3), Multiplication planner seed (Julian #144), SC.4 private care notes — boundary (the empirical cross-role + raw-DB check), Supabase dev helpers (Phase 4 + Phase 4.1), Super admin bootstrap (Phase 4.1), What's intentionally excluded
 
-### Community 283 - "Community 283"
-Cohesion: 0.22
-Nodes (8): 1. Ask scope, 2. Copy the hook script, 3. Add hook to settings, 4. Ask about customization, 5. Verify, Setup Git Guardrails, Steps, What Gets Blocked
-
-### Community 284 - "Community 284"
-Cohesion: 0.22
-Nodes (8): Build flow, Ensure Graphify is installed, /graphify, Query flow, Quick behavior, Repo-local notes, Update and maintenance, Usage
-
-### Community 285 - "Community 285"
-Cohesion: 0.22
-Nodes (8): 1. In-process, 2. Local-substitutable, 3. Remote but owned (Ports & Adapters), 4. True external (Mock), Deepening, Dependency categories, Seam discipline, Testing strategy: replace, don't layer
-
 ### Community 286 - "Community 286"
 Cohesion: 0.22
 Nodes (8): 2026 March–August Life Group multiplication plan, How this maps to Launch Planning, Men's (5 groups), Mixed (18 groups), Multiplication criteria, Reading the entries (interpretation), Timeline buckets, Women's (6 groups)
-
-### Community 287 - "Community 287"
-Cohesion: 0.33
-Nodes (8): appendStyleToLiveUiRoot(), appendToLiveUiRoot(), escapeCssIdent(), getLiveUiElementById(), LIVE_CHROME_MOUNT_CONTRACT, LIVE_UI_COMPONENT_IDS, LIVE_UI_SURFACES, resolveLiveUiRoot()
 
 ### Community 288 - "Community 288"
 Cohesion: 0.12
@@ -1783,261 +1200,13 @@ Nodes (8): A — Half-finished Shepherd→Leader copy renames ✅ RESOLVED, B �
 Cohesion: 0.22
 Nodes (8): Accessibility & Inclusion, Anti-references, Brand Personality, Design Principles, Product, Product Purpose, Register, Users
 
-### Community 291 - "Community 291"
-Cohesion: 0.22
-Nodes (9): 1. The Wall of Options, 2. The Memory Bridge, 3. The Hidden Navigation, 4. The Jargon Barrier, 5. The Visual Noise Floor, 6. The Inconsistent Pattern, 7. The Multi-Task Demand, 8. The Context Switch (+1 more)
-
-### Community 292 - "Community 292"
-Cohesion: 0.22
-Nodes (8): 1. Pin the fixed point, 2. Identify the spec source, 3. Identify the standards sources, 4. Spawn both sub-agents in parallel, 5. Aggregate, Process, Review, Why two axes
-
 ### Community 293 - "Community 293"
 Cohesion: 0.22
 Nodes (8): 1. Platform safety net, 2. Schema parity (the drift fix), 3. Auth lifecycle, end to end, 4. Production surface hygiene, 5. Real data in, test data out, 6. Go / no-go, After launch (wave 2+, separate efforts), Launch Runbook — go-live checklist
 
-### Community 294 - "Community 294"
-Cohesion: 0.22
-Nodes (8): Directory naming, Example: stubbing from a plan, Exercise variants, Lint rules summary, Moving/renaming exercises, Required files, Scaffold Exercises, Workflow
-
-### Community 296 - "Community 296"
-Cohesion: 0.22
-Nodes (8): Acquiring Knowledge, Acquiring Skills, Acquiring Wisdom, Glossary, Philosophy, Teaching Workspace, The Mission, Zone Of Proximal Development
-
 ### Community 297 - "Community 297"
 Cohesion: 0.22
 Nodes (6): ALLOWLIST, REPO_ROOT, ROOT_RUNTIME_FILES, SCAN_DIRS, sourceFiles, TABLES
-
-### Community 298 - "Community 298"
-Cohesion: 0.22
-Nodes (8): Further Notes, Implementation Decisions, Out of Scope, Problem Statement, Process, Solution, Testing Decisions, User Stories
-
-### Community 299 - "Community 299"
-Cohesion: 0.22
-Nodes (8): Directory structure, File format, Naming the file, Out-of-Scope Knowledge Base, Updating or removing out-of-scope files, When to check `.out-of-scope/`, When to write to `.out-of-scope/`, Writing the reason
-
-### Community 300 - "Community 300"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 301 - "Community 301"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 302 - "Community 302"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 303 - "Community 303"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 304 - "Community 304"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 305 - "Community 305"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 306 - "Community 306"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 307 - "Community 307"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 308 - "Community 308"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 309 - "Community 309"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 310 - "Community 310"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 311 - "Community 311"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 312 - "Community 312"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 313 - "Community 313"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 314 - "Community 314"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 315 - "Community 315"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 316 - "Community 316"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 317 - "Community 317"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 318 - "Community 318"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 319 - "Community 319"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 320 - "Community 320"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 321 - "Community 321"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 322 - "Community 322"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 323 - "Community 323"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 324 - "Community 324"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 325 - "Community 325"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 326 - "Community 326"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 327 - "Community 327"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 328 - "Community 328"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 329 - "Community 329"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 330 - "Community 330"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 331 - "Community 331"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 332 - "Community 332"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 333 - "Community 333"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 334 - "Community 334"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 335 - "Community 335"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 336 - "Community 336"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 337 - "Community 337"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 338 - "Community 338"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 339 - "Community 339"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 340 - "Community 340"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 341 - "Community 341"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 342 - "Community 342"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 343 - "Community 343"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 344 - "Community 344"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 345 - "Community 345"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 346 - "Community 346"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 347 - "Community 347"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 348 - "Community 348"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 349 - "Community 349"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 350 - "Community 350"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 351 - "Community 351"
-Cohesion: 0.22
-Nodes (9): classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports, totalLines (+1 more)
-
-### Community 352 - "Community 352"
-Cohesion: 0.22
-Nodes (9): .github/workflows/ci.yml, classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports (+1 more)
-
-### Community 353 - "Community 353"
-Cohesion: 0.22
-Nodes (9): .github/workflows/codex-review-loop.yml, classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports (+1 more)
-
-### Community 354 - "Community 354"
-Cohesion: 0.22
-Nodes (9): .understand-anything/.understandignore, classes, contentHash, exports, filePath, functions, hasStructuralAnalysis, imports (+1 more)
-
-### Community 355 - "Community 355"
-Cohesion: 0.22
-Nodes (8): Description Requirements, Process, Review Checklist, SKILL.md Template, Skill Structure, When to Add Scripts, When to Split Files, Writing Skills
 
 ### Community 356 - "Community 356"
 Cohesion: 0.25
@@ -2076,8 +1245,8 @@ Cohesion: 0.25
 Nodes (8): 11. Status Label Simplification, Actionable Change, Capacity, Found, Health, Lifecycle, Rule, Setup
 
 ### Community 365 - "Community 365"
-Cohesion: 0.40
-Nodes (3): bestMatchHref(), ShellNav(), ShellNavItem
+Cohesion: 0.10
+Nodes (24): Params, Search, LogoutButton(), requireLeader(), UserPill(), CalendarEventList(), monthNavLinkClassName, LeaderGroupCarePage() (+16 more)
 
 ### Community 366 - "Community 366"
 Cohesion: 0.25
@@ -2087,37 +1256,9 @@ Nodes (7): 0. Update — questions now captured (2026-05-28), 1. Roadmap open qu
 Cohesion: 0.29
 Nodes (4): fail(), Invitation, jsonResponse(), ResponseBody
 
-### Community 368 - "Community 368"
-Cohesion: 0.25
-Nodes (8): 1. Impatient Power User: "Alex", 2. Confused First-Timer: "Jordan", 3. Accessibility-Dependent User: "Sam", 4. Deliberate Stress Tester: "Riley", 5. Distracted Mobile User: "Casey", Persona-Based Design Testing, Project-Specific Personas, Selecting Personas
-
-### Community 369 - "Community 369"
-Cohesion: 0.25
-Nodes (7): Extract Flow, Step 1: Discover the Design System, Step 2: Identify Patterns, Step 3: Plan Extraction, Step 4: Extract & Enrich, Step 5: Migrate, Step 6: Document
-
-### Community 370 - "Community 370"
-Cohesion: 0.25
-Nodes (7): Commits, Decision Document, Further Notes (optional), Out of Scope, Problem Statement, Solution, Testing Decisions
-
 ### Community 371 - "Community 371"
 Cohesion: 0.25
 Nodes (7): a11y, Declining attendance — honest two-window comparison, Director-tuned thresholds sourced from Settings (not hard-coded), Notes for the next slices, Retro — Admin IM 05 · Group health final filter logic (director sign-off), Schema / write path (the flag is built, not faked), What shipped
-
-### Community 372 - "Community 372"
-Cohesion: 0.25
-Nodes (7): 1. Explore, 2. Present findings and ask, 3. Confirm and edit, 4. Write, 5. Done, Process, Setup Matt Pocock's Skills
-
-### Community 373 - "Community 373"
-Cohesion: 0.25
-Nodes (7): Core Principles, Making and Committing Schema Changes, Reference Guides, Supabase, Supabase CLI, Supabase Documentation, Supabase MCP Server
-
-### Community 374 - "Community 374"
-Cohesion: 0.25
-Nodes (7): Learning Record Format, Numbering, Optional sections, Supersession, Template, What does _not_ qualify, When to write a learning record
-
-### Community 375 - "Community 375"
-Cohesion: 0.14
-Nodes (14): dependencies, clsx, lucide-react, next, @radix-ui/react-dialog, react, react-dom, @supabase/ssr (+6 more)
 
 ### Community 376 - "Community 376"
 Cohesion: 0.43
@@ -2163,37 +1304,13 @@ Nodes (7): Admin Workflow, Dashboard Workflow, Follow-up Workflow, Guest Workflo
 Cohesion: 0.29
 Nodes (6): 1. Why this memo exists, 2. What was already in place (P0 → P1), 3. Surfaces reviewed, 4. Gaps found and fixed, 5. Regression net, Admin Responsive (Phone Usability) Audit — June 2026
 
-### Community 388 - "Community 388"
-Cohesion: 0.38
-Nodes (7): borderColorsFromStyle(), borderWidthsFromStyle(), checkElementGptBorderShadow(), checkElementGptBorderShadowDOM(), checkGptThinBorderWideShadow(), shadowLayerAlpha(), shadowMaxBlurPx()
-
 ### Community 389 - "Community 389"
 Cohesion: 0.29
 Nodes (6): Archived, Documentation Index, Engineering reference, Referenced plans (linked from the conversation), The 1:1 mapping, The North Star and its sources (`julian-inputs/`)
 
-### Community 390 - "Community 390"
-Cohesion: 0.29
-Nodes (6): ADR Format, Numbering, Optional sections, Template, What qualifies, When to offer an ADR
-
-### Community 391 - "Community 391"
-Cohesion: 0.29
-Nodes (6): 1. Explore, 2. Present candidates as an HTML report, 3. Grilling loop, Glossary, Improve Codebase Architecture, Process
-
-### Community 392 - "Community 392"
-Cohesion: 0.29
-Nodes (7): Cognitive Load Assessment, Cognitive Load Checklist, Extraneous Load: Bad Design, Germane Load: Learning Effort, Intrinsic Load: The Task Itself, The Working Memory Rule, Three Types of Cognitive Load
-
 ### Community 393 - "Community 393"
 Cohesion: 0.29
 Nodes (6): 1. Leader notes — ON by default; verify, don't flip, 2. Over-Shepherd notes — data setup (in order), 3. Admin notes — account decision + enrollment, Runbook: Turning on the three Care-section note fields, The model (what you're turning on), Verification
-
-### Community 394 - "Community 394"
-Cohesion: 0.29
-Nodes (6): Example dialogue, Output Format, Process, Re-running, Rules, Ubiquitous Language
-
-### Community 395 - "Community 395"
-Cohesion: 0.29
-Nodes (6): Conversational feel, Format arguments to actually have, Out of scope, Pulling from the pile, The loop, Writing rhythm
 
 ### Community 396 - "Community 396"
 Cohesion: 0.33
@@ -2243,33 +1360,9 @@ Nodes (6): 3. Home, Actionable Changes, Better Dashboard Action Labels, Found, H
 Cohesion: 0.33
 Nodes (6): 8. Settings, Actionable Changes, Found, Purpose, Settings Tab Definitions, Settings Tabs
 
-### Community 408 - "Community 408"
-Cohesion: 0.40
-Nodes (6): clippedByInset(), clippedByRect(), expandBoxShorthand(), firstMetricLengthPx(), isScreenReaderOnlyTextStyle(), metricLengthPx()
-
-### Community 409 - "Community 409"
-Cohesion: 0.33
-Nodes (5): 1. Frame the problem space, 2. Spawn sub-agents, 3. Present and compare, Interface Design, Process
-
-### Community 410 - "Community 410"
-Cohesion: 0.33
-Nodes (5): Language, Principles, Rejected framings, Relationships, Terms
-
 ### Community 411 - "Community 411"
 Cohesion: 0.33
 Nodes (5): Edge Functions, Release Runbook — code + schema ship together, Releasing a change that includes a migration, The rule, When something goes wrong
-
-### Community 412 - "Community 412"
-Cohesion: 0.33
-Nodes (5): Before exploring, read these, Domain Docs, File structure, Flag ADR conflicts, Use the glossary's vocabulary
-
-### Community 413 - "Community 413"
-Cohesion: 0.33
-Nodes (5): How to Use, References, Rule Categories by Priority, Supabase Postgres Best Practices, When to Apply
-
-### Community 414 - "Community 414"
-Cohesion: 0.33
-Nodes (5): files, app/reset-password/reset-password-form.tsx, generatedAt, gitCommitHash, version
 
 ### Community 415 - "Community 415"
 Cohesion: 0.40
@@ -2311,25 +1404,9 @@ Nodes (5): Recommended layered test plan, Role-based QA Matrix (recommended temp
 Cohesion: 0.40
 Nodes (5): Capacity, Health, Lifecycle, Recommended Group Status Labels, Setup
 
-### Community 425 - "Community 425"
-Cohesion: 0.40
-Nodes (4): Auto-Clarity Exception, Examples, Persistence, Rules
-
-### Community 426 - "Community 426"
-Cohesion: 0.40
-Nodes (5): checkElementHeroEyebrow(), checkElementHeroEyebrowDOM(), checkHeroEyebrow(), isAccentColor(), resolveVarRefs()
-
 ### Community 427 - "Community 427"
 Cohesion: 0.40
 Nodes (4): Guardrails now active, Remaining debt (tracked, deliberate), UI follow-ups — post-implementation gaps, What shipped
-
-### Community 428 - "Community 428"
-Cohesion: 0.40
-Nodes (4): CONTEXT.md Format, Rules, Single vs multi-context repos, Structure
-
-### Community 429 - "Community 429"
-Cohesion: 0.40
-Nodes (4): Pick a branch, Prototype, Rules that apply to both, When done
 
 ### Community 430 - "Community 430"
 Cohesion: 0.40
@@ -2340,148 +1417,12 @@ Cohesion: 0.40
 Nodes (4): Backup & Restore Runbook, Restoring, Routine, What protects us
 
 ### Community 432 - "Community 432"
-Cohesion: 0.23
-Nodes (10): CellCoverage, AUDIENCE_ORDER, AudienceBoard, CategoryResolution, groupCellsByAudience(), normalizeCategoryLabel(), resolveCategoryForLabel(), sortGroupTypeRows() (+2 more)
+Cohesion: 0.16
+Nodes (15): buildCellCoverage(), CellCoverage, cellKey(), countsTowardCoverage(), COVERAGE_LIFECYCLE_STATES, CoverageCellInput, CoverageGroupInput, sortByLargestShortfall() (+7 more)
 
 ### Community 433 - "Community 433"
 Cohesion: 0.23
 Nodes (11): passkeySlotsOf(), isPrfPasskeySupported(), adminAddPrivateNoteKeySlot(), adminEnrollPrivateNoteKeys(), adminRemovePrivateNoteKeySlot(), adminRotatePrivateNoteRecovery(), adminUpsertShepherdCarePrivateNote(), PrivateNotesSection() (+3 more)
-
-### Community 434 - "Community 434"
-Cohesion: 0.40
-Nodes (4): Conventions, Issue tracker: GitHub, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker"
-
-### Community 435 - "Community 435"
-Cohesion: 0.40
-Nodes (4): Conventions, Issue tracker: GitLab, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker"
-
-### Community 436 - "Community 436"
-Cohesion: 0.40
-Nodes (4): Conventions, Issue tracker: Local Markdown, When a skill says "fetch the relevant ticket", When a skill says "publish to the issue tracker"
-
-### Community 437 - "Community 437"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, caveman
-
-### Community 438 - "Community 438"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, design-an-interface
-
-### Community 439 - "Community 439"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, diagnose
-
-### Community 440 - "Community 440"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, edit-article
-
-### Community 441 - "Community 441"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, git-guardrails-claude-code
-
-### Community 442 - "Community 442"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, grill-me
-
-### Community 443 - "Community 443"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, grill-with-docs
-
-### Community 444 - "Community 444"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, handoff
-
-### Community 445 - "Community 445"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, improve-codebase-architecture
-
-### Community 446 - "Community 446"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, migrate-to-shoehorn
-
-### Community 447 - "Community 447"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, obsidian-vault
-
-### Community 448 - "Community 448"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, prototype
-
-### Community 449 - "Community 449"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, qa
-
-### Community 450 - "Community 450"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, request-refactor-plan
-
-### Community 451 - "Community 451"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, review
-
-### Community 452 - "Community 452"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, scaffold-exercises
-
-### Community 453 - "Community 453"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, setup-matt-pocock-skills
-
-### Community 454 - "Community 454"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, setup-pre-commit
-
-### Community 455 - "Community 455"
-Cohesion: 0.40
-Nodes (5): supabase, computedHash, skillPath, source, sourceType
-
-### Community 456 - "Community 456"
-Cohesion: 0.40
-Nodes (5): supabase-postgres-best-practices, computedHash, skillPath, source, sourceType
-
-### Community 457 - "Community 457"
-Cohesion: 0.40
-Nodes (5): tdd, computedHash, skillPath, source, sourceType
-
-### Community 458 - "Community 458"
-Cohesion: 0.40
-Nodes (5): teach, computedHash, skillPath, source, sourceType
-
-### Community 459 - "Community 459"
-Cohesion: 0.40
-Nodes (5): to-issues, computedHash, skillPath, source, sourceType
-
-### Community 460 - "Community 460"
-Cohesion: 0.40
-Nodes (5): to-prd, computedHash, skillPath, source, sourceType
-
-### Community 461 - "Community 461"
-Cohesion: 0.40
-Nodes (5): triage, computedHash, skillPath, source, sourceType
-
-### Community 462 - "Community 462"
-Cohesion: 0.40
-Nodes (5): ubiquitous-language, computedHash, skillPath, source, sourceType
-
-### Community 463 - "Community 463"
-Cohesion: 0.40
-Nodes (5): write-a-skill, computedHash, skillPath, source, sourceType
-
-### Community 464 - "Community 464"
-Cohesion: 0.40
-Nodes (5): writing-beats, computedHash, skillPath, source, sourceType
-
-### Community 465 - "Community 465"
-Cohesion: 0.40
-Nodes (5): writing-fragments, computedHash, skillPath, source, sourceType
-
-### Community 466 - "Community 466"
-Cohesion: 0.40
-Nodes (5): writing-shape, computedHash, skillPath, source, sourceType
-
-### Community 467 - "Community 467"
-Cohesion: 0.40
-Nodes (5): zoom-out, computedHash, skillPath, source, sourceType
 
 ### Community 468 - "Community 468"
 Cohesion: 0.40
@@ -2491,157 +1432,17 @@ Nodes (4): name, organization_id, organization_slug, ref
 Cohesion: 0.40
 Nodes (3): { mockCreateClient, mockReadFrozenSurfaceFlag }, PINNED_SESSION_PROFILE_COLUMNS, PROFILE_FIXTURE
 
-### Community 471 - "Community 471"
-Cohesion: 0.40
-Nodes (4): analyzedFiles, gitCommitHash, lastAnalyzedAt, version
-
-### Community 472 - "Community 472"
-Cohesion: 0.40
-Nodes (4): Ending the journey, What is a beat, Writing one beat, Writing rhythm
-
 ### Community 473 - "Community 473"
 Cohesion: 0.50
 Nodes (3): Consequences, Considered options, Three-tier multiplication trigger: global → per-type → per-cell
-
-### Community 474 - "Community 474"
-Cohesion: 0.50
-Nodes (3): Fix suggestion, Source, What happened
-
-### Community 475 - "Community 475"
-Cohesion: 0.83
-Nodes (3): hitl-loop.template.sh script, capture(), step()
 
 ### Community 476 - "Community 476"
 Cohesion: 0.50
 Nodes (3): Contents, Julian's inputs — source materials, Provenance and fidelity notes
 
-### Community 477 - "Community 477"
-Cohesion: 0.50
-Nodes (4): Heuristics Scoring Guide, Issue Severity (P0–P3), Reference Material, Score Summary
-
-### Community 478 - "Community 478"
-Cohesion: 0.67
-Nodes (3): polish, argumentHint, description
-
-### Community 479 - "Community 479"
-Cohesion: 0.50
-Nodes (3): candidates, detectorPath, __dirname
-
-### Community 480 - "Community 480"
-Cohesion: 0.50
-Nodes (3): Bad Tests, Good and Bad Tests, Good Tests
-
-### Community 481 - "Community 481"
-Cohesion: 0.50
-Nodes (3): GLOSSARY.md Format, Rules, Structure
-
-### Community 482 - "Community 482"
-Cohesion: 0.50
-Nodes (3): MISSION.md Format, Rules, Template
-
-### Community 483 - "Community 483"
-Cohesion: 0.50
-Nodes (3): RESOURCES.md Format, Rules, Structure
-
 ### Community 485 - "Community 485"
 Cohesion: 0.67
 Nodes (3): lower(), norm(), TABLES
-
-### Community 486 - "Community 486"
-Cohesion: 0.50
-Nodes (3): File format, What is a fragment, Writing rhythm
-
-### Community 489 - "Community 489"
-Cohesion: 0.67
-Nodes (3): adapt, argumentHint, description
-
-### Community 490 - "Community 490"
-Cohesion: 0.67
-Nodes (3): animate, argumentHint, description
-
-### Community 491 - "Community 491"
-Cohesion: 0.67
-Nodes (3): audit, argumentHint, description
-
-### Community 492 - "Community 492"
-Cohesion: 0.50
-Nodes (3): bolder, argumentHint, description
-
-### Community 493 - "Community 493"
-Cohesion: 0.67
-Nodes (3): clarify, argumentHint, description
-
-### Community 494 - "Community 494"
-Cohesion: 0.67
-Nodes (3): colorize, argumentHint, description
-
-### Community 495 - "Community 495"
-Cohesion: 0.67
-Nodes (3): craft, argumentHint, description
-
-### Community 496 - "Community 496"
-Cohesion: 0.67
-Nodes (3): critique, argumentHint, description
-
-### Community 497 - "Community 497"
-Cohesion: 0.67
-Nodes (3): delight, argumentHint, description
-
-### Community 498 - "Community 498"
-Cohesion: 0.67
-Nodes (3): distill, argumentHint, description
-
-### Community 499 - "Community 499"
-Cohesion: 0.67
-Nodes (3): document, argumentHint, description
-
-### Community 500 - "Community 500"
-Cohesion: 0.67
-Nodes (3): extract, argumentHint, description
-
-### Community 501 - "Community 501"
-Cohesion: 0.67
-Nodes (3): harden, argumentHint, description
-
-### Community 502 - "Community 502"
-Cohesion: 0.67
-Nodes (3): init, argumentHint, description
-
-### Community 503 - "Community 503"
-Cohesion: 0.67
-Nodes (3): layout, argumentHint, description
-
-### Community 504 - "Community 504"
-Cohesion: 0.67
-Nodes (3): live, argumentHint, description
-
-### Community 505 - "Community 505"
-Cohesion: 0.67
-Nodes (3): onboard, argumentHint, description
-
-### Community 506 - "Community 506"
-Cohesion: 0.67
-Nodes (3): optimize, argumentHint, description
-
-### Community 507 - "Community 507"
-Cohesion: 0.67
-Nodes (3): overdrive, argumentHint, description
-
-### Community 508 - "Community 508"
-Cohesion: 0.67
-Nodes (3): quieter, argumentHint, description
-
-### Community 509 - "Community 509"
-Cohesion: 0.67
-Nodes (3): shape, argumentHint, description
-
-### Community 510 - "Community 510"
-Cohesion: 0.67
-Nodes (3): typeset, argumentHint, description
-
-### Community 577 - "Community 577"
-Cohesion: 0.17
-Nodes (12): scripts, build, dev, lint, prepare, remove:test-auth, seed:test-auth, start (+4 more)
 
 ### Community 578 - "Community 578"
 Cohesion: 0.25
@@ -2652,24 +1453,12 @@ Cohesion: 0.35
 Nodes (7): field(), markPasswordSetupPending(), POST(), seeOther(), isValidOtpType(), safeNext(), VALID_OTP_TYPES
 
 ### Community 581 - "Community 581"
-Cohesion: 0.20
-Nodes (8): generateDek(), auditInsertBlocks(), bothLower(), LIFECYCLE_MIGRATION, MIGRATIONS_DIR, NON_CREATOR_ROLES, NOTE_MIGRATION, TABLES
-
-### Community 582 - "Community 582"
-Cohesion: 0.25
-Nodes (11): configureVoiceContext(), isEmbeddedPreviewBrowser(), releaseVoiceEngine(), startVoice(), steerSpeechRecognitionCtor(), steerVoiceContext(), steerVoiceErrorMessage(), steerVoiceUnavailableMessage() (+3 more)
-
-### Community 583 - "Community 583"
 Cohesion: 0.22
-Nodes (8): ReadinessPillarKey, segmentAnchorId(), MultiplyGrid, MultiplyGridCell, BLOCKER_LABEL, GridCell(), MultiplyGridView(), TYPE_LABEL
+Nodes (7): auditInsertBlocks(), bothLower(), LIFECYCLE_MIGRATION, MIGRATIONS_DIR, NON_CREATOR_ROLES, NOTE_MIGRATION, TABLES
 
 ### Community 584 - "Community 584"
-Cohesion: 0.33
-Nodes (7): BUILT_IN_CARE_CADENCE_WINDOWS, CoverageTier, coverageTierForShepherd(), daysBetweenIso(), isCareContactStale(), staleWindowDaysForTier(), WINDOWS
-
-### Community 585 - "Community 585"
-Cohesion: 0.22
-Nodes (8): DashboardClient(), CALM_EMPTY_LINES, DEFAULT_HIDDEN, QUIET_DATA, QUIET_FUNNEL, QUIET_READINESS, render(), renderQuiet()
+Cohesion: 0.31
+Nodes (8): BUILT_IN_CARE_CADENCE_WINDOWS, CareCadenceWindows, CoverageTier, coverageTierForShepherd(), daysBetweenIso(), isCareContactStale(), staleWindowDaysForTier(), WINDOWS
 
 ### Community 586 - "Community 586"
 Cohesion: 0.36
@@ -2679,49 +1468,25 @@ Nodes (4): frozenSurfaceGate(), FrozenSurfaceNotice(), CheckInsLayout(), GuestsL
 Cohesion: 0.36
 Nodes (6): config, middleware(), getSupabaseEnv(), isSupabaseConfigured(), SupabaseEnv, updateSupabaseSession()
 
-### Community 588 - "Community 588"
-Cohesion: 0.31
-Nodes (9): bindEditBadgeProxy(), editBadgeProxyTargets(), initEditBadge(), initEditBadgeHitProxies(), positionEditBadge(), setImportantStyle(), styleEditBadgeProxy(), syncEditBadgeHitProxies() (+1 more)
-
-### Community 589 - "Community 589"
-Cohesion: 0.25
-Nodes (5): CHOSEN_ROW, { mockCreateClient, mockRpcSetOwnFullName, mockCookieSet }, PASSWORD_FIELDS, PENDING_ROW, ProfileRow
-
-### Community 590 - "Community 590"
-Cohesion: 0.60
-Nodes (4): hasGeneratedHeader(), HEADER_MARKERS, isGeneratedFile(), isGitIgnored()
-
-### Community 591 - "Community 591"
-Cohesion: 0.50
-Nodes (4): formatWeek(), GroupsDirectory(), latestCheckinText(), listTabDescription()
-
-### Community 592 - "Community 592"
-Cohesion: 0.50
-Nodes (3): name, private, version
-
-### Community 593 - "Community 593"
-Cohesion: 0.83
-Nodes (3): captureVisualContrastCandidate(), compareScreenshotContrast(), sanitizeScreenshotClip()
-
 ## Knowledge Gaps
-- **4083 isolated node(s):** `block-dangerous-git.sh script`, `description`, `argumentHint`, `description`, `argumentHint` (+4078 more)
+- **2581 isolated node(s):** `TABS`, `SearchParams`, `Params`, `SearchParams`, `SearchParams` (+2576 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **63 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `createSupabaseServerClient()` connect `Community 200` to `Community 3`, `Community 132`, `Community 263`, `Community 9`, `Community 14`, `Community 15`, `Community 22`, `Community 24`, `Community 27`, `Community 28`, `Community 29`, `Community 31`, `Community 288`, `Community 160`, `Community 35`, `Community 168`, `Community 47`, `Community 49`, `Community 58`, `Community 64`, `Community 194`, `Community 68`, `Community 580`, `Community 587`, `Community 204`, `Community 206`, `Community 80`, `Community 86`, `Community 94`, `Community 100`, `Community 106`, `Community 110`, `Community 111`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Why does `pickVariantContent()` connect `Community 45` to `Community 5`, `Community 69`?**
-  _High betweenness centrality (0.012) - this node is a cross-community bridge._
-- **Why does `resolveInsertSessionAnchor()` connect `Community 69` to `Community 45`?**
-  _High betweenness centrality (0.011) - this node is a cross-community bridge._
+- **Why does `createSupabaseServerClient()` connect `Community 200` to `Community 3`, `Community 132`, `Community 9`, `Community 14`, `Community 23`, `Community 24`, `Community 25`, `Community 27`, `Community 31`, `Community 288`, `Community 160`, `Community 35`, `Community 39`, `Community 168`, `Community 42`, `Community 49`, `Community 177`, `Community 63`, `Community 64`, `Community 194`, `Community 68`, `Community 580`, `Community 69`, `Community 587`, `Community 77`, `Community 80`, `Community 85`, `Community 86`, `Community 94`, `Community 106`, `Community 365`, `Community 110`, `Community 111`?**
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+- **Why does `AppSupabaseClient` connect `Community 204` to `Community 0`, `Community 9`, `Community 11`, `Community 13`, `Community 14`, `Community 21`, `Community 22`, `Community 23`, `Community 24`, `Community 25`, `Community 27`, `Community 28`, `Community 31`, `Community 38`, `Community 39`, `Community 168`, `Community 49`, `Community 50`, `Community 177`, `Community 55`, `Community 58`, `Community 63`, `Community 69`, `Community 200`, `Community 80`, `Community 94`, `Community 110`, `Community 111`, `Community 249`?**
+  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `ActionResult` connect `Community 3` to `Community 0`, `Community 1`, `Community 2`, `Community 7`, `Community 8`, `Community 142`, `Community 21`, `Community 28`, `Community 288`, `Community 34`, `Community 38`, `Community 42`, `Community 46`, `Community 178`, `Community 51`, `Community 52`, `Community 57`, `Community 194`, `Community 73`, `Community 205`, `Community 80`, `Community 88`, `Community 100`?**
+  _High betweenness centrality (0.013) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `createSupabaseServerClient()` (e.g. with `AdminGroupCalendarPage()` and `LeaderCalendarPage()`) actually correct?**
   _`createSupabaseServerClient()` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 7 inferred relationships involving `cn()` (e.g. with `AdminGroupCalendarPage()` and `LeaderCalendarPage()`) actually correct?**
   _`cn()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `runAdminWriteAction()` (e.g. with `adminArchiveCalendarEvent()` and `adminCreateCalendarEvent()`) actually correct?**
   _`runAdminWriteAction()` has 4 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `block-dangerous-git.sh script`, `description`, `argumentHint` to the rest of the system?**
-  _4083 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `TABS`, `SearchParams`, `Params` to the rest of the system?**
+  _2581 weakly-connected nodes found - possible documentation gaps or missing edges._
