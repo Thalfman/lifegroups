@@ -331,6 +331,94 @@ export function resolveGroupHealthByGroupId(
   return out;
 }
 
+// ---- Inline grade entry (ADR 0023) ---------------------------------------
+// The accordion's per-Leader panel hosts the SAME grade editors the detail
+// page uses (LeaderHealthGradeEditor / GroupRubricGradeEntry), seeded from the
+// raw persisted rows the enrichment already fetches. The bundle is built by
+// the read side and passed through CareAccordion as one prop, so this model's
+// buildCareAccordion stays untouched.
+
+export type CareGradeEntryBundle = {
+  // Null in the Jun–Jul off-season: the editors render their closed state and
+  // the group editors are suppressed (mirroring the detail page).
+  ministryYear: number | null;
+  periodMonthIso: string;
+  leaderCriteria: Rubric["criteria"];
+  groupCriteria: Rubric["criteria"];
+  leaderGradeByProfileId: ReadonlyMap<string, LeaderHealthGradeInput>;
+  groupGradeByGroupId: ReadonlyMap<string, GroupHealthGradeInput>;
+  // False when the rubric or grade-row read failed. The panel then renders the
+  // detail page's "reload before editing" guard instead of an editor — saving
+  // over a row we failed to read could silently overwrite the saved grade.
+  leaderGradesAvailable: boolean;
+  groupGradesAvailable: boolean;
+};
+
+// What an editor needs as initial values, resolved exactly the way the detail
+// page resolves them: the persisted scores, plus the override ONLY while it is
+// still live (an expired this-month override must not re-arm the form).
+export type GradeEntrySeed<Letter> = {
+  scores: RubricScores;
+  overrideLetter: Letter | null;
+  overrideScope: GroupHealthOverrideScope | null;
+};
+
+const EMPTY_SEED = { scores: {}, overrideLetter: null, overrideScope: null };
+
+export function resolveLeaderGradeSeed(
+  row: LeaderHealthGradeInput | undefined,
+  criteria: Rubric["criteria"],
+  ministryYear: number,
+  periodMonthIso: string
+): GradeEntrySeed<LeaderHealthLetter> {
+  if (!row) return EMPTY_SEED;
+  const resolved = resolveLeaderGrade({
+    rubric: { criteria },
+    scores: row.criterion_scores,
+    override:
+      row.override_letter && row.override_scope
+        ? {
+            letter: row.override_letter,
+            scope: row.override_scope,
+            period_month: row.override_period_month ?? periodMonthIso,
+          }
+        : null,
+    ministryYear,
+    currentPeriodMonth: periodMonthIso,
+  });
+  return {
+    scores: row.criterion_scores,
+    overrideLetter: resolved.overridden ? resolved.letter : null,
+    overrideScope: resolved.override_scope ?? null,
+  };
+}
+
+export function resolveGroupGradeSeed(
+  row: GroupHealthGradeInput | undefined,
+  criteria: Rubric["criteria"],
+  periodMonthIso: string
+): GradeEntrySeed<GroupHealthLetter> {
+  if (!row) return EMPTY_SEED;
+  const grade = resolveGroupRubricGrade({
+    rubric: { criteria },
+    scores: row.criterion_scores,
+    override:
+      row.override_letter && row.override_scope
+        ? {
+            letter: row.override_letter,
+            scope: row.override_scope,
+            period_month: row.override_period_month ?? periodMonthIso,
+          }
+        : null,
+    periodMonth: periodMonthIso,
+  });
+  return {
+    scores: row.criterion_scores,
+    overrideLetter: grade.overridden ? grade.effective_letter : null,
+    overrideScope: grade.override_scope ?? null,
+  };
+}
+
 // Build the Care Notes / Prayer Requests presence map (#381). A Leader is
 // "visible" when their transparency grant is on (or, defensively, when the
 // RLS-scoped reads returned any of their rows — which only happens when granted).

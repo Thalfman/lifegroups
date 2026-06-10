@@ -40,7 +40,10 @@ import type {
   CareFeedItem,
   SealedLeaderSummary,
 } from "@/lib/admin/care-note-feed";
-import type { CareAccordionLeader } from "@/lib/admin/care-accordion";
+import type {
+  CareAccordionLeader,
+  CareGradeEntryBundle,
+} from "@/lib/admin/care-accordion";
 import {
   SettingsShell,
   type SettingsShellData,
@@ -267,6 +270,49 @@ const CARE_PANEL_LEADER_GRANTED: CareAccordionLeader = {
   nextStepDue: "2026-05-20",
   leaderHealthGrade: "B",
   notes: { transparency: "visible", careNoteCount: 2, prayerCount: 1 },
+};
+
+// Inline grade entry bundle (ADR 0023): both panels host the same grade
+// editors + note write forms the detail page uses. Repeated per Leader, so
+// their submits and field ids must carry leader/group context — the
+// care-actions spec asserts exactly that. In-year so the editors render.
+const CARE_PANEL_GRADE_ENTRY: CareGradeEntryBundle = {
+  ministryYear: 2025,
+  periodMonthIso: "2026-05-01",
+  leaderCriteria: [
+    { key: "soul", label: "Soul care", weight: 50 },
+    { key: "shepherding", label: "Shepherding", weight: 50 },
+  ],
+  groupCriteria: [
+    { key: "attendance", label: "Attendance", weight: 60 },
+    { key: "engagement", label: "Engagement", weight: 40 },
+  ],
+  leaderGradeByProfileId: new Map([
+    [
+      "00000000-0000-4000-8000-0000000000a1",
+      {
+        profile_id: "00000000-0000-4000-8000-0000000000a1",
+        criterion_scores: { soul: 92, shepherding: 88 },
+        override_letter: null,
+        override_scope: null,
+        override_period_month: null,
+      },
+    ],
+  ]),
+  groupGradeByGroupId: new Map([
+    [
+      "grp-anderson",
+      {
+        group_id: "grp-anderson",
+        criterion_scores: { attendance: 80, engagement: 75 },
+        override_letter: null,
+        override_scope: null,
+        override_period_month: null,
+      },
+    ],
+  ]),
+  leaderGradesAvailable: true,
+  groupGradesAvailable: true,
 };
 
 // All Notes feed fixtures (ADR 0023): one of each feed kind so the spec can
@@ -1091,8 +1137,14 @@ export function A11yHarnessClient() {
         id="care-accordion-panel"
         heading="Care accordion (leader panels)"
       >
-        <CareLeaderPanel leader={CARE_PANEL_LEADER_SEALED} />
-        <CareLeaderPanel leader={CARE_PANEL_LEADER_GRANTED} />
+        <CareLeaderPanel
+          leader={CARE_PANEL_LEADER_SEALED}
+          gradeEntry={CARE_PANEL_GRADE_ENTRY}
+        />
+        <CareLeaderPanel
+          leader={CARE_PANEL_LEADER_GRANTED}
+          gradeEntry={CARE_PANEL_GRADE_ENTRY}
+        />
       </Surface>
 
       {/* All Notes feed (ADR 0023). The Care area's Notes tab: labelled

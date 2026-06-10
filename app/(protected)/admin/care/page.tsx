@@ -321,7 +321,11 @@ export async function loadCarePageData({
       key: "over-shepherds",
       label: "Over-Shepherds",
       panel: (
-        <CareAccordion panes={accordionPanes} isSuperAdmin={isSuperAdmin} />
+        <CareAccordion
+          panes={accordionPanes}
+          isSuperAdmin={isSuperAdmin}
+          gradeEntry={enrichment.gradeEntry}
+        />
       ),
     },
     {

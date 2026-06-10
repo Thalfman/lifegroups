@@ -5,9 +5,15 @@ import { buttonClassName } from "@/components/ui/button";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
+import { CareNoteWriteForm } from "@/components/admin/shepherd-care/care-note-write-form";
+import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
+import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import {
   isNoteTransparencyGranted,
+  resolveGroupGradeSeed,
+  resolveLeaderGradeSeed,
   type CareAccordionLeader,
+  type CareGradeEntryBundle,
 } from "@/lib/admin/care-accordion";
 
 // The per-Leader detail inside a Care accordion pane (#373, ADR 0016). Opened
@@ -68,7 +74,119 @@ function CareNoteCounts({ notes }: { notes: CareAccordionLeader["notes"] }) {
   return <span className={VALUE_TEXT}>{parts.join(" · ")}</span>;
 }
 
-export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
+// ADR 0023 — the collapsed inline work area: the SAME grade editors and note
+// write forms the per-leader detail page hosts, so grading and note-writing
+// are reachable from the Care list without a navigation. Mirrors the detail
+// page's guards: group editors only inside a Ministry Year, the leader editor
+// renders its own off-season state, and a failed grade read shows the
+// "reload before editing" warning instead of an editor.
+const GRADE_READ_ERROR =
+  "m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-sm text-clayDeep";
+
+function GradesAndNotes({
+  leader,
+  gradeEntry,
+}: {
+  leader: CareAccordionLeader;
+  gradeEntry: CareGradeEntryBundle;
+}) {
+  const { ministryYear, periodMonthIso } = gradeEntry;
+  const leaderSeed =
+    ministryYear !== null
+      ? resolveLeaderGradeSeed(
+          gradeEntry.leaderGradeByProfileId.get(leader.profileId),
+          gradeEntry.leaderCriteria,
+          ministryYear,
+          periodMonthIso
+        )
+      : { scores: {}, overrideLetter: null, overrideScope: null };
+
+  return (
+    <details className="rounded-sm border border-lineSoft bg-bg/40">
+      <summary className="cursor-pointer rounded-sm px-3 py-2 font-sans text-sm font-semibold text-ink2 transition-colors duration-150 hover:bg-surfaceAlt">
+        Grades &amp; notes
+      </summary>
+      <div className="grid gap-4 px-3 pb-3.5 pt-1.5">
+        <section className="grid gap-2">
+          <h4 className={cn(SLOT_LABEL, "m-0")}>Leader-Health Grade</h4>
+          {gradeEntry.leaderGradesAvailable ? (
+            <LeaderHealthGradeEditor
+              profileId={leader.profileId}
+              leaderName={leader.fullName}
+              ministryYear={ministryYear}
+              criteria={gradeEntry.leaderCriteria}
+              initialScores={leaderSeed.scores}
+              initialOverrideLetter={leaderSeed.overrideLetter}
+              initialOverrideScope={leaderSeed.overrideScope}
+            />
+          ) : (
+            <p role="alert" className={GRADE_READ_ERROR}>
+              This leader&rsquo;s grade couldn&rsquo;t be loaded. Reload before
+              editing — saving now could overwrite the saved grade.
+            </p>
+          )}
+        </section>
+
+        {ministryYear !== null && leader.ledGroups.length > 0 ? (
+          <section className="grid gap-2">
+            <h4 className={cn(SLOT_LABEL, "m-0")}>Group-Health Grade</h4>
+            {leader.ledGroups.map((g) => {
+              if (!gradeEntry.groupGradesAvailable) {
+                return (
+                  <p key={g.id} role="alert" className={GRADE_READ_ERROR}>
+                    {g.name}&rsquo;s grade couldn&rsquo;t be loaded. Reload
+                    before editing — saving now could overwrite the saved grade.
+                  </p>
+                );
+              }
+              const seed = resolveGroupGradeSeed(
+                gradeEntry.groupGradeByGroupId.get(g.id),
+                gradeEntry.groupCriteria,
+                periodMonthIso
+              );
+              return (
+                <GroupRubricGradeEntry
+                  key={g.id}
+                  groupId={g.id}
+                  groupName={g.name}
+                  ministryYear={ministryYear}
+                  criteria={gradeEntry.groupCriteria}
+                  initialScores={seed.scores}
+                  initialOverrideLetter={seed.overrideLetter}
+                  initialOverrideScope={seed.overrideScope}
+                />
+              );
+            })}
+          </section>
+        ) : null}
+
+        <section className="grid gap-3">
+          <h4 className={cn(SLOT_LABEL, "m-0")}>Write a note</h4>
+          <CareNoteWriteForm
+            subjectProfileId={leader.profileId}
+            kind="care_note"
+            subjectName={leader.fullName}
+          />
+          <CareNoteWriteForm
+            subjectProfileId={leader.profileId}
+            kind="prayer_request"
+            subjectName={leader.fullName}
+          />
+        </section>
+      </div>
+    </details>
+  );
+}
+
+export function CareLeaderPanel({
+  leader,
+  gradeEntry,
+}: {
+  leader: CareAccordionLeader;
+  // ADR 0023 — when provided, the panel hosts the inline grade editors + note
+  // write forms. Omitted in contexts without the enrichment (older tests).
+  gradeEntry?: CareGradeEntryBundle;
+}) {
   const groupLabel =
     leader.groupNames.length > 0 ? leader.groupNames.join(", ") : "No group";
   const granted = isNoteTransparencyGranted(leader.notes);
@@ -164,6 +282,14 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
             </div>
           </Slot>
         </div>
+
+        {/* ADR 0023 — inline grading + note-writing, collapsed so the scan
+            surface stays scannable. Same editors/actions as the detail page
+            (one audited write path each); their revalidate lists cover
+            /admin/care, so a save re-renders the accordion. */}
+        {gradeEntry ? (
+          <GradesAndNotes leader={leader} gradeEntry={gradeEntry} />
+        ) : null}
 
         <Link
           href={`/admin/shepherd-care/${leader.profileId}`}

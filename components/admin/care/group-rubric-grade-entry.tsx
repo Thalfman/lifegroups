@@ -221,7 +221,15 @@ export function GroupRubricGradeEntry({
       </div>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" variant="primary" disabled={form.pending}>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={form.pending}
+          // The entry repeats per group (multi-group leaders; the Care
+          // accordion, ADR 0023): start with the visible label (axe
+          // label-in-name), then add the group.
+          aria-label={`Save grade for ${groupName}`}
+        >
           {form.pending ? "Saving…" : "Save grade"}
         </Button>
         <FormStatus state={form.state} successText="Grade saved." />

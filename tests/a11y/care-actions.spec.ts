@@ -79,11 +79,13 @@ test.describe("care accordion transparency toggle", () => {
     const surface = page.locator('[data-a11y-surface="care-accordion-panel"]');
 
     // Sealed Leader: the slot renders the interactive toggle (off), not the
-    // old read-only sealed line.
-    const sealed = surface
-      .locator("details")
-      .filter({ hasText: "Anderson Lee" });
-    await sealed.locator("summary").click();
+    // old read-only sealed line. Filter on the panel's own <summary> (not any
+    // descendant text) — the nested Grades & notes <details> (ADR 0023) also
+    // mentions the leader, so a hasText filter would match both.
+    const sealed = surface.locator("details").filter({
+      has: page.locator("summary", { hasText: "Anderson Lee" }),
+    });
+    await sealed.locator("> summary").click();
     await expect(
       sealed.getByText("Leadership visibility: Sealed")
     ).toBeVisible();
@@ -95,10 +97,10 @@ test.describe("care accordion transparency toggle", () => {
 
     // Granted Leader: the counts line stays (counts only — never a note or
     // Prayer Request body) next to the seal control.
-    const granted = surface
-      .locator("details")
-      .filter({ hasText: "Bryant Cole" });
-    await granted.locator("summary").click();
+    const granted = surface.locator("details").filter({
+      has: page.locator("summary", { hasText: "Bryant Cole" }),
+    });
+    await granted.locator("> summary").click();
     await expect(
       granted.getByText("2 care notes · 1 prayer request")
     ).toBeVisible();
@@ -125,10 +127,10 @@ test.describe("care accordion transparency toggle", () => {
     });
 
     const surface = page.locator('[data-a11y-surface="care-accordion-panel"]');
-    const panel = surface
-      .locator("details")
-      .filter({ hasText: "Anderson Lee" });
-    await panel.locator("summary").click();
+    const panel = surface.locator("details").filter({
+      has: page.locator("summary", { hasText: "Anderson Lee" }),
+    });
+    await panel.locator("> summary").click();
 
     const toggle = panel.getByRole("button", {
       name: "Turn on (let leadership read) for Anderson Lee",
@@ -139,5 +141,64 @@ test.describe("care accordion transparency toggle", () => {
     // settles; its accessible name keeps the leader context throughout.
     await expect(toggle).toBeDisabled();
     await expect(toggle).toHaveText("Saving…");
+  });
+});
+
+// ADR 0023 — inline grading + note-writing in the Care accordion. Each Leader
+// panel hosts a collapsed "Grades & notes" section with the SAME editors and
+// forms the detail page uses. Because every control now repeats per Leader
+// (and per group), submits must carry record context and field ids must not
+// collide across panels (Admin Interaction Model req 4).
+test.describe("care accordion inline grades & notes", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoHarness(page);
+  });
+
+  test("editors and note forms carry record context, ids never collide", async ({
+    page,
+  }) => {
+    const surface = page.locator('[data-a11y-surface="care-accordion-panel"]');
+
+    // Open BOTH leader panels and BOTH Grades & notes sections, so the
+    // duplicate-id and ambiguous-name failure modes are actually on the page.
+    for (const name of ["Anderson Lee", "Bryant Cole"]) {
+      const panel = surface.locator("details").filter({
+        has: page.locator("summary", { hasText: name }),
+      });
+      await panel.locator("> summary").click();
+      await panel
+        .locator("details")
+        .filter({ has: page.locator("summary", { hasText: "Grades & notes" }) })
+        .locator("> summary")
+        .click();
+    }
+
+    // Repeated submits carry the record: the leader grade per Leader, the
+    // group grade per group, and each note form per Leader.
+    for (const name of [
+      "Save grade for Anderson Lee",
+      "Save grade for Bryant Cole",
+      "Save grade for Anderson",
+      "Save grade for Bryant",
+      "Add care note for Anderson Lee",
+      "Add care note for Bryant Cole",
+      "Add prayer request for Anderson Lee",
+      "Add prayer request for Bryant Cole",
+    ]) {
+      await expect(
+        surface.getByRole("button", { name, exact: true })
+      ).toBeVisible();
+    }
+
+    // The grade editors' criterion inputs are labelled and unique per Leader:
+    // the same rubric criterion appears once per panel without id collisions
+    // (axe duplicate-id-active is serious, so the scan below also gates this).
+    await expect(surface.getByLabel("Score for Soul care")).toHaveCount(2);
+
+    // axe over the fully expanded surface.
+    const results = await new AxeBuilder({ page })
+      .include('[data-a11y-surface="care-accordion-panel"]')
+      .analyze();
+    expectNoBlockingAxeViolations(results);
   });
 });

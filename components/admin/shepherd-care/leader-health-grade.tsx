@@ -129,7 +129,11 @@ export function LeaderHealthGradeEditor({
   }
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form
+      action={formAction}
+      className="grid gap-4"
+      aria-label={`Leader-Health Grade for ${leaderName}`}
+    >
       <input type="hidden" name="profile_id" value={profileId} />
       <input type="hidden" name="ministry_year" value={String(ministryYear)} />
       <input type="hidden" name="criterion_scores" value={scoresJson} />
@@ -153,13 +157,18 @@ export function LeaderHealthGradeEditor({
             className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr,110px]"
           >
             <div>
-              <label htmlFor={`leader-crit-${row.key}`} className={FIELD_LABEL}>
+              {/* Ids include the profile so repeated editors (one per Leader
+                  in the Care accordion, ADR 0023) never collide. */}
+              <label
+                htmlFor={`leader-crit-${profileId}-${row.key}`}
+                className={FIELD_LABEL}
+              >
                 {row.label}
               </label>
             </div>
             <div>
               <input
-                id={`leader-crit-${row.key}`}
+                id={`leader-crit-${profileId}-${row.key}`}
                 type="number"
                 min={0}
                 max={100}
@@ -229,7 +238,15 @@ export function LeaderHealthGradeEditor({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={!canSave}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="md"
+          disabled={!canSave}
+          // Repeated per Leader in the Care accordion (ADR 0023): start with
+          // the visible label (axe label-in-name), then add the leader.
+          aria-label={`Save grade for ${leaderName}`}
+        >
           {pending ? "Saving…" : "Save grade"}
         </PButton>
         <FormStatus state={state} successText="Leader-Health Grade saved." />
