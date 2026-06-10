@@ -22,7 +22,9 @@ import type {
   MembersRow,
   ProfilesRow,
 } from "@/types/database";
-import type { PipelineRollup } from "@/lib/admin/leader-pipeline";
+// Type-only: the data module itself is server-side, the import is erased at
+// build time.
+import type { LeaderPipelineData } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 
 export type PeopleManagementData = {
   currentActorProfileId: string;
@@ -40,11 +42,9 @@ export type PeopleManagementData = {
   };
 };
 
-export type PeoplePipelineData = {
-  rollup: PipelineRollup;
-  availableGroups: { id: string; name: string }[];
-  error: string | null;
-};
+// The Apprentices tab renders the shared leader pipeline, so its data shape
+// IS the shared builder's — an alias, not a copy, so the two can't drift.
+export type PeoplePipelineData = LeaderPipelineData;
 
 // People is the shared people substrate the three jobs draw on (ADR 0013).
 // The surface is two destinations, not five: Directory (everyone, with an

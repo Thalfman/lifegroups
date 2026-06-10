@@ -2,6 +2,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
+  fetchActiveMemberships,
+  fetchAllMembers,
   fetchGroupRefs,
   fetchLeaderPipelineForAdmin,
 } from "@/lib/supabase/read-models";
@@ -18,9 +20,17 @@ import {
 // Apprentices tab render the same data, so the mapping lives here once rather
 // than copied per host (ADR 0011: extract genuinely duplicated rules).
 
+// An active group member offered by the apprentice "link to a member"
+// dropdown.
+export type PipelineMemberOption = { id: string; name: string };
+
 export type LeaderPipelineData = {
   rollup: PipelineRollup;
   availableGroups: { id: string; name: string }[];
+  // Each active group's active members, for the apprentice member-link
+  // dropdown. A group with no key has no linkable members; the form falls
+  // back to its typed-name path.
+  memberOptionsByGroup: Record<string, PipelineMemberOption[]>;
   error: string | null;
 };
 
@@ -30,6 +40,10 @@ export type LeaderPipelineReads = {
   // groups, so we avoid pulling the full group row (e.g. admin_notes), which
   // matters now this loads on every Multiply visit via the Leaders tab.
   fetchGroupRefs: OmitClient<typeof fetchGroupRefs>;
+  // Active memberships + active members feed the member-link dropdown. The
+  // names match PeopleReads' fields so PeopleReads stays a structural superset.
+  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
+  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
 };
 
 export function supabaseLeaderPipelineReads(
@@ -38,6 +52,8 @@ export function supabaseLeaderPipelineReads(
   return bindReads(client, {
     fetchLeaderPipeline: fetchLeaderPipelineForAdmin,
     fetchGroupRefs,
+    fetchActiveMemberships,
+    fetchAllMembers,
   });
 }
 
@@ -50,14 +66,41 @@ const EMPTY_ROLLUP: PipelineRollup = {
 export async function buildLeaderPipelineData(
   reads: LeaderPipelineReads
 ): Promise<LeaderPipelineData> {
-  const [pipelineRes, groupRefsRes] = await Promise.all([
-    reads.fetchLeaderPipeline(),
-    reads.fetchGroupRefs(),
-  ]);
+  const [pipelineRes, groupRefsRes, membershipsRes, membersRes] =
+    await Promise.all([
+      reads.fetchLeaderPipeline(),
+      reads.fetchGroupRefs(),
+      reads.fetchActiveMemberships(),
+      reads.fetchAllMembers({ statuses: ["active"] }),
+    ]);
 
   const activeGroups: PipelineGroupRef[] = (groupRefsRes.data ?? [])
     .filter((g) => g.lifecycle_status === "active")
     .map((g) => ({ id: g.id, name: g.name }));
+
+  // Active members per active group, for the member-link dropdown. A failed
+  // options read degrades to no options — the add/edit forms fall back to the
+  // typed-name path — rather than folding into `error`, which would blank the
+  // whole pipeline.
+  const memberOptionsByGroup: Record<string, PipelineMemberOption[]> = {};
+  if (!membershipsRes.error && !membersRes.error) {
+    const memberNameById = new Map(
+      (membersRes.data ?? []).map((m) => [m.id, m.full_name])
+    );
+    const activeGroupIds = new Set(activeGroups.map((g) => g.id));
+    for (const link of membershipsRes.data ?? []) {
+      if (!activeGroupIds.has(link.group_id)) continue;
+      const name = memberNameById.get(link.member_id);
+      if (name === undefined) continue;
+      (memberOptionsByGroup[link.group_id] ??= []).push({
+        id: link.member_id,
+        name,
+      });
+    }
+    for (const options of Object.values(memberOptionsByGroup)) {
+      options.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
 
   const apprentices: ApprenticeView[] = (pipelineRes.data ?? []).map((e) => ({
     id: e.apprentice.id,
@@ -78,6 +121,7 @@ export async function buildLeaderPipelineData(
   return {
     rollup,
     availableGroups,
+    memberOptionsByGroup,
     error: pipelineRes.error?.message ?? groupRefsRes.error?.message ?? null,
   };
 }
@@ -88,6 +132,7 @@ export async function loadLeaderPipelineData(): Promise<LeaderPipelineData> {
     return {
       rollup: EMPTY_ROLLUP,
       availableGroups: [],
+      memberOptionsByGroup: {},
       error: "Database is not configured in this environment.",
     };
   }
