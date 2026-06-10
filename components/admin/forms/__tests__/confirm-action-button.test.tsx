@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// The six confirm-action configs bind "use server" actions; stub the modules
+// The confirm-action configs bind "use server" actions; stub the modules
 // so static rendering never pulls server-only deps (the markup never invokes
 // the actions anyway).
 vi.mock("@/app/(protected)/admin/groups/actions", () => ({
@@ -15,6 +15,23 @@ vi.mock("@/app/(protected)/admin/people/actions", () => ({
 vi.mock("@/app/(protected)/admin/settings/actions", () => ({
   adminUpsertGroupMetricSettings: vi.fn(),
   adminResetMetricDefaults: vi.fn(),
+  adminArchiveGroupCategory: vi.fn(),
+  adminCreateGroupCategory: vi.fn(),
+  adminRenameGroupCategory: vi.fn(),
+  adminSetCategoryTypeCell: vi.fn(),
+  adminSetCategoryTypeTargetCount: vi.fn(),
+  adminSetGroupCategory: vi.fn(),
+}));
+vi.mock("@/app/(protected)/admin/shepherd-care/actions", () => ({
+  adminSetOverShepherdActive: vi.fn(),
+  adminArchiveShepherdCareFollowUp: vi.fn(),
+  adminUpdateShepherdCareFollowUpStatus: vi.fn(),
+}));
+vi.mock("@/app/(protected)/admin/plan/actions", () => ({
+  adminTransitionProspect: vi.fn(),
+  adminSetProspectNextStep: vi.fn(),
+  adminUpdateProspect: vi.fn(),
+  adminArchiveProspect: vi.fn(),
 }));
 
 import {
@@ -41,6 +58,16 @@ import {
   ResetMetricDefaultsButton,
   resetMetricDefaultsConfirmMessage,
 } from "@/components/admin/forms/reset-metric-defaults-button";
+import {
+  OverShepherdArchiveButton,
+  overShepherdArchiveConfirmMessage,
+} from "@/components/admin/shepherd-care/over-shepherd-archive-button";
+import {
+  CareFollowUpStatusControls,
+  archiveFollowUpConfirmMessage,
+} from "@/components/admin/shepherd-care/care-follow-up-status-controls";
+import { archiveProspectConfirmMessage } from "@/components/admin/plan/prospect-card";
+import { deleteCategoryConfirmMessage } from "@/components/admin/settings/groups-catalog-editor";
 
 // #489 collapsed six hand-wired button modules into configs of one deep
 // ConfirmActionButton. The user-facing strings must stay byte-identical to
@@ -173,5 +200,99 @@ describe("six configs — labels, aria-labels, and hidden fields", () => {
     expect(html).not.toContain('type="hidden"');
     expect(html).toContain(">Reset defaults</button>");
     expect(html).toContain("Per-group overrides stay intact");
+  });
+});
+
+// #494 folded the remaining hand-rolled window.confirm flows into the same
+// module. Their user-facing strings must stay byte-identical to the pre-#494
+// components — these literals are the catalog taken from them.
+describe("confirmation copy — byte-identical to the pre-#494 modules", () => {
+  it("Archive over-shepherd", () => {
+    expect(overShepherdArchiveConfirmMessage("Pat Shepherd", 0)).toBe(
+      "Archive Pat Shepherd? They stay in history but drop off the active list. Restore any time (coverage is not restored)."
+    );
+    expect(overShepherdArchiveConfirmMessage("Pat Shepherd", 1)).toBe(
+      "Archive Pat Shepherd? They stay in history but drop off the active " +
+        "list. Restore any time (coverage is not restored). This ends " +
+        "coverage for 1 leader; they move to Unassigned for reassignment."
+    );
+    expect(overShepherdArchiveConfirmMessage("Pat Shepherd", 3)).toBe(
+      "Archive Pat Shepherd? They stay in history but drop off the active " +
+        "list. Restore any time (coverage is not restored). This ends " +
+        "coverage for 3 leaders; they move to Unassigned for reassignment."
+    );
+  });
+
+  it("Archive care follow-up", () => {
+    expect(archiveFollowUpConfirmMessage("Call about Tuesday")).toBe(
+      'Archive the follow-up "Call about Tuesday"? It leaves every queue ' +
+        "but stays in history; it can't be un-archived from here."
+    );
+  });
+
+  it("Archive prospect", () => {
+    expect(archiveProspectConfirmMessage("Riley Newcomer")).toBe(
+      "Archive Riley Newcomer? They leave the board (kept in history). " +
+        'Use "Not at this time" instead if you only want to park them.'
+    );
+  });
+
+  it("Delete unused category", () => {
+    expect(deleteCategoryConfirmMessage("20-30s")).toBe(
+      'Delete the category "20-30s"? It\'s applied to no group type. ' +
+        "It stops showing in Multiply and stays in history."
+    );
+  });
+});
+
+describe("#494 configs — labels, aria-labels, and hidden fields", () => {
+  it("OverShepherdArchiveButton archives with the over-shepherd named", () => {
+    const html = renderToStaticMarkup(
+      <OverShepherdArchiveButton
+        overShepherdId="os1"
+        fullName="Pat Shepherd"
+        active
+      />
+    );
+    expect(html).toContain('name="over_shepherd_id"');
+    expect(html).toContain('value="os1"');
+    expect(html).toContain('name="active"');
+    expect(html).toContain('value="false"');
+    expect(html).toContain('aria-label="Archive over-shepherd Pat Shepherd"');
+    expect(html).toContain(">Archive</button>");
+  });
+
+  it("OverShepherdArchiveButton restores with the over-shepherd named", () => {
+    const html = renderToStaticMarkup(
+      <OverShepherdArchiveButton
+        overShepherdId="os1"
+        fullName="Pat Shepherd"
+        active={false}
+      />
+    );
+    expect(html).toContain('name="active"');
+    expect(html).toContain('value="true"');
+    expect(html).toContain('aria-label="Restore over-shepherd Pat Shepherd"');
+    expect(html).toContain(">Restore</button>");
+  });
+
+  it("CareFollowUpStatusControls names the follow-up (and due date) on Archive", () => {
+    const html = renderToStaticMarkup(
+      <CareFollowUpStatusControls
+        followUpId="f1"
+        followUpTitle="Call about Tuesday"
+        followUpDueDate="2026-06-12"
+        status="open"
+        shepherdProfileId="p1"
+      />
+    );
+    expect(html).toContain('name="follow_up_id"');
+    expect(html).toContain('value="f1"');
+    expect(html).toContain('name="shepherd_profile_id"');
+    expect(html).toContain('value="p1"');
+    expect(html).toContain(
+      'aria-label="Archive follow-up: Call about Tuesday (due 2026-06-12)"'
+    );
+    expect(html).toContain(">Archive</button>");
   });
 });

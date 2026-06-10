@@ -1,12 +1,7 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { PButton } from "@/components/pastoral/button";
 import { adminSetOverShepherdActive } from "@/app/(protected)/admin/shepherd-care/actions";
-import {
-  useActionForm,
-  FormStatus,
-} from "@/components/admin/forms/action-form";
+import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 
 // A focused Archive / Restore toggle for an over-shepherd, usable from the list
 // and the detail page. Archiving is the soft-archive convention: the record
@@ -16,6 +11,19 @@ import {
 // reassignment rather than silently vanishing from the Coverage tab. Restore
 // brings the over-shepherd back but does NOT re-create coverage. Posts to the
 // dedicated active-toggle action so no other field is touched.
+
+// Exported so the copy stays byte-locked by the confirm-action-button test.
+export function overShepherdArchiveConfirmMessage(
+  fullName: string,
+  coveredCount: number
+): string {
+  const coverageNote =
+    coveredCount > 0
+      ? ` This ends coverage for ${coveredCount} leader${coveredCount === 1 ? "" : "s"}; they move to Unassigned for reassignment.`
+      : "";
+  return `Archive ${fullName}? They stay in history but drop off the active list. Restore any time (coverage is not restored).${coverageNote}`;
+}
+
 export function OverShepherdArchiveButton({
   overShepherdId,
   fullName,
@@ -29,47 +37,25 @@ export function OverShepherdArchiveButton({
   // un-covered (their coverage is ended, #423).
   coveredCount?: number;
 }) {
-  const { state, formAction, pending } = useActionForm<{ id: string }>(
-    adminSetOverShepherdActive
-  );
-
-  function confirmToggle(e: FormEvent<HTMLFormElement>) {
-    if (!active) return; // restoring needs no confirmation
-    const coverageNote =
-      coveredCount > 0
-        ? ` This ends coverage for ${coveredCount} leader${coveredCount === 1 ? "" : "s"}; they move to Unassigned for reassignment.`
-        : "";
-    if (
-      !window.confirm(
-        `Archive ${fullName}? They stay in history but drop off the active list. Restore any time (coverage is not restored).${coverageNote}`
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
-
   return (
-    <div style={{ display: "grid", gap: 4, justifyItems: "start" }}>
-      <form action={formAction} onSubmit={confirmToggle}>
-        <input type="hidden" name="over_shepherd_id" value={overShepherdId} />
-        <input type="hidden" name="active" value={active ? "false" : "true"} />
-        <PButton
-          type="submit"
-          tone="ghost"
-          size="sm"
-          disabled={pending}
-          aria-label={`${active ? "Archive" : "Restore"} over-shepherd ${fullName}`}
-        >
-          {pending
-            ? active
-              ? "Archiving…"
-              : "Restoring…"
-            : active
-              ? "Archive"
-              : "Restore"}
-        </PButton>
-      </form>
-      <FormStatus state={state} />
-    </div>
+    <ConfirmActionButton
+      action={adminSetOverShepherdActive}
+      // Restoring needs no confirmation — only the archive direction asks.
+      confirmMessage={
+        active
+          ? overShepherdArchiveConfirmMessage(fullName, coveredCount)
+          : null
+      }
+      hiddenFields={[
+        { name: "over_shepherd_id", value: overShepherdId },
+        { name: "active", value: active ? "false" : "true" },
+      ]}
+      idleLabel={active ? "Archive" : "Restore"}
+      pendingLabel={active ? "Archiving…" : "Restoring…"}
+      tone="ghost"
+      ariaLabel={`${active ? "Archive" : "Restore"} over-shepherd ${fullName}`}
+      gap={4}
+      alignEnd={false}
+    />
   );
 }

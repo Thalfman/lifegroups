@@ -13,6 +13,7 @@
 // page's count silently disagreeing.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
+import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import {
   fetchActiveMemberships,
   fetchAllGroupLeaders,
@@ -617,11 +618,79 @@ export async function fetchAdminWeeklyCheckInReview(
   };
 }
 
-export async function fetchAdminCheckInDetail(
-  client: ReadClient,
+// The check-in detail page's reads seam (ADR 0015). The assembly below — the
+// "missing" session rule, attendance counts gated on a submitted session, the
+// active-member roster join, per-section error collection — is a pure function
+// of this interface: production binds the live client through
+// `supabaseCheckInDetailReads`; a test binds an in-memory adapter satisfying
+// the same interface. Two adapters, one seam.
+export type CheckInDetailReads = {
+  fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
+  fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
+  fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
+  fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
+  fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
+  fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
+  fetchMembersByIds: OmitClient<typeof fetchMembersByIds>;
+  fetchAttendanceRecordsForSessions: OmitClient<
+    typeof fetchAttendanceRecordsForSessions
+  >;
+};
+
+// Production adapter: binds the live Supabase client to every read this
+// surface needs. The underlying fetchers keep their column selections.
+export function supabaseCheckInDetailReads(
+  client: ReadClient
+): CheckInDetailReads {
+  return bindReads(client, {
+    fetchGroupsByIds,
+    fetchAllGroupLeaders,
+    fetchProfilesForAdmin,
+    fetchAttendanceSessions,
+    fetchLatestHealthUpdates,
+    fetchActiveMemberships,
+    fetchMembersByIds,
+    fetchAttendanceRecordsForSessions,
+  });
+}
+
+// Subject resolution decides 404 vs render: a group read that *succeeded* but
+// found nothing is not_found; a failed group read still renders (with the
+// failure on errors.group) so a transient error never masquerades as 404.
+export type CheckInDetailResult =
+  | { kind: "not_found" }
+  | { kind: "ok"; data: CheckInDetailData };
+
+// The documented empty shape for an unconfigured database: every section
+// suppressed, with the reason carried on errors.group for the page banner.
+export function emptyCheckInDetail(
   groupId: string,
-  meetingWeek: string
-): Promise<CheckInDetailData> {
+  meetingWeek: string,
+  reason: string
+): CheckInDetailData {
+  return {
+    groupId,
+    meetingWeek,
+    group: null,
+    leaderNames: [],
+    session: null,
+    sessionStatus: "missing",
+    submittedByName: null,
+    attendance: null,
+    health: null,
+    members: [],
+    errors: { ...EMPTY_DETAIL_ERRORS, group: reason },
+  };
+}
+
+// Pure assembly, a function of the reads seam. Each read failure suppresses
+// only its own section (collected on the per-section errors record) — never a
+// false zero presented as authoritative.
+export async function buildCheckInDetailData(
+  reads: CheckInDetailReads,
+  options: { groupId: string; meetingWeek: string }
+): Promise<CheckInDetailResult> {
+  const { groupId, meetingWeek } = options;
   const [
     groupResult,
     leadersResult,
@@ -630,12 +699,12 @@ export async function fetchAdminCheckInDetail(
     healthResult,
     membershipsResult,
   ] = await Promise.all([
-    fetchGroupsByIds(client, [groupId]),
-    fetchAllGroupLeaders(client, { activeOnly: true }),
-    fetchProfilesForAdmin(client),
-    fetchAttendanceSessions(client, { groupId, meetingWeek }),
-    fetchLatestHealthUpdates(client, { groupId, updateWeek: meetingWeek }),
-    fetchActiveMemberships(client, { groupId }),
+    reads.fetchGroupsByIds([groupId]),
+    reads.fetchAllGroupLeaders({ activeOnly: true }),
+    reads.fetchProfilesForAdmin(),
+    reads.fetchAttendanceSessions({ groupId, meetingWeek }),
+    reads.fetchLatestHealthUpdates({ groupId, updateWeek: meetingWeek }),
+    reads.fetchActiveMemberships({ groupId }),
   ]);
 
   const errors: CheckInDetailErrors = { ...EMPTY_DETAIL_ERRORS };
@@ -647,6 +716,9 @@ export async function fetchAdminCheckInDetail(
   errors.memberships = membershipsResult.error?.message ?? null;
 
   const group = (groupResult.data ?? [])[0] ?? null;
+  // The group read succeeded and found nothing — this is the 404, decided
+  // here (not in the page) so the shape is pinned by the build's tests.
+  if (!errors.group && group === null) return { kind: "not_found" };
   const leaders = (leadersResult.data ?? []).filter(
     (l) => l.group_id === groupId
   );
@@ -669,7 +741,7 @@ export async function fetchAdminCheckInDetail(
   // Pull active members for the roster. The roster always renders, so
   // the admin sees who would be marked when a leader submits.
   const memberIds = memberships.map((m) => m.member_id);
-  const membersResult = await fetchMembersByIds(client, memberIds);
+  const membersResult = await reads.fetchMembersByIds(memberIds);
   errors.members = membersResult.error?.message ?? null;
   const memberRows = (membersResult.data ?? [])
     .filter((m: MembersRow) => m.status === "active")
@@ -680,7 +752,7 @@ export async function fetchAdminCheckInDetail(
   // Pull attendance records if a session exists.
   let records: AttendanceRecordsRow[] = [];
   if (session) {
-    const recordsResult = await fetchAttendanceRecordsForSessions(client, [
+    const recordsResult = await reads.fetchAttendanceRecordsForSessions([
       session.id,
     ]);
     errors.records = recordsResult.error?.message ?? null;
@@ -702,16 +774,19 @@ export async function fetchAdminCheckInDetail(
   }));
 
   return {
-    groupId,
-    meetingWeek,
-    group,
-    leaderNames,
-    session,
-    sessionStatus,
-    submittedByName,
-    attendance,
-    health,
-    members,
-    errors,
+    kind: "ok",
+    data: {
+      groupId,
+      meetingWeek,
+      group,
+      leaderNames,
+      session,
+      sessionStatus,
+      submittedByName,
+      attendance,
+      health,
+      members,
+      errors,
+    },
   };
 }

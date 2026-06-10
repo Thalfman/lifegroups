@@ -9,6 +9,11 @@
 // read — the build gate server-renders this route, and a deep link to one tab
 // works. Attendance is historical / read-only (the check-in flow is frozen per
 // ADR 0002/0009): it never presents stale sessions as a live feed.
+//
+// All reads live behind the reads seam (ADR 0015): the loader binds the live
+// client once and runs the pure buildGroupDetailData assembly (spine + only
+// the requested tab's reads), so this page is guard → load → render and the
+// tab components below are purely presentational.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,25 +21,16 @@ import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { Card } from "@/components/lg/Card";
 import { PBadge } from "@/components/pastoral/atoms";
 import { requireAdmin } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isFrozenSurfaceLive } from "@/lib/admin/frozen-surface";
 import {
-  fetchActiveMemberships,
-  fetchAllGroupLeaders,
-  fetchAttendanceSessions,
-  fetchGroupCalendarEvents,
-  fetchGroupMetricSettings,
-  fetchGroupsByIds,
-  fetchMembersByIds,
-  fetchOpenFollowUps,
-  fetchProfilesForAdmin,
-} from "@/lib/supabase/read-models";
-import { fetchMetricDefaultsCached } from "@/lib/supabase/cached-config";
-import { decodeMetricDefaults } from "@/lib/admin/metrics";
-import {
-  fetchGroupHealthRatings,
-  getGroupHealthOverviewForGroup,
-} from "@/lib/admin/group-health-read";
+  loadGroupDetailData,
+  type GroupAttendanceTabData,
+  type GroupDetailTab,
+  type GroupEventsTabData,
+  type GroupFollowUpsTabData,
+  type GroupHealthTabData,
+  type GroupOverviewTabData,
+  type GroupPeopleTabData,
+} from "@/components/admin/groups/group-detail-data";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
   capacityCategoryLabel,
@@ -42,31 +38,13 @@ import {
   followUpTypeLabel,
   healthCategoryLabel,
   lifecycleCategoryLabel,
-  lifecycleCategory,
   sessionStatusLabel,
   setupCategoryLabel,
 } from "@/lib/dashboard/labels";
-import {
-  capacityCategory,
-  healthCategory,
-  setupCategory,
-} from "@/lib/dashboard/group-status";
-import {
-  capacityStatus,
-  effectiveCapacity,
-  effectiveCapacityFullPct,
-  effectiveCapacityWarningPct,
-  isExcludedFromCapacityMetrics,
-} from "@/lib/admin/metrics";
-import {
-  generateOccurrencesInRange,
-  mergeOverrides,
-  toSavedOverrides,
-  type ResolvedOccurrence,
-} from "@/lib/calendar/occurrences";
+import type { ResolvedOccurrence } from "@/lib/calendar/occurrences";
 import { churchTodayIso } from "@/lib/shared/church-time";
 import type { GroupsRow } from "@/types/database";
-import type { AttendanceSessionStatus, GroupHealthLetter } from "@/types/enums";
+import type { AttendanceSessionStatus } from "@/types/enums";
 
 export const dynamic = "force-dynamic";
 
@@ -113,17 +91,18 @@ export default async function AdminGroupDetailPage({
 }) {
   const { groupId } = await params;
   const search = (await searchParams) ?? {};
-  const tab = resolveTab(search.tab);
+  const tab: GroupDetailTab = resolveTab(search.tab);
 
   await requireAdmin();
 
-  const client = await createSupabaseServerClient();
-  if (!client) notFound();
-
-  const groupResult = await fetchGroupsByIds(client, [groupId]);
-  if (groupResult.error) throw groupResult.error;
-  const group = (groupResult.data ?? [])[0] as GroupsRow | undefined;
-  if (!group) notFound();
+  const detail = await loadGroupDetailData({
+    groupId,
+    tab,
+    periodMonth: currentPeriodMonthIso(),
+    todayIso: churchTodayIso(),
+  });
+  if (detail.kind !== "ok") notFound();
+  const { group, tabData } = detail;
 
   return (
     <>
@@ -178,15 +157,19 @@ export default async function AdminGroupDetailPage({
             })}
           </nav>
 
-          {tab === "overview" ? (
-            <OverviewTab group={group} groupId={groupId} />
+          {tabData.tab === "overview" ? (
+            <OverviewTab data={tabData} group={group} groupId={groupId} />
           ) : null}
-          {tab === "people" ? <PeopleTab groupId={groupId} /> : null}
-          {tab === "health" ? <HealthTab groupId={groupId} /> : null}
-          {tab === "attendance" ? <AttendanceTab groupId={groupId} /> : null}
-          {tab === "follow-ups" ? <FollowUpsTab groupId={groupId} /> : null}
-          {tab === "events" ? (
-            <EventsTab groupId={groupId} group={group} />
+          {tabData.tab === "people" ? <PeopleTab data={tabData} /> : null}
+          {tabData.tab === "health" ? <HealthTab data={tabData} /> : null}
+          {tabData.tab === "attendance" ? (
+            <AttendanceTab data={tabData} groupId={groupId} />
+          ) : null}
+          {tabData.tab === "follow-ups" ? (
+            <FollowUpsTab data={tabData} />
+          ) : null}
+          {tabData.tab === "events" ? (
+            <EventsTab data={tabData} groupId={groupId} group={group} />
           ) : null}
         </div>
       </PageBody>
@@ -196,77 +179,18 @@ export default async function AdminGroupDetailPage({
 
 // --- Overview: the four independent status labels + meeting details ---------
 
-async function OverviewTab({
+function OverviewTab({
+  data,
   group,
   groupId,
 }: {
+  data: GroupOverviewTabData;
   group: GroupsRow;
   groupId: string;
 }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  const [leadersRes, membershipsRes, defaultsRes, healthRes, overrideRes] =
-    await Promise.all([
-      fetchAllGroupLeaders(client, { activeOnly: true }),
-      fetchActiveMemberships(client, { groupId }),
-      fetchMetricDefaultsCached(client),
-      // Targeted single-group health read (#308): runs the same grade
-      // computation as the bulk overview but only for this group, so opening
-      // one detail page no longer recomputes every active group.
-      getGroupHealthOverviewForGroup(client, groupId, currentPeriodMonthIso()),
-      // Per-group metric overrides — resolved the SAME way the Groups list and
-      // Settings do (defaults → per-group override precedence, ADR 0011) so the
-      // detail capacity zone can't disagree with the list card for this group.
-      fetchGroupMetricSettings(client, groupId),
-    ]);
-
-  const defaults = decodeMetricDefaults(defaultsRes.data ?? null);
-  const override = overrideRes.data ?? null;
-  const hasLeader = (leadersRes.data ?? []).some(
-    (l) => l.group_id === groupId && l.active
-  );
-  const memberCount = (membershipsRes.data ?? []).length;
-  const grade: GroupHealthLetter | null =
-    healthRes.data?.computed_letter ?? null;
-
-  const cap = effectiveCapacity(group, override, defaults);
-  const status = capacityStatus({
-    activeMemberCount: memberCount,
-    effectiveCapacity: cap,
-    warningPct: effectiveCapacityWarningPct(override, defaults),
-    fullPct: effectiveCapacityFullPct(defaults),
-    excluded: isExcludedFromCapacityMetrics(override),
-    allowOverCapacity: Boolean(override?.allow_over_capacity),
-  });
-
-  const lifecycle = lifecycleCategory(group.lifecycle_status);
-  const setup = setupCategory({
-    hasLeader,
-    meetingDay: group.meeting_day,
-    meetingTime: group.meeting_time,
-    // Same resolved capacity the zone shows; null keeps the group in Needs Setup.
-    effectiveCapacity: cap,
-  });
-  const health = healthCategory(grade, defaults.group_health_watch_grade);
-  const capacity = capacityCategory(status);
-
-  // The four labels are only trustworthy if every read that feeds them
-  // succeeded. On a failure, fail closed with a notice rather than rendering
-  // a confidently-wrong "Not assessed" / "Needs leader" / "Open" status.
-  const statusError =
-    leadersRes.error ||
-    membershipsRes.error ||
-    defaultsRes.error ||
-    overrideRes.error ||
-    healthRes.error;
-  // The live attendance read fell back to the last-saved grade — show the grade
-  // but mark it so the letter isn't mistaken for a current reading.
-  const stale = healthRes.data?.stale ?? false;
-
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      {statusError ? (
+      {data.statuses === null ? (
         <ErrorNote>
           This group&apos;s status couldn&apos;t be loaded right now — one or
           more reads failed. Retry in a moment or check the database connection.
@@ -283,19 +207,21 @@ async function OverviewTab({
               }}
             >
               <StatusZone label="Lifecycle">
-                <PBadge>{lifecycleCategoryLabel(lifecycle)}</PBadge>
+                <PBadge>
+                  {lifecycleCategoryLabel(data.statuses.lifecycle)}
+                </PBadge>
               </StatusZone>
               <StatusZone label="Setup">
-                <PBadge>{setupCategoryLabel(setup)}</PBadge>
+                <PBadge>{setupCategoryLabel(data.statuses.setup)}</PBadge>
               </StatusZone>
               <StatusZone label="Health">
-                <PBadge>{healthCategoryLabel(health)}</PBadge>
+                <PBadge>{healthCategoryLabel(data.statuses.health)}</PBadge>
               </StatusZone>
               <StatusZone label="Capacity">
-                <PBadge>{capacityCategoryLabel(capacity)}</PBadge>
+                <PBadge>{capacityCategoryLabel(data.statuses.capacity)}</PBadge>
               </StatusZone>
             </div>
-            {stale ? (
+            {data.stale ? (
               <p style={{ ...bodyTextStyle, fontSize: 12, marginTop: 10 }}>
                 Health grade is last-known — the live attendance read was
                 unavailable.
@@ -309,7 +235,7 @@ async function OverviewTab({
         <div style={{ display: "grid", gap: 12 }}>
           <DetailRow
             label="Members"
-            value={membershipsRes.error ? "—" : `${memberCount}`}
+            value={data.memberCount === null ? "—" : `${data.memberCount}`}
           />
           <DetailRow label="Meeting" value={meetingSummary(group)} />
           <DetailRow
@@ -331,45 +257,17 @@ async function OverviewTab({
 
 // --- People: leaders + active members (read-only roster) --------------------
 
-async function PeopleTab({ groupId }: { groupId: string }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  const [leadersRes, profilesRes, membershipsRes] = await Promise.all([
-    fetchAllGroupLeaders(client, { activeOnly: true }),
-    fetchProfilesForAdmin(client, { roles: ["leader", "co_leader"] }),
-    fetchActiveMemberships(client, { groupId }),
-  ]);
-
-  const profilesById = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
-  const leaders = (leadersRes.data ?? []).filter(
-    (l) => l.group_id === groupId && l.active
-  );
-  const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
-  const membersRes = await fetchMembersByIds(client, memberIds);
-  // An active group_memberships link does not guarantee the member record is
-  // still active (a deactivated member's link may not have been cleaned up), so
-  // filter on members.status — matching the other roster surfaces — to avoid
-  // overstating the active roster.
-  const members = (membersRes.data ?? [])
-    .filter((m) => m.status === "active")
-    .sort((a, b) => a.full_name.localeCompare(b.full_name));
-
-  // Fail closed per section: a failed read must not render an empty roster as
-  // if authoritative (leader names come from the profiles read).
-  const leadersError = leadersRes.error || profilesRes.error;
-  const membersError = membershipsRes.error || membersRes.error;
-
+function PeopleTab({ data }: { data: GroupPeopleTabData }) {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 10 }}>
           <div style={labelStyle}>Leaders</div>
-          {leadersError ? (
+          {data.leaders === null ? (
             <p role="alert" style={bodyTextStyle}>
               Leaders couldn&apos;t be loaded right now.
             </p>
-          ) : leaders.length === 0 ? (
+          ) : data.leaders.length === 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
               <p style={bodyTextStyle}>No leader assigned yet.</p>
               <TabAction href="/admin/people">
@@ -378,15 +276,12 @@ async function PeopleTab({ groupId }: { groupId: string }) {
             </div>
           ) : (
             <ul style={listResetStyle}>
-              {leaders.map((l) => {
-                const profile = profilesById.get(l.profile_id);
-                return (
-                  <li key={l.id} style={{ ...bodyTextStyle, marginBottom: 4 }}>
-                    {profile?.full_name ?? "(unknown)"} ·{" "}
-                    {l.role === "co_leader" ? "Co-Leader" : "Leader"}
-                  </li>
-                );
-              })}
+              {data.leaders.map((l) => (
+                <li key={l.id} style={{ ...bodyTextStyle, marginBottom: 4 }}>
+                  {l.name ?? "(unknown)"} ·{" "}
+                  {l.isCoLeader ? "Co-Leader" : "Leader"}
+                </li>
+              ))}
             </ul>
           )}
         </div>
@@ -395,13 +290,14 @@ async function PeopleTab({ groupId }: { groupId: string }) {
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 10 }}>
           <div style={labelStyle}>
-            Active members{membersError ? "" : ` (${members.length})`}
+            Active members
+            {data.members === null ? "" : ` (${data.members.length})`}
           </div>
-          {membersError ? (
+          {data.members === null ? (
             <p role="alert" style={bodyTextStyle}>
               Members couldn&apos;t be loaded right now.
             </p>
-          ) : members.length === 0 ? (
+          ) : data.members.length === 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
               <p style={bodyTextStyle}>No active members on the roster.</p>
               <TabAction href="/admin/people">
@@ -410,9 +306,9 @@ async function PeopleTab({ groupId }: { groupId: string }) {
             </div>
           ) : (
             <ul style={listResetStyle}>
-              {members.map((m) => (
+              {data.members.map((m) => (
                 <li key={m.id} style={{ ...bodyTextStyle, marginBottom: 4 }}>
-                  {m.full_name}
+                  {m.fullName}
                 </li>
               ))}
             </ul>
@@ -429,32 +325,8 @@ async function PeopleTab({ groupId }: { groupId: string }) {
 
 // --- Health: the Group-Health Grade (Q12), folded in from Group Health ------
 
-async function HealthTab({ groupId }: { groupId: string }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  const period = currentPeriodMonthIso();
-  const [overviewRes, ratingsRes, defaultsRes] = await Promise.all([
-    // Single-group health read (#308) — same grade logic, O(1) reads.
-    getGroupHealthOverviewForGroup(client, groupId, period),
-    fetchGroupHealthRatings(client, groupId, period),
-    fetchMetricDefaultsCached(client),
-  ]);
-
-  const row = overviewRes.data ?? null;
-  const ratings = ratingsRes.data;
-  const watchGrade = decodeMetricDefaults(
-    defaultsRes.data ?? null
-  ).group_health_watch_grade;
-  const grade = row?.computed_letter ?? null;
-  const health = healthCategory(grade, watchGrade);
-  // Fail closed: a failed health/ratings read must not masquerade as a genuine
-  // "Not assessed" / "Not rated" grade.
-  const healthError =
-    overviewRes.error || ratingsRes.error || defaultsRes.error;
-  const stale = row?.stale ?? false;
-
-  if (healthError) {
+function HealthTab({ data }: { data: GroupHealthTabData }) {
+  if (data.failed) {
     return (
       <div style={{ display: "grid", gap: 14 }}>
         <ErrorNote>
@@ -469,30 +341,30 @@ async function HealthTab({ groupId }: { groupId: string }) {
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
         <div style={{ display: "grid", gap: 12 }}>
-          <StatusZone label={`Group-Health Grade · ${period}`}>
-            <PBadge>{healthCategoryLabel(health)}</PBadge>
+          <StatusZone label={`Group-Health Grade · ${data.period}`}>
+            <PBadge>{healthCategoryLabel(data.health)}</PBadge>
           </StatusZone>
-          {stale ? (
+          {data.stale ? (
             <p style={{ ...bodyTextStyle, fontSize: 12 }}>
               Grade is last-known — the live attendance read was unavailable.
             </p>
           ) : null}
-          <DetailRow label="Grade" value={grade ?? "Not assessed"} />
+          <DetailRow label="Grade" value={data.grade ?? "Not assessed"} />
           <DetailRow
             label="Attendance (8-wk avg)"
             value={
-              row && row.attendance_pct !== null
-                ? `${Math.round(row.attendance_pct)}% (${row.attendance_weeks_counted} wk)`
+              data.attendancePct !== null
+                ? `${Math.round(data.attendancePct)}% (${data.attendanceWeeksCounted} wk)`
                 : "—"
             }
           />
           <DetailRow
             label="Spiritual-growth rating"
-            value={ratings?.spiritual_growth_score?.toString() ?? "Not rated"}
+            value={data.spiritualGrowthScore?.toString() ?? "Not rated"}
           />
           <DetailRow
             label="Group-question rating"
-            value={ratings?.group_question_score?.toString() ?? "Not rated"}
+            value={data.groupQuestionScore?.toString() ?? "Not rated"}
           />
         </div>
       </Card>
@@ -512,20 +384,13 @@ async function HealthTab({ groupId }: { groupId: string }) {
 
 // --- Attendance: historical / read-only (check-in flow is frozen) -----------
 
-async function AttendanceTab({ groupId }: { groupId: string }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  // The check-in flow is frozen (ADR 0002/0009): attendance_sessions receive no
-  // new data unless a Super Admin re-enables check-ins via the runtime flag. We
-  // surface what's on record as explicitly historical and never frame it as a
-  // live feed.
-  const [sessionsRes, checkInsLive] = await Promise.all([
-    fetchAttendanceSessions(client, { groupId, limit: 12 }),
-    isFrozenSurfaceLive("check_ins"),
-  ]);
-  const sessions = sessionsRes.data ?? [];
-
+function AttendanceTab({
+  data,
+  groupId,
+}: {
+  data: GroupAttendanceTabData;
+  groupId: string;
+}) {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div
@@ -539,22 +404,22 @@ async function AttendanceTab({ groupId }: { groupId: string }) {
           fontSize: 13,
         }}
       >
-        {checkInsLive
+        {data.checkInsLive
           ? "Weekly check-ins are currently enabled. The sessions below are the group's recorded attendance history."
           : "Historical attendance, read-only. The weekly check-in flow is paused, so no new attendance is being recorded for this group."}
       </div>
 
       <Card style={{ padding: "16px 18px" }}>
-        {sessionsRes.error ? (
+        {data.sessions === null ? (
           <p role="alert" style={bodyTextStyle}>
             Attendance history couldn&apos;t be loaded right now — a read
             failed.
           </p>
-        ) : sessions.length === 0 ? (
+        ) : data.sessions.length === 0 ? (
           <p style={bodyTextStyle}>No attendance sessions on record.</p>
         ) : (
           <ul style={listResetStyle}>
-            {sessions.map((s) => (
+            {data.sessions.map((s) => (
               <li
                 key={s.id}
                 style={{
@@ -585,26 +450,20 @@ async function AttendanceTab({ groupId }: { groupId: string }) {
 
 // --- Follow-ups: open follow-ups related to this group ----------------------
 
-async function FollowUpsTab({ groupId }: { groupId: string }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  const followUpsRes = await fetchOpenFollowUps(client, { groupId });
-  const followUps = followUpsRes.data ?? [];
-
+function FollowUpsTab({ data }: { data: GroupFollowUpsTabData }) {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
-        {followUpsRes.error ? (
+        {data.followUps === null ? (
           <p role="alert" style={bodyTextStyle}>
             Follow-ups couldn&apos;t be loaded right now — a read failed. This
             is not a confirmation that the group has none.
           </p>
-        ) : followUps.length === 0 ? (
+        ) : data.followUps.length === 0 ? (
           <p style={bodyTextStyle}>No open follow-ups for this group.</p>
         ) : (
           <ul style={listResetStyle}>
-            {followUps.map((f) => (
+            {data.followUps.map((f) => (
               <li
                 key={f.id}
                 style={{
@@ -653,41 +512,20 @@ async function FollowUpsTab({ groupId }: { groupId: string }) {
 
 // --- Events: upcoming calendar events for this group ------------------------
 
-// How far ahead the Events tab lists upcoming scheduled meetings. Groups on the
-// normal recurring schedule have no saved override rows, so a plain row read
-// returns nothing even though meetings are coming up; like the calendar surface,
-// we GENERATE occurrences from the group's schedule for this window so the tab
-// matches what the full calendar shows.
-const EVENTS_LOOKAHEAD_DAYS = 56; // ~8 weeks
-
-async function EventsTab({
+function EventsTab({
+  data,
   groupId,
   group,
 }: {
+  data: GroupEventsTabData;
   groupId: string;
   group: GroupsRow;
 }) {
-  const client = await createSupabaseServerClient();
-  if (!client) return null;
-
-  const todayIso = churchTodayIso();
-  const toIso = addDaysIso(todayIso, EVENTS_LOOKAHEAD_DAYS);
-
-  // Pull the saved override rows over the same window so generated occurrences
-  // pick up any per-date changes (cancelled, retyped, retitled) — the calendar
-  // page merges the two the identical way (read-only here; no writes per ADR
-  // 0009).
-  const eventsRes = await fetchGroupCalendarEvents(client, {
-    groupId,
-    fromDate: todayIso,
-    toDate: toIso,
-  });
-
   // Fail closed if the override read failed: without it we cannot tell which
   // generated occurrences were cancelled / retyped / retitled, so showing the
   // un-overridden schedule would present stale dates as live meetings. Surface
   // the failure instead of guessing.
-  if (eventsRes.error) {
+  if (data.occurrences === null) {
     return (
       <div style={{ display: "grid", gap: 14 }}>
         <Card style={{ padding: "16px 18px" }}>
@@ -699,35 +537,15 @@ async function EventsTab({
       </div>
     );
   }
-  const events = eventsRes.data ?? [];
-
-  // Reuse the calendar's occurrence-generation + override-merge helpers rather
-  // than duplicating the cadence logic. Generated meetings from the group's
-  // recurring schedule are surfaced even when no override row exists.
-  const generated = generateOccurrencesInRange(
-    {
-      meetingDay: group.meeting_day,
-      meetingTime: group.meeting_time,
-      meetingFrequency: group.meeting_frequency,
-      meetingWeekParity: group.meeting_week_parity,
-    },
-    todayIso,
-    toIso
-  );
-  const resolved = mergeOverrides(
-    generated,
-    toSavedOverrides(events),
-    group.meeting_time
-  );
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Card style={{ padding: "16px 18px" }}>
-        {resolved.length === 0 ? (
+        {data.occurrences.length === 0 ? (
           <p style={bodyTextStyle}>No upcoming meetings or events scheduled.</p>
         ) : (
           <ul style={listResetStyle}>
-            {resolved.map((o) => (
+            {data.occurrences.map((o) => (
               <li
                 key={o.overrideId ?? `gen-${o.date}`}
                 style={{
@@ -850,14 +668,6 @@ function meetingSummary(group: GroupsRow): string {
   if (day) return day;
   if (time) return time;
   return "No meeting day/time set";
-}
-
-// Add a whole number of days to a YYYY-MM-DD date, UTC-anchored to avoid
-// runtime-timezone drift (the calendar's own range helpers do the same).
-function addDaysIso(iso: string, days: number): string {
-  const anchor = new Date(`${iso}T00:00:00Z`);
-  anchor.setUTCDate(anchor.getUTCDate() + days);
-  return anchor.toISOString().slice(0, 10);
 }
 
 function weekLabel(iso: string): string {
