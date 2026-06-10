@@ -14,10 +14,9 @@ until Julian's explicit go-ahead.
 
 - [x] **Supabase org on Pro** (daily backups, no auto-pause) — verified
       2026-06-10. _Tom_
-- [ ] **Backups visible**: Dashboard → Database → Backups shows a recent
-      snapshot; skim [`BACKUP_AND_RESTORE.md`](./BACKUP_AND_RESTORE.md) so
-      the restore ladder isn't read for the first time during an incident.
-      _Tom_
+- [x] **Backups visible**: Dashboard → Database → Backups shows recent
+      scheduled snapshots; latest observed backup was 2026-06-09 07:34:09
+      +0000 — verified 2026-06-10 via Supabase dashboard. _Eng_
 - [x] **Branch protection on `main`**: requires the CI checks
       (`lint + typecheck + test` and
       `accessible-name check (playwright + axe)`) before merge — verified
@@ -46,11 +45,12 @@ until Julian's explicit go-ahead.
 
 ## 3. Auth lifecycle, end to end
 
-- [ ] **Custom SMTP configured** in Supabase Auth (the default sender is
-      test-only and silently drops mail) — exact steps in
-      [`EMAIL_DELIVERY.md`](../architecture/EMAIL_DELIVERY.md). _Tom_
-- [ ] **Leaked-password protection enabled** (Auth → Settings → Password
-      security: HaveIBeenPwned check). _Tom_
+- [x] **Custom SMTP configured** in Supabase Auth (the default sender is
+      test-only and silently drops mail) — enabled and saved in Supabase Auth
+      SMTP settings, verified 2026-06-10 via Supabase dashboard. _Eng_
+- [x] **Leaked-password protection enabled** (Auth → Settings → Password
+      security: HaveIBeenPwned check) — enabled on the Email provider and
+      verified 2026-06-10 via Supabase dashboard. _Eng_
 - [ ] **Live test of the full loop**: invite a scratch user by email →
       redeem → sign in → forgot-password → reset → sign in again → remove
       the user. The "Copy invite link" fallback also works without SMTP, but
