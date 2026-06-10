@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { PageBody } from "@/components/lg/PageHeader";
-import { P, fontSans } from "@/lib/pastoral";
 import type {
   AdminDashboardData,
   InterestFunnelDashboardSummary,
@@ -39,17 +38,22 @@ import { CollapsibleOverview } from "./CollapsibleOverview";
 // Re-skinned warm (pastoral palette) so it meshes with the deep care / launch
 // surfaces. See docs/PRODUCT_SURFACE_AUDIT_2026-05.md for the admin-OS rationale.
 
-function SectionHeading({ children }: { children: ReactNode }) {
+// Sections speak in the serif voice — plain sentence-case headings, no
+// tracked-uppercase eyebrows (the page kicker is the one tracked voice).
+function SectionHeading({
+  children,
+  srOnly = false,
+}: {
+  children: ReactNode;
+  // Visually hidden when the section's single card already carries the label
+  // (e.g. This week → "The week ahead") so the label isn't said twice.
+  srOnly?: boolean;
+}) {
   return (
     <div
-      style={{
-        fontFamily: fontSans,
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: 1.8,
-        color: P.ink3,
-        fontWeight: 600,
-      }}
+      className={
+        srOnly ? "sr-only" : "font-display text-xl font-medium text-ink"
+      }
     >
       {children}
     </div>
@@ -103,13 +107,13 @@ export function DashboardClient({
   const showLeaderPipeline = !hidden.has("/admin/people");
   return (
     <PageBody>
-      <div style={{ display: "grid", gap: 22 }}>
+      <div className="grid gap-8">
         {/* 1 — Needs attention. The most urgent work leads Home: the ranked
             queue puts leader care, group setup, health checks, and overdue
             follow-ups in a fixed priority order, each a direct link. */}
         <section
           aria-labelledby="home-needs-attention"
-          style={{ display: "grid", gap: 10 }}
+          className="grid gap-2.5"
         >
           <SectionHeading>
             <span id="home-needs-attention">Needs attention</span>
@@ -123,12 +127,10 @@ export function DashboardClient({
         </section>
 
         {/* 2 — This week. The near-term horizon, composed from data already on
-            the dashboard (due follow-ups, launch milestone). */}
-        <section
-          aria-labelledby="home-this-week"
-          style={{ display: "grid", gap: 10 }}
-        >
-          <SectionHeading>
+            the dashboard (due follow-ups, launch milestone). The card's own
+            serif title carries the visible label — one label, not three. */}
+        <section aria-labelledby="home-this-week" className="grid gap-2.5">
+          <SectionHeading srOnly>
             <span id="home-this-week">This week</span>
           </SectionHeading>
           <ThisWeekCard data={data} degraded={degraded} />
@@ -141,10 +143,7 @@ export function DashboardClient({
             funnel/readiness summaries the overview cards render; its retired
             launch-planning metrics ride the same Planning nav gate as the
             LaunchPlanningOverviewCard below. */}
-        <section
-          aria-labelledby="home-snapshot"
-          style={{ display: "grid", gap: 12 }}
-        >
+        <section aria-labelledby="home-snapshot" className="grid gap-3">
           <SectionHeading>
             <span id="home-snapshot">Ministry snapshot</span>
           </SectionHeading>
@@ -157,14 +156,7 @@ export function DashboardClient({
           />
 
           <CollapsibleOverview scopeId={scopeId}>
-            <div
-              className="lg-shell-grid-2"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 18,
-              }}
-            >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <LeaderCareOverviewCard summary={data.shepherdCare} />
               {showLaunchPlanning ? (
                 <LaunchPlanningOverviewCard
@@ -174,14 +166,7 @@ export function DashboardClient({
               ) : null}
             </div>
 
-            <div
-              className="lg-shell-grid-3"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                gap: 18,
-              }}
-            >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <HealthDistributionCard counts={data.healthSummary.counts} />
               {/* The pivot areas' overview cards (#470): the Interest Funnel
                   takes the slot the frozen Guests placeholder held, and
@@ -214,31 +199,15 @@ export function DashboardClient({
             counts in place. */}
         <section
           aria-labelledby="home-recent-activity"
-          style={{ display: "grid", gap: 10 }}
+          className="grid gap-2.5"
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <SectionHeading>
               <span id="home-recent-activity">Recent activity</span>
             </SectionHeading>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="flex flex-wrap items-center justify-end gap-3">
               {canResetActivity ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="flex items-center gap-2">
                   <SuperAdminOnlyBadge />
                   <ActivityResetControl
                     baselineOn={data.activity.resetBaselineOn}

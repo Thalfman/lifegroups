@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/button";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 import {
   buildTopNextActions,
@@ -22,115 +23,55 @@ import {
 // single consolidated empty / few-actions states. Per the #271 sign-off the
 // queue and the minimal area share one empty-state behaviour: zero-count
 // categories drop out, and an empty queue collapses to one "all clear" row.
+//
+// This is the hero of Home: status dot + imperative sentence + count + a
+// Review affordance that wraps below the sentence on narrow phones instead of
+// clipping at the viewport edge.
 
-function toneColor(tone: NeedsAttentionTone): string {
-  return tone === "warning" ? P.mustard : P.terra;
+function toneDotClass(tone: NeedsAttentionTone): string {
+  return tone === "warning" ? "bg-amber" : "bg-clay";
+}
+
+function toneFigureClass(tone: NeedsAttentionTone): string {
+  return tone === "warning" ? "text-amberText" : "text-clayDeep";
 }
 
 function ActionRow({
-  rank,
   action,
   why,
   count,
   href,
   plus,
   tone,
-}: Pick<
-  TopNextAction,
-  "action" | "why" | "count" | "href" | "plus" | "tone"
-> & {
-  rank: number;
-}) {
+}: Pick<TopNextAction, "action" | "why" | "count" | "href" | "plus" | "tone">) {
   return (
-    <li style={{ listStyle: "none", margin: 0 }}>
+    <li className="m-0 list-none">
       <Link
         href={href}
         aria-label={`${action}. ${why} Review.`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderLeft: `3px solid ${toneColor(tone)}`,
-          borderRadius: 12,
-          padding: "12px 14px",
-          textDecoration: "none",
-        }}
+        className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-surface px-3.5 py-3 no-underline transition-colors duration-150 hover:bg-surfaceAlt"
       >
         <span
-          aria-hidden
-          style={{
-            flex: "0 0 auto",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 999,
-            background: P.bg,
-            border: `1px solid ${P.line}`,
-            fontFamily: fontDisplay,
-            fontSize: 13,
-            color: P.ink3,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {rank}
-        </span>
-        <span
-          style={{
-            flex: "1 1 auto",
-            display: "grid",
-            gap: 2,
-            minWidth: 0,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: fontBody,
-              fontSize: 14.5,
-              color: P.ink,
-              fontWeight: 600,
-            }}
-          >
+          aria-hidden="true"
+          className={cn("h-2 w-2 shrink-0 rounded-pill", toneDotClass(tone))}
+        />
+        <span className="grid min-w-0 flex-1 basis-48 gap-0.5">
+          <span className="font-sans text-base font-semibold text-ink">
             {action}
           </span>
-          <span
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink3,
-              fontWeight: 400,
-            }}
-          >
-            {why}
-          </span>
+          <span className="font-sans text-sm text-ink3">{why}</span>
         </span>
-        <span
-          aria-hidden
-          style={{
-            flex: "0 0 auto",
-            display: "flex",
-            alignItems: "baseline",
-            gap: 8,
-          }}
-        >
+        <span aria-hidden="true" className="flex shrink-0 items-center gap-2.5">
           <span
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 22,
-              lineHeight: 1,
-              color: toneColor(tone),
-              fontVariantNumeric: "tabular-nums",
-            }}
+            className={cn(
+              "font-display text-xl tabular-nums leading-none",
+              toneFigureClass(tone)
+            )}
           >
             {count}
             {plus ? "+" : ""}
           </span>
-          <span style={{ fontFamily: fontBody, fontSize: 12.5, color: P.ink3 }}>
-            review →
-          </span>
+          <span className={buttonClassName("ghost", "sm")}>Review →</span>
         </span>
       </Link>
     </li>
@@ -139,17 +80,11 @@ function ActionRow({
 
 function AllClear({ children }: { children: string }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "14px 16px",
-        fontFamily: fontBody,
-        fontSize: 13.5,
-        color: P.ink2,
-      }}
-    >
+    <div className="flex items-center gap-3 rounded-md border border-line bg-surface px-4 py-3.5 font-sans text-base text-ink2">
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 shrink-0 rounded-pill bg-sage"
+      />
       {children}
     </div>
   );
@@ -185,15 +120,11 @@ export function NeedsAttentionArea({
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <ol
-        aria-label="Top next actions"
-        style={{ display: "grid", gap: 8, margin: 0, padding: 0 }}
-      >
-        {actions.map(({ key, action, why, count, href, plus, tone }, i) => (
+    <div className="grid gap-2.5">
+      <ol aria-label="Top next actions" className="m-0 grid gap-2 p-0">
+        {actions.map(({ key, action, why, count, href, plus, tone }) => (
           <ActionRow
             key={key}
-            rank={i + 1}
             action={action}
             why={why}
             count={count}

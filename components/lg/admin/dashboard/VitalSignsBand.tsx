@@ -1,4 +1,3 @@
-import { MetricCard } from "@/components/dashboard/cards";
 import { P } from "@/lib/pastoral";
 import type {
   AdminDashboardData,
@@ -8,9 +7,11 @@ import type {
 import { ACTIVE_BOARD_STATES } from "@/lib/supabase/prospect-reads";
 import { launchRiskDisplay } from "./overview-primitives";
 
-// The executive "vital signs" — the at-a-glance state of the ministry, in the
-// warm pastoral MetricCard language used across the other admin tabs. These are
-// point-in-time (current state); they don't change with the period slicer.
+// The executive "vital signs" — the at-a-glance state of the ministry. One
+// bordered band of figures (2×3 on a phone) instead of a wall of identical
+// stat cards: each cell is a sentence-case label, a serif figure, and a meta
+// line. Point-in-time (current state); they don't change with the period
+// slicer.
 //
 // Re-founded on the Care/Plan/Multiply pivot (ADR 0016/0022, #476): the band
 // leads with six pivot signals — Active groups · Active leaders · Leaders
@@ -25,11 +26,45 @@ import { launchRiskDisplay } from "./overview-primitives";
 // (`showLaunchPlanning`, the same gate the LaunchPlanningOverviewCard uses)
 // and return if the Super Admin re-shows Planning.
 //
-// Every tile degrades to "—" when its read failed — never a false zero: the
-// care-backed tiles key off `shepherdCare.available`, the funnel/readiness
-// tiles off their summaries' `available`, the launch tiles off
-// `launchPlanning.available`, and the dashboard-derived tiles off `degraded`
+// Every cell degrades to "—" when its read failed — never a false zero: the
+// care-backed cells key off `shepherdCare.available`, the funnel/readiness
+// cells off their summaries' `available`, the launch cells off
+// `launchPlanning.available`, and the dashboard-derived cells off `degraded`
 // (the whole dashboard read fell back to demo data).
+
+function VitalSign({
+  title,
+  value,
+  meta,
+  valueColor,
+  empty = false,
+}: {
+  title: string;
+  value: string;
+  meta: string;
+  valueColor?: string;
+  empty?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 bg-surface px-4 py-3.5">
+      <div className="font-sans text-sm text-ink3">{title}</div>
+      {empty ? (
+        <div className="font-sans text-md font-semibold italic leading-tight text-ink3">
+          {value}
+        </div>
+      ) : (
+        <div
+          className="font-display text-3xl tabular-nums leading-none"
+          style={{ color: valueColor ?? P.ink }}
+        >
+          {value}
+        </div>
+      )}
+      <div className="font-sans text-xs text-ink2">{meta}</div>
+    </div>
+  );
+}
+
 export function VitalSignsBand({
   data,
   interestFunnel,
@@ -45,7 +80,7 @@ export function VitalSignsBand({
   // True only when /admin/planning is NOT nav-hidden (ADR 0016).
   showLaunchPlanning?: boolean;
   // True when the dashboard read failed and `data` is demo fallback; the
-  // dashboard-derived tiles degrade to "—" rather than presenting demo counts.
+  // dashboard-derived cells degrade to "—" rather than presenting demo counts.
   degraded?: boolean;
 }) {
   const { launchPlanning: lp, shepherdCare: care, summary } = data;
@@ -95,31 +130,20 @@ export function VitalSignsBand({
       <h2 id="exec-vital-signs" className="sr-only">
         Ministry vital signs
       </h2>
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-          gap: 12,
-        }}
-      >
-        <MetricCard
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-3 xl:grid-cols-6">
+        <VitalSign
           title="Active groups"
           value={degraded ? "—" : String(summary.activeGroupCount)}
           empty={degraded}
           meta={degraded ? "Group data unavailable" : "Currently meeting"}
-          accent={P.sage}
-          valueColor={P.ink}
         />
-        <MetricCard
+        <VitalSign
           title="Active leaders"
           value={careOk ? String(care.totalActiveShepherds) : "—"}
           empty={!careOk}
           meta={leadersMeta}
-          accent={P.sage}
-          valueColor={P.ink}
         />
-        <MetricCard
+        <VitalSign
           title="Leaders needing care"
           value={careOk ? String(needsCare) : "—"}
           empty={!careOk}
@@ -130,10 +154,9 @@ export function VitalSignsBand({
                 ? `of ${care.totalActiveShepherds} active leaders`
                 : "Care queue is clear"
           }
-          accent={careOk && needsCare > 0 ? P.terra : P.sage}
-          valueColor={careOk && needsCare > 0 ? P.terraTextStrong : P.ink}
+          valueColor={careOk && needsCare > 0 ? P.terraTextStrong : undefined}
         />
-        <MetricCard
+        <VitalSign
           title="Prospects in funnel"
           value={funnelOk ? String(prospectsInFunnel) : "—"}
           empty={!funnelOk}
@@ -142,10 +165,8 @@ export function VitalSignsBand({
               ? `${interestFunnel.counts.joined} joined a group`
               : "Funnel data unavailable"
           }
-          accent={P.sage}
-          valueColor={P.ink}
         />
-        <MetricCard
+        <VitalSign
           title="Cells ready to multiply"
           value={readinessOk ? String(multiplyReadiness.readyCells) : "—"}
           empty={!readinessOk}
@@ -156,46 +177,41 @@ export function VitalSignsBand({
                 ? "No active cells yet"
                 : `of ${multiplyReadiness.activeCells} active cells`
           }
-          accent={P.sage}
           valueColor={
             readinessOk && multiplyReadiness.readyCells > 0
               ? P.sageTextStrong
-              : P.ink
+              : undefined
           }
         />
-        <MetricCard
+        <VitalSign
           title="Follow-ups due this week"
           value={degraded ? "—" : String(dueThisWeek)}
           empty={degraded}
           meta={
             degraded ? "Follow-up data unavailable" : "Due in the next 7 days"
           }
-          accent={!degraded && dueThisWeek > 0 ? P.mustard : P.sage}
           valueColor={
-            !degraded && dueThisWeek > 0 ? P.mustardTextStrong : P.ink
+            !degraded && dueThisWeek > 0 ? P.mustardTextStrong : undefined
           }
         />
         {showLaunchPlanning ? (
           <>
-            <MetricCard
+            <VitalSign
               title="% of church in groups"
               value={participationValue}
               empty={!planning || participation == null}
               meta={participationMeta}
-              accent={P.sage}
               valueColor={P.sageTextStrong}
             />
-            <MetricCard
+            <VitalSign
               title="People in groups"
               value={planning ? String(lp.currentParticipants) : "—"}
               empty={!planning}
               meta={
                 planning ? "Active participants" : "Planning data unavailable"
               }
-              accent={P.sage}
-              valueColor={P.ink}
             />
-            <MetricCard
+            <VitalSign
               title="Capacity used"
               value={capacityUsedPct == null ? "—" : `${capacityUsedPct}%`}
               empty={capacityUsedPct == null}
@@ -206,18 +222,13 @@ export function VitalSignsBand({
                     ? "No capacity configured"
                     : `${lp.currentParticipants} of ${lp.effectiveTotalCapacity} seats`
               }
-              accent={
-                capacityUsedPct != null && capacityUsedPct >= 85
-                  ? P.mustard
-                  : P.sage
-              }
               valueColor={
                 capacityUsedPct != null && capacityUsedPct >= 85
                   ? P.mustardTextStrong
-                  : P.ink
+                  : undefined
               }
             />
-            <MetricCard
+            <VitalSign
               title="Launch outlook"
               value={planning ? risk.label : "—"}
               empty={!planning}
@@ -228,9 +239,12 @@ export function VitalSignsBand({
                     : "Capacity holds for now"
                   : "Planning data unavailable"
               }
-              accent={risk.tone}
               valueColor={risk.tone}
             />
+            {/* Fillers square off the 10-cell band at the 3- and 6-column
+                breakpoints so no empty grid slot shows the line color. */}
+            <div aria-hidden="true" className="hidden bg-surface md:block" />
+            <div aria-hidden="true" className="hidden bg-surface md:block" />
           </>
         ) : null}
       </div>

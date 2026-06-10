@@ -1,5 +1,4 @@
 import { StatusCard } from "@/components/dashboard/cards";
-import { P, fontBody } from "@/lib/pastoral";
 import type { AdminDashboardData } from "@/lib/dashboard/types";
 import { OpenLink } from "./overview-primitives";
 
@@ -18,29 +17,9 @@ import { OpenLink } from "./overview-primitives";
 
 function Row({ label, detail }: { label: string; detail: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "baseline",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: "8px 0",
-        borderBottom: `1px solid ${P.line2}`,
-      }}
-    >
-      <span style={{ fontFamily: fontBody, fontSize: 13.5, color: P.ink2 }}>
-        {label}
-      </span>
-      <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink3,
-          textAlign: "right",
-        }}
-      >
-        {detail}
-      </span>
+    <div className="flex items-baseline justify-between gap-3 border-b border-lineSoft py-2">
+      <span className="font-sans text-base text-ink2">{label}</span>
+      <span className="text-right font-sans text-sm text-ink3">{detail}</span>
     </div>
   );
 }
@@ -79,28 +58,16 @@ export function ThisWeekCard({
       <OpenLink href="/admin/follow-ups" label="Work follow-ups" />
     ) : undefined;
 
+  // No eyebrow: the section label is sr-only and this serif title is the one
+  // visible "This week" label (single label, not three).
   return (
-    <StatusCard eyebrow="This week" title="The week ahead" action={action}>
+    <StatusCard title="The week ahead" action={action}>
       {degraded ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink3">
           The week ahead is unavailable right now.
         </p>
       ) : rows.length === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink3">
           The week ahead is clear — no follow-ups are due.
         </p>
       ) : (

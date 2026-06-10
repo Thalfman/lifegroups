@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
   OVERVIEW_GRAINS,
   overviewGrainChip,
@@ -14,15 +14,7 @@ export function PeriodSlicer({ current }: { current: OverviewGrain }) {
     <div
       role="group"
       aria-label="Activity period"
-      style={{
-        display: "inline-flex",
-        flexWrap: "wrap",
-        gap: 3,
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 999,
-        padding: 3,
-      }}
+      className="inline-flex flex-wrap gap-1 rounded-pill border border-line bg-bg p-1"
     >
       {OVERVIEW_GRAINS.map((grain) => {
         const active = grain === current;
@@ -31,17 +23,12 @@ export function PeriodSlicer({ current }: { current: OverviewGrain }) {
             key={grain}
             href={grain === "all" ? "/admin" : `/admin?period=${grain}`}
             aria-current={active ? "true" : undefined}
-            style={{
-              padding: "5px 12px",
-              borderRadius: 999,
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 600,
-              textDecoration: "none",
-              background: active ? P.surface : "transparent",
-              color: active ? P.ink : P.ink3,
-              border: `1px solid ${active ? P.line : "transparent"}`,
-            }}
+            className={cn(
+              "rounded-pill border px-3 py-1.5 font-sans text-sm no-underline transition-colors duration-150",
+              active
+                ? "border-line bg-surface font-semibold text-ink"
+                : "border-transparent font-medium text-ink2 hover:bg-surface/60"
+            )}
           >
             {overviewGrainChip(grain)}
           </Link>

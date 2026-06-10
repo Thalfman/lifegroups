@@ -293,24 +293,6 @@
     white-space: nowrap;
   }
 
-  /* New LG shell grid helpers (DashboardClient still consumes these; they
-     retire with the Home slice). */
-  .lg-shell-grid-2 {
-    grid-template-columns: 1fr !important;
-  }
-  .lg-shell-grid-3 {
-    grid-template-columns: 1fr !important;
-  }
-  .lg-shell-grid-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .lg-shell-grid-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .lg-shell-grid-7 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
   /* Forms / inputs (16px stops iOS focus auto-zoom) ---------------------- */
   .lg-m-input {
     width: 100% !important;
