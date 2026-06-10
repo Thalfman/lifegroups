@@ -4,6 +4,7 @@ import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
   fetchAllGroupLeaders,
+  fetchAllMembers,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
   fetchGroupMetricSettings,
@@ -87,18 +88,31 @@ export type GroupOverviewTabData = {
   memberCount: number | null;
 };
 
-// People: leaders + active members (read-only roster). Each list is null when
-// a read feeding it failed — a failed read must not render an empty roster as
-// if authoritative.
+// People: the group's roster, now editable in place (assign / remove) rather
+// than read-only with a hop to /admin/people. Each list is null when a read
+// feeding it failed — a failed read must not render an empty roster as if
+// authoritative — and the assignable options fail closed the same way (null →
+// no assign control, degraded note instead).
 export type GroupPeopleTabData = {
   tab: "people";
+  // Archived (closed) groups get a read-only roster — restore first to edit.
+  archived: boolean;
   leaders: Array<{
     id: string;
+    // Drives the remove action (the row id alone can't — the RPC keys on the
+    // (group, profile) pair).
+    profileId: string;
     // null when the leader's profile row wasn't found (renders "(unknown)").
     name: string | null;
     isCoLeader: boolean;
   }> | null;
   members: Array<{ id: string; fullName: string }> | null;
+  // Active leader/co-leader profiles not already on this group's roster, for
+  // the inline assign control. null = the feeding read failed (or the group is
+  // archived, where no assign control renders at all).
+  assignableLeaders: Array<{ id: string; name: string }> | null;
+  // Active members not already on this group's roster.
+  assignableMembers: Array<{ id: string; name: string }> | null;
 };
 
 // Health: the Group-Health Grade (Q12). Fails closed as a whole — a failed
@@ -170,6 +184,7 @@ export type GroupDetailOptions = {
 export type GroupDetailReads = {
   fetchGroupsByIds: OmitClient<typeof fetchGroupsByIds>;
   fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
+  fetchAllMembers: OmitClient<typeof fetchAllMembers>;
   fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
   fetchMetricDefaults: OmitClient<typeof fetchMetricDefaultsCached>;
   fetchGroupMetricSettings: OmitClient<typeof fetchGroupMetricSettings>;
@@ -194,6 +209,7 @@ export function supabaseGroupDetailReads(
     ...bindReads(client, {
       fetchGroupsByIds,
       fetchAllGroupLeaders,
+      fetchAllMembers,
       fetchActiveMemberships,
       fetchMetricDefaults: fetchMetricDefaultsCached,
       fetchGroupMetricSettings,
@@ -304,11 +320,19 @@ async function buildPeopleTab(
   reads: GroupDetailReads,
   group: GroupsRow
 ): Promise<GroupPeopleTabData> {
-  const [leadersRes, profilesRes, membershipsRes] = await Promise.all([
-    reads.fetchAllGroupLeaders({ activeOnly: true }),
-    reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
-    reads.fetchActiveMemberships({ groupId: group.id }),
-  ]);
+  const archived = lifecycleCategory(group.lifecycle_status) === "archived";
+
+  const [leadersRes, profilesRes, membershipsRes, allMembersRes] =
+    await Promise.all([
+      reads.fetchAllGroupLeaders({ activeOnly: true }),
+      reads.fetchProfilesForAdmin({ roles: ["leader", "co_leader"] }),
+      reads.fetchActiveMemberships({ groupId: group.id }),
+      // The full active-member pool feeds the inline assign control; skip the
+      // read for an archived group, whose roster is read-only.
+      archived
+        ? Promise.resolve({ data: null, error: null })
+        : reads.fetchAllMembers(),
+    ]);
 
   const memberIds = (membershipsRes.data ?? []).map((m) => m.member_id);
   const membersRes = await reads.fetchMembersByIds(memberIds);
@@ -325,6 +349,7 @@ async function buildPeopleTab(
         .filter((l) => l.group_id === group.id && l.active)
         .map((l) => ({
           id: l.id,
+          profileId: l.profile_id,
           name: profilesById.get(l.profile_id)?.full_name ?? null,
           isCoLeader: l.role === "co_leader",
         }));
@@ -339,7 +364,40 @@ async function buildPeopleTab(
         .sort((a, b) => a.full_name.localeCompare(b.full_name))
         .map((m) => ({ id: m.id, fullName: m.full_name }));
 
-  return { tab: "people", leaders, members };
+  // Assignable options for the inline controls. Fail closed: without a
+  // trustworthy roster (or pool) the difference can't be computed, so the
+  // assign control is suppressed rather than offering wrong choices. An
+  // archived group skips options entirely (read-only roster).
+  const assignedProfileIds = new Set(
+    (leadersRes.data ?? [])
+      .filter((l) => l.group_id === group.id && l.active)
+      .map((l) => l.profile_id)
+  );
+  const assignableLeaders =
+    archived || leadersFailed
+      ? null
+      : (profilesRes.data ?? [])
+          .filter((p) => p.status === "active" && !assignedProfileIds.has(p.id))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name))
+          .map((p) => ({ id: p.id, name: p.full_name }));
+
+  const rosterMemberIds = new Set(memberIds);
+  const assignableMembers =
+    archived || membersFailed || allMembersRes.error
+      ? null
+      : (allMembersRes.data ?? [])
+          .filter((m) => m.status === "active" && !rosterMemberIds.has(m.id))
+          .sort((a, b) => a.full_name.localeCompare(b.full_name))
+          .map((m) => ({ id: m.id, name: m.full_name }));
+
+  return {
+    tab: "people",
+    archived,
+    leaders,
+    members,
+    assignableLeaders,
+    assignableMembers,
+  };
 }
 
 async function buildHealthTab(

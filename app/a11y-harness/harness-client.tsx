@@ -36,6 +36,9 @@ import {
   PersonDetailShell,
   type PersonDetail,
 } from "@/components/admin/person-detail/person-detail-shell";
+import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
+// Type-only: the data module itself is server-side (reads seam).
+import type { GroupPeopleTabData } from "@/components/admin/groups/group-detail-data";
 import { CareFollowUpsSection } from "@/components/admin/shepherd-care/care-follow-ups-section";
 import { CareActions } from "@/components/admin/shepherd-care/care-actions";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
@@ -894,6 +897,34 @@ const PERSON_DETAIL_GROUP_OPTIONS = [
   { id: "people-g-3", name: "Westside Families" },
 ];
 
+// Group detail People tab — the group-centric roster editor. Repeated Remove
+// controls must carry person + group context; the inline assign rows must be
+// labelled selects. Mirrors the live shape buildPeopleTab assembles.
+const GROUP_ROSTER_DATA: GroupPeopleTabData = {
+  tab: "people",
+  archived: false,
+  leaders: [
+    {
+      id: "roster-gl-1",
+      profileId: "roster-p-1",
+      name: "Avery Leader",
+      isCoLeader: false,
+    },
+    {
+      id: "roster-gl-2",
+      profileId: "roster-p-2",
+      name: "Blair Co",
+      isCoLeader: true,
+    },
+  ],
+  members: [
+    { id: "roster-m-1", fullName: "Casey Member" },
+    { id: "roster-m-2", fullName: "Drew Member" },
+  ],
+  assignableLeaders: [{ id: "roster-p-3", name: "Em Bench" }],
+  assignableMembers: [{ id: "roster-m-9", name: "Frankie Available" }],
+};
+
 // Calendar occurrence editor (#324 a11y hardening sweep). The Groups calendar
 // modal is its own Radix Dialog (separate from the EditingSurface drawer), opened
 // from a programmatic trigger rather than a DialogTrigger, and it carries the
@@ -1122,6 +1153,14 @@ export function A11yHarnessClient() {
             availableGroups={PERSON_DETAIL_GROUP_OPTIONS}
           />
         </Suspense>
+      </Surface>
+
+      <Surface id="group-roster" heading="Group roster (detail People tab)">
+        <GroupRosterManager
+          groupId="roster-g-1"
+          groupName="Riverside Young Adults"
+          data={GROUP_ROSTER_DATA}
+        />
       </Surface>
 
       <Surface id="follow-ups" heading="Follow-ups (admin queue)">

@@ -22,6 +22,7 @@ import { Card } from "@/components/lg/Card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
+import { GroupRosterManager } from "@/components/admin/group-detail/group-roster-manager";
 import {
   loadGroupDetailData,
   type GroupAttendanceTabData,
@@ -30,7 +31,6 @@ import {
   type GroupFollowUpsTabData,
   type GroupHealthTabData,
   type GroupOverviewTabData,
-  type GroupPeopleTabData,
 } from "@/components/admin/groups/group-detail-data";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import {
@@ -148,7 +148,13 @@ export default async function AdminGroupDetailPage({
           {tabData.tab === "overview" ? (
             <OverviewTab data={tabData} group={group} groupId={groupId} />
           ) : null}
-          {tabData.tab === "people" ? <PeopleTab data={tabData} /> : null}
+          {tabData.tab === "people" ? (
+            <GroupRosterManager
+              groupId={groupId}
+              groupName={group.name}
+              data={tabData}
+            />
+          ) : null}
           {tabData.tab === "health" ? <HealthTab data={tabData} /> : null}
           {tabData.tab === "attendance" ? (
             <AttendanceTab data={tabData} groupId={groupId} />
@@ -239,75 +245,11 @@ function OverviewTab({
   );
 }
 
-// --- People: leaders + active members (read-only roster) --------------------
-
-function PeopleTab({ data }: { data: GroupPeopleTabData }) {
-  return (
-    <div className="grid gap-3.5">
-      <Card>
-        <div className="grid gap-2.5">
-          <div className={LABEL_TEXT}>Leaders</div>
-          {data.leaders === null ? (
-            <p role="alert" className={READ_ERROR_TEXT}>
-              Leaders couldn&apos;t be loaded right now.
-            </p>
-          ) : data.leaders.length === 0 ? (
-            <div className="grid gap-2">
-              <p className={cn("m-0", BODY_TEXT)}>No leader assigned yet.</p>
-              <TabAction href="/admin/people">
-                Assign a leader in People →
-              </TabAction>
-            </div>
-          ) : (
-            <ul className={LIST_RESET}>
-              {data.leaders.map((l) => (
-                <li key={l.id} className={cn("mb-1", BODY_TEXT)}>
-                  {l.name ?? "(unknown)"} ·{" "}
-                  {l.isCoLeader ? "Co-Leader" : "Leader"}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="grid gap-2.5">
-          <div className={LABEL_TEXT}>
-            Active members
-            {data.members === null ? "" : ` (${data.members.length})`}
-          </div>
-          {data.members === null ? (
-            <p role="alert" className={READ_ERROR_TEXT}>
-              Members couldn&apos;t be loaded right now.
-            </p>
-          ) : data.members.length === 0 ? (
-            <div className="grid gap-2">
-              <p className={cn("m-0", BODY_TEXT)}>
-                No active members on the roster.
-              </p>
-              <TabAction href="/admin/people">
-                Add a member in People →
-              </TabAction>
-            </div>
-          ) : (
-            <ul className={LIST_RESET}>
-              {data.members.map((m) => (
-                <li key={m.id} className={cn("mb-1", BODY_TEXT)}>
-                  {m.fullName}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Card>
-
-      <TabAction href="/admin/people">
-        Manage leaders &amp; members in People →
-      </TabAction>
-    </div>
-  );
-}
+// --- People: the group's roster, editable in place --------------------------
+//
+// Assign/remove controls live right on the tab (GroupRosterManager), calling
+// the same audited assign/remove actions the person detail page uses — the
+// old read-only roster forced a hop to /admin/people for every change.
 
 // --- Health: the Group-Health Grade (Q12), folded in from Group Health ------
 

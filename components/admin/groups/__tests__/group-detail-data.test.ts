@@ -84,7 +84,21 @@ function detailReads(
     fetchGroupMetricSettings: async () => ok(null),
     fetchGroupHealthOverview: async () => ok(HEALTH_ROW as never),
     fetchProfilesForAdmin: async () =>
-      ok([{ id: LEADER_PROFILE_ID, full_name: "Avery Leader" }] as never),
+      ok([
+        { id: LEADER_PROFILE_ID, full_name: "Avery Leader", status: "active" },
+        // Not on this group's roster → an assignable option.
+        { id: "p-bench", full_name: "Drew Bench", status: "active" },
+        // Inactive profiles are never offered for assignment.
+        { id: "p-idle", full_name: "Em Inactive", status: "inactive" },
+      ] as never),
+    fetchAllMembers: async () =>
+      ok([
+        { id: "m-1", full_name: "Avery Member", status: "active" },
+        { id: "m-2", full_name: "Blair Member", status: "active" },
+        { id: "m-3", full_name: "Casey Former", status: "inactive" },
+        // Not on this group's roster → an assignable option.
+        { id: "m-4", full_name: "Drew Available", status: "active" },
+      ] as never),
     fetchMembersByIds: async () =>
       ok([
         { id: "m-2", full_name: "Blair Member", status: "active" },
@@ -237,7 +251,7 @@ describe("buildGroupDetailData", () => {
   });
 
   describe("people tab", () => {
-    it("assembles the leaders and the active-member roster", async () => {
+    it("assembles the roster plus the assignable options", async () => {
       const result = await buildGroupDetailData(
         detailReads(),
         options("people")
@@ -246,17 +260,29 @@ describe("buildGroupDetailData", () => {
       if (result.kind !== "ok") throw new Error("expected ok");
       expect(result.tabData).toEqual({
         tab: "people",
-        // Only this group's leader links, with resolved names.
-        leaders: [{ id: "gl-1", name: "Avery Leader", isCoLeader: false }],
+        archived: false,
+        // Only this group's leader links, with resolved names and the
+        // profile id the remove action keys on.
+        leaders: [
+          {
+            id: "gl-1",
+            profileId: LEADER_PROFILE_ID,
+            name: "Avery Leader",
+            isCoLeader: false,
+          },
+        ],
         // Active members only, sorted by name.
         members: [
           { id: "m-1", fullName: "Avery Member" },
           { id: "m-2", fullName: "Blair Member" },
         ],
+        // Active people NOT already on the roster; inactive people excluded.
+        assignableLeaders: [{ id: "p-bench", name: "Drew Bench" }],
+        assignableMembers: [{ id: "m-4", name: "Drew Available" }],
       });
     });
 
-    it("suppresses only the leaders list when the profiles read fails", async () => {
+    it("suppresses the leaders list AND its assign options when the profiles read fails", async () => {
       const result = await buildGroupDetailData(
         detailReads({
           fetchProfilesForAdmin: async () => fail("profiles boom"),
@@ -267,12 +293,17 @@ describe("buildGroupDetailData", () => {
       if (result.kind !== "ok") throw new Error("expected ok");
       if (result.tabData.tab !== "people") throw new Error("wrong tab");
       // Leader names come from the profiles read, so the whole list fails
-      // closed rather than rendering every leader as "(unknown)".
+      // closed rather than rendering every leader as "(unknown)" — and the
+      // assign control can't offer trustworthy options either.
       expect(result.tabData.leaders).toBeNull();
+      expect(result.tabData.assignableLeaders).toBeNull();
       expect(result.tabData.members).toHaveLength(2);
+      expect(result.tabData.assignableMembers).toEqual([
+        { id: "m-4", name: "Drew Available" },
+      ]);
     });
 
-    it("suppresses only the roster when the members read fails", async () => {
+    it("suppresses the roster and member options when the members read fails", async () => {
       const result = await buildGroupDetailData(
         detailReads({ fetchMembersByIds: async () => fail("members boom") }),
         options("people")
@@ -281,9 +312,55 @@ describe("buildGroupDetailData", () => {
       if (result.kind !== "ok") throw new Error("expected ok");
       if (result.tabData.tab !== "people") throw new Error("wrong tab");
       expect(result.tabData.members).toBeNull();
+      // Without a trustworthy roster the not-already-assigned difference
+      // can't be computed — no assign control rather than wrong choices.
+      expect(result.tabData.assignableMembers).toBeNull();
       expect(result.tabData.leaders).toEqual([
-        { id: "gl-1", name: "Avery Leader", isCoLeader: false },
+        {
+          id: "gl-1",
+          profileId: LEADER_PROFILE_ID,
+          name: "Avery Leader",
+          isCoLeader: false,
+        },
       ]);
+    });
+
+    it("suppresses member options when the member pool read fails", async () => {
+      const result = await buildGroupDetailData(
+        detailReads({ fetchAllMembers: async () => fail("pool boom") }),
+        options("people")
+      );
+
+      if (result.kind !== "ok") throw new Error("expected ok");
+      if (result.tabData.tab !== "people") throw new Error("wrong tab");
+      // The roster itself survives — only the assign options fail closed.
+      expect(result.tabData.members).toHaveLength(2);
+      expect(result.tabData.assignableMembers).toBeNull();
+    });
+
+    it("renders an archived group's roster read-only with no assign options", async () => {
+      let poolRead = false;
+      const result = await buildGroupDetailData(
+        detailReads({
+          fetchGroupsByIds: async () =>
+            ok([{ ...GROUP, lifecycle_status: "closed" }] as never),
+          fetchAllMembers: async () => {
+            poolRead = true;
+            return ok([] as never);
+          },
+        }),
+        options("people")
+      );
+
+      if (result.kind !== "ok") throw new Error("expected ok");
+      if (result.tabData.tab !== "people") throw new Error("wrong tab");
+      expect(result.tabData.archived).toBe(true);
+      // The roster still shows; the assign options are off entirely — and the
+      // member pool isn't even read.
+      expect(result.tabData.leaders).toHaveLength(1);
+      expect(result.tabData.assignableLeaders).toBeNull();
+      expect(result.tabData.assignableMembers).toBeNull();
+      expect(poolRead).toBe(false);
     });
   });
 
