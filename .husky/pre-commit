@@ -8,9 +8,10 @@ npm run test:run
 # artifacts stay reproducible), and skips on partial commits (unstaged
 # tracked changes) so the committed graph never describes uncommitted work.
 # GRAPHIFY_VIZ_NODE_LIMIT keeps graph.html emitting past the 5000-node
-# default; tree/callflow regenerate only when graph.json actually changed
-# because the callflow export isn't byte-stable (it would churn every
-# commit otherwise). Never blocks the commit.
+# default; tree/callflow regenerate only when graph.json changed relative
+# to HEAD (covers pre-staged graph changes too) because the callflow export
+# isn't byte-stable (it would churn every commit otherwise). Never blocks
+# the commit.
 if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
   if [ "$(graphify --version 2>/dev/null | awk '{print $2}')" != "$(cat .graphify-version 2>/dev/null)" ]; then
     echo "[pre-commit] graphify on PATH is not the version in .graphify-version; skipping graph refresh"
@@ -18,7 +19,7 @@ if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
     [ -z "$(git ls-files --others --exclude-standard -- . ':(exclude)graphify-out')" ]; then
     (
       GRAPHIFY_VIZ_NODE_LIMIT=10000 graphify update . &&
-        if ! git diff --quiet -- graphify-out/graph.json; then
+        if ! git diff --quiet HEAD -- graphify-out/graph.json; then
           graphify tree &&
             graphify export callflow-html --output graphify-out/CALLFLOW.html
         fi &&

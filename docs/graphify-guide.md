@@ -29,8 +29,10 @@ automatically (see "How it stays updated").
 
 ## How to view the HTML graphs
 
-The three `.html` files are plain, self-contained web pages — no server, no
-build step, no internet needed.
+The three `.html` files are plain web pages — no server, no build step. They
+do load their chart libraries (vis-network, D3, Mermaid) from public CDNs, so
+you need an internet connection for them to render; on an offline machine the
+pages will open but stay blank.
 
 1. Pull the repo (`git pull`).
 2. Open the file in any browser:
