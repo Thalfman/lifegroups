@@ -8,13 +8,10 @@ import { expect, type Page } from "@playwright/test";
 
 export const HARNESS = "/a11y-harness";
 
-// color-contrast is a palette-level concern owned by neither the accessible-
-// names slice nor the Settings (req 5) slice: a visual rebrand / palette
-// overhaul is an explicit Non-Goal of the Admin Interaction Model PRD. The
-// cream/terra palette trips axe on muted meta text (P.ink3) and the terra
-// button at ~4.25:1. It surfaces as a non-blocking warning so it stays visible,
-// but it does not gate this work. Every other critical/serious rule gates.
-export const NON_BLOCKING_RULES = new Set(["color-contrast"]);
+// No carve-outs: the 2026-06 design-system upgrade deepened the ink/clay/
+// sage/rose/blue ramps to clear WCAG AA (docs/design-direction.md §1), so
+// color-contrast now gates like every other critical/serious rule.
+export const NON_BLOCKING_RULES = new Set<string>([]);
 
 export async function gotoHarness(page: Page): Promise<void> {
   const response = await page.goto(HARNESS, { waitUntil: "networkidle" });
