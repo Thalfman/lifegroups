@@ -6,15 +6,9 @@ import { OverShepherdArchiveButton } from "@/components/admin/shepherd-care/over
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  fetchOverShepherdByIdForAdmin,
-  fetchShepherdsCoveredByOverShepherdForAdmin,
-  type ShepherdCoveredByOverShepherd,
-} from "@/lib/supabase/read-models";
+import { loadOverShepherdDetailData } from "@/components/admin/shepherd-care/over-shepherd-detail-data";
 import { isUuid } from "@/lib/shared/uuid";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
-import type { OverShepherdsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -24,42 +18,6 @@ const cardStyle = {
   borderRadius: 12,
   padding: 20,
 };
-
-type DetailResult =
-  | {
-      kind: "ok";
-      overShepherd: OverShepherdsRow;
-      coveredShepherds: ShepherdCoveredByOverShepherd[];
-      error: string | null;
-    }
-  | { kind: "not_found" }
-  | { kind: "db_unavailable" }
-  | { kind: "load_error"; message: string };
-
-async function loadDetail(overShepherdId: string): Promise<DetailResult> {
-  const client = await createSupabaseServerClient();
-  if (!client) return { kind: "db_unavailable" };
-
-  const [overShepherdRes, coveredRes] = await Promise.all([
-    fetchOverShepherdByIdForAdmin(client, overShepherdId),
-    fetchShepherdsCoveredByOverShepherdForAdmin(client, overShepherdId),
-  ]);
-  // Block the edit form entirely when the over-shepherd record fails to
-  // load. Returning a dummy "Unknown" record would let an admin submit
-  // the edit form and overwrite the real record with placeholder
-  // values; surface the error instead.
-  if (overShepherdRes.error) {
-    return { kind: "load_error", message: overShepherdRes.error.message };
-  }
-  if (!overShepherdRes.data) return { kind: "not_found" };
-
-  return {
-    kind: "ok",
-    overShepherd: overShepherdRes.data,
-    coveredShepherds: coveredRes.data ?? [],
-    error: coveredRes.error?.message ?? null,
-  };
-}
 
 export default async function AdminOverShepherdEditPage({
   params,
@@ -72,7 +30,10 @@ export default async function AdminOverShepherdEditPage({
   const { overShepherdId } = await params;
   if (!isUuid(overShepherdId)) notFound();
 
-  const detail = await loadDetail(overShepherdId);
+  // All reads live behind the reads seam (ADR 0015): the loader binds the live
+  // client once and runs the pure buildOverShepherdDetailData assembly, so
+  // this page is guard → load → render.
+  const detail = await loadOverShepherdDetailData(overShepherdId);
   if (detail.kind === "not_found") notFound();
   if (detail.kind === "db_unavailable") {
     return (
