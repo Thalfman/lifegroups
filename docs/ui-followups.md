@@ -19,22 +19,28 @@ passed lint → typecheck → unit suite → build → mapped a11y specs.
 
 ## Remaining debt (tracked, deliberate)
 
-1. **Frozen surfaces still inline-styled** (~34 files: master calendar,
-   guests, planning, people/groups directories, launch planning,
-   capacity board, person detail, group management). They are
-   token-coherent through the `P.*` → `var(--c-*)` aliases and got spot
-   fixes (stripes removed, microtext floored, AA washes fixed), but the
-   full Tailwind migration is deferred until a surface un-freezes —
-   migrate it in the PR that revives it, and delete its `.lg-m-*` rules
-   in the same commit.
+1. **Frozen surfaces still inline-styled** (master calendar, guests,
+   planning, launch planning, capacity board). They are token-coherent
+   through the `P.*` → `var(--c-*)` aliases and got spot fixes (stripes
+   removed, microtext floored, AA washes fixed), but the full Tailwind
+   migration is deferred until a surface un-freezes — migrate it in the
+   PR that revives it, and delete its `.lg-m-*` rules in the same
+   commit. **Paid (ADR 0024 revival):** the Groups directory + group
+   detail + group calendar chrome, the People directory + add-person
+   forms, and the person detail shell were migrated when their nav tabs
+   came back on; shared frozen-surface components (calendar
+   month-grid/event-list, leader-pipeline) keep their debt until their
+   own surfaces revive.
 2. **`.lg-m-*` mobile override layer (reduced, not gone).** Deleted:
    shell, nav-drawer, user-pill, sign-out, editing-surface, grid rules.
    Still consumed (by frozen surfaces + sanctioned shims):
-   `lg-m-grid-stack` (~16 files), `lg-m-input` (iOS 16px guard),
-   `lg-m-sticky-submit`, `lg-m-noscrollx`, `lg-m-filterbar`,
-   `lg-m-form-2up` (1), `lg-m-roster-row`/`lg-m-attbtn` (check-in),
-   `lg-m-cal-*` (now 11px floor), `lg-m-master-calendar-filters`,
-   `lg-super-admin-workspace-tabs`.
+   `lg-m-grid-stack` (~12 files; the groups/people usages moved to
+   responsive variants), `lg-m-input` (iOS 16px guard),
+   `lg-m-sticky-submit`, `lg-m-noscrollx`, `lg-m-filterbar` (guests
+   only), `lg-m-form-2up` (1), `lg-m-roster-row`/`lg-m-attbtn`
+   (check-in), `lg-m-cal-*` (now 11px floor),
+   `lg-m-master-calendar-filters`, `lg-super-admin-workspace-tabs`.
+   No rule is orphaned yet, so none were deleted.
 3. **Compatibility wrappers.** `PButton`/`PLinkButton`/`Pill`/`PBadge`
    delegate to `components/ui/button.tsx` / `badge.tsx`. New code should
    import `Button`/`Badge` directly; collapse the wrappers when their

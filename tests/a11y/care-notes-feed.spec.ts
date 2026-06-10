@@ -55,13 +55,13 @@ test.describe("care notes feed (All Notes)", () => {
     page,
   }) => {
     const surface = page.locator('[data-a11y-surface="care-notes-feed"]');
-    await expect(surface.getByText("Care note", { exact: true })).toBeVisible();
-    await expect(
-      surface.getByText("Prayer request", { exact: true })
-    ).toBeVisible();
-    await expect(
-      surface.getByText("Broad note", { exact: true })
-    ).toBeVisible();
+    // Scope to the feed's list items: the Type filter's <option>s carry the
+    // same labels, so an unscoped text query would be ambiguous.
+    for (const label of ["Care note", "Prayer request", "Broad note"]) {
+      await expect(
+        surface.locator("li").getByText(label, { exact: true })
+      ).toBeVisible();
+    }
     // The viewer's own note is attributed.
     await expect(surface.getByText(/by Julian Admin \(you\)/)).toBeVisible();
   });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
@@ -68,8 +68,8 @@ export function ChangeLeaderRoleForm({
   if (!open) {
     return (
       <div className="grid gap-1">
-        <PButton
-          tone="solid"
+        <Button
+          variant="solid"
           size="sm"
           type="button"
           onClick={() => {
@@ -79,7 +79,7 @@ export function ChangeLeaderRoleForm({
           aria-label={`Change role for ${profileName}`}
         >
           Change role
-        </PButton>
+        </Button>
         {state?.ok ? (
           <p className={cn(successTextClassName, "px-2 py-1 text-2xs")}>
             Role updated.
@@ -127,9 +127,9 @@ export function ChangeLeaderRoleForm({
         </p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <PButton
+        <Button
           type="button"
-          tone="ghost"
+          variant="ghost"
           size="sm"
           onClick={() => {
             setNewRole(otherRole);
@@ -138,15 +138,15 @@ export function ChangeLeaderRoleForm({
           disabled={pending}
         >
           Cancel
-        </PButton>
-        <PButton
+        </Button>
+        <Button
           type="submit"
-          tone={downgrade ? "terra" : "solid"}
+          variant={downgrade ? "primary" : "solid"}
           size="sm"
           disabled={pending}
         >
           {pending ? "Saving…" : "Save"}
-        </PButton>
+        </Button>
       </div>
       {state && !state.ok ? (
         <ul className="m-0 grid list-none gap-1 p-0">

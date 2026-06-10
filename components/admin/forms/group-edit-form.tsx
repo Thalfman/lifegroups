@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -338,19 +338,19 @@ export function GroupEditForm({
       </div>
 
       <div className="mt-0.5 flex flex-wrap items-center gap-2.5 border-t border-line pt-2.5">
-        <PButton type="submit" tone="terra" size="sm" disabled={pending}>
+        <Button type="submit" variant="primary" size="sm" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
-        </PButton>
+        </Button>
         {onCancel ? (
-          <PButton
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="sm"
             disabled={pending}
             onClick={onCancel}
           >
             Cancel
-          </PButton>
+          </Button>
         ) : null}
       </div>
 

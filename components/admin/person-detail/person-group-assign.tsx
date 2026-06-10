@@ -1,18 +1,18 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import {
   adminAssignLeaderToGroup,
   adminAssignMemberToGroup,
 } from "@/app/(protected)/admin/people/actions";
 import {
-  errorTextStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import { useActionForm } from "@/components/admin/forms/action-form";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Person-centric placement: the person is fixed (this detail page) and the
 // admin picks a group, the inverse of the group-centric Assignments matrix.
@@ -38,28 +38,25 @@ export function PersonGroupAssign({
   const noGroups = availableGroups.length === 0;
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 10 }}
-    >
+    <form ref={formRef} action={formAction} className="grid gap-2.5">
       <input
         type="hidden"
         name={kind === "profile" ? "profile_id" : "member_id"}
         value={personId}
       />
       <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            kind === "profile" ? "1fr 140px auto" : "1fr auto",
-          gap: 10,
-          alignItems: "end",
-        }}
+        className={cn(
+          "grid grid-cols-1 items-end gap-2.5",
+          kind === "profile"
+            ? "md:grid-cols-[1fr_140px_auto]"
+            : "md:grid-cols-[1fr_auto]"
+        )}
       >
         <div>
-          <label htmlFor={`assign-group-${personId}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`assign-group-${personId}`}
+            className={fieldLabelClassName}
+          >
             Group
           </label>
           <select
@@ -67,7 +64,7 @@ export function PersonGroupAssign({
             name="group_id"
             required
             disabled={noGroups}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
             defaultValue=""
           >
             <option value="" disabled>
@@ -82,7 +79,10 @@ export function PersonGroupAssign({
         </div>
         {kind === "profile" ? (
           <div>
-            <label htmlFor={`assign-role-${personId}`} style={fieldLabelStyle}>
+            <label
+              htmlFor={`assign-role-${personId}`}
+              className={fieldLabelClassName}
+            >
               Role
             </label>
             <select
@@ -90,7 +90,7 @@ export function PersonGroupAssign({
               name="role"
               required
               disabled={noGroups}
-              style={fieldSelectStyle}
+              className={fieldSelectClassName}
               defaultValue="leader"
             >
               <option value="leader">Leader</option>
@@ -99,46 +99,33 @@ export function PersonGroupAssign({
           </div>
         ) : null}
         <div>
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="primary"
             size="sm"
             disabled={pending || noGroups}
           >
             {pending ? "Placing…" : "Place in group"}
-          </PButton>
+          </Button>
         </div>
       </div>
       {noGroups ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            color: P.ink3,
-            fontSize: 12,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-xs text-ink3">
           There are no active groups to place this person in yet.
         </p>
       ) : null}
       {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-1.5 p-0">
           {state.errors.map((err, i) => (
             <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
+              <p className={errorTextClassName}>{err}</p>
             </li>
           ))}
         </ul>
       ) : null}
-      {state?.ok ? <p style={successTextStyle}>Placed in group.</p> : null}
+      {state?.ok ? (
+        <p className={successTextClassName}>Placed in group.</p>
+      ) : null}
     </form>
   );
 }

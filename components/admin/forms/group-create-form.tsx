@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { adminCreateGroup } from "@/app/(protected)/admin/groups/actions";
 import { cn } from "@/lib/utils";
 import {
@@ -339,19 +339,19 @@ export function GroupCreateForm({
         </div>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <Button type="submit" variant="primary" size="md" disabled={pending}>
           {pending ? "Creating…" : "Create group"}
-        </PButton>
+        </Button>
         {onCancel ? (
-          <PButton
+          <Button
             type="button"
-            tone="ghost"
+            variant="ghost"
             size="md"
             disabled={pending}
             onClick={onCancel}
           >
             Cancel
-          </PButton>
+          </Button>
         ) : null}
       </div>
       <FormStatus state={state} successText="Group created." />
