@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  useEffect,
-  type CSSProperties,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, type FormEvent, type ReactNode } from "react";
 import { PButton, type PButtonTone } from "@/components/pastoral/button";
+import { cn } from "@/lib/utils";
 import {
   confirmActionButtonView,
   gateSubmitOnConfirm,
@@ -96,14 +92,13 @@ export function ConfirmActionButton<T>({
     gateSubmitOnConfirm(window.confirm(confirmMessage), e);
   }
 
-  const containerStyle: CSSProperties = {
-    display: "grid",
-    gap,
-    ...(alignEnd ? { justifyItems: "end" } : {}),
-  };
-
   return (
-    <div style={containerStyle}>
+    // `gap` is a caller-supplied number (component API), so it stays a dynamic
+    // inline style; the rest of the container is utility classes.
+    <div
+      className={cn("grid", alignEnd && "justify-items-end")}
+      style={{ gap }}
+    >
       <form action={formAction} onSubmit={confirmSubmit}>
         {hiddenFields.map((field) => (
           <input

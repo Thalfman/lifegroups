@@ -1,4 +1,3 @@
-import { SectionHeader } from "@/components/layout/shell";
 import { MetricDefaultsForm } from "@/components/admin/forms/metric-defaults-form";
 import { GroupMetricOverridesForm } from "@/components/admin/forms/group-metric-overrides-form";
 import { ClearGroupMetricOverridesButton } from "@/components/admin/forms/clear-group-metric-overrides-button";
@@ -10,7 +9,6 @@ import {
 import { PBadge } from "@/components/pastoral/atoms";
 import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
-import { P, fontBody, fontDisplay } from "@/lib/pastoral";
 import { hasActiveOverrides } from "@/lib/admin/metrics";
 import { groupHealthStatusLabel } from "@/lib/admin/health-status-labels";
 import type { MetricDefaults } from "@/lib/admin/metrics";
@@ -158,9 +156,9 @@ export function SettingsShell({
   ];
 
   return (
-    <div style={{ display: "grid", gap: 28 }}>
+    <div className="grid gap-7">
       {data.defaultsSource === "fallback" ? (
-        <div style={infoStyle}>
+        <div className="rounded-sm border border-line bg-bg px-3.5 py-3 font-sans text-xs italic text-ink3">
           Showing built-in defaults — the live <code>metric_defaults</code> row
           either wasn&rsquo;t loaded or hasn&rsquo;t been seeded yet. Saving
           will create or repair it.
@@ -176,23 +174,51 @@ export function SettingsShell({
   );
 }
 
+// One plain serif heading per section (design direction §2: the serif speaks
+// once) — no ornament divider, no tracked-uppercase eyebrow. The eyebrow text
+// survives as a quiet sans context line above the heading.
+function SettingsSectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="grid gap-1">
+      {eyebrow ? (
+        <div className="font-sans text-sm text-ink3">{eyebrow}</div>
+      ) : null}
+      <h2 className="m-0 font-display text-xl font-medium text-ink">{title}</h2>
+      {description ? (
+        <p className="m-0 max-w-[720px] font-sans text-base text-ink2">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // Care tab: the rubrics that define how leaders and groups are graded — the
 // configuration at the heart of Care (ADR 0016). The two A–F Health Rubrics
 // (group + leader; #374/#378, ADR 0018) live here. A rubric whose read failed
 // softens to a calm "couldn't load" notice (#469) instead of an editor whose
-// empty seed could overwrite a saved rubric the admin can't see.
+// empty seed could overwrite a saved rubric the admin can't see. Each section's
+// instruction copy lives once, inside the editor card — the old outer lede
+// repeated it nearly verbatim (design direction §4).
 function CarePanel({ data }: { data: SettingsShellData }) {
   return (
-    <div style={{ display: "grid", gap: 36 }}>
+    <div className="grid gap-9">
       {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
           that roll up to an A–F grade. Owned here in Settings (Ministry-Admin),
           not the Super Admin Console. Save is gated on the weights totalling
           100, enforced both in the editor and the audited RPC. */}
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
+      <section className="grid gap-4">
+        <SettingsSectionHeader
           eyebrow="Group Health Rubric"
           title="How a group is graded"
-          description="Name the criteria and set each weight; they must total 100."
         />
         {data.errors.groupRubric ? (
           <CouldNotLoad subject="The Group Health Rubric" />
@@ -208,11 +234,11 @@ function CarePanel({ data }: { data: SettingsShellData }) {
           Leader-Health Grade entered in Care. Same editor, parameterized to the
           "leader" kind; same weight-to-100 gate. A deliberate FOURTH "health"
           concept, distinct from Leader Care Status and the Health Pulse. */}
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
+      <section className="grid gap-4">
+        <SettingsSectionHeader
           eyebrow="Leader Health Rubric"
           title="How a leader is graded"
-          description="Name the criteria and set each weight; they must total 100. Distinct from a leader's Care Status."
+          description="Distinct from a leader's Care Status."
         />
         {data.errors.leaderRubric ? (
           <CouldNotLoad subject="The Leader Health Rubric" />
@@ -248,9 +274,9 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
       .filter((id): id is string => id !== null)
   );
   return (
-    <div style={{ display: "grid", gap: 36 }}>
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
+    <div className="grid gap-9">
+      <section className="grid gap-4">
+        <SettingsSectionHeader
           eyebrow="Group types"
           title="The group types you track"
           description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
@@ -288,9 +314,9 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
 // (/admin/multiply) reads the resolved rule; here we own the editing.
 function MultiplyPanel({ data }: { data: SettingsShellData }) {
   return (
-    <div style={{ display: "grid", gap: 36 }}>
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
+    <div className="grid gap-9">
+      <section className="grid gap-4">
+        <SettingsSectionHeader
           eyebrow="Multiplication trigger"
           title="When a group type is ready to multiply"
           description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-group-type issue; Group and Leader Health are A–F letters."
@@ -340,38 +366,18 @@ function ThresholdsPanel({
   overrideRows: { settings: GroupMetricSettingsRow; group: GroupsRow | null }[];
 }) {
   return (
-    <div style={{ display: "grid", gap: 36 }}>
-      <section style={{ display: "grid", gap: 18 }}>
-        <SectionHeader
+    <div className="grid gap-9">
+      <section className="grid gap-4">
+        <SettingsSectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
           description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity set only drives hidden surfaces."
         />
         <Card>
           <MetricDefaultsForm defaults={data.defaults} />
-          <div
-            style={{
-              marginTop: 18,
-              paddingTop: 14,
-              borderTop: `1px solid ${P.line}`,
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                maxWidth: 380,
-                lineHeight: 1.45,
-                margin: 0,
-              }}
-            >
-              <strong style={{ color: P.ink, fontWeight: 600 }}>
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-4 border-t border-line pt-3.5">
+            <div className="m-0 max-w-[380px] font-sans text-sm text-ink2">
+              <strong className="font-semibold text-ink">
                 Need a clean slate?
               </strong>{" "}
               Reset the thresholds to the ministry defaults.
@@ -386,19 +392,19 @@ function ThresholdsPanel({
           disclosure. Native <details> keeps this a server component (works
           without JS); the count in the summary tells an operator whether any
           overrides are in effect before they expand it. */}
-      <details style={detailsStyle}>
-        <summary style={summaryStyle}>
+      <details className="rounded-lg border border-line bg-surface px-5 py-4">
+        <summary className="flex cursor-pointer flex-wrap items-baseline gap-2.5 font-display text-lg font-medium text-ink">
           Per-group overrides
-          <span style={summaryCountStyle}>
+          <span className="font-sans text-xs font-normal text-ink3">
             {overrideRows.length === 0
               ? "none active"
               : `${overrideRows.length} active`}
           </span>
         </summary>
 
-        <div style={{ display: "grid", gap: 36, marginTop: 24 }}>
-          <section style={{ display: "grid", gap: 18 }}>
-            <SectionHeader
+        <div className="mt-6 grid gap-9">
+          <section className="grid gap-4">
+            <SettingsSectionHeader
               eyebrow="Group-specific overrides"
               title="Per-group adjustments"
               description="Override thresholds or health labels for a single group."
@@ -411,8 +417,8 @@ function ThresholdsPanel({
             </Card>
           </section>
 
-          <section style={{ display: "grid", gap: 14 }}>
-            <SectionHeader
+          <section className="grid gap-3.5">
+            <SettingsSectionHeader
               eyebrow="Currently overridden"
               title="Groups with active overrides"
               description="Clear an override to fall back to the global defaults."
@@ -423,10 +429,10 @@ function ThresholdsPanel({
                 description="Every group is following the global defaults above."
               />
             ) : (
-              <ul style={listResetStyle}>
+              <ul className="m-0 grid list-none gap-3 p-0">
                 {overrideRows.map(({ group, settings }) =>
                   group ? (
-                    <li key={settings.group_id} style={{ marginBottom: 12 }}>
+                    <li key={settings.group_id}>
                       <OverrideSummaryRow group={group} settings={settings} />
                     </li>
                   ) : null
@@ -448,23 +454,15 @@ function ThresholdsPanel({
 // path. Future reminder/email preferences will also land here.
 function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
-    <div style={{ display: "grid", gap: 18 }}>
-      <SectionHeader
+    <div className="grid gap-4">
+      <SettingsSectionHeader
         eyebrow="Imports"
         title="Bulk people import"
         description="Tools for loading people in bulk."
       />
       {isSuperAdmin ? <SuperAdminOnlyBadge /> : null}
       <Card>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: "0 0 14px",
-            lineHeight: 1.55,
-          }}
-        >
+        <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
           Bulk import stays in the Super Admin Console.{" "}
           {isSuperAdmin
             ? "Open the console to run an import."
@@ -532,38 +530,12 @@ function OverrideSummaryRow({
     chips.push({ key: "note", label: "Has notes" });
 
   return (
-    <article
-      className="lg-m-grid-stack"
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "14px 18px",
-        display: "grid",
-        gridTemplateColumns: "1fr auto",
-        gap: 12,
-        alignItems: "start",
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 16,
-            color: P.ink,
-            fontWeight: 500,
-          }}
-        >
+    <article className="grid grid-cols-1 items-start gap-3 rounded-md border border-line bg-surface px-[18px] py-3.5 md:grid-cols-[1fr_auto]">
+      <div className="min-w-0">
+        <div className="font-display text-lg font-medium text-ink">
           {group.name}
         </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 6,
-            marginTop: 8,
-          }}
-        >
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {chips.map((c) => (
             <PBadge key={c.key} tone={c.tone ?? "neutral"}>
               {c.label}
@@ -572,15 +544,7 @@ function OverrideSummaryRow({
         </div>
         {settings.admin_metric_notes &&
         settings.admin_metric_notes.trim().length > 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: "10px 0 0",
-              lineHeight: 1.5,
-            }}
-          >
+          <p className="m-0 mt-2.5 font-sans text-sm text-ink2">
             {settings.admin_metric_notes}
           </p>
         ) : null}
@@ -595,14 +559,7 @@ function OverrideSummaryRow({
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-      }}
-    >
+    <div className="rounded-lg border border-line bg-surface p-card">
       {children}
     </div>
   );
@@ -610,37 +567,11 @@ function Card({ children }: { children: React.ReactNode }) {
 
 function Empty({ title, description }: { title: string; description: string }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px dashed ${P.line}`,
-        borderRadius: 10,
-        padding: "22px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 16,
-          color: P.ink,
-          fontWeight: 500,
-          marginBottom: 6,
-        }}
-      >
+    <div className="rounded-lg border border-dashed border-line bg-surface px-6 py-[22px] text-center">
+      <div className="mb-1.5 font-display text-lg font-medium text-ink">
         {title}
       </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
-        {description}
-      </p>
+      <p className="m-0 font-sans text-sm text-ink2">{description}</p>
     </div>
   );
 }
@@ -671,42 +602,3 @@ function CouldNotLoad({ subject }: { subject: string }) {
     />
   );
 }
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
-
-const detailsStyle = {
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  padding: "16px 20px",
-  background: P.surface,
-} as const;
-
-const summaryStyle = {
-  display: "flex",
-  alignItems: "baseline",
-  gap: 10,
-  flexWrap: "wrap" as const,
-  fontFamily: fontDisplay,
-  fontSize: 18,
-  fontWeight: 500,
-  color: P.ink,
-  cursor: "pointer",
-};
-
-const summaryCountStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 400,
-  color: P.ink3,
-} as const;
-
-const infoStyle = {
-  background: P.bg,
-  border: `1px solid ${P.line}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
-  fontStyle: "italic",
-} as const;

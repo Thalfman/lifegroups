@@ -8,7 +8,7 @@
 // live in a visually separated panel so they never read as part of the wipe.
 
 import { useEffect, useState } from "react";
-import { PButton, pButtonStyle } from "@/components/pastoral/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import {
   superAdminCleanSlateWipe,
   superAdminCleanSlateRevert,
@@ -30,16 +30,14 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerSection,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Human-readable labels for the history tables shown in the impact preview.
 const TABLE_LABELS: Record<string, string> = {
@@ -104,73 +102,37 @@ export function CleanSlateCard({
       >
         {/* Impact preview — what would be cleared right now. */}
         {impact === null ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             Impact preview unavailable — the history counts couldn&rsquo;t be
             loaded. The wipe is disabled until they read successfully.
           </p>
         ) : nothingToWipe ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12.5,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink2">
             Nothing to clear — there is no accumulated history right now.
           </p>
         ) : (
-          <div
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 8,
-              background: P.bgDeep,
-              padding: "10px 12px",
-              display: "grid",
-              gap: 6,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 700,
-              }}
-            >
+          <div className="grid gap-1.5 rounded-sm border border-line bg-surfaceAlt px-3 py-2.5">
+            <div className="font-sans text-xs font-semibold text-ink3">
               Will clear {impact.total} row{impact.total === 1 ? "" : "s"}
             </div>
             {entries.map(([table, n]) => (
               <div
                 key={table}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  fontFamily: fontSans,
-                  fontSize: 12,
-                  color: P.ink2,
-                }}
+                className="flex justify-between gap-3 font-sans text-xs text-ink2"
               >
                 <span>{TABLE_LABELS[table] ?? table}</span>
-                <strong style={{ color: P.ink }}>{n}</strong>
+                <strong className="text-ink">{n}</strong>
               </div>
             ))}
           </div>
         )}
 
-        <form action={formAction} style={{ display: "grid", gap: 10 }}>
+        <form action={formAction} className="grid gap-2.5">
           <div>
-            <label htmlFor="clean-slate-confirm" style={fieldLabelStyle}>
+            <label
+              htmlFor="clean-slate-confirm"
+              className={fieldLabelClassName}
+            >
               Type {CLEAN_SLATE_CONFIRM_PHRASE} to confirm
             </label>
             <input
@@ -181,30 +143,27 @@ export function CleanSlateCard({
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={CLEAN_SLATE_CONFIRM_PHRASE}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <PButton
+          <div className="flex items-center gap-2.5">
+            <Button
               type="submit"
-              tone="terra"
+              variant="destructive"
               size="md"
               disabled={
                 pending || !phraseMatches || impact === null || nothingToWipe
               }
             >
               {pending ? "Clearing…" : "Clear history"}
-            </PButton>
+            </Button>
             {state?.ok ? (
               state.value.nothingToClear ? (
-                <span
-                  style={{ fontFamily: fontBody, fontSize: 13, color: P.ink2 }}
-                >
+                <span className="font-sans text-sm text-ink2">
                   Already clear — there was no accumulated history to clear.
                 </span>
               ) : (
-                <span style={successTextStyle}>
+                <span className={successTextClassName}>
                   Cleared {state.value.totalRows} row
                   {state.value.totalRows === 1 ? "" : "s"}. A snapshot was saved
                   for recovery.
@@ -274,51 +233,20 @@ function CleanSlateRecovery({
     >
       {/* Latest snapshot summary. */}
       {hasSnapshot ? (
-        <div
-          style={{
-            border: `1px solid ${P.line}`,
-            borderRadius: 8,
-            background: P.bgDeep,
-            padding: "10px 12px",
-            display: "grid",
-            gap: 4,
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink2,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
+        <div className="grid gap-1 rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-xs text-ink2">
+          <div className="flex justify-between gap-3">
             <span>Snapshot captured</span>
-            <strong style={{ color: P.ink }}>
+            <strong className="text-ink">
               {formatSnapshotTime(snapshot.createdAt)} UTC
             </strong>
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
+          <div className="flex justify-between gap-3">
             <span>Rows in snapshot</span>
-            <strong style={{ color: P.ink }}>{snapshot.totalRows}</strong>
+            <strong className="text-ink">{snapshot.totalRows}</strong>
           </div>
         </div>
       ) : (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           No recoverable snapshot — nothing has been cleared, or the last
           snapshot was already restored. You can still import a snapshot file
           below.
@@ -329,7 +257,7 @@ function CleanSlateRecovery({
       <form
         ref={revert.formRef}
         action={revert.formAction}
-        style={{ display: "grid", gap: 10 }}
+        className="grid gap-2.5"
       >
         {/* Bind the revert to the snapshot the operator actually sees. A stale
             tab whose snapshot was replaced by a later wipe then fails with
@@ -338,7 +266,10 @@ function CleanSlateRecovery({
           <input type="hidden" name="snapshotId" value={snapshot.id} />
         ) : null}
         <div>
-          <label htmlFor="clean-slate-revert-confirm" style={fieldLabelStyle}>
+          <label
+            htmlFor="clean-slate-revert-confirm"
+            className={fieldLabelClassName}
+          >
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
           </label>
           <input
@@ -349,37 +280,29 @@ function CleanSlateRecovery({
             value={revertConfirm}
             onChange={(e) => setRevertConfirm(e.target.value)}
             placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <PButton
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
             type="submit"
-            tone="terra"
+            variant="solid"
             size="md"
             disabled={revert.pending || !revertMatches || !hasSnapshot}
           >
             {revert.pending ? "Restoring…" : "Revert from snapshot"}
-          </PButton>
+          </Button>
           {hasSnapshot ? (
             <a
               href={`/admin/super-admin/clean-slate/export/${snapshot.id}`}
               rel="nofollow noreferrer"
-              style={pButtonStyle("ghost", "md")}
+              className={buttonClassName("ghost", "md")}
             >
               Export snapshot file
             </a>
           ) : null}
           {revert.state?.ok ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Restored {revert.state.value.totalRows} row
               {revert.state.value.totalRows === 1 ? "" : "s"} from the snapshot.
             </span>
@@ -392,10 +315,13 @@ function CleanSlateRecovery({
       <form
         ref={importForm.formRef}
         action={importForm.formAction}
-        style={{ display: "grid", gap: 10 }}
+        className="grid gap-2.5"
       >
         <div>
-          <label htmlFor="clean-slate-import-file" style={fieldLabelStyle}>
+          <label
+            htmlFor="clean-slate-import-file"
+            className={fieldLabelClassName}
+          >
             Import a snapshot file
           </label>
           <input
@@ -403,11 +329,14 @@ function CleanSlateRecovery({
             name="file"
             type="file"
             accept="application/json,.json"
-            style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
+            className="font-sans text-xs text-ink2"
           />
         </div>
         <div>
-          <label htmlFor="clean-slate-import-confirm" style={fieldLabelStyle}>
+          <label
+            htmlFor="clean-slate-import-confirm"
+            className={fieldLabelClassName}
+          >
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to confirm
           </label>
           <input
@@ -418,21 +347,20 @@ function CleanSlateRecovery({
             value={importConfirm}
             onChange={(e) => setImportConfirm(e.target.value)}
             placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <PButton
+        <div className="flex items-center gap-2.5">
+          <Button
             type="submit"
-            tone="terra"
+            variant="solid"
             size="md"
             disabled={importForm.pending || !importMatches}
           >
             {importForm.pending ? "Importing…" : "Import snapshot file"}
-          </PButton>
+          </Button>
           {importForm.state?.ok ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Imported {importForm.state.value.totalRows} row
               {importForm.state.value.totalRows === 1 ? "" : "s"} from the file.
             </span>

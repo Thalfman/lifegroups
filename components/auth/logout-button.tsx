@@ -3,11 +3,11 @@
 import { PButton } from "@/components/pastoral/button";
 import { logoutAction } from "@/app/(protected)/actions";
 
-// Default `className` is `lg-m-signout-hide` so the sign-out button in the
-// top header automatically hides on mobile (≤767px). The mobile nav drawer
-// renders <LogoutButton className="" /> explicitly to surface it there.
+// Default `className` hides the sign-out button in the top header on mobile
+// (≤767px). The mobile nav drawer renders <LogoutButton className="" />
+// explicitly to surface it there.
 export function LogoutButton({
-  className = "lg-m-signout-hide",
+  className = "hidden md:block",
 }: {
   className?: string;
 } = {}) {

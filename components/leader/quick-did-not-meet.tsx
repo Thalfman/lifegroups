@@ -2,7 +2,7 @@
 
 import { leaderQuickMarkDidNotMeet } from "@/app/(protected)/leader/actions";
 import { useActionForm } from "@/components/admin/forms/action-form";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { Button } from "@/components/ui/button";
 
 export function LeaderQuickDidNotMeet({
   groupId,
@@ -26,45 +26,27 @@ export function LeaderQuickDidNotMeet({
   }
 
   return (
-    <div style={{ display: "grid", gap: 6 }}>
+    <div className="grid gap-1.5">
       <form action={formAction} onSubmit={confirm}>
         <input type="hidden" name="group_id" value={groupId} />
-        <button
+        {/* Quiet secondary on the clay band — the primary is the check-in CTA. */}
+        <Button
           type="submit"
           disabled={pending}
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "1px solid rgba(255,255,255,0.65)",
-            color: P.surface,
-            borderRadius: 999,
-            padding: "10px 16px",
-            fontFamily: fontSans,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: pending ? "not-allowed" : "pointer",
-            opacity: pending ? 0.7 : 1,
-          }}
+          variant="ghost"
+          className="w-full border-white/65 text-surface hover:bg-white/10"
         >
           {pending
             ? "Saving…"
             : state?.ok
               ? "Saved — group did not meet"
               : "Group did not meet"}
-        </button>
+        </Button>
       </form>
       {state && !state.ok ? (
         <p
           role="alert"
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.surface,
-            background: "rgba(255,255,255,0.15)",
-            margin: 0,
-            padding: "6px 10px",
-            borderRadius: 8,
-          }}
+          className="m-0 rounded-sm bg-white/15 px-2.5 py-1.5 font-sans text-xs text-surface"
         >
           {state.errors.join(" ")}
         </p>

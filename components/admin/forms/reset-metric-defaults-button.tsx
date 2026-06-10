@@ -1,7 +1,6 @@
 "use client";
 
 import { adminResetMetricDefaults } from "@/app/(protected)/admin/settings/actions";
-import { P, fontBody } from "@/lib/pastoral";
 import { ConfirmActionButton } from "./confirm-action-button";
 
 // Restores the documented baseline metric defaults. Per-group overrides
@@ -30,16 +29,7 @@ export function ResetMetricDefaultsButton() {
       alignEnd={false}
       successText="Defaults restored."
       helperText={
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            margin: 0,
-            lineHeight: 1.4,
-            maxWidth: 480,
-          }}
-        >
+        <p className="m-0 max-w-[480px] font-sans text-xs text-ink3">
           Restores the built-in baseline (capacity 80% / 100% thresholds,
           24-hour check-in due offset, etc.). Per-group overrides stay intact
           &mdash; clear those individually from the list below.

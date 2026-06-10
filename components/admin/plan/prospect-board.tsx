@@ -1,32 +1,32 @@
-import type { CSSProperties } from "react";
 import type { ProspectState } from "@/types/enums";
+import { cn } from "@/lib/utils";
 import { PROSPECT_STATE_LABEL } from "@/lib/admin/prospect-funnel";
 import type { DueFollowUp } from "@/lib/admin/prospect-next-step";
 import type { ProspectBoard as Board } from "@/lib/supabase/prospect-reads";
 import { ProspectCard } from "@/components/admin/plan/prospect-card";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { badgeDotClassName, STATUS_TONES } from "@/components/ui/badge";
 
-// The four colour-coded funnel states (acceptance #2). Joined is green but
+// The four colour-coded funnel states (acceptance #2). Joined is sage but
 // rendered as a collapsed roll-up below the active columns (acceptance #4), so
-// only the three active states are live columns.
-const STATE_COLORS: Record<
-  ProspectState,
-  { bar: string; tint: string; text: string }
-> = {
-  interested: { bar: "#d9a521", tint: "#faf0d2", text: "#7a5e10" }, // yellow
-  matched: { bar: "#3f72af", tint: "#dde7f3", text: "#274b75" }, // blue
-  joined: { bar: "#5f8a4f", tint: "#dfe9d6", text: "#3e5a30" }, // green
-  not_at_this_time: { bar: "#c87a3a", tint: "#f4e0cc", text: "#8a4f1c" }, // orange
-};
-
-const columnStyle: CSSProperties = {
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  background: P.surface,
-  display: "flex",
-  flexDirection: "column",
-  minHeight: 120,
+// only the three active states are live columns. Tone is carried by a leading
+// status dot and the count's figure colour (never a stripe), both keyed to the
+// shared status vocabulary: interested = watch, matched = info, joined = well,
+// not_at_this_time = needs follow-up.
+const STATE_TONES: Record<ProspectState, { dot: string; figure: string }> = {
+  interested: {
+    dot: badgeDotClassName(STATUS_TONES.watch),
+    figure: "text-amberText",
+  },
+  matched: { dot: badgeDotClassName(STATUS_TONES.info), figure: "text-blue" },
+  joined: {
+    dot: badgeDotClassName(STATUS_TONES.well),
+    figure: "text-sageDeep",
+  },
+  not_at_this_time: {
+    dot: badgeDotClassName(STATUS_TONES.followUp),
+    figure: "text-clayDeep",
+  },
 };
 
 export function ProspectBoardView({
@@ -41,67 +41,37 @@ export function ProspectBoardView({
   dueTasks: DueFollowUp[];
 }) {
   return (
-    <div style={{ display: "grid", gap: 20 }}>
+    <div className="grid gap-5">
       <DueTasks dueTasks={dueTasks} />
 
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: 16,
-          alignItems: "start",
-        }}
-      >
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] md:gap-4">
         {board.columns.map((col) => {
-          const c = STATE_COLORS[col.state];
+          const tone = STATE_TONES[col.state];
           return (
-            <section key={col.state} style={columnStyle}>
-              <header
-                style={{
-                  borderTop: `4px solid ${c.bar}`,
-                  background: c.tint,
-                  borderTopLeftRadius: 8,
-                  borderTopRightRadius: 8,
-                  padding: "10px 14px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: 0.4,
-                    textTransform: "uppercase",
-                    color: c.text,
-                  }}
-                >
+            <section
+              key={col.state}
+              className="flex min-h-[120px] flex-col rounded-md border border-line bg-surface"
+            >
+              <header className="flex items-center justify-between gap-3 rounded-t-md bg-surfaceAlt px-3.5 py-2.5">
+                <span className="flex items-center gap-2 font-sans text-sm font-semibold text-ink">
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-2 w-2 shrink-0 rounded-pill", tone.dot)}
+                  />
                   {PROSPECT_STATE_LABEL[col.state]}
                 </span>
                 <span
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: c.text,
-                  }}
+                  className={cn(
+                    "font-sans text-sm font-semibold tabular-nums",
+                    tone.figure
+                  )}
                 >
                   {col.prospects.length}
                 </span>
               </header>
-              <div style={{ padding: 12, display: "grid", gap: 10 }}>
+              <div className="grid gap-2.5 p-3">
                 {col.prospects.length === 0 ? (
-                  <p
-                    style={{
-                      fontFamily: fontBody,
-                      fontSize: 13,
-                      color: P.ink3,
-                      margin: "4px 2px",
-                    }}
-                  >
+                  <p className="mx-0.5 my-1 font-sans text-sm text-ink3">
                     No prospects here yet.
                   </p>
                 ) : (
@@ -133,96 +103,40 @@ export function ProspectBoardView({
 // makes clear nothing is sent and the mechanism is "to be configured".
 function DueTasks({ dueTasks }: { dueTasks: DueFollowUp[] }) {
   return (
-    <section
-      style={{
-        border: `1px solid ${P.line}`,
-        borderLeft: "4px solid #c87a3a",
-        borderRadius: 10,
-        background: P.surface,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 12,
-        }}
-      >
-        <h2
-          style={{
-            fontFamily: fontSans,
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: 0.4,
-            textTransform: "uppercase",
-            color: "#8a4f1c",
-            margin: 0,
-          }}
-        >
+    <section className="grid gap-2 rounded-md border border-line bg-surface px-3.5 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="m-0 flex items-center gap-2 font-display text-lg font-medium text-ink">
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 shrink-0 rounded-pill bg-clay"
+          />
           Due tasks ({dueTasks.length})
         </h2>
       </div>
 
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 11,
-          color: P.ink3,
-          background: P.surface,
-          border: `1px dashed ${P.line}`,
-          borderRadius: 6,
-          padding: "6px 8px",
-          margin: 0,
-        }}
-      >
+      <p className="m-0 rounded-sm border border-dashed border-line px-2 py-1.5 font-sans text-xs text-ink3">
         No messaging provider is wired yet — to be configured. These are armed
         follow-ups shown as reminders; nothing is sent automatically.
       </p>
 
       {dueTasks.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: "2px 2px",
-          }}
-        >
+        <p className="mx-0.5 my-0.5 font-sans text-sm text-ink3">
           No follow-ups are due.
         </p>
       ) : (
-        <ul
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            display: "grid",
-            gap: 6,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-1.5 p-0">
           {dueTasks.map((t) => (
             <li
               key={t.id}
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
+              className="flex justify-between gap-3 font-sans text-sm text-ink"
             >
               <span>
                 {t.full_name}
                 {t.detail ? (
-                  <span style={{ color: P.ink2 }}> — {t.detail}</span>
+                  <span className="text-ink2"> — {t.detail}</span>
                 ) : null}
               </span>
-              <span style={{ color: P.ink2, whiteSpace: "nowrap" }}>
+              <span className="whitespace-nowrap text-ink2">
                 due {t.dueDate}
               </span>
             </li>
@@ -235,66 +149,34 @@ function DueTasks({ dueTasks }: { dueTasks: DueFollowUp[] }) {
 
 // Collapsed Joined roll-up (acceptance #4): joined Prospects leave the active
 // board entirely. They appear only here, name + group, with no count column /
-// roster row on the board. Green to match the Joined colour.
+// roster row on the board. A sage status dot marks the Joined tone.
 function JoinedRollup({ board }: { board: Board }) {
-  const c = STATE_COLORS.joined;
+  const tone = STATE_TONES.joined;
   return (
-    <details
-      style={{
-        border: `1px solid ${P.line}`,
-        borderLeft: `4px solid ${c.bar}`,
-        borderRadius: 10,
-        background: c.tint,
-        padding: "10px 14px",
-      }}
-    >
-      <summary
-        style={{
-          cursor: "pointer",
-          fontFamily: fontSans,
-          fontSize: 13,
-          fontWeight: 700,
-          color: c.text,
-          listStyle: "revert",
-        }}
-      >
+    <details className="rounded-md border border-line bg-surface px-3.5 py-2.5">
+      <summary className="cursor-pointer font-sans text-sm font-semibold text-ink [list-style:revert] hover:underline">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mr-2 inline-block h-2 w-2 shrink-0 rounded-pill align-baseline",
+            tone.dot
+          )}
+        />
         {PROSPECT_STATE_LABEL.joined} ({board.joined.length})
       </summary>
       {board.joined.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: "10px 2px 2px",
-          }}
-        >
+        <p className="mx-0.5 mb-0.5 mt-2.5 font-sans text-sm text-ink3">
           No one has joined a group yet.
         </p>
       ) : (
-        <ul
-          style={{
-            margin: "10px 0 0",
-            padding: 0,
-            listStyle: "none",
-            display: "grid",
-            gap: 6,
-          }}
-        >
+        <ul className="m-0 mt-2.5 grid list-none gap-1.5 p-0">
           {board.joined.map((j) => (
             <li
               key={j.id}
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
+              className="flex justify-between gap-3 font-sans text-sm text-ink"
             >
               <span>{j.full_name}</span>
-              <span style={{ color: P.ink2 }}>{j.groupName ?? "—"}</span>
+              <span className="text-ink2">{j.groupName ?? "—"}</span>
             </li>
           ))}
         </ul>

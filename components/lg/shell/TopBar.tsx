@@ -12,26 +12,11 @@ export function TopBar({
   signOutSlot?: ReactNode;
 }) {
   return (
-    <div
-      className="lg-shell-topbar"
-      style={{
-        height: 56,
-        borderBottom: "1px solid var(--c-line)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 32px",
-        background: "var(--c-bg)",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-        gap: 12,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+    <div className="sticky top-0 z-sticky flex h-14 items-center justify-between gap-3 border-b border-line bg-surfaceAlt px-4 md:px-8">
+      <div className="flex min-w-0 items-center gap-3">
         {mobileTrigger ?? null}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+      <div className="flex min-w-0 items-center gap-3.5">
         <UserPill user={user} />
         {signOutSlot ?? null}
       </div>
@@ -46,42 +31,13 @@ function UserPill({
 }) {
   const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   return (
-    <div
-      className="lg-m-userpill"
-      style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}
-    >
+    <div className="flex min-w-0 items-center gap-2.5">
       <Avatar name={user.name} size={28} tone="sage" />
-      <div
-        className="lg-m-userpill-text"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          lineHeight: 1.2,
-          minWidth: 0,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: "var(--c-ink)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: 200,
-          }}
-        >
+      <div className="hidden min-w-0 flex-col leading-tight md:flex">
+        <span className="max-w-[200px] truncate font-sans text-sm font-semibold text-ink">
           {user.name}
         </span>
-        <span
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 10.5,
-            color: "var(--c-ink3)",
-            letterSpacing: 0.3,
-          }}
-        >
+        <span className="font-sans text-2xs tracking-wide text-ink3">
           {roleLabel}
         </span>
       </div>

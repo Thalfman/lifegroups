@@ -10,11 +10,14 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 export type ShellNavItem = { href: string; label: string };
 
-function bestMatchHref(pathname: string | null, items: ShellNavItem[]): string | null {
+function bestMatchHref(
+  pathname: string | null,
+  items: ShellNavItem[]
+): string | null {
   if (!pathname) return null;
   let bestHref: string | null = null;
   let bestScore = -1;
@@ -50,17 +53,11 @@ export function ShellNav({
 
   return (
     <Fragment>
+      {/* Desktop rail (was .lg-m-nav-desktop): hidden on mobile, where the
+          drawer trigger takes over. */}
       <nav
         aria-label="Primary"
-        className="lg-m-nav-desktop"
-        style={{
-          display: "flex",
-          gap: "clamp(18px, 3vw, 32px)",
-          fontFamily: fontBody,
-          fontSize: 14,
-          flexWrap: "wrap",
-          justifyContent: "center",
-        }}
+        className="hidden flex-wrap justify-center gap-5 font-sans text-base lg:gap-8 md:flex"
       >
         {items.map((item) => {
           const active = item.href === activeHref;
@@ -69,16 +66,12 @@ export function ShellNav({
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              style={{
-                color: active ? P.terra : P.ink2,
-                fontWeight: active ? 600 : 400,
-                fontStyle: active ? "normal" : "italic",
-                borderBottom: active ? `1.5px solid ${P.terra}` : "1.5px solid transparent",
-                paddingBottom: 18,
-                marginBottom: -19,
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-              }}
+              className={cn(
+                "-mb-[19px] whitespace-nowrap border-b-[1.5px] pb-[18px] no-underline",
+                active
+                  ? "border-clay font-semibold text-clay"
+                  : "border-transparent font-normal italic text-ink2"
+              )}
             >
               {item.label}
             </Link>
@@ -86,100 +79,35 @@ export function ShellNav({
         })}
       </nav>
 
+      {/* Mobile drawer trigger (was .lg-m-nav-trigger). */}
       <button
         type="button"
-        className="lg-m-nav-trigger"
         aria-label="Open menu"
         aria-expanded={drawerOpen}
         onClick={() => setDrawerOpen(true)}
-        style={{
-          display: "none",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 40,
-          height: 40,
-          padding: 0,
-          borderRadius: 8,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          color: P.ink,
-          cursor: "pointer",
-        }}
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-line bg-surface p-0 text-ink md:hidden"
       >
         <HamburgerIcon />
       </button>
 
       <Dialog open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DialogPortal>
-          <DialogOverlay
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(58, 42, 26, 0.45)",
-              zIndex: 60,
-            }}
-          />
+          {/* Warm scrim — ink at 45%. */}
+          <DialogOverlay className="fixed inset-0 z-overlay bg-ink/45" />
+          {/* 100dvh respects dynamic browser chrome (iOS Safari, Chrome
+              Android toolbars) so the drawer footer stays reachable. */}
           <DialogContent
             aria-describedby={undefined}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              bottom: 0,
-              // 100dvh respects dynamic browser chrome (iOS Safari, Chrome
-              // Android toolbars) so the drawer footer stays reachable.
-              height: "100dvh",
-              width: "min(320px, 86vw)",
-              background: P.bg,
-              borderRight: `1px solid ${P.line}`,
-              borderRadius: 0,
-              padding: 0,
-              zIndex: 61,
-              boxShadow: "0 18px 48px rgba(58, 42, 26, 0.2)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
+            className="fixed bottom-0 left-0 top-0 z-drawer flex h-dvh w-[min(320px,86vw)] flex-col overflow-hidden rounded-none border-r border-line bg-bg p-0 shadow-softLg"
           >
-            <header
-              style={{
-                padding: "16px 18px",
-                borderBottom: `1px solid ${P.line}`,
-                background: P.surface,
-              }}
-            >
-              <DialogTitle
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 600,
-                  margin: 0,
-                }}
-              >
+            <header className="border-b border-line bg-surface px-[18px] py-4">
+              <DialogTitle className="m-0 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-ink3">
                 Menu
               </DialogTitle>
             </header>
 
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                background: P.bg,
-              }}
-            >
-              <ul
-                className="lg-m-nav-drawer-list"
-                style={{
-                  listStyle: "none",
-                  padding: 8,
-                  margin: 0,
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
+            <div className="flex-1 overflow-y-auto bg-bg">
+              <ul className="m-0 grid list-none gap-1 p-2">
                 {items.map((item) => {
                   const active = item.href === activeHref;
                   return (
@@ -188,21 +116,12 @@ export function ShellNav({
                         href={item.href}
                         aria-current={active ? "page" : undefined}
                         onClick={() => setDrawerOpen(false)}
-                        className="lg-m-nav-drawer-link"
-                        style={{
-                          display: "block",
-                          padding: "14px 16px",
-                          borderRadius: 10,
-                          fontFamily: fontBody,
-                          fontSize: 16,
-                          textDecoration: "none",
-                          color: active ? P.terra : P.ink,
-                          background: active ? P.terraSoft : "transparent",
-                          fontWeight: active ? 600 : 500,
-                          border: active
-                            ? `1px solid ${P.terra}`
-                            : `1px solid transparent`,
-                        }}
+                        className={cn(
+                          "block rounded-sm border px-4 py-3.5 font-sans text-md no-underline",
+                          active
+                            ? "border-clay bg-claySoft font-semibold text-clay"
+                            : "border-transparent font-medium text-ink"
+                        )}
                       >
                         {item.label}
                       </Link>
@@ -213,16 +132,7 @@ export function ShellNav({
             </div>
 
             {(mobileUser || mobileSignOut) && (
-              <footer
-                style={{
-                  borderTop: `1px solid ${P.line}`,
-                  background: P.surface,
-                  padding: 16,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                }}
-              >
+              <footer className="flex flex-col gap-3 border-t border-line bg-surface p-4">
                 {mobileUser ? <div>{mobileUser}</div> : null}
                 {mobileSignOut ? <div>{mobileSignOut}</div> : null}
               </footer>

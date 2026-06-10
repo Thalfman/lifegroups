@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateGroup } from "@/app/(protected)/admin/groups/actions";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
+  fieldHintClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formGridClassName,
 } from "./field-styles";
-import { P, fontBody } from "@/lib/pastoral";
 import {
   MEETING_DAYS_ORDERED,
   MEETING_FREQUENCY_OPTIONS,
@@ -93,23 +95,14 @@ export function GroupEditForm({
     !activeOptions.some((c) => c.id === currentCategoryId);
 
   return (
-    <form
-      action={formAction}
-      onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
-    >
+    <form action={formAction} onChange={onDirty} className="grid gap-3">
       <input type="hidden" name="group_id" value={group.id} />
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 14,
-          alignItems: "end",
-        }}
-      >
+      <div className={formGridClassName}>
         <div>
-          <label htmlFor={`edit-name-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-name-${group.id}`}
+            className={fieldLabelClassName}
+          >
             Group name
           </label>
           <input
@@ -118,13 +111,13 @@ export function GroupEditForm({
             type="text"
             required
             defaultValue={group.name}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
         <div>
           <label
             htmlFor={`edit-meeting_day-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Meeting day
           </label>
@@ -132,7 +125,7 @@ export function GroupEditForm({
             id={`edit-meeting_day-${group.id}`}
             name="meeting_day"
             defaultValue={group.meeting_day ?? ""}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Not set</option>
             {MEETING_DAYS_ORDERED.map((day) => (
@@ -145,7 +138,7 @@ export function GroupEditForm({
         <div>
           <label
             htmlFor={`edit-meeting_time-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Meeting time
           </label>
@@ -154,13 +147,13 @@ export function GroupEditForm({
             name="meeting_time"
             type="time"
             defaultValue={isoTimeForInput(group.meeting_time)}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
         <div>
           <label
             htmlFor={`edit-meeting_frequency-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Meeting frequency
           </label>
@@ -169,7 +162,7 @@ export function GroupEditForm({
             name="meeting_frequency"
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             {MEETING_FREQUENCY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -182,7 +175,7 @@ export function GroupEditForm({
           <div>
             <label
               htmlFor={`edit-meeting_week_parity-${group.id}`}
-              style={fieldLabelStyle}
+              className={fieldLabelClassName}
             >
               Which weeks does it meet?
             </label>
@@ -190,7 +183,7 @@ export function GroupEditForm({
               id={`edit-meeting_week_parity-${group.id}`}
               name="meeting_week_parity"
               defaultValue={group.meeting_week_parity ?? ""}
-              style={fieldSelectStyle}
+              className={fieldSelectClassName}
             >
               <option value="">Choose weeks</option>
               {MEETING_PARITY_OPTIONS.map((opt) => (
@@ -199,15 +192,7 @@ export function GroupEditForm({
                 </option>
               ))}
             </select>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-                margin: "6px 0 0",
-                lineHeight: 1.4,
-              }}
-            >
+            <p className={fieldHintClassName}>
               For groups that meet every other week. Odd and even weeks
               alternate through the year — pick the set this group gathers on.
             </p>
@@ -216,7 +201,7 @@ export function GroupEditForm({
         <div>
           <label
             htmlFor={`edit-location_area-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Location area
           </label>
@@ -225,14 +210,14 @@ export function GroupEditForm({
             name="location_area"
             type="text"
             defaultValue={group.location_area ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Westside"
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div className="md:col-span-full">
           <label
             htmlFor={`edit-address_optional-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Address
           </label>
@@ -241,11 +226,14 @@ export function GroupEditForm({
             name="address_optional"
             type="text"
             defaultValue={group.address_optional ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
         <div>
-          <label htmlFor={`edit-capacity-${group.id}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`edit-capacity-${group.id}`}
+            className={fieldLabelClassName}
+          >
             Capacity
           </label>
           <input
@@ -256,14 +244,14 @@ export function GroupEditForm({
             max={1000}
             inputMode="numeric"
             defaultValue={group.capacity ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="12"
           />
         </div>
         <div>
           <label
             htmlFor={`edit-audience_category-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Audience
           </label>
@@ -274,7 +262,7 @@ export function GroupEditForm({
             onChange={(e) =>
               setAudience(e.target.value as GroupAudienceCategory | "")
             }
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Unset</option>
             <option value="men">Men</option>
@@ -285,7 +273,7 @@ export function GroupEditForm({
         <div>
           <label
             htmlFor={`edit-category_id-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Category
           </label>
@@ -302,7 +290,7 @@ export function GroupEditForm({
                 : ""
             }
             disabled={!audience}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Uncategorized</option>
             {currentCategoryMissing ? (
@@ -320,7 +308,7 @@ export function GroupEditForm({
         <div>
           <label
             htmlFor={`edit-launched_on-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Launched on
           </label>
@@ -329,13 +317,13 @@ export function GroupEditForm({
             name="launched_on"
             type="date"
             defaultValue={group.launched_on ?? ""}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div className="md:col-span-full">
           <label
             htmlFor={`edit-description-${group.id}`}
-            style={fieldLabelStyle}
+            className={fieldLabelClassName}
           >
             Description
           </label>
@@ -344,22 +332,12 @@ export function GroupEditForm({
             name="description"
             rows={3}
             defaultValue={group.description ?? ""}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            className={cn(fieldInputClassName, "min-h-20 resize-y")}
           />
         </div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-          paddingTop: 10,
-          borderTop: `1px solid ${P.line}`,
-          marginTop: 2,
-        }}
-      >
+      <div className="mt-0.5 flex flex-wrap items-center gap-2.5 border-t border-line pt-2.5">
         <PButton type="submit" tone="terra" size="sm" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
         </PButton>

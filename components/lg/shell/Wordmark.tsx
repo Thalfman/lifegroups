@@ -5,13 +5,7 @@ export function Wordmark({ href = "/admin" }: { href?: string }) {
   return (
     <Link
       href={href}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 11,
-        color: "inherit",
-        textDecoration: "none",
-      }}
+      className="flex items-center gap-2.5 text-inherit no-underline"
     >
       <Image
         src="/logo.png"
@@ -19,35 +13,13 @@ export function Wordmark({ href = "/admin" }: { href?: string }) {
         width={32}
         height={32}
         priority
-        style={{
-          display: "block",
-          width: 32,
-          height: 32,
-          objectFit: "contain",
-        }}
+        className="block h-8 w-8 object-contain"
       />
-      <div
-        style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 16,
-            fontWeight: 500,
-            color: "var(--c-ink)",
-          }}
-        >
+      <div className="flex flex-col leading-[1.1]">
+        <span className="font-display text-lg font-medium leading-[1.1] text-ink">
           Life Groups
         </span>
-        <span
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 10,
-            letterSpacing: 1.6,
-            textTransform: "uppercase",
-            color: "var(--c-ink3)",
-          }}
-        >
+        <span className="font-sans text-2xs uppercase tracking-[0.14em] text-ink3">
           Fox Valley Church
         </span>
       </div>

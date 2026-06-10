@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
+import { paperGrain } from "@/lib/pastoral";
 import { PSeal, POrnament } from "@/components/pastoral/atoms";
 import { ShellNav, type ShellNavItem } from "@/components/pastoral/shell-nav";
 import { UserPill } from "@/components/auth/user-pill";
@@ -20,7 +20,7 @@ export function PastoralAppShell({
   currentUser,
   children,
   contentMaxWidth = 1240,
-  contentPad = "36px 36px",
+  contentPad,
 }: {
   navItems?: PastoralShellNavItem[];
   eyebrow?: ReactNode;
@@ -34,6 +34,8 @@ export function PastoralAppShell({
   currentUser?: { name: string; email: string | null; role: UserRole };
   children: ReactNode;
   contentMaxWidth?: number;
+  // Escape hatch for a caller that needs non-standard main padding; the
+  // default rhythm (14/16 mobile → 36 desktop) comes from Tailwind classes.
   contentPad?: string;
 }) {
   const mobileUser = currentUser ? (
@@ -47,16 +49,7 @@ export function PastoralAppShell({
   const mobileSignOut = currentUser ? <LogoutButton className="" /> : null;
 
   return (
-    <div
-      className="lg-m-noscrollx"
-      style={{
-        background: P.bg,
-        minHeight: "100vh",
-        fontFamily: fontBody,
-        color: P.ink,
-        position: "relative",
-      }}
-    >
+    <div className="lg-m-noscrollx relative min-h-screen bg-bg font-sans text-ink">
       <div aria-hidden="true" style={paperGrain} />
 
       <a
@@ -66,46 +59,13 @@ export function PastoralAppShell({
         Skip to content
       </a>
 
-      <header
-        className="lg-m-shell-header"
-        style={{
-          padding: "18px 36px",
-          background: P.surface,
-          borderBottom: `1px solid ${P.line}`,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 24,
-          flexWrap: "wrap",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
+      <header className="relative z-base flex flex-nowrap items-center justify-between gap-2.5 border-b border-line bg-surface px-3.5 py-3 md:flex-wrap md:gap-6 md:px-9 md:py-4">
         <Link
           href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            color: "inherit",
-            textDecoration: "none",
-            minWidth: 0,
-          }}
+          className="flex min-w-0 items-center gap-3 text-inherit no-underline"
         >
           <PSeal />
-          <div
-            className="lg-m-shell-brand-text"
-            style={{
-              fontFamily: fontSans,
-              fontSize: 16,
-              fontWeight: 600,
-              letterSpacing: -0.2,
-              color: P.ink,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
+          <div className="truncate font-display text-md font-medium text-ink md:text-lg">
             Fox Valley Church Life Groups
           </div>
         </Link>
@@ -120,104 +80,48 @@ export function PastoralAppShell({
           <div />
         )}
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-          }}
-        >
+        <div className="flex items-center gap-3.5 font-sans text-sm text-ink2">
           {headerSlot}
         </div>
       </header>
 
       <main
         id="main"
-        className="lg-m-shell-main"
+        className="relative z-base mx-auto w-full px-3.5 py-4 md:p-9"
         style={{
-          padding: contentPad,
           maxWidth: contentMaxWidth,
-          margin: "0 auto",
-          position: "relative",
-          zIndex: 1,
+          ...(contentPad ? { padding: contentPad } : undefined),
         }}
       >
         {(title || titleItalic || eyebrow || lede || actions) && (
-          <div
-            className="lg-m-shell-titlerow"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              flexWrap: "wrap",
-              gap: 20,
-              marginBottom: 32,
-            }}
-          >
-            <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="mb-5 flex flex-col items-start gap-2.5 md:mb-8 md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-5">
+            <div className="min-w-0 flex-1">
               <POrnament w={80} />
               {eyebrow ? (
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    letterSpacing: 2.2,
-                    textTransform: "uppercase",
-                    color: P.ink3,
-                    fontWeight: 600,
-                    margin: "14px 0 8px",
-                  }}
-                >
+                /* The page kicker — the one tracked-uppercase voice per page. */
+                <div className="mb-2 mt-3.5 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-ink3">
                   {eyebrow}
                 </div>
               ) : null}
               {(title || titleItalic) && (
-                <h1
-                  className="lg-m-shell-title"
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: "clamp(34px, 5vw, 54px)",
-                    margin: 0,
-                    fontWeight: 500,
-                    letterSpacing: "-0.025em",
-                    lineHeight: 1.02,
-                    color: P.ink,
-                  }}
-                >
+                <h1 className="m-0 font-display text-3xl font-normal text-ink md:text-4xl">
                   {title}
                   {titleItalic ? (
                     <>
                       {title ? " " : null}
-                      <span style={{ fontStyle: "italic", color: P.terra }}>
-                        {titleItalic}
-                      </span>
+                      <span className="italic text-clay">{titleItalic}</span>
                     </>
                   ) : null}
                 </h1>
               )}
               {lede ? (
-                <p
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 16,
-                    color: P.ink2,
-                    margin: "14px 0 0",
-                    maxWidth: 600,
-                    lineHeight: 1.55,
-                  }}
-                >
+                <p className="mb-0 mt-3 max-w-lede font-sans text-base text-ink2">
                   {lede}
                 </p>
               ) : null}
             </div>
             {actions ? (
-              <div
-                className="lg-m-shell-actions"
-                style={{ display: "flex", gap: 10, flexShrink: 0, flexWrap: "wrap" }}
-              >
+              <div className="flex w-full flex-wrap gap-2.5 md:w-auto md:shrink-0 [&>*]:flex-auto md:[&>*]:flex-none">
                 {actions}
               </div>
             ) : null}

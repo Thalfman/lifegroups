@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/button";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import type { CareAccordionPane } from "@/lib/admin/care-accordion";
@@ -22,7 +22,7 @@ import type { CareAccordionPane } from "@/lib/admin/care-accordion";
 
 function Chevron() {
   return (
-    <span aria-hidden="true" style={{ display: "inline-flex", color: P.ink3 }}>
+    <span aria-hidden="true" className="inline-flex text-ink3">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path
           d="M4 2l4 4-4 4"
@@ -35,14 +35,6 @@ function Chevron() {
     </span>
   );
 }
-
-const summaryStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "14px 18px",
-  cursor: "pointer",
-};
 
 function leaderCountLabel(count: number): string {
   return `${count} leader${count === 1 ? "" : "s"}`;
@@ -57,50 +49,29 @@ function CarePane({
 }) {
   return (
     <details
-      style={{
-        background: P.surface,
-        border: `1px solid ${pane.isUnassigned ? P.line2 : P.line}`,
-        borderRadius: 12,
-      }}
+      className={cn(
+        "rounded-md border bg-surface",
+        pane.isUnassigned ? "border-lineSoft" : "border-line"
+      )}
     >
-      <summary style={summaryStyle}>
+      <summary className="flex cursor-pointer items-center gap-2.5 rounded-md px-4 py-3.5 transition-colors duration-150 hover:bg-surfaceAlt">
         <Chevron />
         <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontFamily: fontSans,
-            fontSize: 14,
-            fontWeight: 700,
-            color: pane.isUnassigned ? P.ink2 : P.ink,
-            overflowWrap: "anywhere",
-          }}
+          className={cn(
+            "min-w-0 flex-1 font-sans text-base font-semibold [overflow-wrap:anywhere]",
+            pane.isUnassigned ? "text-ink2" : "text-ink"
+          )}
         >
           {pane.overShepherdName}
         </span>
-        <span
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            whiteSpace: "nowrap",
-          }}
-        >
+        <span className="whitespace-nowrap font-sans text-sm text-ink3">
           {leaderCountLabel(pane.leaders.length)}
         </span>
       </summary>
 
-      <div style={{ display: "grid", gap: 10, padding: "4px 18px 18px" }}>
+      <div className="grid gap-2.5 px-4 pb-4 pt-1">
         {pane.leaders.length === 0 ? (
-          <p
-            style={{
-              margin: 0,
-              fontFamily: fontBody,
-              fontSize: 13,
-              fontStyle: "italic",
-              color: P.ink3,
-            }}
-          >
+          <p className="m-0 font-sans text-sm italic text-ink3">
             {pane.isUnassigned
               ? "Every leader has an over-shepherd."
               : "No leaders covered yet."}
@@ -116,14 +87,7 @@ function CarePane({
             the engine refuses — a delete while active coverage assignments still
             reference this over-shepherd, so they must be cleared first. */}
         {isSuperAdmin && pane.overShepherdId && !pane.isUnassigned ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              borderTop: `1px solid ${P.line2}`,
-              paddingTop: 10,
-            }}
-          >
+          <div className="flex justify-end border-t border-lineSoft pt-2.5">
             <SuperAdminInlineDelete
               entityType="over_shepherd"
               id={pane.overShepherdId}
@@ -144,49 +108,24 @@ export function CareAccordion({
   isSuperAdmin?: boolean;
 }) {
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div className="grid gap-4">
       {/* Coverage maintenance is NOT rebuilt here (#373 req 4): link out to the
           existing over-shepherd coverage surface, which still resolves under
           /admin/shepherd-care (ADR 0008/0009). Since #477 this link is the
           coverage-management entry the retired Coverage tab used to carry. */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-          }}
-        >
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <p className="m-0 font-sans text-sm text-ink2">
           Leaders grouped by their over-shepherd.
         </p>
         <Link
           href="/admin/shepherd-care/over-shepherds"
-          style={{
-            fontFamily: fontSans,
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: P.sageTextStrong,
-            textDecoration: "none",
-            border: `1px solid ${P.line}`,
-            borderRadius: 999,
-            padding: "7px 14px",
-            whiteSpace: "nowrap",
-          }}
+          className={buttonClassName("ghost", "sm", "whitespace-nowrap")}
         >
           Manage coverage →
         </Link>
       </div>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid gap-3">
         {panes.map((pane) => (
           <CarePane
             key={pane.overShepherdId ?? "unassigned"}

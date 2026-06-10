@@ -4,13 +4,6 @@ import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateFollowUp } from "@/app/(protected)/admin/follow-ups/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formGridStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
-import {
   followUpPriorityLabel,
   followUpTypeLabel,
 } from "@/lib/dashboard/labels";
@@ -33,6 +26,14 @@ const TYPES: FollowUpType[] = [
 ];
 
 const PRIORITIES: FollowUpPriority[] = ["low", "normal", "high"];
+
+// Design-system form field classes (docs/design-direction.md §4 Forms):
+// tracked-uppercase survives in form field labels; inputs are full-width,
+// rounded-sm, line-bordered, with the global focus ring.
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 export function FollowUpCreateForm({
   groups,
@@ -85,16 +86,16 @@ export function FollowUpCreateForm({
       ref={formRef}
       action={formAction}
       onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
-      <p style={formNoteStyle}>
+      <p className="mb-3 mt-0 font-sans text-sm text-ink2">
         Title and type are required. Relate it to whichever entity makes sense —
         group, member, guest — and assign someone if you want them to own it.
         Notes are optional and capped at 1000 characters each.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:items-end md:gap-3.5">
         <div>
-          <label htmlFor="fu-title" style={fieldLabelStyle}>
+          <label htmlFor="fu-title" className={FIELD_LABEL}>
             Title
           </label>
           <input
@@ -103,12 +104,12 @@ export function FollowUpCreateForm({
             type="text"
             required
             maxLength={200}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
             placeholder="Reach out to Skyler about placement"
           />
         </div>
         <div>
-          <label htmlFor="fu-type" style={fieldLabelStyle}>
+          <label htmlFor="fu-type" className={FIELD_LABEL}>
             Type
           </label>
           <select
@@ -116,7 +117,7 @@ export function FollowUpCreateForm({
             name="type"
             required
             defaultValue="guest"
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             {TYPES.map((t) => (
               <option key={t} value={t}>
@@ -126,14 +127,14 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-priority" style={fieldLabelStyle}>
+          <label htmlFor="fu-priority" className={FIELD_LABEL}>
             Priority
           </label>
           <select
             id="fu-priority"
             name="priority"
             defaultValue="normal"
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             {PRIORITIES.map((p) => (
               <option key={p} value={p}>
@@ -143,25 +144,25 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-due_date" style={fieldLabelStyle}>
+          <label htmlFor="fu-due_date" className={FIELD_LABEL}>
             Due date (optional)
           </label>
           <input
             id="fu-due_date"
             name="due_date"
             type="date"
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
           />
         </div>
         <div>
-          <label htmlFor="fu-related_group_id" style={fieldLabelStyle}>
+          <label htmlFor="fu-related_group_id" className={FIELD_LABEL}>
             Related group (optional)
           </label>
           <select
             id="fu-related_group_id"
             name="related_group_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             <option value="">—</option>
             {groups.map((g) => (
@@ -173,14 +174,14 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-related_member_id" style={fieldLabelStyle}>
+          <label htmlFor="fu-related_member_id" className={FIELD_LABEL}>
             Related member (optional)
           </label>
           <select
             id="fu-related_member_id"
             name="related_member_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             <option value="">—</option>
             {sortedMembers.map((m) => (
@@ -191,14 +192,14 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-related_guest_id" style={fieldLabelStyle}>
+          <label htmlFor="fu-related_guest_id" className={FIELD_LABEL}>
             Related guest (optional)
           </label>
           <select
             id="fu-related_guest_id"
             name="related_guest_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             <option value="">—</option>
             {guests.map((g) => (
@@ -209,14 +210,14 @@ export function FollowUpCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="fu-assigned_to" style={fieldLabelStyle}>
+          <label htmlFor="fu-assigned_to" className={FIELD_LABEL}>
             Assigned to (optional)
           </label>
           <select
             id="fu-assigned_to"
             name="assigned_to"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={FIELD_INPUT}
           >
             <option value="">— (unassigned)</option>
             {assignees.map((p) => (
@@ -226,8 +227,8 @@ export function FollowUpCreateForm({
             ))}
           </select>
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="fu-leader_visible_note" style={fieldLabelStyle}>
+        <div className="col-span-full">
+          <label htmlFor="fu-leader_visible_note" className={FIELD_LABEL}>
             Leader-visible note (optional, max 1000 chars)
           </label>
           <textarea
@@ -235,12 +236,12 @@ export function FollowUpCreateForm({
             name="leader_visible_note"
             rows={2}
             maxLength={1000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 60 }}
+            className={`${FIELD_INPUT} min-h-[60px] resize-y`}
             placeholder="Anything the assigned leader should see when they open this."
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="fu-admin_private_note" style={fieldLabelStyle}>
+        <div className="col-span-full">
+          <label htmlFor="fu-admin_private_note" className={FIELD_LABEL}>
             Admin-private note (optional, max 1000 chars) — leaders never see
             this
           </label>
@@ -249,11 +250,11 @@ export function FollowUpCreateForm({
             name="admin_private_note"
             rows={2}
             maxLength={1000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 60 }}
+            className={`${FIELD_INPUT} min-h-[60px] resize-y`}
             placeholder="Context only the admin team should see."
           />
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-2.5">
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add follow-up"}
           </PButton>

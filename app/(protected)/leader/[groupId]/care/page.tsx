@@ -14,7 +14,6 @@ import {
   type LeaderSafeGroupRow,
 } from "@/lib/supabase/read-models";
 import type { PrayerRequestsRow } from "@/types/database";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
@@ -80,41 +79,25 @@ export default async function LeaderGroupCarePage({
         </>
       }
     >
-      <div style={{ display: "grid", gap: 18 }}>
-        <nav
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink3,
-            flexWrap: "wrap",
-          }}
-        >
+      <div className="grid gap-4">
+        <nav className="flex flex-wrap items-center gap-3 font-sans text-xs text-ink3">
           <Link
             href={`/leader/${groupId}/calendar`}
-            style={{ color: P.ink2, textDecoration: "none" }}
+            className="text-ink2 no-underline hover:text-ink"
             aria-label={`Calendar for ${group.name}`}
           >
             Calendar →
           </Link>
-          <span aria-hidden="true" style={{ marginLeft: "auto" }}></span>
+          <span aria-hidden="true" className="ml-auto"></span>
           <Link
             href="/leader"
-            style={{ color: P.ink2, textDecoration: "none" }}
+            className="text-ink2 no-underline hover:text-ink"
           >
             ← Back to dashboard
           </Link>
         </nav>
 
-        <div
-          style={{
-            display: "grid",
-            gap: 18,
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          }}
-        >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <CareCard
             heading="Care notes"
             blurb="Pastoral notes about your group."
@@ -167,107 +150,38 @@ function CareCard({
   emptyMessage: string;
 }) {
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "18px 20px",
-        display: "grid",
-        gap: 14,
-      }}
-    >
-      <div style={{ display: "grid", gap: 4 }}>
-        <h2
-          style={{
-            fontFamily: fontSans,
-            fontSize: 12,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-            margin: 0,
-          }}
-        >
+    <section className="grid content-start gap-3.5 rounded-lg border border-line bg-surface p-card">
+      <div className="grid gap-1">
+        <h2 className="m-0 font-display text-lg font-medium text-ink">
           {heading}
         </h2>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: 0,
-            lineHeight: 1.4,
-          }}
-        >
+        <p className="m-0 font-sans text-sm leading-normal text-ink2">
           {blurb}
         </p>
       </div>
 
       {form}
 
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid gap-2.5">
         {items.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink3,
-              margin: 0,
-              fontStyle: "italic",
-            }}
-          >
+          <p className="m-0 font-sans text-sm italic text-ink3">
             {emptyMessage}
           </p>
         ) : (
           items.map((item) => (
             <article
               key={item.id}
-              style={{
-                border: `1px solid ${P.line}`,
-                borderRadius: 10,
-                padding: "10px 12px",
-                background: P.bg,
-                display: "grid",
-                gap: 6,
-              }}
+              className="grid gap-1.5 rounded-sm bg-surfaceAlt px-3 py-2.5"
             >
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  color: P.ink3,
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                }}
-              >
+              <div className="flex items-center gap-2 font-sans text-2xs text-ink3">
                 <time dateTime={item.created_at}>
                   {formatNoteDate(item.created_at)}
                 </time>
                 {item.status ? (
-                  <span
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      fontSize: 10,
-                      color: P.ink2,
-                    }}
-                  >
-                    · {item.status}
-                  </span>
+                  <span className="text-2xs text-ink2">· {item.status}</span>
                 ) : null}
               </div>
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  margin: 0,
-                  lineHeight: 1.5,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <p className="m-0 whitespace-pre-wrap font-sans text-base leading-normal text-ink">
                 {item.body}
               </p>
             </article>

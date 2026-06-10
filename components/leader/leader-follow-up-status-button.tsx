@@ -23,8 +23,8 @@ export function LeaderFollowUpStatusButton({
   if (transitions.length === 0) return null;
 
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className="grid gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {transitions.map((t) => (
           <form key={t.next} action={formAction}>
             <input type="hidden" name="follow_up_id" value={followUpId} />

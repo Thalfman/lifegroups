@@ -160,8 +160,7 @@ export function GuestCard({
       {notesPreview ? (
         <blockquote
           style={{
-            background: P.bg,
-            borderLeft: `3px solid ${P.terra}`,
+            background: "var(--c-surfaceAlt)",
             borderRadius: 10,
             padding: "10px 14px",
             margin: 0,

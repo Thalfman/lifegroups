@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminUpsertGroupMetricSettings } from "@/app/(protected)/admin/settings/actions";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formGridStyle,
+  fieldHintClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formGridClassName,
+  formNoteClassName,
 } from "./field-styles";
 import type { GroupHealthStatus } from "@/types/enums";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
@@ -17,6 +19,9 @@ import {
   GROUP_HEALTH_STATUSES,
   GROUP_HEALTH_STATUS_LABEL,
 } from "@/lib/admin/health-status-labels";
+
+// Wrapping checkbox label: sentence-case body text, not a tracked field label.
+const CHECKBOX_LABEL = "flex items-center gap-2.5 font-sans text-sm text-ink";
 
 // #478 (P2.2): the status options come from the ONE canonical label map, so
 // this dropdown and the override summary in settings-shell can't drift.
@@ -58,31 +63,23 @@ export function GroupMetricOverridesForm({
     : null;
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.55,
-        }}
-      >
+    <div className="grid gap-4">
+      <p className={formNoteClassName}>
         Apply per-group overrides when a group needs its own thresholds — a
         small Bible study with a fixed capacity, a launch group that should not
         yet count against capacity metrics, or a group whose health status the
         dashboard misjudges and you want to set by hand.
       </p>
 
-      <div style={{ maxWidth: 420 }}>
-        <label htmlFor="group_picker" style={fieldLabelStyle}>
+      <div className="max-w-[420px]">
+        <label htmlFor="group_picker" className={fieldLabelClassName}>
           Group
         </label>
         <select
           id="group_picker"
           value={selectedGroupId}
           onChange={(e) => setSelectedGroupId(e.target.value)}
-          style={fieldSelectStyle}
+          className={fieldSelectClassName}
         >
           <option value="">Pick a group to edit…</option>
           {sortedGroups.map((g) => (
@@ -98,14 +95,7 @@ export function GroupMetricOverridesForm({
           // Re-mount per group so the defaultValue props reflect the picked row.
           key={selected.id}
           action={formAction}
-          style={{
-            display: "grid",
-            gap: 14,
-            background: P.bg,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            padding: "16px 18px",
-          }}
+          className="grid gap-3.5 rounded-sm border border-line bg-bg px-[18px] py-4"
         >
           <input type="hidden" name="group_id" value={selected.id} />
           {/*
@@ -117,9 +107,12 @@ export function GroupMetricOverridesForm({
             path: any stored override is wiped on the next save.
           */}
 
-          <div className="lg-m-grid-stack" style={formGridStyle}>
+          <div className={formGridClassName}>
             <div>
-              <label htmlFor="capacity_override" style={fieldLabelStyle}>
+              <label
+                htmlFor="capacity_override"
+                className={fieldLabelClassName}
+              >
                 Capacity override
               </label>
               <input
@@ -135,9 +128,9 @@ export function GroupMetricOverridesForm({
                     ? String(selected.capacity)
                     : "Use default"
                 }
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
-              <p style={hintStyle}>
+              <p className={fieldHintClassName}>
                 1–500. Blank = use the group/default capacity.
               </p>
             </div>
@@ -145,7 +138,7 @@ export function GroupMetricOverridesForm({
             <div>
               <label
                 htmlFor="capacity_warning_threshold_pct_override"
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Warning % override
               </label>
@@ -160,15 +153,17 @@ export function GroupMetricOverridesForm({
                   currentSettings?.capacity_warning_threshold_pct_override ?? ""
                 }
                 placeholder="Use default"
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
-              <p style={hintStyle}>0–300. Blank = use the global default.</p>
+              <p className={fieldHintClassName}>
+                0–300. Blank = use the global default.
+              </p>
             </div>
 
             <div>
               <label
                 htmlFor="healthy_attendance_pct_override"
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Healthy attendance % override
               </label>
@@ -183,15 +178,17 @@ export function GroupMetricOverridesForm({
                   currentSettings?.healthy_attendance_pct_override ?? ""
                 }
                 placeholder="Use default"
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
-              <p style={hintStyle}>0–100. Blank = use the global default.</p>
+              <p className={fieldHintClassName}>
+                0–100. Blank = use the global default.
+              </p>
             </div>
 
             <div>
               <label
                 htmlFor="manual_health_status_override"
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Manual health status
               </label>
@@ -202,7 +199,7 @@ export function GroupMetricOverridesForm({
                   (currentSettings?.manual_health_status_override as GroupHealthStatus | null) ??
                   "none"
                 }
-                style={fieldSelectStyle}
+                className={fieldSelectClassName}
               >
                 {HEALTH_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -210,7 +207,7 @@ export function GroupMetricOverridesForm({
                   </option>
                 ))}
               </select>
-              <p style={hintStyle}>
+              <p className={fieldHintClassName}>
                 Pins the group&rsquo;s health label on the dashboard.
               </p>
             </div>
@@ -219,14 +216,7 @@ export function GroupMetricOverridesForm({
           <div>
             <label
               htmlFor="exclude_from_capacity_metrics"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink,
-              }}
+              className={CHECKBOX_LABEL}
             >
               <input
                 id="exclude_from_capacity_metrics"
@@ -235,37 +225,27 @@ export function GroupMetricOverridesForm({
                 defaultChecked={
                   currentSettings?.exclude_from_capacity_metrics ?? false
                 }
-                style={{ width: 16, height: 16 }}
+                className="h-4 w-4"
               />
               Exclude this group from capacity warnings (e.g. launch group)
             </label>
           </div>
 
           <div>
-            <label
-              htmlFor="allow_over_capacity"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink,
-              }}
-            >
+            <label htmlFor="allow_over_capacity" className={CHECKBOX_LABEL}>
               <input
                 id="allow_over_capacity"
                 name="allow_over_capacity"
                 type="checkbox"
                 defaultChecked={currentSettings?.allow_over_capacity ?? false}
-                style={{ width: 16, height: 16 }}
+                className="h-4 w-4"
               />
               Keep open past capacity (full, but accepting members by choice)
             </label>
           </div>
 
           <div>
-            <label htmlFor="admin_metric_notes" style={fieldLabelStyle}>
+            <label htmlFor="admin_metric_notes" className={fieldLabelClassName}>
               Admin metric notes
             </label>
             <textarea
@@ -275,19 +255,14 @@ export function GroupMetricOverridesForm({
               maxLength={1000}
               defaultValue={currentSettings?.admin_metric_notes ?? ""}
               placeholder="Internal notes about why these overrides exist. Admins only."
-              style={{ ...fieldInputStyle, resize: "vertical" }}
+              className={cn(fieldInputClassName, "resize-y")}
             />
-            <p style={hintStyle}>Up to 1000 characters. Admins only.</p>
+            <p className={fieldHintClassName}>
+              Up to 1000 characters. Admins only.
+            </p>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-center gap-2.5">
             <PButton type="submit" tone="terra" size="md" disabled={pending}>
               {pending ? "Saving…" : "Save overrides"}
             </PButton>
@@ -295,26 +270,10 @@ export function GroupMetricOverridesForm({
           </div>
         </form>
       ) : (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: 0,
-            fontStyle: "italic",
-          }}
-        >
+        <p className="m-0 font-sans text-sm italic text-ink3">
           Select a group above to view or change its overrides.
         </p>
       )}
     </div>
   );
 }
-
-const hintStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-  margin: "4px 0 0",
-  lineHeight: 1.4,
-} as const;

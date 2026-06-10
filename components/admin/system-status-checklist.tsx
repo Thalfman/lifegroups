@@ -1,5 +1,5 @@
 import { SectionHeader } from "@/components/layout/shell";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 export type ChecklistTone = "ok" | "warn" | "info";
 
@@ -10,129 +10,67 @@ export type ChecklistRow = {
   tone: ChecklistTone;
 };
 
+// Status vocabulary: sage = in place, amber = needs attention, quiet = note.
 const TONE_STYLE: Record<
   ChecklistTone,
-  {
-    color: string;
-    background: string;
-    border: string;
-    glyph: string;
-    word: string;
-  }
+  { chip: string; word: string; glyph: string; label: string }
 > = {
   ok: {
-    color: P.sageTextStrong,
-    background: P.sageSoft,
-    border: P.sage,
+    chip: "border-sage bg-sageSoft text-sageDeep",
+    word: "text-sageDeep",
     glyph: "OK",
-    word: "Good",
+    label: "Good",
   },
   warn: {
-    color: P.terraTextStrong,
-    background: P.terraSoft,
-    border: P.terra,
+    chip: "border-amber bg-amberSoft text-amberText",
+    word: "text-amberText",
     glyph: "—",
-    word: "Missing",
+    label: "Missing",
   },
   info: {
-    color: P.ink2,
-    background: P.surface,
-    border: P.line,
+    chip: "border-line bg-surface text-ink2",
+    word: "text-ink2",
     glyph: "·",
-    word: "Note",
+    label: "Note",
   },
 };
 
 export function SystemStatusChecklist({ rows }: { rows: ChecklistRow[] }) {
   return (
-    <section style={{ display: "grid", gap: 18 }}>
+    <section className="grid gap-4">
       <SectionHeader
         eyebrow="System status"
         title="What&rsquo;s in place"
         description="A check of the core data and audit access. Useful right after first setting up the app."
       />
-      <ol
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "grid",
-          gap: 1,
-          background: P.line2,
-          border: `1px solid ${P.line}`,
-          borderRadius: 10,
-          overflow: "hidden",
-        }}
-      >
+      <ol className="m-0 grid list-none gap-px overflow-hidden rounded-md border border-line bg-lineSoft p-0">
         {rows.map((row) => {
           const t = TONE_STYLE[row.tone];
           return (
             <li
               key={row.key}
-              style={{
-                background: P.surface,
-                padding: "12px 16px",
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                gap: 14,
-                alignItems: "center",
-              }}
+              className="grid min-h-11 grid-cols-[auto_1fr_auto] items-center gap-3.5 bg-surface px-4 py-3"
             >
               <span
                 aria-hidden="true"
-                style={{
-                  width: 34,
-                  height: 24,
-                  borderRadius: 999,
-                  background: t.background,
-                  border: `1px solid ${t.border}`,
-                  color: t.color,
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                className={cn(
+                  "inline-flex h-6 w-[34px] items-center justify-center rounded-pill border font-sans text-2xs font-bold",
+                  t.chip
+                )}
               >
                 {t.glyph}
               </span>
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: 14,
-                    color: P.ink,
-                    fontWeight: 500,
-                    marginBottom: 2,
-                  }}
-                >
+              <div className="min-w-0">
+                <div className="mb-0.5 font-sans text-base font-medium text-ink">
                   {row.label}
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink3,
-                    lineHeight: 1.5,
-                  }}
-                >
+                <div className="font-sans text-sm text-ink3">
                   {row.description}
                 </div>
               </div>
-              <span
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 11,
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  color: t.color,
-                  fontWeight: 600,
-                }}
-              >
+              <span className={cn("font-sans text-xs font-semibold", t.word)}>
                 <span className="sr-only">Status: </span>
-                {t.word}
+                {t.label}
               </span>
             </li>
           );

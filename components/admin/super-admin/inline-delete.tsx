@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminInlineDelete,
@@ -27,9 +28,10 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import { successTextStyle } from "@/components/admin/forms/field-styles";
+import { successTextClassName } from "@/components/admin/forms/field-styles";
 import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+
+const NOTE_CLASS = "m-0 font-sans text-xs text-ink2";
 
 export function SuperAdminInlineDelete({
   entityType,
@@ -75,14 +77,7 @@ export function SuperAdminInlineDelete({
   const deleted = del.state?.ok === true;
 
   return (
-    <span
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-      }}
-    >
+    <span className="relative inline-flex items-center gap-1.5">
       {/* Marks this Delete as private to the super admin — it never renders for
           other roles, so the marker is only ever seen by a super admin. */}
       <SuperAdminOnlyMark />
@@ -95,7 +90,7 @@ export function SuperAdminInlineDelete({
         aria-expanded={open}
         aria-label={`Delete ${label}`}
         onClick={() => setOpen((v) => !v)}
-        style={{ color: "#923220", borderColor: "#e4b9a8" }}
+        className="border-rose/40 text-rose hover:bg-roseSoft"
       >
         Delete
       </PButton>
@@ -104,7 +99,7 @@ export function SuperAdminInlineDelete({
       <form
         ref={preflight.formRef}
         action={preflight.formAction}
-        style={{ display: "none" }}
+        className="hidden"
       >
         <input type="hidden" name="entityType" value={entityType} />
         <input type="hidden" name="id" value={id} />
@@ -114,29 +109,9 @@ export function SuperAdminInlineDelete({
         <div
           role="dialog"
           aria-label={`Delete ${label}`}
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            right: 0,
-            zIndex: 20,
-            width: 280,
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            padding: 12,
-            display: "grid",
-            gap: 10,
-          }}
+          className="absolute right-0 top-[calc(100%+6px)] z-dropdown grid w-[280px] gap-2.5 rounded-md border border-line bg-surface p-3 shadow-softLg"
         >
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 700,
-              color: P.ink,
-            }}
-          >
+          <div className="font-sans text-sm font-semibold text-ink">
             Delete this record permanently?
           </div>
 
@@ -150,19 +125,19 @@ export function SuperAdminInlineDelete({
           <form
             ref={del.formRef}
             action={del.formAction}
-            style={{ display: "flex", gap: 8, alignItems: "center" }}
+            className="flex items-center gap-2"
           >
             <input type="hidden" name="entityType" value={entityType} />
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="path" value={revalidatePath} />
-            <PButton
+            <Button
               type="submit"
-              tone="terra"
+              variant="destructive"
               size="sm"
               disabled={del.pending || deleted || !canDelete}
             >
               {del.pending ? "Deleting…" : "Delete"}
-            </PButton>
+            </Button>
             <PButton
               type="button"
               tone="ghost"
@@ -174,7 +149,7 @@ export function SuperAdminInlineDelete({
           </form>
 
           {deleted ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Deleted — recoverable from a backup.
             </span>
           ) : null}
@@ -196,20 +171,13 @@ function DeletePreview({
   report: DeletionPreflight | null;
   onRetry: () => void;
 }) {
-  const noteStyle = {
-    fontFamily: fontBody,
-    fontSize: 12,
-    color: P.ink2,
-    margin: 0,
-  } as const;
-
   if (pending) {
-    return <p style={noteStyle}>Checking what depends on this…</p>;
+    return <p className={NOTE_CLASS}>Checking what depends on this…</p>;
   }
   if (failed) {
     return (
-      <div style={{ display: "grid", gap: 6 }}>
-        <p style={{ ...noteStyle, color: "#923220" }}>
+      <div className="grid gap-1.5">
+        <p className="m-0 font-sans text-xs text-rose">
           Couldn&rsquo;t check what this affects — the record may have changed.
         </p>
         <PButton type="button" tone="ghost" size="sm" onClick={onRetry}>
@@ -219,29 +187,29 @@ function DeletePreview({
     );
   }
   if (report === null) {
-    return <p style={noteStyle}>Checking what depends on this…</p>;
+    return <p className={NOTE_CLASS}>Checking what depends on this…</p>;
   }
   if (report.confidential) {
     return (
-      <p style={noteStyle}>
+      <p className={NOTE_CLASS}>
         This record is confidential and can&rsquo;t be deleted. Disable instead.
       </p>
     );
   }
   if (report.forbidden) {
-    return <p style={noteStyle}>This record can&rsquo;t be deleted.</p>;
+    return <p className={NOTE_CLASS}>This record can&rsquo;t be deleted.</p>;
   }
   if (report.blockers.length > 0) {
     const total = report.blockers.reduce((n, b) => n + b.count, 0);
     return (
-      <p style={noteStyle}>
+      <p className={NOTE_CLASS}>
         Blocked by {total} dependent{total === 1 ? "" : "s"} — clear{" "}
         {report.blockers.map((b) => b.table).join(", ")} first.
       </p>
     );
   }
   return (
-    <p style={noteStyle}>
+    <p className={NOTE_CLASS}>
       Safe to delete. A backup copy is captured first so it can be recovered.
     </p>
   );

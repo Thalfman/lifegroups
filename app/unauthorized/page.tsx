@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
-import { POrnament, PSeal } from "@/components/pastoral/atoms";
+import { paperGrain } from "@/lib/pastoral";
+import { PSeal } from "@/components/pastoral/atoms";
 import { PButton, PLinkButton } from "@/components/pastoral/button";
 import { logoutAction } from "@/app/(protected)/actions";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -16,139 +16,53 @@ export default async function UnauthorizedPage({
 }) {
   const session = await getCurrentSession();
   const sp = (await searchParams) ?? {};
-  const reason: Reason = sp.reason === "unavailable" ? "unavailable" : undefined;
+  const reason: Reason =
+    sp.reason === "unavailable" ? "unavailable" : undefined;
   // Backend transient failures surface here via /unauthorized?reason=unavailable
   // and also when the session itself is in backend_error state. Show a
   // service-unavailable message in that case so users don't try to
   // self-remediate a misdiagnosed "account not linked" path.
-  const isUnavailable = reason === "unavailable" || session.kind === "backend_error";
+  const isUnavailable =
+    reason === "unavailable" || session.kind === "backend_error";
   const isSignedIn = !isUnavailable && session.kind !== "anonymous";
   const hasLinkedProfile = !isUnavailable && session.kind === "authenticated";
 
   return (
-    <div
-      className="lg-m-noscrollx"
-      style={{
-        background: P.bg,
-        minHeight: "100vh",
-        fontFamily: fontBody,
-        color: P.ink,
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="lg-m-noscrollx relative flex min-h-screen flex-col bg-bg font-sans text-ink">
       <div aria-hidden="true" style={paperGrain} />
 
-      <header
-        className="lg-m-shell-header"
-        style={{
-          padding: "18px 36px",
-          background: P.surface,
-          borderBottom: `1px solid ${P.line}`,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
+      <header className="relative z-base border-b border-line bg-surface px-4 py-3 md:px-9 md:py-4">
         <Link
           href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            color: "inherit",
-            textDecoration: "none",
-          }}
+          className="inline-flex items-center gap-3 text-inherit no-underline"
         >
           <PSeal />
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 16,
-              fontWeight: 600,
-              letterSpacing: -0.2,
-              color: P.ink,
-            }}
-          >
+          <div className="font-display text-md font-medium text-ink md:text-lg">
             Fox Valley Church Life Groups
           </div>
         </Link>
       </header>
 
-      <main
-        style={{
-          flex: 1,
-          display: "grid",
-          placeItems: "center",
-          padding: "40px 24px",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <div
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 18,
-            padding: "clamp(28px, 5vw, 44px)",
-            maxWidth: 520,
-            width: "100%",
-            boxShadow: "0 30px 60px -30px rgba(58,42,26,0.18)",
-          }}
-        >
-          <POrnament w={80} />
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 2.2,
-              textTransform: "uppercase",
-              color: P.terra,
-              fontWeight: 600,
-              margin: "14px 0 8px",
-            }}
-          >
+      <main className="relative z-base grid flex-1 place-items-center px-6 py-10">
+        {/* Card anatomy: border, no shadow (the ghost border+shadow combo retires). */}
+        <div className="w-full max-w-[520px] rounded-lg border border-line bg-surface p-7 md:p-11">
+          {/* The page kicker — the one tracked-uppercase voice per page. */}
+          <div className="mb-2 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-clay">
             {isUnavailable ? "Service unavailable" : "No access"}
           </div>
-          <h1
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: "clamp(28px, 4vw, 36px)",
-              margin: 0,
-              fontWeight: 600,
-              letterSpacing: -0.5,
-              lineHeight: 1.1,
-              color: P.ink,
-            }}
-          >
+          <h1 className="m-0 font-display text-3xl font-normal text-ink md:text-4xl">
             {isUnavailable
               ? "We can’t reach the service right now."
               : "You don’t have access."}
           </h1>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 15,
-              color: P.ink2,
-              marginTop: 14,
-              marginBottom: 0,
-              lineHeight: 1.6,
-            }}
-          >
+          <p className="mb-0 mt-3.5 font-sans text-md text-ink2">
             {isUnavailable
               ? "This is usually temporary. Please try again in a minute. If it keeps happening, contact a ministry admin."
               : isSignedIn && !hasLinkedProfile
                 ? "Your sign-in worked, but your account isn't linked to a ministry profile yet. Ask a ministry admin to invite you."
                 : "Your account doesn't have access here. If you think this is wrong, contact a ministry admin."}
           </p>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 24,
-            }}
-          >
+          <div className="mt-6 flex flex-wrap gap-2.5">
             <PLinkButton href="/" tone="ghost">
               Back to home
             </PLinkButton>

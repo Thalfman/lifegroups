@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
 import {
   buildShepherdCareViewHref,
@@ -17,39 +17,17 @@ export type {
   CoverageFilter,
 } from "@/lib/admin/shepherd-care-view";
 
-const CHIP: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "6px 14px",
-  borderRadius: 999,
-  fontSize: 12,
-  fontFamily: fontSans,
-  fontWeight: 500,
-  textDecoration: "none",
-  border: `1px solid ${P.line}`,
-  color: P.ink2,
-  background: "transparent",
-};
+function chipClassName(active: boolean): string {
+  return cn(
+    "inline-flex items-center gap-1.5 rounded-pill border px-3.5 py-1.5 font-sans text-xs font-medium no-underline transition-colors duration-150",
+    active
+      ? "border-ink bg-ink text-surface"
+      : "border-line bg-transparent text-ink2 hover:bg-surfaceAlt"
+  );
+}
 
-const ACTIVE: CSSProperties = {
-  ...CHIP,
-  background: P.ink,
-  color: P.surface,
-  borderColor: P.ink,
-};
-
-const COUNT: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minWidth: 18,
-  padding: "0 5px",
-  borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 600,
-  background: "rgba(255,255,255,0.18)",
-};
+const COUNT =
+  "inline-flex min-w-[18px] items-center justify-center rounded-pill bg-white/20 px-1 text-2xs font-semibold";
 
 // The chips live on the All-leaders roster (#477). Their links carry the
 // legacy `view=directory` param — accepted forever, resolving back onto the
@@ -79,40 +57,25 @@ export function ShepherdCareFilterChips({
   coverage: CoverageFilter | undefined;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 8,
-        flexWrap: "wrap",
-        alignItems: "center",
-      }}
-    >
+    <div className="flex flex-wrap items-center gap-2">
       <Link
         href={buildHref({ filter: "all", coverage })}
-        style={current === "all" ? ACTIVE : CHIP}
+        className={chipClassName(current === "all")}
       >
-        All <span style={COUNT}>{totalCount}</span>
+        All <span className={COUNT}>{totalCount}</span>
       </Link>
       <Link
         href={buildHref({ filter: "needs_attention", coverage })}
-        style={current === "needs_attention" ? ACTIVE : CHIP}
+        className={chipClassName(current === "needs_attention")}
       >
-        Needs attention <span style={COUNT}>{needsAttentionCount}</span>
+        Needs attention <span className={COUNT}>{needsAttentionCount}</span>
       </Link>
     </div>
   );
 }
 
-const SELECT_STYLE: CSSProperties = {
-  padding: "6px 10px",
-  borderRadius: 999,
-  border: `1px solid ${P.line}`,
-  background: P.surface,
-  fontFamily: fontSans,
-  fontSize: 12,
-  color: P.ink,
-  cursor: "pointer",
-};
+const SELECT =
+  "cursor-pointer rounded-pill border border-line bg-surface px-2.5 py-1.5 font-sans text-xs text-ink";
 
 export function ShepherdCareCoverageFilter({
   filter,
@@ -133,12 +96,7 @@ export function ShepherdCareCoverageFilter({
     <form
       method="get"
       action="/admin/shepherd-care"
-      style={{
-        display: "flex",
-        gap: 6,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
+      className="flex flex-wrap items-center gap-1.5"
     >
       {/* Stay in the Directory view when applying a coverage filter. */}
       <input type="hidden" name="view" value="directory" />
@@ -147,11 +105,7 @@ export function ShepherdCareCoverageFilter({
       ) : null}
       <label
         htmlFor="sc-coverage-filter"
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink3,
-        }}
+        className="font-sans text-xs text-ink3"
       >
         Coverage
       </label>
@@ -159,7 +113,7 @@ export function ShepherdCareCoverageFilter({
         id="sc-coverage-filter"
         name="coverage"
         defaultValue={coverage ?? ""}
-        style={SELECT_STYLE}
+        className={SELECT}
       >
         <option value="">Any</option>
         <option value="unassigned">Unassigned ({unassignedCount})</option>
@@ -169,16 +123,9 @@ export function ShepherdCareCoverageFilter({
           </option>
         ))}
       </select>
-      <button
-        type="submit"
-        style={{
-          ...SELECT_STYLE,
-          background: P.bgDeep,
-          cursor: "pointer",
-        }}
-      >
+      <Button type="submit" variant="subtle" size="sm">
         Apply
-      </button>
+      </Button>
     </form>
   );
 }

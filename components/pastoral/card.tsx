@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 export function PCard({
   title,
@@ -13,6 +13,8 @@ export function PCard({
   title?: ReactNode;
   eyebrow?: ReactNode;
   action?: ReactNode;
+  // Tone color (a P.* / var(--c-*) value). Rendered as a leading status dot
+  // beside the title — never a side/top stripe (design direction §4 Cards).
   accent?: string;
   pad?: boolean;
   children?: ReactNode;
@@ -20,88 +22,44 @@ export function PCard({
 }) {
   return (
     <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: pad ? "22px 24px" : 0,
-        position: "relative",
-        overflow: "hidden",
-        ...style,
-      }}
+      className={cn(
+        "relative overflow-hidden rounded-lg border border-line bg-surface",
+        pad && "p-card"
+      )}
+      style={style}
     >
-      {accent ? (
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 3,
-            background: accent,
-          }}
-        />
-      ) : null}
       {(title || eyebrow || action) && (
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            gap: 12,
-            marginBottom: 18,
-            padding: pad ? 0 : "22px 24px 0",
-          }}
+          className={cn(
+            "mb-4 flex items-baseline justify-between gap-3",
+            !pad && "px-card pt-card"
+          )}
         >
           <div>
             {eyebrow ? (
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 10,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: P.ink3,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-              >
-                {eyebrow}
-              </div>
+              <div className="mb-1 font-sans text-xs text-ink3">{eyebrow}</div>
             ) : null}
             {title ? (
-              <div
-                style={{
-                  fontFamily: fontDisplay,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  letterSpacing: -0.3,
-                  color: P.ink,
-                }}
-              >
+              <div className="flex items-baseline gap-2 font-display text-lg font-medium text-ink">
+                {accent ? (
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 shrink-0 self-center rounded-pill"
+                    style={{ background: accent }}
+                  />
+                ) : null}
                 {title}
               </div>
             ) : null}
           </div>
           {action ? (
-            <span
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: P.terra,
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
+            <span className="shrink-0 font-sans text-sm font-medium text-clay">
               {action}
             </span>
           ) : null}
         </div>
       )}
-      <div style={{ padding: pad ? 0 : "0 24px 22px", fontFamily: fontBody }}>
+      <div className={cn("font-sans", !pad && "px-card pb-card")}>
         {children}
       </div>
     </div>

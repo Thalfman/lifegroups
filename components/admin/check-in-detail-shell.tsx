@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { PULSE_LABELS } from "@/components/admin/check-in-pulse";
+import { PBadge } from "@/components/pastoral/atoms";
 import {
   formatMeetingDate,
   formatSubmittedAt,
@@ -8,7 +8,6 @@ import {
   lifecycleStatusLabel,
   type CheckInDetailData,
   type CheckInDetailMember,
-  type LeaderPulseDisplay,
   type SessionReviewStatus,
 } from "@/lib/admin/check-ins";
 
@@ -53,12 +52,6 @@ function statusBadge(status: SessionReviewStatus) {
   }
 }
 
-const PULSE_LABELS: Record<LeaderPulseDisplay, { label: string; tone: PTone }> = {
-  healthy: { label: "Healthy", tone: "healthy" },
-  watch: { label: "Watch", tone: "watch" },
-  needs_follow_up: { label: "Needs follow-up", tone: "followup" },
-};
-
 function attendanceBadge(status: CheckInDetailMember["attendanceStatus"]) {
   if (status === "present") return <PBadge tone="healthy">Present</PBadge>;
   if (status === "absent") return <PBadge tone="followup">Absent</PBadge>;
@@ -72,113 +65,39 @@ function attendanceBadge(status: CheckInDetailMember["attendanceStatus"]) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        fontFamily: fontSans,
-        fontSize: 10,
-        letterSpacing: 1.8,
-        textTransform: "uppercase",
-        color: P.ink3,
-        fontWeight: 600,
-      }}
-    >
-      {children}
-    </div>
+    <div className="font-sans text-xs font-semibold text-ink3">{children}</div>
   );
 }
 
-function FieldRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div
-      className="lg-m-grid-stack"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(120px, 160px) 1fr",
-        gap: 16,
-        alignItems: "baseline",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 11,
-          letterSpacing: 0.4,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink,
-          lineHeight: 1.55,
-        }}
-      >
-        {value}
-      </div>
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(120px,160px)_1fr] md:items-baseline md:gap-4">
+      <div className="font-sans text-xs font-semibold text-ink3">{label}</div>
+      <div className="font-sans text-base text-ink">{value}</div>
     </div>
   );
 }
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "20px 24px",
-        display: "grid",
-        gap: 14,
-      }}
-    >
+    <div className="grid gap-3.5 rounded-lg border border-line bg-surface p-card">
       {children}
     </div>
   );
 }
 
 function EmptySessionCard({ meetingWeek }: { meetingWeek: string }) {
+  // Tone is a sage status dot on a soft tint — never a side stripe.
   return (
-    <div
-      style={{
-        background: P.sageSoft,
-        border: `1px solid ${P.sage}`,
-        borderLeft: `3px solid ${P.sage}`,
-        borderRadius: 12,
-        padding: "20px 24px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          color: P.ink,
-          fontWeight: 500,
-        }}
-      >
+    <div className="grid gap-2 rounded-lg border border-line bg-sageSoft p-card">
+      <div className="flex items-center gap-2.5 font-display text-lg font-medium text-ink">
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 shrink-0 rounded-pill bg-sage"
+        />
         No check-in yet for {formatWeekLabel(meetingWeek).toLowerCase()}.
       </div>
-      <p
-        style={{
-          margin: 0,
-          fontFamily: fontBody,
-          fontSize: 13.5,
-          color: "#3e4f29",
-          lineHeight: 1.55,
-        }}
-      >
+      <p className="m-0 font-sans text-sm leading-normal text-sageDeep">
         The leader hasn&rsquo;t submitted this group&rsquo;s check-in. The
         roster below shows who would be marked.
       </p>
@@ -187,19 +106,11 @@ function EmptySessionCard({ meetingWeek }: { meetingWeek: string }) {
 }
 
 function ClosedBanner({ closedAt }: { closedAt: string | null }) {
+  // A quiet read-only aside: surfaceAlt strip, no stripe, no accent.
   return (
     <div
       role="note"
-      style={{
-        background: "#e2dfd3",
-        border: `1px solid #8a8166`,
-        borderLeft: `3px solid #8a8166`,
-        borderRadius: 8,
-        padding: "12px 16px",
-        fontFamily: fontBody,
-        fontSize: 13.5,
-        color: "#5c5848",
-      }}
+      className="rounded-sm border border-line bg-surfaceAlt px-4 py-3 font-sans text-sm text-ink2"
     >
       This group is closed
       {closedAt ? ` (as of ${new Date(closedAt).toLocaleDateString()})` : ""}.
@@ -212,22 +123,12 @@ function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="alert"
-      style={{
-        background: P.terraSoft,
-        border: `1px solid ${P.terra}`,
-        borderRadius: 8,
-        padding: "12px 14px",
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: "#7d3621",
-      }}
+      className="rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
     >
       {children}
     </div>
   );
 }
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 export function CheckInDetailShell({
   data,
@@ -247,24 +148,18 @@ export function CheckInDetailShell({
     data.errors.members;
 
   const { group, session, sessionStatus, health, members } = data;
-  const meta = group ? meetingLine(group.meeting_day, group.meeting_time) : null;
+  const meta = group
+    ? meetingLine(group.meeting_day, group.meeting_time)
+    : null;
   const isClosed = group?.lifecycle_status === "closed";
   const showCounts =
     sessionStatus === "submitted" || sessionStatus === "admin_entered";
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <Link
         href={`/admin/check-ins?week=${meetingWeek}`}
-        style={{
-          fontFamily: fontSans,
-          fontSize: 12,
-          fontWeight: 600,
-          letterSpacing: 0.4,
-          color: P.ink2,
-          textDecoration: "none",
-          width: "fit-content",
-        }}
+        className="w-fit font-sans text-xs font-semibold text-ink2 no-underline transition-colors duration-150 hover:text-ink"
       >
         ← Back to all check-ins
       </Link>
@@ -279,31 +174,10 @@ export function CheckInDetailShell({
       {isClosed && group ? <ClosedBanner closedAt={group.closed_at} /> : null}
 
       {group ? (
-        <div
-          style={{
-            display: "grid",
-            gap: 6,
-          }}
-        >
+        <div className="grid gap-1.5">
           <SectionLabel>{formatWeekLabel(meetingWeek)}</SectionLabel>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: fontDisplay,
-                fontSize: 28,
-                fontWeight: 500,
-                color: P.ink,
-                letterSpacing: -0.4,
-              }}
-            >
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="m-0 font-display text-2xl font-medium text-ink">
               {group.name}
             </h2>
             {statusBadge(sessionStatus)}
@@ -311,13 +185,7 @@ export function CheckInDetailShell({
               {lifecycleStatusLabel(group.lifecycle_status)}
             </PBadge>
           </div>
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontSize: 14,
-              color: P.ink2,
-            }}
-          >
+          <div className="font-sans text-base text-ink2">
             {data.leaderNames.length > 0
               ? data.leaderNames.join(" · ")
               : "No leaders assigned"}
@@ -353,15 +221,15 @@ export function CheckInDetailShell({
               label="Attendance"
               value={
                 <span>
-                  <strong style={{ fontWeight: 600 }}>
+                  <strong className="font-semibold">
                     {data.attendance.present}
                   </strong>{" "}
                   present ·{" "}
-                  <strong style={{ fontWeight: 600 }}>
+                  <strong className="font-semibold">
                     {data.attendance.absent}
                   </strong>{" "}
                   absent ·{" "}
-                  <strong style={{ fontWeight: 600 }}>
+                  <strong className="font-semibold">
                     {data.attendance.excused}
                   </strong>{" "}
                   excused
@@ -370,35 +238,17 @@ export function CheckInDetailShell({
             />
           ) : null}
           {session.leader_note ? (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div className="grid gap-1.5">
               <SectionLabel>Leader note</SectionLabel>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {session.leader_note}
               </p>
             </div>
           ) : null}
           {session.admin_note ? (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div className="grid gap-1.5">
               <SectionLabel>Admin note</SectionLabel>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {session.admin_note}
               </p>
             </div>
@@ -415,10 +265,7 @@ export function CheckInDetailShell({
               health.pulse === "healthy" ||
               health.pulse === "watch" ||
               health.pulse === "needs_follow_up" ? (
-                <PBadge
-                  tone={PULSE_LABELS[health.pulse].tone}
-                  outline
-                >
+                <PBadge tone={PULSE_LABELS[health.pulse].tone} outline>
                   {PULSE_LABELS[health.pulse].label}
                 </PBadge>
               ) : (
@@ -434,40 +281,22 @@ export function CheckInDetailShell({
               health.follow_up_needed ? (
                 <PBadge tone="followup">Follow-up needed</PBadge>
               ) : (
-                <span style={{ color: P.ink3 }}>None requested</span>
+                <span className="text-ink3">None requested</span>
               )
             }
           />
           {health.leader_note ? (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div className="grid gap-1.5">
               <SectionLabel>Pulse · leader note</SectionLabel>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {health.leader_note}
               </p>
             </div>
           ) : null}
           {health.admin_note ? (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div className="grid gap-1.5">
               <SectionLabel>Pulse · admin note</SectionLabel>
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: fontBody,
-                  fontSize: 14,
-                  color: P.ink,
-                  lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <p className="m-0 whitespace-pre-wrap font-sans text-base leading-relaxed text-ink">
                 {health.admin_note}
               </p>
             </div>
@@ -475,45 +304,18 @@ export function CheckInDetailShell({
         </Card>
       ) : null}
 
-      <section style={{ display: "grid", gap: 14 }}>
+      <section className="grid gap-3.5">
         <SectionLabel>Roster · {members.length} active</SectionLabel>
         {members.length === 0 ? (
-          <div
-            style={{
-              background: P.surface,
-              border: `1px dashed ${P.line}`,
-              borderRadius: 10,
-              padding: "18px 20px",
-              fontFamily: fontBody,
-              fontSize: 13.5,
-              color: P.ink2,
-            }}
-          >
+          <div className="rounded-sm border border-dashed border-line bg-surface px-5 py-[18px] font-sans text-sm text-ink2">
             No active members on this group yet.
           </div>
         ) : (
-          <ul style={listResetStyle}>
+          <ul className="m-0 list-none p-0">
             {members.map((m) => (
-              <li key={m.memberId} style={{ marginBottom: 8 }}>
-                <div
-                  style={{
-                    background: P.surface,
-                    border: `1px solid ${P.line}`,
-                    borderRadius: 10,
-                    padding: "12px 16px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: fontBody,
-                      fontSize: 14,
-                      color: P.ink,
-                    }}
-                  >
+              <li key={m.memberId} className="mb-2">
+                <div className="flex min-h-11 items-center justify-between gap-3 rounded-sm border border-line bg-surface px-4 py-3">
+                  <span className="font-sans text-base text-ink">
                     {m.fullName}
                   </span>
                   {attendanceBadge(m.attendanceStatus)}

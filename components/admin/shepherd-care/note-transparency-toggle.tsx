@@ -6,7 +6,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Pivot slice 9 (#381 / ADR 0017). The INLINE per-person transparency toggle —
 // lives on each Over-Shepherd / Leader in Care, not in Settings. Ministry-Admin
@@ -38,24 +38,14 @@ export function NoteTransparencyToggle({
     : "Turn on (let leadership read)";
 
   return (
-    <form
-      action={formAction}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        flexWrap: "wrap",
-      }}
-    >
+    <form action={formAction} className="flex flex-wrap items-center gap-2.5">
       <input type="hidden" name="subject_profile_id" value={subjectProfileId} />
       <input type="hidden" name="granted" value={next ? "true" : "false"} />
       <span
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: granted ? P.terra : P.ink3,
-          fontWeight: 600,
-        }}
+        className={cn(
+          "font-sans text-sm font-semibold",
+          granted ? "text-clayDeep" : "text-ink3"
+        )}
       >
         Leadership visibility: {granted ? "On" : "Sealed"}
       </span>

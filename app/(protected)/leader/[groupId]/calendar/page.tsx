@@ -9,6 +9,8 @@ import {
   describeSchedule,
 } from "@/components/calendar/calendar-month-grid";
 import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-actions";
+import { buttonClassName } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { requireLeader } from "@/lib/auth/session";
 import { navItemsForRole } from "@/lib/auth/roles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -26,7 +28,6 @@ import {
 } from "@/lib/calendar/occurrences";
 import { churchMonthIso, churchTodayIso } from "@/lib/shared/church-time";
 import type { LeaderSafeGroupRow } from "@/lib/supabase/read-models";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import {
   leaderArchiveCalendarEvent,
   leaderCreateCalendarEvent,
@@ -39,15 +40,7 @@ export const dynamic = "force-dynamic";
 type Params = { groupId: string };
 type Search = { archived?: string; month?: string };
 
-const navLinkStyle: React.CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 12,
-  color: P.ink,
-  textDecoration: "none",
-  padding: "6px 10px",
-  borderRadius: 999,
-  border: `1px solid ${P.line}`,
-};
+const monthNavLinkClassName = buttonClassName("ghost", "sm");
 
 export default async function LeaderCalendarPage({
   params,
@@ -154,43 +147,33 @@ export default async function LeaderCalendarPage({
         </>
       }
     >
-      <div style={{ display: "grid", gap: 18 }}>
-        <nav
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink3,
-            flexWrap: "wrap",
-          }}
-        >
+      <div className="grid gap-4">
+        <nav className="flex flex-wrap items-center gap-3 font-sans text-xs text-ink3">
           <Link
             href={`/leader/${groupId}/calendar`}
-            style={{
-              textDecoration: showArchived ? "none" : "underline",
-              fontWeight: showArchived ? 400 : 600,
-              color: showArchived ? P.ink3 : P.ink,
-            }}
+            className={cn(
+              showArchived
+                ? "font-normal text-ink3 no-underline"
+                : "font-semibold text-ink underline"
+            )}
           >
             Calendar
           </Link>
           <span aria-hidden="true">·</span>
           <Link
             href={`/leader/${groupId}/calendar?archived=1&month=${monthIso}`}
-            style={{
-              textDecoration: showArchived ? "underline" : "none",
-              fontWeight: showArchived ? 600 : 400,
-              color: showArchived ? P.ink : P.ink3,
-            }}
+            className={cn(
+              showArchived
+                ? "font-semibold text-ink underline"
+                : "font-normal text-ink3 no-underline"
+            )}
           >
             Archived
           </Link>
-          <span aria-hidden="true" style={{ marginLeft: "auto" }}></span>
+          <span aria-hidden="true" className="ml-auto"></span>
           <Link
             href="/leader"
-            style={{ color: P.ink2, textDecoration: "none" }}
+            className="text-ink2 no-underline hover:text-ink"
           >
             ← Back to dashboard
           </Link>
@@ -198,66 +181,34 @@ export default async function LeaderCalendarPage({
 
         {!showArchived ? (
           <>
-            <section
-              style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderRadius: 14,
-                padding: "14px 18px",
-                display: "flex",
-                gap: 14,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "grid", gap: 4 }}>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    letterSpacing: 1.5,
-                    textTransform: "uppercase",
-                    color: P.ink3,
-                    fontWeight: 600,
-                  }}
-                >
+            <section className="flex flex-wrap items-center justify-between gap-3.5 rounded-lg border border-line bg-surface px-4 py-3.5">
+              <div className="grid gap-1">
+                <div className="font-display text-lg font-medium text-ink">
                   {monthLabel(monthIso)}
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 13,
-                    color: P.ink2,
-                    lineHeight: 1.4,
-                  }}
-                >
+                <div className="font-sans text-sm leading-normal text-ink2">
                   {scheduleSummary ?? <ScheduleGap />}
                 </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="flex flex-wrap items-center gap-2">
                 {prevMonth ? (
                   <Link
                     href={`/leader/${groupId}/calendar?month=${prevMonth}`}
-                    style={navLinkStyle}
+                    className={monthNavLinkClassName}
                   >
                     ← {monthLabel(prevMonth)}
                   </Link>
                 ) : null}
-                <Link href={`/leader/${groupId}/calendar`} style={navLinkStyle}>
+                <Link
+                  href={`/leader/${groupId}/calendar`}
+                  className={monthNavLinkClassName}
+                >
                   This month
                 </Link>
                 {nextMonth ? (
                   <Link
                     href={`/leader/${groupId}/calendar?month=${nextMonth}`}
-                    style={navLinkStyle}
+                    className={monthNavLinkClassName}
                   >
                     {monthLabel(nextMonth)} →
                   </Link>
@@ -284,43 +235,18 @@ export default async function LeaderCalendarPage({
               }
             />
             {groupClosed ? (
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  margin: 0,
-                  fontStyle: "italic",
-                }}
-              >
+              <p className="m-0 font-sans text-sm italic text-ink2">
                 Leader edits are paused while this group is closed. Contact an
                 admin to make changes.
               </p>
             ) : null}
           </>
         ) : (
-          <section style={{ display: "grid", gap: 10 }}>
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 12,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                color: P.ink3,
-                fontWeight: 600,
-                margin: 0,
-              }}
-            >
+          <section className="grid gap-2.5">
+            <h2 className="m-0 font-display text-lg font-medium text-ink">
               Archived overrides · {monthLabel(monthIso)}
             </h2>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-                margin: 0,
-              }}
-            >
+            <p className="m-0 font-sans text-sm text-ink2">
               Past overrides that were cleared. Restoring re-applies the
               override on the calendar grid.
             </p>

@@ -9,6 +9,7 @@
 // recovery panels, mirroring the Reset-by-category card.
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { PButton } from "@/components/pastoral/button";
 import {
   superAdminResetCareAttention,
@@ -35,16 +36,14 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-  successTextStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   DangerCard,
   DangerPill,
 } from "@/components/admin/danger-zone-card-shell";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Fixed locale + UTC so server and client render the same string (no hydration
 // mismatch). Mirrors the Reset-by-category card's snapshot formatter.
@@ -71,23 +70,10 @@ const RESET_ACTION = {
 // A sage-accented recovery panel so the undo controls read as the safety net,
 // distinct from the reset above. Shared by the global revert and the per-entity
 // undo list.
-const recoveryPanelStyle = {
-  display: "grid",
-  gap: 8,
-  background: P.sageSoft,
-  border: `1px solid ${P.sage}`,
-  borderRadius: 8,
-  padding: "10px 12px",
-} as const;
+const RECOVERY_PANEL_CLASS =
+  "grid gap-2 rounded-sm border border-sage bg-sageSoft px-3 py-2.5";
 
-const recoveryLabelStyle = {
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1,
-  textTransform: "uppercase" as const,
-  color: P.sageTextStrong,
-  fontWeight: 700,
-};
+const RECOVERY_LABEL_CLASS = "font-sans text-sm font-semibold text-sageDeep";
 
 // Impact unit per surface — what a global reset touches.
 function impactLabel(surface: AttentionResetSurface, count: number): string {
@@ -106,15 +92,7 @@ export function AttentionResetCard({
     <DangerCard
       title="Reset attention — fresh start for the time-based Home cards"
       intro={
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.terraTextStrong,
-            lineHeight: 1.55,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           The “overdue or missing health checks” and “leaders needing care”
           cards are driven by elapsed time, so deleting history never clears
           them and muting only hides them. A reset records a recoverable “as-of”
@@ -125,19 +103,12 @@ export function AttentionResetCard({
       }
     >
       {state === null ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12.5,
-            color: P.ink2,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-sm text-ink2">
           Impact preview unavailable — the reset state couldn&rsquo;t be loaded.
           Resets are disabled until it reads successfully.
         </p>
       ) : (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div className="grid gap-2.5">
           {state.surfaces.map((surface) => (
             <SurfaceResetRow key={surface.surface} surface={surface} />
           ))}
@@ -185,64 +156,25 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
   const entitySnapshots = surface.entitySnapshots;
 
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        background: P.surface,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 700,
-              color: P.ink,
-            }}
-          >
+    <div className="grid gap-2.5 rounded-sm border border-line bg-surface px-3.5 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-sans text-sm font-semibold text-ink">
             {meta.label}
           </div>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              margin: "2px 0 0",
-              lineHeight: 1.45,
-            }}
-          >
+          <p className="m-0 mt-0.5 font-sans text-xs leading-snug text-ink2">
             {meta.description}
           </p>
         </div>
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 12,
-            color: P.ink2,
-            whiteSpace: "nowrap",
-            textAlign: "right",
-          }}
-        >
+        <div className="whitespace-nowrap text-right font-sans text-xs text-ink2">
           {impactLabel(surface.surface, surface.impactCount)}
           {surface.globalBaselineOn ? (
-            <div style={{ color: P.terraTextStrong, marginTop: 2 }}>
+            <div className="mt-0.5 text-clayDeep">
               Reset {surface.globalBaselineOn}
             </div>
           ) : null}
           {surface.entityOverrideCount > 0 ? (
-            <div style={{ marginTop: 2 }}>
+            <div className="mt-0.5">
               {surface.entityOverrideCount} single reset
               {surface.entityOverrideCount === 1 ? "" : "s"}
             </div>
@@ -250,20 +182,13 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
         </div>
       </div>
 
-      <form action={reset.formAction} style={{ display: "grid", gap: 8 }}>
+      <form action={reset.formAction} className="grid gap-2">
         <input type="hidden" name="scope" value="global" />
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-end",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-40 flex-1 basis-44">
             <label
               htmlFor={`attention-reset-confirm-${surface.surface}`}
-              style={fieldLabelStyle}
+              className={fieldLabelClassName}
             >
               Type {phrase} to confirm
             </label>
@@ -275,21 +200,20 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder={phrase}
-              className={fieldInputClass}
-              style={fieldInputStyle}
+              className={fieldInputClassName}
             />
           </div>
-          <PButton
+          <Button
             type="submit"
-            tone="terra"
+            variant="destructive"
             size="sm"
             disabled={reset.pending || !phraseMatches}
           >
             {reset.pending ? "Resetting…" : "Reset all"}
-          </PButton>
+          </Button>
         </div>
         {reset.state?.ok ? (
-          <span style={successTextStyle}>
+          <span className={successTextClassName}>
             Reset done — the card will read clear.{" "}
             {surface.surface === "care"
               ? `${reset.state.value.affected} care profile${
@@ -308,38 +232,23 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
         <form
           ref={revert.formRef}
           action={revert.formAction}
-          style={recoveryPanelStyle}
+          className={RECOVERY_PANEL_CLASS}
         >
           <input type="hidden" name="snapshotId" value={snapshot.id} />
           <input type="hidden" name="surface" value={surface.surface} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span style={recoveryLabelStyle}>Recovery</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={RECOVERY_LABEL_CLASS}>Recovery</span>
             <DangerPill label="Reversible" tone="reversible" />
           </div>
-          <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+          <div className="font-sans text-xs text-ink2">
             Recoverable reset captured {formatSnapshotTime(snapshot.createdAt)}{" "}
             UTC.
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-end",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-40 flex-1 basis-44">
               <label
                 htmlFor={`attention-restore-confirm-${surface.surface}`}
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} to restore
               </label>
@@ -351,8 +260,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
                 value={restoreConfirm}
                 onChange={(e) => setRestoreConfirm(e.target.value)}
                 placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-                className={fieldInputClass}
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
             </div>
             <PButton
@@ -365,7 +273,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
             </PButton>
           </div>
           {revert.state?.ok ? (
-            <span style={successTextStyle}>
+            <span className={successTextClassName}>
               Reset reverted — the card returns to its pre-reset state.
             </span>
           ) : null}
@@ -374,22 +282,14 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
       ) : null}
 
       {entitySnapshots.length > 0 ? (
-        <div style={recoveryPanelStyle}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span style={recoveryLabelStyle}>
+        <div className={RECOVERY_PANEL_CLASS}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={RECOVERY_LABEL_CLASS}>
               Undo single resets ({entitySnapshots.length})
             </span>
             <DangerPill label="Reversible" tone="reversible" />
           </div>
-          <div style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}>
+          <div className="font-sans text-xs text-ink2">
             Type {CLEAN_SLATE_RESTORE_CONFIRM_PHRASE} once to enable.
           </div>
           <input
@@ -400,20 +300,13 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
             value={entityRestoreConfirm}
             onChange={(e) => setEntityRestoreConfirm(e.target.value)}
             placeholder={CLEAN_SLATE_RESTORE_CONFIRM_PHRASE}
-            className={fieldInputClass}
-            style={{ ...fieldInputStyle, maxWidth: 220 }}
+            className={`${fieldInputClassName} max-w-[220px]`}
           />
           {entitySnapshots.map((es) => (
             <form
               key={es.id}
               action={entityRevert.formAction}
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-              }}
+              className="flex flex-wrap items-center justify-between gap-2"
             >
               <input type="hidden" name="snapshotId" value={es.id} />
               <input type="hidden" name="surface" value={surface.surface} />
@@ -422,9 +315,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
                 name="confirm"
                 value={entityRestoreConfirm}
               />
-              <span
-                style={{ fontFamily: fontSans, fontSize: 12, color: P.ink2 }}
-              >
+              <span className="font-sans text-xs text-ink2">
                 {es.entityId.slice(0, 8)}… · {formatSnapshotTime(es.createdAt)}{" "}
                 UTC
               </span>
@@ -439,7 +330,7 @@ function SurfaceResetRow({ surface }: { surface: AttentionResetSurfaceState }) {
             </form>
           ))}
           {entityRevert.state?.ok ? (
-            <span style={successTextStyle}>Single reset reverted.</span>
+            <span className={successTextClassName}>Single reset reverted.</span>
           ) : null}
           <FormStatus state={entityRevert.state} />
         </div>

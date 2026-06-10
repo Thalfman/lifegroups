@@ -29,17 +29,7 @@ export function LgAppShell({
   // would bounce them to /unauthorized.
   const homeHref = defaultLandingPathForRole(user.role);
   return (
-    <div
-      className="lg-m-noscrollx"
-      style={{
-        background: "var(--c-bg)",
-        color: "var(--c-ink)",
-        minHeight: "100vh",
-        fontFamily: "var(--font-body)",
-        display: "grid",
-        gridTemplateColumns: "232px minmax(0, 1fr)",
-      }}
-    >
+    <div className="grid min-h-screen grid-cols-1 bg-bg font-sans text-ink md:grid-cols-[232px_minmax(0,1fr)]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:shadow focus:ring-2 focus:ring-ring"
@@ -47,14 +37,7 @@ export function LgAppShell({
         Skip to content
       </a>
       <Sidebar navGroups={navGroups} homeHref={homeHref} />
-      <div
-        className="lg-shell-main"
-        style={{
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div className="flex min-w-0 flex-col">
         <TopBar
           user={user}
           mobileTrigger={
@@ -62,7 +45,7 @@ export function LgAppShell({
           }
           signOutSlot={<LogoutButton className="" />}
         />
-        <main id="main" style={{ flex: 1 }}>
+        <main id="main" className="flex-1">
           {children}
         </main>
       </div>

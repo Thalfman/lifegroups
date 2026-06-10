@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Collapsible operational section for the Super Admin Console (#261).
 //
@@ -11,7 +11,8 @@ import { P, fontSans } from "@/lib/pastoral";
 
 export type SuperAdminSectionAccent = {
   // Border + summary text colour marking the section as visually separated from
-  // routine controls.
+  // routine controls. Caller-resolved values (e.g. var(--c-rose)), so they stay
+  // inline styles here — the only dynamic colors this primitive carries.
   border: string;
   color: string;
   // A small status chip rendered in the summary (e.g. "Guarded", "Isolated").
@@ -20,11 +21,7 @@ export type SuperAdminSectionAccent = {
 
 function SectionChevron() {
   return (
-    <span
-      className="lg-sac-chevron"
-      aria-hidden="true"
-      style={{ display: "inline-flex", color: P.ink3 }}
-    >
+    <span className="lg-sac-chevron inline-flex text-ink3" aria-hidden="true">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path
           d="M4 2l4 4-4 4"
@@ -55,36 +52,24 @@ export function SuperAdminCollapsibleSection({
     <details
       id={id}
       open={defaultOpen}
-      style={{
-        scrollMarginTop: 20,
-        background: P.surface,
-        border: `1px solid ${accent ? accent.border : P.line}`,
-        borderRadius: 12,
-        ...(accent ? { boxShadow: `inset 4px 0 0 ${accent.border}` } : null),
-      }}
+      className={cn(
+        "scroll-mt-5 rounded-md border bg-surface",
+        !accent && "border-line"
+      )}
+      style={accent ? { borderColor: accent.border } : undefined}
     >
       <summary
-        className="lg-sac-summary"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "14px 18px",
-          fontFamily: fontSans,
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: 0.4,
-          textTransform: "uppercase",
-          color: accent ? accent.color : P.ink2,
-        }}
+        className={cn(
+          "lg-sac-summary flex items-center gap-2.5 px-[18px] py-3.5 font-sans text-sm font-semibold",
+          !accent && "text-ink2"
+        )}
+        style={accent ? { color: accent.color } : undefined}
       >
         <SectionChevron />
-        <span style={{ flex: 1 }}>{label}</span>
+        <span className="flex-1">{label}</span>
         {accent ? accent.badge : null}
       </summary>
-      <div style={{ display: "grid", gap: 18, padding: "4px 18px 20px" }}>
-        {children}
-      </div>
+      <div className="grid gap-[18px] px-[18px] pb-5 pt-1">{children}</div>
     </details>
   );
 }

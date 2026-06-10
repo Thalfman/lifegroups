@@ -1,51 +1,16 @@
-import Link from "next/link";
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { Button, LinkButton, type ButtonVariant } from "@/components/ui/button";
 
+// Thin compatibility wrappers over the design-system Button
+// (components/ui/button.tsx) so existing call sites upgrade without edits.
 export type PButtonTone = "ghost" | "solid" | "terra";
 export type PButtonSize = "sm" | "md";
 
-// Exported so a raw `<a download>` link (which can't be a Next <Link> or a
-// <button>) can be styled exactly like a PButton — e.g. the Clean Slate Export
-// download anchor (#294).
-export function pButtonStyle(
-  tone: PButtonTone = "ghost",
-  size: PButtonSize = "md"
-): CSSProperties {
-  return styleFor(tone, size);
-}
-
-function styleFor(tone: PButtonTone, size: PButtonSize): CSSProperties {
-  const padding = size === "sm" ? "8px 14px" : "10px 18px";
-  const fontSize = size === "sm" ? 12 : 13;
-  const base: CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding,
-    borderRadius: 999,
-    fontSize,
-    fontFamily: fontSans,
-    fontWeight: 500,
-    cursor: "pointer",
-    textDecoration: "none",
-    lineHeight: 1.2,
-    transition: "background .12s, color .12s, border-color .12s, opacity .12s",
-  };
-  if (tone === "solid") {
-    return { ...base, background: P.ink, color: P.surface, border: "none" };
-  }
-  if (tone === "terra") {
-    return { ...base, background: P.terra, color: P.surface, border: "none" };
-  }
-  return {
-    ...base,
-    background: "transparent",
-    color: P.ink,
-    border: `1px solid ${P.line}`,
-  };
-}
+const TONE_TO_VARIANT: Record<PButtonTone, ButtonVariant> = {
+  ghost: "ghost",
+  solid: "solid",
+  terra: "primary",
+};
 
 type PButtonCommonProps = {
   tone?: PButtonTone;
@@ -70,13 +35,15 @@ export function PLinkButton({
   "aria-label": ariaLabel,
 }: PLinkButtonProps) {
   return (
-    <Link
+    <LinkButton
       href={href}
       aria-label={ariaLabel}
-      style={{ ...styleFor(tone, size), ...style }}
+      variant={TONE_TO_VARIANT[tone]}
+      size={size}
+      style={style}
     >
       {children}
-    </Link>
+    </LinkButton>
   );
 }
 
@@ -87,23 +54,12 @@ export function PButton({
   tone = "ghost",
   size = "md",
   style,
-  disabled,
   children,
   ...rest
 }: PButtonProps) {
-  const baseStyle = styleFor(tone, size);
   return (
-    <button
-      {...rest}
-      disabled={disabled}
-      style={{
-        ...baseStyle,
-        opacity: disabled ? 0.55 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-        ...style,
-      }}
-    >
+    <Button {...rest} variant={TONE_TO_VARIANT[tone]} size={size} style={style}>
       {children}
-    </button>
+    </Button>
   );
 }

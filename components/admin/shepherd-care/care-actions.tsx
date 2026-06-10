@@ -8,7 +8,6 @@ import {
   LogTouchForm,
   CareProfileFieldForm,
 } from "@/components/admin/shepherd-care/care-action-forms";
-import { P, fontBody } from "@/lib/pastoral";
 import type { ShepherdCareProfilesRow } from "@/types/database";
 import type { ShepherdCareInteractionType } from "@/types/enums";
 
@@ -130,22 +129,35 @@ export function CareActions({
 
   const open = renderDrawer();
 
+  // Hierarchy for the action row (design direction §4): the three logging
+  // actions read as one related cluster on a surfaceAlt tint; the three
+  // record-keeping actions stand apart as plain ghosts. Same six actions,
+  // same labels — only the visual grouping changed.
+  const logActions = actions.filter((a) => a.kind.startsWith("log_"));
+  const editActions = actions.filter((a) => !a.kind.startsWith("log_"));
+
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-        }}
-      >
+    <div className="grid gap-3">
+      <p className="m-0 font-sans text-sm text-ink2">
         Pick an action. Each opens a focused panel and does one thing.
         Everything here is admin-only — it never appears on leader or member
         surfaces.
       </p>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {actions.map((a) => (
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-pill bg-surfaceAlt p-1">
+          {logActions.map((a) => (
+            <PButton
+              key={a.kind}
+              type="button"
+              tone="ghost"
+              size="md"
+              onClick={() => drawer.open(a.kind)}
+            >
+              {a.label}
+            </PButton>
+          ))}
+        </div>
+        {editActions.map((a) => (
           <PButton
             key={a.kind}
             type="button"

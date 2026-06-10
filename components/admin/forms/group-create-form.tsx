@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateGroup } from "@/app/(protected)/admin/groups/actions";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formGridStyle,
-  formNoteStyle,
+  fieldHintClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formGridClassName,
+  formNoteClassName,
 } from "./field-styles";
-import { P, fontBody } from "@/lib/pastoral";
 import {
   MEETING_DAYS_ORDERED,
   MEETING_FREQUENCY_OPTIONS,
@@ -85,16 +86,16 @@ export function GroupCreateForm({
       ref={formRef}
       action={formAction}
       onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
-      <p style={formNoteStyle}>
+      <p className={formNoteClassName}>
         Create a new Life Group. Start with the name and when it meets &mdash;
         everything else can be filled in under More details, now or later as the
         group settles into a rhythm.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className={formGridClassName}>
         <div>
-          <label htmlFor="group-name" style={fieldLabelStyle}>
+          <label htmlFor="group-name" className={fieldLabelClassName}>
             Group name
           </label>
           <input
@@ -103,19 +104,19 @@ export function GroupCreateForm({
             type="text"
             required
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Wednesday Westside"
           />
         </div>
         <div>
-          <label htmlFor="group-meeting_day" style={fieldLabelStyle}>
+          <label htmlFor="group-meeting_day" className={fieldLabelClassName}>
             Meeting day (optional)
           </label>
           <select
             id="group-meeting_day"
             name="meeting_day"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Not set</option>
             {MEETING_DAYS_ORDERED.map((day) => (
@@ -126,7 +127,7 @@ export function GroupCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="group-meeting_time" style={fieldLabelStyle}>
+          <label htmlFor="group-meeting_time" className={fieldLabelClassName}>
             Meeting time (optional)
           </label>
           <input
@@ -134,24 +135,14 @@ export function GroupCreateForm({
             name="meeting_time"
             type="time"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
       </div>
       <button
         type="button"
         onClick={() => setShowMore((v) => !v)}
-        style={{
-          justifySelf: "start",
-          background: "none",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink2,
-          textDecoration: "underline",
-        }}
+        className="cursor-pointer justify-self-start border-none bg-transparent p-0 font-sans text-sm text-ink2 underline hover:text-ink"
       >
         {showMore ? "Fewer details" : "More details"}
       </button>
@@ -159,12 +150,12 @@ export function GroupCreateForm({
           More details — most importantly meeting_frequency, which would
           otherwise default back to weekly on the server — still submit
           with the form rather than being silently discarded. */}
-      <div
-        className="lg-m-grid-stack"
-        style={showMore ? formGridStyle : { ...formGridStyle, display: "none" }}
-      >
+      <div className={cn(formGridClassName, !showMore && "hidden")}>
         <div>
-          <label htmlFor="group-meeting_frequency" style={fieldLabelStyle}>
+          <label
+            htmlFor="group-meeting_frequency"
+            className={fieldLabelClassName}
+          >
             Meeting frequency
           </label>
           <select
@@ -172,7 +163,7 @@ export function GroupCreateForm({
             name="meeting_frequency"
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as MeetingFrequency)}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             {MEETING_FREQUENCY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -183,14 +174,17 @@ export function GroupCreateForm({
         </div>
         {showParity ? (
           <div>
-            <label htmlFor="group-meeting_week_parity" style={fieldLabelStyle}>
+            <label
+              htmlFor="group-meeting_week_parity"
+              className={fieldLabelClassName}
+            >
               Which weeks does it meet?
             </label>
             <select
               id="group-meeting_week_parity"
               name="meeting_week_parity"
               defaultValue=""
-              style={fieldSelectStyle}
+              className={fieldSelectClassName}
             >
               <option value="">Choose weeks</option>
               {MEETING_PARITY_OPTIONS.map((opt) => (
@@ -199,22 +193,14 @@ export function GroupCreateForm({
                 </option>
               ))}
             </select>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-                margin: "6px 0 0",
-                lineHeight: 1.4,
-              }}
-            >
+            <p className={fieldHintClassName}>
               For groups that meet every other week. Odd and even weeks
               alternate through the year — pick the set this group gathers on.
             </p>
           </div>
         ) : null}
         <div>
-          <label htmlFor="group-location_area" style={fieldLabelStyle}>
+          <label htmlFor="group-location_area" className={fieldLabelClassName}>
             Location area (optional)
           </label>
           <input
@@ -222,12 +208,15 @@ export function GroupCreateForm({
             name="location_area"
             type="text"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Westside"
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="group-address_optional" style={fieldLabelStyle}>
+        <div className="md:col-span-full">
+          <label
+            htmlFor="group-address_optional"
+            className={fieldLabelClassName}
+          >
             Address (optional)
           </label>
           <input
@@ -235,12 +224,12 @@ export function GroupCreateForm({
             name="address_optional"
             type="text"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="123 Vine St."
           />
         </div>
         <div>
-          <label htmlFor="group-capacity" style={fieldLabelStyle}>
+          <label htmlFor="group-capacity" className={fieldLabelClassName}>
             Capacity (optional)
           </label>
           <input
@@ -258,7 +247,7 @@ export function GroupCreateForm({
             max={showMore ? 1000 : undefined}
             inputMode="numeric"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             // G3 (#222): seed with the ministry default so the new group
             // starts with a sensible capacity rather than Unknown. The field
             // stays mounted while collapsed, so the default submits even when
@@ -269,22 +258,17 @@ export function GroupCreateForm({
               defaultCapacity != null ? String(defaultCapacity) : "Unknown"
             }
           />
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              margin: "6px 0 0",
-              lineHeight: 1.4,
-            }}
-          >
+          <p className={fieldHintClassName}>
             {defaultCapacity != null
               ? `Defaults to the ministry capacity of ${defaultCapacity}. Change it for a group that's different, or clear it to leave capacity Unknown.`
               : "No ministry default set, so capacity starts Unknown. Set a number for this group, or leave it blank."}
           </p>
         </div>
         <div>
-          <label htmlFor="group-audience_category" style={fieldLabelStyle}>
+          <label
+            htmlFor="group-audience_category"
+            className={fieldLabelClassName}
+          >
             Audience (optional)
           </label>
           <select
@@ -294,7 +278,7 @@ export function GroupCreateForm({
             onChange={(e) =>
               setAudience(e.target.value as GroupAudienceCategory | "")
             }
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Unset</option>
             <option value="men">Men</option>
@@ -303,7 +287,7 @@ export function GroupCreateForm({
           </select>
         </div>
         <div>
-          <label htmlFor="group-category_id" style={fieldLabelStyle}>
+          <label htmlFor="group-category_id" className={fieldLabelClassName}>
             Category (optional)
           </label>
           <select
@@ -315,7 +299,7 @@ export function GroupCreateForm({
             key={audience}
             defaultValue=""
             disabled={!audience}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             <option value="">Uncategorized</option>
             {optionsForAudience(categoriesByAudience, audience).map((c) => (
@@ -324,45 +308,37 @@ export function GroupCreateForm({
               </option>
             ))}
           </select>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              margin: "6px 0 0",
-              lineHeight: 1.4,
-            }}
-          >
+          <p className={fieldHintClassName}>
             {audience
               ? "Categories applied to this audience. Leave Uncategorized to tag it later."
               : "Pick an audience first to choose a category. Until then the group is Uncategorized."}
           </p>
         </div>
         <div>
-          <label htmlFor="group-launched_on" style={fieldLabelStyle}>
+          <label htmlFor="group-launched_on" className={fieldLabelClassName}>
             Launched on (optional)
           </label>
           <input
             id="group-launched_on"
             name="launched_on"
             type="date"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="group-description" style={fieldLabelStyle}>
+        <div className="md:col-span-full">
+          <label htmlFor="group-description" className={fieldLabelClassName}>
             Description (optional)
           </label>
           <textarea
             id="group-description"
             name="description"
             rows={3}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            className={cn(fieldInputClassName, "min-h-20 resize-y")}
             placeholder="Who this group is for, what makes it tick."
           />
         </div>
       </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Creating…" : "Create group"}
         </PButton>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { P, fontBody, fontDisplay, fontSans, paperGrain } from "@/lib/pastoral";
+import { paperGrain } from "@/lib/pastoral";
 import { PSeal } from "@/components/pastoral/atoms";
 import { PButton } from "@/components/pastoral/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -78,88 +78,28 @@ export default async function ResetPasswordPage({
   });
 
   return (
-    <div
-      className="lg-m-noscrollx"
-      style={{
-        background: P.bg,
-        minHeight: "100vh",
-        fontFamily: fontBody,
-        color: P.ink,
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="lg-m-noscrollx relative flex min-h-screen flex-col bg-bg font-sans text-ink">
       <div aria-hidden="true" style={paperGrain} />
 
-      <header
-        style={{
-          padding: "18px clamp(20px, 5vw, 36px)",
-          background: P.surface,
-          borderBottom: `1px solid ${P.line}`,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
+      <header className="relative z-base border-b border-line bg-surface px-4 py-3 md:px-9 md:py-4">
         <Link
           href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            color: "inherit",
-            textDecoration: "none",
-          }}
+          className="inline-flex items-center gap-3 text-inherit no-underline"
         >
           <PSeal />
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 16,
-              fontWeight: 600,
-              letterSpacing: -0.2,
-              color: P.ink,
-            }}
-          >
+          <div className="font-display text-md font-medium text-ink md:text-lg">
             Fox Valley Church Life Groups
           </div>
         </Link>
       </header>
 
-      <main
-        style={{
-          flex: 1,
-          display: "grid",
-          placeItems: "center",
-          padding: "clamp(40px, 8vw, 80px) 24px",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 2.5,
-              textTransform: "uppercase",
-              color: P.terra,
-              fontWeight: 600,
-              marginBottom: 14,
-            }}
-          >
+      <main className="relative z-base grid flex-1 place-items-center px-6 py-10 md:py-20">
+        <div className="w-full max-w-[420px]">
+          {/* The page kicker — the one tracked-uppercase voice per page. */}
+          <div className="mb-3.5 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-clay">
             Reset password
           </div>
-          <h1
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: "clamp(26px, 4vw, 32px)",
-              margin: "0 0 14px",
-              fontWeight: 600,
-              letterSpacing: -0.3,
-              color: P.ink,
-            }}
-          >
+          <h1 className="m-0 mb-3.5 font-display text-3xl font-normal text-ink md:text-4xl">
             {view.kind === "form"
               ? "Set a new password"
               : view.kind === "confirm"
@@ -168,16 +108,7 @@ export default async function ResetPasswordPage({
                   ? "Reset password"
                   : "Link expired or already used"}
           </h1>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 14,
-              color: P.ink2,
-              marginTop: 0,
-              marginBottom: 24,
-              lineHeight: 1.55,
-            }}
-          >
+          <p className="mb-6 mt-0 font-sans text-base text-ink2">
             {view.kind === "form"
               ? "Choose a new password for your account. Must be at least 8 characters."
               : view.kind === "confirm"
@@ -194,41 +125,20 @@ export default async function ResetPasswordPage({
               {Object.entries(view.fields).map(([name, value]) => (
                 <input key={name} type="hidden" name={name} value={value} />
               ))}
-              <PButton
-                type="submit"
-                tone="terra"
-                style={{ width: "100%", padding: "14px", fontSize: 14 }}
-              >
+              <PButton type="submit" tone="terra" className="w-full">
                 Set my new password
               </PButton>
             </form>
           ) : (
+            /* Error status note: soft rose bg + rose fg, no stripe. */
             <p
               role="alert"
-              style={{
-                background: P.surface,
-                border: `1px solid ${P.line}`,
-                borderLeft: `3px solid ${P.terra}`,
-                borderRadius: 10,
-                padding: "12px 16px",
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: "#7d3621",
-                margin: "0 0 18px",
-                lineHeight: 1.5,
-              }}
+              className="m-0 mb-5 rounded-sm bg-roseSoft px-3.5 py-3 font-sans text-sm text-rose"
             >
               {view.kind === "not_configured"
                 ? "Password reset isn’t available right now."
                 : "This reset link is invalid, was already used, or has expired."}{" "}
-              <Link
-                href="/forgot-password"
-                style={{
-                  color: P.terra,
-                  fontWeight: 600,
-                  textDecoration: "underline",
-                }}
-              >
+              <Link href="/forgot-password" className="font-semibold underline">
                 Request a new link
               </Link>
               .

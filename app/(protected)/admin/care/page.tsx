@@ -46,28 +46,14 @@ import {
 } from "@/lib/admin/care-area";
 import { buildCareAccordion } from "@/lib/admin/care-accordion";
 import type { GroupsRow } from "@/types/database";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Bucket heading inside the Follow-ups tab's shepherd-care section. Quieter than
 // the SectionHeader title so the two buckets read as subdivisions of one source.
-const careGroupHeadingStyle = {
-  margin: 0,
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-  fontWeight: 700,
-  color: P.ink3,
-} as const;
+const CARE_GROUP_HEADING = "m-0 font-sans text-sm font-semibold text-ink3";
 
 // One-line lede at the top of the Follow-ups tab (#479): the tab stacks two
 // separate queues, so it opens by saying which is which before either renders.
-const followUpsLedeStyle = {
-  margin: 0,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-} as const;
+const FOLLOW_UPS_LEDE = "m-0 font-sans text-sm text-ink2";
 
 // Care area (ADR 0013, #301; re-keyed to the PRD IA in #334; consolidated to
 // FOUR tabs in #477 so no two tabs answer the same question). Care is the
@@ -275,16 +261,7 @@ export async function loadCarePageData({
   });
 
   const errorBanner = care.error ? (
-    <p
-      style={{
-        fontFamily: fontBody,
-        color: "#923220",
-        background: P.terraSoft,
-        padding: "10px 14px",
-        borderRadius: 8,
-        margin: 0,
-      }}
-    >
+    <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
       {care.error}
     </p>
   ) : null;
@@ -322,7 +299,7 @@ export async function loadCarePageData({
       label: "All leaders",
       count: care.entries.length,
       panel: (
-        <div style={{ display: "grid", gap: 18 }}>
+        <div className="grid gap-5">
           <ShepherdCareDashboardSummaryCards
             summary={dashboard.summary}
             coverageAvailable={dashboard.coverageAvailable}
@@ -333,15 +310,8 @@ export async function loadCarePageData({
             totalCount={totalAttention}
             rosterFiltered={rosterFilter === "needs_attention"}
           />
-          <div style={{ display: "grid", gap: 12 }}>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: P.ink2,
-              }}
-            >
+          <div className="grid gap-3">
+            <p className="m-0 font-sans text-sm text-ink2">
               Every leader in one flat list — the same leaders the
               Over-Shepherds tab groups by their over-shepherd.
             </p>
@@ -380,21 +350,21 @@ export async function loadCarePageData({
       // oversight queue (the `follow_ups` table) follows unchanged so neither
       // host loses functionality.
       panel: (
-        <div style={{ display: "grid", gap: 24 }}>
-          <p style={followUpsLedeStyle}>
+        <div className="grid gap-6">
+          <p className={FOLLOW_UPS_LEDE}>
             Two queues live here: care follow-ups are about your leaders, and
             general follow-ups cover groups and tasks.
           </p>
-          <div style={{ display: "grid", gap: 36 }}>
-            <section style={{ display: "grid", gap: 18 }}>
+          <div className="grid gap-9">
+            <section className="grid gap-5">
               <SectionHeader
                 eyebrow="Leader care"
                 title="Care follow-ups — about your leaders"
                 description="Care follow-ups due soon, overdue, or recently completed. This is a separate list from the general follow-up queue further down — the two are tracked independently, so their counts won't match."
               />
-              <div style={{ display: "grid", gap: 24 }}>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <h3 style={careGroupHeadingStyle}>
+              <div className="grid gap-6">
+                <div className="grid gap-2.5">
+                  <h3 className={CARE_GROUP_HEADING}>
                     Due-soon care follow-ups ({area.dueSoon.length})
                   </h3>
                   <CareItemList
@@ -404,8 +374,8 @@ export async function loadCarePageData({
                     isSuperAdmin={isSuperAdmin}
                   />
                 </div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <h3 style={careGroupHeadingStyle}>
+                <div className="grid gap-2.5">
+                  <h3 className={CARE_GROUP_HEADING}>
                     Completed care follow-ups ({area.completed.length})
                   </h3>
                   <CareItemList
@@ -489,9 +459,7 @@ export async function CarePageView({
         {/* Page-level so a failed care read is visible from every tab —
             otherwise Over-Shepherds / All leaders / Recent updates would show
             their normal empty state and falsely signal "no care work". */}
-        {errorBanner ? (
-          <div style={{ marginBottom: 18 }}>{errorBanner}</div>
-        ) : null}
+        {errorBanner ? <div className="mb-5">{errorBanner}</div> : null}
         <CareShell tabs={tabs} initialTab={resolvedTab} />
       </PageBody>
     </>

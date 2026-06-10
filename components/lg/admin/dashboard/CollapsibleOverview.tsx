@@ -13,7 +13,6 @@
 
 import { useState, type ReactNode } from "react";
 import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
-import { P, fontSans } from "@/lib/pastoral";
 
 const SURFACE = "admin-overview-cards";
 
@@ -23,11 +22,7 @@ function isBoolean(value: unknown): value is boolean {
 
 function Chevron() {
   return (
-    <span
-      className="lg-sac-chevron"
-      aria-hidden="true"
-      style={{ display: "inline-flex", color: P.ink3 }}
-    >
+    <span className="lg-sac-chevron inline-flex text-ink3" aria-hidden="true">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path
           d="M4 2l4 4-4 4"
@@ -65,33 +60,13 @@ export function CollapsibleOverview({
     <details
       open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-      }}
+      className="rounded-lg border border-line bg-surface"
     >
-      <summary
-        className="lg-sac-summary"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "14px 18px",
-          fontFamily: fontSans,
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: 1.8,
-          textTransform: "uppercase",
-          color: P.ink3,
-        }}
-      >
+      <summary className="lg-sac-summary flex items-center gap-2.5 px-4 py-3.5 font-display text-lg font-medium text-ink">
         <Chevron />
-        <span style={{ flex: 1 }}>Overview</span>
+        <span className="flex-1">Overview</span>
       </summary>
-      <div style={{ display: "grid", gap: 18, padding: "4px 18px 20px" }}>
-        {children}
-      </div>
+      <div className="grid gap-4 px-4 pb-5 pt-1">{children}</div>
     </details>
   );
 }

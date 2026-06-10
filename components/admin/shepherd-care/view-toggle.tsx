@@ -1,6 +1,5 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
   buildShepherdCareViewHref,
   type CoverageFilter,
@@ -13,34 +12,14 @@ import {
 // carrying the current filter / coverage selection across, so the chosen view
 // is bookmarkable.
 
-const SEGMENT_WRAP: CSSProperties = {
-  display: "inline-flex",
-  gap: 2,
-  padding: 3,
-  borderRadius: 999,
-  border: `1px solid ${P.line}`,
-  background: P.bg,
-};
-
-const SEGMENT: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "6px 16px",
-  borderRadius: 999,
-  fontSize: 13,
-  fontFamily: fontSans,
-  fontWeight: 500,
-  textDecoration: "none",
-  color: P.ink2,
-  background: "transparent",
-};
-
-const SEGMENT_ACTIVE: CSSProperties = {
-  ...SEGMENT,
-  background: P.surface,
-  color: P.ink,
-  boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-};
+function segmentClassName(active: boolean): string {
+  return cn(
+    "inline-flex items-center rounded-pill px-4 py-1.5 font-sans text-sm font-medium no-underline transition-colors duration-150",
+    active
+      ? "bg-surface text-ink shadow-soft"
+      : "bg-transparent text-ink2 hover:bg-surface/60"
+  );
+}
 
 export function ShepherdCareViewToggle({
   current,
@@ -56,13 +35,16 @@ export function ShepherdCareViewToggle({
     { view: "directory", label: "Directory" },
   ];
   return (
-    <nav aria-label="Leader care view" style={SEGMENT_WRAP}>
+    <nav
+      aria-label="Leader care view"
+      className="inline-flex gap-0.5 rounded-pill border border-line bg-bg p-[3px]"
+    >
       {segments.map((s) => (
         <Link
           key={s.view}
           href={buildShepherdCareViewHref({ view: s.view, filter, coverage })}
           aria-current={current === s.view ? "page" : undefined}
-          style={current === s.view ? SEGMENT_ACTIVE : SEGMENT}
+          className={segmentClassName(current === s.view)}
         >
           {s.label}
         </Link>

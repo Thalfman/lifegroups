@@ -11,18 +11,17 @@ import {
 } from "@/app/(protected)/admin/shepherd-care/actions";
 import { PButton } from "@/components/pastoral/button";
 import {
-  errorTextStyle,
-  fieldInputStyle,
-  fieldLabelStyle,
-  formNoteStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldInputClassName as FIELD_INPUT,
+  fieldLabelClassName as FIELD_LABEL,
+  formNoteClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   createPrivateNotesSession,
   passkeySlotsOf,
 } from "@/lib/admin/private-notes-session";
 import { isPrfPasskeySupported } from "@/lib/crypto/private-notes";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   PrivateNoteCiphertext,
   PrivateNoteKeySlot,
@@ -36,26 +35,15 @@ type Props = {
   initialSlots: PrivateNoteKeySlot[];
 };
 
-const sectionTitleStyle = {
-  fontFamily: fontSans,
-  fontSize: 14,
-  letterSpacing: 0.6,
-  margin: "0 0 6px",
-  color: P.ink,
-} as const;
+// Form anatomy comes from the canonical field styles (design direction §4);
+// only the spacing under ledes/status lines is local to this stacked layout.
+// Status lines use the canonical voices (error in rose, success in sage).
+const FORM_NOTE = `${formNoteClassName} mb-3`;
+const ERROR_TEXT = `${errorTextClassName} mb-3`;
+const SUCCESS_TEXT = `${successTextClassName} mb-3`;
 
-const codeStyle = {
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-  fontSize: 16,
-  letterSpacing: 1,
-  color: P.ink,
-  background: P.bg,
-  border: `1px solid ${P.line}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  wordBreak: "break-all" as const,
-  userSelect: "all" as const,
-};
+const CODE =
+  "select-all break-all rounded-sm border border-line bg-bg px-3.5 py-3 font-mono text-md tracking-wider text-ink";
 
 export function PrivateNotesSection({
   careProfileId,
@@ -123,47 +111,41 @@ export function PrivateNotesSection({
   const passkeySlots = passkeySlotsOf(state.slots);
 
   return (
-    <section style={cardStyle} aria-label="Private notes (only you)">
-      <h2 style={sectionTitleStyle}>Private notes (only you)</h2>
-      <p style={formNoteStyle}>
+    <section
+      className="rounded-lg border border-line bg-surface p-card"
+      aria-label="Private notes (only you)"
+    >
+      <h2 className="m-0 mb-1.5 font-display text-lg font-medium text-ink">
+        Private notes (only you)
+      </h2>
+      <p className={FORM_NOTE}>
         Encrypted on your device before it&apos;s saved. No one else — not other
         admins, and not the platform owner — can read it from the database or
         backups. If you lose every unlock method, the note can never be
         recovered.
       </p>
 
-      {state.error ? (
-        <p style={{ ...errorTextStyle, marginBottom: 12 }}>{state.error}</p>
-      ) : null}
-      {state.status ? (
-        <p style={{ ...successTextStyle, marginBottom: 12 }}>{state.status}</p>
-      ) : null}
+      {state.error ? <p className={ERROR_TEXT}>{state.error}</p> : null}
+      {state.status ? <p className={SUCCESS_TEXT}>{state.status}</p> : null}
 
       {/* Recovery-code rotation: show the NEW code once, require capture, then
           persist (revoking the old code). */}
       {state.rotationCode ? (
-        <div style={{ display: "grid", gap: 12 }}>
-          <p style={{ ...formNoteStyle, margin: 0, color: P.ink }}>
+        <div className="grid gap-3">
+          <p className="m-0 font-sans text-sm leading-normal text-ink">
             Save this <strong>new</strong> recovery code now. It replaces your
             old one — the old code stops working the moment you confirm. Shown
             once.
           </p>
-          <div style={codeStyle}>{state.rotationCode}</div>
-          <label
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-start",
-              fontFamily: fontBody,
-            }}
-          >
+          <div className={CODE}>{state.rotationCode}</div>
+          <label className="flex items-start gap-2 font-sans">
             <input
               type="checkbox"
               checked={state.rotationAck}
               onChange={(e) => session.setRotationAck(e.target.checked)}
-              style={{ marginTop: 3 }}
+              className="mt-[3px]"
             />
-            <span style={{ fontSize: 13, color: P.ink2 }}>
+            <span className="text-sm text-ink2">
               I&apos;ve saved my new recovery code — I understand losing all
               unlock methods means these notes can never be recovered.
             </span>
@@ -180,27 +162,20 @@ export function PrivateNotesSection({
         </div>
       ) : /* Enrollment: show the recovery code once, require capture. */
       state.recoveryCode ? (
-        <div style={{ display: "grid", gap: 12 }}>
-          <p style={{ ...formNoteStyle, margin: 0, color: P.ink }}>
+        <div className="grid gap-3">
+          <p className="m-0 font-sans text-sm leading-normal text-ink">
             Save this recovery code now. It is shown once and is the only way
             back in if you lose your passkey.
           </p>
-          <div style={codeStyle}>{state.recoveryCode}</div>
-          <label
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-start",
-              fontFamily: fontBody,
-            }}
-          >
+          <div className={CODE}>{state.recoveryCode}</div>
+          <label className="flex items-start gap-2 font-sans">
             <input
               type="checkbox"
               checked={state.recoveryAck}
               onChange={(e) => session.setRecoveryAck(e.target.checked)}
-              style={{ marginTop: 3 }}
+              className="mt-[3px]"
             />
-            <span style={{ fontSize: 13, color: P.ink2 }}>
+            <span className="text-sm text-ink2">
               I&apos;ve saved my recovery code — I understand a lost code means
               these notes can never be recovered.
             </span>
@@ -222,7 +197,7 @@ export function PrivateNotesSection({
           </PButton>
         </div>
       ) : !state.unlocked ? (
-        <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
+        <div className="grid max-w-[420px] gap-3">
           {passkeySlots.length > 0 ? (
             <div>
               <PButton
@@ -234,8 +209,8 @@ export function PrivateNotesSection({
               </PButton>
             </div>
           ) : null}
-          <div style={{ display: "grid", gap: 6 }}>
-            <label htmlFor="sc4-recovery" style={fieldLabelStyle}>
+          <div className="grid gap-1.5">
+            <label htmlFor="sc4-recovery" className={FIELD_LABEL}>
               Recovery code
             </label>
             <input
@@ -244,7 +219,7 @@ export function PrivateNotesSection({
               autoComplete="off"
               value={state.recoveryInput}
               onChange={(e) => session.setRecoveryInput(e.target.value)}
-              style={fieldInputStyle}
+              className={FIELD_INPUT}
               placeholder="XXXXX-XXXXX-…"
             />
             <div>
@@ -259,15 +234,15 @@ export function PrivateNotesSection({
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className="grid gap-3">
           <textarea
             value={state.noteText}
             onChange={(e) => session.setNoteText(e.target.value)}
             rows={6}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 120 }}
+            className={`${FIELD_INPUT} min-h-[120px] resize-y`}
             placeholder="A note only you can read…"
           />
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="flex gap-2.5">
             <PButton tone="solid" onClick={session.save} disabled={state.busy}>
               {state.busy ? "Saving…" : "Save private note"}
             </PButton>
@@ -277,55 +252,31 @@ export function PrivateNotesSection({
           </div>
 
           {/* Manage unlock methods (#113). */}
-          <div
-            style={{
-              borderTop: `1px solid ${P.line}`,
-              paddingTop: 14,
-              marginTop: 4,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <h3 style={{ ...sectionTitleStyle, fontSize: 12, margin: 0 }}>
+          <div className="mt-1 grid gap-2.5 border-t border-line pt-3.5">
+            <h3 className="m-0 font-sans text-sm font-semibold text-ink">
               Unlock methods
             </h3>
-            <ul
-              style={{
-                listStyle: "none",
-                margin: 0,
-                padding: 0,
-                display: "grid",
-                gap: 6,
-              }}
-            >
+            <ul className="m-0 grid list-none gap-1.5 p-0">
               {state.slots.map((slot) => (
                 <li
                   key={slot.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    fontFamily: fontBody,
-                    fontSize: 13,
-                    color: P.ink,
-                  }}
+                  className="flex items-center justify-between gap-2.5 font-sans text-sm text-ink"
                 >
                   <span>
                     {slot.slot_type === "recovery"
                       ? "Recovery code"
                       : slot.label || "Passkey"}
-                    <span style={{ color: P.ink3 }}>
+                    <span className="text-ink3">
                       {slot.slot_type === "recovery" ? " (backstop)" : ""}
                     </span>
                   </span>
                   {slot.slot_type === "passkey" ? (
                     slot.id.startsWith("pending-") ? (
-                      <span style={{ fontSize: 12, color: P.ink3 }}>
+                      <span className="text-xs text-ink3">
                         Reload to manage
                       </span>
                     ) : state.confirmRemoveId === slot.id ? (
-                      <span style={{ display: "flex", gap: 6 }}>
+                      <span className="flex gap-1.5">
                         <PButton
                           tone="terra"
                           size="sm"
@@ -361,20 +312,13 @@ export function PrivateNotesSection({
               ))}
             </ul>
             {state.confirmRemoveId ? (
-              <p
-                style={{
-                  ...formNoteStyle,
-                  margin: 0,
-                  fontSize: 12,
-                  color: "#923220",
-                }}
-              >
+              <p className="m-0 font-sans text-sm text-rose">
                 Removing a passkey leaves fewer ways in. Make sure you still
                 have your recovery code or another passkey before confirming —
                 there is no server-side reset.
               </p>
             ) : null}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="flex flex-wrap gap-2.5">
               {isPrfPasskeySupported() ? (
                 <PButton
                   tone="ghost"
@@ -394,7 +338,7 @@ export function PrivateNotesSection({
                 Rotate recovery code
               </PButton>
             </div>
-            <p style={{ ...formNoteStyle, margin: 0, fontSize: 12 }}>
+            <p className="m-0 font-sans text-xs leading-normal text-ink2">
               Lose every unlock method and these notes can never be recovered —
               there is no server-side reset.
             </p>
@@ -404,10 +348,3 @@ export function PrivateNotesSection({
     </section>
   );
 }
-
-const cardStyle = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  padding: 20,
-} as const;

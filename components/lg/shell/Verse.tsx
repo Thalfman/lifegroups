@@ -1,66 +1,17 @@
 export function Verse() {
   return (
-    <div
-      style={{
-        padding: 14,
-        borderRadius: 10,
-        background: "var(--c-sageTint)",
-        border: "1px solid var(--c-line)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 9.5,
-          letterSpacing: 1.8,
-          textTransform: "uppercase",
-          fontWeight: 700,
-          color: "var(--c-clay)",
-          marginBottom: 8,
-        }}
-      >
+    <div className="relative overflow-hidden rounded-sm border border-line bg-sageTint p-3.5">
+      <div className="mb-2 font-sans text-2xs font-bold uppercase tracking-[0.16em] text-clay">
         Why we&rsquo;re here
       </div>
-      <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: 15,
-          lineHeight: 1.3,
-          color: "var(--c-ink)",
-          fontWeight: 500,
-        }}
-      >
-        Telling and{" "}
-        <span style={{ fontStyle: "italic" }}>showing</span> the story of Jesus.
+      <div className="font-display text-md font-medium leading-tight text-ink">
+        Telling and <span className="italic">showing</span> the story of Jesus.
       </div>
-      <div
-        style={{
-          marginTop: 10,
-          paddingTop: 10,
-          borderTop: "1px solid var(--c-sageSoft)",
-          fontFamily: "var(--font-display)",
-          fontSize: 11.5,
-          lineHeight: 1.5,
-          color: "var(--c-ink2)",
-          fontStyle: "italic",
-        }}
-      >
+      <div className="mt-2.5 border-t border-sageSoft pt-2.5 font-display text-xs italic leading-normal text-ink2">
         &ldquo;Jesus Christ is the one we proclaim&hellip; so that we may
         present everyone fully mature in Christ.&rdquo;
       </div>
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 9.5,
-          letterSpacing: 1.4,
-          textTransform: "uppercase",
-          color: "var(--c-ink4)",
-          marginTop: 6,
-          fontWeight: 600,
-        }}
-      >
+      <div className="mt-1.5 font-sans text-2xs font-semibold uppercase tracking-[0.12em] text-ink3">
         Colossians 1:28
       </div>
     </div>

@@ -10,13 +10,14 @@ import {
   adminSetCategoryTypeTargetCount,
   adminSetGroupCategory,
 } from "@/app/(protected)/admin/settings/actions";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  errorTextStyle,
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formNoteClassName,
+  successTextClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -53,6 +54,13 @@ const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
   women: "Women's",
   mixed: "Mixed",
 };
+
+// Shared row classes: a disclosure summary row and the body it reveals.
+const SUMMARY_ROW = "flex flex-wrap items-center gap-2.5 px-4 py-3.5";
+const DETAILS_BODY = "grid gap-3.5 px-4 pb-4";
+const INLINE_FORM = "flex flex-wrap items-center gap-2";
+const META_TEXT = "whitespace-nowrap font-sans text-xs text-ink3";
+const EMPTY_NOTE = "m-0 font-sans text-sm italic text-ink3";
 
 export function GroupsCatalogEditor({
   cells,
@@ -154,10 +162,10 @@ export function GroupsCatalogEditor({
     : [];
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <AddGroupTypeForm categories={categories} />
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid gap-3">
         {boards.map((board) => (
           <AudienceBoard
             key={board.audienceCategory}
@@ -194,7 +202,7 @@ export function GroupsCatalogEditor({
         {editingGroup ? (
           // Keyed per group so the fields + action state reset when a different
           // group is opened, while the Dialog itself stays mounted.
-          <div key={editingGroup.id} style={{ display: "grid", gap: 18 }}>
+          <div key={editingGroup.id} className="grid gap-4">
             <GroupEditForm
               group={editingGroup}
               categoriesByAudience={categoriesByAudience}
@@ -231,19 +239,22 @@ function UnusedCategories({
   categories: { id: string; label: string }[];
 }) {
   return (
-    <section style={unusedSectionStyle}>
-      <div style={unusedHeadingStyle}>Unused categories</div>
-      <p style={noteStyle}>
+    <section className="grid gap-3 border-t border-line pt-4">
+      <div className="font-sans text-xs font-semibold text-ink3">
+        Unused categories
+      </div>
+      <p className={formNoteClassName}>
         These category labels aren&rsquo;t applied to any group type, so they
         show as empty rows in Multiply. Delete one to remove the label (it stays
         in history), or re-add a group type above to use it again.
       </p>
-      <ul style={listStyle}>
+      <ul className="m-0 grid list-none gap-3 p-0">
         {categories.map((c) => (
-          <li key={c.id} style={unusedRowStyle}>
-            <span style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
-              {c.label}
-            </span>
+          <li
+            key={c.id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-surface px-4 py-3"
+          >
+            <span className="font-sans text-base text-ink">{c.label}</span>
             <DeleteCategoryForm categoryId={c.id} label={c.label} />
           </li>
         ))}
@@ -358,15 +369,21 @@ function AddGroupTypeForm({
   }
 
   return (
-    <form onSubmit={submit} style={addFormStyle}>
-      <p style={noteStyle}>
+    <form
+      onSubmit={submit}
+      className="grid gap-3 rounded-sm border border-line bg-bg px-[18px] py-4"
+    >
+      <p className={formNoteClassName}>
         Pick an audience and type a category — that one step creates the group
         type. The same category typed under another audience reuses the shared
         label, so renaming it later updates both.
       </p>
-      <div className="lg-m-grid-stack" style={addGridStyle}>
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(140px,220px)_1fr]">
         <div>
-          <label htmlFor="new-group-type-audience" style={fieldLabelStyle}>
+          <label
+            htmlFor="new-group-type-audience"
+            className={fieldLabelClassName}
+          >
             Audience
           </label>
           <select
@@ -375,7 +392,7 @@ function AddGroupTypeForm({
             onChange={(e) =>
               setAudience(e.target.value as GroupAudienceCategory)
             }
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
           >
             {AUDIENCE_CATEGORIES.map((a) => (
               <option key={a} value={a}>
@@ -385,7 +402,7 @@ function AddGroupTypeForm({
           </select>
         </div>
         <div>
-          <label htmlFor="new-group-type-label" style={fieldLabelStyle}>
+          <label htmlFor="new-group-type-label" className={fieldLabelClassName}>
             Category
           </label>
           <input
@@ -394,11 +411,11 @@ function AddGroupTypeForm({
             value={label}
             placeholder="e.g. 20-30s"
             onChange={(e) => setLabel(e.target.value)}
-            style={fieldInputStyle}
+            className={fieldInputClassName}
           />
         </div>
       </div>
-      <div style={controlsRowStyle}>
+      <div className="flex flex-wrap items-center gap-2.5">
         <PButton
           type="submit"
           tone="terra"
@@ -422,9 +439,9 @@ function AddGroupTypeForm({
           Done
         </PButton>
         {error ? (
-          <p style={errorTextStyle}>{error}</p>
+          <p className={errorTextClassName}>{error}</p>
         ) : saved ? (
-          <span style={successTextStyle}>Group type added.</span>
+          <span className={successTextClassName}>Group type added.</span>
         ) : null}
       </div>
     </form>
@@ -457,24 +474,23 @@ function AudienceBoard({
   const name = TYPE_LABEL[board.audienceCategory];
   const count = categoryCountLabel(board.cells.length);
   return (
-    <details style={boardStyle} open>
+    <details className="rounded-md border border-lineSoft bg-surface" open>
       <summary
-        className="lg-sac-summary"
-        style={summaryRowStyle}
+        className={cn("lg-sac-summary", SUMMARY_ROW)}
         aria-label={`${name} group types, ${count}`}
       >
         <Chevron />
-        <span style={boardTitleStyle}>{name}</span>
-        <span style={summarySpacerStyle} />
-        <span style={groupCountStyle}>{count}</span>
+        <span className="font-sans text-md font-semibold text-ink">{name}</span>
+        <span className="flex-1" />
+        <span className={META_TEXT}>{count}</span>
       </summary>
-      <div style={detailsBodyStyle}>
+      <div className={DETAILS_BODY}>
         {board.cells.length === 0 ? (
-          <p style={emptyGroupsNoteStyle}>
+          <p className={EMPTY_NOTE}>
             No {name} group types yet. Use &ldquo;Add a group type&rdquo; above.
           </p>
         ) : (
-          <ul style={listStyle}>
+          <ul className="m-0 grid list-none gap-3 p-0">
             {board.cells.map((row) => (
               <GroupTypeRow
                 key={`${row.audienceCategory}:${row.categoryId}`}
@@ -535,30 +551,30 @@ function GroupTypeRow({
     )
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
-    <li style={{ listStyle: "none" }}>
-      <details style={rowStyle}>
-        <summary className="lg-sac-summary" style={summaryRowStyle}>
+    <li className="list-none">
+      <details className="rounded-sm border border-line bg-surface">
+        <summary className={cn("lg-sac-summary", SUMMARY_ROW)}>
           <Chevron />
-          <span style={typeLabelStyle}>{row.label}</span>
-          <span style={summarySpacerStyle} />
-          <span style={readoutStyle} aria-live="polite">
+          <span className="font-sans text-base font-semibold text-ink">
+            {row.label}
+          </span>
+          <span className="flex-1" />
+          <span className={META_TEXT} aria-live="polite">
             have {row.have} of {row.target}
           </span>
           {groupsKnown ? (
-            <span style={groupCountStyle}>
-              {groupCountLabel(sorted.length)}
-            </span>
+            <span className={META_TEXT}>{groupCountLabel(sorted.length)}</span>
           ) : null}
         </summary>
-        <div style={detailsBodyStyle}>
-          <div style={rowIdentityStyle}>
+        <div className={DETAILS_BODY}>
+          <div className="flex flex-wrap items-center gap-2.5">
             <RenameCategoryForm
               categoryId={row.categoryId}
               label={row.label}
               audienceCategory={row.audienceCategory}
             />
           </div>
-          <div style={rowBottomStyle}>
+          <div className="flex flex-wrap items-center gap-4">
             <TargetForm
               categoryId={row.categoryId}
               label={row.label}
@@ -583,7 +599,7 @@ function GroupTypeRow({
               />
             </>
           ) : (
-            <p style={emptyGroupsNoteStyle}>
+            <p className={EMPTY_NOTE}>
               This type&rsquo;s groups couldn&rsquo;t be loaded right now, so
               they can&rsquo;t be listed or edited here. The coverage above is
               still current.
@@ -607,15 +623,17 @@ function OtherGroups({
   onEdit: (groupId: string) => void;
 }) {
   return (
-    <details style={rowStyle}>
-      <summary className="lg-sac-summary" style={summaryRowStyle}>
+    <details className="rounded-sm border border-line bg-surface">
+      <summary className={cn("lg-sac-summary", SUMMARY_ROW)}>
         <Chevron />
-        <span style={typeLabelStyle}>Other groups</span>
-        <span style={summarySpacerStyle} />
-        <span style={groupCountStyle}>{groupCountLabel(groups.length)}</span>
+        <span className="font-sans text-base font-semibold text-ink">
+          Other groups
+        </span>
+        <span className="flex-1" />
+        <span className={META_TEXT}>{groupCountLabel(groups.length)}</span>
       </summary>
-      <div style={detailsBodyStyle}>
-        <p style={noteStyle}>
+      <div className={DETAILS_BODY}>
+        <p className={formNoteClassName}>
           These groups aren&rsquo;t under an active group type (uncategorized,
           or their type was removed). Edit one to give it an audience and
           category.
@@ -638,12 +656,16 @@ function GroupsInType({
   onEdit: (groupId: string) => void;
 }) {
   if (groups.length === 0) {
-    return <p style={emptyGroupsNoteStyle}>No groups in this type yet.</p>;
+    return <p className={EMPTY_NOTE}>No groups in this type yet.</p>;
   }
   return (
-    <div style={groupsBlockStyle}>
-      {heading ? <div style={groupsHeadingStyle}>{heading}</div> : null}
-      <ul style={groupListStyle}>
+    <div className="grid gap-2 border-t border-line pt-3">
+      {heading ? (
+        <div className="font-sans text-xs font-semibold text-ink3">
+          {heading}
+        </div>
+      ) : null}
+      <ul className="m-0 grid list-none gap-2 p-0">
         {groups.map((g) => (
           <GroupRow key={g.id} group={g} onEdit={onEdit} />
         ))}
@@ -660,10 +682,12 @@ function GroupRow({
   onEdit: (groupId: string) => void;
 }) {
   return (
-    <li style={groupRowStyle}>
-      <span style={{ minWidth: 0 }}>
-        <span style={groupNameStyle}>{group.name}</span>
-        <span style={groupStatusStyle}>
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-bg px-3 py-2.5">
+      <span className="min-w-0">
+        <span className="font-sans text-base font-medium text-ink">
+          {group.name}
+        </span>
+        <span className="ml-2 font-sans text-xs text-ink3">
           {group.lifecycle_status.replace(/_/g, " ")}
         </span>
       </span>
@@ -684,11 +708,7 @@ function GroupRow({
 // (.lg-sac-chevron rotates 90° when the parent <details> is open).
 function Chevron() {
   return (
-    <span
-      className="lg-sac-chevron"
-      aria-hidden="true"
-      style={{ display: "inline-flex", color: P.ink3 }}
-    >
+    <span className="lg-sac-chevron inline-flex text-ink3" aria-hidden="true">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path
           d="M4 2l4 4-4 4"
@@ -729,7 +749,7 @@ function RenameCategoryForm({
   const dirty = draft.trim() !== label.trim() && draft.trim().length > 0;
 
   return (
-    <form action={formAction} style={inlineFormStyle}>
+    <form action={formAction} className={INLINE_FORM}>
       <input type="hidden" name="category_id" value={categoryId} />
       <input
         aria-label={`Rename ${TYPE_LABEL[audienceCategory]} ${label} category`}
@@ -737,7 +757,7 @@ function RenameCategoryForm({
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        style={{ ...fieldInputStyle, minWidth: 150 }}
+        className={cn(fieldInputClassName, "min-w-[150px]")}
       />
       <PButton
         type="submit"
@@ -781,15 +801,17 @@ function TargetForm({
   const helpId = `target-help-${audienceCategory}-${categoryId}`;
 
   return (
-    <div style={{ display: "grid", gap: 4 }}>
-      <form action={formAction} style={inlineFormStyle}>
+    <div className="grid gap-1">
+      <form action={formAction} className={INLINE_FORM}>
         <input type="hidden" name="category_id" value={categoryId} />
         <input
           type="hidden"
           name="audience_category"
           value={audienceCategory}
         />
-        <span style={inlineLabelStyle}>Target</span>
+        <span className="font-sans text-xs font-semibold text-ink3">
+          Target
+        </span>
         <input
           aria-label={`Target for ${TYPE_LABEL[audienceCategory]} ${label}`}
           aria-describedby={helpId}
@@ -800,7 +822,7 @@ function TargetForm({
           inputMode="numeric"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          style={{ ...fieldInputStyle, width: 72, textAlign: "center" }}
+          className={cn(fieldInputClassName, "w-[72px] text-center")}
         />
         <PButton
           type="submit"
@@ -813,7 +835,9 @@ function TargetForm({
         </PButton>
         <FormStatus state={state} successText="Target saved." />
       </form>
-      <p id={helpId} style={targetHelpStyle}>
+      {/* #478: the target is tracking only — say so right under the control,
+          tied to the input via aria-describedby so screen readers hear it too. */}
+      <p id={helpId} className="m-0 font-sans text-sm text-ink3">
         Tracking only — never feeds the multiplication trigger.
       </p>
     </div>
@@ -838,7 +862,7 @@ function RemoveForm({
   );
 
   return (
-    <form action={formAction} style={inlineFormStyle}>
+    <form action={formAction} className={INLINE_FORM}>
       <input type="hidden" name="category_id" value={categoryId} />
       <input type="hidden" name="audience_category" value={audienceCategory} />
       <input type="hidden" name="active" value="false" />
@@ -899,14 +923,14 @@ function AddExistingGroupForm({
   }
 
   return (
-    <form action={formAction} style={inlineFormStyle}>
+    <form action={formAction} className={INLINE_FORM}>
       <input type="hidden" name="audience_category" value={audienceCategory} />
       <input type="hidden" name="category_id" value={categoryId} />
       <select
         name="group_id"
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
-        style={{ ...fieldSelectStyle, minWidth: 240 }}
+        className={cn(fieldSelectClassName, "min-w-[240px]")}
         aria-label={`Choose a group to add to ${TYPE_LABEL[audienceCategory]} ${label}`}
       >
         <option value="">Choose a group…</option>
@@ -957,224 +981,3 @@ function candidateGroupLabel(
     : "Uncategorized";
   return `${group.name} — ${audience} · ${category}`;
 }
-
-const listStyle = {
-  listStyle: "none",
-  padding: 0,
-  margin: 0,
-  display: "grid",
-  gap: 12,
-} as const;
-
-const rowStyle = {
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  background: P.surface,
-} as const;
-
-// The Audience board wraps a list of group-type rows. A slightly heavier border
-// than an inner row so the two nesting levels read as distinct.
-const boardStyle = {
-  border: `1px solid ${P.line2}`,
-  borderRadius: 12,
-  background: P.surface,
-} as const;
-
-const boardTitleStyle = {
-  fontFamily: fontBody,
-  fontSize: 15,
-  fontWeight: 700,
-  color: P.ink,
-} as const;
-
-const summaryRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "14px 16px",
-  flexWrap: "wrap" as const,
-} as const;
-
-const detailsBodyStyle = {
-  display: "grid",
-  gap: 14,
-  padding: "0 16px 16px",
-} as const;
-
-const typeLabelStyle = {
-  fontFamily: fontBody,
-  fontSize: 14,
-  fontWeight: 600,
-  color: P.ink,
-} as const;
-
-const summarySpacerStyle = { flex: 1 } as const;
-
-const groupCountStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
-  whiteSpace: "nowrap" as const,
-} as const;
-
-const groupsBlockStyle = {
-  display: "grid",
-  gap: 8,
-  borderTop: `1px solid ${P.line}`,
-  paddingTop: 12,
-} as const;
-
-const groupsHeadingStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 0.4,
-  textTransform: "uppercase" as const,
-  color: P.ink3,
-} as const;
-
-const groupListStyle = {
-  listStyle: "none",
-  padding: 0,
-  margin: 0,
-  display: "grid",
-  gap: 8,
-} as const;
-
-const groupRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap" as const,
-  border: `1px solid ${P.line}`,
-  borderRadius: 8,
-  padding: "10px 12px",
-  background: P.bg,
-} as const;
-
-const groupNameStyle = {
-  fontFamily: fontBody,
-  fontSize: 14,
-  fontWeight: 500,
-  color: P.ink,
-} as const;
-
-const groupStatusStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
-  marginLeft: 8,
-} as const;
-
-const emptyGroupsNoteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-  fontStyle: "italic" as const,
-  margin: 0,
-} as const;
-
-const rowIdentityStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  flexWrap: "wrap" as const,
-} as const;
-
-const rowBottomStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 18,
-  flexWrap: "wrap" as const,
-} as const;
-
-const readoutStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
-  whiteSpace: "nowrap" as const,
-} as const;
-
-const inlineFormStyle = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  flexWrap: "wrap" as const,
-} as const;
-
-const inlineLabelStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  fontWeight: 600,
-  color: P.ink3,
-} as const;
-
-// #478: the target is tracking only — say so right under the control, tied to
-// the input via aria-describedby so screen readers hear it too.
-const targetHelpStyle = {
-  fontFamily: fontBody,
-  fontSize: 11,
-  color: P.ink3,
-  margin: 0,
-  lineHeight: 1.4,
-} as const;
-
-const addFormStyle = {
-  display: "grid",
-  gap: 12,
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  padding: "16px 18px",
-  background: P.bg,
-} as const;
-
-const addGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "minmax(140px, 220px) 1fr",
-  gap: 12,
-  alignItems: "end",
-} as const;
-
-const controlsRowStyle = {
-  display: "flex",
-  gap: 10,
-  alignItems: "center",
-  flexWrap: "wrap" as const,
-} as const;
-
-const noteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  margin: 0,
-  lineHeight: 1.55,
-} as const;
-
-const unusedSectionStyle = {
-  display: "grid",
-  gap: 12,
-  borderTop: `1px solid ${P.line}`,
-  paddingTop: 18,
-} as const;
-
-const unusedHeadingStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  fontWeight: 700,
-  letterSpacing: 0.4,
-  textTransform: "uppercase" as const,
-  color: P.ink3,
-} as const;
-
-const unusedRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap" as const,
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  padding: "12px 16px",
-  background: P.surface,
-} as const;

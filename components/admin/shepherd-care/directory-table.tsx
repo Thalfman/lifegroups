@@ -1,4 +1,3 @@
-import { P } from "@/lib/pastoral";
 import type {
   ActiveShepherdCoverageAssignmentSummary,
   ShepherdCareDirectoryEntry,
@@ -35,11 +34,9 @@ export function ShepherdCareDirectoryTable({
         render: (entry) => {
           const coverage = coverageByShepherdId.get(entry.profile.id) ?? null;
           return coverage ? (
-            <span style={{ color: P.ink }}>
-              {coverage.over_shepherd.full_name}
-            </span>
+            <span className="text-ink">{coverage.over_shepherd.full_name}</span>
           ) : (
-            <span style={{ color: P.ink3 }}>—</span>
+            <span className="text-ink3">—</span>
           );
         },
       }}

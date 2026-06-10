@@ -11,7 +11,7 @@ export function CoverageEndForm({ assignmentId }: { assignmentId: string }) {
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 6 }}>
+    <form action={formAction} className="grid gap-1.5">
       <input type="hidden" name="assignment_id" value={assignmentId} />
       <PButton type="submit" tone="ghost" size="sm" disabled={pending}>
         {pending ? "Ending…" : "End"}

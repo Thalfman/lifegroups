@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { P, fontDisplay, fontBody, fontMono } from "@/lib/pastoral";
+import { Badge } from "@/components/ui/badge";
 import { PLinkButton } from "@/components/pastoral/button";
 import type { ReadinessPillarKey } from "@/lib/admin/cell-readiness";
 import {
@@ -14,7 +14,9 @@ import type { GroupAudienceCategory } from "@/types/enums";
 // three top types (Men's / Women's / Mixed). Each ACTIVE cell shows its readiness
 // signal (#402) and its `have X of Y` coverage (#400); a cell where the category
 // is not applied to that type renders BLANK. This folds the three per-type boards
-// into one matrix. Server component, pure render.
+// into one matrix. Server component, pure render. Styled as a DataTable: 12px
+// sentence-case ink3 header row, 13px cells, lineSoft row separators, mono
+// figures.
 
 const TYPE_LABEL: Record<GroupAudienceCategory, string> = {
   men: "Men's",
@@ -30,23 +32,14 @@ const BLOCKER_LABEL: Record<ReadinessPillarKey, string> = {
   leaderHealth: "Leader Health",
 };
 
+// Shared cell chrome: lineSoft separators between rows and columns.
+const CELL = "border-b border-r border-lineSoft px-3.5 py-3 align-top";
+
 function ReadinessBadge({ ready }: { ready: boolean }) {
   return (
-    <span
-      style={{
-        fontFamily: fontBody,
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "3px 10px",
-        borderRadius: 999,
-        background: ready ? P.sageSoft : P.bgDeep,
-        color: ready ? P.sageTextStrong : P.ink2,
-        border: `1px solid ${ready ? P.sage : P.line}`,
-        whiteSpace: "nowrap",
-      }}
-    >
+    <Badge tone={ready ? "sage" : "neutral"}>
       {ready ? "Ready" : "Not ready"}
-    </span>
+    </Badge>
   );
 }
 
@@ -66,12 +59,10 @@ function GridCell({
   if (!cell.applied || !cell.readout) {
     return (
       <td
-        style={{ ...cellStyle, background: P.bg }}
+        className={`${CELL} bg-bg text-left`}
         aria-label={`${typeLabel}: not applied`}
       >
-        <span style={{ color: P.ink3, fontFamily: fontBody, fontSize: 13 }}>
-          —
-        </span>
+        <span className="font-sans text-sm text-ink3">—</span>
       </td>
     );
   }
@@ -85,36 +76,24 @@ function GridCell({
   )}`;
 
   return (
-    <td style={cellStyle}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-          alignItems: "flex-start",
-        }}
-      >
+    <td className={`${CELL} text-left`}>
+      <div className="flex flex-col items-start gap-1.5">
         <ReadinessBadge ready={signal.ready} />
         <span
-          style={{ fontFamily: fontMono, fontSize: 12, color: P.ink2 }}
+          className="font-mono text-xs text-ink2"
           aria-label={`have ${coverage.have} of ${coverage.target}`}
         >
           have {coverage.have} of {coverage.target}
         </span>
         {!signal.ready && signal.blockers.length > 0 && (
-          <span style={{ fontFamily: fontBody, fontSize: 11, color: P.ink3 }}>
+          <span className="font-sans text-xs text-ink3">
             Held back by: {blockers}.
           </span>
         )}
         <Link
           href={planHref}
           aria-label={`View the plan for ${typeLabel} · ${categoryLabel}`}
-          style={{
-            fontFamily: fontBody,
-            fontSize: 11,
-            color: P.terra,
-            textDecoration: "underline",
-          }}
+          className="font-sans text-xs text-clay underline hover:text-clayDeep"
         >
           View plan →
         </Link>
@@ -132,15 +111,8 @@ export function MultiplyGridView({
 }) {
   if (grid.rows.length === 0) {
     return (
-      <div style={{ display: "grid", gap: 14, justifyItems: "start" }}>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 14,
-            color: P.ink2,
-          }}
-        >
+      <div className="grid justify-items-start gap-3.5">
+        <p className="m-0 font-sans text-base text-ink2">
           No categories yet. Add categories and apply them to top types in
           Settings &rsaquo; Groups, then each active cell appears here with its
           readiness and coverage.
@@ -153,19 +125,17 @@ export function MultiplyGridView({
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <p
-        style={{ margin: 0, fontFamily: fontBody, fontSize: 13, color: P.ink2 }}
-      >
+    <div className="grid gap-4">
+      <p className="m-0 font-sans text-sm text-ink2">
         Ministry year {ministryYear}–{ministryYear + 1}. Rows are categories,
         columns are the three top types. Each active cell shows whether it is
         ready to multiply (the configurable per-cell rule) and its{" "}
-        <code style={{ fontFamily: fontMono }}>have X of Y</code> coverage. A
-        cell where the category isn&rsquo;t applied to that type is left blank.
+        <code className="font-mono">have X of Y</code> coverage. A cell where
+        the category isn&rsquo;t applied to that type is left blank.
       </p>
       {/* This grid is read-only; the setup controls live in Settings. Link
           straight to the right tabs so admins don't have to guess routes. */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap gap-2.5">
         <PLinkButton href="/admin/settings?tab=groups" tone="ghost" size="sm">
           Edit group types →
         </PLinkButton>
@@ -173,18 +143,22 @@ export function MultiplyGridView({
           Edit multiplication trigger →
         </PLinkButton>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+      <div className="overflow-x-auto rounded-md border border-line bg-surface">
+        <table className="w-full border-collapse">
           <thead>
             <tr>
               <th
                 scope="col"
-                style={{ ...headStyle, textAlign: "left", minWidth: 160 }}
+                className="min-w-40 border-b border-line bg-surfaceAlt px-3.5 py-3 text-left font-sans text-xs font-semibold text-ink3"
               >
                 Category
               </th>
               {GRID_TYPES.map((type) => (
-                <th key={type} scope="col" style={headStyle}>
+                <th
+                  key={type}
+                  scope="col"
+                  className="border-b border-line bg-surfaceAlt px-3.5 py-3 text-center font-sans text-xs font-semibold text-ink3"
+                >
                   {TYPE_LABEL[type]}
                 </th>
               ))}
@@ -193,7 +167,10 @@ export function MultiplyGridView({
           <tbody>
             {grid.rows.map((row) => (
               <tr key={row.categoryId}>
-                <th scope="row" style={rowHeadStyle}>
+                <th
+                  scope="row"
+                  className={`${CELL} bg-bg text-left font-sans text-sm font-semibold text-ink`}
+                >
                   {row.label}
                 </th>
                 {GRID_TYPES.map((type) => (
@@ -211,43 +188,3 @@ export function MultiplyGridView({
     </div>
   );
 }
-
-const tableStyle = {
-  borderCollapse: "collapse" as const,
-  width: "100%",
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  overflow: "hidden",
-} as const;
-
-const headStyle = {
-  fontFamily: fontDisplay,
-  fontSize: 14,
-  color: P.ink,
-  textAlign: "center" as const,
-  padding: "12px 14px",
-  background: P.bgDeep,
-  borderBottom: `1px solid ${P.line}`,
-} as const;
-
-const rowHeadStyle = {
-  fontFamily: fontBody,
-  fontSize: 14,
-  fontWeight: 600,
-  color: P.ink,
-  textAlign: "left" as const,
-  padding: "12px 14px",
-  background: P.bg,
-  borderBottom: `1px solid ${P.line2}`,
-  borderRight: `1px solid ${P.line2}`,
-  verticalAlign: "top" as const,
-} as const;
-
-const cellStyle = {
-  padding: "12px 14px",
-  borderBottom: `1px solid ${P.line2}`,
-  borderRight: `1px solid ${P.line2}`,
-  verticalAlign: "top" as const,
-  textAlign: "left" as const,
-} as const;

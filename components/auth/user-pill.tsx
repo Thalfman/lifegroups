@@ -1,6 +1,7 @@
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import { PAvatar } from "@/components/pastoral/atoms";
+import { Badge } from "@/components/ui/badge";
 import { ROLE_LABELS, type UserRole } from "@/lib/auth/roles";
+import { cn } from "@/lib/utils";
 
 export function UserPill({
   name,
@@ -16,66 +17,45 @@ export function UserPill({
   const isDrawer = variant === "drawer";
   return (
     <div
-      className={isDrawer ? undefined : "lg-m-userpill"}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-      }}
+      className={cn(
+        "flex items-center",
+        isDrawer ? "gap-2.5" : "gap-1.5 md:gap-2.5"
+      )}
     >
       <div
-        className={isDrawer ? undefined : "lg-m-userpill-text"}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: isDrawer ? "flex-start" : "flex-end",
-          gap: 2,
-          textAlign: isDrawer ? "left" : "right",
-          minWidth: 0,
-        }}
+        className={cn(
+          "min-w-0 flex-col gap-0.5",
+          isDrawer
+            ? "flex items-start text-left"
+            : // Identity text collapses on mobile in the header — the avatar
+              // alone carries the pill there (was .lg-m-userpill-text).
+              "hidden items-end text-right md:flex"
+        )}
       >
         <span
-          style={{
-            fontFamily: fontBody,
-            fontStyle: "italic",
-            fontSize: isDrawer ? 14 : 13,
-            color: P.ink,
-            lineHeight: 1.15,
-          }}
+          className={cn(
+            "font-sans italic leading-tight text-ink",
+            isDrawer ? "text-base" : "text-sm"
+          )}
         >
           {name}
         </span>
         {email ? (
           <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: isDrawer ? 12 : 10.5,
-              color: P.ink3,
-              lineHeight: 1.15,
-              wordBreak: "break-all",
-            }}
+            className={cn(
+              "break-all font-sans leading-tight text-ink3",
+              isDrawer ? "text-xs" : "text-2xs"
+            )}
           >
             {email}
           </span>
         ) : null}
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 9.5,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: P.ink2,
-            fontWeight: 600,
-            border: `1px solid ${P.line}`,
-            background: P.bg,
-            borderRadius: 999,
-            padding: "2px 8px",
-            marginTop: 2,
-            alignSelf: isDrawer ? "flex-start" : "flex-end",
-          }}
+        <Badge
+          tone="neutral"
+          className={cn("mt-0.5", isDrawer ? "self-start" : "self-end")}
         >
           {ROLE_LABELS[role]}
-        </span>
+        </Badge>
       </div>
       <PAvatar name={name} size={isDrawer ? 40 : 32} tone="terra" />
     </div>

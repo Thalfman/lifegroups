@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 // The per-leader care detail tabs (#301): Overview, Contact History, Follow-ups,
 // Notes, Group. A layout change only — it does not move the frozen
@@ -27,20 +27,11 @@ export function LeaderDetailTabs({
   const [active, setActive] = useState(valid);
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
+    <div className="grid gap-5">
       <div
         role="tablist"
         aria-label="Leader care sections"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 4,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 999,
-          padding: 3,
-          alignSelf: "start",
-        }}
+        className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
         {tabs.map((tab) => (
           <button
@@ -51,7 +42,7 @@ export function LeaderDetailTabs({
             aria-selected={active === tab.key}
             aria-controls={`leader-panel-${tab.key}`}
             onClick={() => setActive(tab.key)}
-            style={tabItemStyle(active === tab.key)}
+            className={tabItemClassName(active === tab.key)}
           >
             {tab.label}
           </button>
@@ -73,16 +64,11 @@ export function LeaderDetailTabs({
   );
 }
 
-function tabItemStyle(activeTab: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 13,
-    fontWeight: activeTab ? 700 : 500,
-    color: activeTab ? P.surface : P.ink3,
-    background: activeTab ? P.terra : "transparent",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer",
-    borderRadius: 999,
-  };
+function tabItemClassName(activeTab: boolean): string {
+  return cn(
+    "cursor-pointer rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
+    activeTab
+      ? "bg-clay font-bold text-surface"
+      : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+  );
 }

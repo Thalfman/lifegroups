@@ -3,7 +3,7 @@ export type AvatarTone = "sage" | "clay" | "amber" | "blue";
 const TONES: Record<AvatarTone, { bg: string; fg: string }> = {
   sage: { bg: "var(--c-sageSoft)", fg: "var(--c-sageDeep)" },
   clay: { bg: "var(--c-claySoft)", fg: "var(--c-clay)" },
-  amber: { bg: "var(--c-amberSoft)", fg: "oklch(0.45 0.13 70)" },
+  amber: { bg: "var(--c-amberSoft)", fg: "var(--c-amberText)" },
   blue: { bg: "var(--c-blueSoft)", fg: "var(--c-blue)" },
 };
 

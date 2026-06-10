@@ -4,11 +4,10 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Super Admin Console workspace switcher (Super Admin redesign).
 //
@@ -25,17 +24,10 @@ import { P, fontSans } from "@/lib/pastoral";
 export type SuperAdminWorkspace = {
   id: string;
   label: string;
-  // Marks the Danger Zone tab so it reads as visually distinct (terra accent).
+  // Marks the Danger Zone tab so it reads as visually distinct (rose accent).
   danger?: boolean;
   node: ReactNode;
 };
-
-// The page scrolls in the window under the shell's sticky TopBar (height 56,
-// z-index 10); the tab rail sticks just below it. Anchored sections inside a
-// workspace should use SUPER_ADMIN_STICKY_ANCHOR_OFFSET (in the server-safe
-// super-admin-anchors module) as scrollMarginTop so an anchor jump clears
-// both the TopBar and the stuck tab rail.
-const TOP_BAR_HEIGHT = 56;
 
 export function SuperAdminConsole({
   statusRow,
@@ -127,16 +119,24 @@ export function SuperAdminConsole({
     workspaces.find((w) => w.id === activeId) ?? workspaces[0];
 
   return (
-    <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+    <div className="grid min-w-0 gap-5">
       {banner}
       {statusRow}
 
-      <div style={stickyTabsWrapperStyle}>
+      {/* Keeps the tab rail available in long workspaces: it sticks just below
+          the TopBar (top-14 = its 56px height; z below the TopBar's z-sticky so
+          it slides under, never over). The page-background backing plus the
+          padding/negative-margin bleed stop content from peeking through around
+          the rail's rounded corners; net layout spacing is unchanged. */}
+      <div className="sticky top-14 z-[5] -my-2 bg-bg py-2">
+        {/* A segmented rail that wraps rather than clips at narrow widths.
+            w-fit keeps it compact on wide screens; the
+            lg-super-admin-workspace-tabs class lets it fill the row as a
+            single scrollable rail on mobile (globals.css). */}
         <div
-          className="lg-super-admin-workspace-tabs"
+          className="lg-super-admin-workspace-tabs flex w-fit max-w-full flex-wrap gap-1 rounded-lg border border-line bg-sidebar p-1"
           role="tablist"
           aria-label="Super admin workspaces"
-          style={tablistStyle}
         >
           {workspaces.map((workspace, index) => {
             const selected = workspace.id === activeId;
@@ -154,7 +154,16 @@ export function SuperAdminConsole({
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setActiveId(workspace.id)}
                 onKeyDown={(event) => onKeyDown(event, index)}
-                style={tabStyleFor(selected, workspace.danger)}
+                className={cn(
+                  "cursor-pointer appearance-none rounded-pill border border-transparent bg-transparent px-4 py-2 font-sans text-sm font-medium leading-tight transition-colors duration-150",
+                  workspace.danger
+                    ? selected
+                      ? "border-rose bg-rose text-white"
+                      : "border-rose/40 text-rose hover:bg-roseSoft"
+                    : selected
+                      ? "border-line bg-surface text-ink"
+                      : "text-ink2 hover:bg-surface/60"
+                )}
               >
                 {workspace.label}
               </button>
@@ -169,76 +178,11 @@ export function SuperAdminConsole({
           id={`super-admin-panel-${activeWorkspace.id}`}
           aria-labelledby={`super-admin-tab-${activeWorkspace.id}`}
           tabIndex={0}
-          style={{ minWidth: 0 }}
+          className="min-w-0"
         >
           {activeWorkspace.node}
         </div>
       ) : null}
     </div>
   );
-}
-
-// Keeps the tab rail available in long workspaces: it sticks just below the
-// TopBar (z-index below the TopBar's 10 so it slides under, never over). The
-// page-background backing plus the padding/negative-margin bleed stop content
-// from peeking through around the rail's rounded corners; net layout spacing
-// is unchanged.
-const stickyTabsWrapperStyle: CSSProperties = {
-  position: "sticky",
-  top: TOP_BAR_HEIGHT,
-  zIndex: 5,
-  background: "var(--c-bg)",
-  padding: "8px 0",
-  margin: "-8px 0",
-};
-
-const tablistStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 4,
-  padding: 4,
-  borderRadius: 14,
-  background: P.bgDeep,
-  border: `1px solid ${P.line}`,
-  // A segmented rail that wraps rather than clips at narrow widths — the mobile
-  // requirement. width:fit-content keeps it compact on wide screens; the
-  // lg-super-admin-workspace-tabs class lets it fill the row on mobile.
-  width: "fit-content",
-  maxWidth: "100%",
-};
-
-const tabBaseStyle: CSSProperties = {
-  appearance: "none",
-  border: "1px solid transparent",
-  background: "transparent",
-  fontFamily: fontSans,
-  fontSize: 13,
-  fontWeight: 500,
-  padding: "8px 16px",
-  borderRadius: 999,
-  cursor: "pointer",
-  lineHeight: 1.2,
-  transition: "background .12s, color .12s, border-color .12s",
-};
-
-function tabStyleFor(selected: boolean, danger?: boolean): CSSProperties {
-  if (danger) {
-    return selected
-      ? {
-          ...tabBaseStyle,
-          background: P.terra,
-          color: P.surface,
-          borderColor: P.terra,
-          boxShadow: "0 1px 2px rgba(125,54,33,0.18)",
-        }
-      : { ...tabBaseStyle, color: P.terraTextStrong, borderColor: P.terra };
-  }
-  return selected
-    ? {
-        ...tabBaseStyle,
-        background: P.surface,
-        color: P.ink,
-        boxShadow: "0 1px 2px rgba(58,42,26,0.08)",
-      }
-    : { ...tabBaseStyle, color: P.ink2 };
 }

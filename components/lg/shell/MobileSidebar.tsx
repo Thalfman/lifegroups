@@ -28,70 +28,23 @@ export function MobileSidebarTrigger({
         <button
           type="button"
           aria-label="Open navigation"
-          className="lg-shell-mobile-trigger"
-          style={{
-            display: "none",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            border: "1px solid var(--c-line)",
-            background: "var(--c-surface)",
-            color: "var(--c-ink2)",
-            cursor: "pointer",
-          }}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-line bg-surface text-ink2 md:hidden"
         >
           <Icon name="list" size={18} />
         </button>
       </DialogTrigger>
       <DialogPortal>
-        <DialogOverlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(60, 45, 30, 0.35)",
-            zIndex: 50,
-          }}
-        />
+        <DialogOverlay className="fixed inset-0 z-overlay bg-ink/45" />
         <DialogContent
           aria-describedby={undefined}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: "min(280px, 84vw)",
-            background: "var(--c-sidebar)",
-            zIndex: 51,
-            boxShadow: "var(--c-shadowLg)",
-            overflow: "hidden",
-          }}
+          className="fixed bottom-0 left-0 top-0 z-drawer w-[min(280px,84vw)] overflow-hidden bg-sidebar shadow-softLg"
         >
           <DialogTitle className="sr-only">Navigation</DialogTitle>
-          <DialogClose
-            asChild
-            style={{
-              position: "absolute",
-              top: 14,
-              right: 14,
-              zIndex: 2,
-            }}
-          >
+          <DialogClose asChild>
             <button
               type="button"
               aria-label="Close navigation"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 6,
-                background: "var(--c-surfaceAlt)",
-                border: "1px solid var(--c-line)",
-                cursor: "pointer",
-                display: "grid",
-                placeItems: "center",
-                color: "var(--c-ink2)",
-              }}
+              className="absolute right-3.5 top-3.5 z-[2] grid h-8 w-8 place-items-center rounded-sm border border-line bg-surfaceAlt text-ink2"
             >
               <Icon name="x" size={15} />
             </button>

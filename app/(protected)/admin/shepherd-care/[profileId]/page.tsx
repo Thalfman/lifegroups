@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  cardClassName as CARD,
+  cardHeadingClassName as SECTION_HEADING,
+} from "@/components/lg/Card";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
@@ -23,43 +27,17 @@ import { formatIsoDateOr } from "@/lib/shared/date";
 import { isUuid } from "@/lib/shared/uuid";
 import { LeaderHealthGradeEditor } from "@/components/admin/shepherd-care/leader-health-grade";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
-const labelStyle = {
-  display: "block",
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.6,
-  textTransform: "uppercase" as const,
-  color: P.ink3,
-  fontWeight: 600,
-  marginBottom: 4,
-};
-
-const valueStyle = {
-  fontFamily: fontBody,
-  fontSize: 14,
-  color: P.ink,
-};
-
-const cardStyle = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  padding: 20,
-};
+// In-card data labels are sentence case (uppercase survives only on form field
+// labels); values read at the body size.
+const LABEL = "mb-1 block font-sans text-xs font-medium text-ink3";
+const VALUE = "font-sans text-base text-ink";
 
 // Shown in place of a grade editor when its read failed — blocks editing so a
 // blank seed can't overwrite an existing grade (#377/#378 read-failure guard).
-const gradeReadErrorStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.terraTextStrong,
-  margin: 0,
-  lineHeight: 1.5,
-};
+const GRADE_READ_ERROR = "m-0 font-sans text-sm leading-normal text-clayDeep";
 
 export default async function AdminShepherdCareDetailPage({
   params,
@@ -109,7 +87,7 @@ export default async function AdminShepherdCareDetailPage({
         <PageBody>
           <Link
             href="/admin/shepherd-care"
-            style={{ color: P.ink2, textDecoration: "underline" }}
+            className="text-ink2 underline hover:text-ink"
           >
             Back to directory
           </Link>
@@ -169,77 +147,63 @@ export default async function AdminShepherdCareDetailPage({
   // Overview — leader summary, assigned group, care status, next action, plus
   // coverage and the care-action forms.
   const overviewPanel = (
-    <div style={{ display: "grid", gap: 20 }}>
-      <section style={cardStyle} aria-label="Care summary">
-        <div
-          className="lg-m-grid-stack"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 18,
-          }}
-        >
+    <div className="grid gap-5">
+      <section className={CARD} aria-label="Care summary">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] md:gap-[18px]">
           <div>
-            <span style={labelStyle}>Role</span>
-            <div style={valueStyle}>{roleLabel}</div>
+            <span className={LABEL}>Role</span>
+            <div className={VALUE}>{roleLabel}</div>
           </div>
           <div>
-            <span style={labelStyle}>Assigned group</span>
-            <div style={valueStyle}>{assignedGroupLabel}</div>
+            <span className={LABEL}>Assigned group</span>
+            <div className={VALUE}>{assignedGroupLabel}</div>
           </div>
           <div>
-            <span style={labelStyle}>Current status</span>
-            <div style={valueStyle}>
+            <span className={LABEL}>Current status</span>
+            <div className={VALUE}>
               {detail.care ? (
                 <ShepherdCareStatusBadge status={detail.care.current_status} />
               ) : (
-                <span style={{ color: P.ink3 }}>Not set</span>
+                <span className="text-ink3">Not set</span>
               )}
             </div>
           </div>
           <div>
-            <span style={labelStyle}>First contact</span>
-            <div style={valueStyle}>
+            <span className={LABEL}>First contact</span>
+            <div className={VALUE}>
               {formatIsoDateOr(firstContactAt, "No contact logged")}
             </div>
           </div>
           <div>
-            <span style={labelStyle}>Last contact</span>
-            <div style={valueStyle}>
+            <span className={LABEL}>Last contact</span>
+            <div className={VALUE}>
               {formatIsoDateOr(detail.care?.last_contact_at ?? null, "Never")}
             </div>
           </div>
           <div>
-            <span style={labelStyle}>Next step</span>
-            <div style={valueStyle}>
+            <span className={LABEL}>Next step</span>
+            <div className={VALUE}>
               {formatIsoDateOr(detail.care?.next_touchpoint_due ?? null)}
             </div>
           </div>
         </div>
         {detail.care?.admin_summary ? (
-          <div style={{ marginTop: 16 }}>
+          <div className="mt-4">
             {/* Spreadsheet column B ("Issue") + the running "Misc. note" — the
                 admin's plain-language summary of what's going on with this
                 leader. Visible up the oversight ladder; the truly sensitive
                 layer lives in the encrypted Private note tab. */}
-            <span style={labelStyle}>Issue / current concern</span>
-            <p style={{ ...valueStyle, margin: 0, whiteSpace: "pre-wrap" }}>
+            <span className={LABEL}>Issue / current concern</span>
+            <p className={`${VALUE} m-0 whitespace-pre-wrap`}>
               {detail.care.admin_summary}
             </p>
           </div>
         ) : null}
       </section>
 
-      <section style={cardStyle} aria-label="Over-shepherd coverage">
-        <h2 style={sectionHeadingStyle}>Coverage</h2>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: "0 0 12px",
-          }}
-        >
+      <section className={CARD} aria-label="Over-shepherd coverage">
+        <h2 className={SECTION_HEADING}>Coverage</h2>
+        <p className="m-0 mb-3 font-sans text-sm text-ink2">
           {detail.coverage
             ? `Currently covered by ${detail.coverage.over_shepherd.full_name}.`
             : "No over-shepherd assigned yet."}
@@ -252,44 +216,20 @@ export default async function AdminShepherdCareDetailPage({
         />
       </section>
 
-      <section style={cardStyle} aria-label="Care actions">
-        <h2 style={sectionHeadingStyle}>Care actions</h2>
+      <section className={CARD} aria-label="Care actions">
+        <h2 className={SECTION_HEADING}>Care actions</h2>
         <CareActions
           shepherdProfileId={profileId}
           current={detail.care}
           leaderName={detail.profileFullName}
         />
         {actorRole === "super_admin" ? (
-          <div
-            style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: `1px solid ${P.line}`,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                marginBottom: 4,
-              }}
-            >
-              <span style={{ ...labelStyle, marginBottom: 0 }}>
-                Reset attention
-              </span>
+          <div className="mt-3.5 border-t border-line pt-3.5">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className={`${LABEL} mb-0`}>Reset attention</span>
               <SuperAdminOnlyBadge />
             </div>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink2,
-                margin: "0 0 8px",
-                lineHeight: 1.45,
-              }}
-            >
+            <p className="m-0 mb-2 font-sans text-sm leading-normal text-ink2">
               Clear this leader from the care queue with a fresh-start baseline
               — clears their touchpoint and returns status to “doing well”
               without deleting contact history. Recoverable from Super Admin →
@@ -307,25 +247,18 @@ export default async function AdminShepherdCareDetailPage({
   );
 
   const contactHistoryPanel = (
-    <section style={cardStyle} aria-label="Updates of communication">
+    <section className={CARD} aria-label="Updates of communication">
       {/* Spreadsheet column E ("Update of communication"): the append-only
           running log of every call / note / meeting with this leader. */}
-      <h2 style={sectionHeadingStyle}>Updates</h2>
+      <h2 className={SECTION_HEADING}>Updates</h2>
       <InteractionTimeline interactions={detail.interactions} />
     </section>
   );
 
   const followUpsPanel = (
-    <section style={cardStyle} aria-label="Care follow-ups">
-      <h2 style={sectionHeadingStyle}>Care follow-ups</h2>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: "0 0 12px",
-        }}
-      >
+    <section className={CARD} aria-label="Care follow-ups">
+      <h2 className={SECTION_HEADING}>Care follow-ups</h2>
+      <p className="m-0 mb-3 font-sans text-sm text-ink2">
         Open and completed tasks for this leader. Overdue items show first.
         {detail.genericFollowUpCount > 0
           ? ` They're also assigned to ${detail.genericFollowUpCount} open general follow-up${detail.genericFollowUpCount === 1 ? "" : "s"}.`
@@ -340,15 +273,7 @@ export default async function AdminShepherdCareDetailPage({
           leaderName={detail.profileFullName}
         />
       ) : (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: 0,
-            fontStyle: "italic",
-          }}
-        >
+        <p className="m-0 font-sans text-sm italic text-ink3">
           Log an interaction or set the care profile first to start adding
           follow-ups.
         </p>
@@ -371,37 +296,24 @@ export default async function AdminShepherdCareDetailPage({
     ) : null;
 
   const groupPanel = (
-    <section style={cardStyle} aria-label="Group">
-      <h2 style={sectionHeadingStyle}>Group</h2>
+    <section className={CARD} aria-label="Group">
+      <h2 className={SECTION_HEADING}>Group</h2>
       {detail.ledGroups.length > 0 ? (
-        <ul
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            display: "grid",
-            gap: 10,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-2.5 p-0">
           {detail.ledGroups.map((g) => {
             const gradeView = detail.gradeByGroupId.get(g.id);
             return (
-              <li key={g.id} style={{ display: "grid", gap: 8 }}>
+              <li key={g.id} className="grid gap-2">
                 <Link
                   href={`/admin/groups/${g.id}`}
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 14,
-                    color: P.ink,
-                    textDecoration: "underline",
-                  }}
+                  className="font-sans text-base text-ink underline hover:text-ink2"
                 >
                   {g.name} →
                 </Link>
                 {ministryYear !== null ? (
                   detail.groupRubricReadFailed ||
                   detail.gradeReadFailedGroupIds.has(g.id) ? (
-                    <p role="alert" style={gradeReadErrorStyle}>
+                    <p role="alert" className={GRADE_READ_ERROR}>
                       This group&rsquo;s grade couldn&rsquo;t be loaded. Reload
                       before editing — saving now could overwrite the saved
                       grade.
@@ -429,15 +341,7 @@ export default async function AdminShepherdCareDetailPage({
           })}
         </ul>
       ) : (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: 0,
-            fontStyle: "italic",
-          }}
-        >
+        <p className="m-0 font-sans text-sm italic text-ink3">
           This leader isn&rsquo;t assigned to an active group.
         </p>
       )}
@@ -448,24 +352,16 @@ export default async function AdminShepherdCareDetailPage({
   // separate tab/card from the Overview's Care Status. The two are distinct
   // concepts (a graded report card vs a pastoral signal) and must read that way.
   const leaderHealthPanel = (
-    <section style={cardStyle} aria-label="Leader-Health Grade">
-      <h2 style={sectionHeadingStyle}>Leader-Health Grade</h2>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: "0 0 14px",
-          lineHeight: 1.5,
-        }}
-      >
+    <section className={CARD} aria-label="Leader-Health Grade">
+      <h2 className={SECTION_HEADING}>Leader-Health Grade</h2>
+      <p className="m-0 mb-3.5 font-sans text-sm leading-normal text-ink2">
         A rubric-driven A–F grade for this leader, scored against the
         Leader-Health Rubric and kept for the ministry year. This is separate
         from their Care Status above — it&rsquo;s a report card, not a pastoral
         signal.
       </p>
       {detail.leaderGradeReadFailed ? (
-        <p role="alert" style={gradeReadErrorStyle}>
+        <p role="alert" className={GRADE_READ_ERROR}>
           This leader&rsquo;s grade couldn&rsquo;t be loaded. Reload before
           editing — saving now could overwrite the saved grade.
         </p>
@@ -534,31 +430,17 @@ export default async function AdminShepherdCareDetailPage({
         lede="Care notes here are admin-only. They never appear on leader or member surfaces."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 20 }}>
+        <div className="grid gap-5">
           <div>
             <Link
               href="/admin/care"
-              style={{
-                fontFamily: fontBody,
-                color: P.ink2,
-                fontSize: 13,
-                textDecoration: "underline",
-              }}
+              className="font-sans text-sm text-ink2 underline hover:text-ink"
             >
               ← Back to Care
             </Link>
           </div>
           {detail.error ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
+            <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
               {detail.error}
             </p>
           ) : null}
@@ -569,11 +451,3 @@ export default async function AdminShepherdCareDetailPage({
     </>
   );
 }
-
-const sectionHeadingStyle = {
-  fontFamily: fontSans,
-  fontSize: 14,
-  letterSpacing: 0.6,
-  margin: "0 0 12px",
-  color: P.ink,
-} as const;

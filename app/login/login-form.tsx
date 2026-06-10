@@ -3,43 +3,28 @@
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  errorTextClassName,
+  fieldLabelClassName,
+} from "@/components/admin/forms/field-styles";
 import { loginAction, type LoginFormState } from "./actions";
 import { isSafeNextPath } from "./next-path";
 
 const INITIAL_STATE: LoginFormState = {};
 
-const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-sans)",
-  fontSize: 11,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "1.6px",
-  color: "var(--c-ink3)",
-  display: "block",
-  marginBottom: 7,
-};
+// Fixed-position confirmation toast (see the CLS note below): info status note
+// — soft sage bg + deep sage fg, no stripe. It floats, so it may carry shadow.
+const statusToastClassName =
+  "fixed left-1/2 top-4 z-toast m-0 w-[calc(100%-48px)] max-w-[460px] -translate-x-1/2 rounded-sm bg-sageSoft px-3 py-2.5 text-center font-sans text-sm text-sageDeep shadow-softLg";
 
-const fieldContainerStyle: React.CSSProperties = {
-  padding: "11px 13px",
-  background: "var(--c-surface)",
-  border: "1px solid var(--c-line)",
-  borderRadius: 9,
-  transition: "border-color 150ms",
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
+// Field shell: the visible input box; the bare input inside stays
+// borderless so the Show/Hide affordance can sit in the same box.
+const fieldShellClassName =
+  "flex items-center gap-2 rounded-sm border border-line bg-surface px-3 py-2.5 transition-colors duration-150 focus-within:border-sage";
 
-const bareInputStyle: React.CSSProperties = {
-  border: 0,
-  background: "transparent",
-  fontFamily: "var(--font-sans)",
-  fontSize: 14,
-  color: "var(--c-ink)",
-  outline: "none",
-  width: "100%",
-  padding: 0,
-};
+const bareInputClassName =
+  "w-full border-0 bg-transparent p-0 font-sans text-base text-ink outline-none";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(
@@ -75,63 +60,18 @@ export function LoginForm() {
           banner: that way its post-hydration appearance can't push the centered
           form down, avoiding a CLS the rest of the page doesn't have. */}
       {resetOk && !state.error ? (
-        <p
-          role="status"
-          style={{
-            position: "fixed",
-            top: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 50,
-            width: "calc(100% - 48px)",
-            maxWidth: 460,
-            background: "var(--c-sageTint)",
-            border: "1px solid var(--c-sage)",
-            borderRadius: 8,
-            padding: "10px 12px",
-            fontFamily: "var(--font-sans)",
-            fontSize: 12.5,
-            color: "var(--c-ink2)",
-            margin: 0,
-            boxShadow: "var(--c-shadowLg)",
-            textAlign: "center",
-          }}
-        >
+        <p role="status" className={statusToastClassName}>
           Password updated. Sign in.
         </p>
       ) : null}
 
       {invitedOk && !resetOk && !state.error ? (
-        <p
-          role="status"
-          style={{
-            position: "fixed",
-            top: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 50,
-            width: "calc(100% - 48px)",
-            maxWidth: 460,
-            background: "var(--c-sageTint)",
-            border: "1px solid var(--c-sage)",
-            borderRadius: 8,
-            padding: "10px 12px",
-            fontFamily: "var(--font-sans)",
-            fontSize: 12.5,
-            color: "var(--c-ink2)",
-            margin: 0,
-            boxShadow: "var(--c-shadowLg)",
-            textAlign: "center",
-          }}
-        >
+        <p role="status" className={statusToastClassName}>
           Account created. Sign in with your new email and password.
         </p>
       ) : null}
 
-      <form
-        action={formAction}
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
+      <form action={formAction} className="flex flex-col gap-3">
         {/* Always rendered (value defaults to "") so it ships in the static
             HTML and hydrates without a structural mismatch; the effect fills in
             the validated `next` on mount. An empty value is treated as "no
@@ -140,28 +80,16 @@ export function LoginForm() {
         <input type="hidden" name="next" value={next ?? ""} />
 
         {state.error ? (
-          <p
-            role="alert"
-            style={{
-              background: "var(--c-roseSoft)",
-              border: "1px solid var(--c-rose)",
-              borderRadius: 8,
-              padding: "10px 12px",
-              fontFamily: "var(--font-sans)",
-              fontSize: 12.5,
-              color: "var(--c-rose)",
-              margin: 0,
-            }}
-          >
+          <p role="alert" className={errorTextClassName}>
             {state.error}
           </p>
         ) : null}
 
         <div>
-          <label htmlFor="email" style={labelStyle}>
+          <label htmlFor="email" className={fieldLabelClassName}>
             Email
           </label>
-          <div className="lg-signin-field" style={fieldContainerStyle}>
+          <div className={fieldShellClassName}>
             <input
               id="email"
               name="email"
@@ -173,16 +101,16 @@ export function LoginForm() {
               spellCheck={false}
               required
               disabled={pending}
-              style={bareInputStyle}
+              className={bareInputClassName}
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="password" style={labelStyle}>
+          <label htmlFor="password" className={fieldLabelClassName}>
             Password
           </label>
-          <div className="lg-signin-field" style={fieldContainerStyle}>
+          <div className={fieldShellClassName}>
             <input
               id="password"
               name="password"
@@ -190,26 +118,14 @@ export function LoginForm() {
               autoComplete="current-password"
               required
               disabled={pending}
-              style={bareInputStyle}
+              className={bareInputClassName}
             />
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
               disabled={pending}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              style={{
-                border: 0,
-                background: "transparent",
-                fontFamily: "var(--font-sans)",
-                fontSize: 11,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.4px",
-                color: "var(--c-ink3)",
-                cursor: pending ? "not-allowed" : "pointer",
-                padding: 0,
-                flexShrink: 0,
-              }}
+              className="shrink-0 border-0 bg-transparent p-0 font-sans text-xs font-semibold text-ink3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -218,50 +134,20 @@ export function LoginForm() {
 
         <Link
           href="/forgot-password"
-          style={{
-            alignSelf: "flex-end",
-            fontFamily: "var(--font-sans)",
-            fontSize: 12.5,
-            fontWeight: 500,
-            color: "var(--c-sageDeep)",
-            textDecoration: "none",
-          }}
+          className="self-end font-sans text-sm font-medium text-sageDeep no-underline"
         >
           Forgot password?
         </Link>
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
           disabled={pending}
-          style={{
-            width: "100%",
-            padding: "13px 20px",
-            borderRadius: 9,
-            border: 0,
-            background: "var(--c-sage)",
-            color: "#fdfcf9",
-            fontFamily: "var(--font-sans)",
-            fontSize: 14,
-            fontWeight: 600,
-            letterSpacing: "0.2px",
-            boxShadow: "var(--c-shadow)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            cursor: pending ? "not-allowed" : "pointer",
-            opacity: pending ? 0.7 : 1,
-          }}
+          className="w-full"
         >
           {pending ? "Signing in…" : "Sign in"}
           <ArrowRight size={15} strokeWidth={2} aria-hidden />
-        </button>
-
-        <style>{`
-        .lg-signin-field:focus-within {
-          border-color: var(--c-sage);
-        }
-      `}</style>
+        </Button>
       </form>
     </>
   );

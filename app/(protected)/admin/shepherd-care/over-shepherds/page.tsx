@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  cardClassName as CARD,
+  cardHeadingClassName as CARD_HEADING,
+} from "@/components/lg/Card";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdCreateForm } from "@/components/admin/shepherd-care/over-shepherd-create-form";
 import { OverShepherdList } from "@/components/admin/shepherd-care/over-shepherd-list";
@@ -11,16 +15,8 @@ import {
   type ActiveShepherdCoverageAssignmentSummary,
   type OverShepherdListRow,
 } from "@/lib/supabase/read-models";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
-
-const cardStyle = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  padding: 20,
-};
 
 async function loadOverShepherds(): Promise<{
   overShepherds: OverShepherdListRow[];
@@ -69,63 +65,29 @@ export default async function AdminOverShepherdsPage() {
         lede="Over-Shepherds Julian tracks. These are admin-only records — they do not log in to the app."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 20 }}>
+        <div className="grid gap-5">
           <div>
             <Link
               href="/admin/shepherd-care"
-              style={{
-                fontFamily: fontBody,
-                color: P.ink2,
-                fontSize: 13,
-                textDecoration: "underline",
-              }}
+              className="font-sans text-sm text-ink2 underline hover:text-ink"
             >
               ← Back to leader care
             </Link>
           </div>
 
           {error ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
+            <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
               {error}
             </p>
           ) : null}
 
-          <section style={cardStyle} aria-label="Add over-shepherd">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Add over-shepherd
-            </h2>
+          <section className={CARD} aria-label="Add over-shepherd">
+            <h2 className={CARD_HEADING}>Add over-shepherd</h2>
             <OverShepherdCreateForm />
           </section>
 
-          <section style={cardStyle} aria-label="Over-shepherds list">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              All over-shepherds
-            </h2>
+          <section className={CARD} aria-label="Over-shepherds list">
+            <h2 className={CARD_HEADING}>All over-shepherds</h2>
             <OverShepherdList
               overShepherds={overShepherds}
               shepherdCountById={shepherdCountById}

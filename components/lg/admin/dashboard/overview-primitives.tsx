@@ -1,16 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { P } from "@/lib/pastoral";
 import type { LaunchPlanningRiskLevel } from "@/lib/admin/launch-planning";
 import { StatusCard } from "@/components/dashboard/cards";
 import { FROZEN_SURFACE_EXPLAINER } from "@/lib/admin/frozen-surface-copy";
 
-// Shared building blocks for the warm executive overview on /admin. They reuse
-// the pastoral palette (lib/pastoral.ts) so the landing meshes with the Leader
-// care / Launch planning surfaces instead of clashing in near-white lg cards.
-// The inner tiles use the *defined* P.bg / P.bgDeep cream surfaces — the old
-// landing cards referenced an undefined `--c-bgDeep` CSS var, so their tiles
-// rendered transparent; these don't.
+// Shared building blocks for the warm executive overview on /admin, on the
+// design-system anatomy: sentence-case labels, serif figures, surfaceAlt
+// in-card groupings (no nested borders).
 
 // Horizontal distribution bar (label · track · count). Re-skinned from the
 // former CapacityBuckets bar so health pulse, guest funnel, pipeline stages and
@@ -29,45 +26,15 @@ export function MiniBarRow({
   // Clamp to 100 so a stray count > total can never overflow the track.
   const pct = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : 0;
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(96px, auto) 1fr auto",
-        alignItems: "center",
-        gap: 12,
-        padding: "5px 0",
-      }}
-    >
-      <span style={{ fontFamily: fontBody, fontSize: 12.5, color: P.ink2 }}>
-        {label}
-      </span>
-      <div
-        style={{
-          height: 6,
-          background: P.line2,
-          borderRadius: 999,
-          overflow: "hidden",
-        }}
-      >
+    <div className="grid grid-cols-[minmax(96px,auto)_1fr_auto] items-center gap-3 py-1">
+      <span className="font-sans text-sm text-ink2">{label}</span>
+      <div className="h-1.5 overflow-hidden rounded-pill bg-lineSoft">
         <div
-          style={{
-            height: "100%",
-            width: `${pct}%`,
-            background: tone,
-            borderRadius: 999,
-          }}
+          className="h-full rounded-pill"
+          style={{ width: `${pct}%`, background: tone }}
         />
       </div>
-      <span
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 15,
-          color: P.ink,
-          minWidth: 24,
-          textAlign: "right",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
+      <span className="min-w-6 text-right font-display text-md tabular-nums text-ink">
         {count}
       </span>
     </div>
@@ -88,45 +55,17 @@ export function StatTile({
   hint?: ReactNode;
 }) {
   return (
-    <div
-      style={{
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "10px 12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 5,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          textTransform: "uppercase",
-          letterSpacing: 1.3,
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+    <div className="flex flex-col gap-1 rounded-sm bg-surfaceAlt px-3 py-2.5">
+      <div className="font-sans text-xs text-ink3">{label}</div>
+      <div className="flex items-baseline gap-1.5">
         <span
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 24,
-            lineHeight: 1,
-            color: valueColor ?? P.ink,
-            fontVariantNumeric: "tabular-nums",
-          }}
+          className="font-display text-2xl tabular-nums leading-none"
+          style={{ color: valueColor ?? P.ink }}
         >
           {value}
         </span>
         {hint ? (
-          <span style={{ fontFamily: fontBody, fontSize: 11.5, color: P.ink3 }}>
-            {hint}
-          </span>
+          <span className="font-sans text-xs text-ink3">{hint}</span>
         ) : null}
       </div>
     </div>
@@ -135,13 +74,7 @@ export function StatTile({
 
 export function StatTileGrid({ children }: { children: ReactNode }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))",
-        gap: 10,
-      }}
-    >
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(124px,1fr))] gap-2.5">
       {children}
     </div>
   );
@@ -156,7 +89,7 @@ export function OpenLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      style={{ color: "inherit", textDecoration: "none", whiteSpace: "nowrap" }}
+      className="whitespace-nowrap text-inherit no-underline hover:underline"
     >
       {label} →
     </Link>
@@ -181,17 +114,9 @@ export function FrozenStatusCard({
     <StatusCard
       eyebrow={eyebrow}
       title={title}
-      action={<span style={{ color: P.ink3 }}>Deferred</span>}
+      action={<span className="text-ink3">Deferred</span>}
     >
-      <p
-        style={{
-          margin: 0,
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink3,
-          lineHeight: 1.5,
-        }}
-      >
+      <p className="m-0 font-sans text-sm text-ink3">
         {FROZEN_SURFACE_EXPLAINER}
       </p>
     </StatusCard>

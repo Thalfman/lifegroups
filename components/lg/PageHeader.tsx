@@ -19,87 +19,34 @@ export function PageHeader({
 }) {
   return (
     <div
-      className="lg-shell-pageheader"
-      style={{
-        padding: "36px 40px 24px",
-        maxWidth,
-        margin: "0 auto",
-        width: "100%",
-      }}
+      className="mx-auto w-full px-4 pb-4 pt-[22px] md:px-10 md:pb-6 md:pt-9"
+      style={{ maxWidth }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 28,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
+      <div className="flex flex-wrap items-end justify-between gap-7">
+        <div className="min-w-0">
+          {/* The page kicker — the one tracked-uppercase voice per page. */}
           {eyebrow ? (
-            <div
-              style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 11,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "var(--c-clay)",
-                fontWeight: 600,
-                marginBottom: 10,
-              }}
-            >
+            <div className="mb-2.5 font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-clay">
               {eyebrow}
             </div>
           ) : null}
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-display)",
-              fontSize: "calc(38px * var(--font-scale))",
-              lineHeight: 1.08,
-              fontWeight: 400,
-              color: "var(--c-ink)",
-              letterSpacing: -0.5,
-            }}
-          >
+          <h1 className="m-0 font-display text-3xl font-normal text-ink md:text-4xl">
             {title}
             {italic ? (
-              <span style={{ fontStyle: "italic", color: "var(--c-ink2)" }}>
-                {" "}
-                {italic}
-              </span>
+              <span className="italic text-ink2"> {italic}</span>
             ) : null}
           </h1>
           {lede ? (
-            <p
-              style={{
-                margin: "12px 0 0",
-                maxWidth: 640,
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: "var(--c-ink2)",
-              }}
-            >
+            <p className="mb-0 mt-3 max-w-lede font-sans text-base text-ink2">
               {lede}
             </p>
           ) : null}
         </div>
         {actions ? (
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexShrink: 0,
-              flexWrap: "wrap",
-            }}
-          >
-            {actions}
-          </div>
+          <div className="flex shrink-0 flex-wrap gap-2.5">{actions}</div>
         ) : null}
       </div>
-      {children ? <div style={{ marginTop: 24 }}>{children}</div> : null}
+      {children ? <div className="mt-6">{children}</div> : null}
     </div>
   );
 }
@@ -115,14 +62,8 @@ export function PageBody({
 }) {
   return (
     <div
-      className="lg-shell-pagebody"
-      style={{
-        padding: "0 40px 64px",
-        maxWidth,
-        margin: "0 auto",
-        width: "100%",
-        ...style,
-      }}
+      className="mx-auto w-full px-4 pb-8 md:px-10 md:pb-16"
+      style={{ maxWidth, ...style }}
     >
       {children}
     </div>

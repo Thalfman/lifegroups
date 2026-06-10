@@ -97,13 +97,14 @@ export function CalendarOccurrenceEditor({
   if (!canEdit) {
     // Render a non-interactive view of the pill/cell content. Callers
     // can still display the occurrence, just without an edit affordance.
+    // No opacity wash — it would floor the text below AA contrast; the
+    // missing pointer affordance + title carry the disabled state.
     return (
       <div
         title={disabledReason}
         style={{
           ...triggerStyle,
           cursor: "default",
-          opacity: 0.7,
         }}
         className={triggerClassName}
       >

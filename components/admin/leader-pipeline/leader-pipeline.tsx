@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PButton, PLinkButton } from "@/components/pastoral/button";
 import {
   adminAdvanceApprenticeStage,
@@ -15,36 +17,22 @@ import {
   type ApprenticeView,
   type PipelineRollup,
 } from "@/lib/admin/leader-pipeline";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
-import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-} from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { LeaderReadinessStage } from "@/types/enums";
 
+// Design-system form field classes (12px uppercase label → full-width input
+// with the global focus ring).
+const LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
+
 function StageBadge({ stage }: { stage: LeaderReadinessStage }) {
   const ready = stage === "ready_to_lead";
-  return (
-    <span
-      style={{
-        fontFamily: fontBody,
-        fontSize: 11,
-        padding: "2px 8px",
-        borderRadius: 999,
-        border: `1px solid ${ready ? P.sage : P.line}`,
-        background: ready ? P.sageSoft : P.bg,
-        color: ready ? P.ink : P.ink2,
-        fontWeight: ready ? 600 : 400,
-      }}
-    >
-      {STAGE_LABEL[stage]}
-    </span>
-  );
+  return <Badge tone={ready ? "sage" : "neutral"}>{STAGE_LABEL[stage]}</Badge>;
 }
 
 function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
@@ -57,29 +45,26 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
     pending: archivePending,
   } = useActionForm<{ id: string }>(adminArchiveApprentice);
   return (
-    <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-      <form action={formAction} style={{ display: "grid", gap: 10 }}>
+    <div className="mt-2.5 grid gap-2.5">
+      <form action={formAction} className="grid gap-2.5">
         <input type="hidden" name="apprentice_id" value={a.id} />
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label style={fieldLabelStyle}>Apprentice name</label>
+            <label className={LABEL}>Apprentice name</label>
             <input
               name="display_name"
               type="text"
               maxLength={120}
               defaultValue={a.displayName}
-              style={fieldInputStyle}
+              className={INPUT}
             />
           </div>
           <div>
-            <label style={fieldLabelStyle}>Readiness stage</label>
+            <label className={LABEL}>Readiness stage</label>
             <select
               name="readiness_stage"
               defaultValue={a.stage}
-              style={fieldSelectStyle}
+              className={INPUT}
             >
               {LEADER_READINESS_STAGES.map((s) => (
                 <option key={s} value={s}>
@@ -89,31 +74,28 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
             </select>
           </div>
         </div>
-        <div
-          className="lg-m-grid-stack"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label style={fieldLabelStyle}>Expected ready by</label>
+            <label className={LABEL}>Expected ready by</label>
             <input
               name="expected_ready_on"
               type="date"
               defaultValue={a.expectedReadyOn ?? ""}
-              style={fieldInputStyle}
+              className={INPUT}
             />
           </div>
           <div>
-            <label style={fieldLabelStyle}>Notes</label>
+            <label className={LABEL}>Notes</label>
             <input
               name="notes"
               type="text"
               maxLength={2000}
               defaultValue={a.notes ?? ""}
-              style={fieldInputStyle}
+              className={INPUT}
             />
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
             {pending ? "Saving…" : "Save"}
           </PButton>
@@ -138,7 +120,7 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
   const next = nextStage(a.stage);
   if (!next) return null;
   return (
-    <form action={formAction} style={{ display: "inline" }}>
+    <form action={formAction} className="inline">
       <input type="hidden" name="apprentice_id" value={a.id} />
       <input type="hidden" name="readiness_stage" value={next} />
       <PButton type="submit" tone="solid" size="sm" disabled={pending}>
@@ -152,47 +134,26 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
 function ApprenticeRow({ a }: { a: ApprenticeView }) {
   const [editing, setEditing] = useState(false);
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "baseline",
-        }}
-      >
-        <strong style={{ fontFamily: fontBody, fontSize: 14, color: P.ink }}>
+    <div className="grid gap-2 rounded-sm border border-line px-3.5 py-3">
+      <div className="flex items-baseline justify-between gap-2.5">
+        <strong className="font-sans text-base text-ink">
           {a.displayName}
         </strong>
-        <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2 }}>
+        <span className="font-sans text-sm text-ink2">
           {a.groupName}
           {a.expectedReadyOn ? ` · ready by ${a.expectedReadyOn}` : ""}
         </span>
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
+      <div className="flex flex-wrap items-center gap-2.5">
         <AdvanceStageButton a={a} />
-        <button
+        <Button
           type="button"
+          variant="subtle"
+          size="sm"
           onClick={() => setEditing((v) => !v)}
-          style={linkButtonStyle}
         >
           {editing ? "Close" : "Edit"}
-        </button>
+        </Button>
       </div>
       {editing ? <ApprenticeEditForm a={a} /> : null}
     </div>
@@ -209,15 +170,8 @@ function AddApprenticeForm({
   );
   if (availableGroups.length === 0) {
     return (
-      <div style={{ display: "grid", gap: 8, justifyItems: "start" }}>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            margin: 0,
-          }}
-        >
+      <div className="grid justify-items-start gap-2">
+        <p className="m-0 font-sans text-sm text-ink3">
           No active groups to add an apprentice to.
         </p>
         <PLinkButton href="/admin/groups" tone="ghost" size="sm">
@@ -227,20 +181,17 @@ function AddApprenticeForm({
     );
   }
   return (
-    <form action={formAction} style={{ display: "grid", gap: 10 }}>
-      <div
-        className="lg-m-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}
-      >
+    <form action={formAction} className="grid gap-2.5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr] md:gap-2.5">
         <div>
-          <label htmlFor="ap-group" style={fieldLabelStyle}>
+          <label htmlFor="ap-group" className={LABEL}>
             Group
           </label>
           <select
             id="ap-group"
             name="group_id"
             defaultValue=""
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             <option value="" disabled>
               Select a group…
@@ -253,7 +204,7 @@ function AddApprenticeForm({
           </select>
         </div>
         <div>
-          <label htmlFor="ap-name" style={fieldLabelStyle}>
+          <label htmlFor="ap-name" className={LABEL}>
             Apprentice name
           </label>
           <input
@@ -262,18 +213,18 @@ function AddApprenticeForm({
             type="text"
             maxLength={120}
             placeholder="e.g. Tony L."
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
         <div>
-          <label htmlFor="ap-stage" style={fieldLabelStyle}>
+          <label htmlFor="ap-stage" className={LABEL}>
             Stage
           </label>
           <select
             id="ap-stage"
             name="readiness_stage"
             defaultValue="identified"
-            style={fieldSelectStyle}
+            className={INPUT}
           >
             {LEADER_READINESS_STAGES.map((s) => (
               <option key={s} value={s}>
@@ -283,23 +234,20 @@ function AddApprenticeForm({
           </select>
         </div>
       </div>
-      <div
-        className="lg-m-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
-      >
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         <div>
-          <label htmlFor="ap-date" style={fieldLabelStyle}>
+          <label htmlFor="ap-date" className={LABEL}>
             Expected ready by
           </label>
           <input
             id="ap-date"
             name="expected_ready_on"
             type="date"
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
         <div>
-          <label htmlFor="ap-notes" style={fieldLabelStyle}>
+          <label htmlFor="ap-notes" className={LABEL}>
             Notes
           </label>
           <input
@@ -307,11 +255,11 @@ function AddApprenticeForm({
             name="notes"
             type="text"
             maxLength={2000}
-            style={fieldInputStyle}
+            className={INPUT}
           />
         </div>
       </div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="flex items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Adding…" : "Add apprentice"}
         </PButton>
@@ -329,49 +277,13 @@ export function LeaderPipeline({
   availableGroups: { id: string; name: string }[];
 }) {
   return (
-    <section
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "22px 24px",
-        display: "grid",
-        gap: 18,
-      }}
-    >
+    <section className="grid gap-5 rounded-lg border border-line bg-surface p-card">
       <header>
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
-          Leader pipeline
-        </span>
-        <h2
-          style={{
-            margin: "4px 0 0",
-            fontFamily: fontBody,
-            fontSize: 18,
-            color: P.ink,
-            fontWeight: 600,
-          }}
-        >
+        <span className="font-sans text-xs text-ink3">Leader pipeline</span>
+        <h2 className="m-0 mt-1 font-display text-lg font-medium text-ink">
           Apprentices by stage
         </h2>
-        <p
-          style={{
-            margin: "6px 0 0",
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 mt-1.5 font-sans text-sm leading-normal text-ink3">
           {rollup.totalApprentices} apprentice
           {rollup.totalApprentices === 1 ? "" : "s"} across the ministry.
           Advance a stage as a leader-in-training grows toward leading the next
@@ -382,35 +294,15 @@ export function LeaderPipeline({
       <AddApprenticeForm availableGroups={availableGroups} />
 
       {rollup.stages.map((section) => (
-        <div key={section.stage} style={{ display: "grid", gap: 8 }}>
-          <h3
-            style={{
-              margin: 0,
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 0.8,
-              textTransform: "uppercase",
-              color: P.ink2,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+        <div key={section.stage} className="grid gap-2">
+          <h3 className="m-0 flex items-center gap-2 font-sans text-xs font-semibold text-ink2">
             <StageBadge stage={section.stage} />
-            <span style={{ color: P.ink3, fontWeight: 400 }}>
+            <span className="font-normal tabular-nums text-ink3">
               {section.apprentices.length}
             </span>
           </h3>
           {section.apprentices.length === 0 ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-                margin: 0,
-              }}
-            >
+            <p className="m-0 font-sans text-sm text-ink3">
               None at this stage.
             </p>
           ) : (
@@ -419,41 +311,16 @@ export function LeaderPipeline({
         </div>
       ))}
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <h3
-          style={{
-            margin: 0,
-            fontFamily: fontSans,
-            fontSize: 11,
-            letterSpacing: 0.8,
-            textTransform: "uppercase",
-            color: "#7d3621",
-            fontWeight: 600,
-          }}
-        >
+      <div className="grid gap-2">
+        <h3 className="m-0 font-sans text-xs font-semibold text-clayDeep">
           Groups with no apprentice · {rollup.groupsWithoutApprentice.length}
         </h3>
         {rollup.groupsWithoutApprentice.length === 0 ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink3,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm text-ink3">
             Every active group has at least one apprentice.
           </p>
         ) : (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              margin: 0,
-              lineHeight: 1.6,
-            }}
-          >
+          <p className="m-0 font-sans text-sm leading-relaxed text-ink2">
             {rollup.groupsWithoutApprentice.map((g) => g.groupName).join(" · ")}
           </p>
         )}
@@ -461,14 +328,3 @@ export function LeaderPipeline({
     </section>
   );
 }
-
-const linkButtonStyle = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.terra,
-  background: "none",
-  border: "none",
-  padding: 0,
-  cursor: "pointer",
-  textDecoration: "underline",
-} as const;

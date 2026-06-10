@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProspectState } from "@/types/enums";
+import { cn } from "@/lib/utils";
 import { PButton } from "@/components/pastoral/button";
 import {
   adminTransitionProspect,
@@ -9,11 +10,6 @@ import {
   adminUpdateProspect,
   adminArchiveProspect,
 } from "@/app/(protected)/admin/plan/actions";
-import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-} from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
   FormStatus,
@@ -31,7 +27,13 @@ import {
 } from "@/lib/admin/prospect-next-step";
 import type { ProspectBoardEntry } from "@/lib/supabase/prospect-reads";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+
+// Design-system form field classes (12px uppercase label → full-width input
+// with the global focus ring). Shared by the card's three collapsed editors.
+const LABEL =
+  "mb-0.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 // All states a Prospect can be moved to (the four-state funnel). The card
 // offers exactly the legal targets for its current state, with a group picker
@@ -68,41 +70,18 @@ export function ProspectCard({
   const [movedTo, setMovedTo] = useState<ProspectState | "">("");
 
   return (
-    <div
-      style={{
-        border: `1px solid ${P.line}`,
-        background: P.surface,
-        borderRadius: 10,
-        padding: "12px 14px",
-        display: "grid",
-        gap: 8,
-      }}
-    >
+    <div className="grid gap-2 rounded-sm border border-line bg-surface px-3.5 py-3">
       <div>
-        <div
-          style={{
-            fontFamily: fontSans,
-            fontSize: 14,
-            fontWeight: 600,
-            color: P.ink,
-          }}
-        >
+        <div className="font-sans text-base font-semibold text-ink">
           {prospect.full_name}
         </div>
         {prospect.email || prospect.phone ? (
-          <div style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
+          <div className="font-sans text-sm text-ink3">
             {[prospect.email, prospect.phone].filter(Boolean).join(" · ")}
           </div>
         ) : null}
         {groupName ? (
-          <div
-            style={{
-              fontFamily: fontBody,
-              fontSize: 12,
-              color: P.ink2,
-              marginTop: 2,
-            }}
-          >
+          <div className="mt-0.5 font-sans text-sm text-ink2">
             Group: {groupName}
           </div>
         ) : null}
@@ -112,13 +91,10 @@ export function ProspectCard({
         <form
           action={formAction}
           onSubmit={() => setMovedTo(target)}
-          style={{ display: "grid", gap: 6 }}
+          className="grid gap-1.5"
         >
           <input type="hidden" name="prospect_id" value={prospect.id} />
-          <label
-            htmlFor={`move-${prospect.id}`}
-            style={{ ...fieldLabelStyle, marginBottom: 2 }}
-          >
+          <label htmlFor={`move-${prospect.id}`} className={LABEL}>
             Move to
           </label>
           <select
@@ -126,7 +102,7 @@ export function ProspectCard({
             name="state"
             value={target}
             onChange={(e) => setTarget(e.target.value as ProspectState | "")}
-            style={{ ...fieldSelectStyle, padding: "8px 10px" }}
+            className={INPUT}
           >
             <option value="">—</option>
             {legalTargets.map((to) => (
@@ -140,7 +116,7 @@ export function ProspectCard({
               name="group_id"
               defaultValue={prospect.group_id ?? ""}
               required
-              style={{ ...fieldSelectStyle, padding: "8px 10px" }}
+              className={INPUT}
             >
               <option value="">Pick a group…</option>
               {activeGroups.map((g) => (
@@ -191,36 +167,16 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
     adminUpdateProspect
   );
 
-  const sublabelStyle = { ...fieldLabelStyle, marginBottom: 2 } as const;
-  const inputStyle = { ...fieldInputStyle, padding: "8px 10px" } as const;
-
   return (
-    <details
-      style={{
-        borderTop: `1px solid ${P.line}`,
-        paddingTop: 8,
-        marginTop: 2,
-      }}
-    >
-      <summary
-        style={{
-          cursor: "pointer",
-          fontFamily: fontSans,
-          fontSize: 12,
-          fontWeight: 600,
-          color: P.ink2,
-        }}
-      >
+    <details className="mt-0.5 border-t border-line pt-2">
+      <summary className="cursor-pointer font-sans text-xs font-semibold text-ink2 hover:text-ink">
         Edit details
       </summary>
 
-      <form
-        action={formAction}
-        style={{ display: "grid", gap: 6, marginTop: 8 }}
-      >
+      <form action={formAction} className="mt-2 grid gap-1.5">
         <input type="hidden" name="prospect_id" value={prospect.id} />
 
-        <label htmlFor={`edit-name-${prospect.id}`} style={sublabelStyle}>
+        <label htmlFor={`edit-name-${prospect.id}`} className={LABEL}>
           Full name
         </label>
         <input
@@ -230,10 +186,10 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
           required
           maxLength={120}
           defaultValue={prospect.full_name}
-          style={inputStyle}
+          className={INPUT}
         />
 
-        <label htmlFor={`edit-email-${prospect.id}`} style={sublabelStyle}>
+        <label htmlFor={`edit-email-${prospect.id}`} className={LABEL}>
           Email (optional)
         </label>
         <input
@@ -241,10 +197,10 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
           name="email"
           type="email"
           defaultValue={prospect.email ?? ""}
-          style={inputStyle}
+          className={INPUT}
         />
 
-        <label htmlFor={`edit-phone-${prospect.id}`} style={sublabelStyle}>
+        <label htmlFor={`edit-phone-${prospect.id}`} className={LABEL}>
           Phone (optional)
         </label>
         <input
@@ -252,7 +208,7 @@ function EditProspectDetails({ prospect }: { prospect: ProspectBoardEntry }) {
           name="phone"
           type="tel"
           defaultValue={prospect.phone ?? ""}
-          style={inputStyle}
+          className={INPUT}
         />
 
         <div>
@@ -282,13 +238,7 @@ function ArchiveProspectControl({
   prospect: ProspectBoardEntry;
 }) {
   return (
-    <div
-      style={{
-        borderTop: `1px solid ${P.line}`,
-        paddingTop: 8,
-        marginTop: 2,
-      }}
-    >
+    <div className="mt-0.5 border-t border-line pt-2">
       <ConfirmActionButton
         action={adminArchiveProspect}
         confirmMessage={archiveProspectConfirmMessage(prospect.full_name)}
@@ -321,26 +271,9 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
   );
   const isFollowUp = type === "follow_up";
 
-  const sublabelStyle = { ...fieldLabelStyle, marginBottom: 2 } as const;
-  const inputStyle = { ...fieldInputStyle, padding: "8px 10px" } as const;
-
   return (
-    <details
-      style={{
-        borderTop: `1px solid ${P.line}`,
-        paddingTop: 8,
-        marginTop: 2,
-      }}
-    >
-      <summary
-        style={{
-          cursor: "pointer",
-          fontFamily: fontSans,
-          fontSize: 12,
-          fontWeight: 600,
-          color: P.ink2,
-        }}
-      >
+    <details className="mt-0.5 border-t border-line pt-2">
+      <summary className="cursor-pointer font-sans text-xs font-semibold text-ink2 hover:text-ink">
         Next step
         {prospect.next_step
           ? ` · ${NEXT_STEP_TYPE_LABEL[prospect.next_step.type]}${
@@ -351,13 +284,10 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
           : ""}
       </summary>
 
-      <form
-        action={formAction}
-        style={{ display: "grid", gap: 6, marginTop: 8 }}
-      >
+      <form action={formAction} className="mt-2 grid gap-1.5">
         <input type="hidden" name="prospect_id" value={prospect.id} />
 
-        <label htmlFor={`ns-type-${prospect.id}`} style={sublabelStyle}>
+        <label htmlFor={`ns-type-${prospect.id}`} className={LABEL}>
           Next step
         </label>
         <select
@@ -365,7 +295,7 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
           name="next_step_type"
           value={type}
           onChange={(e) => setType(e.target.value as NextStepType | "")}
-          style={{ ...fieldSelectStyle, padding: "8px 10px" }}
+          className={INPUT}
         >
           <option value="">No next step</option>
           {NEXT_STEP_TYPES.map((t) => (
@@ -377,7 +307,7 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
 
         {isFollowUp ? (
           <>
-            <label htmlFor={`ns-due-${prospect.id}`} style={sublabelStyle}>
+            <label htmlFor={`ns-due-${prospect.id}`} className={LABEL}>
               Due date (arms a follow-up)
             </label>
             <input
@@ -385,14 +315,14 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
               type="date"
               name="next_step_due_date"
               defaultValue={prospect.next_step?.dueDate ?? ""}
-              style={inputStyle}
+              className={INPUT}
             />
           </>
         ) : null}
 
         {type !== "" ? (
           <>
-            <label htmlFor={`ns-detail-${prospect.id}`} style={sublabelStyle}>
+            <label htmlFor={`ns-detail-${prospect.id}`} className={LABEL}>
               Detail (optional)
             </label>
             <textarea
@@ -401,12 +331,12 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
               defaultValue={prospect.next_step?.detail ?? ""}
               rows={2}
               maxLength={2000}
-              style={{ ...inputStyle, resize: "vertical" }}
+              className={cn(INPUT, "resize-y")}
             />
           </>
         ) : null}
 
-        <label htmlFor={`ns-note-${prospect.id}`} style={sublabelStyle}>
+        <label htmlFor={`ns-note-${prospect.id}`} className={LABEL}>
           Additional note (separate)
         </label>
         <textarea
@@ -415,34 +345,16 @@ function NextStepEditor({ prospect }: { prospect: ProspectBoardEntry }) {
           defaultValue={prospect.additional_note ?? ""}
           rows={2}
           maxLength={2000}
-          style={{ ...inputStyle, resize: "vertical" }}
+          className={cn(INPUT, "resize-y")}
         />
 
         {type === "connect_to_group_leader" ? (
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 11,
-              color: P.ink3,
-              margin: "2px 0 0",
-            }}
-          >
+          <p className="m-0 mt-0.5 font-sans text-xs text-ink3">
             Back-office only — nothing is shown to the group leader.
           </p>
         ) : null}
 
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 11,
-            color: P.ink3,
-            background: P.surface,
-            border: `1px dashed ${P.line}`,
-            borderRadius: 6,
-            padding: "6px 8px",
-            margin: "2px 0 0",
-          }}
-        >
+        <p className="m-0 mt-0.5 rounded-sm border border-dashed border-line px-2 py-1.5 font-sans text-xs text-ink3">
           No messaging provider is wired yet — to be configured. Nothing is
           sent; a follow-up with a date just appears as a due task.
         </p>

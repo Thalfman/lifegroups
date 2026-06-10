@@ -205,6 +205,15 @@ function SuggestionRow({ s }: { s: SuggestedMultiplicationGroup }) {
   );
 }
 
+const STATUS_OPTIONS: CapacityStatus[] = [
+  "ok",
+  "warning",
+  "full",
+  "open_by_choice",
+  "unknown",
+  "excluded",
+];
+
 export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
   const [segment, setSegment] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -217,15 +226,6 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
       }),
     [model.rows, segment, status]
   );
-
-  const statusOptions: CapacityStatus[] = [
-    "ok",
-    "warning",
-    "full",
-    "open_by_choice",
-    "unknown",
-    "excluded",
-  ];
 
   return (
     <div style={{ display: "grid", gap: 24 }}>
@@ -342,7 +342,7 @@ export function CapacityBoard({ model }: { model: CapacityBoardModel }) {
               style={fieldSelectStyle}
             >
               <option value="all">All statuses</option>
-              {statusOptions.map((st) => (
+              {STATUS_OPTIONS.map((st) => (
                 <option key={st} value={st}>
                   {CAPACITY_STATUS_LABEL[st]}
                 </option>

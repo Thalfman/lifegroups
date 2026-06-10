@@ -2,8 +2,11 @@
 
 import { PButton } from "@/components/pastoral/button";
 import { superAdminSetPlatformConfig } from "@/app/(protected)/admin/super-admin/platform-config-actions";
-import { P, fontBody } from "@/lib/pastoral";
-import { fieldInputStyle, fieldLabelStyle } from "./field-styles";
+import {
+  fieldHintClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+} from "./field-styles";
 import { APP_CONFIG_TRACER_MAX_LENGTH } from "@/lib/admin/app-config-decode";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -18,9 +21,9 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
   );
 
   return (
-    <form key={value} action={formAction} style={{ display: "grid", gap: 10 }}>
+    <form key={value} action={formAction} className="grid gap-2.5">
       <div>
-        <label htmlFor="console_tracer_note" style={fieldLabelStyle}>
+        <label htmlFor="console_tracer_note" className={fieldLabelClassName}>
           Test note
         </label>
         <input
@@ -30,23 +33,15 @@ export function PlatformConfigTracerForm({ value }: { value: string }) {
           maxLength={APP_CONFIG_TRACER_MAX_LENGTH}
           defaultValue={value}
           placeholder="A short note to confirm settings save and reload"
-          style={fieldInputStyle}
+          className={fieldInputClassName}
         />
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 11,
-            color: P.ink3,
-            margin: "4px 0 0",
-            lineHeight: 1.4,
-          }}
-        >
+        <p className={fieldHintClassName}>
           Saving stores this note and reloads it from the database — a quick
           check that owner settings persist. Up to{" "}
           {APP_CONFIG_TRACER_MAX_LENGTH} characters.
         </p>
       </div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="flex items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save note"}
         </PButton>

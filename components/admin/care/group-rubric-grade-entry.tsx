@@ -5,11 +5,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
-import {
-  fieldInputClass,
-  fieldInputStyle,
-  fieldLabelStyle,
-} from "@/components/admin/forms/field-styles";
+import { Button } from "@/components/ui/button";
 import { adminSetGroupRubricGrade } from "@/app/(protected)/admin/group-health/grade-actions";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import type { RubricCriterion } from "@/lib/admin/health-rubric";
@@ -17,7 +13,6 @@ import type {
   GroupHealthLetter,
   GroupHealthOverrideScope,
 } from "@/types/enums";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 // Care Group-Health Grade entry (#377 / ADR 0018, Pivot slice 4). A grader scores
 // a group against the configured Health Rubric — one 0–100 input per criterion —
@@ -29,22 +24,15 @@ import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 const LETTERS: GroupHealthLetter[] = ["A", "B", "C", "D", "F"];
 
-const wrapStyle = {
-  display: "grid",
-  gap: 12,
-  background: P.surface,
-  border: `1px solid ${P.line2}`,
-  borderRadius: 10,
-  padding: "12px 14px",
-} as const;
+const WRAP =
+  "grid gap-3 rounded-sm border border-lineSoft bg-surface px-3.5 py-3";
 
-const letterBadgeStyle = {
-  fontFamily: fontSans,
-  fontSize: 24,
-  fontWeight: 800,
-  lineHeight: 1,
-  color: P.sageTextStrong,
-} as const;
+// Form field labels keep the tracked-uppercase voice (the one place it
+// survives); `lg-m-input` is the shared mobile input shim.
+const FIELD_LABEL =
+  "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "lg-m-input w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
 
 export function GroupRubricGradeEntry({
   groupId,
@@ -120,14 +108,7 @@ export function GroupRubricGradeEntry({
 
   if (criteria.length === 0) {
     return (
-      <div
-        style={{
-          ...wrapStyle,
-          fontFamily: fontBody,
-          fontSize: 12.5,
-          color: P.ink3,
-        }}
-      >
+      <div className={`${WRAP} font-sans text-sm text-ink3`}>
         No group Health Rubric is configured yet. Build one in Settings to grade
         this group.
       </div>
@@ -138,7 +119,7 @@ export function GroupRubricGradeEntry({
     <form
       ref={form.formRef}
       action={form.formAction}
-      style={wrapStyle}
+      className={WRAP}
       aria-label={`Group-Health Grade for ${groupName}`}
     >
       <input type="hidden" name="group_id" value={groupId} />
@@ -151,34 +132,25 @@ export function GroupRubricGradeEntry({
         value={JSON.stringify(numericScores)}
       />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "grid", gap: 2 }}>
-          <span style={fieldLabelStyle}>Group-Health Grade</span>
-          <span style={{ fontFamily: fontBody, fontSize: 11.5, color: P.ink3 }}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="grid gap-0.5">
+          <span className="font-sans text-sm font-medium text-ink3">
+            Group-Health Grade
+          </span>
+          <span className="font-sans text-xs text-ink3">
             Ministry year {ministryYear}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={letterBadgeStyle}>{live.effective_letter ?? "—"}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-2xl leading-none text-sageDeep">
+            {live.effective_letter ?? "—"}
+          </span>
           {live.overridden ? (
-            <span
-              style={{
-                fontFamily: fontBody,
-                fontSize: 11,
-                color: P.ink3,
-              }}
-            >
+            <span className="font-sans text-xs text-ink3">
               override (computed {live.computed_letter ?? "—"})
             </span>
           ) : (
-            <span style={{ fontFamily: fontBody, fontSize: 11, color: P.ink3 }}>
+            <span className="font-sans text-xs text-ink3">
               {live.numeric === null
                 ? "no scores yet"
                 : `${live.numeric.toFixed(1)} / 100`}
@@ -187,32 +159,21 @@ export function GroupRubricGradeEntry({
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid gap-2.5">
         {criteria.map((c) => {
           const inputId = `grg-${groupId}-${c.key}`;
           return (
             <div
               key={c.key}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
+              className="flex items-center justify-between gap-3"
             >
-              <label
-                htmlFor={inputId}
-                style={{ ...fieldLabelStyle, marginBottom: 0 }}
-              >
+              <label htmlFor={inputId} className={FIELD_LABEL}>
                 {c.label}{" "}
-                <span style={{ color: P.ink3, fontWeight: 400 }}>
-                  (w{c.weight})
-                </span>
+                <span className="font-normal text-ink3">(w{c.weight})</span>
               </label>
               <input
                 id={inputId}
-                className={fieldInputClass}
-                style={{ ...fieldInputStyle, maxWidth: 96 }}
+                className={`${FIELD_INPUT} max-w-24`}
                 type="number"
                 min={0}
                 max={100}
@@ -228,20 +189,12 @@ export function GroupRubricGradeEntry({
         })}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: 8,
-          borderTop: `1px solid ${P.line}`,
-          paddingTop: 10,
-        }}
-      >
-        <span style={fieldLabelStyle}>Manual override</span>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="grid gap-2 border-t border-line pt-2.5">
+        <span className={FIELD_LABEL}>Manual override</span>
+        <div className="flex flex-wrap gap-2">
           <select
             name="override_letter"
-            className={fieldInputClass}
-            style={{ ...fieldInputStyle, maxWidth: 140 }}
+            className={`${FIELD_INPUT} max-w-36`}
             value={overrideLetter}
             onChange={(e) => setOverrideLetter(e.target.value)}
             aria-label="Override letter"
@@ -255,8 +208,7 @@ export function GroupRubricGradeEntry({
           </select>
           <select
             name="override_scope"
-            className={fieldInputClass}
-            style={{ ...fieldInputStyle, maxWidth: 180 }}
+            className={`${FIELD_INPUT} max-w-44`}
             value={overrideScope}
             onChange={(e) => setOverrideScope(e.target.value)}
             disabled={overrideLetter === ""}
@@ -268,24 +220,10 @@ export function GroupRubricGradeEntry({
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          type="submit"
-          disabled={form.pending}
-          className={fieldInputClass}
-          style={{
-            ...fieldInputStyle,
-            cursor: form.pending ? "default" : "pointer",
-            fontFamily: fontSans,
-            fontWeight: 600,
-            background: P.sageSoft,
-            color: P.sageTextStrong,
-            border: `1px solid ${P.sage}`,
-            maxWidth: 160,
-          }}
-        >
+      <div className="flex items-center gap-3">
+        <Button type="submit" variant="primary" disabled={form.pending}>
           {form.pending ? "Saving…" : "Save grade"}
-        </button>
+        </Button>
         <FormStatus state={form.state} successText="Grade saved." />
       </div>
     </form>

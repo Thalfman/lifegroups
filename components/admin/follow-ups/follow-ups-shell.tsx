@@ -5,7 +5,6 @@ import { usePersistedViewState } from "@/lib/hooks/use-persisted-view-state";
 import { SectionHeader } from "@/components/layout/shell";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import {
   followUpPriorityLabel,
   followUpTypeLabel,
@@ -21,12 +20,14 @@ import type {
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
-import {
-  errorTextStyle,
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-} from "@/components/admin/forms/field-styles";
+
+// Design-system form field classes (docs/design-direction.md §4 Forms):
+// tracked-uppercase survives in form field labels; inputs are full-width,
+// rounded-sm, line-bordered, with the global focus ring.
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base text-ink";
 
 export type AdminFollowUpsData = {
   followUps: AdminFollowUpEntry[];
@@ -324,18 +325,23 @@ export function AdminFollowUpsShell({
     errors.profiles;
 
   return (
-    <div style={{ display: "grid", gap: 36 }}>
+    <div className="grid gap-9">
       {anyError ? (
-        <div role="alert" style={alertStyle}>
+        <div
+          role="alert"
+          className="rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
+        >
           One or more reads failed. The page below shows what we did get; retry
           in a moment or check the database connection.
           {errors.followUps ? (
-            <p style={errorTextStyle}>{errors.followUps}</p>
+            <p className="mb-0 mt-2 font-sans text-sm text-clayDeep">
+              {errors.followUps}
+            </p>
           ) : null}
         </div>
       ) : null}
 
-      <section style={{ display: "grid", gap: 18 }}>
+      <section className="grid gap-[18px]">
         {/* Subject-first heading (#479): this is the GENERAL queue — group and
             task follow-ups — distinct from the care follow-ups about Leaders
             that lead the Care Follow-ups tab above this shell. */}
@@ -344,14 +350,7 @@ export function AdminFollowUpsShell({
           title="General follow-ups — groups and tasks"
           description="The status-grouped queue leads with open items, sorted by due date. Add a follow-up or open the filters when you need them."
         />
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
+        <div className="flex flex-wrap items-center gap-2.5">
           <PButton
             type="button"
             tone="terra"
@@ -371,16 +370,9 @@ export function AdminFollowUpsShell({
         </div>
 
         {showFilters ? (
-          <div
-            className="lg-m-filterbar"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 12,
-            }}
-          >
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3">
             <div>
-              <label htmlFor="fu-status" style={fieldLabelStyle}>
+              <label htmlFor="fu-status" className={FIELD_LABEL}>
                 Status
               </label>
               <select
@@ -389,7 +381,7 @@ export function AdminFollowUpsShell({
                 onChange={(e) =>
                   setStatusFilter(e.target.value as StatusFilter)
                 }
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 {STATUS_FILTERS.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -399,7 +391,7 @@ export function AdminFollowUpsShell({
               </select>
             </div>
             <div>
-              <label htmlFor="fu-filter-priority" style={fieldLabelStyle}>
+              <label htmlFor="fu-filter-priority" className={FIELD_LABEL}>
                 Priority
               </label>
               <select
@@ -408,7 +400,7 @@ export function AdminFollowUpsShell({
                 onChange={(e) =>
                   setPriorityFilter(e.target.value as "all" | FollowUpPriority)
                 }
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 {PRIORITY_FILTERS.map((p) => (
                   <option key={p.value} value={p.value}>
@@ -418,14 +410,14 @@ export function AdminFollowUpsShell({
               </select>
             </div>
             <div>
-              <label htmlFor="fu-due" style={fieldLabelStyle}>
+              <label htmlFor="fu-due" className={FIELD_LABEL}>
                 Due window
               </label>
               <select
                 id="fu-due"
                 value={dueFilter}
                 onChange={(e) => setDueFilter(e.target.value as DueFilter)}
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 {DUE_FILTERS.map((d) => (
                   <option key={d.value} value={d.value}>
@@ -435,14 +427,14 @@ export function AdminFollowUpsShell({
               </select>
             </div>
             <div>
-              <label htmlFor="fu-assignee" style={fieldLabelStyle}>
+              <label htmlFor="fu-assignee" className={FIELD_LABEL}>
                 Assignee
               </label>
               <select
                 id="fu-assignee"
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 <option value="all">Anyone (or none)</option>
                 {sortedAssignees.map((p) => (
@@ -453,14 +445,14 @@ export function AdminFollowUpsShell({
               </select>
             </div>
             <div>
-              <label htmlFor="fu-group" style={fieldLabelStyle}>
+              <label htmlFor="fu-group" className={FIELD_LABEL}>
                 Related group
               </label>
               <select
                 id="fu-group"
                 value={groupFilter}
                 onChange={(e) => setGroupFilter(e.target.value)}
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 <option value="all">Any (or none)</option>
                 {sortedGroups.map((g) => (
@@ -472,14 +464,14 @@ export function AdminFollowUpsShell({
               </select>
             </div>
             <div>
-              <label htmlFor="fu-guest" style={fieldLabelStyle}>
+              <label htmlFor="fu-guest" className={FIELD_LABEL}>
                 Related guest
               </label>
               <select
                 id="fu-guest"
                 value={guestFilter}
                 onChange={(e) => setGuestFilter(e.target.value)}
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 <option value="all">Any (or none)</option>
                 {sortedGuests.map((g) => (
@@ -493,15 +485,8 @@ export function AdminFollowUpsShell({
         ) : null}
 
         {filtered.length === 0 ? (
-          <div style={emptyStyle}>
-            <div
-              style={{
-                fontFamily: fontDisplay,
-                fontSize: 18,
-                color: P.ink,
-                fontWeight: 500,
-              }}
-            >
+          <div className="rounded-lg border border-dashed border-line bg-bg px-6 py-7 text-center">
+            <div className="font-display text-lg font-medium text-ink">
               {followUps.length === 0
                 ? // While the create drawer is open the "No follow-ups yet"
                   // prompt is redundant (the form is already open), so it is
@@ -511,15 +496,7 @@ export function AdminFollowUpsShell({
                   : "No follow-ups yet"
                 : "No follow-ups match these filters"}
             </div>
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 13.5,
-                color: P.ink2,
-                margin: "8px 0 0",
-                lineHeight: 1.5,
-              }}
-            >
+            <p className="m-0 mt-2 font-sans text-sm leading-normal text-ink2">
               {followUps.length === 0
                 ? drawer.isOpen
                   ? "Fill in the details in the panel and save to create it."
@@ -528,62 +505,28 @@ export function AdminFollowUpsShell({
             </p>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 28 }}>
+          <div className="grid gap-7">
             {STATUS_ORDER.map((status) => {
               const list = grouped[status];
               if (list.length === 0) return null;
               return (
-                <div key={status} style={{ display: "grid", gap: 12 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "baseline",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      borderBottom: `1px solid ${P.line}`,
-                      paddingBottom: 6,
-                    }}
-                  >
+                <div key={status} className="grid gap-3">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-line pb-1.5">
                     <div>
-                      <div
-                        style={{
-                          fontFamily: fontSans,
-                          fontSize: 10,
-                          letterSpacing: 1.5,
-                          textTransform: "uppercase",
-                          color: P.ink3,
-                          fontWeight: 600,
-                          marginBottom: 4,
-                        }}
-                      >
+                      <div className="mb-1 font-sans text-xs font-semibold text-ink3">
                         Status
                       </div>
-                      <div
-                        style={{
-                          fontFamily: fontDisplay,
-                          fontSize: 20,
-                          fontWeight: 500,
-                          color: P.ink,
-                          letterSpacing: -0.4,
-                        }}
-                      >
+                      <div className="font-display text-xl font-medium text-ink">
                         {STATUS_LABEL[status]}
                       </div>
                     </div>
-                    <div
-                      style={{
-                        fontFamily: fontSans,
-                        fontSize: 11.5,
-                        color: P.ink2,
-                        fontStyle: "italic",
-                      }}
-                    >
+                    <div className="font-sans text-sm italic text-ink2">
                       {list.length} item{list.length === 1 ? "" : "s"}
                     </div>
                   </div>
-                  <ul style={listResetStyle}>
+                  <ul className="m-0 list-none p-0">
                     {list.map((fu) => (
-                      <li key={fu.id} style={{ marginBottom: 12 }}>
+                      <li key={fu.id} className="mb-3">
                         <FollowUpRow
                           followUp={fu}
                           groupsById={groupsById}
@@ -671,55 +614,18 @@ function FollowUpRow({
   if (guest) links.push(`Guest: ${guest.full_name}`);
 
   return (
-    <article
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "14px 18px",
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 16,
-              fontWeight: 500,
-              color: P.ink,
-              letterSpacing: -0.2,
-            }}
-          >
+    <article className="grid gap-2.5 rounded-md border border-line bg-surface px-[18px] py-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-2.5">
+        <div className="min-w-0">
+          <div className="font-display text-lg font-medium text-ink">
             {followUp.title}
           </div>
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              color: P.ink3,
-              letterSpacing: 0.4,
-              textTransform: "uppercase",
-              marginTop: 4,
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="mt-1 flex flex-wrap gap-2 font-sans text-sm text-ink3">
             <span>{followUpTypeLabel(followUp.type)}</span>
             {assignee ? <span>Assignee: {assignee.full_name}</span> : null}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-2">
           <PBadge tone={priorityTone(followUp.priority)}>
             {followUpPriorityLabel(followUp.priority)}
           </PBadge>
@@ -732,68 +638,39 @@ function FollowUpRow({
         </div>
       </div>
       {links.length > 0 ? (
-        <div
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
+        <div className="flex flex-wrap gap-3 font-sans text-sm text-ink2">
           {links.map((l) => (
             <span key={l}>{l}</span>
           ))}
         </div>
       ) : null}
+      {/* Note visibility tone is a leading status dot on a surfaceAlt strip
+          (sage = leader-visible, clay = admin-private) — never a side stripe. */}
       {followUp.leader_visible_note ? (
-        <blockquote
-          style={{
-            background: P.bg,
-            borderLeft: `3px solid ${P.sage}`,
-            borderRadius: 10,
-            padding: "10px 14px",
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            fontStyle: "italic",
-            color: P.ink,
-            lineHeight: 1.5,
-          }}
-        >
-          <span style={labelInlineStyle}>Leader-visible · </span>
+        <blockquote className="m-0 rounded-sm bg-surfaceAlt px-3.5 py-2.5 font-sans text-sm italic leading-normal text-ink">
+          <span
+            aria-hidden="true"
+            className="mr-1.5 inline-block h-1.5 w-1.5 rounded-pill bg-sage align-middle"
+          />
+          <span className="font-sans text-xs font-semibold not-italic text-ink3">
+            Leader-visible ·{" "}
+          </span>
           {followUp.leader_visible_note}
         </blockquote>
       ) : null}
       {followUp.admin_private_note ? (
-        <blockquote
-          style={{
-            background: P.bg,
-            borderLeft: `3px solid ${P.terra}`,
-            borderRadius: 10,
-            padding: "10px 14px",
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            fontStyle: "italic",
-            color: P.ink,
-            lineHeight: 1.5,
-          }}
-        >
-          <span style={labelInlineStyle}>Admin-private · </span>
+        <blockquote className="m-0 rounded-sm bg-surfaceAlt px-3.5 py-2.5 font-sans text-sm italic leading-normal text-ink">
+          <span
+            aria-hidden="true"
+            className="mr-1.5 inline-block h-1.5 w-1.5 rounded-pill bg-clay align-middle"
+          />
+          <span className="font-sans text-xs font-semibold not-italic text-ink3">
+            Admin-private ·{" "}
+          </span>
           {followUp.admin_private_note}
         </blockquote>
       ) : null}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <FollowUpStatusControls followUp={followUp} />
         {isSuperAdmin ? (
           <SuperAdminInlineDelete
@@ -812,33 +689,3 @@ function priorityTone(priority: FollowUpPriority) {
   if (priority === "normal") return "watch" as const;
   return "neutral" as const;
 }
-
-const labelInlineStyle = {
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-  fontStyle: "normal",
-} as const;
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
-
-const alertStyle = {
-  background: P.terraSoft,
-  border: `1px solid ${P.terra}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: "#7d3621",
-} as const;
-
-const emptyStyle = {
-  background: P.bg,
-  border: `1px dashed ${P.line}`,
-  borderRadius: 14,
-  padding: "28px 24px",
-  textAlign: "center",
-} as const;

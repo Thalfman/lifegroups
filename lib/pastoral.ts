@@ -1,21 +1,24 @@
+// Aliases of the canonical `--c-*` tokens in app/globals.css — kept so the
+// ~166 files importing `P` stay coherent while surfaces migrate to Tailwind
+// utilities. No hex literals: every value resolves to a canonical var.
 export const P = {
-  bg: "#f5ecd9",
-  bgDeep: "#ede0c4",
-  surface: "#fbf6e8",
-  ink: "#3a2a1a",
-  ink2: "#6b5641",
-  ink3: "#9c8a6d",
-  line: "#e3d4af",
-  line2: "#ebe0c2",
-  terra: "#b85a3c",
-  terraTextStrong: "#7d3621",
-  terraSoft: "#f2d7c8",
-  sage: "#6a7d4f",
-  sageTextStrong: "#3e4f29",
-  sageSoft: "#dfe4ce",
-  mustard: "#c8964a",
-  mustardTextStrong: "#6f4f13",
-  mustardSoft: "#f0dfb5",
+  bg: "var(--c-bg)",
+  bgDeep: "var(--c-sidebar)",
+  surface: "var(--c-surface)",
+  ink: "var(--c-ink)",
+  ink2: "var(--c-ink2)",
+  ink3: "var(--c-ink3)",
+  line: "var(--c-line)",
+  line2: "var(--c-lineSoft)",
+  terra: "var(--c-clay)",
+  terraTextStrong: "var(--c-clayDeep)",
+  terraSoft: "var(--c-claySoft)",
+  sage: "var(--c-sage)",
+  sageTextStrong: "var(--c-sageDeep)",
+  sageSoft: "var(--c-sageSoft)",
+  mustard: "var(--c-amber)",
+  mustardTextStrong: "var(--c-amberText)",
+  mustardSoft: "var(--c-amberSoft)",
 } as const;
 
 export const fontDisplay = "var(--font-display)";

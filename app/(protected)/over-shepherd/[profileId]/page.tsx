@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cardClassName as CARD } from "@/components/lg/Card";
 import Link from "next/link";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
@@ -29,7 +30,6 @@ import type {
 } from "@/types/database";
 import { isUuid } from "@/lib/shared/uuid";
 import { formatIsoDateOr } from "@/lib/shared/date";
-import { P, fontBody } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
@@ -105,31 +105,22 @@ export default async function OverShepherdShepherdPage({
         actions={
           <Link
             href="/over-shepherd"
-            style={{ color: P.ink3, fontFamily: fontBody, fontSize: 13 }}
+            className="font-sans text-sm text-ink2 underline hover:text-ink"
           >
             ← My Leaders
           </Link>
         }
       />
       <PageBody maxWidth={820}>
-        <div style={{ display: "grid", gap: 18 }}>
-          <section
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-              fontFamily: fontBody,
-              color: P.ink,
-            }}
-          >
+        <div className="grid gap-5">
+          <section className="flex flex-wrap items-center gap-3 font-sans text-base text-ink">
             <span>Current status:</span>
             {care ? (
               <ShepherdCareStatusBadge status={care.current_status} />
             ) : (
-              <span style={{ color: P.ink3 }}>No care record yet</span>
+              <span className="text-ink3">No care record yet</span>
             )}
-            <span style={{ color: P.ink3 }}>
+            <span className="text-ink3">
               Last contact:{" "}
               {care?.last_contact_at
                 ? formatIsoDateOr(care.last_contact_at, "—")
@@ -137,14 +128,7 @@ export default async function OverShepherdShepherdPage({
             </span>
           </section>
 
-          <section
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 12,
-              padding: 16,
-              background: P.bg,
-            }}
-          >
+          <section className={CARD}>
             <LogBroadNoteForm shepherdProfileId={profileId} />
           </section>
 
@@ -152,16 +136,7 @@ export default async function OverShepherdShepherdPage({
               Prayer Requests about this covered Leader. Private to you by
               default; ministry leadership reads them only when this Leader's
               transparency toggle is on (controlled in admin Care). */}
-          <section
-            style={{
-              border: `1px solid ${P.line}`,
-              borderRadius: 12,
-              padding: 16,
-              background: P.bg,
-              display: "grid",
-              gap: 18,
-            }}
-          >
+          <section className={`${CARD} grid gap-5`}>
             <CareNoteWriteForm subjectProfileId={profileId} kind="care_note" />
             <CareNoteWriteForm
               subjectProfileId={profileId}

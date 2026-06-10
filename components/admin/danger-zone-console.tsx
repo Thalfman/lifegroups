@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/console-status";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 
 // Danger Zone chooser (Super Admin redesign).
 //
@@ -34,7 +34,7 @@ export type DangerWorkflowGroup = {
   // Risk-level group label (e.g. "Launch preparation", "Permanent deletion").
   label: string;
   // Marks the highest-risk group (permanent deletion). Its chooser renders
-  // inside a terra-bordered panel set apart from the recoverable groups, so
+  // inside a rose-bordered panel set apart from the recoverable groups, so
   // reaching it is a deliberate visual step — never just one more reset row.
   destructive?: boolean;
   workflows: DangerWorkflow[];
@@ -51,10 +51,12 @@ export function DangerZoneConsole({
   const active = allWorkflows.find((workflow) => workflow.id === activeId);
 
   return (
-    <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
-      <div style={{ display: "grid", gap: 6 }}>
-        <h2 style={headingStyle}>Danger Zone</h2>
-        <p style={ledeStyle}>
+    <div className="grid min-w-0 gap-4">
+      <div className="grid gap-1.5">
+        <h2 className="m-0 font-display text-xl font-semibold text-ink">
+          Danger Zone
+        </h2>
+        <p className="m-0 max-w-lede font-sans text-sm text-ink2">
           Guarded actions grouped by risk, lowest first. The cards below are
           launchers, not buttons — opening one only reveals its workflow.
           Nothing runs until you type that workflow&rsquo;s confirmation phrase,
@@ -65,19 +67,35 @@ export function DangerZoneConsole({
       <div
         role="group"
         aria-label="Choose a danger-zone workflow"
-        style={{ display: "grid", gap: 14 }}
+        className="grid gap-3.5"
       >
         {groups.map((group) => (
-          <div key={group.id} style={groupStyle(Boolean(group.destructive))}>
-            <div style={groupLabelRowStyle}>
-              <span style={groupLabelStyle(Boolean(group.destructive))}>
+          <div
+            key={group.id}
+            // Recoverable groups stack as plain labelled rows; the destructive
+            // group (permanent deletion) renders inside its own rose-bordered
+            // panel with extra breathing room above, so the most dangerous
+            // work sits visually apart from the reversible resets.
+            className={cn(
+              "grid gap-2",
+              group.destructive &&
+                "mt-1.5 rounded-md border border-rose/40 bg-surface px-4 py-3.5"
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "font-sans text-sm font-semibold",
+                  group.destructive ? "text-rose" : "text-ink3"
+                )}
+              >
                 {group.label}
               </span>
               {group.destructive ? (
                 <StatusBadge label="Irreversible" tone="destructive" />
               ) : null}
             </div>
-            <div className="lg-m-grid-stack" style={chooserGridStyle}>
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
               {group.workflows.map((workflow) => {
                 const selected = workflow.id === activeId;
                 return (
@@ -86,20 +104,21 @@ export function DangerZoneConsole({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setActiveId(selected ? null : workflow.id)}
-                    style={chooserButtonStyle(
-                      selected,
-                      Boolean(workflow.destructive)
+                    className={cn(
+                      "grid cursor-pointer appearance-none content-start gap-1.5 rounded-sm border p-3 text-left transition-colors duration-150",
+                      // A destructive launcher keeps a rose border even at
+                      // rest, so it never blends in with the recoverable
+                      // resets; the selected launcher swaps the stripe-era
+                      // accents for a roseSoft fill + full rose border.
+                      selected
+                        ? "border-rose bg-roseSoft"
+                        : workflow.destructive
+                          ? "border-rose/40 bg-surface"
+                          : "border-line bg-surface hover:bg-surfaceAlt"
                     )}
                   >
-                    <span
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 8,
-                      }}
-                    >
-                      <span style={chooserButtonLabelStyle}>
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="font-sans text-sm font-semibold text-ink">
                         {workflow.label}
                       </span>
                       <StatusBadge
@@ -110,11 +129,20 @@ export function DangerZoneConsole({
                       />
                     </span>
                     {workflow.riskNote ? (
-                      <span style={chooserButtonNoteStyle}>
+                      <span className="font-sans text-xs leading-snug text-ink2">
                         {workflow.riskNote}
                       </span>
                     ) : null}
-                    <span style={chooserOpenHintStyle(selected)}>
+                    {/* The launcher's action line: what clicking does (open,
+                        not run); the selected card swaps it for a "workflow
+                        open below" state line, keeping the chosen card
+                        obvious. */}
+                    <span
+                      className={cn(
+                        "font-sans text-xs font-semibold text-clayDeep",
+                        !selected && "underline"
+                      )}
+                    >
                       {selected
                         ? "Workflow open below ↓"
                         : openWorkflowLabel(workflow.label)}
@@ -130,12 +158,12 @@ export function DangerZoneConsole({
       {active ? (
         <section
           aria-label={`${active.label} workflow`}
-          style={{ display: "grid", gap: 10 }}
+          className="grid gap-2.5"
         >
           {active.node}
         </section>
       ) : (
-        <p style={placeholderStyle}>
+        <p className="m-0 rounded-md border border-dashed border-line bg-surface px-4 py-4 font-sans text-sm text-ink3">
           Select a workflow above to open it. Nothing runs until you type its
           confirmation phrase inside.
         </p>
@@ -150,128 +178,3 @@ export function DangerZoneConsole({
 function openWorkflowLabel(label: string): string {
   return `Open ${label.charAt(0).toLowerCase()}${label.slice(1)} workflow`;
 }
-
-const headingStyle: CSSProperties = {
-  fontFamily: fontDisplay,
-  fontSize: 20,
-  fontWeight: 600,
-  color: P.ink,
-  margin: 0,
-};
-
-const ledeStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  lineHeight: 1.55,
-  margin: 0,
-  maxWidth: 640,
-};
-
-// Recoverable groups stack as plain labelled rows; the destructive group
-// (permanent deletion) renders inside its own terra-bordered panel with extra
-// breathing room above — the same accent language the high-risk console
-// sections use (#451) — so the most dangerous work sits visually apart from
-// the reversible resets.
-function groupStyle(destructive: boolean): CSSProperties {
-  return {
-    display: "grid",
-    gap: 8,
-    ...(destructive
-      ? {
-          marginTop: 6,
-          padding: "14px 16px",
-          border: `1px solid ${P.terra}`,
-          borderRadius: 12,
-          boxShadow: `inset 0 3px 0 ${P.terra}`,
-          background: P.surface,
-        }
-      : null),
-  };
-}
-
-const groupLabelRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  flexWrap: "wrap",
-  gap: 8,
-};
-
-function groupLabelStyle(destructive: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    color: destructive ? P.terraTextStrong : P.ink3,
-    fontWeight: 700,
-  };
-}
-
-const chooserGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-  gap: 10,
-};
-
-function chooserButtonStyle(
-  selected: boolean,
-  destructive: boolean
-): CSSProperties {
-  return {
-    appearance: "none",
-    textAlign: "left",
-    display: "grid",
-    gap: 6,
-    alignContent: "start",
-    padding: "12px 14px",
-    borderRadius: 10,
-    cursor: "pointer",
-    background: selected ? P.terraSoft : P.surface,
-    // A destructive launcher keeps its terra border even at rest, so it never
-    // blends in with the recoverable resets.
-    border: `1px solid ${selected || destructive ? P.terra : P.line}`,
-    boxShadow: selected
-      ? `inset 3px 0 0 ${P.terra}, 0 0 0 1px ${P.terra}`
-      : "none",
-    transition: "background .12s, border-color .12s, box-shadow .12s",
-  };
-}
-
-const chooserButtonLabelStyle: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 13.5,
-  fontWeight: 600,
-  color: P.ink,
-};
-
-const chooserButtonNoteStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink2,
-  lineHeight: 1.45,
-};
-
-// The launcher's action line: what clicking does (open, not run). Terra ink so
-// it reads as the card's interactive affordance; the selected card swaps it
-// for a "workflow open below" state line, keeping the chosen card obvious.
-function chooserOpenHintStyle(selected: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 12,
-    fontWeight: 700,
-    color: P.terraTextStrong,
-    ...(selected ? null : { textDecoration: "underline" }),
-  };
-}
-
-const placeholderStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-  margin: 0,
-  padding: "16px 18px",
-  border: `1px dashed ${P.line}`,
-  borderRadius: 10,
-  background: P.surface,
-};

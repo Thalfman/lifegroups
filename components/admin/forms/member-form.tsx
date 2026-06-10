@@ -3,10 +3,10 @@
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateMember } from "@/app/(protected)/admin/people/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formGridClassName,
+  formNoteClassName,
 } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -17,18 +17,14 @@ export function MemberForm() {
   );
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
-      <p style={formNoteStyle}>
+    <form ref={formRef} action={formAction} className="grid gap-3">
+      <p className={formNoteClassName}>
         Members are participant records. Email and phone are optional; capture
         whatever the leader already has.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className={formGridClassName}>
         <div>
-          <label htmlFor="member-full_name" style={fieldLabelStyle}>
+          <label htmlFor="member-full_name" className={fieldLabelClassName}>
             Full name
           </label>
           <input
@@ -37,12 +33,12 @@ export function MemberForm() {
             type="text"
             required
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Sam Member"
           />
         </div>
         <div>
-          <label htmlFor="member-email" style={fieldLabelStyle}>
+          <label htmlFor="member-email" className={fieldLabelClassName}>
             Email (optional)
           </label>
           <input
@@ -50,12 +46,12 @@ export function MemberForm() {
             name="email"
             type="email"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="sam@example.com"
           />
         </div>
         <div>
-          <label htmlFor="member-phone" style={fieldLabelStyle}>
+          <label htmlFor="member-phone" className={fieldLabelClassName}>
             Phone (optional)
           </label>
           <input
@@ -63,7 +59,7 @@ export function MemberForm() {
             name="phone"
             type="tel"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="(555) 123-4567"
           />
         </div>

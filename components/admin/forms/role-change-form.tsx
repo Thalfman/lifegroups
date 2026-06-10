@@ -3,8 +3,11 @@
 import { PButton } from "@/components/pastoral/button";
 import { superAdminUpdateProfileRole } from "@/app/(protected)/admin/super-admin/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { P, fontBody } from "@/lib/pastoral";
-import { fieldLabelStyle, fieldSelectStyle } from "./field-styles";
+import {
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formNoteClassName,
+} from "./field-styles";
 import type { UserRole } from "@/types/enums";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -40,20 +43,8 @@ export function RoleChangeForm({
   const noOptions = profiles.length === 0;
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 13,
-          color: P.ink2,
-          margin: 0,
-          lineHeight: 1.5,
-        }}
-      >
+    <form ref={formRef} action={formAction} className="grid gap-3">
+      <p className={formNoteClassName}>
         Change a profile&rsquo;s role. The owner role is set up separately and
         can&rsquo;t be assigned here. You can&rsquo;t change your own role here;
         every change records an audit event.
@@ -61,18 +52,10 @@ export function RoleChangeForm({
       {/* Profile gets the flexible column (with a real minimum so names +
           roles stay readable); New role a fixed readable width; the submit
           button sits at the end of the same row, aligned to the field
-          baseline. lg-m-grid-stack collapses to one column on small screens. */}
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(240px, 1fr) minmax(180px, 220px) auto",
-          gap: 12,
-          alignItems: "end",
-        }}
-      >
+          baseline; the grid collapses to one column on small screens. */}
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(240px,1fr)_minmax(180px,220px)_auto]">
         <div>
-          <label htmlFor="role-change-profile" style={fieldLabelStyle}>
+          <label htmlFor="role-change-profile" className={fieldLabelClassName}>
             Profile
           </label>
           <select
@@ -80,7 +63,7 @@ export function RoleChangeForm({
             name="profile_id"
             required
             disabled={noOptions}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
             defaultValue=""
           >
             <option value="" disabled>
@@ -94,7 +77,7 @@ export function RoleChangeForm({
           </select>
         </div>
         <div>
-          <label htmlFor="role-change-role" style={fieldLabelStyle}>
+          <label htmlFor="role-change-role" className={fieldLabelClassName}>
             New role
           </label>
           <select
@@ -102,7 +85,7 @@ export function RoleChangeForm({
             name="new_role"
             required
             disabled={noOptions}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
             defaultValue=""
           >
             <option value="" disabled>
@@ -127,14 +110,7 @@ export function RoleChangeForm({
         </div>
       </div>
       {noOptions ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.ink3,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-xs text-ink3">
           No active non-super-admin profiles exist yet. Add a leader or ministry
           admin via Manage People first.
         </p>
