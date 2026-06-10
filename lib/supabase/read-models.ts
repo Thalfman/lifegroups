@@ -829,6 +829,20 @@ export async function fetchAllGroupLeaders(
 
 // Phase 5A.4: Settings readers.
 
+// Column allowlist for the keyed app_settings readers (#495); every
+// AppSettingsRow column, pinned by a colocated test. Shared by the
+// metric-defaults, group-health-rubric, and launch-planning-assumptions
+// readers — they all fetch one keyed row and guard it with isAppSettingsRow.
+export const APP_SETTINGS_COLUMNS = [
+  "id",
+  "setting_key",
+  "setting_value",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof AppSettingsRow)[];
+
+const APP_SETTINGS_SELECT = APP_SETTINGS_COLUMNS.join(", ");
+
 // Returns the single `metric_defaults` row from `app_settings`. The row is
 // seeded by the Phase 5A.4 migration and never deleted; a `null` return
 // here means either Supabase rejected the read or the row was manually
@@ -838,7 +852,7 @@ export async function fetchMetricDefaults(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select("*")
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "metric_defaults")
     .maybeSingle();
   if (error)
@@ -911,7 +925,7 @@ export async function fetchGroupHealthRubricSetting(
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select("*")
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "group_health_rubric")
     .maybeSingle();
   if (error)
@@ -1475,12 +1489,31 @@ export async function fetchCapacityBoardExtras(
 // reads to super_admin / ministry_admin, so calling this from any
 // non-admin context will surface as an empty result. Admin pages call
 // this once at load time and join client-side by group_id.
+// Column allowlist for the per-group metric-override readers (#495); every
+// GroupMetricSettingsRow column, pinned by a colocated test.
+export const GROUP_METRIC_SETTINGS_COLUMNS = [
+  "group_id",
+  "capacity_override",
+  "capacity_warning_threshold_pct_override",
+  "healthy_attendance_pct_override",
+  "manual_health_status_override",
+  "exclude_from_capacity_metrics",
+  "admin_metric_notes",
+  "check_in_due_offset_hours_override",
+  "allow_over_capacity",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof GroupMetricSettingsRow)[];
+
+const GROUP_METRIC_SETTINGS_SELECT = GROUP_METRIC_SETTINGS_COLUMNS.join(", ");
+
 export async function fetchAllGroupMetricSettings(
   client: ReadClient
 ): Promise<ReadResult<GroupMetricSettingsRow[]>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select("*");
+    .select(GROUP_METRIC_SETTINGS_SELECT)
+    .returns<GroupMetricSettingsRow[]>();
   if (error)
     return {
       data: null,
@@ -1495,7 +1528,7 @@ export async function fetchGroupMetricSettings(
 ): Promise<ReadResult<GroupMetricSettingsRow | null>> {
   const { data, error } = await client
     .from("group_metric_settings")
-    .select("*")
+    .select(GROUP_METRIC_SETTINGS_SELECT)
     .eq("group_id", groupId)
     .maybeSingle();
   if (error)
@@ -1515,20 +1548,17 @@ export async function fetchGroupMetricSettings(
 // ---------------------------------------------------------------------------
 //
 // Reads the single `launch_planning_assumptions` row from app_settings.
-// Uses an explicit column allowlist (no select("*") on launch-planning
-// paths) and the same `isAppSettingsRow` trust-boundary guard as the
-// metric_defaults reader. A `null` data return means either the row was
-// never seeded (treat as "use built-in defaults") or the shape guard
-// rejected the row.
-const LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS =
-  "id, setting_key, setting_value, created_at, updated_at";
-
+// Uses the shared APP_SETTINGS_COLUMNS allowlist (no select("*") on
+// launch-planning paths) and the same `isAppSettingsRow` trust-boundary
+// guard as the metric_defaults reader. A `null` data return means either
+// the row was never seeded (treat as "use built-in defaults") or the shape
+// guard rejected the row.
 export async function fetchLaunchPlanningAssumptions(
   client: ReadClient
 ): Promise<ReadResult<AppSettingsRow | null>> {
   const { data, error } = await client
     .from("app_settings")
-    .select(LAUNCH_PLANNING_ASSUMPTIONS_COLUMNS)
+    .select(APP_SETTINGS_SELECT)
     .eq("setting_key", "launch_planning_assumptions")
     .maybeSingle();
   if (error)

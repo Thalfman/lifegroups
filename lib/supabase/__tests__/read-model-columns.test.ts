@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ReadClient } from "@/lib/supabase/read-core";
 import {
+  APP_SETTINGS_COLUMNS,
   ATTENDANCE_RECORD_COLUMNS,
   ATTENDANCE_SESSION_COLUMNS,
   fetchActiveMemberships,
@@ -10,16 +11,22 @@ import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
+  fetchGroupHealthRubricSetting,
+  fetchGroupMetricSettings,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
+  fetchLaunchPlanningAssumptions,
   fetchMembersByIds,
+  fetchMetricDefaults,
   fetchNewGuestsForGroupSince,
   fetchProfilesForAdmin,
+  fetchAllGroupMetricSettings,
   GROUP_CALENDAR_EVENT_COLUMNS,
   GROUP_COLUMNS,
   GROUP_HEALTH_UPDATE_COLUMNS,
   GROUP_LEADER_COLUMNS,
   GROUP_MEMBERSHIP_COLUMNS,
+  GROUP_METRIC_SETTINGS_COLUMNS,
   GUEST_COLUMNS,
   MEMBER_COLUMNS,
   PROFILE_COLUMNS,
@@ -447,6 +454,78 @@ describe("group_calendar_events read column allowlist (#495)", () => {
     });
     expect(calls.get("group_calendar_events")).toEqual([
       PINNED_GROUP_CALENDAR_EVENT_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── app_settings ─────────────────────────────────────────────────────────────
+
+const PINNED_APP_SETTINGS_COLUMNS = [
+  "id",
+  "setting_key",
+  "setting_value",
+  "created_at",
+  "updated_at",
+] as const;
+
+describe("app_settings read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the settings reads must be a deliberate diff here", () => {
+    expect([...APP_SETTINGS_COLUMNS]).toEqual([...PINNED_APP_SETTINGS_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(APP_SETTINGS_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the keyed settings reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchMetricDefaults(client);
+      await fetchGroupHealthRubricSetting(client);
+      await fetchLaunchPlanningAssumptions(client);
+    });
+    expect(calls.get("app_settings")).toEqual([
+      PINNED_APP_SETTINGS_COLUMNS.join(", "),
+      PINNED_APP_SETTINGS_COLUMNS.join(", "),
+      PINNED_APP_SETTINGS_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── group_metric_settings ────────────────────────────────────────────────────
+
+const PINNED_GROUP_METRIC_SETTINGS_COLUMNS = [
+  "group_id",
+  "capacity_override",
+  "capacity_warning_threshold_pct_override",
+  "healthy_attendance_pct_override",
+  "manual_health_status_override",
+  "exclude_from_capacity_metrics",
+  "admin_metric_notes",
+  "check_in_due_offset_hours_override",
+  "allow_over_capacity",
+  "created_at",
+  "updated_at",
+] as const;
+
+describe("group_metric_settings read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the metric-override reads must be a deliberate diff here", () => {
+    expect([...GROUP_METRIC_SETTINGS_COLUMNS]).toEqual([
+      ...PINNED_GROUP_METRIC_SETTINGS_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_METRIC_SETTINGS_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the metric-override reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchAllGroupMetricSettings(client);
+      await fetchGroupMetricSettings(client, UUID_A);
+    });
+    expect(calls.get("group_metric_settings")).toEqual([
+      PINNED_GROUP_METRIC_SETTINGS_COLUMNS.join(", "),
+      PINNED_GROUP_METRIC_SETTINGS_COLUMNS.join(", "),
     ]);
   });
 });
