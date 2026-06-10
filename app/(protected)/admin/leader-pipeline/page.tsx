@@ -39,6 +39,7 @@ export default async function AdminLeaderPipelinePage() {
             <LeaderPipeline
               rollup={data.rollup}
               availableGroups={data.availableGroups}
+              memberOptionsByGroup={data.memberOptionsByGroup}
             />
           )}
         </div>

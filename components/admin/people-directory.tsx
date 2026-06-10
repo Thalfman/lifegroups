@@ -20,6 +20,7 @@ import type {
   MembersRow,
   ProfilesRow,
 } from "@/types/database";
+import type { UserRole } from "@/types/enums";
 
 // The directory's people scope: Everyone, Leaders (login profiles filtered to
 // leader/co-leader), or Members (participant, non-login records). Formerly
@@ -51,6 +52,41 @@ type PeopleDirectoryProps = {
 type StatusFilter = "all" | "active" | "inactive";
 
 const LEADER_ROLES = new Set(["leader", "co_leader"]);
+
+// The login-profile list renders as one section per role, ordered down the
+// oversight ladder (Ministry Admin ▸ Over-Shepherd ▸ Leader ▸ Co-Leader).
+// Titles pluralize ROLE_LABELS; descriptions compress CONTEXT.md's definitions
+// to a line each. super_admin never reaches this component (filtered upstream
+// in buildPeopleDirectoryData), so it carries no section. Exported for tests.
+export const PROFILE_SECTIONS: {
+  role: UserRole;
+  title: string;
+  description: string;
+}[] = [
+  {
+    role: "ministry_admin",
+    title: "Ministry Admins",
+    description:
+      "Ministry admins run the ministry day to day and oversee every group and leader.",
+  },
+  {
+    role: "over_shepherd",
+    title: "Over-Shepherds",
+    description:
+      "Over-shepherds coach a set of leaders, between the leaders and the ministry admin in the oversight ladder.",
+  },
+  {
+    role: "leader",
+    title: "Leaders",
+    description: "Leaders shepherd a Life Group and the members in it.",
+  },
+  {
+    role: "co_leader",
+    title: "Co-Leaders",
+    description:
+      "Co-leaders share the shepherding of a Life Group alongside its leader.",
+  },
+];
 
 export function PeopleDirectory(props: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
@@ -133,6 +169,24 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
     [props.members, deferredStatusFilter, trimmed]
   );
 
+  // Single-pass partition of the filtered profiles into their role sections.
+  const profilesByRole = useMemo(() => {
+    const m = new Map<UserRole, ProfilesRow[]>();
+    for (const p of visibleProfiles) {
+      const arr = m.get(p.role) ?? [];
+      arr.push(p);
+      m.set(p.role, arr);
+    }
+    return m;
+  }, [visibleProfiles]);
+
+  // The Leaders scope narrows to the two leading roles; Everyone walks the
+  // full ladder.
+  const sectionsForScope =
+    scope === "leaders"
+      ? PROFILE_SECTIONS.filter((s) => LEADER_ROLES.has(s.role))
+      : PROFILE_SECTIONS;
+
   const showLogin = scope === "directory" || scope === "leaders";
   const showMembers = scope === "directory" || scope === "members";
 
@@ -162,44 +216,65 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       ) : null}
 
       {showLogin ? (
-        <DirectorySection
-          headerTitle={
-            scope === "leaders"
-              ? "Leaders and co-leaders"
-              : "Leaders and oversight"
-          }
-          headerDescription={
-            scope === "leaders"
-              ? "Current leaders and co-leaders who shepherd their groups."
-              : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
-          }
-          countLabel={`${visibleProfiles.length} shown`}
-          stale={listIsStale}
-          empty={
-            props.errors.profiles
-              ? `Couldn't load profiles: ${props.errors.profiles}`
-              : visibleProfiles.length === 0
-                ? trimmed || statusFilter !== "all"
+        props.errors.profiles || visibleProfiles.length === 0 ? (
+          // Failed read or nothing to show: one aggregate section carries the
+          // error / empty state, instead of four sections repeating it.
+          <DirectorySection
+            headerTitle={
+              scope === "leaders"
+                ? "Leaders and co-leaders"
+                : "Leaders and oversight"
+            }
+            headerDescription={
+              scope === "leaders"
+                ? "Current leaders and co-leaders who shepherd their groups."
+                : "Ministry admins, over-shepherds, leaders, and co-leaders who shepherd and oversee groups."
+            }
+            countLabel={`${visibleProfiles.length} shown`}
+            stale={listIsStale}
+            empty={
+              props.errors.profiles
+                ? `Couldn't load profiles: ${props.errors.profiles}`
+                : trimmed || statusFilter !== "all"
                   ? scope === "leaders"
                     ? "No leaders or co-leaders match the current filters."
                     : "No leaders or oversight roles match the current filters."
                   : scope === "leaders"
                     ? "No leaders or co-leaders yet. Add one with “Add person”."
                     : "No leaders or oversight roles yet. Add one with “Add person”."
-                : null
-          }
-        >
-          {visibleProfiles.map((p) => (
-            <ProfileRow
-              key={p.id}
-              profile={p}
-              assignedGroups={profileGroupMap.get(p.id) ?? NO_GROUPS}
-              isSelf={p.id === props.currentActorProfileId}
-              needsContact={props.needsContactProfileIds.has(p.id)}
-              isSuperAdmin={props.isSuperAdmin ?? false}
-            />
-          ))}
-        </DirectorySection>
+            }
+          >
+            {null}
+          </DirectorySection>
+        ) : (
+          sectionsForScope.map((section) => {
+            const rows = profilesByRole.get(section.role) ?? [];
+            // A role with no one in it stays off the page rather than
+            // stacking empty sections.
+            if (rows.length === 0) return null;
+            return (
+              <DirectorySection
+                key={section.role}
+                headerTitle={section.title}
+                headerDescription={section.description}
+                countLabel={`${rows.length} shown`}
+                stale={listIsStale}
+                empty={null}
+              >
+                {rows.map((p) => (
+                  <ProfileRow
+                    key={p.id}
+                    profile={p}
+                    assignedGroups={profileGroupMap.get(p.id) ?? NO_GROUPS}
+                    isSelf={p.id === props.currentActorProfileId}
+                    needsContact={props.needsContactProfileIds.has(p.id)}
+                    isSuperAdmin={props.isSuperAdmin ?? false}
+                  />
+                ))}
+              </DirectorySection>
+            );
+          })
+        )
       ) : null}
 
       {showMembers ? (

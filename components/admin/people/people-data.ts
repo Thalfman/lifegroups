@@ -191,6 +191,7 @@ export async function loadPeoplePageData(options: {
       pipeline: {
         rollup: emptyPipeline,
         availableGroups: [],
+        memberOptionsByGroup: {},
         error: "Database is not configured in this environment.",
       },
       needsContactProfileIds: new Set(),

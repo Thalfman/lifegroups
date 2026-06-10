@@ -85,6 +85,27 @@ describe("buildPeoplePipelineData", () => {
     );
     expect(pipeline.error).toBe("pipeline boom");
   });
+
+  // Guards the superset wiring: PeopleReads satisfies the shared pipeline
+  // builder, so the member-link options flow through to the Apprentices tab.
+  it("surfaces each active group's member options", async () => {
+    const pipeline = await buildPeoplePipelineData(
+      emptyReads({
+        fetchGroupRefs: async () =>
+          ok([
+            { id: "g1", name: "Alpha", lifecycle_status: "active" },
+          ] as never),
+        fetchActiveMemberships: async () =>
+          ok([{ group_id: "g1", member_id: "m1" }] as never),
+        fetchAllMembers: async () =>
+          ok([{ id: "m1", full_name: "Abe Ortiz" }] as never),
+      })
+    );
+
+    expect(pipeline.memberOptionsByGroup).toEqual({
+      g1: [{ id: "m1", name: "Abe Ortiz" }],
+    });
+  });
 });
 
 describe("buildPeopleNeedsContact", () => {

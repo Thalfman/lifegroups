@@ -84,7 +84,8 @@ import {
   DEMO_SELECTED_WEEK,
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
-import { group, settings } from "@/lib/dashboard/group-fixtures";
+import { group, profile, settings } from "@/lib/dashboard/group-fixtures";
+import { buildPipelineRollup } from "@/lib/admin/leader-pipeline";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -843,9 +844,28 @@ const PEOPLE_MEMBERS = [
   },
 ];
 
+// The directory renders one section per role, ordered down the oversight
+// ladder. The dashboard demo seed is all leaders, so add one profile for each
+// remaining rung so every section heading (and its rows) is in the DOM for
+// axe and the section-grouping assertions.
+const PEOPLE_PROFILES = [
+  ...DEMO_PROFILES,
+  profile({
+    id: "people-ma",
+    full_name: "Maya Whitfield",
+    role: "ministry_admin",
+  }),
+  profile({
+    id: "people-os",
+    full_name: "Omar Castillo",
+    role: "over_shepherd",
+  }),
+  profile({ id: "people-co", full_name: "Cora Nguyen", role: "co_leader" }),
+];
+
 const PEOPLE_DATA: PeopleManagementData = {
   currentActorProfileId: "p-priya",
-  profiles: DEMO_PROFILES,
+  profiles: PEOPLE_PROFILES,
   members: PEOPLE_MEMBERS,
   groups: DEMO_GROUPS,
   groupLeaders: DEMO_LEADERS,
@@ -859,11 +879,34 @@ const PEOPLE_DATA: PeopleManagementData = {
   },
 };
 
-// The Apprentices tab embeds the leader pipeline (issue #302). The empty rollup
-// renders the pipeline's empty state — enough for axe to scan the tab's controls.
+// The Apprentices tab embeds the leader pipeline (issue #302). Seed one group
+// with member options and one apprentice so the add form — group select,
+// member-link dropdown, name input — and an apprentice row are in the DOM for
+// axe to scan (an empty availableGroups would hide the form entirely).
+const PEOPLE_PIPELINE_GROUPS = [{ id: "people-group-1", name: "Harbor Group" }];
 const PEOPLE_PIPELINE: PeoplePipelineData = {
-  rollup: { stages: [], groupsWithoutApprentice: [], totalApprentices: 0 },
-  availableGroups: [],
+  rollup: buildPipelineRollup(
+    [
+      {
+        id: "people-appr-1",
+        groupId: "people-group-1",
+        groupName: "Harbor Group",
+        displayName: "Jordan Avery",
+        memberId: "people-mem-1",
+        stage: "in_training",
+        expectedReadyOn: null,
+        notes: null,
+      },
+    ],
+    PEOPLE_PIPELINE_GROUPS
+  ),
+  availableGroups: PEOPLE_PIPELINE_GROUPS,
+  memberOptionsByGroup: {
+    "people-group-1": [
+      { id: "people-mem-1", name: "Jordan Avery" },
+      { id: "people-mem-2", name: "Riley Chen" },
+    ],
+  },
   error: null,
 };
 

@@ -124,6 +124,24 @@ test.describe("admin People tabs", () => {
     ).toBe(0);
   });
 
+  test("the directory groups people into role sections", async ({ page }) => {
+    const surface = page.locator(SURFACE);
+
+    // Everyone scope (the default): one section per rung of the oversight
+    // ladder, plus Members.
+    for (const name of [
+      "Ministry Admins",
+      "Over-Shepherds",
+      "Leaders",
+      "Co-Leaders",
+      "Members",
+    ]) {
+      await expect(
+        surface.getByRole("heading", { name, exact: true })
+      ).toBeVisible();
+    }
+  });
+
   test("the scope filter narrows to Leaders, then Members", async ({
     page,
   }) => {
@@ -132,20 +150,28 @@ test.describe("admin People tabs", () => {
 
     await scope.selectOption("leaders");
     await expect(
-      surface.getByRole("heading", { name: "Leaders and co-leaders" })
+      surface.getByRole("heading", { name: "Leaders", exact: true })
     ).toBeVisible();
-    // The Members section is not mounted in the leaders scope.
+    await expect(
+      surface.getByRole("heading", { name: "Co-Leaders", exact: true })
+    ).toBeVisible();
+    // The oversight and Members sections are not mounted in the leaders scope.
     expect(
-      await surface.getByRole("heading", { name: "Members" }).count()
+      await surface.getByRole("heading", { name: "Ministry Admins" }).count()
+    ).toBe(0);
+    expect(
+      await surface
+        .getByRole("heading", { name: "Members", exact: true })
+        .count()
     ).toBe(0);
 
     await scope.selectOption("members");
     await expect(
-      surface.getByRole("heading", { name: "Members" })
+      surface.getByRole("heading", { name: "Members", exact: true })
     ).toBeVisible();
     expect(
       await surface
-        .getByRole("heading", { name: "Leaders and co-leaders" })
+        .getByRole("heading", { name: "Leaders", exact: true })
         .count()
     ).toBe(0);
   });
