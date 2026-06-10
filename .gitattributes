@@ -1,0 +1,5 @@
+# Graphify outputs are regenerable: union-merge the graph so concurrent
+# branches never hard-conflict (a corrupt merge is fixed by `graphify update .`),
+# and collapse generated files in PR diffs.
+graphify-out/graph.json merge=union
+graphify-out/** linguist-generated=true

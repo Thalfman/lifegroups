@@ -157,6 +157,23 @@ result-returning guards (`requireAdminSession`, …) in server actions.
   the validate → guard → RPC pipeline; structured logging via
   `lib/observability` (`event`, `outcome`, `actor_role`, …).
 
+## Knowledge graph (graphify)
+
+The repo carries a committed [Graphify](./.agents/skills/graphify/SKILL.md)
+knowledge graph — `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md`.
+For codebase-architecture questions, prefer `graphify query "<question>"` over
+raw file searching. The graph keeps itself updated:
+
+- the pre-commit hook runs `graphify update .` (AST-only, no API key) and
+  stages the refreshed graph into the same commit;
+- a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
+  installs the CLI if needed and refreshes the graph in the background.
+
+Manual refresh: `graphify update .`. `graphify-out/cache/` and
+`graphify-out/manifest.json` are machine-local and gitignored; don't commit
+them. Community names are unlabeled placeholders until an LLM API key is
+available (`graphify label .`).
+
 ## Testing
 
 - **Unit/component:** Vitest. Tests are colocated under
