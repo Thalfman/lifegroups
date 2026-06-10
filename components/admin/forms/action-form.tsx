@@ -7,7 +7,7 @@ import {
   type FormStatusView,
   formStatusView,
 } from "@/lib/forms/action-form-view";
-import { errorTextStyle, successTextStyle } from "./field-styles";
+import { errorTextClassName, successTextClassName } from "./field-styles";
 
 // The wiring every server-action form repeated by hand: bind `useActionState`,
 // expose `pending`, and (for 14 forms) reset the form on success. One small
@@ -41,8 +41,8 @@ export function useActionForm<T>(
 export function FormStatusLine({ view }: { view: FormStatusView }) {
   if (view.kind === "none") return null;
   if (view.kind === "success")
-    return <span style={successTextStyle}>{view.text}</span>;
-  return <p style={errorTextStyle}>{view.text}</p>;
+    return <span className={successTextClassName}>{view.text}</span>;
+  return <p className={errorTextClassName}>{view.text}</p>;
 }
 
 // The standardized success / error line. Pass `successText` to show a sage

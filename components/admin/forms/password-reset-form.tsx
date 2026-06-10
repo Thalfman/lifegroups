@@ -22,7 +22,7 @@ export function PasswordResetForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 6 }}>
+    <form action={formAction} className="grid gap-1.5">
       <input type="hidden" name="profile_id" value={profileId} />
       <input type="hidden" name="email" value={email} />
       <PButton

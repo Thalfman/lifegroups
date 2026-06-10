@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 
 // Issue #304: a small, accessible tab control for the Settings configuration
 // area. Settings is a quiet secondary surface, so the tabs read as a calm
@@ -65,8 +65,14 @@ export function SettingsTabs({
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
-      <div role="tablist" aria-label="Settings sections" style={tablistStyle}>
+    <div className="grid gap-6">
+      {/* A self-contained pill rail rather than full-width tabs: keeps Settings
+          reading as a quiet, secondary control instead of a primary nav bar. */}
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="flex w-fit max-w-full flex-wrap gap-1 rounded-pill border border-line bg-sidebar p-1"
+      >
         {tabs.map((tab, index) => {
           const selected = tab.id === activeId;
           return (
@@ -83,7 +89,12 @@ export function SettingsTabs({
               tabIndex={selected ? 0 : -1}
               onClick={() => setActiveId(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
-              style={selected ? { ...tabStyle, ...tabSelectedStyle } : tabStyle}
+              className={cn(
+                "inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-pill border px-4 font-sans text-base font-medium leading-tight transition-colors duration-150",
+                selected
+                  ? "border-line bg-surface font-semibold text-ink"
+                  : "border-transparent bg-transparent text-ink2 hover:bg-surface/60"
+              )}
             >
               {tab.label}
             </button>
@@ -104,38 +115,3 @@ export function SettingsTabs({
     </div>
   );
 }
-
-const tablistStyle = {
-  display: "flex",
-  flexWrap: "wrap" as const,
-  gap: 4,
-  padding: 4,
-  borderRadius: 999,
-  background: P.bgDeep,
-  border: `1px solid ${P.line}`,
-  // A self-contained pill rail rather than full-width tabs: keeps Settings
-  // reading as a quiet, secondary control instead of a primary nav bar.
-  width: "fit-content",
-  maxWidth: "100%",
-} as const;
-
-const tabStyle = {
-  appearance: "none" as const,
-  border: "none",
-  background: "transparent",
-  color: P.ink2,
-  fontFamily: fontSans,
-  fontSize: 13,
-  fontWeight: 500,
-  padding: "7px 16px",
-  borderRadius: 999,
-  cursor: "pointer",
-  lineHeight: 1.2,
-  transition: "background .12s, color .12s",
-} as const;
-
-const tabSelectedStyle = {
-  background: P.surface,
-  color: P.ink,
-  boxShadow: "0 1px 2px rgba(58,42,26,0.08)",
-} as const;

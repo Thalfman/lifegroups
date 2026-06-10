@@ -7,10 +7,12 @@ import {
   adminSetAudienceReadinessRule,
   adminSetCellTriggerOverrides,
 } from "@/app/(protected)/admin/settings/actions";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  formNoteClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -52,6 +54,9 @@ import {
 // now lives solely here. The cascade arithmetic is the pure lib/admin/multiply-trigger.
 
 const LETTERS: ReadinessLetter[] = ["A", "B", "C", "D", "F"];
+
+// The quiet inline text beside a pillar's controls (units, inherited values).
+const THRESHOLD_NOTE = "font-sans text-sm text-ink3";
 
 // All three save actions share one signature (prev, formData) → ActionResult.
 type LevelAction = typeof adminSetReadinessRule;
@@ -126,7 +131,7 @@ export function MultiplyTriggerEditor({
     saveLabel = "Save global default";
     successText = "Global trigger saved.";
     note = (
-      <p style={noteStyle}>
+      <p className={formNoteClassName}>
         The ministry-wide default every type and group type inherits. A group
         type reads &ldquo;ready&rdquo; when every <em>required</em> pillar
         clears; pillars that aren&rsquo;t required are ignored. Ministry year{" "}
@@ -143,7 +148,7 @@ export function MultiplyTriggerEditor({
     saveLabel = `Save ${TRIGGER_TYPE_LABEL[level.audience]} rule`;
     successText = "Per-type trigger saved.";
     note = (
-      <p style={noteStyle}>
+      <p className={formNoteClassName}>
         Override only the pillars that differ for{" "}
         <strong>{TRIGGER_TYPE_LABEL[level.audience]}</strong> groups; the rest
         inherit the Global default. Turn every Override off to clear this type
@@ -160,7 +165,7 @@ export function MultiplyTriggerEditor({
     saveLabel = "Save overrides";
     successText = "Group type overrides saved.";
     note = (
-      <p style={noteStyle}>
+      <p className={formNoteClassName}>
         Override only the pillars that differ for{" "}
         <strong>
           {TRIGGER_TYPE_LABEL[level.audience]} · {selectedCell?.label}
@@ -172,22 +177,24 @@ export function MultiplyTriggerEditor({
   }
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
+    <div className="grid gap-5">
       {storedRuleFellBack ? (
-        <p style={fallbackNoticeStyle}>
+        // #473: calm, non-alarm styling for the stored-trigger-unreadable
+        // notice — the editor still works; this only explains what it shows.
+        <p className="m-0 rounded-sm border border-line bg-bg px-3.5 py-2.5 font-sans text-sm text-ink2">
           The stored multiplication trigger couldn&rsquo;t be read, so the
           built-in default is shown. Saving will overwrite what&rsquo;s stored.
         </p>
       ) : null}
-      <div style={{ display: "grid", gap: 6, maxWidth: 420 }}>
-        <label htmlFor="multiply-trigger-level" style={fieldLabelStyle}>
+      <div className="grid max-w-[420px] gap-1.5">
+        <label htmlFor="multiply-trigger-level" className={fieldLabelClassName}>
           Configure trigger for
         </label>
         <select
           id="multiply-trigger-level"
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          style={{ ...fieldInputStyle, appearance: "auto" }}
+          className={fieldSelectClassName}
         >
           <option value="global">Global default</option>
           {/* #478: the per-type tier is named by the CONTEXT.md term for it —
@@ -268,7 +275,7 @@ function LevelForm({
   const payloadJson = JSON.stringify(buildPartial(toggles, fields));
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 14 }}>
+    <form action={formAction} className="grid gap-3.5">
       {hiddenFields.map((h) => (
         <input key={h.name} type="hidden" name={h.name} value={h.value} />
       ))}
@@ -276,8 +283,10 @@ function LevelForm({
 
       {note}
 
-      <fieldset style={fieldsetStyle}>
-        <legend style={legendStyle}>The four pillars</legend>
+      <fieldset className="m-0 grid min-w-0 gap-2.5 rounded-sm border border-line px-3.5 py-3">
+        <legend className="px-1.5 font-sans text-sm text-ink2">
+          The four pillars
+        </legend>
         <PillarControls
           fields={fields}
           update={update}
@@ -287,7 +296,7 @@ function LevelForm({
         />
       </fieldset>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="flex items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : saveLabel}
         </PButton>
@@ -323,45 +332,36 @@ function PillarControls({
   setToggle?: (pillar: keyof PillarToggles, on: boolean) => void;
 }) {
   return (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div className="grid gap-3">
       {PILLAR_META.map(({ key, label }) => {
         const overridden = setToggle ? toggles[key] : true;
         return (
-          <div key={key} style={pillarRowStyle}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                minWidth: 150,
-              }}
-            >
+          <div
+            key={key}
+            className="flex flex-wrap items-center justify-between gap-2"
+          >
+            <div className="flex min-w-[150px] items-center gap-2">
               {setToggle ? (
-                <label style={overrideToggleStyle}>
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={toggles[key]}
                     onChange={(e) => setToggle(key, e.target.checked)}
                     aria-label={`Override ${label}`}
                   />
-                  <span style={fieldLabelStyle}>{label}</span>
+                  <span className={cn(fieldLabelClassName, "mb-0")}>
+                    {label}
+                  </span>
                 </label>
               ) : (
-                <span style={fieldLabelStyle}>{label}</span>
+                <span className={cn(fieldLabelClassName, "mb-0")}>{label}</span>
               )}
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="flex flex-wrap items-center gap-2">
               {overridden ? (
                 <PillarInputs pillar={key} fields={fields} update={update} />
               ) : (
-                <span style={inheritedStyle}>
+                <span className={cn(THRESHOLD_NOTE, "italic")}>
                   {pillarInheritedText(key, parent as ParentRule)}
                 </span>
               )}
@@ -394,7 +394,7 @@ function PillarInputs({
             onChange={(v) => update({ interestRequired: v })}
             id="interest-req"
           />
-          <span style={thresholdNoteStyle}>≥</span>
+          <span className={THRESHOLD_NOTE}>≥</span>
           <input
             aria-label="Interest minimum people"
             type="number"
@@ -403,9 +403,9 @@ function PillarInputs({
             inputMode="numeric"
             value={fields.interestMin}
             onChange={(e) => update({ interestMin: e.target.value })}
-            style={{ ...fieldInputStyle, width: 72, textAlign: "center" }}
+            className={cn(fieldInputClassName, "w-[72px] text-center")}
           />
-          <span style={thresholdNoteStyle}>people</span>
+          <span className={THRESHOLD_NOTE}>people</span>
         </>
       );
     case "capacity":
@@ -416,7 +416,7 @@ function PillarInputs({
             onChange={(v) => update({ capacityRequired: v })}
             id="capacity-req"
           />
-          <span style={thresholdNoteStyle}>no capacity issue</span>
+          <span className={THRESHOLD_NOTE}>no capacity issue</span>
         </>
       );
     case "groupHealth":
@@ -427,7 +427,7 @@ function PillarInputs({
             onChange={(v) => update({ groupRequired: v })}
             id="group-req"
           />
-          <span style={thresholdNoteStyle}>≥</span>
+          <span className={THRESHOLD_NOTE}>≥</span>
           <LetterSelect
             ariaLabel="Group health minimum letter"
             value={fields.groupMin}
@@ -443,7 +443,7 @@ function PillarInputs({
             onChange={(v) => update({ leaderRequired: v })}
             id="leader-req"
           />
-          <span style={thresholdNoteStyle}>≥</span>
+          <span className={THRESHOLD_NOTE}>≥</span>
           <LetterSelect
             ariaLabel="Leader health minimum letter"
             value={fields.leaderMin}
@@ -464,7 +464,10 @@ function Required({
   id: string;
 }) {
   return (
-    <label htmlFor={id} style={requiredLabelStyle}>
+    <label
+      htmlFor={id}
+      className="flex items-center gap-1.5 font-sans text-sm text-ink2"
+    >
       <input
         id={id}
         type="checkbox"
@@ -490,7 +493,7 @@ function LetterSelect({
       aria-label={ariaLabel}
       value={value}
       onChange={(e) => onChange(e.target.value as ReadinessLetter)}
-      style={{ ...fieldInputStyle, width: 70, appearance: "auto" }}
+      className={cn(fieldSelectClassName, "w-[70px]")}
     >
       {LETTERS.map((l) => (
         <option key={l} value={l}>
@@ -500,77 +503,3 @@ function LetterSelect({
     </select>
   );
 }
-
-const noteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  margin: 0,
-  lineHeight: 1.55,
-} as const;
-
-// #473: calm, non-alarm styling for the stored-trigger-unreadable notice — the
-// editor still works; this only explains what it is showing instead.
-const fallbackNoticeStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  background: P.bg,
-  border: `1px solid ${P.line}`,
-  borderRadius: 8,
-  padding: "10px 14px",
-  margin: 0,
-  lineHeight: 1.55,
-} as const;
-
-const fieldsetStyle = {
-  border: `1px solid ${P.line}`,
-  borderRadius: 10,
-  padding: "12px 14px",
-  display: "grid",
-  gap: 10,
-} as const;
-
-const legendStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  padding: "0 6px",
-} as const;
-
-const pillarRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
-  flexWrap: "wrap" as const,
-} as const;
-
-const requiredLabelStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-} as const;
-
-const overrideToggleStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  cursor: "pointer",
-} as const;
-
-const thresholdNoteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-} as const;
-
-const inheritedStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-  fontStyle: "italic" as const,
-} as const;

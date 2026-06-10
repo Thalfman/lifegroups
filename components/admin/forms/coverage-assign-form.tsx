@@ -2,7 +2,7 @@
 
 import { PButton } from "@/components/pastoral/button";
 import { superAdminAssignCoverage } from "@/app/(protected)/admin/super-admin/coverage-actions";
-import { fieldLabelStyle, fieldSelectStyle } from "./field-styles";
+import { fieldLabelClassName, fieldSelectClassName } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
 
 type OverShepherd = { id: string; full_name: string };
@@ -27,16 +27,10 @@ export function CoverageAssignForm({
     <form
       ref={formRef}
       action={formAction}
-      className="lg-m-grid-stack"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr auto",
-        gap: 12,
-        alignItems: "end",
-      }}
+      className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_1fr_auto]"
     >
       <div>
-        <label htmlFor="coverage-leader" style={fieldLabelStyle}>
+        <label htmlFor="coverage-leader" className={fieldLabelClassName}>
           Leader
         </label>
         <select
@@ -45,7 +39,7 @@ export function CoverageAssignForm({
           required
           disabled={noOptions}
           defaultValue=""
-          style={fieldSelectStyle}
+          className={fieldSelectClassName}
         >
           <option value="" disabled>
             {leaders.length === 0 ? "No assignable leaders" : "Pick a leader…"}
@@ -58,7 +52,7 @@ export function CoverageAssignForm({
         </select>
       </div>
       <div>
-        <label htmlFor="coverage-over" style={fieldLabelStyle}>
+        <label htmlFor="coverage-over" className={fieldLabelClassName}>
           Over-Shepherd
         </label>
         <select
@@ -67,7 +61,7 @@ export function CoverageAssignForm({
           required
           disabled={noOptions}
           defaultValue=""
-          style={fieldSelectStyle}
+          className={fieldSelectClassName}
         >
           <option value="" disabled>
             {overShepherds.length === 0

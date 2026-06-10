@@ -3,10 +3,10 @@
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateLeaderProfile } from "@/app/(protected)/admin/people/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formGridClassName,
+  formNoteClassName,
 } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -17,18 +17,14 @@ export function LeaderProfileForm() {
   );
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 12 }}
-    >
-      <p style={formNoteStyle}>
+    <form ref={formRef} action={formAction} className="grid gap-3">
+      <p className={formNoteClassName}>
         Creates a leader profile in the directory. Place them in a group and
         track their care from the person&rsquo;s tabs.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className={formGridClassName}>
         <div>
-          <label htmlFor="leader-full_name" style={fieldLabelStyle}>
+          <label htmlFor="leader-full_name" className={fieldLabelClassName}>
             Full name
           </label>
           <input
@@ -37,12 +33,12 @@ export function LeaderProfileForm() {
             type="text"
             required
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="Julian Example"
           />
         </div>
         <div>
-          <label htmlFor="leader-email" style={fieldLabelStyle}>
+          <label htmlFor="leader-email" className={fieldLabelClassName}>
             Email
           </label>
           <input
@@ -51,12 +47,12 @@ export function LeaderProfileForm() {
             type="email"
             required
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="julian@example.com"
           />
         </div>
         <div>
-          <label htmlFor="leader-phone" style={fieldLabelStyle}>
+          <label htmlFor="leader-phone" className={fieldLabelClassName}>
             Phone (optional)
           </label>
           <input
@@ -64,7 +60,7 @@ export function LeaderProfileForm() {
             name="phone"
             type="tel"
             autoComplete="off"
-            style={fieldInputStyle}
+            className={fieldInputClassName}
             placeholder="(555) 123-4567"
           />
         </div>

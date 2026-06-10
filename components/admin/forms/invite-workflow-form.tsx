@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { Icon } from "@/components/lg/Icon";
 import {
@@ -15,13 +15,13 @@ import {
 } from "@/app/(protected)/admin/super-admin/invite-link-actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { copyToClipboard } from "@/lib/shared/copy-to-clipboard";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  errorTextStyle,
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldInputClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  successTextClassName,
 } from "./field-styles";
 import { useActionForm, FormStatus } from "./action-form";
 
@@ -85,28 +85,11 @@ const AUTH_USER_LABELS: Record<InviteUserSuccess["authUserState"], string> = {
   existing_reused: "existing login reused",
 };
 
-const twoColRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 12,
-  alignItems: "end",
-};
+const TWO_COL_ROW = "grid grid-cols-1 items-end gap-3 md:grid-cols-2";
 
-const hintTextStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  margin: 0,
-  lineHeight: 1.5,
-};
+const HINT_TEXT = "m-0 font-sans text-sm text-ink2";
 
-const fineprintStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
-  lineHeight: 1.5,
-  margin: 0,
-};
+const FINEPRINT = "m-0 font-sans text-xs text-ink3";
 
 function formatExpiry(iso: string): string {
   try {
@@ -254,7 +237,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
   // delivery path uses.
   const roleField = (
     <div>
-      <label htmlFor="invite-workflow-role" style={fieldLabelStyle}>
+      <label htmlFor="invite-workflow-role" className={fieldLabelClassName}>
         Role
       </label>
       <select
@@ -263,8 +246,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         required
         value={role}
         onChange={(e) => setRole(e.target.value as InviteRole)}
-        style={fieldSelectStyle}
-        className="lg-m-input"
+        className={cn(fieldSelectClassName, "lg-m-input")}
       >
         {ASSIGNABLE_ROLES.map((r) => (
           <option key={r.value} value={r.value}>
@@ -277,7 +259,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
 
   const groupField = groupVisible ? (
     <div>
-      <label htmlFor="invite-workflow-group" style={fieldLabelStyle}>
+      <label htmlFor="invite-workflow-group" className={fieldLabelClassName}>
         Group assignment (optional)
       </label>
       <select
@@ -285,8 +267,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         name="group_id"
         value={groupId}
         onChange={(e) => setGroupId(e.target.value)}
-        style={fieldSelectStyle}
-        className="lg-m-input"
+        className={cn(fieldSelectClassName, "lg-m-input")}
       >
         <option value="">No group assignment</option>
         {groups.map((g) => (
@@ -303,22 +284,13 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
       ref={formRef}
       action={delivery === "email" ? formAction : undefined}
       onSubmit={handleFormSubmit}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
       <div>
-        <h3
-          style={{
-            fontFamily: fontDisplay,
-            fontSize: 18,
-            fontWeight: 600,
-            letterSpacing: -0.2,
-            color: P.ink,
-            margin: "0 0 4px",
-          }}
-        >
+        <h3 className="m-0 mb-1 font-display text-lg font-medium text-ink">
           Invite someone
         </h3>
-        <p style={hintTextStyle}>
+        <p className={HINT_TEXT}>
           Email a named person their login setup link, or generate a shareable
           link they redeem themselves — one audited workflow either way. The
           owner role is set up separately and can’t be selected here. Group
@@ -329,16 +301,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
       <div
         role="radiogroup"
         aria-label="Invite delivery"
-        style={{
-          display: "inline-flex",
-          flexWrap: "wrap",
-          gap: 4,
-          padding: 4,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 999,
-          justifySelf: "start",
-        }}
+        className="inline-flex flex-wrap gap-1 justify-self-start rounded-pill border border-line bg-sidebar p-1"
       >
         {DELIVERY_OPTIONS.map((o) => {
           const active = delivery === o.value;
@@ -349,17 +312,12 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
               role="radio"
               aria-checked={active}
               onClick={() => setDelivery(o.value)}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 999,
-                border: "none",
-                background: active ? P.ink : "transparent",
-                color: active ? P.surface : P.ink2,
-                fontFamily: fontSans,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
+              className={cn(
+                "cursor-pointer rounded-pill border px-3.5 py-2 font-sans text-sm font-medium leading-tight transition-colors duration-150",
+                active
+                  ? "border-line bg-surface font-semibold text-ink"
+                  : "border-transparent bg-transparent text-ink2 hover:bg-surface/60"
+              )}
             >
               {o.label}
             </button>
@@ -367,15 +325,15 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         })}
       </div>
 
-      <p style={hintTextStyle}>{DELIVERY_HINTS[delivery]}</p>
+      <p className={HINT_TEXT}>{DELIVERY_HINTS[delivery]}</p>
 
       {delivery === "email" ? (
         <>
-          <div className="lg-m-grid-stack" style={twoColRowStyle}>
+          <div className={TWO_COL_ROW}>
             <div>
               <label
                 htmlFor="invite-workflow-full-name"
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Full name
               </label>
@@ -385,12 +343,14 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 type="text"
                 required
                 autoComplete="off"
-                style={fieldInputStyle}
-                className="lg-m-input"
+                className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
             <div>
-              <label htmlFor="invite-workflow-email" style={fieldLabelStyle}>
+              <label
+                htmlFor="invite-workflow-email"
+                className={fieldLabelClassName}
+              >
                 Email
               </label>
               <input
@@ -399,15 +359,17 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 type="email"
                 required
                 autoComplete="off"
-                style={fieldInputStyle}
-                className="lg-m-input"
+                className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
           </div>
 
-          <div className="lg-m-grid-stack" style={twoColRowStyle}>
+          <div className={TWO_COL_ROW}>
             <div>
-              <label htmlFor="invite-workflow-phone" style={fieldLabelStyle}>
+              <label
+                htmlFor="invite-workflow-phone"
+                className={fieldLabelClassName}
+              >
                 Phone (optional)
               </label>
               <input
@@ -415,8 +377,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 name="phone"
                 type="tel"
                 autoComplete="off"
-                style={fieldInputStyle}
-                className="lg-m-input"
+                className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
             {roleField}
@@ -424,14 +385,14 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
 
           {groupField}
 
-          <p style={fineprintStyle}>
+          <p className={FINEPRINT}>
             Both buttons create or link a real login profile. “Send invite”
             emails the setup link (needs email delivery configured); “Copy
             invite link” gives you a setup link to send yourself — use it if
             email isn’t set up yet.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="flex flex-wrap gap-2">
             <PButton
               type="submit"
               tone="terra"
@@ -455,36 +416,26 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           <FormStatus state={state} />
 
           {namedLinkError ? (
-            <p style={errorTextStyle}>{namedLinkError}</p>
+            <p className={errorTextClassName}>{namedLinkError}</p>
           ) : null}
 
           {namedLinkNote ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink2,
-                margin: 0,
-                lineHeight: 1.5,
-              }}
-            >
-              {namedLinkNote}
-            </p>
+            <p className="m-0 font-sans text-xs text-ink2">{namedLinkNote}</p>
           ) : null}
 
           {namedLink ? (
-            <div style={{ display: "grid", gap: 6 }}>
-              <span style={successTextStyle}>
+            <div className="grid gap-1.5">
+              <span className={successTextClassName}>
                 Invite link generated and copied to your clipboard. Share it
                 directly — using it sets the person&apos;s password.
               </span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={namedLink}
                   onFocus={(e) => e.currentTarget.select()}
-                  style={{ ...fieldInputStyle, fontSize: 12 }}
+                  className={cn(fieldInputClassName, "text-xs")}
                   aria-label="Invite link"
                 />
                 <PButton
@@ -504,35 +455,20 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           ) : null}
 
           {state?.ok ? (
-            <div style={{ display: "grid", gap: 6 }}>
-              <p style={successTextStyle}>
+            <div className="grid gap-1.5">
+              <p className={successTextClassName}>
                 Invite created for {state.value.email}. They can follow the
                 invite email to set their password, or use Forgot password if
                 the link expires.
               </p>
-              <p style={fineprintStyle}>
+              <p className={FINEPRINT}>
                 {AUTH_USER_LABELS[state.value.authUserState]};{" "}
                 {GROUP_ASSIGNMENT_LABELS[state.value.groupAssignmentState]}.
               </p>
               {state.value.warnings.length > 0 ? (
-                <ul
-                  style={{
-                    listStyle: "disc",
-                    paddingLeft: 18,
-                    margin: 0,
-                    display: "grid",
-                    gap: 4,
-                  }}
-                >
+                <ul className="m-0 grid list-disc gap-1 pl-[18px]">
                   {state.value.warnings.map((w, i) => (
-                    <li
-                      key={i}
-                      style={{
-                        fontFamily: fontBody,
-                        fontSize: 12,
-                        color: P.ink2,
-                      }}
-                    >
+                    <li key={i} className="font-sans text-xs text-ink2">
                       {w}
                     </li>
                   ))}
@@ -543,18 +479,20 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
         </>
       ) : (
         <>
-          <div className="lg-m-grid-stack" style={twoColRowStyle}>
+          <div className={TWO_COL_ROW}>
             {roleField}
             <div>
-              <label htmlFor="invite-workflow-expiry" style={fieldLabelStyle}>
+              <label
+                htmlFor="invite-workflow-expiry"
+                className={fieldLabelClassName}
+              >
                 Expires
               </label>
               <select
                 id="invite-workflow-expiry"
                 value={expiryPreset}
                 onChange={(e) => setExpiryPreset(e.target.value)}
-                style={fieldSelectStyle}
-                className="lg-m-input"
+                className={cn(fieldSelectClassName, "lg-m-input")}
               >
                 {EXPIRY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -569,7 +507,7 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
             <div>
               <label
                 htmlFor="invite-workflow-custom-expiry"
-                style={fieldLabelStyle}
+                className={fieldLabelClassName}
               >
                 Custom expiry (date & time)
               </label>
@@ -578,36 +516,25 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 type="datetime-local"
                 value={customExpiry}
                 onChange={(e) => setCustomExpiry(e.target.value)}
-                style={fieldInputStyle}
-                className="lg-m-input"
+                className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
           ) : null}
 
           {groupField}
 
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              cursor: "pointer",
-            }}
-          >
+          <label className="flex cursor-pointer items-center gap-2 font-sans text-sm text-ink2">
             <input
               type="checkbox"
               checked={singleUse}
               onChange={(e) => setSingleUse(e.target.checked)}
-              style={{ width: 16, height: 16 }}
+              className="h-4 w-4"
             />
             One-time use (the link is spent after one person signs up). Uncheck
             to let anyone with the link join until it expires.
           </label>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="flex flex-wrap gap-2">
             <PButton
               type="submit"
               tone="terra"
@@ -619,11 +546,13 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
             </PButton>
           </div>
 
-          {shareError ? <p style={errorTextStyle}>{shareError}</p> : null}
+          {shareError ? (
+            <p className={errorTextClassName}>{shareError}</p>
+          ) : null}
 
           {shareResult ? (
-            <div style={{ display: "grid", gap: 6 }}>
-              <span style={successTextStyle}>
+            <div className="grid gap-1.5">
+              <span className={successTextClassName}>
                 Invite link generated and copied to your clipboard. Anyone who
                 opens it sets their own login as {ROLE_LABELS[shareResult.role]}
                 {shareResult.singleUse
@@ -631,13 +560,13 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                   : " — reusable until it expires"}
                 . Expires {formatExpiry(shareResult.expiresAt)}.
               </span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={shareResult.url}
                   onFocus={(e) => e.currentTarget.select()}
-                  style={{ ...fieldInputStyle, fontSize: 12 }}
+                  className={cn(fieldInputClassName, "text-xs")}
                   aria-label="Invite link"
                 />
                 <PButton

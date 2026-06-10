@@ -1,8 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { superAdminSetFeatureFlag } from "@/app/(protected)/admin/super-admin/feature-flag-actions";
-import { P, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import { useActionForm, FormStatus } from "./action-form";
 
 // Phase SAC.2 (#161): toggle a single feature flag. The hidden `enabled` field
@@ -12,7 +11,7 @@ import { useActionForm, FormStatus } from "./action-form";
 // #457: the control is a switch-style submit button that shows the setting's
 // current state before any interaction, instead of a bare terra "Turn on"
 // button whose meaning depended on reading the row. Held (frozen-surface) flags
-// carry the mustard held treatment so they can't pass for an ordinary toggle.
+// carry the amber held treatment so they can't pass for an ordinary toggle.
 export function FeatureFlagToggleForm({
   flagKey,
   flagLabel,
@@ -33,19 +32,38 @@ export function FeatureFlagToggleForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 6 }}>
+    <form action={formAction} className="grid gap-1.5">
       <input type="hidden" name="key" value={flagKey} />
       <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />
       <button
         type="submit"
         disabled={pending}
         aria-label={`${enabled ? "Turn off" : "Turn on"} ${flagLabel}`}
-        style={switchButtonStyle(enabled, Boolean(held), pending)}
+        className={cn(
+          "inline-flex appearance-none items-center gap-2 rounded-pill border py-1.5 pl-2 pr-3 font-sans text-xs font-semibold leading-tight transition-colors duration-150",
+          held
+            ? "border-amber bg-amberSoft text-amberText"
+            : enabled
+              ? "border-sage bg-surface text-sageDeep"
+              : "border-line bg-surface text-ink2",
+          pending ? "cursor-not-allowed opacity-55" : "cursor-pointer"
+        )}
       >
-        <span aria-hidden style={trackStyle(enabled, Boolean(held))}>
-          <span style={knobStyle(enabled)} />
+        <span
+          aria-hidden
+          className={cn(
+            "inline-flex h-[18px] w-8 shrink-0 items-center rounded-pill p-0.5 transition-colors duration-150",
+            enabled ? (held ? "bg-amber" : "bg-sage") : "bg-line"
+          )}
+        >
+          <span
+            className={cn(
+              "h-3.5 w-3.5 rounded-pill bg-surface shadow-soft transition-transform duration-150",
+              enabled ? "translate-x-3.5" : "translate-x-0"
+            )}
+          />
         </span>
-        <span style={{ whiteSpace: "nowrap" }}>
+        <span className="whitespace-nowrap">
           {pending ? "Saving…" : enabled ? "On" : "Off"}
           {held ? " · held" : ""}
         </span>
@@ -53,55 +71,4 @@ export function FeatureFlagToggleForm({
       <FormStatus state={state} successText="Saved." />
     </form>
   );
-}
-
-function switchButtonStyle(
-  enabled: boolean,
-  held: boolean,
-  pending: boolean
-): CSSProperties {
-  return {
-    appearance: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "6px 12px 6px 8px",
-    borderRadius: 999,
-    border: `1px solid ${held ? P.mustard : enabled ? P.sage : P.line}`,
-    background: held ? P.mustardSoft : P.surface,
-    color: held ? P.mustardTextStrong : enabled ? P.sageTextStrong : P.ink2,
-    fontFamily: fontSans,
-    fontSize: 12,
-    fontWeight: 600,
-    lineHeight: 1.2,
-    cursor: pending ? "not-allowed" : "pointer",
-    opacity: pending ? 0.55 : 1,
-    transition: "background .12s, border-color .12s, color .12s, opacity .12s",
-  };
-}
-
-function trackStyle(enabled: boolean, held: boolean): CSSProperties {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    width: 32,
-    height: 18,
-    padding: 2,
-    borderRadius: 999,
-    background: enabled ? (held ? P.mustard : P.sage) : P.line,
-    transition: "background .12s",
-    flexShrink: 0,
-  };
-}
-
-function knobStyle(enabled: boolean): CSSProperties {
-  return {
-    width: 14,
-    height: 14,
-    borderRadius: 999,
-    background: P.surface,
-    boxShadow: "0 1px 2px rgba(58,42,26,0.25)",
-    transform: enabled ? "translateX(14px)" : "translateX(0)",
-    transition: "transform .12s",
-  };
 }

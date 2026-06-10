@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminChangeLeaderRole } from "@/app/(protected)/admin/people/actions";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
-  errorTextStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  successTextClassName,
 } from "./field-styles";
 import { useActionForm } from "./action-form";
 
@@ -67,7 +67,7 @@ export function ChangeLeaderRoleForm({
 
   if (!open) {
     return (
-      <div style={{ display: "grid", gap: 4 }}>
+      <div className="grid gap-1">
         <PButton
           tone="solid"
           size="sm"
@@ -81,7 +81,7 @@ export function ChangeLeaderRoleForm({
           Change role
         </PButton>
         {state?.ok ? (
-          <p style={{ ...successTextStyle, padding: "4px 8px", fontSize: 11 }}>
+          <p className={cn(successTextClassName, "px-2 py-1 text-2xs")}>
             Role updated.
           </p>
         ) : null}
@@ -94,25 +94,18 @@ export function ChangeLeaderRoleForm({
       ref={formRef}
       action={formAction}
       onSubmit={confirmDowngrade}
-      style={{
-        display: "grid",
-        gap: 8,
-        background: P.bg,
-        border: `1px solid ${P.line}`,
-        borderRadius: 8,
-        padding: "10px 12px",
-        minWidth: 230,
-      }}
+      className="grid min-w-[230px] gap-2 rounded-sm border border-line bg-bg px-3 py-2.5"
     >
       <input type="hidden" name="profile_id" value={profileId} />
-      <p
-        style={{ fontFamily: fontBody, fontSize: 12, color: P.ink2, margin: 0 }}
-      >
+      <p className="m-0 font-sans text-xs text-ink2">
         Swap {profileName}&rsquo;s role between leader and co-leader. Group
         assignments stay as they are.
       </p>
       <div>
-        <label htmlFor={`change-role-${profileId}`} style={fieldLabelStyle}>
+        <label
+          htmlFor={`change-role-${profileId}`}
+          className={fieldLabelClassName}
+        >
           New role
         </label>
         <select
@@ -121,26 +114,19 @@ export function ChangeLeaderRoleForm({
           required
           value={newRole}
           onChange={(e) => setNewRole(e.target.value as LeaderRole)}
-          style={fieldSelectStyle}
+          className={fieldSelectClassName}
         >
           <option value="leader">{ROLE_LABELS.leader}</option>
           <option value="co_leader">{ROLE_LABELS.co_leader}</option>
         </select>
       </div>
       {downgrade ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 12,
-            color: P.terraTextStrong,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-xs text-clayDeep">
           Downgrading to {ROLE_LABELS.co_leader} narrows what {profileName} can
           do. You&rsquo;ll be asked to confirm.
         </p>
       ) : null}
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div className="flex justify-end gap-2">
         <PButton
           type="button"
           tone="ghost"
@@ -163,18 +149,10 @@ export function ChangeLeaderRoleForm({
         </PButton>
       </div>
       {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 4,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-1 p-0">
           {state.errors.map((err, i) => (
             <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
+              <p className={errorTextClassName}>{err}</p>
             </li>
           ))}
         </ul>

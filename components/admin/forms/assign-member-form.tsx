@@ -4,13 +4,12 @@ import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminAssignMemberToGroup } from "@/app/(protected)/admin/people/actions";
 import {
-  errorTextStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  successTextStyle,
+  errorTextClassName,
+  fieldLabelClassName,
+  fieldSelectClassName,
+  successTextClassName,
 } from "./field-styles";
 import { useActionForm } from "./action-form";
-import { P, fontBody } from "@/lib/pastoral";
 
 export function AssignMemberForm({
   groupId,
@@ -43,23 +42,14 @@ export function AssignMemberForm({
   const noOptions = memberOptions.length === 0;
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: "grid", gap: 10 }}
-    >
+    <form ref={formRef} action={formAction} className="grid gap-2.5">
       <input type="hidden" name="group_id" value={groupId} />
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: 10,
-          alignItems: "end",
-        }}
-      >
+      <div className="grid grid-cols-1 items-end gap-2.5 md:grid-cols-[1fr_auto]">
         <div>
-          <label htmlFor={`assign-member-${groupId}`} style={fieldLabelStyle}>
+          <label
+            htmlFor={`assign-member-${groupId}`}
+            className={fieldLabelClassName}
+          >
             Member
           </label>
           <select
@@ -67,7 +57,7 @@ export function AssignMemberForm({
             name="member_id"
             required
             disabled={noOptions}
-            style={fieldSelectStyle}
+            className={fieldSelectClassName}
             defaultValue=""
           >
             <option value="" disabled>
@@ -92,36 +82,21 @@ export function AssignMemberForm({
         </div>
       </div>
       {noOptions ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            color: P.ink3,
-            fontSize: 12,
-            margin: 0,
-          }}
-        >
+        <p className="m-0 font-sans text-xs text-ink3">
           Add a member record above before placing one in this group.
         </p>
       ) : null}
       {state && !state.ok ? (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: 0,
-            display: "grid",
-            gap: 6,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-1.5 p-0">
           {state.errors.map((err, i) => (
             <li key={i}>
-              <p style={errorTextStyle}>{err}</p>
+              <p className={errorTextClassName}>{err}</p>
             </li>
           ))}
         </ul>
       ) : null}
       {state?.ok ? (
-        <p style={successTextStyle}>Member added to group.</p>
+        <p className={successTextClassName}>Member added to group.</p>
       ) : null}
     </form>
   );

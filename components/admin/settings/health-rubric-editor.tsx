@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminSetHealthRubric } from "@/app/(protected)/admin/settings/actions";
-import { P, fontBody } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
   RUBRIC_WEIGHT_TOTAL,
   type RubricCriterion,
 } from "@/lib/admin/health-rubric";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
+  fieldInputClassName,
+  fieldLabelClassName,
+  formNoteClassName,
 } from "@/components/admin/forms/field-styles";
 import {
   useActionForm,
@@ -111,30 +112,27 @@ export function HealthRubricEditor({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 16 }}>
+    <form action={formAction} className="grid gap-4">
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="criteria" value={criteriaJson} />
 
-      <p style={noteStyle}>
+      <p className={formNoteClassName}>
         Build how a {subjectLabel} is graded: name each criterion and set its
         weight. The weights must total {RUBRIC_WEIGHT_TOTAL} before you can
         save.
       </p>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid gap-3">
         {rows.map((row, idx) => (
           <div
             key={row.id}
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 110px auto",
-              gap: 12,
-              alignItems: "end",
-            }}
+            className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_110px_auto]"
           >
             <div>
-              <label htmlFor={`crit-label-${row.id}`} style={fieldLabelStyle}>
+              <label
+                htmlFor={`crit-label-${row.id}`}
+                className={fieldLabelClassName}
+              >
                 Criterion
               </label>
               <input
@@ -143,11 +141,14 @@ export function HealthRubricEditor({
                 value={row.label}
                 placeholder="e.g. Attendance"
                 onChange={(e) => update(row.id, { label: e.target.value })}
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
             </div>
             <div>
-              <label htmlFor={`crit-weight-${row.id}`} style={fieldLabelStyle}>
+              <label
+                htmlFor={`crit-weight-${row.id}`}
+                className={fieldLabelClassName}
+              >
                 Weight
               </label>
               <input
@@ -158,7 +159,7 @@ export function HealthRubricEditor({
                 inputMode="numeric"
                 value={row.weight}
                 onChange={(e) => update(row.id, { weight: e.target.value })}
-                style={fieldInputStyle}
+                className={fieldInputClassName}
               />
             </div>
             <PButton
@@ -179,23 +180,21 @@ export function HealthRubricEditor({
         ))}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div className="flex items-center gap-3.5">
         <PButton type="button" tone="ghost" size="sm" onClick={add}>
           + Add criterion
         </PButton>
         <span
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: weightsOk ? "#3e4f29" : "#923220",
-            fontWeight: 600,
-          }}
+          className={cn(
+            "font-sans text-sm font-semibold",
+            weightsOk ? "text-sageDeep" : "text-rose"
+          )}
         >
           Total: {total} / {RUBRIC_WEIGHT_TOTAL}
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="flex items-center gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={!canSave}>
           {pending ? "Saving…" : "Save rubric"}
         </PButton>
@@ -204,11 +203,3 @@ export function HealthRubricEditor({
     </form>
   );
 }
-
-const noteStyle = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  margin: 0,
-  lineHeight: 1.55,
-} as const;
