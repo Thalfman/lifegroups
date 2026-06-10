@@ -60,18 +60,23 @@ until Julian's explicit go-ahead.
       `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`,
       `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (forgot-password + invite-redeem throttles are permissive without them),
       `LOG_HASH_SALT`, `TRUSTED_PROXY=vercel`. **Never** a service-role key.
-      _Tom_
+      Production service-role key removed from Vercel env settings 2026-06-10;
+      Vercel reported a new deployment is needed for the change to affect the
+      deployed runtime. Still missing in Production: `NEXT_PUBLIC_SITE_URL`,
+      `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `LOG_HASH_SALT`,
+      `TRUSTED_PROXY=vercel`. _Tom + Eng_
 
 ## 4. Production surface hygiene
 
-- [ ] **Delete the `test-flag` Edge Function** from the project — it is a
-      scratch function with no source in the repo. Dashboard → Edge
-      Functions (or `supabase functions delete test-flag`). _Tom_
-- [ ] **Remove `manage-test-auth-users` from production** (it exists for
+- [x] **Delete the `test-flag` Edge Function** from the project — deleted
+      from production project `juvytverslrcqbkxgkvg` and verified
+      2026-06-10; production now has only `invite-user` and `redeem-invite`.
+      _Eng_
+- [x] **Remove `manage-test-auth-users` from production** (it exists for
       local/test-user seeding; production should run only `invite-user` and
-      `redeem-invite`): `supabase functions delete manage-test-auth-users`.
-      If kept instead, confirm its env gates (`ENABLE_TEST_AUTH_USERS`)
-      are unset in function secrets. _Tom_
+      `redeem-invite`) — deleted from production project
+      `juvytverslrcqbkxgkvg` and verified 2026-06-10; production now has
+      only `invite-user` and `redeem-invite`. _Eng_
 
 ## 5. Real data in, test data out
 
