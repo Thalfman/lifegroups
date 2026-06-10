@@ -60,6 +60,7 @@ export const SESSION_PROFILE_COLUMNS = [
   "id", // primary key; actor identity for guards/actions
   "auth_user_id", // checked by the isProfilesRow trust-boundary guard
   "full_name", // rendered in shells/layouts from session.profile
+  "full_name_pending", // choose-your-name gate: (protected)/layout + app/page (ADR 0025)
   "email", // rendered in shells/layouts from session.profile
   "role", // authorization: every role guard switches on this
   "status", // authorization: guards require "active"
@@ -76,6 +77,7 @@ function isProfilesRow(v: unknown): v is ProfilesRow {
   if (typeof r.status !== "string" || !VALID_PROFILE_STATUSES.has(r.status)) {
     return false;
   }
+  if (typeof r.full_name_pending !== "boolean") return false;
   return true;
 }
 
