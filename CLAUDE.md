@@ -161,8 +161,32 @@ result-returning guards (`requireAdminSession`, …) in server actions.
 
 The repo carries a committed [Graphify](./.agents/skills/graphify/SKILL.md)
 knowledge graph — `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md`.
-For codebase-architecture questions, prefer `graphify query "<question>"` over
-raw file searching. The graph keeps itself updated:
+For codebase-architecture questions, reach for the graph before raw file
+searching:
+
+- `graphify query "<question>"` — first stop for focused architecture
+  questions; returns a scoped subgraph, usually far smaller than grepping or
+  reading files one by one.
+- `graphify affected "<node>"` — reverse impact: what depends on X. Run it
+  before changing a shared module.
+- `graphify path "<A>" "<B>"` — how two parts of the system connect.
+- `graphify explain "<node>"` — plain-language summary of a node and its
+  neighborhood.
+
+**Memory loop (the no-API substitute for semantic extraction):** when a
+session produces a non-obvious architecture answer, file it with
+`graphify save-result --question "…" --answer "…" --nodes <label> …`. Entries
+land in `graphify-out/memory/` (tracked, committed) and are re-ingested into
+`graph.json` on the next update, so the graph grows smarter from what gets
+asked.
+
+npm scripts for the visual/diagnostic outputs (HTML artifacts are gitignored,
+local-only): `graph:tree` (collapsible D3 tree), `graph:flow` (Mermaid
+call-flow architecture), `graph:health` (multigraph diagnosis + token-reduction
+benchmark), `graph:rebuild` (force re-extraction after refactors that delete
+code).
+
+The graph keeps itself updated:
 
 - the pre-commit hook runs `graphify update .` (AST-only, no API key) and
   stages the refreshed graph into the same commit (skipped on partial commits
@@ -171,7 +195,10 @@ raw file searching. The graph keeps itself updated:
   installs the CLI if needed (pinned via `.graphify-version` — bump
   deliberately; both hooks refuse to write graph artifacts with any other
   version), registers the `graph.json` merge driver, and refreshes the graph
-  in the background.
+  in the background;
+- PreToolUse hooks in `.claude/settings.json` nudge (never block) agents
+  toward `graphify query` when they reach for grep/find or read source files
+  to answer architecture questions.
 
 Corpus scope is controlled by `.graphifyignore` (tooling dirs, secrets, and —
 until fixed upstream — `*.sh` are excluded; see comments there).
