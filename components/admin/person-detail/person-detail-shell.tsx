@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
-import { PBadge } from "@/components/pastoral/atoms";
+import { useState, type ReactNode } from "react";
+import { Card } from "@/components/lg/Card";
+import { Badge, STATUS_TONES } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { PersonGroupAssign } from "@/components/admin/person-detail/person-group-assign";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 
 // The person a detail page describes, flattened to a serializable shape so the
 // server page does the reads and this client shell only renders. `kind`
@@ -46,6 +47,9 @@ const ROLE_IN_GROUP_LABEL: Record<string, string> = {
   member: "Member",
 };
 
+const BODY_TEXT = "font-sans text-sm text-ink2";
+const EMPTY_TEXT = "font-sans text-sm italic text-ink3";
+
 export function PersonDetailShell({
   person,
   availableGroups,
@@ -80,20 +84,11 @@ export function PersonDetailShell({
   };
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <div
         role="tablist"
         aria-label="Person sections"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 4,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 999,
-          padding: 3,
-          alignSelf: "start",
-        }}
+        className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
         {tabs.map((tab) => (
           <button
@@ -104,7 +99,12 @@ export function PersonDetailShell({
             aria-selected={active === tab.key}
             aria-controls={`person-panel-${tab.key}`}
             onClick={() => setActive(tab.key)}
-            style={tabItemStyle(active === tab.key)}
+            className={cn(
+              "inline-flex cursor-pointer items-center rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
+              active === tab.key
+                ? "bg-clay font-bold text-surface"
+                : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+            )}
           >
             {tab.label}
           </button>
@@ -132,23 +132,26 @@ export function PersonDetailShell({
 
 function OverviewPanel({ person }: { person: PersonDetail }) {
   return (
-    <Card>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <PBadge tone="neutral">{person.roleLabel}</PBadge>
-        <PBadge tone={person.status === "active" ? "healthy" : "pause"}>
+    <Card className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Badge tone="neutral" dot>
+          {person.roleLabel}
+        </Badge>
+        <Badge
+          tone={person.status === "active" ? STATUS_TONES.well : "ghost"}
+          dot
+        >
           {person.status === "active" ? "Active" : "Inactive"}
-        </PBadge>
+        </Badge>
         {person.isLeader ? (
-          <PBadge tone={person.needsContact ? "followup" : "healthy"}>
+          <Badge
+            tone={
+              person.needsContact ? STATUS_TONES.followUp : STATUS_TONES.well
+            }
+            dot
+          >
             {person.needsContact ? "Needs contact" : "No current concerns"}
-          </PBadge>
+          </Badge>
         ) : null}
       </div>
       <DefList
@@ -175,49 +178,32 @@ function GroupPanel({
   availableGroups: { id: string; name: string }[];
 }) {
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <Card>
+    <div className="grid gap-4">
+      <Card className="grid gap-3">
         <PanelHeading
           title="Current group assignment"
           caption="Where this person stands in the roster today."
         />
         {person.groups.length === 0 ? (
-          <p style={emptyTextStyle}>Not currently assigned to a group.</p>
+          <p className={cn("m-0", EMPTY_TEXT)}>
+            Not currently assigned to a group.
+          </p>
         ) : (
-          <ul
-            style={{
-              listStyle: "none",
-              margin: "8px 0 0",
-              padding: 0,
-              display: "grid",
-              gap: 8,
-            }}
-          >
+          <ul className="m-0 grid list-none gap-2 p-0">
             {person.groups.map((g) => (
               <li
                 key={g.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
+                className="flex flex-wrap items-center justify-between gap-3"
               >
                 <Link
                   href={`/admin/groups/${g.id}`}
-                  style={{
-                    fontFamily: fontDisplay,
-                    fontSize: 16,
-                    color: P.ink,
-                    textDecoration: "none",
-                  }}
+                  className="font-display text-md text-ink no-underline hover:underline"
                 >
                   {g.name}
                 </Link>
-                <PBadge tone="neutral">
+                <Badge tone="neutral" dot>
                   {ROLE_IN_GROUP_LABEL[g.roleInGroup] ?? g.roleInGroup}
-                </PBadge>
+                </Badge>
               </li>
             ))}
           </ul>
@@ -225,7 +211,7 @@ function GroupPanel({
       </Card>
 
       {person.canPlaceInGroup && person.status === "active" ? (
-        <Card>
+        <Card className="grid gap-3">
           <PanelHeading
             title="Place in a group"
             caption={
@@ -247,39 +233,28 @@ function GroupPanel({
 
 function CarePanel({ person }: { person: PersonDetail }) {
   return (
-    <Card>
+    <Card className="grid gap-3">
       <PanelHeading
         title="Care"
         caption="Shepherd care and follow-ups for this leader."
       />
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "center",
-          marginTop: 8,
-        }}
-      >
-        <PBadge tone={person.needsContact ? "followup" : "healthy"}>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Badge
+          tone={person.needsContact ? STATUS_TONES.followUp : STATUS_TONES.well}
+          dot
+        >
           {person.needsContact ? "Needs contact" : "No current concerns"}
-        </PBadge>
+        </Badge>
       </div>
-      <p style={{ ...bodyTextStyle, marginTop: 12 }}>
+      <p className={cn("m-0", BODY_TEXT)}>
         Full care history, private notes, and follow-ups live on the guarded
         care page — they never leave that surface.
       </p>
       {person.careHref ? (
-        <p style={{ marginTop: 12 }}>
+        <p className="m-0">
           <Link
             href={person.careHref}
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 600,
-              color: P.terra,
-              textDecoration: "none",
-            }}
+            className="font-sans text-sm font-semibold text-clay no-underline hover:underline"
           >
             Open this leader&rsquo;s care history →
           </Link>
@@ -291,29 +266,21 @@ function CarePanel({ person }: { person: PersonDetail }) {
 
 function ActivityPanel({ person }: { person: PersonDetail }) {
   return (
-    <Card>
+    <Card className="grid gap-3">
       <PanelHeading
         title="Activity"
         caption="Recent group and admin activity."
       />
       {person.groups.length === 0 ? (
-        <p style={emptyTextStyle}>No recent activity recorded.</p>
+        <p className={cn("m-0", EMPTY_TEXT)}>No recent activity recorded.</p>
       ) : (
-        <ul
-          style={{
-            listStyle: "none",
-            margin: "8px 0 0",
-            padding: 0,
-            display: "grid",
-            gap: 8,
-          }}
-        >
+        <ul className="m-0 grid list-none gap-2 p-0">
           {person.groups.map((g) => (
-            <li key={g.id} style={bodyTextStyle}>
+            <li key={g.id} className={BODY_TEXT}>
               {person.kind === "profile" ? "Leads" : "Member of"}{" "}
               <Link
                 href={`/admin/groups/${g.id}`}
-                style={{ color: P.ink, textDecoration: "underline" }}
+                className="text-ink underline"
               >
                 {g.name}
               </Link>{" "}
@@ -322,7 +289,7 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
           ))}
         </ul>
       )}
-      <p style={{ ...emptyTextStyle, marginTop: 12 }}>
+      <p className={cn("m-0", EMPTY_TEXT)}>
         Detailed activity history (check-ins, edits) isn&rsquo;t tracked on this
         page yet — it shows current standing only.
       </p>
@@ -332,7 +299,7 @@ function ActivityPanel({ person }: { person: PersonDetail }) {
 
 function AccessPanel({ person }: { person: PersonDetail }) {
   return (
-    <Card>
+    <Card className="grid gap-3">
       <PanelHeading title="Access" caption="Role and status details." />
       <DefList
         rows={[
@@ -344,7 +311,7 @@ function AccessPanel({ person }: { person: PersonDetail }) {
           },
         ]}
       />
-      <p style={{ ...emptyTextStyle, marginTop: 12 }}>
+      <p className={cn("m-0", EMPTY_TEXT)}>
         Manage role and deactivation from the People directory row.
       </p>
     </Card>
@@ -355,106 +322,26 @@ function AccessPanel({ person }: { person: PersonDetail }) {
 // Building blocks
 // ---------------------------------------------------------------------------
 
-function Card({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 12,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 function PanelHeading({ title, caption }: { title: string; caption: string }) {
   return (
     <div>
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 18,
-          color: P.ink,
-          fontWeight: 500,
-        }}
-      >
-        {title}
-      </div>
-      <p
-        style={{
-          fontFamily: fontSans,
-          fontSize: 12,
-          color: P.ink3,
-          margin: "2px 0 0",
-        }}
-      >
-        {caption}
-      </p>
+      <h3 className="m-0 font-display text-lg font-medium text-ink">{title}</h3>
+      <p className="m-0 mt-0.5 font-sans text-xs text-ink3">{caption}</p>
     </div>
   );
 }
 
 function DefList({ rows }: { rows: { label: string; value: string }[] }) {
   return (
-    <dl
-      className="lg-m-grid-stack"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(80px, 140px) 1fr",
-        gap: "8px 16px",
-        margin: 0,
-      }}
-    >
+    <dl className="m-0 grid grid-cols-1 gap-2 md:grid-cols-[minmax(80px,140px)_1fr] md:gap-x-4 md:gap-y-2">
       {rows.map((r) => (
-        <div key={r.label} style={{ display: "contents" }}>
-          <dt
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
+        <div key={r.label} className="contents">
+          <dt className="font-sans text-2xs font-semibold uppercase tracking-wide text-ink3">
             {r.label}
           </dt>
-          <dd style={{ ...bodyTextStyle, margin: 0 }}>{r.value}</dd>
+          <dd className={cn("m-0", BODY_TEXT)}>{r.value}</dd>
         </div>
       ))}
     </dl>
   );
-}
-
-const bodyTextStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink2,
-  lineHeight: 1.55,
-};
-
-const emptyTextStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink3,
-  fontStyle: "italic",
-};
-
-function tabItemStyle(activeTab: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 13,
-    fontWeight: activeTab ? 700 : 500,
-    color: activeTab ? P.surface : P.ink3,
-    background: activeTab ? P.terra : "transparent",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer",
-    borderRadius: 999,
-  };
 }

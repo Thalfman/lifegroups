@@ -68,7 +68,7 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
     key: "leader_surface",
     label: "Leader surface",
     description:
-      "Let Leaders sign in and use their own surface. Held: turning this on records your intent, but the surface stays off until it passes a safety review.",
+      "Let Leaders sign in and use their own surface. On by default (it passed its safety review); turn it off to close Leader logins.",
     kind: "frozen_surface",
   },
   {
@@ -85,24 +85,26 @@ export const FEATURE_FLAG_DEFINITIONS: readonly FeatureFlagDefinition[] = [
       "Bring back the guest surface. Held: turning this on records your intent, but the surface stays off until it passes a safety review.",
     kind: "frozen_surface",
   },
-  // Nav-visibility flags (ADR 0016). The Care/Plan/Multiply pivot hides the three
-  // old top-level tabs — Groups, People, Planning — by DEFAULT; each route still
-  // resolves by direct URL and nothing is deleted. These flags let a Super Admin
-  // re-show a hidden tab without a deploy: ON ⇒ the tab is back in nav. Default
-  // off ⇒ hidden, matching the pivot. resolveHiddenNav derives the hidden-area
-  // set from these; the area each governs lives in NAV_VISIBILITY_FLAGS below.
+  // Nav-visibility flags (ADR 0016, defaults amended by ADR 0024). ON ⇒ the
+  // tab shows in the admin nav; OFF ⇒ hidden (the route still resolves by
+  // direct URL, nothing is deleted). Groups and People are SEEDED ON
+  // (20260701020000) so the management surfaces are in the spine by default;
+  // Planning stays seeded off. The code-level default (no flag config read)
+  // still hides all three — the nav fails safe to the pivot spine.
+  // resolveHiddenNav derives the hidden-area set from these; the area each
+  // governs lives in NAV_VISIBILITY_FLAGS below.
   {
     key: "nav_show_groups",
     label: "Show Groups tab",
     description:
-      "Show the Groups tab in the admin navigation again. The tab is hidden by default.",
+      "Show the Groups tab in the admin navigation. On by default — turn it off to hide the tab.",
     kind: "nav_visibility",
   },
   {
     key: "nav_show_people",
     label: "Show People tab",
     description:
-      "Show the People tab in the admin navigation again. The tab is hidden by default.",
+      "Show the People tab in the admin navigation. On by default — turn it off to hide the tab.",
     kind: "nav_visibility",
   },
   {

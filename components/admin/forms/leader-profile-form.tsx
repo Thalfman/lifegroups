@@ -1,6 +1,6 @@
 "use client";
 
-import { PButton } from "@/components/pastoral/button";
+import { Button } from "@/components/ui/button";
 import { adminCreateLeaderProfile } from "@/app/(protected)/admin/people/actions";
 import {
   fieldInputClassName,
@@ -65,9 +65,9 @@ export function LeaderProfileForm() {
           />
         </div>
         <div>
-          <PButton type="submit" tone="solid" size="md" disabled={pending}>
+          <Button type="submit" variant="solid" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add leader"}
-          </PButton>
+          </Button>
         </div>
       </div>
       <FormStatus state={state} successText="Leader profile added." />

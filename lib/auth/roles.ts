@@ -88,11 +88,14 @@ export interface AdminArea {
 // (navItemsForRole) — so all three stay consistent by construction. Rendered as
 // a flat list, no section headers.
 //
-// The default-visible spine is Home · Care · Plan · Multiply · Settings. Three
-// former top-level tabs — Groups, People, Planning — are HIDDEN by default and
-// carry a `navFlagKey`: their routes still resolve by direct URL (ADR 0008/0009)
-// and a Super Admin can re-show any of them by flipping its nav-visibility flag
-// (resolveHiddenNav), at which point it slots back in here before Settings.
+// The flag-resolved spine is Home · Care · Plan · Multiply · Groups · People ·
+// Settings: the Groups and People tabs carry a `navFlagKey` whose flag is
+// seeded ON (ADR 0024, migration 20260701020000), and a Super Admin can hide
+// either again by flipping its nav-visibility flag (resolveHiddenNav).
+// Planning stays seeded OFF. The CODE default (no flag config read — demo
+// routes, a failed read) still hides all three flagged tabs, so the nav fails
+// safe to the ADR 0016 pivot spine; their routes always resolve by direct URL
+// (ADR 0008/0009).
 //
 // Area→job mapping (ADR 0016): Care→leader/group care (absorbs Group-Health
 // grading), Plan→the Interest Funnel (the former Guests pipeline aliases here),

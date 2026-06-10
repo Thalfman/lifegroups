@@ -3,7 +3,10 @@ import { cn } from "@/lib/utils";
 import { buttonClassName } from "@/components/ui/button";
 import { CareLeaderPanel } from "@/components/admin/care/care-leader-panel";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
-import type { CareAccordionPane } from "@/lib/admin/care-accordion";
+import type {
+  CareAccordionPane,
+  CareGradeEntryBundle,
+} from "@/lib/admin/care-accordion";
 
 // The canonical Care view (#373, ADR 0016): a collapsible accordion grouped by
 // Over-Shepherd, COLLAPSED BY DEFAULT. Each pane expands to the Leaders that
@@ -43,9 +46,11 @@ function leaderCountLabel(count: number): string {
 function CarePane({
   pane,
   isSuperAdmin,
+  gradeEntry,
 }: {
   pane: CareAccordionPane;
   isSuperAdmin: boolean;
+  gradeEntry?: CareGradeEntryBundle;
 }) {
   return (
     <details
@@ -78,7 +83,11 @@ function CarePane({
           </p>
         ) : (
           pane.leaders.map((leader) => (
-            <CareLeaderPanel key={leader.profileId} leader={leader} />
+            <CareLeaderPanel
+              key={leader.profileId}
+              leader={leader}
+              gradeEntry={gradeEntry}
+            />
           ))
         )}
         {/* SAD9: super-admin-only permanent delete of the over-shepherd record
@@ -103,9 +112,13 @@ function CarePane({
 export function CareAccordion({
   panes,
   isSuperAdmin = false,
+  gradeEntry,
 }: {
   panes: CareAccordionPane[];
   isSuperAdmin?: boolean;
+  // ADR 0023 — the inline grade editors' inputs; passed straight through to
+  // each leader panel so the pure accordion model stays untouched.
+  gradeEntry?: CareGradeEntryBundle;
 }) {
   return (
     <div className="grid gap-4">
@@ -131,6 +144,7 @@ export function CareAccordion({
             key={pane.overShepherdId ?? "unassigned"}
             pane={pane}
             isSuperAdmin={isSuperAdmin}
+            gradeEntry={gradeEntry}
           />
         ))}
       </div>

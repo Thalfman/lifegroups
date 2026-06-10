@@ -14,17 +14,25 @@ import {
   fieldLabelClassName as FIELD_LABEL,
 } from "@/components/admin/forms/field-styles";
 
-// Pivot slice 9 (#381 / ADR 0017). Writes one author-private Care Note OR Prayer
-// Request about a subject person. Authored by an Over-Shepherd about a Leader
-// they cover; the coverage boundary is enforced in the SECURITY DEFINER RPC. The
-// body is sealed to the author by default — the oversight ladder reads it only
-// when the subject's transparency toggle (the inline control alongside) is on.
+// Pivot slice 9 (#381 / ADR 0017, author set widened by ADR 0023). Writes one
+// author-private Care Note OR Prayer Request about a subject person. Authored
+// by an Over-Shepherd about a Leader they cover, or by a Ministry/Super Admin
+// about any active leader; the boundary is enforced in the SECURITY DEFINER
+// RPC. The body is sealed to the author by default — the oversight ladder
+// reads it only when the subject's transparency toggle (the inline control
+// alongside) is on.
 export function CareNoteWriteForm({
   subjectProfileId,
   kind,
+  subjectName,
 }: {
   subjectProfileId: string;
   kind: "care_note" | "prayer_request";
+  // When the form repeats across Leaders (the Care accordion, ADR 0023) the
+  // submit's accessible name must carry record context — same invariant as
+  // every repeated admin control (Admin Interaction Model req 4). Optional so
+  // the one-form-per-page detail surface keeps its plain visible label.
+  subjectName?: string;
 }) {
   const action =
     kind === "care_note" ? adminWriteCareNote : adminWritePrayerRequest;
@@ -34,11 +42,14 @@ export function CareNoteWriteForm({
   );
 
   const label = kind === "care_note" ? "Care note" : "Prayer request";
-  const idPrefix = kind === "care_note" ? "cn" : "pr";
+  // Ids include the subject so repeated forms (one per Leader in the
+  // accordion) never collide on label/textarea ids.
+  const idPrefix = `${kind === "care_note" ? "cn" : "pr"}-${subjectProfileId}`;
   const placeholder =
     kind === "care_note"
       ? "What's going on with this leader pastorally?"
       : "How can we be praying for this leader?";
+  const submitLabel = `Add ${label.toLowerCase()}`;
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-3">
@@ -63,8 +74,18 @@ export function CareNoteWriteForm({
           />
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
-            {pending ? "Saving…" : `Add ${label.toLowerCase()}`}
+          <PButton
+            type="submit"
+            tone="terra"
+            size="md"
+            disabled={pending}
+            // Starts with the visible label (axe label-in-name) then adds the
+            // subject, mirroring NoteTransparencyToggle's contextual pattern.
+            aria-label={
+              subjectName ? `${submitLabel} for ${subjectName}` : undefined
+            }
+          >
+            {pending ? "Saving…" : submitLabel}
           </PButton>
         </div>
       </div>

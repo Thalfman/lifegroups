@@ -385,6 +385,18 @@ export const requireOverShepherdSession = (): Promise<SessionGuardResult> =>
     "requireOverShepherdSession"
   );
 
+// Server-action variant for writes shared by the Over-Shepherd and admin
+// tiers (ADR 0023: Care Note / Prayer Request authorship). The per-subject
+// boundary lives in the SECURITY DEFINER RPC — auth_is_admin() OR
+// auth_over_shepherd_covers(subject) — so this gate only confirms the tier.
+export const requireOverShepherdOrAdminSession =
+  (): Promise<SessionGuardResult> =>
+    requireRoleSession(
+      ["over_shepherd", "ministry_admin", "super_admin"],
+      "Only an over-shepherd or ministry admin can perform that action.",
+      "requireOverShepherdOrAdminSession"
+    );
+
 // Server-action variant for the Phase 5A.3 super-admin-only console. Tightens
 // the role check to super_admin alone, so role-management writes never accept
 // a ministry_admin caller.

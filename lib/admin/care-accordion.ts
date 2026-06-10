@@ -65,11 +65,11 @@ const SEALED_NOTE_STATE: CareAccordionNoteState = {
 };
 
 // The grant boolean the inline transparency toggle renders from (#467).
-// "visible" IS the grant: RLS only returns note/prayer rows for granted
-// subjects, and buildNoteStateByLeaderId marks a Leader visible exactly when
-// the grant is on (or readable rows came back, which RLS only allows when
-// granted). Named here so the panel and tests share one mapping instead of
-// comparing the union string in the UI.
+// "visible" IS the grant — buildNoteStateByLeaderId marks a Leader visible
+// exactly when their note_transparency_grant row is on, never from readable
+// rows (see the ADR 0023 note on buildNoteStateByLeaderId). Named here so the
+// panel and tests share one mapping instead of comparing the union string in
+// the UI.
 export function isNoteTransparencyGranted(
   notes: CareAccordionNoteState
 ): boolean {
@@ -255,6 +255,31 @@ export function buildCareAccordion(
 // a client; the read side (lib/supabase/care-accordion-reads.ts) fetches the
 // rows and calls these.
 
+// The override object the rubric resolvers expect, from a persisted grade
+// row — null unless the row carries one. A row without a period_month is
+// treated as set in the current period (matching the detail page's
+// resolution), so the resolver's expiry rules still apply.
+function persistedOverride<Letter>(
+  row: {
+    override_letter: Letter | null;
+    override_scope: GroupHealthOverrideScope | null;
+    override_period_month: string | null;
+  },
+  periodMonthIso: string
+): {
+  letter: Letter;
+  scope: GroupHealthOverrideScope;
+  period_month: string;
+} | null {
+  return row.override_letter !== null && row.override_scope !== null
+    ? {
+        letter: row.override_letter,
+        scope: row.override_scope,
+        period_month: row.override_period_month ?? periodMonthIso,
+      }
+    : null;
+}
+
 // One persisted Leader-Health Grade row, reduced to what resolving the letter
 // needs (the rubric engine recomputes the letter from scores + override).
 export type LeaderHealthGradeInput = {
@@ -274,18 +299,10 @@ export function resolveLeaderHealthByLeaderId(
 ): Map<string, LeaderHealthLetter | null> {
   const out = new Map<string, LeaderHealthLetter | null>();
   for (const row of rows) {
-    const override =
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null;
     const resolved = resolveLeaderGrade({
       rubric,
       scores: row.criterion_scores,
-      override,
+      override: persistedOverride(row, periodMonthIso),
       ministryYear,
       currentPeriodMonth: periodMonthIso,
     });
@@ -312,18 +329,10 @@ export function resolveGroupHealthByGroupId(
 ): Map<string, GroupHealthLetter | null> {
   const out = new Map<string, GroupHealthLetter | null>();
   for (const row of rows) {
-    const override =
-      row.override_letter && row.override_scope
-        ? {
-            letter: row.override_letter,
-            scope: row.override_scope,
-            period_month: row.override_period_month ?? periodMonthIso,
-          }
-        : null;
     const grade = resolveGroupRubricGrade({
       rubric,
       scores: row.criterion_scores,
-      override,
+      override: persistedOverride(row, periodMonthIso),
       periodMonth: periodMonthIso,
     });
     out.set(row.group_id, grade.effective_letter);
@@ -331,11 +340,92 @@ export function resolveGroupHealthByGroupId(
   return out;
 }
 
-// Build the Care Notes / Prayer Requests presence map (#381). A Leader is
-// "visible" when their transparency grant is on (or, defensively, when the
-// RLS-scoped reads returned any of their rows — which only happens when granted).
-// Counts come from the subject_profile_id of each readable row. Leaders absent
-// from every input default to sealed/0 in buildCareAccordion.
+// ---- Inline grade entry (ADR 0023) ---------------------------------------
+// The accordion's per-Leader panel hosts the SAME grade editors the detail
+// page uses (LeaderHealthGradeEditor / GroupRubricGradeEntry), seeded from the
+// raw persisted rows the enrichment already fetches. The bundle is built by
+// the read side and passed through CareAccordion as one prop, so this model's
+// buildCareAccordion stays untouched.
+
+export type CareGradeEntryBundle = {
+  // Null in the Jun–Jul off-season: the editors render their closed state and
+  // the group editors are suppressed (mirroring the detail page).
+  ministryYear: number | null;
+  periodMonthIso: string;
+  leaderCriteria: Rubric["criteria"];
+  groupCriteria: Rubric["criteria"];
+  leaderGradeByProfileId: ReadonlyMap<string, LeaderHealthGradeInput>;
+  groupGradeByGroupId: ReadonlyMap<string, GroupHealthGradeInput>;
+  // False when the rubric or grade-row read failed. The panel then renders the
+  // detail page's "reload before editing" guard instead of an editor — saving
+  // over a row we failed to read could silently overwrite the saved grade.
+  leaderGradesAvailable: boolean;
+  groupGradesAvailable: boolean;
+};
+
+// What an editor needs as initial values, resolved exactly the way the detail
+// page resolves them: the persisted scores, plus the override ONLY while it is
+// still live (an expired this-month override must not re-arm the form).
+export type GradeEntrySeed<Letter> = {
+  scores: RubricScores;
+  overrideLetter: Letter | null;
+  overrideScope: GroupHealthOverrideScope | null;
+};
+
+const EMPTY_SEED = { scores: {}, overrideLetter: null, overrideScope: null };
+
+export function resolveLeaderGradeSeed(
+  row: LeaderHealthGradeInput | undefined,
+  criteria: Rubric["criteria"],
+  // Null in the Jun–Jul off-season: there is no year to resolve against, so
+  // the seed is empty and the editor renders its own closed state. Centralised
+  // here so every surface hosting the editor gets the off-season rule for free.
+  ministryYear: number | null,
+  periodMonthIso: string
+): GradeEntrySeed<LeaderHealthLetter> {
+  if (!row || ministryYear === null) return EMPTY_SEED;
+  const resolved = resolveLeaderGrade({
+    rubric: { criteria },
+    scores: row.criterion_scores,
+    override: persistedOverride(row, periodMonthIso),
+    ministryYear,
+    currentPeriodMonth: periodMonthIso,
+  });
+  return {
+    scores: row.criterion_scores,
+    overrideLetter: resolved.overridden ? resolved.letter : null,
+    overrideScope: resolved.override_scope ?? null,
+  };
+}
+
+export function resolveGroupGradeSeed(
+  row: GroupHealthGradeInput | undefined,
+  criteria: Rubric["criteria"],
+  periodMonthIso: string
+): GradeEntrySeed<GroupHealthLetter> {
+  if (!row) return EMPTY_SEED;
+  const grade = resolveGroupRubricGrade({
+    rubric: { criteria },
+    scores: row.criterion_scores,
+    override: persistedOverride(row, periodMonthIso),
+    periodMonth: periodMonthIso,
+  });
+  return {
+    scores: row.criterion_scores,
+    overrideLetter: grade.overridden ? grade.effective_letter : null,
+    overrideScope: grade.override_scope ?? null,
+  };
+}
+
+// Build the Care Notes / Prayer Requests presence map (#381). The grant set is
+// the SOLE source of truth for "visible": since ADR 0023 admins author notes
+// themselves, the author RLS arm returns their OWN rows about a still-sealed
+// leader — so readable rows are no longer a proxy for the grant. Deriving
+// visibility from counts would render the toggle "on" for a sealed leader
+// (making it impossible to actually grant from the panel) and mislabel
+// author-only counts as leadership visibility. Counts still come from the
+// readable rows' subject_profile_id; the panel only shows them when granted.
+// Leaders absent from every input default to sealed/0 in buildCareAccordion.
 export function buildNoteStateByLeaderId(args: {
   grantedSubjectIds: Iterable<string>;
   careNoteSubjectIds: string[];
@@ -355,10 +445,7 @@ export function buildNoteStateByLeaderId(args: {
   for (const id of ids) {
     const careNoteCount = careCounts.get(id) ?? 0;
     const prayerCount = prayerCounts.get(id) ?? 0;
-    const transparency =
-      granted.has(id) || careNoteCount > 0 || prayerCount > 0
-        ? "visible"
-        : "sealed";
+    const transparency = granted.has(id) ? "visible" : "sealed";
     out.set(id, { transparency, careNoteCount, prayerCount });
   }
   return out;

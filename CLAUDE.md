@@ -18,10 +18,12 @@ architecture decisions — those live in dedicated docs. Read these first:
 
 **Julian's admin operating system for shepherding Life Group Leaders.** Next.js
 15 (App Router) + React 19 + TypeScript + Tailwind, on Supabase (Auth +
-Postgres + RLS). As of the **2026-06 pivot (ADR 0016)** the live navigation
-spine is three areas — **Care · Plan · Multiply** — surfaced under `/admin`.
-Older number/assignment surfaces still resolve by direct URL but are hidden
-behind Super-Admin nav flags (off by default — turned off, not deleted).
+Postgres + RLS). As of the **2026-06 pivot (ADR 0016)** the navigation spine is
+three areas — **Care · Plan · Multiply** — surfaced under `/admin`, joined by
+the **Groups** and **People** management tabs (seeded back on by ADR 0024; the
+Super-Admin console can re-hide them). The remaining pre-pivot surfaces
+(Planning, master calendar, guests, check-ins, …) still resolve by direct URL
+but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 
 ## Commands
 
@@ -129,9 +131,10 @@ These are hard rules. Violating one is a P0 (see `AGENTS.md` and the README
 
 A strict downward-visibility ladder — each tier sees what the tier below sees,
 and more: **Super Admin (Tom) ▸ Ministry Admin (Julian) ▸ Over-Shepherd ▸
-Leader**. The Leader login is built and RLS-re-audited but **gated behind the
-`leader_surface` flag** (ADR 0017/0009); leaders land on `/unauthorized` until
-it flips. `member` is **not** an app-login role (members are non-auth records).
+Leader**. The Leader login is **live by default** (ADR 0024 seeded the
+verified `leader_surface` flag on per ADR 0017/0009; the Super-Admin console
+can re-freeze it, and check-ins stay behind their own gate). `member` is
+**not** an app-login role (members are non-auth records).
 See the README for the full model and route table. Auth helpers:
 `lib/auth/roles.ts` and `lib/auth/session.ts` — use redirect-guards
 (`requireAdmin`, `requireOverShepherd`, `requireLeader`) in pages and
@@ -200,6 +203,10 @@ identifiers, UX copy, and commit messages.
   [`0022`](./docs/adr/0022-multiply-unifies-plan-readiness-leaders.md): Multiply
   now hosts the **Plan**, **Readiness**, and **Leaders** tabs (target the visible
   `/admin/multiply` surface, not the off-nav Planning / leader-pipeline hosts).
+  [`0023`](./docs/adr/0023-all-notes-feed-and-admin-authorship.md) adds the Care
+  area's aggregate **Notes** tab + admin Care-Note authorship, and
+  [`0024`](./docs/adr/0024-default-on-leader-surface-and-groups-people-nav.md)
+  defaults the Leader surface and the Groups/People nav tabs to on.
   `docs/adr/` holds the full decision record (0001 onward).
 - **Engineering reference:**
   [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md),

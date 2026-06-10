@@ -15,6 +15,7 @@ import {
   resolveGroupHealthByGroupId,
   resolveLeaderHealthByLeaderId,
   type CareAccordionNoteState,
+  type CareGradeEntryBundle,
   type GroupHealthGradeInput,
   type LeaderHealthGradeInput,
 } from "@/lib/admin/care-accordion";
@@ -134,8 +135,16 @@ async function fetchGrantedSubjectIds(
 }
 
 // The subject_profile_id of each profile-scoped Care Note the caller can read
-// (RLS returns rows only for granted subjects). One id per row, so the caller
-// can count notes per Leader. Group-subject notes are excluded.
+// (RLS returns rows for granted subjects PLUS the caller's own authored rows —
+// since ADR 0023 an admin can author, so readable is wider than granted and
+// must not be treated as a grant signal). One id per row, so the caller can
+// count notes per Leader. Group-subject notes are excluded.
+//
+// Known scale debt: this ships one row per readable note just to count in JS.
+// Acceptable while note volume is small-church scale; if it grows, replace
+// with a count aggregate — but note the counts must stay RLS-scoped (what the
+// VIEWER can read), so a SECURITY DEFINER count RPC would have to re-encode
+// the grant logic rather than lean on RLS. See docs/ui-followups.md.
 async function fetchProfileSubjectCareNoteIds(
   client: AppSupabaseClient
 ): Promise<ReadResult<string[]>> {
@@ -176,15 +185,33 @@ export type CareAccordionEnrichment = {
   leaderHealthByLeaderId: Map<string, LeaderHealthLetter | null>;
   groupHealthByGroupId: Map<string, GroupHealthLetter | null>;
   noteStateByLeaderId: Map<string, CareAccordionNoteState>;
+  // ADR 0023 — the inline grade editors' inputs (rubric criteria + raw grade
+  // rows + availability flags), assembled from the SAME reads as the letter
+  // maps above so the accordion gains grade entry with zero extra reads.
+  gradeEntry: CareGradeEntryBundle;
   // First error encountered, for an optional surface banner. The maps still
   // come back best-effort (a failed read contributes an empty map / sealed).
   error: string | null;
+};
+
+const EMPTY_GRADE_ENTRY: CareGradeEntryBundle = {
+  ministryYear: null,
+  periodMonthIso: "",
+  leaderCriteria: [],
+  groupCriteria: [],
+  leaderGradeByProfileId: new Map(),
+  groupGradeByGroupId: new Map(),
+  // No DB ⇒ nothing to overwrite; off-season/no-rubric states render their own
+  // explanations, so the read-failure guard stays off.
+  leaderGradesAvailable: true,
+  groupGradesAvailable: true,
 };
 
 const EMPTY_ENRICHMENT: CareAccordionEnrichment = {
   leaderHealthByLeaderId: new Map(),
   groupHealthByGroupId: new Map(),
   noteStateByLeaderId: new Map(),
+  gradeEntry: EMPTY_GRADE_ENTRY,
   error: null,
 };
 
@@ -275,6 +302,25 @@ export async function loadCareAccordionEnrichment(
     prayerSubjectIds: prayerIdsRes.error ? [] : (prayerIdsRes.data ?? []),
   });
 
+  // ADR 0023 — the inline editors' bundle, from the rows already fetched
+  // above. A failed rubric/grade read marks that domain unavailable so the
+  // panel renders the detail page's "reload before editing" guard instead of
+  // an editor seeded from data we failed to read.
+  const gradeEntry: CareGradeEntryBundle = {
+    ministryYear,
+    periodMonthIso,
+    leaderCriteria: leaderRubricRes.data?.criteria ?? [],
+    groupCriteria: groupRubric.criteria,
+    leaderGradeByProfileId: new Map(
+      (leaderGradesRes.data ?? []).map((r) => [r.profile_id, r])
+    ),
+    groupGradeByGroupId: new Map(
+      (groupGradesRes.data ?? []).map((r) => [r.group_id, r])
+    ),
+    leaderGradesAvailable: !leaderRubricRes.error && !leaderGradesRes.error,
+    groupGradesAvailable: !groupRubricRes.error && !groupGradesRes.error,
+  };
+
   const error =
     leaderRubricRes.error?.message ??
     groupRubricRes.error?.message ??
@@ -289,6 +335,7 @@ export async function loadCareAccordionEnrichment(
     leaderHealthByLeaderId,
     groupHealthByGroupId,
     noteStateByLeaderId,
+    gradeEntry,
     error,
   };
 }

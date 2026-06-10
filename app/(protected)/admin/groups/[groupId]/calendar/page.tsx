@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { Card } from "@/components/lg/Card";
+import { buttonClassName } from "@/components/ui/button";
 import { CalendarEventList } from "@/components/calendar/calendar-event-list";
 import {
   CalendarMonthGrid,
   describeSchedule,
 } from "@/components/calendar/calendar-month-grid";
 import { ArchivedRestoreButton } from "@/components/calendar/calendar-archived-actions";
+import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -35,17 +37,6 @@ export const dynamic = "force-dynamic";
 
 type Params = { groupId: string };
 type Search = { archived?: string; month?: string };
-
-const navLinkStyle: React.CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontSize: 12,
-  color: "var(--c-ink)",
-  textDecoration: "none",
-  padding: "6px 10px",
-  borderRadius: 999,
-  border: "1px solid var(--c-line)",
-  background: "var(--c-surface)",
-};
 
 export default async function AdminGroupCalendarPage({
   params,
@@ -94,9 +85,13 @@ export default async function AdminGroupCalendarPage({
       meetingFrequency: group.meeting_frequency,
       meetingWeekParity: group.meeting_week_parity,
     },
-    monthIso,
+    monthIso
   );
-  const resolved = mergeOverrides(generated, toSavedOverrides(events), group.meeting_time);
+  const resolved = mergeOverrides(
+    generated,
+    toSavedOverrides(events),
+    group.meeting_time
+  );
   const scheduleSummary = describeSchedule({
     meetingDay: group.meeting_day,
     meetingTime: group.meeting_time,
@@ -120,43 +115,30 @@ export default async function AdminGroupCalendarPage({
         maxWidth={920}
       />
       <PageBody maxWidth={920}>
-        <div style={{ display: "grid", gap: 18 }}>
-          <nav
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              fontFamily: "var(--font-body)",
-              fontSize: 12,
-              color: "var(--c-ink3)",
-              flexWrap: "wrap",
-            }}
-          >
-            <Link
-              href="/admin/groups"
-              style={{ color: "var(--c-ink2)", textDecoration: "none" }}
-            >
+        <div className="grid gap-5">
+          <nav className="flex flex-wrap items-center gap-3 font-sans text-sm text-ink3">
+            <Link href="/admin/groups" className="text-ink2 no-underline">
               ← Back to groups
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href={`/admin/groups/${groupId}/calendar`}
-              style={{
-                textDecoration: showArchived ? "none" : "underline",
-                fontWeight: showArchived ? 400 : 600,
-                color: showArchived ? "var(--c-ink3)" : "var(--c-ink)",
-              }}
+              className={cn(
+                showArchived
+                  ? "font-normal text-ink3 no-underline"
+                  : "font-semibold text-ink underline"
+              )}
             >
               Calendar
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href={`/admin/groups/${groupId}/calendar?archived=1&month=${monthIso}`}
-              style={{
-                textDecoration: showArchived ? "underline" : "none",
-                fontWeight: showArchived ? 600 : 400,
-                color: showArchived ? "var(--c-ink)" : "var(--c-ink3)",
-              }}
+              className={cn(
+                showArchived
+                  ? "font-semibold text-ink underline"
+                  : "font-normal text-ink3 no-underline"
+              )}
             >
               Archived
             </Link>
@@ -164,64 +146,35 @@ export default async function AdminGroupCalendarPage({
 
           {!showArchived ? (
             <>
-              <Card style={{ padding: "14px 18px" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 14,
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: 4 }}>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: 18,
-                        color: "var(--c-ink)",
-                        fontWeight: 500,
-                      }}
-                    >
+              <Card>
+                <div className="flex flex-wrap items-center justify-between gap-3.5">
+                  <div className="grid gap-1">
+                    <div className="font-display text-lg font-medium text-ink">
                       {monthLabel(monthIso)}
                     </div>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontSize: 13,
-                        color: "var(--c-ink2)",
-                        lineHeight: 1.4,
-                      }}
-                    >
+                    <div className="font-sans text-sm leading-snug text-ink2">
                       {scheduleSummary ?? <ScheduleGap group={group} />}
                     </div>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
+                  <div className="flex flex-wrap items-center gap-2">
                     {prevMonth ? (
                       <Link
                         href={`/admin/groups/${groupId}/calendar?month=${prevMonth}`}
-                        style={navLinkStyle}
+                        className={buttonClassName("ghost", "sm")}
                       >
                         ← {monthLabel(prevMonth)}
                       </Link>
                     ) : null}
                     <Link
                       href={`/admin/groups/${groupId}/calendar`}
-                      style={navLinkStyle}
+                      className={buttonClassName("ghost", "sm")}
                     >
                       This month
                     </Link>
                     {nextMonth ? (
                       <Link
                         href={`/admin/groups/${groupId}/calendar?month=${nextMonth}`}
-                        style={navLinkStyle}
+                        className={buttonClassName("ghost", "sm")}
                       >
                         {monthLabel(nextMonth)} →
                       </Link>
@@ -245,28 +198,11 @@ export default async function AdminGroupCalendarPage({
               />
             </>
           ) : (
-            <section style={{ display: "grid", gap: 10 }}>
-              <h2
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: 12,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: "var(--c-ink3)",
-                  fontWeight: 600,
-                  margin: 0,
-                }}
-              >
+            <section className="grid gap-2.5">
+              <h2 className="m-0 font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
                 Archived overrides · {monthLabel(monthIso)}
               </h2>
-              <p
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: 13,
-                  color: "var(--c-ink2)",
-                  margin: 0,
-                }}
-              >
+              <p className="m-0 font-sans text-sm text-ink2">
                 Past overrides that were cleared. Restoring re-applies the
                 override on the calendar grid.
               </p>
@@ -302,14 +238,13 @@ function ScheduleGap({ group }: { group: GroupsRow }) {
   }
   return (
     <>
-      Schedule incomplete (missing {missing.join(", ") || "fields"}). Set them in{" "}
-      <Link
-        href={`/admin/groups`}
-        style={{ color: "var(--c-clay)", textDecoration: "underline" }}
-      >
+      Schedule incomplete (missing {missing.join(", ") || "fields"}). Set them
+      in{" "}
+      <Link href={`/admin/groups`} className="text-clay underline">
         group management
-      </Link>
-      {" "}so the calendar can generate occurrences. Special one-off events can still be added by clicking a date.
+      </Link>{" "}
+      so the calendar can generate occurrences. Special one-off events can still
+      be added by clicking a date.
     </>
   );
 }

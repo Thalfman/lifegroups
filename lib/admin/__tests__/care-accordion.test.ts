@@ -3,7 +3,9 @@ import {
   buildCareAccordion,
   buildNoteStateByLeaderId,
   isNoteTransparencyGranted,
+  resolveGroupGradeSeed,
   resolveGroupHealthByGroupId,
+  resolveLeaderGradeSeed,
   resolveLeaderHealthByLeaderId,
   type CareAccordionGroupLeader,
   type CareAccordionNoteState,
@@ -393,6 +395,24 @@ describe("buildNoteStateByLeaderId", () => {
     });
   });
 
+  it("keeps a sealed leader sealed when the viewer reads only their OWN authored rows (ADR 0023)", () => {
+    // Admins author notes now, and the author RLS arm returns those rows while
+    // the subject's grant is still off. Readable rows must NOT flip the toggle
+    // to "on" — that would make granting from the panel impossible and label
+    // author-only counts as leadership visibility.
+    const map = buildNoteStateByLeaderId({
+      grantedSubjectIds: [],
+      careNoteSubjectIds: ["ldr-1"],
+      prayerSubjectIds: ["ldr-1", "ldr-1"],
+    });
+    const state = map.get("ldr-1")!;
+    expect(state.transparency).toBe("sealed");
+    expect(isNoteTransparencyGranted(state)).toBe(false);
+    // Counts are still tallied; the panel hides them while sealed.
+    expect(state.careNoteCount).toBe(1);
+    expect(state.prayerCount).toBe(2);
+  });
+
   it("omits leaders with no grant and no readable notes (default sealed)", () => {
     const map = buildNoteStateByLeaderId({
       grantedSubjectIds: [],
@@ -448,5 +468,81 @@ describe("isNoteTransparencyGranted", () => {
     // The panel feeds these two straight into NoteTransparencyToggle.
     expect(leader.profileId).toBe("ldr-1");
     expect(isNoteTransparencyGranted(leader.notes)).toBe(false);
+  });
+});
+
+// ADR 0023 — the inline editors' seeds: persisted scores plus the override
+// ONLY while it is still live. An expired this-month override must not re-arm
+// the editor's override selects (mirrors the detail page's resolution).
+describe("resolveLeaderGradeSeed / resolveGroupGradeSeed", () => {
+  it("returns an empty seed when the leader has no persisted grade", () => {
+    expect(
+      resolveLeaderGradeSeed(
+        undefined,
+        ONE_CRITERION_RUBRIC.criteria,
+        2025,
+        PERIOD
+      )
+    ).toEqual({ scores: {}, overrideLetter: null, overrideScope: null });
+  });
+
+  it("seeds scores and a live until_cleared override", () => {
+    const seed = resolveLeaderGradeSeed(
+      {
+        profile_id: "ldr-1",
+        criterion_scores: { k1: 95 },
+        override_letter: "D",
+        override_scope: "until_cleared",
+        override_period_month: "2025-11-01",
+      },
+      ONE_CRITERION_RUBRIC.criteria,
+      2025,
+      PERIOD
+    );
+    expect(seed).toEqual({
+      scores: { k1: 95 },
+      overrideLetter: "D",
+      overrideScope: "until_cleared",
+    });
+  });
+
+  it("drops an expired this-month override from the seed", () => {
+    const seed = resolveLeaderGradeSeed(
+      {
+        profile_id: "ldr-1",
+        criterion_scores: { k1: 95 },
+        override_letter: "D",
+        override_scope: "this_month",
+        override_period_month: "2025-11-01", // a past month — expired
+      },
+      ONE_CRITERION_RUBRIC.criteria,
+      2025,
+      PERIOD
+    );
+    expect(seed.scores).toEqual({ k1: 95 });
+    expect(seed.overrideLetter).toBeNull();
+    expect(seed.overrideScope).toBeNull();
+  });
+
+  it("group seed mirrors the same rules", () => {
+    expect(
+      resolveGroupGradeSeed(undefined, ONE_CRITERION_RUBRIC.criteria, PERIOD)
+    ).toEqual({ scores: {}, overrideLetter: null, overrideScope: null });
+    const live = resolveGroupGradeSeed(
+      {
+        group_id: "g-1",
+        criterion_scores: { k1: 72 },
+        override_letter: "A",
+        override_scope: "this_month",
+        override_period_month: PERIOD, // the current month — still live
+      },
+      ONE_CRITERION_RUBRIC.criteria,
+      PERIOD
+    );
+    expect(live).toEqual({
+      scores: { k1: 72 },
+      overrideLetter: "A",
+      overrideScope: "this_month",
+    });
   });
 });

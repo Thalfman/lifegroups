@@ -17,10 +17,13 @@ import { wrapError, type ReadClient, type ReadResult } from "./read-core";
 // return whatever the caller's RLS admits. The transparency-grant reader is
 // admin-only by RLS and powers the inline Care toggle's current state.
 
-const CARE_NOTE_COLUMNS =
+// Exported so the cross-subject feed reads (care-note-feed-reads.ts, ADR 0023)
+// reuse exactly this allowlist rather than declaring a second one that could
+// drift wider.
+export const CARE_NOTE_COLUMNS =
   "id, author_profile_id, subject_profile_id, subject_group_id, body, created_at, updated_at";
 
-const PRAYER_REQUEST_COLUMNS =
+export const PRAYER_REQUEST_COLUMNS =
   "id, author_profile_id, subject_profile_id, subject_group_id, body, status, created_at, updated_at";
 
 const NOTE_TRANSPARENCY_GRANT_COLUMNS =

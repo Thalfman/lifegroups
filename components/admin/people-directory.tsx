@@ -5,10 +5,14 @@ import { DeactivateMemberButton } from "@/components/admin/forms/deactivate-memb
 import { DeactivateProfileButton } from "@/components/admin/forms/deactivate-profile-button";
 import { ChangeLeaderRoleForm } from "@/components/admin/forms/change-leader-role-form";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
-import { PBadge } from "@/components/pastoral/atoms";
-import { PLinkButton } from "@/components/pastoral/button";
+import { Badge, STATUS_TONES } from "@/components/ui/badge";
+import { LinkButton } from "@/components/ui/button";
+import {
+  fieldInputClassName,
+  fieldSelectClassName,
+} from "@/components/admin/forms/field-styles";
+import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -138,7 +142,7 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
     (showMembers && (props.errors.members || props.errors.memberships));
 
   return (
-    <section style={{ display: "grid", gap: 18 }}>
+    <section className="grid gap-[18px]">
       <FilterBar
         query={query}
         statusFilter={statusFilter}
@@ -147,7 +151,10 @@ export function PeopleDirectory(props: PeopleDirectoryProps) {
       />
 
       {anyError ? (
-        <div role="alert" style={alertStyle}>
+        <div
+          role="alert"
+          className="rounded-sm border border-clay bg-claySoft px-3.5 py-3 font-sans text-sm text-clayDeep"
+        >
           One or more reads failed. The page shows what we did get; retry in a
           moment or check the database connection.
         </div>
@@ -244,42 +251,20 @@ function FilterBar({
   onStatusFilterChange: (v: StatusFilter) => void;
 }) {
   return (
-    <div
-      className="lg-m-filterbar"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(220px, 1fr) auto",
-        gap: 12,
-        alignItems: "center",
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-      }}
-    >
+    <div className="grid grid-cols-1 items-center gap-2.5 rounded-md border border-line bg-surface p-3 md:grid-cols-[minmax(220px,1fr)_auto] md:gap-3 md:px-3.5">
       <input
         type="search"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search by name or email…"
         aria-label="Search people"
-        className="lg-m-input"
-        style={{
-          padding: "10px 12px",
-          borderRadius: 8,
-          border: `1px solid ${P.line}`,
-          background: P.bg,
-          fontFamily: fontBody,
-          fontSize: 14,
-          color: P.ink,
-          outline: "none",
-        }}
+        className={fieldInputClassName}
       />
       <select
         value={statusFilter}
         onChange={(e) => onStatusFilterChange(e.target.value as StatusFilter)}
         aria-label="Status filter"
-        style={selectStyle}
+        className={fieldSelectClassName}
       >
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
@@ -288,17 +273,6 @@ function FilterBar({
     </div>
   );
 }
-
-const selectStyle = {
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: `1px solid ${P.line}`,
-  background: P.bg,
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink,
-  outline: "none",
-} as const;
 
 // ---------------------------------------------------------------------------
 // Section wrapper
@@ -324,92 +298,35 @@ function DirectorySection({
   children: React.ReactNode;
 }) {
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="grid gap-3.5">
       <div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            gap: 12,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fontSans,
-              fontSize: 10,
-              letterSpacing: 1.8,
-              textTransform: "uppercase",
-              color: P.ink3,
-              fontWeight: 600,
-            }}
-          >
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="font-sans text-2xs font-semibold uppercase tracking-[0.18em] text-ink3">
             {headerEyebrow}
           </div>
           {countLabel ? (
-            <div
-              style={{
-                fontFamily: fontSans,
-                fontSize: 11,
-                color: P.ink3,
-              }}
-            >
-              {countLabel}
-            </div>
+            <div className="font-sans text-2xs text-ink3">{countLabel}</div>
           ) : null}
         </div>
-        <h3
-          style={{
-            margin: "4px 0 0",
-            fontFamily: fontDisplay,
-            fontSize: 22,
-            fontWeight: 500,
-            color: P.ink,
-            letterSpacing: -0.4,
-          }}
-        >
+        <h3 className="m-0 mt-1 font-display text-xl font-medium text-ink">
           {headerTitle}
         </h3>
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            margin: "6px 0 0",
-            lineHeight: 1.55,
-            maxWidth: 720,
-          }}
-        >
+        <p className="m-0 mt-1.5 max-w-lede font-sans text-sm text-ink2">
           {headerDescription}
         </p>
       </div>
       {empty ? (
-        <div
-          style={{
-            background: P.surface,
-            border: `1px dashed ${P.line}`,
-            borderRadius: 10,
-            padding: "18px 22px",
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            textAlign: "center",
-          }}
-        >
+        <div className="rounded-md border border-dashed border-line bg-surface px-5 py-4 text-center font-sans text-sm text-ink2">
           {empty}
         </div>
       ) : (
         <div
-          style={{
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            overflow: "hidden",
-            opacity: stale ? 0.6 : 1,
-            transition: "opacity 120ms ease",
-          }}
+          className={cn(
+            "overflow-hidden rounded-md border border-line bg-surface transition-opacity duration-150",
+            stale ? "opacity-60" : "opacity-100"
+          )}
         >
-          <ul style={listResetStyle}>{children}</ul>
+          <ul className="m-0 list-none p-0">{children}</ul>
         </div>
       )}
     </section>
@@ -434,12 +351,16 @@ function CareIndicator({
   needsContact: boolean;
 }) {
   if (!hasCareModel) {
-    return <PBadge tone="neutral">No care model</PBadge>;
+    return (
+      <Badge tone="neutral" dot>
+        No care model
+      </Badge>
+    );
   }
   return (
-    <PBadge tone={needsContact ? "followup" : "healthy"}>
+    <Badge tone={needsContact ? STATUS_TONES.followUp : STATUS_TONES.well} dot>
       {needsContact ? "Needs contact" : "No current concerns"}
-    </PBadge>
+    </Badge>
   );
 }
 
@@ -449,21 +370,31 @@ function CareIndicator({
 // the repeated row links stay uniquely named for screen-reader users.
 function ViewPersonLink({ href, name }: { href: string; name: string }) {
   return (
-    <PLinkButton
+    <LinkButton
       href={href}
-      tone="solid"
+      variant="solid"
       size="sm"
-      style={{ whiteSpace: "nowrap" }}
       aria-label={`View person ${name}`}
     >
       View person →
-    </PLinkButton>
+    </LinkButton>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Rows
 // ---------------------------------------------------------------------------
+
+// One directory row: identity block left, row actions right; stacks to a
+// single column on mobile.
+const ROW_CLASS =
+  "grid grid-cols-1 items-start gap-3 border-b border-lineSoft px-4 py-3.5 md:grid-cols-[minmax(0,1fr)_auto]";
+const ROW_NAME_CLASS = "font-display text-md font-medium text-ink";
+const ROW_BADGES_CLASS = "flex flex-wrap items-center gap-2.5";
+const ROW_CONTACT_CLASS =
+  "mt-1 flex flex-wrap items-center gap-2.5 font-sans text-sm text-ink2";
+const ROW_GROUPS_CLASS = "mt-2 flex flex-wrap gap-1.5";
+const ROW_ACTIONS_CLASS = "flex flex-wrap items-start justify-end gap-2";
 
 // Memoized so unrelated directory re-renders (e.g. debounced-search keystrokes
 // before the filtered list settles) don't re-render every row. Props are
@@ -485,89 +416,50 @@ const ProfileRow = memo(function ProfileRow({
   const isLeaderType =
     profile.role === "leader" || profile.role === "co_leader";
   return (
-    <li className="lg-m-grid-stack" style={rowStyle}>
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 16,
-              color: P.ink,
-              fontWeight: 500,
-            }}
-          >
-            {profile.full_name}
-          </div>
+    <li className={ROW_CLASS}>
+      <div className="min-w-0">
+        <div className={ROW_BADGES_CLASS}>
+          <div className={ROW_NAME_CLASS}>{profile.full_name}</div>
           {/* Role and Status are distinct fields (reduction plan §6): a Role
               badge always, plus a Status badge so an inactive leader still
               reads its role rather than collapsing to "Inactive". */}
-          <PBadge tone="neutral">{ROLE_LABELS[profile.role]}</PBadge>
-          <PBadge tone={profile.status === "active" ? "healthy" : "pause"}>
+          <Badge tone="neutral" dot>
+            {ROLE_LABELS[profile.role]}
+          </Badge>
+          <Badge
+            tone={profile.status === "active" ? STATUS_TONES.well : "ghost"}
+            dot
+          >
             {profile.status === "active" ? "Active" : "Inactive"}
-          </PBadge>
+          </Badge>
           <CareIndicator
             hasCareModel={isLeaderType}
             needsContact={needsContact}
           />
         </div>
-        <div
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: 4,
-          }}
-        >
+        <div className={ROW_CONTACT_CLASS}>
           <span>{profile.email}</span>
           {profile.phone ? (
-            <span style={{ color: P.ink3 }}>· {profile.phone}</span>
+            <span className="text-ink3">· {profile.phone}</span>
           ) : null}
         </div>
         {assignedGroups.length > 0 ? (
-          <div
-            style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}
-          >
+          <div className={ROW_GROUPS_CLASS}>
             {assignedGroups.map((g) => (
-              <PBadge key={g.id} tone="neutral">
+              <Badge key={g.id} tone="neutral" dot>
                 {g.name}
-              </PBadge>
+              </Badge>
             ))}
           </div>
         ) : null}
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
+      <div className={ROW_ACTIONS_CLASS}>
         <ViewPersonLink
           href={`/admin/people/profile/${profile.id}`}
           name={profile.full_name}
         />
         {isSelf ? (
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 11,
-              color: P.ink3,
-              fontStyle: "italic",
-            }}
-          >
+          <span className="font-sans text-2xs italic text-ink3">
             That&rsquo;s you
           </span>
         ) : (
@@ -609,75 +501,41 @@ const MemberRow = memo(function MemberRow({
   isSuperAdmin: boolean;
 }) {
   return (
-    <li className="lg-m-grid-stack" style={rowStyle}>
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fontDisplay,
-              fontSize: 16,
-              color: P.ink,
-              fontWeight: 500,
-            }}
+    <li className={ROW_CLASS}>
+      <div className="min-w-0">
+        <div className={ROW_BADGES_CLASS}>
+          <div className={ROW_NAME_CLASS}>{member.full_name}</div>
+          <Badge tone="neutral" dot>
+            Member
+          </Badge>
+          <Badge
+            tone={member.status === "active" ? STATUS_TONES.well : "ghost"}
+            dot
           >
-            {member.full_name}
-          </div>
-          <PBadge tone="neutral">Member</PBadge>
-          <PBadge tone={member.status === "active" ? "healthy" : "pause"}>
             {member.status === "active" ? "Active" : "Inactive"}
-          </PBadge>
+          </Badge>
           <CareIndicator hasCareModel={false} needsContact={false} />
         </div>
-        <div
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: 4,
-          }}
-        >
+        <div className={ROW_CONTACT_CLASS}>
           <span>{member.email ?? "—"}</span>
           {member.phone ? (
-            <span style={{ color: P.ink3 }}>· {member.phone}</span>
+            <span className="text-ink3">· {member.phone}</span>
           ) : null}
           {!member.email && !member.phone ? (
-            <span style={{ color: P.ink3, fontStyle: "italic" }}>
-              no contact details
-            </span>
+            <span className="italic text-ink3">no contact details</span>
           ) : null}
         </div>
         {assignedGroups.length > 0 ? (
-          <div
-            style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}
-          >
+          <div className={ROW_GROUPS_CLASS}>
             {assignedGroups.map((g) => (
-              <PBadge key={g.id} tone="neutral">
+              <Badge key={g.id} tone="neutral" dot>
                 {g.name}
-              </PBadge>
+              </Badge>
             ))}
           </div>
         ) : null}
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
+      <div className={ROW_ACTIONS_CLASS}>
         <ViewPersonLink
           href={`/admin/people/member/${member.id}`}
           name={member.full_name}
@@ -701,30 +559,9 @@ const MemberRow = memo(function MemberRow({
 });
 
 // ---------------------------------------------------------------------------
-// Shared styles
+// Shared bits
 // ---------------------------------------------------------------------------
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 // Stable empty array so people with no assigned groups pass the same reference
 // to the memoized rows across renders (a fresh `[]` would defeat React.memo).
 const NO_GROUPS: GroupsRow[] = [];
-
-const rowStyle = {
-  padding: "14px 18px",
-  borderBottom: `1px solid ${P.line2}`,
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "start",
-} as const;
-
-const alertStyle = {
-  background: P.terraSoft,
-  border: `1px solid ${P.terra}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: "#7d3621",
-} as const;

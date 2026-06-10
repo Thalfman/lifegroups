@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { SectionHeader } from "@/components/layout/shell";
+import { Card } from "@/components/lg/Card";
+import { cn } from "@/lib/utils";
 import { PeopleDirectory } from "@/components/admin/people-directory";
 import { LeaderProfileForm } from "@/components/admin/forms/leader-profile-form";
 import { MemberForm } from "@/components/admin/forms/member-form";
 import { LeaderPipeline } from "@/components/admin/leader-pipeline/leader-pipeline";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
 import type {
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -81,7 +82,7 @@ export function PeopleManagementShell({
   );
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <ViewNav view={view} onChange={setView} />
 
       {view === "directory" || view === "leaders" || view === "members" ? (
@@ -100,25 +101,14 @@ export function PeopleManagementShell({
       ) : null}
 
       {view === "apprentices" ? (
-        <section style={{ display: "grid", gap: 18 }}>
+        <section className="grid gap-[18px]">
           <SectionHeader
             eyebrow="Apprentices"
             title="Leader pipeline"
             description="Future leaders and where they stand — Identified, In training, Ready to lead, Launched. This is the supply side of multiplication: the same pipeline Planning reads to answer whether upcoming launches have enough ready leaders."
           />
           {pipeline.error ? (
-            <p
-              style={{
-                margin: 0,
-                fontFamily: fontBody,
-                fontSize: 13,
-                color: "#7d3621",
-                background: P.terraSoft,
-                border: `1px solid ${P.terra}`,
-                borderRadius: 8,
-                padding: "10px 14px",
-              }}
-            >
+            <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
               The leader pipeline could not be loaded: {pipeline.error}
             </p>
           ) : (
@@ -131,20 +121,13 @@ export function PeopleManagementShell({
       ) : null}
 
       {view === "add" ? (
-        <section style={{ display: "grid", gap: 18 }}>
+        <section className="grid gap-[18px]">
           <SectionHeader
             eyebrow="Add new"
             title="Add a leader or a member"
             description="Add a leader or a member. Place members in a group from a person's Group tab."
           />
-          <div
-            className="lg-m-grid-stack"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 16,
-            }}
-          >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Card>
               <CardHeader
                 title="Add leader profile"
@@ -179,16 +162,7 @@ function ViewNav({
   return (
     <nav
       aria-label="People views"
-      style={{
-        display: "inline-flex",
-        gap: 4,
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 999,
-        padding: 4,
-        flexWrap: "wrap",
-        width: "fit-content",
-      }}
+      className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
     >
       {VIEWS.map((v) => {
         const active = v.value === view;
@@ -198,18 +172,12 @@ function ViewNav({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(v.value)}
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13,
-              fontWeight: 600,
-              letterSpacing: 0.2,
-              padding: "8px 16px",
-              borderRadius: 999,
-              border: "none",
-              cursor: "pointer",
-              background: active ? P.ink : "transparent",
-              color: active ? P.bg : P.ink2,
-            }}
+            className={cn(
+              "inline-flex cursor-pointer items-center rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
+              active
+                ? "bg-clay font-bold text-surface"
+                : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+            )}
           >
             {v.label}
           </button>
@@ -219,45 +187,11 @@ function ViewNav({
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 10,
-        padding: "18px 22px",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 function CardHeader({ title, caption }: { title: string; caption: string }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div
-        style={{
-          fontFamily: fontDisplay,
-          fontSize: 17,
-          color: P.ink,
-          fontWeight: 500,
-        }}
-      >
-        {title}
-      </div>
-      <p
-        style={{
-          fontFamily: fontBody,
-          fontSize: 12,
-          color: P.ink3,
-          margin: "2px 0 0",
-          letterSpacing: 0.1,
-        }}
-      >
-        <span style={{ fontFamily: fontSans }}>{caption}</span>
-      </p>
+    <div className="mb-3.5">
+      <h3 className="m-0 font-display text-lg font-medium text-ink">{title}</h3>
+      <p className="m-0 mt-0.5 font-sans text-xs text-ink3">{caption}</p>
     </div>
   );
 }

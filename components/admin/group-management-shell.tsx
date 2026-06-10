@@ -3,7 +3,6 @@ import {
   EMPTY_CATEGORIES_BY_AUDIENCE,
   type CategoriesByAudience,
 } from "@/components/admin/forms/group-category-options";
-import { P, fontBody } from "@/lib/pastoral";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupHealthLetter } from "@/types/enums";
 import type {
@@ -95,12 +94,17 @@ export function GroupManagementShell({
     data.errors.categoryOptions;
 
   return (
-    <div style={{ display: "grid", gap: 36 }}>
+    <div className="grid gap-9">
       {anyError ? (
-        <div role="alert" style={alertStyle}>
+        // Degraded-read note (the claySoft voice the Care/Plan banners use):
+        // the page renders what it did get rather than failing closed.
+        <p
+          role="alert"
+          className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep"
+        >
           One or more reads failed. The page below shows what we did get; retry
           in a moment or check the database connection.
-        </div>
+        </p>
       ) : null}
 
       {/* Groups is the single source of truth for setup, health, capacity, and
@@ -129,13 +133,3 @@ export function GroupManagementShell({
     </div>
   );
 }
-
-const alertStyle = {
-  background: P.terraSoft,
-  border: `1px solid ${P.terra}`,
-  borderRadius: 8,
-  padding: "12px 14px",
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: "#7d3621",
-} as const;

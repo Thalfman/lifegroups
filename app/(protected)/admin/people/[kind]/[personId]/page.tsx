@@ -24,7 +24,6 @@ import {
   decodeMetricDefaults,
 } from "@/lib/admin/metrics";
 import { ROLE_LABELS, isLeaderRole } from "@/lib/auth/roles";
-import { P, fontBody } from "@/lib/pastoral";
 import type { GroupsRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -197,17 +196,7 @@ export default async function AdminPersonDetailPage({
       <>
         <PageHeader eyebrow="People" title="Person" italic="detail" />
         <PageBody>
-          <p
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: "#7d3621",
-              background: P.terraSoft,
-              border: `1px solid ${P.terra}`,
-              borderRadius: 8,
-              padding: "10px 14px",
-            }}
-          >
+          <p className="m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep">
             The database is not configured in this environment.
           </p>
         </PageBody>
@@ -232,18 +221,15 @@ export default async function AdminPersonDetailPage({
         lede="One person, end to end — overview, group, care, activity, and access."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 18 }}>
-          <Link
-            href="/admin/people"
-            style={{
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-              textDecoration: "none",
-            }}
-          >
-            ← Back to People
-          </Link>
+        <div className="grid gap-[18px]">
+          <div>
+            <Link
+              href="/admin/people"
+              className="font-sans text-sm text-ink2 underline hover:text-ink"
+            >
+              ← Back to People
+            </Link>
+          </div>
           <PersonDetailShell
             person={result.person}
             availableGroups={result.availableGroups}

@@ -19,7 +19,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
 import { Card } from "@/components/lg/Card";
-import { PBadge } from "@/components/pastoral/atoms";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   loadGroupDetailData,
@@ -66,21 +67,18 @@ function resolveTab(raw: string | undefined): TabKey {
   return (TABS.find((t) => t.key === raw)?.key ?? "overview") as TabKey;
 }
 
-const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-sans)",
-  fontSize: 10,
-  letterSpacing: 1.6,
-  textTransform: "uppercase",
-  color: "var(--c-ink3)",
-  fontWeight: 600,
-};
+// The two text voices on this page: the small zone/detail label and the body
+// copy. Same classes the migrated Care panels use for their slot labels.
+const LABEL_TEXT =
+  "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const BODY_TEXT = "font-sans text-base text-ink2";
 
-const bodyTextStyle: React.CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontSize: 14,
-  color: "var(--c-ink2)",
-  lineHeight: 1.5,
-};
+// A read failed for this tab's content: the claySoft degraded-read voice the
+// migrated surfaces use, so the failure can't be mistaken for an empty state.
+const READ_ERROR_TEXT =
+  "m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-sm text-clayDeep";
+
+const LIST_RESET = "m-0 list-none p-0";
 
 export default async function AdminGroupDetailPage({
   params,
@@ -113,15 +111,10 @@ export default async function AdminGroupDetailPage({
         maxWidth={920}
       />
       <PageBody maxWidth={920}>
-        <div style={{ display: "grid", gap: 18 }}>
+        <div className="grid gap-5">
           <Link
             href="/admin/groups"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 12,
-              color: "var(--c-ink2)",
-              textDecoration: "none",
-            }}
+            className="font-sans text-sm text-ink2 no-underline"
           >
             ← Back to groups
           </Link>
@@ -129,7 +122,7 @@ export default async function AdminGroupDetailPage({
           <nav
             role="tablist"
             aria-label="Group detail sections"
-            style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+            className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
           >
             {TABS.map((t) => {
               const active = t.key === tab;
@@ -139,17 +132,12 @@ export default async function AdminGroupDetailPage({
                   role="tab"
                   aria-selected={active}
                   href={`/admin/groups/${groupId}?tab=${t.key}`}
-                  style={{
-                    padding: "7px 14px",
-                    borderRadius: 999,
-                    border: `1px solid ${active ? "var(--c-ink)" : "var(--c-line)"}`,
-                    background: active ? "var(--c-ink)" : "transparent",
-                    color: active ? "var(--c-surface)" : "var(--c-ink2)",
-                    fontFamily: "var(--font-sans)",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
+                  className={cn(
+                    "inline-flex items-center rounded-pill px-3.5 py-2 font-sans text-sm no-underline transition-colors duration-150",
+                    active
+                      ? "bg-clay font-bold text-surface"
+                      : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+                  )}
                 >
                   {t.label}
                 </Link>
@@ -189,7 +177,7 @@ function OverviewTab({
   groupId: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       {data.statuses === null ? (
         <ErrorNote>
           This group&apos;s status couldn&apos;t be loaded right now — one or
@@ -198,31 +186,27 @@ function OverviewTab({
       ) : (
         <>
           {/* Four independent labels — shown separately, never combined. */}
-          <Card style={{ padding: "16px 18px" }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 16,
-              }}
-            >
+          <Card>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
               <StatusZone label="Lifecycle">
-                <PBadge>
+                <Badge dot>
                   {lifecycleCategoryLabel(data.statuses.lifecycle)}
-                </PBadge>
+                </Badge>
               </StatusZone>
               <StatusZone label="Setup">
-                <PBadge>{setupCategoryLabel(data.statuses.setup)}</PBadge>
+                <Badge dot>{setupCategoryLabel(data.statuses.setup)}</Badge>
               </StatusZone>
               <StatusZone label="Health">
-                <PBadge>{healthCategoryLabel(data.statuses.health)}</PBadge>
+                <Badge dot>{healthCategoryLabel(data.statuses.health)}</Badge>
               </StatusZone>
               <StatusZone label="Capacity">
-                <PBadge>{capacityCategoryLabel(data.statuses.capacity)}</PBadge>
+                <Badge dot>
+                  {capacityCategoryLabel(data.statuses.capacity)}
+                </Badge>
               </StatusZone>
             </div>
             {data.stale ? (
-              <p style={{ ...bodyTextStyle, fontSize: 12, marginTop: 10 }}>
+              <p className={cn("mb-0 mt-2.5", BODY_TEXT, "text-sm")}>
                 Health grade is last-known — the live attendance read was
                 unavailable.
               </p>
@@ -231,8 +215,8 @@ function OverviewTab({
         </>
       )}
 
-      <Card style={{ padding: "16px 18px" }}>
-        <div style={{ display: "grid", gap: 12 }}>
+      <Card>
+        <div className="grid gap-3">
           <DetailRow
             label="Members"
             value={data.memberCount === null ? "—" : `${data.memberCount}`}
@@ -259,25 +243,25 @@ function OverviewTab({
 
 function PeopleTab({ data }: { data: GroupPeopleTabData }) {
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <Card style={{ padding: "16px 18px" }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          <div style={labelStyle}>Leaders</div>
+    <div className="grid gap-3.5">
+      <Card>
+        <div className="grid gap-2.5">
+          <div className={LABEL_TEXT}>Leaders</div>
           {data.leaders === null ? (
-            <p role="alert" style={bodyTextStyle}>
+            <p role="alert" className={READ_ERROR_TEXT}>
               Leaders couldn&apos;t be loaded right now.
             </p>
           ) : data.leaders.length === 0 ? (
-            <div style={{ display: "grid", gap: 8 }}>
-              <p style={bodyTextStyle}>No leader assigned yet.</p>
+            <div className="grid gap-2">
+              <p className={cn("m-0", BODY_TEXT)}>No leader assigned yet.</p>
               <TabAction href="/admin/people">
                 Assign a leader in People →
               </TabAction>
             </div>
           ) : (
-            <ul style={listResetStyle}>
+            <ul className={LIST_RESET}>
               {data.leaders.map((l) => (
-                <li key={l.id} style={{ ...bodyTextStyle, marginBottom: 4 }}>
+                <li key={l.id} className={cn("mb-1", BODY_TEXT)}>
                   {l.name ?? "(unknown)"} ·{" "}
                   {l.isCoLeader ? "Co-Leader" : "Leader"}
                 </li>
@@ -287,27 +271,29 @@ function PeopleTab({ data }: { data: GroupPeopleTabData }) {
         </div>
       </Card>
 
-      <Card style={{ padding: "16px 18px" }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          <div style={labelStyle}>
+      <Card>
+        <div className="grid gap-2.5">
+          <div className={LABEL_TEXT}>
             Active members
             {data.members === null ? "" : ` (${data.members.length})`}
           </div>
           {data.members === null ? (
-            <p role="alert" style={bodyTextStyle}>
+            <p role="alert" className={READ_ERROR_TEXT}>
               Members couldn&apos;t be loaded right now.
             </p>
           ) : data.members.length === 0 ? (
-            <div style={{ display: "grid", gap: 8 }}>
-              <p style={bodyTextStyle}>No active members on the roster.</p>
+            <div className="grid gap-2">
+              <p className={cn("m-0", BODY_TEXT)}>
+                No active members on the roster.
+              </p>
               <TabAction href="/admin/people">
                 Add a member in People →
               </TabAction>
             </div>
           ) : (
-            <ul style={listResetStyle}>
+            <ul className={LIST_RESET}>
               {data.members.map((m) => (
-                <li key={m.id} style={{ ...bodyTextStyle, marginBottom: 4 }}>
+                <li key={m.id} className={cn("mb-1", BODY_TEXT)}>
                   {m.fullName}
                 </li>
               ))}
@@ -328,7 +314,7 @@ function PeopleTab({ data }: { data: GroupPeopleTabData }) {
 function HealthTab({ data }: { data: GroupHealthTabData }) {
   if (data.failed) {
     return (
-      <div style={{ display: "grid", gap: 14 }}>
+      <div className="grid gap-3.5">
         <ErrorNote>
           The Group-Health Grade couldn&apos;t be loaded right now — a read
           failed. Retry in a moment.
@@ -338,14 +324,14 @@ function HealthTab({ data }: { data: GroupHealthTabData }) {
   }
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <Card style={{ padding: "16px 18px" }}>
-        <div style={{ display: "grid", gap: 12 }}>
+    <div className="grid gap-3.5">
+      <Card>
+        <div className="grid gap-3">
           <StatusZone label={`Group-Health Grade · ${data.period}`}>
-            <PBadge>{healthCategoryLabel(data.health)}</PBadge>
+            <Badge dot>{healthCategoryLabel(data.health)}</Badge>
           </StatusZone>
           {data.stale ? (
-            <p style={{ ...bodyTextStyle, fontSize: 12 }}>
+            <p className={cn("m-0", BODY_TEXT, "text-sm")}>
               Grade is last-known — the live attendance read was unavailable.
             </p>
           ) : null}
@@ -369,11 +355,11 @@ function HealthTab({ data }: { data: GroupHealthTabData }) {
         </div>
       </Card>
 
-      <p style={{ ...bodyTextStyle, fontSize: 13 }}>
+      <p className={cn("m-0", BODY_TEXT, "text-sm")}>
         Group health is recomputed live from attendance consistency and the
         admin-entered 1–5 ratings. To edit this group&apos;s ratings, open it
         from the{" "}
-        <Link href="/admin/group-health" style={{ color: "var(--c-clay)" }}>
+        <Link href="/admin/group-health" className="text-clay">
           Group health triage
         </Link>
         .
@@ -392,47 +378,42 @@ function AttendanceTab({
   groupId: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       <div
         role="note"
-        style={{
-          background: "var(--c-surface)",
-          border: "1px dashed var(--c-line)",
-          borderRadius: 10,
-          padding: "12px 14px",
-          ...bodyTextStyle,
-          fontSize: 13,
-        }}
+        className={cn(
+          "rounded-md border border-dashed border-line bg-surface px-3.5 py-3",
+          BODY_TEXT,
+          "text-sm"
+        )}
       >
         {data.checkInsLive
           ? "Weekly check-ins are currently enabled. The sessions below are the group's recorded attendance history."
           : "Historical attendance, read-only. The weekly check-in flow is paused, so no new attendance is being recorded for this group."}
       </div>
 
-      <Card style={{ padding: "16px 18px" }}>
+      <Card>
         {data.sessions === null ? (
-          <p role="alert" style={bodyTextStyle}>
+          <p role="alert" className={READ_ERROR_TEXT}>
             Attendance history couldn&apos;t be loaded right now — a read
             failed.
           </p>
         ) : data.sessions.length === 0 ? (
-          <p style={bodyTextStyle}>No attendance sessions on record.</p>
+          <p className={cn("m-0", BODY_TEXT)}>
+            No attendance sessions on record.
+          </p>
         ) : (
-          <ul style={listResetStyle}>
+          <ul className={LIST_RESET}>
             {data.sessions.map((s) => (
               <li
                 key={s.id}
-                style={{
-                  ...bodyTextStyle,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: "6px 0",
-                  borderTop: "1px solid var(--c-line)",
-                }}
+                className={cn(
+                  "flex justify-between gap-3 border-t border-line py-1.5",
+                  BODY_TEXT
+                )}
               >
                 <span>{weekLabel(s.meeting_week)}</span>
-                <span style={{ color: "var(--c-ink3)" }}>
+                <span className="text-ink3">
                   {sessionStatusLabel(s.status as AttendanceSessionStatus)}
                 </span>
               </li>
@@ -452,50 +433,30 @@ function AttendanceTab({
 
 function FollowUpsTab({ data }: { data: GroupFollowUpsTabData }) {
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <Card style={{ padding: "16px 18px" }}>
+    <div className="grid gap-3.5">
+      <Card>
         {data.followUps === null ? (
-          <p role="alert" style={bodyTextStyle}>
+          <p role="alert" className={READ_ERROR_TEXT}>
             Follow-ups couldn&apos;t be loaded right now — a read failed. This
             is not a confirmation that the group has none.
           </p>
         ) : data.followUps.length === 0 ? (
-          <p style={bodyTextStyle}>No open follow-ups for this group.</p>
+          <p className={cn("m-0", BODY_TEXT)}>
+            No open follow-ups for this group.
+          </p>
         ) : (
-          <ul style={listResetStyle}>
+          <ul className={LIST_RESET}>
             {data.followUps.map((f) => (
-              <li
-                key={f.id}
-                style={{
-                  padding: "8px 0",
-                  borderTop: "1px solid var(--c-line)",
-                  display: "grid",
-                  gap: 4,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: 14,
-                      color: "var(--c-ink)",
-                      fontWeight: 500,
-                    }}
-                  >
+              <li key={f.id} className="grid gap-1 border-t border-line py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-sans text-base font-medium text-ink">
                     {f.title}
                   </span>
-                  <PBadge>{followUpTypeLabel(f.type)}</PBadge>
-                  <PBadge>{followUpPriorityLabel(f.priority)}</PBadge>
+                  <Badge dot>{followUpTypeLabel(f.type)}</Badge>
+                  <Badge dot>{followUpPriorityLabel(f.priority)}</Badge>
                 </div>
                 {f.leader_visible_note ? (
-                  <span style={{ ...bodyTextStyle, fontSize: 13 }}>
+                  <span className={cn(BODY_TEXT, "text-sm")}>
                     {f.leader_visible_note}
                   </span>
                 ) : null}
@@ -527,9 +488,9 @@ function EventsTab({
   // the failure instead of guessing.
   if (data.occurrences === null) {
     return (
-      <div style={{ display: "grid", gap: 14 }}>
-        <Card style={{ padding: "16px 18px" }}>
-          <p style={bodyTextStyle} role="alert">
+      <div className="grid gap-3.5">
+        <Card>
+          <p role="alert" className={READ_ERROR_TEXT}>
             Upcoming meetings are unavailable right now — the calendar read
             failed. Retry in a moment or open the group calendar.
           </p>
@@ -539,26 +500,24 @@ function EventsTab({
   }
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <Card style={{ padding: "16px 18px" }}>
+    <div className="grid gap-3.5">
+      <Card>
         {data.occurrences.length === 0 ? (
-          <p style={bodyTextStyle}>No upcoming meetings or events scheduled.</p>
+          <p className={cn("m-0", BODY_TEXT)}>
+            No upcoming meetings or events scheduled.
+          </p>
         ) : (
-          <ul style={listResetStyle}>
+          <ul className={LIST_RESET}>
             {data.occurrences.map((o) => (
               <li
                 key={o.overrideId ?? `gen-${o.date}`}
-                style={{
-                  ...bodyTextStyle,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: "6px 0",
-                  borderTop: "1px solid var(--c-line)",
-                }}
+                className={cn(
+                  "flex justify-between gap-3 border-t border-line py-1.5",
+                  BODY_TEXT
+                )}
               >
                 <span>{occurrenceLabel(o)}</span>
-                <span style={{ color: "var(--c-ink3)" }}>
+                <span className="text-ink3">
                   {weekLabel(o.date)}
                   {o.meetingTime ? ` · ${o.meetingTime}` : ""}
                 </span>
@@ -613,12 +572,7 @@ function TabAction({
     <Link
       href={href}
       aria-label={ariaLabel}
-      style={{
-        fontFamily: "var(--font-body)",
-        fontSize: 13,
-        color: "var(--c-clay)",
-        textDecoration: "none",
-      }}
+      className="font-sans text-sm text-clay no-underline"
     >
       {children}
     </Link>
@@ -633,8 +587,8 @@ function StatusZone({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ display: "grid", gap: 6 }}>
-      <span style={labelStyle}>{label}</span>
+    <div className="grid gap-1.5">
+      <span className={LABEL_TEXT}>{label}</span>
       <div>{children}</div>
     </div>
   );
@@ -642,9 +596,9 @@ function StatusZone({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "grid", gap: 2 }}>
-      <span style={labelStyle}>{label}</span>
-      <span style={bodyTextStyle}>{value}</span>
+    <div className="grid gap-0.5">
+      <span className={LABEL_TEXT}>{label}</span>
+      <span className={BODY_TEXT}>{value}</span>
     </div>
   );
 }
@@ -653,8 +607,8 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 // `?? []` / `?? null` render an empty or misleading state as if authoritative.
 function ErrorNote({ children }: { children: React.ReactNode }) {
   return (
-    <Card style={{ padding: "16px 18px" }}>
-      <p role="alert" style={{ ...bodyTextStyle, fontSize: 13 }}>
+    <Card>
+      <p role="alert" className={READ_ERROR_TEXT}>
         {children}
       </p>
     </Card>
@@ -684,9 +638,3 @@ function weekLabel(iso: string): string {
     return iso;
   }
 }
-
-const listResetStyle: React.CSSProperties = {
-  listStyle: "none",
-  padding: 0,
-  margin: 0,
-};

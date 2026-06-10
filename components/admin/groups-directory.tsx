@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   memo,
@@ -16,8 +15,13 @@ import { GroupEditForm } from "@/components/admin/forms/group-edit-form";
 import { RestoreGroupButton } from "@/components/admin/forms/restore-group-button";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
-import { PButton } from "@/components/pastoral/button";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { Button, LinkButton } from "@/components/ui/button";
+import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
+import { cardClassName } from "@/components/lg/Card";
+import {
+  fieldInputClassName,
+  fieldLabelTextClassName,
+} from "@/components/admin/forms/field-styles";
 import {
   capacityCategory,
   healthCategory,
@@ -60,7 +64,7 @@ import {
   type GroupLifecycleCategory,
   type GroupSetupCategory,
 } from "@/lib/dashboard/labels";
-import { P, fontBody, fontDisplay, fontSans } from "@/lib/pastoral";
+import { cn } from "@/lib/utils";
 import {
   capacityStatus,
   effectiveCapacity,
@@ -87,29 +91,29 @@ import {
 
 // Each of the four independent status categories carries its own badge tone.
 // They are shown as four separate chips — never combined into one (issue #300).
-const LIFECYCLE_TONE: Record<GroupLifecycleCategory, PTone> = {
-  active: "healthy",
-  paused: "pause",
+const LIFECYCLE_TONE: Record<GroupLifecycleCategory, BadgeTone> = {
+  active: STATUS_TONES.well,
+  paused: "ghost",
   archived: "neutral",
 };
 
-const SETUP_TONE: Record<GroupSetupCategory, PTone> = {
-  complete: "healthy",
-  needs_setup: "watch",
-  needs_leader: "followup",
-  missing_meeting: "watch",
+const SETUP_TONE: Record<GroupSetupCategory, BadgeTone> = {
+  complete: STATUS_TONES.well,
+  needs_setup: STATUS_TONES.watch,
+  needs_leader: STATUS_TONES.followUp,
+  missing_meeting: STATUS_TONES.watch,
 };
 
-const HEALTH_TONE: Record<GroupHealthCategory, PTone> = {
+const HEALTH_TONE: Record<GroupHealthCategory, BadgeTone> = {
   not_assessed: "neutral",
-  no_concerns: "healthy",
-  needs_attention: "followup",
+  no_concerns: STATUS_TONES.well,
+  needs_attention: STATUS_TONES.followUp,
 };
 
-const CAPACITY_TONE: Record<GroupCapacityCategory, PTone> = {
+const CAPACITY_TONE: Record<GroupCapacityCategory, BadgeTone> = {
   open: "neutral",
-  near_full: "watch",
-  full: "followup",
+  near_full: STATUS_TONES.watch,
+  full: STATUS_TONES.followUp,
 };
 
 type GroupsDirectoryProps = {
@@ -535,24 +539,9 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   const isArchivedTab = tab === "archived";
 
   return (
-    <section style={{ display: "grid", gap: 18 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+    <section className="grid gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ViewModeToggle mode={mode} onModeChange={setMode} />
           {/* Density + column controls are table-only — they have no meaning for
               the card layout, so they appear once the admin switches to table. */}
@@ -566,54 +555,25 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
             </>
           ) : null}
         </div>
-        <PButton type="button" tone="terra" size="sm" onClick={openCreate}>
+        <Button type="button" variant="primary" size="sm" onClick={openCreate}>
           New group
-        </PButton>
+        </Button>
       </div>
 
       <TabBar tab={tab} onTabChange={setTab} />
 
-      <div
-        className="lg-m-filterbar"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 1fr)",
-          gap: 12,
-          alignItems: "center",
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 10,
-          padding: "12px 14px",
-        }}
-      >
+      <div className="grid grid-cols-[minmax(220px,1fr)] items-center gap-3 rounded-md border border-line bg-surface px-3.5 py-3">
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, description, location…"
           aria-label="Search groups"
-          className="lg-m-input"
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: `1px solid ${P.line}`,
-            background: P.bg,
-            fontFamily: fontBody,
-            fontSize: 14,
-            color: P.ink,
-            outline: "none",
-          }}
+          className={fieldInputClassName}
         />
       </div>
 
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 11,
-          color: P.ink3,
-          textAlign: "right",
-        }}
-      >
+      <div className="text-right font-sans text-2xs text-ink3">
         {visible.length} group{visible.length === 1 ? "" : "s"} shown
         {props.latestWeek
           ? ` · check-in week of ${formatWeek(props.latestWeek)}`
@@ -622,18 +582,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
 
       {visible.length === 0 ? (
         <div
-          style={{
-            background: P.surface,
-            border: `1px dashed ${P.line}`,
-            borderRadius: 10,
-            padding: "22px 24px",
-            textAlign: "center",
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            opacity: listIsStale ? 0.6 : 1,
-            transition: "opacity 120ms ease",
-          }}
+          className={cn(
+            "rounded-md border border-dashed border-line bg-surface px-6 py-[22px] text-center font-sans text-sm text-ink2 transition-opacity duration-150",
+            listIsStale && "opacity-60"
+          )}
         >
           {isArchivedTab
             ? "No archived groups."
@@ -641,10 +593,10 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         </div>
       ) : deferredMode === "table" ? (
         <div
-          style={{
-            opacity: listIsStale ? 0.6 : 1,
-            transition: "opacity 120ms ease",
-          }}
+          className={cn(
+            "transition-opacity duration-150",
+            listIsStale && "opacity-60"
+          )}
         >
           <GroupsTable
             rows={tableRows}
@@ -663,14 +615,13 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
         </div>
       ) : (
         <ul
-          style={{
-            ...listResetStyle,
-            opacity: listIsStale ? 0.6 : 1,
-            transition: "opacity 120ms ease",
-          }}
+          className={cn(
+            "m-0 list-none p-0 transition-opacity duration-150",
+            listIsStale && "opacity-60"
+          )}
         >
           {visible.map((g) => (
-            <li key={g.id} style={{ marginBottom: 14 }}>
+            <li key={g.id} className="mb-3.5">
               <GroupCard
                 group={g}
                 status={statusByGroupId.get(g.id)!}
@@ -721,7 +672,7 @@ function TabBar({
     <div
       role="tablist"
       aria-label="Group list view"
-      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+      className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
     >
       {TABS.map((t) => {
         const active = tab === t.key;
@@ -732,17 +683,12 @@ function TabBar({
             role="tab"
             aria-selected={active}
             onClick={() => onTabChange(t.key)}
-            style={{
-              padding: "7px 14px",
-              borderRadius: 999,
-              border: `1px solid ${active ? P.ink : P.line}`,
-              background: active ? P.ink : "transparent",
-              color: active ? P.surface : P.ink2,
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
+            className={cn(
+              "inline-flex cursor-pointer items-center rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
+              active
+                ? "bg-clay font-bold text-surface"
+                : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+            )}
           >
             {t.label}
           </button>
@@ -755,6 +701,20 @@ function TabBar({
 // ---------------------------------------------------------------------------
 // Card⇄table view toggle (#325)
 // ---------------------------------------------------------------------------
+
+// The shared look for the two segmented radio controls below (view mode +
+// density) — the same quiet pill rail the migrated invite form uses.
+const SEGMENT_GROUP_CLASS =
+  "inline-flex flex-wrap gap-1 rounded-pill border border-line bg-sidebar p-1";
+
+function segmentItemClassName(active: boolean): string {
+  return cn(
+    "cursor-pointer rounded-pill border px-3.5 py-2 font-sans text-sm font-medium leading-tight transition-colors duration-150",
+    active
+      ? "border-line bg-surface font-semibold text-ink"
+      : "border-transparent bg-transparent text-ink2 hover:bg-surface/60"
+  );
+}
 
 // A two-option segmented control that switches the directory between the
 // six-zone cards and the dense Ops table. The choice persists per browser,
@@ -775,14 +735,7 @@ function ViewModeToggle({
     <div
       role="radiogroup"
       aria-label="Group list layout"
-      style={{
-        display: "inline-flex",
-        gap: 4,
-        padding: 4,
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 999,
-      }}
+      className={SEGMENT_GROUP_CLASS}
     >
       {options.map((o) => {
         const active = mode === o.key;
@@ -793,17 +746,7 @@ function ViewModeToggle({
             role="radio"
             aria-checked={active}
             onClick={() => onModeChange(o.key)}
-            style={{
-              padding: "5px 14px",
-              borderRadius: 999,
-              border: "none",
-              background: active ? P.ink : "transparent",
-              color: active ? P.surface : P.ink2,
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
+            className={segmentItemClassName(active)}
           >
             {o.label}
           </button>
@@ -838,14 +781,7 @@ function DensityToggle({
     <div
       role="radiogroup"
       aria-label="Table density"
-      style={{
-        display: "inline-flex",
-        gap: 4,
-        padding: 4,
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 999,
-      }}
+      className={SEGMENT_GROUP_CLASS}
     >
       {GROUPS_TABLE_DENSITIES.map((d) => {
         const active = density === d;
@@ -856,17 +792,7 @@ function DensityToggle({
             role="radio"
             aria-checked={active}
             onClick={() => onDensityChange(d)}
-            style={{
-              padding: "5px 14px",
-              borderRadius: 999,
-              border: "none",
-              background: active ? P.ink : "transparent",
-              color: active ? P.surface : P.ink2,
-              fontFamily: fontSans,
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
+            className={segmentItemClassName(active)}
           >
             {DENSITY_LABELS[d]}
           </button>
@@ -904,55 +830,21 @@ function ColumnVisibilityMenu({
   const [open, setOpen] = useState(false);
   const lastShown = columns.length <= 1;
   return (
-    <div style={{ position: "relative" }}>
-      <button
+    <div className="relative">
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         aria-expanded={open}
         aria-haspopup="true"
         onClick={() => setOpen((v) => !v)}
-        style={{
-          padding: "7px 14px",
-          borderRadius: 999,
-          border: `1px solid ${P.line}`,
-          background: P.surface,
-          color: P.ink2,
-          fontFamily: fontSans,
-          fontSize: 12,
-          fontWeight: 500,
-          cursor: "pointer",
-        }}
       >
         Columns
-      </button>
+      </Button>
       {open ? (
-        <fieldset
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            zIndex: 10,
-            minWidth: 200,
-            margin: 0,
-            padding: "12px 14px",
-            display: "grid",
-            gap: 8,
-            background: P.surface,
-            border: `1px solid ${P.line}`,
-            borderRadius: 10,
-            boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
-          }}
-        >
-          <legend
-            style={{
-              padding: 0,
-              fontFamily: fontSans,
-              fontSize: 10,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              fontWeight: 600,
-              color: P.ink3,
-            }}
-          >
+        // Floating menu: shadow, no border (elevation rule — never both).
+        <fieldset className="absolute left-0 top-[calc(100%+6px)] z-dropdown m-0 grid min-w-[200px] gap-2 rounded-md border-0 bg-surface px-3.5 py-3 shadow-softLg">
+          <legend className={cn("p-0", fieldLabelTextClassName)}>
             Show columns
           </legend>
           {GROUPS_TABLE_OPTIONAL_COLUMNS.map((col) => {
@@ -963,15 +855,12 @@ function ColumnVisibilityMenu({
             return (
               <label
                 key={col}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: disabled ? P.ink3 : P.ink2,
-                  cursor: disabled ? "default" : "pointer",
-                }}
+                className={cn(
+                  "flex items-center gap-2 font-sans text-sm",
+                  disabled
+                    ? "cursor-default text-ink3"
+                    : "cursor-pointer text-ink2"
+                )}
               >
                 <input
                   type="checkbox"
@@ -991,7 +880,7 @@ function ColumnVisibilityMenu({
 
 // ---------------------------------------------------------------------------
 // Ops table (#325) — a dense, sortable view of the same groups the cards show.
-// Warm and pastoral, not a grey spreadsheet: PBadge tones for the four status
+// Warm and pastoral, not a grey spreadsheet: Badge tones for the four status
 // categories, tabular-nums for the capacity figures, and record-context action
 // names on every repeated control (the a11y suite enforces uniqueness).
 // ---------------------------------------------------------------------------
@@ -1019,14 +908,14 @@ const TABLE_COLUMNS: {
 
 // Cell padding per density. Compact tightens the vertical rhythm so more groups
 // fit on screen; comfortable keeps the historical roomy rows.
-const DENSITY_CELL_PADDING: Record<GroupsTableDensity, string> = {
-  comfortable: "12px",
-  compact: "6px 12px",
+const DENSITY_CELL_CLASS: Record<GroupsTableDensity, string> = {
+  comfortable: "p-3",
+  compact: "px-3 py-1.5",
 };
 
-const DENSITY_HEADER_PADDING: Record<GroupsTableDensity, string> = {
-  comfortable: "10px 12px",
-  compact: "6px 12px",
+const DENSITY_HEADER_CLASS: Record<GroupsTableDensity, string> = {
+  comfortable: "px-3 py-2.5",
+  compact: "px-3 py-1.5",
 };
 
 // One table row, memoized like GroupCard so the table re-renders cheaply. A sort
@@ -1063,76 +952,52 @@ const GroupTableRowView = memo(function GroupTableRowView({
 }) {
   const show = (column: GroupsTableOptionalColumn) =>
     isColumnShown(shownColumns, column);
-  const dCellStyle: React.CSSProperties = {
-    ...cellStyle,
-    padding: DENSITY_CELL_PADDING[density],
-  };
+  const cell = cn("align-top", DENSITY_CELL_CLASS[density]);
   const groupLabel = groupAccessibleLabel(group);
   const isArchived = status.lifecycle === "archived";
   const excluded = isExcludedFromCapacityMetrics(override);
   const cap = effectiveCapacity(group, override, defaults);
   const isCapacityUnknown = unknownCapacity(group, override, defaults);
   return (
-    <tr
-      style={{
-        borderBottom: `1px solid ${P.line2}`,
-        opacity: isArchived ? 0.7 : 1,
-      }}
-    >
+    <tr className={cn("border-b border-lineSoft", isArchived && "opacity-70")}>
       {/* Group + lifecycle (structural — always shown) */}
-      <td style={dCellStyle}>
-        <div style={{ display: "grid", gap: 4, alignContent: "start" }}>
-          <span style={{ fontWeight: 500, color: P.ink }}>{group.name}</span>
+      <td className={cell}>
+        <div className="grid content-start gap-1">
+          <span className="font-medium text-ink">{group.name}</span>
           <span>
-            <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
+            <Badge tone={LIFECYCLE_TONE[status.lifecycle]} dot>
               {lifecycleCategoryLabel(status.lifecycle)}
-            </PBadge>
+            </Badge>
           </span>
         </div>
       </td>
       {/* Leader / co-leader */}
       {show("leader") ? (
-        <td style={{ ...dCellStyle, color: P.ink2 }}>
-          {leaderText ?? "Unassigned"}
-        </td>
+        <td className={cn(cell, "text-ink2")}>{leaderText ?? "Unassigned"}</td>
       ) : null}
       {/* Setup */}
       {show("setup") ? (
-        <td style={dCellStyle}>
-          <PBadge tone={SETUP_TONE[status.setup]}>
+        <td className={cell}>
+          <Badge tone={SETUP_TONE[status.setup]} dot>
             {setupCategoryLabel(status.setup)}
-          </PBadge>
+          </Badge>
         </td>
       ) : null}
       {/* Health grade */}
       {show("health") ? (
-        <td style={dCellStyle}>
-          <PBadge tone={HEALTH_TONE[status.health]}>
+        <td className={cell}>
+          <Badge tone={HEALTH_TONE[status.health]} dot>
             {healthCategoryLabel(status.health)}
-          </PBadge>
+          </Badge>
         </td>
       ) : null}
       {/* Capacity (numeric → tabular-nums, right-aligned) */}
       {show("capacity") ? (
-        <td
-          style={{
-            ...dCellStyle,
-            textAlign: "right",
-            fontVariantNumeric: "tabular-nums",
-            color: P.ink2,
-          }}
-        >
-          <div
-            style={{
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: 4,
-            }}
-          >
-            <PBadge tone={CAPACITY_TONE[status.capacity]}>
+        <td className={cn(cell, "text-right tabular-nums text-ink2")}>
+          <div className="inline-flex flex-col items-end gap-1">
+            <Badge tone={CAPACITY_TONE[status.capacity]} dot>
               {capacityCategoryLabel(status.capacity)}
-            </PBadge>
+            </Badge>
             <span>
               {excluded
                 ? "Excluded"
@@ -1145,31 +1010,23 @@ const GroupTableRowView = memo(function GroupTableRowView({
       ) : null}
       {/* Meeting day/time */}
       {show("meeting") ? (
-        <td style={{ ...dCellStyle, color: P.ink2 }}>{metaLine(group)}</td>
+        <td className={cn(cell, "text-ink2")}>{metaLine(group)}</td>
       ) : null}
       {/* Latest-week check-in — reuses the already-loaded session */}
       {show("checkin") ? (
-        <td style={{ ...dCellStyle, color: P.ink3 }}>
-          {latestCheckinText(session)}
-        </td>
+        <td className={cn(cell, "text-ink3")}>{latestCheckinText(session)}</td>
       ) : null}
       {/* Actions — record-context names, unique per group */}
-      <td style={{ ...dCellStyle, textAlign: "right" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            gap: 6,
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
-          }}
-        >
-          <Link
+      <td className={cn(cell, "text-right")}>
+        <div className="inline-flex flex-wrap justify-end gap-1.5">
+          <LinkButton
             href={`/admin/groups/${group.id}`}
             aria-label={`View ${groupLabel}`}
-            style={tableLinkStyle}
+            variant="ghost"
+            size="sm"
           >
             View
-          </Link>
+          </LinkButton>
           {isArchived ? (
             <RestoreGroupButton
               groupId={group.id}
@@ -1178,22 +1035,23 @@ const GroupTableRowView = memo(function GroupTableRowView({
             />
           ) : (
             <>
-              <Link
+              <LinkButton
                 href={`/admin/groups/${group.id}/calendar`}
                 aria-label={`Open ${groupLabel} calendar`}
-                style={tableLinkStyle}
+                variant="ghost"
+                size="sm"
               >
                 Calendar
-              </Link>
-              <PButton
+              </LinkButton>
+              <Button
                 type="button"
-                tone="terra"
+                variant="primary"
                 size="sm"
                 aria-label={`Edit ${groupLabel}`}
                 onClick={() => onEdit(group)}
               >
                 Edit
-              </PButton>
+              </Button>
             </>
           )}
           {isSuperAdmin ? (
@@ -1241,18 +1099,11 @@ function GroupsTable({
   const visibleColumns = TABLE_COLUMNS.filter(
     (col) => !col.optional || isColumnShown(shownColumns, col.optional)
   );
-  const headerPad = DENSITY_HEADER_PADDING[density];
+  const headerPad = DENSITY_HEADER_CLASS[density];
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          fontFamily: fontBody,
-          fontSize: 13,
-        }}
-      >
-        <caption style={visuallyHiddenStyle}>
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse font-sans text-sm">
+        <caption className="sr-only">
           Groups, with sortable columns for group, leader, setup, health grade,
           capacity, meeting day and time, and the latest-week check-in.
         </caption>
@@ -1271,35 +1122,24 @@ function GroupsTable({
                         : "descending"
                       : "none"
                   }
-                  style={{
-                    textAlign: col.numeric ? "right" : "left",
-                    padding: 0,
-                    borderBottom: `1px solid ${P.line}`,
-                  }}
+                  className={cn(
+                    "border-b border-line p-0",
+                    col.numeric ? "text-right" : "text-left"
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => onSort(col.key)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      width: "100%",
-                      justifyContent: col.numeric ? "flex-end" : "flex-start",
-                      padding: headerPad,
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      fontFamily: fontSans,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                      textTransform: "uppercase",
-                      fontWeight: 600,
-                      color: active ? P.ink : P.ink3,
-                    }}
+                    className={cn(
+                      "inline-flex w-full cursor-pointer items-center gap-1 border-none bg-transparent",
+                      col.numeric ? "justify-end" : "justify-start",
+                      headerPad,
+                      fieldLabelTextClassName,
+                      active ? "text-ink" : "text-ink3"
+                    )}
                   >
                     {col.label}
-                    <span aria-hidden="true" style={{ fontSize: 9 }}>
+                    <span aria-hidden="true" className="text-2xs">
                       {active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
                     </span>
                   </button>
@@ -1308,17 +1148,11 @@ function GroupsTable({
             })}
             <th
               scope="col"
-              style={{
-                textAlign: "right",
-                padding: headerPad,
-                borderBottom: `1px solid ${P.line}`,
-                fontFamily: fontSans,
-                fontSize: 10,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                fontWeight: 600,
-                color: P.ink3,
-              }}
+              className={cn(
+                "border-b border-line text-right",
+                headerPad,
+                fieldLabelTextClassName
+              )}
             >
               Actions
             </th>
@@ -1386,7 +1220,7 @@ function GroupEditorDrawer({
       {editor?.mode === "edit" ? (
         // Keyed per group so the fields + action state reset when a different
         // group is opened, while the Dialog itself stays mounted.
-        <div style={{ display: "grid", gap: 18 }} key={editor.group.id}>
+        <div className="grid gap-4" key={editor.group.id}>
           <GroupEditForm
             group={editor.group}
             categoriesByAudience={categoriesByAudience}
@@ -1428,37 +1262,12 @@ function ArchiveSection({
   onPendingChange: (pending: boolean) => void;
 }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 10,
-        padding: "12px 16px",
-        borderRadius: 10,
-        border: `1px solid ${P.line}`,
-        background: P.surface,
-      }}
-    >
-      <div style={{ display: "grid", gap: 4 }}>
-        <span
-          style={{
-            fontFamily: fontSans,
-            fontSize: 10,
-            letterSpacing: 1.6,
-            textTransform: "uppercase",
-            color: P.ink3,
-            fontWeight: 600,
-          }}
-        >
+    <div className="grid gap-2.5 rounded-md border border-line bg-surface px-4 py-3">
+      <div className="grid gap-1">
+        <span className={fieldLabelTextClassName}>
           Lifecycle &middot; separate from edit
         </span>
-        <span
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            lineHeight: 1.45,
-          }}
-        >
+        <span className="font-sans text-sm leading-normal text-ink2">
           Archive takes the group off the active roster. The record stays and
           you can restore it later. This is not the same as cancelling your edit
           above.
@@ -1524,70 +1333,31 @@ const GroupCard = memo(function GroupCard({
 
   return (
     <article
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 12,
-        padding: "18px 22px",
-        display: "grid",
-        gap: 14,
-        opacity: isArchived ? 0.7 : 1,
-      }}
+      className={cn(cardClassName, "grid gap-3.5", isArchived && "opacity-70")}
     >
       {/* Zone 1 — Header: name + lifecycle (only). The other three categories
           live in their own zones below, so the header never combines them. */}
-      <header
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) auto",
-          gap: 12,
-          alignItems: "start",
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontFamily: fontDisplay,
-                fontSize: 20,
-                fontWeight: 500,
-                color: P.ink,
-                letterSpacing: -0.3,
-              }}
-            >
+      <header className="grid grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="m-0 font-display text-xl font-medium text-ink">
               {group.name}
             </h3>
-            <PBadge tone={LIFECYCLE_TONE[status.lifecycle]}>
+            <Badge tone={LIFECYCLE_TONE[status.lifecycle]} dot>
               {lifecycleCategoryLabel(status.lifecycle)}
-            </PBadge>
+            </Badge>
           </div>
         </div>
         {/* Zone 6 — Actions */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
-          }}
-        >
-          <Link
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <LinkButton
             href={`/admin/groups/${group.id}`}
             aria-label={`View ${groupLabel}`}
-            style={primaryLinkStyle}
+            variant="solid"
+            size="sm"
           >
             View group
-          </Link>
+          </LinkButton>
           {isArchived ? (
             <RestoreGroupButton
               groupId={group.id}
@@ -1596,22 +1366,23 @@ const GroupCard = memo(function GroupCard({
             />
           ) : (
             <>
-              <Link
+              <LinkButton
                 href={`/admin/groups/${group.id}/calendar`}
                 aria-label={`Open ${groupLabel} calendar`}
-                style={secondaryLinkStyle}
+                variant="ghost"
+                size="sm"
               >
                 Calendar
-              </Link>
-              <PButton
+              </LinkButton>
+              <Button
                 type="button"
-                tone="terra"
+                variant="primary"
                 size="sm"
                 aria-label={`Edit ${groupLabel}`}
                 onClick={() => onEdit(group)}
               >
                 Edit
-              </PButton>
+              </Button>
             </>
           )}
           {isSuperAdmin ? (
@@ -1624,34 +1395,27 @@ const GroupCard = memo(function GroupCard({
         </div>
       </header>
 
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 14,
-        }}
-      >
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         {/* Zone 2 — Setup: leader + setup completeness */}
         <Zone label="Setup">
-          <PBadge tone={SETUP_TONE[status.setup]}>
+          <Badge tone={SETUP_TONE[status.setup]} dot>
             {setupCategoryLabel(status.setup)}
-          </PBadge>
+          </Badge>
           <ZoneText>{leaderText}</ZoneText>
         </Zone>
 
         {/* Zone 3 — Health: the Group-Health Grade (Q12), not care status */}
         <Zone label="Health">
-          <PBadge tone={HEALTH_TONE[status.health]}>
+          <Badge tone={HEALTH_TONE[status.health]} dot>
             {healthCategoryLabel(status.health)}
-          </PBadge>
+          </Badge>
         </Zone>
 
         {/* Zone 4 — Capacity: size vs capacity */}
         <Zone label="Capacity">
-          <PBadge tone={CAPACITY_TONE[status.capacity]}>
+          <Badge tone={CAPACITY_TONE[status.capacity]} dot>
             {capacityCategoryLabel(status.capacity)}
-          </PBadge>
+          </Badge>
           <ZoneText>
             {excluded
               ? "Excluded from capacity"
@@ -1669,15 +1433,7 @@ const GroupCard = memo(function GroupCard({
       </div>
 
       {group.description ? (
-        <p
-          style={{
-            margin: 0,
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink2,
-            lineHeight: 1.5,
-          }}
-        >
+        <p className="m-0 font-sans text-sm leading-normal text-ink2">
           {group.description}
         </p>
       ) : null}
@@ -1693,19 +1449,8 @@ function Zone({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
-      <div
-        style={{
-          fontFamily: fontSans,
-          fontSize: 10,
-          letterSpacing: 1.6,
-          textTransform: "uppercase",
-          color: P.ink3,
-          fontWeight: 600,
-        }}
-      >
-        {label}
-      </div>
+    <div className="grid content-start gap-1.5">
+      <div className={fieldLabelTextClassName}>{label}</div>
       {children}
     </div>
   );
@@ -1720,79 +1465,15 @@ function ZoneText({
 }) {
   return (
     <div
-      style={{
-        fontFamily: fontBody,
-        fontSize: 13,
-        color: muted ? P.ink3 : P.ink2,
-        lineHeight: 1.4,
-      }}
+      className={cn(
+        "font-sans text-sm leading-snug",
+        muted ? "text-ink3" : "text-ink2"
+      )}
     >
       {children}
     </div>
   );
 }
-
-const primaryLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "6px 12px",
-  borderRadius: 8,
-  background: P.ink,
-  border: `1px solid ${P.ink}`,
-  color: P.surface,
-  fontFamily: fontBody,
-  fontSize: 13,
-  textDecoration: "none",
-  fontWeight: 500,
-};
-
-const cellStyle: React.CSSProperties = {
-  padding: "12px",
-  verticalAlign: "top",
-};
-
-const tableLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "5px 10px",
-  borderRadius: 8,
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  color: P.ink,
-  fontFamily: fontBody,
-  fontSize: 12,
-  textDecoration: "none",
-  fontWeight: 500,
-  whiteSpace: "nowrap",
-};
-
-// Off-screen but available to assistive tech — for the table <caption> that
-// describes the sortable columns without adding visible chrome.
-const visuallyHiddenStyle: React.CSSProperties = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: "hidden",
-  clip: "rect(0, 0, 0, 0)",
-  whiteSpace: "nowrap",
-  border: 0,
-};
-
-const secondaryLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "6px 12px",
-  borderRadius: 8,
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  color: P.ink,
-  fontFamily: fontBody,
-  fontSize: 13,
-  textDecoration: "none",
-  fontWeight: 500,
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1889,8 +1570,6 @@ function latestCheckinText(session: AttendanceSessionsRow | null): string {
     map[session.status as AttendanceSessionStatus] ?? session.status;
   return `Latest check-in: ${label} · ${formatWeek(session.meeting_week)}`;
 }
-
-const listResetStyle = { listStyle: "none", padding: 0, margin: 0 } as const;
 
 // Stable empty array so a leaderless group passes the same reference to the
 // memoized GroupCard across renders (a fresh `[]` would defeat React.memo).

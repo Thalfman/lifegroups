@@ -14,7 +14,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { requireOverShepherdSession } from "@/lib/auth/session";
+import { requireOverShepherdOrAdminSession } from "@/lib/auth/session";
 import {
   rpcAdminWriteCareNote,
   rpcAdminWritePrayerRequest,
@@ -25,12 +25,12 @@ import {
 // Prayer Requests and the per-subject transparency toggle. All three reuse the
 // shared write-action runner (no service-role key in the Next runtime).
 //
-//   * The note + prayer writes are AUTHORED by Over-Shepherds, so they swap the
-//     auth gate to over_shepherd. The authorship boundary (the actor may only
-//     write about a subject they actively cover) is enforced inside the SECURITY
-//     DEFINER RPC via auth_over_shepherd_covers — the same coverage predicate
-//     the broad-note write uses — which also writes the paired audit row and
-//     NEVER stores the body in audit metadata.
+//   * The note + prayer writes are AUTHORED by Over-Shepherds OR admins
+//     (ADR 0023 widened the author set), so they use the shared
+//     over-shepherd-or-admin gate. The per-subject authorship boundary is
+//     enforced inside the SECURITY DEFINER RPC — auth_is_admin() OR
+//     auth_over_shepherd_covers(subject) — which also writes the paired audit
+//     row and NEVER stores the body in audit metadata.
 //   * The transparency toggle is MINISTRY-ADMIN controlled, so it keeps the
 //     default requireAdminSession gate (ministry_admin + super_admin); the RPC
 //     re-checks auth_is_admin(). Flipping it ON is what lets the oversight ladder
@@ -56,7 +56,7 @@ const WRITE_CARE_NOTE_SPEC: AdminWriteActionSpec<
   name: "admin.care_note.write",
   keys: WRITE_CARE_NOTE_KEYS,
   validate: validateWriteCareNotePayload,
-  auth: requireOverShepherdSession,
+  auth: requireOverShepherdOrAdminSession,
   fields: (_actor, value) => ({
     target_subject_profile_id: value.subject_profile_id,
   }),
@@ -86,7 +86,7 @@ const WRITE_PRAYER_REQUEST_SPEC: AdminWriteActionSpec<
   name: "admin.prayer_request.write",
   keys: WRITE_PRAYER_REQUEST_KEYS,
   validate: validateWritePrayerRequestPayload,
-  auth: requireOverShepherdSession,
+  auth: requireOverShepherdOrAdminSession,
   fields: (_actor, value) => ({
     target_subject_profile_id: value.subject_profile_id,
   }),
