@@ -84,7 +84,7 @@ import {
   DEMO_SELECTED_WEEK,
   DEMO_SESSIONS,
 } from "@/lib/dashboard/demo-seed";
-import { group, settings } from "@/lib/dashboard/group-fixtures";
+import { group, profile, settings } from "@/lib/dashboard/group-fixtures";
 import type {
   MasterCalendarGroupSummary,
   MasterCalendarLeader,
@@ -843,9 +843,28 @@ const PEOPLE_MEMBERS = [
   },
 ];
 
+// The directory renders one section per role, ordered down the oversight
+// ladder. The dashboard demo seed is all leaders, so add one profile for each
+// remaining rung so every section heading (and its rows) is in the DOM for
+// axe and the section-grouping assertions.
+const PEOPLE_PROFILES = [
+  ...DEMO_PROFILES,
+  profile({
+    id: "people-ma",
+    full_name: "Maya Whitfield",
+    role: "ministry_admin",
+  }),
+  profile({
+    id: "people-os",
+    full_name: "Omar Castillo",
+    role: "over_shepherd",
+  }),
+  profile({ id: "people-co", full_name: "Cora Nguyen", role: "co_leader" }),
+];
+
 const PEOPLE_DATA: PeopleManagementData = {
   currentActorProfileId: "p-priya",
-  profiles: DEMO_PROFILES,
+  profiles: PEOPLE_PROFILES,
   members: PEOPLE_MEMBERS,
   groups: DEMO_GROUPS,
   groupLeaders: DEMO_LEADERS,
