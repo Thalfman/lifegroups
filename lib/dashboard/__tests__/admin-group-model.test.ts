@@ -100,6 +100,7 @@ function profile(
     id,
     auth_user_id: null,
     full_name,
+    full_name_pending: false,
     email: `${id}@example.com`,
     phone: null,
     role: "leader",
