@@ -10,10 +10,11 @@ npm run test:run
 if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
   if [ "$(graphify --version 2>/dev/null | awk '{print $2}')" != "$(cat .graphify-version 2>/dev/null)" ]; then
     echo "[pre-commit] graphify on PATH is not the version in .graphify-version; skipping graph refresh"
-  elif git diff --quiet -- . ':(exclude)graphify-out'; then
+  elif git diff --quiet -- . ':(exclude)graphify-out' &&
+    [ -z "$(git ls-files --others --exclude-standard -- . ':(exclude)graphify-out')" ]; then
     (graphify update . && git add graphify-out) ||
       echo "[pre-commit] graphify update failed; committing without graph refresh"
   else
-    echo "[pre-commit] unstaged changes present; skipping graph refresh"
+    echo "[pre-commit] unstaged or untracked files present; skipping graph refresh"
   fi
 fi
