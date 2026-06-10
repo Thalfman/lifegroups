@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { buttonClassName } from "@/components/ui/button";
 import { formatIsoDateOr } from "@/lib/shared/date";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { NoteTransparencyToggle } from "@/components/admin/shepherd-care/note-transparency-toggle";
@@ -22,47 +23,21 @@ import {
 // Leader's grant without leaving the accordion. The slot stays counts-only:
 // note and Prayer Request bodies never render here.
 
-const slotLabelStyle: CSSProperties = {
-  margin: 0,
-  fontFamily: fontSans,
-  fontSize: 10,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  fontWeight: 700,
-  color: P.ink3,
-};
+const SLOT_LABEL = "m-0 font-sans text-xs font-medium text-ink3";
+const VALUE_TEXT = "font-sans text-sm text-ink";
+const MUTED_TEXT = "font-sans text-sm italic text-ink3";
 
-const valueTextStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 12.5,
-  color: P.ink,
-};
-
-const mutedTextStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 12.5,
-  fontStyle: "italic",
-  color: P.ink3,
-};
-
-// A small A–F letter pill. D / F read as a concern (terra tint); A–C are neutral.
+// A small A–F letter pill. D / F read as a concern (clay tint); A–C are neutral.
 function LetterBadge({ letter }: { letter: string }) {
   const concern = letter === "D" || letter === "F";
   return (
     <span
-      style={{
-        display: "inline-flex",
-        minWidth: 18,
-        justifyContent: "center",
-        fontFamily: fontSans,
-        fontSize: 12,
-        fontWeight: 700,
-        color: concern ? P.terraTextStrong : P.ink,
-        background: concern ? P.terraSoft : P.bg,
-        border: `1px solid ${concern ? P.terraSoft : P.line}`,
-        borderRadius: 6,
-        padding: "1px 6px",
-      }}
+      className={cn(
+        "inline-flex min-w-[18px] justify-center rounded border px-1.5 py-px font-sans text-xs font-bold",
+        concern
+          ? "border-claySoft bg-claySoft text-clayDeep"
+          : "border-line bg-bg text-ink"
+      )}
     >
       {letter}
     </span>
@@ -71,8 +46,8 @@ function LetterBadge({ letter }: { letter: string }) {
 
 function Slot({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ display: "grid", gap: 5 }}>
-      <p style={slotLabelStyle}>{label}</p>
+    <div className="grid gap-1">
+      <p className={SLOT_LABEL}>{label}</p>
       <div>{children}</div>
     </div>
   );
@@ -84,13 +59,13 @@ function Slot({ label, children }: { label: string; children: ReactNode }) {
 // toggle below carries the sealed state instead (#467).
 function CareNoteCounts({ notes }: { notes: CareAccordionLeader["notes"] }) {
   if (notes.careNoteCount === 0 && notes.prayerCount === 0) {
-    return <span style={mutedTextStyle}>None yet.</span>;
+    return <span className={MUTED_TEXT}>None yet.</span>;
   }
   const parts = [
     `${notes.careNoteCount} care note${notes.careNoteCount === 1 ? "" : "s"}`,
     `${notes.prayerCount} prayer request${notes.prayerCount === 1 ? "" : "s"}`,
   ];
-  return <span style={valueTextStyle}>{parts.join(" · ")}</span>;
+  return <span className={VALUE_TEXT}>{parts.join(" · ")}</span>;
 }
 
 export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
@@ -99,74 +74,34 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
   const granted = isNoteTransparencyGranted(leader.notes);
 
   return (
-    <details
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line2}`,
-        borderRadius: 10,
-      }}
-    >
-      <summary
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "10px 14px",
-          cursor: "pointer",
-        }}
-      >
-        <span style={{ minWidth: 0, display: "grid", gap: 2 }}>
-          <span
-            style={{
-              fontFamily: fontSans,
-              fontSize: 13.5,
-              fontWeight: 600,
-              color: P.ink,
-              overflowWrap: "anywhere",
-            }}
-          >
+    <details className="rounded-sm border border-lineSoft bg-surface">
+      <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3.5 py-2.5 transition-colors duration-150 hover:bg-surfaceAlt">
+        <span className="grid min-w-0 gap-0.5">
+          <span className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
             {leader.fullName}
           </span>
-          <span style={{ fontFamily: fontBody, fontSize: 12, color: P.ink3 }}>
-            {groupLabel}
-          </span>
+          <span className="font-sans text-sm text-ink3">{groupLabel}</span>
         </span>
         {leader.careStatus ? (
           <ShepherdCareStatusBadge status={leader.careStatus} />
         ) : (
-          <span
-            style={{
-              fontFamily: fontBody,
-              fontSize: 11.5,
-              fontStyle: "italic",
-              color: P.ink3,
-              whiteSpace: "nowrap",
-            }}
-          >
+          <span className={cn(MUTED_TEXT, "whitespace-nowrap")}>
             No care status yet
           </span>
         )}
       </summary>
 
-      <div style={{ display: "grid", gap: 14, padding: "4px 14px 16px" }}>
+      <div className="grid gap-3.5 px-3.5 pb-4 pt-1">
         {/* At-a-glance, mirroring the spreadsheet row (Last contact / Next step).
             Both come straight from the care directory row — no extra read. */}
-        <div
-          className="lg-m-grid-stack"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">
           <Slot label="Last contact">
-            <span style={valueTextStyle}>
+            <span className={VALUE_TEXT}>
               {formatIsoDateOr(leader.lastContactAt, "Never")}
             </span>
           </Slot>
           <Slot label="Next step">
-            <span style={valueTextStyle}>
+            <span className={VALUE_TEXT}>
               {formatIsoDateOr(leader.nextStepDue)}
             </span>
           </Slot>
@@ -176,39 +111,27 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
           {leader.careStatus ? (
             <ShepherdCareStatusBadge status={leader.careStatus} />
           ) : (
-            <span style={mutedTextStyle}>No care status set yet.</span>
+            <span className={MUTED_TEXT}>No care status set yet.</span>
           )}
         </Slot>
 
-        <div
-          className="lg-m-grid-stack"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
           <Slot label="Group-Health Grade">
             {leader.ledGroups.length === 0 ? (
-              <span style={mutedTextStyle}>No active group.</span>
+              <span className={MUTED_TEXT}>No active group.</span>
             ) : (
-              <div style={{ display: "grid", gap: 4 }}>
+              <div className="grid gap-1">
                 {leader.ledGroups.map((g) => (
                   <span
                     key={g.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      ...valueTextStyle,
-                    }}
+                    className={cn("flex items-center gap-1.5", VALUE_TEXT)}
                   >
                     {g.healthGrade ? (
                       <LetterBadge letter={g.healthGrade} />
                     ) : (
-                      <span style={mutedTextStyle}>Not graded</span>
+                      <span className={MUTED_TEXT}>Not graded</span>
                     )}
-                    <span style={{ color: P.ink2, overflowWrap: "anywhere" }}>
+                    <span className="text-ink2 [overflow-wrap:anywhere]">
                       {g.name}
                     </span>
                   </span>
@@ -221,12 +144,12 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
             {leader.leaderHealthGrade ? (
               <LetterBadge letter={leader.leaderHealthGrade} />
             ) : (
-              <span style={mutedTextStyle}>Not graded</span>
+              <span className={MUTED_TEXT}>Not graded</span>
             )}
           </Slot>
 
           <Slot label="Care Notes & Prayer">
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="grid gap-2">
               {granted ? <CareNoteCounts notes={leader.notes} /> : null}
               {/* #467 — the same Ministry-Admin-controlled toggle the
                   per-leader detail page renders (one audited write path:
@@ -244,17 +167,7 @@ export function CareLeaderPanel({ leader }: { leader: CareAccordionLeader }) {
 
         <Link
           href={`/admin/shepherd-care/${leader.profileId}`}
-          style={{
-            justifySelf: "start",
-            fontFamily: fontSans,
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: P.sageTextStrong,
-            textDecoration: "none",
-            border: `1px solid ${P.line}`,
-            borderRadius: 999,
-            padding: "6px 14px",
-          }}
+          className={buttonClassName("ghost", "sm", "justify-self-start")}
         >
           Open leader care →
         </Link>

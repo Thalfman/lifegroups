@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { buttonClassName } from "@/components/ui/button";
 import type { CareItem, CareItemDueTone } from "@/lib/admin/care-area";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
 
@@ -13,52 +13,21 @@ import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-de
 // work actually happens; the action's accessible name carries the person so it
 // reads "Log contact for Jane Doe", not a bare verb.
 
-const DUE_TONE: Record<
-  CareItemDueTone,
-  { bg: string; fg: string; border: string }
-> = {
-  overdue: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  soon: { bg: P.mustardSoft, fg: P.mustardTextStrong, border: "#efdfa3" },
-  neutral: { bg: P.bg, fg: P.ink3, border: P.line },
-};
-
-const ROW: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  padding: "14px 0",
-  borderBottom: `1px solid ${P.line2}`,
-};
-
-const META: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 12,
-  alignItems: "center",
-  marginTop: 6,
-  fontFamily: fontBody,
-  fontSize: 12,
-  color: P.ink3,
+// Due-date pill tones on the status vocabulary: overdue = clay (needs
+// follow-up), soon = amber (watch), neutral dates stay quiet.
+const DUE_TONE: Record<CareItemDueTone, BadgeTone> = {
+  overdue: "clay",
+  soon: "amber",
+  neutral: "ghost",
 };
 
 function MetaBit({ label, value }: { label: string; value: string }) {
   return (
     <span>
-      <span
-        style={{
-          fontFamily: fontSans,
-          fontSize: 9.5,
-          letterSpacing: 0.8,
-          textTransform: "uppercase",
-          fontWeight: 700,
-          color: P.ink3,
-          marginRight: 5,
-        }}
-      >
+      <span className="mr-1.5 font-sans text-xs font-medium text-ink3">
         {label}
       </span>
-      <span style={{ color: P.ink2 }}>{value}</span>
+      <span className="text-ink2">{value}</span>
     </span>
   );
 }
@@ -78,65 +47,29 @@ export function CareItemList({
 }) {
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          background: P.surface,
-          border: `1px dashed ${P.line}`,
-          borderRadius: 14,
-          padding: "32px 18px",
-          textAlign: "center",
-          display: "grid",
-          gap: 6,
-          justifyItems: "center",
-        }}
-      >
-        <div style={{ fontFamily: fontBody, fontWeight: 600, color: P.ink }}>
-          {emptyTitle}
-        </div>
-        <div style={{ fontFamily: fontBody, fontSize: 13, color: P.ink3 }}>
-          {emptyDescription}
-        </div>
+      <div className="grid justify-items-center gap-1.5 rounded-lg border border-dashed border-line bg-surface px-4 py-8 text-center">
+        <div className="font-sans font-semibold text-ink">{emptyTitle}</div>
+        <div className="font-sans text-sm text-ink3">{emptyDescription}</div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        background: P.surface,
-        border: `1px solid ${P.line}`,
-        borderRadius: 14,
-        padding: "4px 18px",
-      }}
-    >
+    <div className="rounded-lg border border-line bg-surface px-4 py-1">
       {items.map((item) => {
-        const tone = DUE_TONE[item.dueTone];
         return (
-          <div key={item.key} style={ROW}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: P.ink,
-                  overflowWrap: "anywhere",
-                }}
-              >
+          <div
+            key={item.key}
+            className="flex min-h-11 items-start justify-between gap-4 border-b border-lineSoft py-3.5"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
                 {item.personName}
               </div>
-              <div
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 12.5,
-                  color: P.ink2,
-                  marginTop: 2,
-                  fontStyle: "italic",
-                }}
-              >
+              <div className="mt-0.5 font-sans text-sm italic text-ink2">
                 {item.reason}
               </div>
-              <div style={META}>
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 font-sans text-sm text-ink3">
                 <MetaBit label="Group" value={item.groupName ?? "—"} />
                 <MetaBit
                   label="Owner"
@@ -147,51 +80,18 @@ export function CareItemList({
                   }
                 />
                 {item.dueLabel ? (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "1px 9px",
-                      borderRadius: 999,
-                      fontFamily: fontSans,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: tone.bg,
-                      color: tone.fg,
-                      border: `1px solid ${tone.border}`,
-                    }}
-                  >
-                    {item.dueLabel}
-                  </span>
+                  <Badge tone={DUE_TONE[item.dueTone]}>{item.dueLabel}</Badge>
                 ) : null}
               </div>
             </div>
-            <div
-              style={{
-                flexShrink: 0,
-                alignSelf: "center",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div className="flex shrink-0 items-center gap-2 self-center">
               <Link
                 href={item.actionHref}
                 // Record-context accessible name (#332 / req 4): assistive tech
                 // announces "Log contact for Jane Doe", not a bare "Log contact"
                 // repeated down the list. The visible label stays the short verb.
                 aria-label={item.actionAccessibleName}
-                style={{
-                  fontFamily: fontSans,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: P.sageTextStrong,
-                  textDecoration: "none",
-                  border: `1px solid ${P.line}`,
-                  borderRadius: 999,
-                  padding: "7px 14px",
-                  whiteSpace: "nowrap",
-                }}
+                className={buttonClassName("ghost", "sm", "whitespace-nowrap")}
               >
                 {item.actionLabel} →
               </Link>

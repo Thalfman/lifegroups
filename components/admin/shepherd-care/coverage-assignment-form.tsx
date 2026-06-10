@@ -6,18 +6,18 @@ import {
   adminEndShepherdCoverage,
 } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formGridStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
-import { P, fontBody } from "@/lib/pastoral";
-import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
+
+// Form anatomy (design direction §4): uppercase survives on field labels only;
+// inputs are full-width, line-bordered, surface-backed (global focus ring).
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
+const FORM_NOTE = "m-0 mb-3 font-sans text-sm leading-normal text-ink2";
 
 // `defaultValue` uses the caller's LOCAL calendar day for the same
 // rationale as care-action-forms.tsx — keep the picker on the
@@ -55,22 +55,22 @@ export function CoverageAssignmentForm({
   const hasActiveOverShepherds = activeOverShepherds.length > 0;
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       {hasActiveOverShepherds ? (
-        <form action={assignAction} style={{ display: "grid", gap: 12 }}>
+        <form action={assignAction} className="grid gap-3">
           <input
             type="hidden"
             name="shepherd_profile_id"
             value={shepherdProfileId}
           />
-          <p style={formNoteStyle}>
+          <p className={FORM_NOTE}>
             {currentOverShepherdId
               ? "Choose a different over-shepherd to reassign — the prior assignment will end automatically."
               : "Assign an over-shepherd to cover this leader. When the over-shepherd signs in, this leader appears among the ones they cover."}
           </p>
-          <div className="lg-m-grid-stack" style={formGridStyle}>
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
             <div>
-              <label htmlFor="cov-over_shepherd_id" style={fieldLabelStyle}>
+              <label htmlFor="cov-over_shepherd_id" className={FIELD_LABEL}>
                 Over-shepherd
               </label>
               <select
@@ -78,7 +78,7 @@ export function CoverageAssignmentForm({
                 name="over_shepherd_id"
                 required
                 defaultValue={currentOverShepherdId ?? ""}
-                style={fieldSelectStyle}
+                className={FIELD_INPUT}
               >
                 <option value="" disabled>
                   Select…
@@ -91,7 +91,7 @@ export function CoverageAssignmentForm({
               </select>
             </div>
             <div>
-              <label htmlFor="cov-assigned_at" style={fieldLabelStyle}>
+              <label htmlFor="cov-assigned_at" className={FIELD_LABEL}>
                 Assigned date
               </label>
               <input
@@ -100,7 +100,7 @@ export function CoverageAssignmentForm({
                 type="date"
                 defaultValue={todayLocalIso()}
                 max={todayLocalIso()}
-                style={fieldInputStyle}
+                className={FIELD_INPUT}
               />
             </div>
             <div>
@@ -123,7 +123,7 @@ export function CoverageAssignmentForm({
       ) : !currentAssignmentId ? (
         // No active over-shepherds and no active assignment to clear —
         // surface the empty state directly.
-        <p style={{ ...formNoteStyle, color: P.ink2 }}>
+        <p className={FORM_NOTE}>
           No active over-shepherds yet. Add one from the over-shepherd manager
           before assigning coverage.
         </p>
@@ -131,7 +131,7 @@ export function CoverageAssignmentForm({
         // No active over-shepherds, but an active assignment exists
         // (the assigned over-shepherd was archived after the assignment
         // was made). Allow clearing so admins aren't stuck.
-        <p style={{ ...formNoteStyle, color: P.ink2 }}>
+        <p className={FORM_NOTE}>
           The current over-shepherd is archived. Reactivate them from the
           over-shepherd manager, or clear coverage below.
         </p>
@@ -140,12 +140,7 @@ export function CoverageAssignmentForm({
       {currentAssignmentId ? (
         <form
           action={endAction}
-          style={{
-            display: "grid",
-            gap: 8,
-            borderTop: `1px solid ${P.line2}`,
-            paddingTop: 12,
-          }}
+          className="grid gap-2 border-t border-lineSoft pt-3"
         >
           <input
             type="hidden"
@@ -157,14 +152,7 @@ export function CoverageAssignmentForm({
             name="shepherd_profile_id"
             value={shepherdProfileId}
           />
-          <p
-            style={{
-              ...formNoteStyle,
-              fontFamily: fontBody,
-              color: P.ink2,
-              margin: 0,
-            }}
-          >
+          <p className="m-0 font-sans text-sm leading-normal text-ink2">
             Or clear coverage entirely — the assignment is soft-ended and stays
             in the audit trail.
           </p>

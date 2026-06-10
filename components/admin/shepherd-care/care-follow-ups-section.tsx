@@ -5,7 +5,6 @@ import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { useEditingDrawer } from "@/components/lg/admin/use-editing-drawer";
 import { CareFollowUpCreateForm } from "@/components/admin/shepherd-care/care-follow-up-create-form";
 import { CareFollowUpList } from "@/components/admin/shepherd-care/care-follow-up-list";
-import { P, fontBody } from "@/lib/pastoral";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
 
 // Leader care follow-ups, with creation moved into the shared Editing Pattern
@@ -39,7 +38,7 @@ export function CareFollowUpsSection({
   const drawer = useEditingDrawer();
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="grid gap-4">
       <div>
         <PButton
           type="button"
@@ -52,15 +51,7 @@ export function CareFollowUpsSection({
       </div>
 
       {followUps.length === 0 ? (
-        <p
-          style={{
-            fontFamily: fontBody,
-            fontSize: 13,
-            color: P.ink3,
-            margin: 0,
-            fontStyle: "italic",
-          }}
-        >
+        <p className="m-0 font-sans text-sm italic text-ink3">
           {drawer.isOpen
             ? "Fill in the details in the panel and save to add the first one."
             : "No follow-ups yet. Use Add follow-up to capture the next concrete step you owe this leader."}

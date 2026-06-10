@@ -1,35 +1,11 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { Badge } from "@/components/ui/badge";
 import { shepherdCareInteractionTypeLabel } from "@/lib/dashboard/labels";
 import type { CareRecentInteraction } from "@/lib/admin/shepherd-care-dashboard";
 
-const ROW_LINK: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "baseline",
-  gap: 12,
-  padding: "10px 0",
-  borderBottom: `1px solid ${P.line2}`,
-  textDecoration: "none",
-  color: "inherit",
-};
-
-const TYPE_BADGE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "2px 8px",
-  borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 600,
-  letterSpacing: 0.4,
-  textTransform: "uppercase",
-  fontFamily: fontSans,
-  background: P.sageSoft,
-  color: "#3e4f29",
-  border: `1px solid ${P.line}`,
-};
+const ROW_LINK =
+  "flex min-h-11 items-baseline justify-between gap-3 border-b border-lineSoft py-2.5 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt";
 
 export function RecentInteractionsCard({
   items,
@@ -57,33 +33,18 @@ export function RecentInteractionsCard({
       ) : (
         <div>
           {items.map((item) => (
-            <Link key={item.id} href={item.href} style={ROW_LINK}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: P.ink,
-                    overflowWrap: "anywhere",
-                  }}
-                >
+            <Link key={item.id} href={item.href} className={ROW_LINK}>
+              <div className="min-w-0 flex-1">
+                <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
                   {item.shepherdName}
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12,
-                    color: P.ink3,
-                    marginTop: 2,
-                  }}
-                >
+                <div className="mt-0.5 font-sans text-sm text-ink3">
                   {item.interactionAt} · logged {item.createdAt.slice(0, 10)}
                 </div>
               </div>
-              <span style={TYPE_BADGE}>
+              <Badge tone="sage">
                 {shepherdCareInteractionTypeLabel(item.interactionType)}
-              </span>
+              </Badge>
             </Link>
           ))}
         </div>

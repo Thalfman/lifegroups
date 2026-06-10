@@ -3,17 +3,17 @@
 import { PButton } from "@/components/pastoral/button";
 import { adminUpdateOverShepherd } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
-import { P, fontBody } from "@/lib/pastoral";
-import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { OverShepherdsRow } from "@/types/database";
+
+// Form anatomy (design direction §4): uppercase survives on field labels only;
+// inputs are full-width, line-bordered, surface-backed (global focus ring).
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
 
 export function OverShepherdEditForm({
   overShepherd,
@@ -25,16 +25,16 @@ export function OverShepherdEditForm({
   );
 
   return (
-    <form action={formAction} style={{ display: "grid", gap: 12 }}>
+    <form action={formAction} className="grid gap-3">
       <input type="hidden" name="over_shepherd_id" value={overShepherd.id} />
-      <p style={formNoteStyle}>
+      <p className="m-0 mb-3 font-sans text-sm leading-normal text-ink2">
         Update the over-shepherd record. Deactivating archives them softly —
         they remain in the audit trail and historic coverage assignments.
         Reactivate any time.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
         <div>
-          <label htmlFor="os-edit-full_name" style={fieldLabelStyle}>
+          <label htmlFor="os-edit-full_name" className={FIELD_LABEL}>
             Full name
           </label>
           <input
@@ -44,11 +44,11 @@ export function OverShepherdEditForm({
             required
             maxLength={200}
             defaultValue={overShepherd.full_name}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
           />
         </div>
         <div>
-          <label htmlFor="os-edit-email" style={fieldLabelStyle}>
+          <label htmlFor="os-edit-email" className={FIELD_LABEL}>
             Email (optional)
           </label>
           <input
@@ -56,11 +56,11 @@ export function OverShepherdEditForm({
             name="email"
             type="email"
             defaultValue={overShepherd.email ?? ""}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
           />
         </div>
         <div>
-          <label htmlFor="os-edit-phone" style={fieldLabelStyle}>
+          <label htmlFor="os-edit-phone" className={FIELD_LABEL}>
             Phone (optional)
           </label>
           <input
@@ -68,11 +68,11 @@ export function OverShepherdEditForm({
             name="phone"
             type="tel"
             defaultValue={overShepherd.phone ?? ""}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="os-edit-notes" style={fieldLabelStyle}>
+        <div className="col-span-full">
+          <label htmlFor="os-edit-notes" className={FIELD_LABEL}>
             Notes (optional, max 2000 chars) — admin-only
           </label>
           <textarea
@@ -81,20 +81,11 @@ export function OverShepherdEditForm({
             rows={3}
             maxLength={2000}
             defaultValue={overShepherd.notes ?? ""}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            className={`${FIELD_INPUT} min-h-20 resize-y`}
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: fontBody,
-              fontSize: 13,
-              color: P.ink2,
-            }}
-          >
+        <div className="col-span-full">
+          <label className="inline-flex items-center gap-2 font-sans text-sm text-ink2">
             <input
               type="checkbox"
               name="active"

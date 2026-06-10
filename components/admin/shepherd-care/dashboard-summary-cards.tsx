@@ -8,11 +8,7 @@ function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
-const linkResetStyle = {
-  textDecoration: "none",
-  color: "inherit",
-  display: "block",
-};
+const LINK_RESET = "block text-inherit no-underline";
 
 export function ShepherdCareDashboardSummaryCards({
   summary,
@@ -88,14 +84,7 @@ export function ShepherdCareDashboardSummaryCards({
       <h2 id="shepherd-care-summary" className="sr-only">
         Leader care summary
       </h2>
-      <div
-        className="lg-m-grid-stack"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
-        }}
-      >
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] md:gap-3.5">
         <MetricCard
           title="Active leaders"
           value={String(summary.totalActiveShepherds)}
@@ -106,7 +95,7 @@ export function ShepherdCareDashboardSummaryCards({
         <Link
           href={needsAttentionHref}
           aria-label="Filter the leader roster to needs attention"
-          style={linkResetStyle}
+          className={LINK_RESET}
         >
           <MetricCard
             title="Needs attention"
@@ -150,7 +139,7 @@ export function ShepherdCareDashboardSummaryCards({
           <Link
             href={unassignedHref}
             aria-label="Show unassigned coverage in the Over-Shepherds tab"
-            style={linkResetStyle}
+            className={LINK_RESET}
           >
             <MetricCard
               title="Unassigned coverage"

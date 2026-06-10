@@ -8,16 +8,14 @@ import { requireAdmin } from "@/lib/auth/session";
 import { isSuperAdminRole } from "@/lib/auth/roles";
 import { loadOverShepherdDetailData } from "@/components/admin/shepherd-care/over-shepherd-detail-data";
 import { isUuid } from "@/lib/shared/uuid";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 
 export const dynamic = "force-dynamic";
 
-const cardStyle = {
-  background: P.surface,
-  border: `1px solid ${P.line}`,
-  borderRadius: 12,
-  padding: 20,
-};
+const CARD = "rounded-lg border border-line bg-surface p-card";
+const CARD_HEADING = "m-0 mb-3 font-display text-lg font-medium text-ink";
+const BACK_LINK = "font-sans text-sm text-ink2 underline hover:text-ink";
+const ERROR_BANNER =
+  "m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep";
 
 export default async function AdminOverShepherdEditPage({
   params,
@@ -47,7 +45,7 @@ export default async function AdminOverShepherdEditPage({
         <PageBody>
           <Link
             href="/admin/shepherd-care/over-shepherds"
-            style={{ color: P.ink2, textDecoration: "underline" }}
+            className="text-ink2 underline hover:text-ink"
           >
             Back to over-shepherds
           </Link>
@@ -65,27 +63,11 @@ export default async function AdminOverShepherdEditPage({
           lede="We couldn't load this over-shepherd."
         />
         <PageBody>
-          <div style={{ display: "grid", gap: 20 }}>
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
-              {detail.message}
-            </p>
+          <div className="grid gap-5">
+            <p className={ERROR_BANNER}>{detail.message}</p>
             <Link
               href="/admin/shepherd-care/over-shepherds"
-              style={{
-                fontFamily: fontBody,
-                color: P.ink2,
-                fontSize: 13,
-                textDecoration: "underline",
-              }}
+              className={BACK_LINK}
             >
               ← Back to over-shepherds
             </Link>
@@ -103,71 +85,23 @@ export default async function AdminOverShepherdEditPage({
         lede="Admin-only over-shepherd record. These details never appear on leader or member surfaces."
       />
       <PageBody>
-        <div style={{ display: "grid", gap: 20 }}>
+        <div className="grid gap-5">
           <div>
             <Link
               href="/admin/shepherd-care/over-shepherds"
-              style={{
-                fontFamily: fontBody,
-                color: P.ink2,
-                fontSize: 13,
-                textDecoration: "underline",
-              }}
+              className={BACK_LINK}
             >
               ← Back to over-shepherds
             </Link>
           </div>
 
-          {detail.error ? (
-            <p
-              style={{
-                fontFamily: fontBody,
-                color: "#923220",
-                background: P.terraSoft,
-                padding: "10px 14px",
-                borderRadius: 8,
-                margin: 0,
-              }}
-            >
-              {detail.error}
-            </p>
-          ) : null}
+          {detail.error ? <p className={ERROR_BANNER}>{detail.error}</p> : null}
 
-          <section style={cardStyle} aria-label="Edit over-shepherd">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Edit over-shepherd
-            </h2>
+          <section className={CARD} aria-label="Edit over-shepherd">
+            <h2 className={CARD_HEADING}>Edit over-shepherd</h2>
             <OverShepherdEditForm overShepherd={detail.overShepherd} />
-            <div
-              style={{
-                marginTop: 16,
-                paddingTop: 14,
-                borderTop: `1px solid ${P.line}`,
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  margin: 0,
-                  maxWidth: 420,
-                  lineHeight: 1.45,
-                }}
-              >
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3.5">
+              <p className="m-0 max-w-[420px] font-sans text-sm leading-normal text-ink2">
                 {detail.overShepherd.active
                   ? "Archiving removes them from the active list and ends their current coverage, moving those leaders to Unassigned. History is kept; restore any time (coverage is not restored)."
                   : "This over-shepherd is archived. Restore to make them selectable for coverage again."}
@@ -181,56 +115,22 @@ export default async function AdminOverShepherdEditPage({
             </div>
           </section>
 
-          <section style={cardStyle} aria-label="Currently covers">
-            <h2
-              style={{
-                fontFamily: fontSans,
-                fontSize: 14,
-                letterSpacing: 0.6,
-                margin: "0 0 12px",
-                color: P.ink,
-              }}
-            >
-              Currently covers
-            </h2>
+          <section className={CARD} aria-label="Currently covers">
+            <h2 className={CARD_HEADING}>Currently covers</h2>
             {detail.coveredShepherds.length === 0 ? (
-              <p
-                style={{
-                  fontFamily: fontBody,
-                  fontSize: 13,
-                  color: P.ink2,
-                  margin: 0,
-                }}
-              >
+              <p className="m-0 font-sans text-sm text-ink2">
                 No active coverage assignments.
               </p>
             ) : (
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "grid",
-                  gap: 6,
-                }}
-              >
+              <ul className="m-0 grid list-none gap-1.5 p-0">
                 {detail.coveredShepherds.map((entry) => (
                   <li
                     key={entry.assignment.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 10,
-                    }}
+                    className="flex min-h-11 items-center justify-between gap-2.5"
                   >
                     <Link
                       href={`/admin/shepherd-care/${entry.shepherd.id}`}
-                      style={{
-                        fontFamily: fontBody,
-                        color: P.ink,
-                        textDecoration: "underline",
-                      }}
+                      className="font-sans text-base text-ink underline hover:text-ink2"
                     >
                       {entry.shepherd.full_name}
                     </Link>

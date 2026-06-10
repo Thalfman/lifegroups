@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import type {
   CareAttentionItem,
   CareAttentionReason,
@@ -18,84 +17,22 @@ const REASON_LABEL: Record<CareAttentionReason, string> = {
   needs_encouragement_status: "Needs encouragement",
 };
 
-const REASON_TONE: Record<
-  CareAttentionReason,
-  { bg: string; fg: string; border: string }
-> = {
-  overdue_touchpoint: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  overdue_care_follow_up: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  concern_status: { bg: "#f6d6cd", fg: "#7a1d10", border: "#dc9c8a" },
-  needs_follow_up_status: { bg: P.terraSoft, fg: "#923220", border: "#e4b9a8" },
-  no_contact_yet: {
-    bg: P.mustardSoft,
-    fg: P.mustardTextStrong,
-    border: "#efdfa3",
-  },
-  stale_last_contact: {
-    bg: P.mustardSoft,
-    fg: P.mustardTextStrong,
-    border: "#efdfa3",
-  },
-  no_over_shepherd: { bg: P.bgDeep, fg: P.ink2, border: P.line2 },
-  needs_encouragement_status: {
-    bg: "#fff5d9",
-    fg: "#6a4d11",
-    border: "#efdfa3",
-  },
-};
-
-const PRIMARY_BADGE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "2px 10px",
-  borderRadius: 999,
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: 0.4,
-  textTransform: "uppercase",
-  fontFamily: fontSans,
-};
-
-const SECONDARY_CHIP: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  padding: "1px 8px",
-  borderRadius: 999,
-  fontSize: 10,
-  fontWeight: 500,
-  letterSpacing: 0.3,
-  textTransform: "uppercase",
-  fontFamily: fontSans,
-  background: P.bg,
-  color: P.ink3,
-  border: `1px solid ${P.line}`,
-};
-
-const ROW_LINK: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  padding: "12px 0",
-  borderBottom: `1px solid ${P.line2}`,
-  textDecoration: "none",
-  color: "inherit",
+// Attention reasons on the status vocabulary: overdue / needs-follow-up =
+// clay, concern = rose, watch-level staleness = amber, coverage gaps stay
+// neutral.
+const REASON_TONE: Record<CareAttentionReason, BadgeTone> = {
+  overdue_touchpoint: "clay",
+  overdue_care_follow_up: "clay",
+  concern_status: "rose",
+  needs_follow_up_status: "clay",
+  no_contact_yet: "amber",
+  stale_last_contact: "amber",
+  no_over_shepherd: "neutral",
+  needs_encouragement_status: "amber",
 };
 
 function ReasonBadge({ reason }: { reason: CareAttentionReason }) {
-  const tone = REASON_TONE[reason];
-  return (
-    <span
-      style={{
-        ...PRIMARY_BADGE,
-        background: tone.bg,
-        color: tone.fg,
-        border: `1px solid ${tone.border}`,
-      }}
-    >
-      {REASON_LABEL[reason]}
-    </span>
-  );
+  return <Badge tone={REASON_TONE[reason]}>{REASON_LABEL[reason]}</Badge>;
 }
 
 export function CareAttentionQueue({
@@ -129,44 +66,21 @@ export function CareAttentionQueue({
             <Link
               key={item.shepherdProfileId}
               href={item.href}
-              style={ROW_LINK}
+              className="flex min-h-11 items-start justify-between gap-3 border-b border-lineSoft py-3 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt"
             >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: P.ink,
-                    overflowWrap: "anywhere",
-                  }}
-                >
+              <div className="min-w-0 flex-1">
+                <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
                   {item.shepherdName}
                 </div>
-                <div
-                  style={{
-                    fontFamily: fontBody,
-                    fontSize: 12.5,
-                    color: P.ink2,
-                    marginTop: 2,
-                    fontStyle: "italic",
-                  }}
-                >
+                <div className="mt-0.5 font-sans text-sm italic text-ink2">
                   {item.detail}
                 </div>
                 {item.secondaryReasons.length > 0 ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      flexWrap: "wrap",
-                      marginTop: 6,
-                    }}
-                  >
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {item.secondaryReasons.map((r) => (
-                      <span key={r} style={SECONDARY_CHIP}>
+                      <Badge key={r} tone="ghost">
                         {REASON_LABEL[r]}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 ) : null}
@@ -175,16 +89,7 @@ export function CareAttentionQueue({
             </Link>
           ))}
           {remaining > 0 ? (
-            <div
-              style={{
-                fontFamily: fontBody,
-                fontSize: 12,
-                color: P.ink3,
-                marginTop: 10,
-                textAlign: "right",
-                fontStyle: "italic",
-              }}
-            >
+            <div className="mt-2.5 text-right font-sans text-sm italic text-ink3">
               {rosterFiltered
                 ? `+${remaining} more — switch the roster filter to All to see everyone`
                 : `+${remaining} more in the full roster below`}

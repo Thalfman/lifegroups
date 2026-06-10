@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CareFollowUpStatusControls } from "@/components/admin/shepherd-care/care-follow-up-status-controls";
 import { shepherdCareFollowUpStatusLabel } from "@/lib/dashboard/labels";
 import { formatIsoDate } from "@/lib/shared/date";
@@ -6,94 +6,23 @@ import {
   isFollowUpOverdue,
   sortFollowUpsByUrgency,
 } from "@/lib/admin/shepherd-care-follow-ups";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { ShepherdCareFollowUpsRow } from "@/types/database";
 
-const itemStyle: CSSProperties = {
-  padding: "14px 0",
-  borderBottom: `1px solid ${P.line2}`,
-};
-
-const titleStyle: CSSProperties = {
-  fontFamily: fontSans,
-  fontSize: 14,
-  fontWeight: 600,
-  color: P.ink,
-  margin: 0,
-  overflowWrap: "anywhere",
-};
-
-const metaRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  alignItems: "center",
-  flexWrap: "wrap",
-  marginTop: 6,
-};
-
-const badgeBase: CSSProperties = {
-  display: "inline-block",
-  padding: "2px 8px",
-  borderRadius: 999,
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: 0.4,
-  textTransform: "uppercase",
-  fontFamily: fontSans,
-};
-
-const dueStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 12.5,
-  color: P.ink2,
-};
-
-const notesStyle: CSSProperties = {
-  fontFamily: fontBody,
-  fontSize: 14,
-  color: P.ink,
-  margin: "8px 0 0",
-  whiteSpace: "pre-wrap",
-};
-
-const emptyStyle: CSSProperties = {
-  padding: "20px 0",
-  color: P.ink3,
-  fontFamily: fontBody,
-  fontSize: 13,
-};
-
+// Follow-up statuses on the status vocabulary: overdue = clay (needs
+// follow-up), done = sage, in progress = amber (watch), open = neutral.
 function statusBadgeTone(
   status: ShepherdCareFollowUpsRow["status"],
   overdue: boolean
-): CSSProperties {
-  if (overdue) {
-    return {
-      background: P.terraSoft,
-      color: "#923220",
-      border: "1px solid #e4b9a8",
-    };
-  }
+): BadgeTone {
+  if (overdue) return "clay";
   switch (status) {
     case "done":
-      return {
-        background: P.sageSoft,
-        color: "#3e4f29",
-        border: `1px solid ${P.line}`,
-      };
+      return "sage";
     case "in_progress":
-      return {
-        background: P.mustardSoft,
-        color: P.mustardTextStrong,
-        border: "1px solid #efdfa3",
-      };
+      return "amber";
     case "open":
     default:
-      return {
-        background: P.bgDeep,
-        color: P.ink2,
-        border: `1px solid ${P.line}`,
-      };
+      return "neutral";
   }
 }
 
@@ -107,7 +36,9 @@ export function CareFollowUpList({
   todayIso: string;
 }) {
   if (followUps.length === 0) {
-    return <div style={emptyStyle}>No follow-ups yet.</div>;
+    return (
+      <div className="py-5 font-sans text-sm text-ink3">No follow-ups yet.</div>
+    );
   }
   const ordered = sortFollowUpsByUrgency(followUps, todayIso);
   return (
@@ -115,34 +46,37 @@ export function CareFollowUpList({
       {ordered.map((row) => {
         const overdue = isFollowUpOverdue(row, todayIso);
         return (
-          <div key={row.id} role="listitem" style={itemStyle}>
-            <p style={titleStyle}>{row.title}</p>
-            <div style={metaRowStyle}>
-              <span
-                style={{
-                  ...badgeBase,
-                  ...statusBadgeTone(row.status, overdue),
-                }}
-              >
+          <div
+            key={row.id}
+            role="listitem"
+            className="border-b border-lineSoft py-3.5"
+          >
+            <p className="m-0 font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
+              {row.title}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+              <Badge tone={statusBadgeTone(row.status, overdue)}>
                 {overdue
                   ? "Overdue"
                   : shepherdCareFollowUpStatusLabel(row.status)}
-              </span>
-              <span style={dueStyle}>
+              </Badge>
+              <span className="font-sans text-sm text-ink2">
                 {row.due_date
                   ? `Due ${formatIsoDate(row.due_date)}`
                   : "No due date"}
               </span>
               {row.status === "done" && row.completed_at ? (
-                <span
-                  style={{ ...dueStyle, color: P.ink3, fontStyle: "italic" }}
-                >
+                <span className="font-sans text-sm italic text-ink3">
                   Done {formatIsoDate(row.completed_at.slice(0, 10))}
                 </span>
               ) : null}
             </div>
-            {row.notes ? <p style={notesStyle}>{row.notes}</p> : null}
-            <div style={{ marginTop: 10 }}>
+            {row.notes ? (
+              <p className="m-0 mt-2 whitespace-pre-wrap font-sans text-base text-ink">
+                {row.notes}
+              </p>
+            ) : null}
+            <div className="mt-2.5">
               <CareFollowUpStatusControls
                 followUpId={row.id}
                 followUpTitle={row.title}

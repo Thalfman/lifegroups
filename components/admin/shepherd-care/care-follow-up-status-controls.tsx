@@ -65,8 +65,8 @@ export function CareFollowUpStatusControls({
   const transitions = transitionsFor(status);
 
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-2">
         {transitions.map((t) => (
           <form key={t.status} action={formAction}>
             <input type="hidden" name="follow_up_id" value={followUpId} />

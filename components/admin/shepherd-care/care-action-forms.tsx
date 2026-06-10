@@ -6,12 +6,6 @@ import {
   adminLogShepherdCareInteraction,
   adminUpsertShepherdCareProfile,
 } from "@/app/(protected)/admin/shepherd-care/actions";
-import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  fieldSelectStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
 import { shepherdCareStatusLabel } from "@/lib/dashboard/labels";
 import {
   useActionForm,
@@ -39,6 +33,15 @@ const STATUSES: ShepherdCareStatus[] = [
   "concern",
   "inactive",
 ];
+
+// Form anatomy (design direction §4): tracked-uppercase survives on form field
+// labels only; inputs are full-width, line-bordered, surface-backed, with the
+// global focus ring.
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
+const FORM_NOTE = "m-0 mb-3 font-sans text-sm leading-normal text-ink2";
 
 // Local calendar day, so the date picker pre-fills the caller's natural
 // "today" without the one-day UTC drift `toISOString().slice(0,10)` causes west
@@ -118,7 +121,7 @@ export function LogTouchForm({
       ref={formRef}
       action={formAction}
       onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
       <input
         type="hidden"
@@ -126,12 +129,12 @@ export function LogTouchForm({
         value={shepherdProfileId}
       />
       <input type="hidden" name="interaction_type" value={interactionType} />
-      <p style={formNoteStyle}>
+      <p className={FORM_NOTE}>
         Record a {touchLabel} with this leader. Admin-only — it never appears on
         leader or member surfaces.
       </p>
       <div>
-        <label htmlFor="cta-interaction_at" style={fieldLabelStyle}>
+        <label htmlFor="cta-interaction_at" className={FIELD_LABEL}>
           Date
         </label>
         <input
@@ -141,11 +144,11 @@ export function LogTouchForm({
           required
           defaultValue={todayLocalIso()}
           max={todayLocalIso()}
-          style={fieldInputStyle}
+          className={FIELD_INPUT}
         />
       </div>
       <div>
-        <label htmlFor="cta-notes" style={fieldLabelStyle}>
+        <label htmlFor="cta-notes" className={FIELD_LABEL}>
           What happened (optional, max 2000 chars) — admin-only
         </label>
         <textarea
@@ -153,11 +156,11 @@ export function LogTouchForm({
           name="notes"
           rows={3}
           maxLength={2000}
-          style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+          className={`${FIELD_INPUT} min-h-20 resize-y`}
           placeholder="What did you talk about? What's the read?"
         />
       </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap gap-2.5">
         <PButton type="submit" tone="terra" size="md" disabled={pending}>
           {pending ? "Saving…" : `Log ${touchLabel}`}
         </PButton>
@@ -201,7 +204,7 @@ export function CareProfileFieldForm({
       ref={formRef}
       action={formAction}
       onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
       <input
         type="hidden"
@@ -212,18 +215,18 @@ export function CareProfileFieldForm({
       {field === "status" ? (
         <>
           <input type="hidden" name="set_current_status" value="true" />
-          <p style={formNoteStyle}>
+          <p className={FORM_NOTE}>
             How is this leader doing, from your pastoral view? Admin-only.
           </p>
           <div>
-            <label htmlFor="cta-current_status" style={fieldLabelStyle}>
+            <label htmlFor="cta-current_status" className={FIELD_LABEL}>
               Care status
             </label>
             <select
               id="cta-current_status"
               name="current_status"
               defaultValue={current?.current_status ?? "doing_well"}
-              style={fieldSelectStyle}
+              className={FIELD_INPUT}
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -238,11 +241,11 @@ export function CareProfileFieldForm({
       {field === "touchpoint" ? (
         <>
           <input type="hidden" name="set_next_touchpoint_due" value="true" />
-          <p style={formNoteStyle}>
+          <p className={FORM_NOTE}>
             When should you next reach out to this leader? Admin-only.
           </p>
           <div>
-            <label htmlFor="cta-next_touchpoint_due" style={fieldLabelStyle}>
+            <label htmlFor="cta-next_touchpoint_due" className={FIELD_LABEL}>
               Next step
             </label>
             {/* Required: this drawer always submits set_next_touchpoint_due, so
@@ -255,7 +258,7 @@ export function CareProfileFieldForm({
               type="date"
               required
               defaultValue={current?.next_touchpoint_due ?? ""}
-              style={fieldInputStyle}
+              className={FIELD_INPUT}
             />
           </div>
         </>
@@ -264,12 +267,12 @@ export function CareProfileFieldForm({
       {field === "summary" ? (
         <>
           <input type="hidden" name="set_admin_summary" value="true" />
-          <p style={formNoteStyle}>
+          <p className={FORM_NOTE}>
             A high-level read on how this leader is doing. Admin-only — it never
             appears on leader or member surfaces.
           </p>
           <div>
-            <label htmlFor="cta-admin_summary" style={fieldLabelStyle}>
+            <label htmlFor="cta-admin_summary" className={FIELD_LABEL}>
               Issue / current concern (max 2000 chars) — admin-only
             </label>
             <textarea
@@ -278,14 +281,14 @@ export function CareProfileFieldForm({
               rows={4}
               maxLength={2000}
               defaultValue={current?.admin_summary ?? ""}
-              style={{ ...fieldInputStyle, resize: "vertical", minHeight: 96 }}
+              className={`${FIELD_INPUT} min-h-24 resize-y`}
               placeholder="High-level read on how this leader is doing."
             />
           </div>
         </>
       ) : null}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <div className="flex flex-wrap gap-2.5">
         <PButton type="submit" tone="solid" size="md" disabled={pending}>
           {pending ? "Saving…" : "Save"}
         </PButton>

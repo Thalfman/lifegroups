@@ -1,19 +1,10 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type { CareUpcomingTouchpoint } from "@/lib/admin/shepherd-care-dashboard";
 
-const ROW_LINK: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "baseline",
-  gap: 12,
-  padding: "10px 0",
-  borderBottom: `1px solid ${P.line2}`,
-  textDecoration: "none",
-  color: "inherit",
-};
+const ROW_LINK =
+  "flex min-h-11 items-baseline justify-between gap-3 border-b border-lineSoft py-2.5 text-inherit no-underline transition-colors duration-150 hover:bg-surfaceAlt";
 
 export function UpcomingTouchpointsCard({
   items,
@@ -35,41 +26,21 @@ export function UpcomingTouchpointsCard({
               <Link
                 key={item.shepherdProfileId}
                 href={item.href}
-                style={ROW_LINK}
+                className={ROW_LINK}
               >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: fontSans,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: P.ink,
-                      overflowWrap: "anywhere",
-                    }}
-                  >
+                <div className="min-w-0 flex-1">
+                  <div className="font-sans text-base font-semibold text-ink [overflow-wrap:anywhere]">
                     {item.shepherdName}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: fontBody,
-                      fontSize: 12,
-                      color: P.ink3,
-                      marginTop: 2,
-                    }}
-                  >
+                  <div className="mt-0.5 font-sans text-sm text-ink3">
                     Due {item.dueOn}
                   </div>
                 </div>
                 <div
-                  style={{
-                    fontFamily: fontSans,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    letterSpacing: 0.4,
-                    textTransform: "uppercase",
-                    color: overdue ? "#923220" : P.ink2,
-                    whiteSpace: "nowrap",
-                  }}
+                  className={cn(
+                    "whitespace-nowrap font-sans text-xs font-semibold",
+                    overdue ? "text-clayDeep" : "text-ink2"
+                  )}
                 >
                   {item.relativeLabel}
                 </div>

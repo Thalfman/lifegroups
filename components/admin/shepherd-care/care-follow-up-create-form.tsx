@@ -4,15 +4,17 @@ import { useEffect } from "react";
 import { PButton } from "@/components/pastoral/button";
 import { adminCreateShepherdCareFollowUp } from "@/app/(protected)/admin/shepherd-care/actions";
 import {
-  fieldInputStyle,
-  fieldLabelStyle,
-  formGridStyle,
-  formNoteStyle,
-} from "@/components/admin/forms/field-styles";
-import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+
+// Form anatomy (design direction §4): uppercase survives on field labels only;
+// inputs are full-width, line-bordered, surface-backed (global focus ring).
+const FIELD_LABEL =
+  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+const FIELD_INPUT =
+  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
+const FORM_NOTE = "m-0 mb-3 font-sans text-sm leading-normal text-ink2";
 
 // Creates a care follow-up against an existing care profile. The care
 // profile id and the shepherd profile id are passed as hidden fields — the
@@ -60,7 +62,7 @@ export function CareFollowUpCreateForm({
       ref={formRef}
       action={formAction}
       onChange={onDirty}
-      style={{ display: "grid", gap: 12 }}
+      className="grid gap-3"
     >
       <input type="hidden" name="care_profile_id" value={careProfileId} />
       <input
@@ -68,14 +70,14 @@ export function CareFollowUpCreateForm({
         name="shepherd_profile_id"
         value={shepherdProfileId}
       />
-      <p style={formNoteStyle}>
+      <p className={FORM_NOTE}>
         Capture the concrete next step you owe this leader. Title is required; a
         due date and notes are optional. New follow-ups start as open.
         Admin-only — these never appear on leader or member surfaces.
       </p>
-      <div className="lg-m-grid-stack" style={formGridStyle}>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="cfu-title" style={fieldLabelStyle}>
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] md:gap-3.5">
+        <div className="col-span-full">
+          <label htmlFor="cfu-title" className={FIELD_LABEL}>
             Title
           </label>
           <input
@@ -84,23 +86,23 @@ export function CareFollowUpCreateForm({
             type="text"
             required
             maxLength={200}
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
             placeholder="Check in next week about their discouragement"
           />
         </div>
         <div>
-          <label htmlFor="cfu-due_date" style={fieldLabelStyle}>
+          <label htmlFor="cfu-due_date" className={FIELD_LABEL}>
             Due date (optional)
           </label>
           <input
             id="cfu-due_date"
             name="due_date"
             type="date"
-            style={fieldInputStyle}
+            className={FIELD_INPUT}
           />
         </div>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <label htmlFor="cfu-notes" style={fieldLabelStyle}>
+        <div className="col-span-full">
+          <label htmlFor="cfu-notes" className={FIELD_LABEL}>
             Notes (optional, max 2000 chars) — admin-only
           </label>
           <textarea
@@ -108,11 +110,11 @@ export function CareFollowUpCreateForm({
             name="notes"
             rows={3}
             maxLength={2000}
-            style={{ ...fieldInputStyle, resize: "vertical", minHeight: 80 }}
+            className={`${FIELD_INPUT} min-h-20 resize-y`}
             placeholder="What exactly needs to happen?"
           />
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-2.5">
           <PButton type="submit" tone="terra" size="md" disabled={pending}>
             {pending ? "Saving…" : "Add follow-up"}
           </PButton>

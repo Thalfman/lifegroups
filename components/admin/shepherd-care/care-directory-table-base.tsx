@@ -1,6 +1,5 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
-import { P, fontBody, fontSans } from "@/lib/pastoral";
+import type { ReactNode } from "react";
 import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
 import { ShepherdCareStatusBadge } from "./status-badge";
@@ -12,39 +11,9 @@ import { ShepherdCareStatusBadge } from "./status-badge";
 // and an optional extra column differ. Those are passed as props so the markup
 // + styles live in one place.
 
-const tableStyle: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontFamily: fontBody,
-  fontSize: 13,
-  color: P.ink,
-};
-
-const thStyle: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 12px",
-  fontFamily: fontSans,
-  fontSize: 11,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-  color: P.ink3,
-  fontWeight: 600,
-  borderBottom: `1px solid ${P.line}`,
-  background: P.bgDeep,
-};
-
-const tdStyle: CSSProperties = {
-  padding: "12px 12px",
-  borderBottom: `1px solid ${P.line2}`,
-  verticalAlign: "middle",
-};
-
-const emptyStyle: CSSProperties = {
-  padding: "32px 12px",
-  textAlign: "center",
-  color: P.ink3,
-  fontSize: 13,
-};
+const TH =
+  "border-b border-line bg-sidebar px-3 py-2.5 text-left font-sans text-xs font-medium text-ink3";
+const TD = "border-b border-lineSoft px-3 py-3 align-middle";
 
 // An optional column inserted after "Role" (e.g. the admin "Over-shepherd"
 // coverage column). The header is fixed text; render() produces each cell.
@@ -69,23 +38,24 @@ export function CareDirectoryTable({
   extraColumn?: CareDirectoryExtraColumn;
 }) {
   if (entries.length === 0) {
-    return <div style={emptyStyle}>{emptyText}</div>;
+    return (
+      <div className="px-3 py-8 text-center font-sans text-sm text-ink3">
+        {emptyText}
+      </div>
+    );
   }
   return (
-    <div
-      className="lg-m-table-wrap"
-      style={{ overflowX: "auto", border: `1px solid ${P.line}`, borderRadius: 10 }}
-    >
-      <table style={tableStyle}>
+    <div className="overflow-x-auto rounded-sm border border-line">
+      <table className="w-full border-collapse font-sans text-sm text-ink">
         <thead>
           <tr>
-            <th style={thStyle}>{firstColumnLabel}</th>
-            <th style={thStyle}>Role</th>
-            {extraColumn ? <th style={thStyle}>{extraColumn.header}</th> : null}
-            <th style={thStyle}>Status</th>
-            <th style={thStyle}>Last contact</th>
-            <th style={thStyle}>Next touchpoint</th>
-            <th style={thStyle}>Attention</th>
+            <th className={TH}>{firstColumnLabel}</th>
+            <th className={TH}>Role</th>
+            {extraColumn ? <th className={TH}>{extraColumn.header}</th> : null}
+            <th className={TH}>Status</th>
+            <th className={TH}>Last contact</th>
+            <th className={TH}>Next touchpoint</th>
+            <th className={TH}>Attention</th>
           </tr>
         </thead>
         <tbody>
@@ -94,56 +64,51 @@ export function CareDirectoryTable({
             const lastContact = entry.care?.last_contact_at ?? null;
             const nextTouchpoint = entry.care?.next_touchpoint_due ?? null;
             return (
-              <tr key={entry.profile.id}>
-                <td style={tdStyle}>
+              <tr
+                key={entry.profile.id}
+                className="transition-colors duration-150 hover:bg-surfaceAlt"
+              >
+                <td className={TD}>
                   <Link
                     href={hrefForEntry(entry)}
-                    style={{ color: P.ink, fontWeight: 600, textDecoration: "none" }}
+                    className="font-semibold text-ink no-underline hover:underline"
                   >
                     {entry.profile.full_name}
                   </Link>
-                  <div style={{ color: P.ink3, fontSize: 12 }}>
-                    {entry.profile.email}
-                  </div>
+                  <div className="text-xs text-ink3">{entry.profile.email}</div>
                 </td>
-                <td style={tdStyle}>
+                <td className={TD}>
                   {roleLabels[entry.profile.role] ?? entry.profile.role}
                 </td>
                 {extraColumn ? (
-                  <td style={tdStyle}>{extraColumn.render(entry)}</td>
+                  <td className={TD}>{extraColumn.render(entry)}</td>
                 ) : null}
-                <td style={tdStyle}>
+                <td className={TD}>
                   {entry.care ? (
                     <ShepherdCareStatusBadge status={status} />
                   ) : (
-                    <span style={{ color: P.ink3 }}>—</span>
+                    <span className="text-ink3">—</span>
                   )}
                 </td>
-                <td style={tdStyle}>
+                <td className={TD}>
                   {lastContact ? (
                     formatIsoDate(lastContact)
                   ) : (
-                    <span style={{ color: P.ink3 }}>Never</span>
+                    <span className="text-ink3">Never</span>
                   )}
                 </td>
-                <td style={tdStyle}>
+                <td className={TD}>
                   {nextTouchpoint ? formatIsoDate(nextTouchpoint) : "—"}
                 </td>
-                <td style={tdStyle}>
+                <td className={TD}>
                   {entry.needs_attention ? (
                     <span
                       title="Needs attention"
-                      style={{
-                        display: "inline-block",
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
-                        background: P.terra,
-                      }}
+                      className="inline-block h-2.5 w-2.5 rounded-pill bg-clay"
                       aria-label="Needs attention"
                     />
                   ) : (
-                    <span style={{ color: P.ink3 }}>—</span>
+                    <span className="text-ink3">—</span>
                   )}
                 </td>
               </tr>

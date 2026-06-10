@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
-import { P, fontSans } from "@/lib/pastoral";
+import { useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import {
   normalizeCareTabKey,
   type CanonicalCareTabKey,
@@ -61,20 +61,11 @@ export function CareShell({
   }
 
   return (
-    <div style={{ display: "grid", gap: 24 }}>
+    <div className="grid gap-6">
       <div
         role="tablist"
         aria-label="Care sections"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 4,
-          background: P.surface,
-          border: `1px solid ${P.line}`,
-          borderRadius: 999,
-          padding: 3,
-          alignSelf: "start",
-        }}
+        className="flex flex-wrap gap-1 self-start rounded-pill border border-line bg-surface p-[3px]"
       >
         {tabs.map((tab) => (
           <button
@@ -85,17 +76,15 @@ export function CareShell({
             aria-selected={active === tab.key}
             aria-controls={`care-panel-${tab.key}`}
             onClick={() => setActive(tab.key)}
-            style={tabItemStyle(active === tab.key)}
+            className={tabItemClassName(active === tab.key)}
           >
             {tab.label}
             {typeof tab.count === "number" ? (
               <span
-                style={{
-                  marginLeft: 7,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  opacity: active === tab.key ? 0.9 : 0.7,
-                }}
+                className={cn(
+                  "ml-2 text-xs font-bold",
+                  active === tab.key ? "opacity-90" : "opacity-70"
+                )}
               >
                 {tab.count}
               </span>
@@ -119,18 +108,11 @@ export function CareShell({
   );
 }
 
-function tabItemStyle(activeTab: boolean): CSSProperties {
-  return {
-    fontFamily: fontSans,
-    fontSize: 13,
-    fontWeight: activeTab ? 700 : 500,
-    color: activeTab ? P.surface : P.ink3,
-    background: activeTab ? P.terra : "transparent",
-    border: "none",
-    padding: "8px 14px",
-    cursor: "pointer",
-    borderRadius: 999,
-    display: "inline-flex",
-    alignItems: "center",
-  };
+function tabItemClassName(activeTab: boolean): string {
+  return cn(
+    "inline-flex cursor-pointer items-center rounded-pill border-none px-3.5 py-2 font-sans text-sm transition-colors duration-150",
+    activeTab
+      ? "bg-clay font-bold text-surface"
+      : "bg-transparent font-medium text-ink3 hover:bg-surfaceAlt"
+  );
 }
