@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
+import { cardClassName } from "@/components/lg/Card";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { requireLeader } from "@/lib/auth/session";
@@ -69,7 +71,7 @@ export default async function LeaderPage() {
 
 function GroupCard({ group }: { group: LeaderSafeGroupRow }) {
   return (
-    <section className="grid max-w-card gap-3 rounded-lg border border-line bg-surface p-card">
+    <section className={cn(cardClassName, "grid max-w-card gap-3")}>
       <div className="grid gap-1">
         <h2 className="m-0 font-display text-lg font-medium text-ink">
           {group.name}
