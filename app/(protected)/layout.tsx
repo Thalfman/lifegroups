@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
+import { namePendingRedirectTarget } from "@/lib/auth/name-pending";
 import { UsageBeacon } from "@/components/usage/usage-beacon";
 
 export default async function ProtectedLayout({
@@ -16,7 +17,12 @@ export default async function ProtectedLayout({
       redirect("/unauthorized");
     case "backend_error":
       redirect("/unauthorized?reason=unavailable");
-    case "authenticated":
+    case "authenticated": {
+      // Choose-your-name gate (ADR 0025): an invited person who hasn't picked
+      // their name yet (e.g. their email already had a login, so they never
+      // saw /reset-password) finishes that one step before using the app.
+      const nameGate = namePendingRedirectTarget(session);
+      if (nameGate) redirect(nameGate);
       // UsageBeacon records coarse area views for any authenticated user, but
       // only while the Super-Admin usage_tracking flag is on (the RPC self-
       // gates). Mounted here so it covers every protected surface — admin,
@@ -27,5 +33,6 @@ export default async function ProtectedLayout({
           {children}
         </>
       );
+    }
   }
 }

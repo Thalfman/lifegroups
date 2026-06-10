@@ -104,6 +104,7 @@ export function profile(
 ): ProfilesRow {
   return {
     auth_user_id: null,
+    full_name_pending: false,
     email: `${overrides.id}@example.test`,
     phone: null,
     role: "leader",

@@ -33,6 +33,7 @@ type ProfileFixture = {
   id: string;
   auth_user_id: string;
   full_name: string;
+  full_name_pending: boolean;
   email: string;
   phone: string | null;
   role:
@@ -59,6 +60,7 @@ const PROFILE_ADMIN: ProfileFixture = {
   id: PROFILE_ADMIN_ID,
   auth_user_id: AUTH_ADMIN_ID,
   full_name: "Admin A",
+  full_name_pending: false,
   email: "admin@example.com",
   phone: null,
   role: "ministry_admin",

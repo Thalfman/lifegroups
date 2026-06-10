@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
+import { namePendingRedirectTarget } from "@/lib/auth/name-pending";
 import { hubTilesForRole } from "@/lib/auth/hub-tiles";
 import { isAdminRole } from "@/lib/auth/roles";
 import { loadHiddenNavAreas } from "@/lib/nav/hidden-nav";
@@ -22,7 +23,11 @@ export default async function HomePage({
 }) {
   const session = await getCurrentSession();
   switch (session.kind) {
-    case "authenticated":
+    case "authenticated": {
+      // Choose-your-name gate (ADR 0025). The Home Hub sits outside the
+      // (protected) layout, so it carries its own copy of the redirect.
+      const nameGate = namePendingRedirectTarget(session);
+      if (nameGate) redirect(nameGate);
       if (session.profile.status === "active") {
         // The Home Hub replaces the straight-to-/admin redirect (#158): land
         // signed-in active users on a tier-adapted tile launcher instead of
@@ -77,6 +82,7 @@ export default async function HomePage({
         );
       }
       redirect("/unauthorized");
+    }
     case "profile_missing":
       redirect("/unauthorized");
     case "backend_error":

@@ -15,6 +15,10 @@ coverage, and launch-planning storage.
   values: `super_admin`, `ministry_admin`, `staff_viewer`, `leader`,
   `co_leader`. `member` is intentionally **not** present here — members
   are non-auth participant records (see `members` below).
+  `full_name_pending` (ADR 0025) is true while an invited person hasn't
+  chosen their own display name yet; `full_name` then holds a placeholder
+  (their email on fresh invites) until the self-service `set_own_full_name`
+  RPC clears it.
 - **groups**: life groups with both lifecycle and health dimensions.
 - **group_leaders**: links profiles to groups as leader/co-leader roles. The
   `active = true` rows drive Phase 4 leader scoping. The `role` column uses

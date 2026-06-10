@@ -14,7 +14,16 @@ const INITIAL_STATE: ResetPasswordState = {};
 const showToggleClassName =
   "absolute right-2.5 top-1/2 -translate-y-1/2 border-0 bg-transparent px-2 py-1.5 font-sans text-xs font-semibold text-ink3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({
+  namePending,
+  namePrefill,
+}: {
+  // Choose-your-name step (ADR 0025): when the profile's name is still
+  // pending, the person picks it here alongside their password. namePrefill
+  // carries an existing name (the relink case) to confirm or edit.
+  namePending: boolean;
+  namePrefill: string;
+}) {
   const [state, formAction, pending] = useActionState(
     resetPasswordAction,
     INITIAL_STATE
@@ -23,9 +32,28 @@ export function ResetPasswordForm() {
 
   return (
     <form action={formAction} className="grid gap-4">
+      {namePending ? (
+        <div>
+          <label htmlFor="full_name" className={fieldLabelClassName}>
+            Your name
+          </label>
+          <input
+            id="full_name"
+            name="full_name"
+            type="text"
+            autoComplete="name"
+            required
+            maxLength={200}
+            defaultValue={namePrefill}
+            disabled={pending}
+            className={`${fieldInputClassName} disabled:opacity-60`}
+          />
+        </div>
+      ) : null}
+
       <div>
         <label htmlFor="password" className={fieldLabelClassName}>
-          New password
+          {namePending ? "Password" : "New password"}
         </label>
         <div className="relative">
           <input
@@ -52,7 +80,7 @@ export function ResetPasswordForm() {
 
       <div>
         <label htmlFor="confirm" className={fieldLabelClassName}>
-          Confirm new password
+          {namePending ? "Confirm password" : "Confirm new password"}
         </label>
         <input
           id="confirm"
@@ -73,7 +101,7 @@ export function ResetPasswordForm() {
       ) : null}
 
       <PButton type="submit" tone="terra" disabled={pending} className="w-full">
-        {pending ? "Updating…" : "Update password"}
+        {pending ? "Saving…" : namePending ? "Finish setup" : "Update password"}
       </PButton>
     </form>
   );

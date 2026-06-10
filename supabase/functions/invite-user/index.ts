@@ -8,9 +8,10 @@
 //   1. Verify the caller's JWT (anon client) -> caller auth user id.
 //   2. Look up the caller's profile via the service-role client; require
 //      status='active' and role='super_admin'.
-//   3. Validate the payload (full_name, email, role, optional phone,
-//      optional group_id; group_id rejected for ministry_admin; optional
-//      delivery 'email' | 'link', default 'email').
+//   3. Validate the payload (email, role, optional phone, optional
+//      group_id; group_id rejected for ministry_admin; optional delivery
+//      'email' | 'link', default 'email'). No full_name: the invitee
+//      chooses their own name at account setup (ADR 0025).
 //   4. Resolve the Supabase Auth user by email; if missing, provision it:
 //      delivery='email' -> `auth.admin.inviteUserByEmail` sends a real
 //      invite email; delivery='link' -> `auth.admin.generateLink` returns
@@ -80,7 +81,6 @@ type GroupAssignmentState =
 type Delivery = "email" | "link";
 
 type InvitePayload = {
-  full_name: string;
   email: string;
   role: Role;
   phone: string | null;
@@ -297,9 +297,6 @@ function validatePayload(
   }
   const r = raw as Record<string, unknown>;
 
-  const fullName = typeof r.full_name === "string" ? r.full_name.trim() : "";
-  if (fullName.length === 0) errors.push("full_name is required");
-
   const emailRaw =
     typeof r.email === "string" ? r.email.trim().toLowerCase() : "";
   if (emailRaw.length === 0) errors.push("email is required");
@@ -362,7 +359,6 @@ function validatePayload(
   return {
     ok: true,
     value: {
-      full_name: fullName,
       email: emailRaw,
       role: role as Role,
       phone,
@@ -665,7 +661,6 @@ Deno.serve(async (req: Request) => {
         type: "invite",
         email: payload.email,
         options: {
-          data: { full_name: payload.full_name },
           redirectTo: resolvedRedirect,
         },
       });
@@ -694,7 +689,6 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await service.auth.admin.inviteUserByEmail(
         payload.email,
         {
-          data: { full_name: payload.full_name },
           redirectTo: resolvedRedirect,
         }
       );
@@ -751,12 +745,13 @@ Deno.serve(async (req: Request) => {
   await padToFloor(startMs, INVITE_TIMING_FLOOR_MS);
 
   // Single atomic RPC: profile upsert + group_leaders + audit, one txn.
+  // No p_full_name (optional, ignored server-side): the invitee chooses
+  // their own name at account setup (ADR 0025).
   const { data: rpcData, error: rpcErr } = await service.rpc(
     "super_admin_complete_invite",
     {
       p_actor_profile_id: callerProfile.id,
       p_auth_user_id: authId,
-      p_full_name: payload.full_name,
       p_email: payload.email,
       p_role: payload.role,
       p_phone: payload.phone,

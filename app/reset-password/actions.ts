@@ -8,6 +8,9 @@ import {
   PW_SETUP_COOKIE,
   passwordSetupCookieClearOptions,
 } from "@/lib/auth/password-setup";
+import { readOwnNameState } from "@/lib/account/own-name";
+import { validateOwnFullName } from "@/lib/account/validation";
+import { rpcSetOwnFullName } from "@/lib/account/rpc";
 
 export type ResetPasswordState = { error?: string };
 
@@ -16,6 +19,7 @@ const MIN_PASSWORD_LENGTH = 8;
 // Generic copy mirrors the forgot-password posture: never echo Supabase's
 // auth error text to the browser. Real cause is in the structured log.
 const GENERIC_UPDATE_FAILED = "Couldn't update your password. Try again.";
+const GENERIC_NAME_FAILED = "Couldn't save your name. Try again.";
 
 export async function resetPasswordAction(
   _prev: ResetPasswordState,
@@ -59,6 +63,36 @@ export async function resetPasswordAction(
       error:
         "Your reset link has expired or was already used. Request a new one from Forgot password.",
     };
+  }
+
+  // Choose-your-name step (ADR 0025). Pendingness is re-derived server-side —
+  // never trusted from the client — and the name is saved BEFORE the password
+  // so a failed name write is fully retryable (the password is untouched;
+  // retrying a committed password change would hit GoTrue's same-password
+  // rejection). If the user stops after this write, the lg_pw_setup cookie
+  // still pins the session here, so nothing is stranded.
+  const nameState = await readOwnNameState(client, user.id);
+  if (nameState?.pending) {
+    const rawName = formData.get("full_name");
+    // A null field means the form rendered without the name input (the page's
+    // own name read degraded). Don't block password setup on it — the
+    // /welcome gate collects the name after sign-in instead.
+    if (rawName !== null) {
+      const v = validateOwnFullName(String(rawName));
+      if (!v.ok) {
+        ctx.finish("fail", {
+          error_code: "validation_failed",
+          reason: "full_name",
+        });
+        return { error: v.error };
+      }
+      const rpc = await rpcSetOwnFullName(client, { p_full_name: v.value });
+      // name_not_pending = a double submit already saved it; carry on.
+      if (rpc.error && !rpc.error.message.includes("name_not_pending")) {
+        ctx.finish("fail", { error_code: "set_own_full_name_failed" });
+        return { error: GENERIC_NAME_FAILED };
+      }
+    }
   }
 
   const { error } = await client.auth.updateUser({ password });

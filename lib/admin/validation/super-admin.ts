@@ -142,8 +142,9 @@ const INVITE_USER_ROLES: ReadonlySet<
   "ministry_admin" | "over_shepherd" | "leader" | "co_leader"
 > = new Set(["ministry_admin", "over_shepherd", "leader", "co_leader"]);
 
+// No full_name: the invitee chooses their own name at account setup
+// (ADR 0025); the inviter never types it.
 export type InviteUserPayload = {
-  full_name: string;
   email: string; // canonicalized lowercase
   role: "ministry_admin" | "over_shepherd" | "leader" | "co_leader";
   phone?: string;
@@ -157,14 +158,12 @@ export function validateInviteUserPayload(
   if (!isRecord(input))
     return { ok: false, errors: ["payload must be an object"] };
 
-  const fullName = trimString(input.full_name) ?? "";
   const emailRaw = trimString(input.email) ?? "";
   const email = emailRaw.toLowerCase();
   const phone = readOptionalString(input.phone);
   const groupIdRaw = readOptionalString(input.group_id);
   const role = typeof input.role === "string" ? input.role : "";
 
-  if (fullName.length === 0) errors.push("Full name is required.");
   if (email.length === 0) errors.push("Email is required.");
   else if (!isEmail(email)) errors.push("Email must be a valid address.");
   if (!INVITE_USER_ROLES.has(role as InviteUserPayload["role"])) {
@@ -192,7 +191,6 @@ export function validateInviteUserPayload(
   if (errors.length > 0) return { ok: false, errors };
 
   const value: InviteUserPayload = {
-    full_name: fullName,
     email,
     role: role as InviteUserPayload["role"],
   };

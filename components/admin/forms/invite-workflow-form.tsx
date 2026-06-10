@@ -26,10 +26,12 @@ import {
 import { useActionForm, FormStatus } from "./action-form";
 
 // One invite workflow with a delivery choice (#460). Merges the old
-// InviteUserForm (email invite + named-person "Copy invite link") and
-// InviteLinkForm (anonymous shareable link) into a single card so role and
-// group are picked once. The three server actions are reused unchanged:
-//   - "Send invite"    → superAdminInviteUser (named person, invite email)
+// InviteUserForm (email invite + "Copy invite link") and InviteLinkForm
+// (anonymous shareable link) into a single card so role and group are picked
+// once. The invitee chooses their own name in every path (ADR 0025) — the
+// email path collects it at the password-setup screen, the shareable link at
+// self-signup. The three server actions:
+//   - "Send invite"    → superAdminInviteUser (known email, invite email)
 //   - "Copy invite link" → superAdminGenerateInviteLink (same audited profile
 //     write as the email path, but returns a copyable setup link instead)
 //   - "Generate link"  → superAdminCreateInviteLink (anonymous shareable link;
@@ -55,8 +57,9 @@ const DELIVERY_OPTIONS: { value: Delivery; label: string }[] = [
 
 const DELIVERY_HINTS: Record<Delivery, string> = {
   email:
-    "Invite a named person: this creates their login invite and linked " +
-    "profile in one audited workflow and emails them a setup link.",
+    "Invite someone by email: this creates their login invite and linked " +
+    "profile in one audited workflow and emails them a setup link. They " +
+    "choose their own name when they set their password.",
   link:
     "Generate a link to share directly — no email or name needed. The " +
     "person you invite opens it and sets up their own login (name, email, " +
@@ -291,10 +294,10 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           Invite someone
         </h3>
         <p className={HINT_TEXT}>
-          Email a named person their login setup link, or generate a shareable
-          link they redeem themselves — one audited workflow either way. The
-          owner role is set up separately and can’t be selected here. Group
-          assignment is for leaders and co-leaders only.
+          Email someone their login setup link, or generate a shareable link
+          they redeem themselves — one audited workflow either way, and they
+          choose their own name. The owner role is set up separately and can’t
+          be selected here. Group assignment is for leaders and co-leaders only.
         </p>
       </div>
 
@@ -332,22 +335,6 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
           <div className={TWO_COL_ROW}>
             <div>
               <label
-                htmlFor="invite-workflow-full-name"
-                className={fieldLabelClassName}
-              >
-                Full name
-              </label>
-              <input
-                id="invite-workflow-full-name"
-                name="full_name"
-                type="text"
-                required
-                autoComplete="off"
-                className={cn(fieldInputClassName, "lg-m-input")}
-              />
-            </div>
-            <div>
-              <label
                 htmlFor="invite-workflow-email"
                 className={fieldLabelClassName}
               >
@@ -362,9 +349,6 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
-          </div>
-
-          <div className={TWO_COL_ROW}>
             <div>
               <label
                 htmlFor="invite-workflow-phone"
@@ -380,10 +364,12 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
                 className={cn(fieldInputClassName, "lg-m-input")}
               />
             </div>
-            {roleField}
           </div>
 
-          {groupField}
+          <div className={TWO_COL_ROW}>
+            {roleField}
+            {groupField}
+          </div>
 
           <p className={FINEPRINT}>
             Both buttons create or link a real login profile. “Send invite”
@@ -427,7 +413,8 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
             <div className="grid gap-1.5">
               <span className={successTextClassName}>
                 Invite link generated and copied to your clipboard. Share it
-                directly — using it sets the person&apos;s password.
+                directly — using it, the person chooses their name and sets
+                their password.
               </span>
               <div className="flex items-center gap-2">
                 <input
@@ -458,8 +445,8 @@ export function InviteWorkflowForm({ groups }: { groups: GroupOption[] }) {
             <div className="grid gap-1.5">
               <p className={successTextClassName}>
                 Invite created for {state.value.email}. They can follow the
-                invite email to set their password, or use Forgot password if
-                the link expires.
+                invite email to choose their name and set their password, or use
+                Forgot password if the link expires.
               </p>
               <p className={FINEPRINT}>
                 {AUTH_USER_LABELS[state.value.authUserState]};{" "}
