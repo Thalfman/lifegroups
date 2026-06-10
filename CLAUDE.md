@@ -165,12 +165,16 @@ For codebase-architecture questions, prefer `graphify query "<question>"` over
 raw file searching. The graph keeps itself updated:
 
 - the pre-commit hook runs `graphify update .` (AST-only, no API key) and
-  stages the refreshed graph into the same commit;
+  stages the refreshed graph into the same commit (skipped on partial commits
+  with unstaged changes);
 - a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
-  installs the CLI if needed and refreshes the graph in the background.
+  installs the CLI if needed (version pinned there — bump deliberately),
+  registers the `graph.json` merge driver, and refreshes the graph in the
+  background.
 
-Manual refresh: `graphify update .`. `graphify-out/cache/` and
-`graphify-out/manifest.json` are machine-local and gitignored; don't commit
+Manual refresh: `graphify update .`. If a `graph.json` merge conflicts on a
+machine without graphify, take either side and regenerate. `graphify-out/cache/`
+and `graphify-out/manifest.json` are machine-local and gitignored; don't commit
 them. Community names are unlabeled placeholders until an LLM API key is
 available (`graphify label .`).
 

@@ -6,21 +6,28 @@
 # session. Log: graphify-out/.update.log (gitignored).
 cd "$(dirname "$0")/.." || exit 0
 
+# Pinned so an auto-run hook never pulls an unreviewed upstream release.
+# Bump deliberately (and re-verify the graph build) to take a new version.
+GRAPHIFY_VERSION="0.8.36"
+
 (
   export PATH="$HOME/.local/bin:$PATH"
 
   if ! command -v graphify >/dev/null 2>&1; then
     if command -v uv >/dev/null 2>&1; then
-      uv tool install graphifyy
+      uv tool install "graphifyy==$GRAPHIFY_VERSION"
     elif command -v pipx >/dev/null 2>&1; then
-      pipx install graphifyy
+      pipx install "graphifyy==$GRAPHIFY_VERSION"
     elif command -v python3 >/dev/null 2>&1; then
-      python3 -m pip install --user graphifyy
+      python3 -m pip install --user "graphifyy==$GRAPHIFY_VERSION"
     fi
   fi
 
-  if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
-    graphify update .
+  if command -v graphify >/dev/null 2>&1; then
+    # JSON-aware merge for graph.json (see .gitattributes); absolute path so
+    # merges work in shells where ~/.local/bin isn't on PATH.
+    git config merge.graphify.driver "$(command -v graphify) merge-driver %O %A %B"
+    [ -f graphify-out/graph.json ] && graphify update .
   fi
 ) >graphify-out/.update.log 2>&1 &
 

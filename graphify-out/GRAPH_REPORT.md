@@ -1,16 +1,16 @@
 # Graph Report - lifegroups  (2026-06-10)
 
 ## Corpus Check
-- 1225 files · ~1,190,090 words
+- 1225 files · ~1,190,179 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 9977 nodes · 21193 edges · 596 communities (532 shown, 64 thin omitted)
+- 9977 nodes · 21193 edges · 594 communities (531 shown, 63 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 157 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e95f8681`
+- Built from commit: `515a99cc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -582,7 +582,6 @@
 - [[_COMMUNITY_Community 572|Community 572]]
 - [[_COMMUNITY_Community 577|Community 577]]
 - [[_COMMUNITY_Community 578|Community 578]]
-- [[_COMMUNITY_Community 579|Community 579]]
 - [[_COMMUNITY_Community 580|Community 580]]
 - [[_COMMUNITY_Community 581|Community 581]]
 - [[_COMMUNITY_Community 582|Community 582]]
@@ -598,7 +597,6 @@
 - [[_COMMUNITY_Community 592|Community 592]]
 - [[_COMMUNITY_Community 593|Community 593]]
 - [[_COMMUNITY_Community 594|Community 594]]
-- [[_COMMUNITY_Community 595|Community 595]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `useActionForm()` - 141 edges
@@ -627,15 +625,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (596 total, 64 thin omitted)
+## Communities (594 total, 63 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.02
-Nodes (121): AdminAddPrivateNoteKeySlotArgs, AdminAssignShepherdToOverShepherdArgs, AdminCreateFollowUpArgs, AdminCreateGroupCalendarEventArgs, AdminCreateGuestArgs, AdminCreateLaunchPlanningScenarioArgs, AdminCreateOverShepherdArgs, AdminCreateShepherdCareFollowUpArgs (+113 more)
+Cohesion: 0.03
+Nodes (114): AdminAddPrivateNoteKeySlotArgs, AdminAssignShepherdToOverShepherdArgs, AdminCreateFollowUpArgs, AdminCreateGroupCalendarEventArgs, AdminCreateGuestArgs, AdminCreateLaunchPlanningScenarioArgs, AdminCreateOverShepherdArgs, AdminCreateShepherdCareFollowUpArgs (+106 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.06
-Nodes (50): rpcAdminArchiveMultiplicationCandidate(), rpcAdminCreateMultiplicationCandidate(), rpcAdminRecordChurchAttendanceSnapshot(), rpcAdminSetGroupCapacityTarget(), rpcAdminUpdateLaunchPlanningAssumptions(), rpcAdminUpdateMultiplicationCandidate(), adminCreateMultiplicationCandidate(), adminRecordChurchAttendanceSnapshot() (+42 more)
+Cohesion: 0.04
+Nodes (68): rpcAdminArchiveLaunchPlanningScenario(), rpcAdminArchiveMultiplicationCandidate(), rpcAdminCreateLaunchPlanningScenario(), rpcAdminCreateMultiplicationCandidate(), rpcAdminRecordChurchAttendanceSnapshot(), rpcAdminSetCurrentLaunchPlanningScenario(), rpcAdminSetGroupCapacityTarget(), rpcAdminUpdateLaunchPlanningAssumptions() (+60 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.06
@@ -667,15 +665,15 @@ Nodes (23): ab(), bytesToBase64Url(), CROCKFORD_DECODE, crockfordDecode(), crock
 
 ### Community 9 - "Community 9"
 Cohesion: 0.03
-Nodes (127): loadCheckInDetailData(), buildCalendarEventsByGroup(), expectedMeetingDateForWeek(), formatCheckInDueRelative(), pickCalendarOverrideForOccurrence(), addDaysIsoForWeek(), AttendanceCounts, buildCheckInDetailData() (+119 more)
+Nodes (126): loadCheckInDetailData(), buildCalendarEventsByGroup(), expectedMeetingDateForWeek(), formatCheckInDueRelative(), pickCalendarOverrideForOccurrence(), addDaysIsoForWeek(), AttendanceCounts, buildCheckInDetailData() (+118 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.12
 Nodes (24): addMinutesToChurchClock(), CalendarEventLite, CalendarOverride, CheckInDueInput, CheckInDueResult, CHURCH_DATE_PARTS_FMT, ChurchClockParts, churchWallClockMinutes() (+16 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.06
-Nodes (37): buildCareNoteFeed(), buildSealedSummary(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject() (+29 more)
+Cohesion: 0.08
+Nodes (24): buildCareNoteFeed(), buildSealedSummary(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject() (+16 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.05
@@ -739,11 +737,11 @@ Nodes (48): abortSvelteComponentInjection(), cancelEditing(), cancelEditingToPic
 
 ### Community 27 - "Community 27"
 Cohesion: 0.07
-Nodes (58): AdminMasterCalendarGrid(), AdminMasterCalendarShell(), loadMasterCalendar(), Params, Search, Params, Search, ArchivedRestoreButton() (+50 more)
+Nodes (60): AdminMasterCalendarShell(), loadMasterCalendar(), MasterCalendarData, weekdayIndexFromIso(), Params, Search, Params, Search (+52 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.07
-Nodes (50): attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines(), decodeGroupHealthRubric() (+42 more)
+Cohesion: 0.06
+Nodes (54): attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines(), decodeGroupHealthRubric() (+46 more)
 
 ### Community 29 - "Community 29"
 Cohesion: 0.06
@@ -782,8 +780,8 @@ Cohesion: 0.13
 Nodes (14): buildLaunchPlanningPanels(), CreateScenarioForm, eyebrowStyle, panelTitleStyle, PlanLaunchWidget(), PlanningShell(), PlanningTabKey, TABS (+6 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.03
-Nodes (74): ARCHIVE_EVENT_SPEC, CREATE_EVENT_SPEC, RESTORE_EVENT_SPEC, UPDATE_EVENT_SPEC, ActionInput, leaderArchiveCalendarEvent(), leaderCreateCalendarEvent(), leaderRestoreCalendarEvent() (+66 more)
+Cohesion: 0.04
+Nodes (67): ARCHIVE_EVENT_SPEC, CREATE_EVENT_SPEC, RESTORE_EVENT_SPEC, UPDATE_EVENT_SPEC, ActionInput, leaderArchiveCalendarEvent(), leaderCreateCalendarEvent(), leaderRestoreCalendarEvent() (+59 more)
 
 ### Community 39 - "Community 39"
 Cohesion: 0.07
@@ -791,7 +789,7 @@ Nodes (36): assembleLiveBrowserScript(), assertLiveBrowserScriptParts(), LIVE_BR
 
 ### Community 40 - "Community 40"
 Cohesion: 0.14
-Nodes (33): DrawerBody(), statusTone(), DayClickPayload, GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard(), statusTone() (+25 more)
+Nodes (34): DrawerBody(), statusTone(), AdminMasterCalendarGrid(), DayClickPayload, GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard() (+26 more)
 
 ### Community 41 - "Community 41"
 Cohesion: 0.04
@@ -826,8 +824,8 @@ Cohesion: 0.04
 Nodes (68): CareRecentInteraction, UpcomingEventsStrip(), HealthBadgeProps, healthToTone, LifecycleBadgeProps, lifecycleToBadge, mapHealthToBadge(), mapLifecycleToBadge() (+60 more)
 
 ### Community 49 - "Community 49"
-Cohesion: 0.05
-Nodes (39): AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), buildGuestsData(), EMPTY_GUESTS_DATA, GuestsReads (+31 more)
+Cohesion: 0.06
+Nodes (33): CareCadenceWindows, AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), buildGuestsData(), EMPTY_GUESTS_DATA (+25 more)
 
 ### Community 50 - "Community 50"
 Cohesion: 0.10
@@ -870,16 +868,16 @@ Cohesion: 0.11
 Nodes (24): CapacityRule, CellReadinessInputs, CellReadinessOverride, evaluateCellReadiness(), HealthRule, InterestRule, isLetter(), letterAtLeast() (+16 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.15
-Nodes (22): CareDashboardSummary, buildShepherdCareTriageLink(), buildShepherdCareViewHref(), CoverageFilter, DirectoryFilter, firstValue(), normalizeCareTabKey(), ParamValue (+14 more)
+Cohesion: 0.09
+Nodes (29): CareDashboardSummary, buildShepherdCareTriageLink(), buildShepherdCareViewHref(), CanonicalCareTabKey, CareTabKey, CoverageFilter, DirectoryFilter, firstValue() (+21 more)
 
 ### Community 61 - "Community 61"
 Cohesion: 0.05
 Nodes (39): Admin workflow, App Completion Roadmap: Life Groups Ministry Operations, Architecture Assessment, Audit trail, Auth / RLS, Best Next Prompt (Copy/Paste), Current App Map, Current state (5 bullets) (+31 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.08
-Nodes (31): checkBorders(), checkElementBorders(), checkElementBordersDOM(), checkElementItalicSerif(), checkElementItalicSerifDOM(), checkElementMotion(), checkElementMotionDOM(), checkElementOversizedH1() (+23 more)
+Cohesion: 0.07
+Nodes (38): checkBorders(), checkClippedOverflow(), checkElementBorders(), checkElementBordersDOM(), checkElementClippedOverflow(), checkElementClippedOverflowDOM(), checkElementItalicSerif(), checkElementItalicSerifDOM() (+30 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.09
@@ -895,7 +893,7 @@ Nodes (21): ComputedGroupGrade, GroupGradeBoard, ResolvedGroupGrade, resolveGrou
 
 ### Community 66 - "Community 66"
 Cohesion: 0.07
-Nodes (26): AdminCalendarLegend(), AdminMasterCalendarDrawer(), AdminMasterCalendarList(), ActiveChip, ALL_TYPE_OPTIONS, CalendarViewSnapshot, isCalendarViewSnapshot(), isPlanningViewKey() (+18 more)
+Nodes (23): AdminCalendarLegend(), AdminMasterCalendarDrawer(), AdminMasterCalendarList(), ActiveChip, ALL_TYPE_OPTIONS, CalendarViewSnapshot, isCalendarViewSnapshot(), isPlanningViewKey() (+15 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.10
@@ -950,8 +948,8 @@ Cohesion: 0.13
 Nodes (30): acceptCli(), argVal(), buildCarbonizeReplacement(), decodeHtmlAttr(), deindentContent(), detectCommentSyntax(), escapeRegExp(), expandReplaceRange() (+22 more)
 
 ### Community 80 - "Community 80"
-Cohesion: 0.13
-Nodes (16): LogoutButton(), requireLeader(), UserPill(), LeaderGroupCarePage(), NoteItem, Params, LeaderLayout(), LeaderPage() (+8 more)
+Cohesion: 0.08
+Nodes (30): rpcAdminCreateFollowUp(), rpcAdminUpdateFollowUpStatus(), adminCreateFollowUp(), adminUpdateFollowUpStatus(), CREATE_FOLLOW_UP_KEYS, CREATE_FOLLOW_UP_SPEC, REVALIDATE_PATHS, UPDATE_STATUS_KEYS (+22 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.09
@@ -994,8 +992,8 @@ Cohesion: 0.10
 Nodes (20): STATUS_BADGE_TONE, STATUS_STYLE, StatusTone, AdminNavGroup, Avatar(), AvatarTone, TONES, Icon() (+12 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.05
-Nodes (78): isAudienceCategory(), decodeReadinessRule(), validateRubric(), isUuid(), readUuidRpcData(), ACTIONS, GROUP_OVERRIDES_FORM, METRIC_DEFAULTS_FORM (+70 more)
+Cohesion: 0.04
+Nodes (89): isAudienceCategory(), decodeReadinessRule(), validateRubric(), GroupRpcArgs, rpcAdminCloseGroup(), rpcAdminCreateGroup(), rpcAdminReopenGroup(), rpcAdminUpdateGroup() (+81 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.11
@@ -1031,7 +1029,7 @@ Nodes (26): 0. Source, 1. Visual principles from the prototype, 2. Color, typogr
 
 ### Community 100 - "Community 100"
 Cohesion: 0.02
-Nodes (115): getFeatureFlagDefinition(), rpcAdminArchiveGroupCalendarEvent(), rpcAdminArchiveLaunchPlanningScenario(), rpcAdminCreateFollowUp(), rpcAdminCreateGroupCalendarEvent(), rpcAdminCreateGuest(), rpcAdminCreateLaunchPlanningScenario(), rpcAdminRestoreGroupCalendarEvent() (+107 more)
+Nodes (99): getFeatureFlagDefinition(), rpcAdminArchiveGroupCalendarEvent(), rpcAdminAssignShepherdToOverShepherd(), rpcAdminCreateGroupCalendarEvent(), rpcAdminEndShepherdCoverageAssignment(), rpcAdminRestoreGroupCalendarEvent(), rpcAdminSetLeaderRubricGrade(), rpcAdminUpdateGroupCalendarEvent() (+91 more)
 
 ### Community 101 - "Community 101"
 Cohesion: 0.08
@@ -1054,8 +1052,8 @@ Cohesion: 0.14
 Nodes (24): analyzeSourceHint(), buildCandidatesForOp(), buildContextHintsByRef(), collectSearchFiles(), countOps(), escapeRegExp(), findContextMatches(), findLiteralMatches() (+16 more)
 
 ### Community 106 - "Community 106"
-Cohesion: 0.18
-Nodes (17): AuthUser, getCurrentSession, isLeaderRowArray(), logGuardBackendError(), requireAdminSession(), requireLeaderActor(), requireOverShepherd(), requireOverShepherdOrAdminSession() (+9 more)
+Cohesion: 0.13
+Nodes (22): namePendingRedirectTarget(), AuthUser, getCurrentSession, isLeaderRowArray(), logGuardBackendError(), requireAdminSession(), requireLeaderActor(), requireOverShepherd() (+14 more)
 
 ### Community 107 - "Community 107"
 Cohesion: 0.14
@@ -1106,8 +1104,8 @@ Cohesion: 0.09
 Nodes (22): Assess Onboarding Needs, Context Over Ceremony, Contextual Help, Design Onboarding Experiences, Documentation & Help, Empty State Design, Feature Discovery & Adoption, Guided Tours & Walkthroughs (+14 more)
 
 ### Community 119 - "Community 119"
-Cohesion: 0.11
-Nodes (20): ADMIN, ALL, authoritativePolicy(), CARE_NOTE, LEADER, MATRIX, PRIVATE, RlsExpectation (+12 more)
+Cohesion: 0.09
+Nodes (22): ADMIN, ALL, authoritativePolicy(), CARE_NOTE, LEADER, MATRIX, PRIVATE, RlsExpectation (+14 more)
 
 ### Community 120 - "Community 120"
 Cohesion: 0.11
@@ -1158,8 +1156,8 @@ Cohesion: 0.10
 Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, For data-heavy interfaces, For functional UI, For performance-critical UI, For visual/marketing surfaces, Implement with Discipline, Interact with the device (+12 more)
 
 ### Community 132 - "Community 132"
-Cohesion: 0.11
-Nodes (17): combinedOpenFollowUpCount(), CareAttentionItem, buildNotesFeedData(), supabaseNotesFeedReads(), buildGroupNameByShepherdId(), CarePageView(), CareSearchParams, loadCareAccordionEnrichmentSafe() (+9 more)
+Cohesion: 0.10
+Nodes (25): combinedOpenFollowUpCount(), buildNotesFeedData(), EMPTY_NOTES_FEED, NotesFeedContext, NotesFeedData, NotesFeedReads, supabaseNotesFeedReads(), buildGroupNameByShepherdId() (+17 more)
 
 ### Community 133 - "Community 133"
 Cohesion: 0.23
@@ -1194,8 +1192,8 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+11 more)
 
 ### Community 142 - "Community 142"
-Cohesion: 0.07
-Nodes (32): GroupRpcArgs, rpcAdminCloseGroup(), rpcAdminCreateGroup(), rpcAdminReopenGroup(), rpcAdminUpdateGroup(), adminCreateGroup(), adminUpdateGroup(), CLOSE_GROUP_SPEC (+24 more)
+Cohesion: 0.15
+Nodes (15): rpcAdminCreateGuest(), rpcAdminUpdateGuestPipeline(), adminCreateGuest(), adminUpdateGuestPipeline(), CREATE_GUEST_KEYS, CREATE_GUEST_SPEC, REVALIDATE_PATHS, UPDATE_GUEST_KEYS (+7 more)
 
 ### Community 143 - "Community 143"
 Cohesion: 0.14
@@ -1246,8 +1244,8 @@ Cohesion: 0.11
 Nodes (17): Archived files, Docs Archive, Julian spine implementation specs (shipped), Old completion roadmaps (superseded), Old roadmap doc (superseded), One-shot design handoffs (shipped), Phase 5A.5–5A.7 — schedule intelligence and calendars (shipped), Phase 5A — admin people & group management (shipped) (+9 more)
 
 ### Community 155 - "Community 155"
-Cohesion: 0.12
-Nodes (17): checkClippedOverflow(), checkElementClippedOverflow(), checkElementClippedOverflowDOM(), checkRepeatedSectionKickers(), checkRepeatedSectionKickersDOM(), checkRepeatedSectionKickersFromDoc(), cleanInlineText(), clippingContainerIsIntentionalViewport() (+9 more)
+Cohesion: 0.25
+Nodes (8): checkRepeatedSectionKickers(), checkRepeatedSectionKickersDOM(), checkRepeatedSectionKickersFromDoc(), cleanInlineText(), collectRepeatedSectionKickerCandidates(), isRepeatedKickerCandidate(), isRepeatedKickerCardContext(), makeStaticStyle()
 
 ### Community 156 - "Community 156"
 Cohesion: 0.11
@@ -1299,7 +1297,7 @@ Nodes (16): Audit behavior, Auth user invite behavior, Data flow, Existing Auth 
 
 ### Community 168 - "Community 168"
 Cohesion: 0.05
-Nodes (46): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetScope, buildSurfaceBaselines(), EMPTY_ATTENTION_BASELINES, careCadenceWindowsFromDefaults(), CareCadenceWindows (+38 more)
+Nodes (45): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetScope, buildSurfaceBaselines(), EMPTY_ATTENTION_BASELINES, careCadenceWindowsFromDefaults(), buildCareData() (+37 more)
 
 ### Community 169 - "Community 169"
 Cohesion: 0.12
@@ -1374,8 +1372,8 @@ Cohesion: 0.20
 Nodes (15): blendRgba(), clampByte(), firstCssUrl(), getLayerValue(), loadVisualContrastImage(), parseObjectPosition(), parsePositionPair(), parsePositionToken() (+7 more)
 
 ### Community 187 - "Community 187"
-Cohesion: 0.16
-Nodes (15): browserFindingsFromMap(), checkCreamPalette(), checkHtmlPatterns(), checkPageQualityDOM(), checkPageQualityFromDoc(), checkTypography(), collectBrowserFindings(), collectBrowserFindingsAsync() (+7 more)
+Cohesion: 0.67
+Nodes (4): postSerializedFindings(), renderBrowserFindings(), scanResultMeta(), serializeFindings()
 
 ### Community 188 - "Community 188"
 Cohesion: 0.13
@@ -1402,8 +1400,8 @@ Cohesion: 0.13
 Nodes (14): Accessibility & Inclusion, Brand & Personality, Init Flow, Interview mode, not confirmation mode, Minimum viable interview, Register (ask first; it shapes everything below), Step 1: Load current state, Step 2: Explore the codebase (+6 more)
 
 ### Community 194 - "Community 194"
-Cohesion: 0.04
-Nodes (57): rpcAdminAssignShepherdToOverShepherd(), rpcAdminEndShepherdCoverageAssignment(), rpcSuperAdminCreateInvitation(), rpcSuperAdminLogPasswordReset(), rpcSuperAdminSetProfileStatus(), ASSIGNABLE_ROLES, AUTH_USER_LABELS, Delivery (+49 more)
+Cohesion: 0.08
+Nodes (32): rpcSuperAdminCreateInvitation(), ASSIGNABLE_ROLES, AUTH_USER_LABELS, Delivery, DELIVERY_HINTS, DELIVERY_OPTIONS, EXPIRY_OPTIONS, formatExpiry() (+24 more)
 
 ### Community 195 - "Community 195"
 Cohesion: 0.14
@@ -1426,8 +1424,8 @@ Cohesion: 0.14
 Nodes (13): Call-graph collapse, Candidate card, Cross-section (good for layered shallowness), Diagram patterns, Hand-built boxes-and-arrows (when Mermaid's layout fights you), Header, HTML Report Format, Mass diagram (good for "interface as wide as implementation") (+5 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.09
-Nodes (34): AppConfig, BUILT_IN_APP_CONFIG, decodeAppConfig(), decodeFeatureFlags(), isRecord(), readEditableCopy(), readFeatureFlags(), readJsonString() (+26 more)
+Cohesion: 0.05
+Nodes (54): AppConfig, BUILT_IN_APP_CONFIG, decodeAppConfig(), decodeFeatureFlags(), isRecord(), readEditableCopy(), readFeatureFlags(), readJsonString() (+46 more)
 
 ### Community 201 - "Community 201"
 Cohesion: 0.14
@@ -1450,8 +1448,8 @@ Cohesion: 0.04
 Nodes (71): ActivityResetSuccess, listResetStyle, pillListStyle, pillStyle, ServerAction, ActivityResetControl(), INITIAL_STATE, FormStatus() (+63 more)
 
 ### Community 206 - "Community 206"
-Cohesion: 0.14
-Nodes (13): parsePeopleImport(), PeopleImportResult, PersonImportRole, PersonImportRow, PersonImportRowError, RECOGNISED_COLUMNS, RecognisedColumn, splitCsvLine() (+5 more)
+Cohesion: 0.07
+Nodes (26): parsePeopleImport(), PeopleImportResult, PersonImportRole, PersonImportRow, PersonImportRowError, RECOGNISED_COLUMNS, RecognisedColumn, splitCsvLine() (+18 more)
 
 ### Community 207 - "Community 207"
 Cohesion: 0.15
@@ -1470,8 +1468,8 @@ Cohesion: 0.15
 Nodes (12): aliases, components, utils, rsc, $schema, style, tailwind, baseColor (+4 more)
 
 ### Community 211 - "Community 211"
-Cohesion: 0.23
-Nodes (13): checkElementQuality(), checkElementQualityDOM(), checkQuality(), colorsNearlyMatch(), cssColorAlpha(), cssColorIsTransparent(), getComputedStyleFor(), hasMeaningfulDirectText() (+5 more)
+Cohesion: 0.18
+Nodes (16): checkCreamPalette(), checkElementQuality(), checkElementQualityDOM(), checkQuality(), colorsNearlyMatch(), creamFromClassList(), cssColorAlpha(), cssColorIsTransparent() (+8 more)
 
 ### Community 212 - "Community 212"
 Cohesion: 0.15
@@ -1534,8 +1532,8 @@ Cohesion: 0.17
 Nodes (11): Accessibility Resilience, Assess Hardening Needs, Edge Cases & Boundary Conditions, Error Handling, Hardening Dimensions, Input Validation & Sanitization, Internationalization (i18n), Performance Resilience (+3 more)
 
 ### Community 227 - "Community 227"
-Cohesion: 0.20
-Nodes (10): namePendingRedirectTarget(), SessionResult, ProtectedLayout(), PROFILE, recordAreaView(), isUsageAreaSlug(), slugOrNull(), usageAreaForPathname() (+2 more)
+Cohesion: 0.33
+Nodes (4): CareAttentionItem, CareAttentionQueue(), REASON_LABEL, REASON_TONE
 
 ### Community 228 - "Community 228"
 Cohesion: 0.17
@@ -1678,8 +1676,8 @@ Cohesion: 0.15
 Nodes (11): ReadinessLetter, buildPartial(), ParentRule, TRIGGER_TYPE_LABEL, TriggerLevel, LETTERS, LetterSelect(), LevelAction (+3 more)
 
 ### Community 263 - "Community 263"
-Cohesion: 0.24
-Nodes (7): loginAction(), LoginFormState, INITIAL_STATE, LoginForm(), isSafeNextPath(), SignInScreen(), ProfileStatus
+Cohesion: 0.16
+Nodes (12): loginAction(), LoginFormState, INITIAL_STATE, LoginForm(), isSafeNextPath(), SignInScreen(), ProfileStatus, recordAreaView() (+4 more)
 
 ### Community 264 - "Community 264"
 Cohesion: 0.20
@@ -1746,8 +1744,8 @@ Cohesion: 0.22
 Nodes (9): 7. Planning, Actionable Changes, Calendar UI Direction, Found, Merge Into Planning, Planning Tab Definitions, Planning Tabs, Purpose (+1 more)
 
 ### Community 281 - "Community 281"
-Cohesion: 0.25
-Nodes (9): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), clearOverlays(), detachOverlay(), disconnectLazyVisualContrastObserver(), scheduleLazyVisualContrast(), shouldRunVisualContrast() (+1 more)
+Cohesion: 0.12
+Nodes (19): addBrowserFindings(), addVisualContrastFindings(), addVisualContrastResult(), browserFindingsFromMap(), checkElementOversizedH1(), checkElementOversizedH1DOM(), checkHtmlPatterns(), checkOversizedH1() (+11 more)
 
 ### Community 282 - "Community 282"
 Cohesion: 0.22
@@ -2554,7 +2552,7 @@ Cohesion: 0.50
 Nodes (3): File format, What is a fragment, Writing rhythm
 
 ### Community 489 - "Community 489"
-Cohesion: 0.50
+Cohesion: 0.67
 Nodes (3): adapt, argumentHint, description
 
 ### Community 490 - "Community 490"
@@ -2566,7 +2564,7 @@ Cohesion: 0.67
 Nodes (3): audit, argumentHint, description
 
 ### Community 492 - "Community 492"
-Cohesion: 0.67
+Cohesion: 0.50
 Nodes (3): bolder, argumentHint, description
 
 ### Community 493 - "Community 493"
@@ -2649,10 +2647,6 @@ Nodes (12): scripts, build, dev, lint, prepare, remove:test-auth, seed:test-auth
 Cohesion: 0.25
 Nodes (8): canReadNote(), LADDER_ROLES, NoteMeta, NoteViewer, TransparencyGrant, GRANT_OFF, GRANT_ON, NOTE
 
-### Community 579 - "Community 579"
-Cohesion: 0.24
-Nodes (6): CanonicalCareTabKey, CareTabKey, CareShell(), CareTab, tabItemClassName(), TABS
-
 ### Community 580 - "Community 580"
 Cohesion: 0.35
 Nodes (7): field(), markPasswordSetupPending(), POST(), seeOther(), isValidOtpType(), safeNext(), VALID_OTP_TYPES
@@ -2712,12 +2706,12 @@ Nodes (3): captureVisualContrastCandidate(), compareScreenshotContrast(), saniti
 ## Knowledge Gaps
 - **4083 isolated node(s):** `block-dangerous-git.sh script`, `description`, `argumentHint`, `description`, `argumentHint` (+4078 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **64 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **63 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `createSupabaseServerClient()` connect `Community 200` to `Community 3`, `Community 132`, `Community 263`, `Community 9`, `Community 14`, `Community 15`, `Community 22`, `Community 24`, `Community 27`, `Community 28`, `Community 29`, `Community 31`, `Community 288`, `Community 160`, `Community 35`, `Community 38`, `Community 168`, `Community 47`, `Community 49`, `Community 58`, `Community 64`, `Community 194`, `Community 68`, `Community 580`, `Community 587`, `Community 204`, `Community 206`, `Community 80`, `Community 86`, `Community 94`, `Community 227`, `Community 106`, `Community 110`, `Community 111`?**
+- **Why does `createSupabaseServerClient()` connect `Community 200` to `Community 3`, `Community 132`, `Community 263`, `Community 9`, `Community 14`, `Community 15`, `Community 22`, `Community 24`, `Community 27`, `Community 28`, `Community 29`, `Community 31`, `Community 288`, `Community 160`, `Community 35`, `Community 168`, `Community 47`, `Community 49`, `Community 58`, `Community 64`, `Community 194`, `Community 68`, `Community 580`, `Community 587`, `Community 204`, `Community 206`, `Community 80`, `Community 86`, `Community 94`, `Community 100`, `Community 106`, `Community 110`, `Community 111`?**
   _High betweenness centrality (0.015) - this node is a cross-community bridge._
 - **Why does `pickVariantContent()` connect `Community 45` to `Community 5`, `Community 69`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._

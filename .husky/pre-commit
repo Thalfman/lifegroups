@@ -3,8 +3,14 @@ npm run typecheck
 npm run test:run
 
 # Refresh the graphify knowledge graph and include it in this commit.
-# Skips silently when the CLI isn't installed; never blocks the commit.
+# Skips when the CLI isn't installed, and skips on partial commits (unstaged
+# tracked changes) so the committed graph never describes uncommitted work.
+# Never blocks the commit.
 if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
-  (graphify update . && git add graphify-out) ||
-    echo "[pre-commit] graphify update failed; committing without graph refresh"
+  if git diff --quiet -- . ':(exclude)graphify-out'; then
+    (graphify update . && git add graphify-out) ||
+      echo "[pre-commit] graphify update failed; committing without graph refresh"
+  else
+    echo "[pre-commit] unstaged changes present; skipping graph refresh"
+  fi
 fi
