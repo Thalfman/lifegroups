@@ -115,6 +115,12 @@ export default {
         drawer: "61",
         toast: "70",
       },
+      // Semantic width constraints: `card` for narrow standalone cards,
+      // `lede` for header/intro copy line length.
+      maxWidth: {
+        card: "560px",
+        lede: "640px",
+      },
       transitionDuration: {
         "250": "250ms",
       },

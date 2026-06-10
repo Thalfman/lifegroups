@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import type { CareItem, CareItemDueTone } from "@/lib/admin/care-area";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
@@ -16,8 +16,8 @@ import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-de
 // Due-date pill tones on the status vocabulary: overdue = clay (needs
 // follow-up), soon = amber (watch), neutral dates stay quiet.
 const DUE_TONE: Record<CareItemDueTone, BadgeTone> = {
-  overdue: "clay",
-  soon: "amber",
+  overdue: STATUS_TONES.followUp,
+  soon: STATUS_TONES.watch,
   neutral: "ghost",
 };
 

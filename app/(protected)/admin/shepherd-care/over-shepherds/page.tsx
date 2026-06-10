@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  cardClassName as CARD,
+  cardHeadingClassName as CARD_HEADING,
+} from "@/components/lg/Card";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdCreateForm } from "@/components/admin/shepherd-care/over-shepherd-create-form";
 import { OverShepherdList } from "@/components/admin/shepherd-care/over-shepherd-list";
@@ -13,9 +17,6 @@ import {
 } from "@/lib/supabase/read-models";
 
 export const dynamic = "force-dynamic";
-
-const CARD = "rounded-lg border border-line bg-surface p-card";
-const CARD_HEADING = "m-0 mb-3 font-display text-lg font-medium text-ink";
 
 async function loadOverShepherds(): Promise<{
   overShepherds: OverShepherdListRow[];

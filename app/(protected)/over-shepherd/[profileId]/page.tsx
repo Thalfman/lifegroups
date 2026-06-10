@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cardClassName as CARD } from "@/components/lg/Card";
 import Link from "next/link";
 import { LgAppShell } from "@/components/lg/shell/LgAppShell";
 import { PageHeader, PageBody } from "@/components/lg/PageHeader";
@@ -31,9 +32,6 @@ import { isUuid } from "@/lib/shared/uuid";
 import { formatIsoDateOr } from "@/lib/shared/date";
 
 export const dynamic = "force-dynamic";
-
-// Card anatomy per docs/design-direction.md §4: border, no shadow.
-const CARD = "rounded-lg border border-line bg-surface p-card";
 
 // Per-Shepherd care history for the Over-Shepherd surface — read-only, scoped
 // to a Shepherd the caller actively covers

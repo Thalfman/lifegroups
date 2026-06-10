@@ -94,8 +94,11 @@ export const fieldErrorStyle: CSSProperties = {
 // ---------------------------------------------------------------------------
 
 // Field label: tracked-uppercase survives in exactly this spot (12px, ink3).
-export const fieldLabelClassName =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+// The bare text variant exists for labels that aren't the block above an
+// input (e.g. a legend-like span inside a grid row).
+export const fieldLabelTextClassName =
+  "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
+export const fieldLabelClassName = `mb-1.5 block ${fieldLabelTextClassName}`;
 
 // Input / textarea: full width, 14px text, line border, rounded-sm, surface
 // bg; the focus ring comes from the global standard in globals.css, and the

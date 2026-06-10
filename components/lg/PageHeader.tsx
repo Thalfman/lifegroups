@@ -37,7 +37,7 @@ export function PageHeader({
             ) : null}
           </h1>
           {lede ? (
-            <p className="mb-0 mt-3 max-w-[640px] font-sans text-base text-ink2">
+            <p className="mb-0 mt-3 max-w-lede font-sans text-base text-ink2">
               {lede}
             </p>
           ) : null}

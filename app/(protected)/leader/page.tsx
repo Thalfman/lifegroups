@@ -69,7 +69,7 @@ export default async function LeaderPage() {
 
 function GroupCard({ group }: { group: LeaderSafeGroupRow }) {
   return (
-    <section className="grid max-w-[560px] gap-3 rounded-lg border border-line bg-surface p-card">
+    <section className="grid max-w-card gap-3 rounded-lg border border-line bg-surface p-card">
       <div className="grid gap-1">
         <h2 className="m-0 font-display text-lg font-medium text-ink">
           {group.name}
@@ -104,7 +104,7 @@ function EmptyState() {
   return (
     <div
       role="status"
-      className="max-w-[560px] rounded-lg border border-line bg-surface px-6 py-7"
+      className="max-w-card rounded-lg border border-line bg-surface px-6 py-7"
     >
       <p className="m-0 font-sans text-base text-ink2">
         You&rsquo;re signed in, but you&rsquo;re not assigned to lead a group

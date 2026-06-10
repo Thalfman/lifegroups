@@ -5,18 +5,28 @@ import type { DueFollowUp } from "@/lib/admin/prospect-next-step";
 import type { ProspectBoard as Board } from "@/lib/supabase/prospect-reads";
 import { ProspectCard } from "@/components/admin/plan/prospect-card";
 import type { PlanGroupOption } from "@/components/admin/plan/plan-data";
+import { badgeDotClassName, STATUS_TONES } from "@/components/ui/badge";
 
 // The four colour-coded funnel states (acceptance #2). Joined is sage but
 // rendered as a collapsed roll-up below the active columns (acceptance #4), so
 // only the three active states are live columns. Tone is carried by a leading
-// status dot and the count's figure colour (never a stripe): interested =
-// amber (watch), matched = blue (info), joined = sage (well),
-// not_at_this_time = clay (needs follow-up).
+// status dot and the count's figure colour (never a stripe), both keyed to the
+// shared status vocabulary: interested = watch, matched = info, joined = well,
+// not_at_this_time = needs follow-up.
 const STATE_TONES: Record<ProspectState, { dot: string; figure: string }> = {
-  interested: { dot: "bg-amber", figure: "text-amberText" },
-  matched: { dot: "bg-blue", figure: "text-blue" },
-  joined: { dot: "bg-sage", figure: "text-sageDeep" },
-  not_at_this_time: { dot: "bg-clay", figure: "text-clayDeep" },
+  interested: {
+    dot: badgeDotClassName(STATUS_TONES.watch),
+    figure: "text-amberText",
+  },
+  matched: { dot: badgeDotClassName(STATUS_TONES.info), figure: "text-blue" },
+  joined: {
+    dot: badgeDotClassName(STATUS_TONES.well),
+    figure: "text-sageDeep",
+  },
+  not_at_this_time: {
+    dot: badgeDotClassName(STATUS_TONES.followUp),
+    figure: "text-clayDeep",
+  },
 };
 
 export function ProspectBoardView({

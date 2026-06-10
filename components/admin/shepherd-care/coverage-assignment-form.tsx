@@ -9,15 +9,16 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import {
+  fieldInputClassName as FIELD_INPUT,
+  fieldLabelClassName as FIELD_LABEL,
+  formNoteClassName,
+} from "@/components/admin/forms/field-styles";
 import type { OverShepherdListRow } from "@/lib/supabase/read-models";
 
-// Form anatomy (design direction §4): uppercase survives on field labels only;
-// inputs are full-width, line-bordered, surface-backed (global focus ring).
-const FIELD_LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
-const FORM_NOTE = "m-0 mb-3 font-sans text-sm leading-normal text-ink2";
+// Form anatomy comes from the canonical field styles (design direction §4);
+// only the lede spacing below it is local.
+const FORM_NOTE = `${formNoteClassName} mb-3`;
 
 // `defaultValue` uses the caller's LOCAL calendar day for the same
 // rationale as care-action-forms.tsx — keep the picker on the

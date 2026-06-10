@@ -103,7 +103,7 @@ export function LeaderGroupCard({
             {heroEyebrow}
           </div>
           {submitted ? (
-            <span className="inline-flex items-center rounded-pill bg-white/20 px-2.5 py-0.5 font-sans text-xs font-medium">
+            <span className="inline-flex items-center rounded-pill bg-ink/25 px-2.5 py-0.5 font-sans text-xs font-medium">
               {sessionStatusLabel(currentWeek.status)}
             </span>
           ) : null}
@@ -122,7 +122,7 @@ export function LeaderGroupCard({
           </div>
         ) : null}
         {closed ? (
-          <div className="rounded-sm bg-white/10 px-3.5 py-2.5 font-sans text-sm italic opacity-85">
+          <div className="rounded-sm bg-ink/20 px-3.5 py-2.5 font-sans text-sm italic">
             This group is closed. Check-ins are turned off; ask an admin to
             reopen it if it should be active again.
           </div>

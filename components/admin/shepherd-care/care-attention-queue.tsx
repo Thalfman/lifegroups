@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { StatusCard, EmptyState } from "@/components/dashboard/cards";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
 import type {
   CareAttentionItem,
   CareAttentionReason,
@@ -21,14 +21,14 @@ const REASON_LABEL: Record<CareAttentionReason, string> = {
 // clay, concern = rose, watch-level staleness = amber, coverage gaps stay
 // neutral.
 const REASON_TONE: Record<CareAttentionReason, BadgeTone> = {
-  overdue_touchpoint: "clay",
-  overdue_care_follow_up: "clay",
-  concern_status: "rose",
-  needs_follow_up_status: "clay",
-  no_contact_yet: "amber",
-  stale_last_contact: "amber",
+  overdue_touchpoint: STATUS_TONES.followUp,
+  overdue_care_follow_up: STATUS_TONES.followUp,
+  concern_status: STATUS_TONES.concern,
+  needs_follow_up_status: STATUS_TONES.followUp,
+  no_contact_yet: STATUS_TONES.watch,
+  stale_last_contact: STATUS_TONES.watch,
   no_over_shepherd: "neutral",
-  needs_encouragement_status: "amber",
+  needs_encouragement_status: STATUS_TONES.watch,
 };
 
 function ReasonBadge({ reason }: { reason: CareAttentionReason }) {

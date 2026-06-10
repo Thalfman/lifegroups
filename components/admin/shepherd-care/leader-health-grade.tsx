@@ -16,6 +16,11 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import {
+  fieldInputClassName as FIELD_INPUT,
+  fieldLabelClassName as FIELD_LABEL,
+  fieldLabelTextClassName as FIELD_LABEL_TEXT,
+} from "@/components/admin/forms/field-styles";
 
 // Care Leader-Health Grade entry (#378 / ADR 0018, pivot slice 5). A leader's
 // per-criterion 0–100 scores roll up live to an A–F Leader-Health Grade (via the
@@ -32,13 +37,6 @@ import {
 const LETTERS: LeaderHealthLetter[] = ["A", "B", "C", "D", "F"];
 
 const NOTE = "m-0 font-sans text-sm leading-relaxed text-ink2";
-// Form field labels keep the tracked-uppercase voice (the one place it
-// survives); inputs are full-width, line-bordered, surface-backed.
-const FIELD_LABEL_TEXT =
-  "font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_LABEL = `mb-1.5 block ${FIELD_LABEL_TEXT}`;
-const FIELD_INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
 
 type ScoreRow = {
   key: string;

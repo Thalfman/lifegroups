@@ -11,6 +11,13 @@ import {
 } from "@/app/(protected)/admin/shepherd-care/actions";
 import { PButton } from "@/components/pastoral/button";
 import {
+  errorTextClassName,
+  fieldInputClassName as FIELD_INPUT,
+  fieldLabelClassName as FIELD_LABEL,
+  formNoteClassName,
+  successTextClassName,
+} from "@/components/admin/forms/field-styles";
+import {
   createPrivateNotesSession,
   passkeySlotsOf,
 } from "@/lib/admin/private-notes-session";
@@ -28,17 +35,12 @@ type Props = {
   initialSlots: PrivateNoteKeySlot[];
 };
 
-// Form anatomy (design direction §4): uppercase survives on field labels only;
-// inputs are full-width, line-bordered, surface-backed (global focus ring).
-const FIELD_LABEL =
-  "mb-1.5 block font-sans text-xs font-semibold uppercase tracking-wide text-ink3";
-const FIELD_INPUT =
-  "w-full rounded-sm border border-line bg-surface px-3 py-2.5 font-sans text-base leading-snug text-ink";
-const FORM_NOTE = "m-0 mb-3 font-sans text-sm leading-normal text-ink2";
-const ERROR_TEXT =
-  "m-0 mb-3 rounded-sm bg-claySoft px-3 py-2 font-sans text-sm text-clayDeep";
-const SUCCESS_TEXT =
-  "m-0 mb-3 rounded-sm bg-sageSoft px-3 py-2 font-sans text-sm text-sageDeep";
+// Form anatomy comes from the canonical field styles (design direction §4);
+// only the spacing under ledes/status lines is local to this stacked layout.
+// Status lines use the canonical voices (error in rose, success in sage).
+const FORM_NOTE = `${formNoteClassName} mb-3`;
+const ERROR_TEXT = `${errorTextClassName} mb-3`;
+const SUCCESS_TEXT = `${successTextClassName} mb-3`;
 
 const CODE =
   "select-all break-all rounded-sm border border-line bg-bg px-3.5 py-3 font-mono text-md tracking-wider text-ink";

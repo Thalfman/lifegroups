@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  cardClassName as CARD,
+  cardHeadingClassName as SECTION_HEADING,
+} from "@/components/lg/Card";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { CoverageAssignmentForm } from "@/components/admin/shepherd-care/coverage-assignment-form";
@@ -30,9 +34,6 @@ export const dynamic = "force-dynamic";
 // labels); values read at the body size.
 const LABEL = "mb-1 block font-sans text-xs font-medium text-ink3";
 const VALUE = "font-sans text-base text-ink";
-
-const CARD = "rounded-lg border border-line bg-surface p-card";
-const SECTION_HEADING = "m-0 mb-3 font-display text-lg font-medium text-ink";
 
 // Shown in place of a grade editor when its read failed — blocks editing so a
 // blank seed can't overwrite an existing grade (#377/#378 read-failure guard).

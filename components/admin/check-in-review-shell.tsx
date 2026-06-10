@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { PULSE_LABELS } from "@/components/admin/check-in-pulse";
 import { SectionHeader } from "@/components/layout/shell";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PBadge } from "@/components/pastoral/atoms";
 import { WeekSelector } from "@/components/admin/week-selector";
 import { buttonClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -68,13 +69,6 @@ function statusBadge(
       return <PBadge tone="neutral">{status}</PBadge>;
   }
 }
-
-const PULSE_LABELS: Record<LeaderPulseDisplay, { label: string; tone: PTone }> =
-  {
-    healthy: { label: "Healthy", tone: "healthy" },
-    watch: { label: "Watch", tone: "watch" },
-    needs_follow_up: { label: "Needs follow-up", tone: "followup" },
-  };
 
 function pulseBadge(pulse: LeaderPulseDisplay | null) {
   if (!pulse) return null;

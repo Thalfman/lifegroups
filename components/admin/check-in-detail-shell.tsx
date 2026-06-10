@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { PBadge, type PTone } from "@/components/pastoral/atoms";
+import { PULSE_LABELS } from "@/components/admin/check-in-pulse";
+import { PBadge } from "@/components/pastoral/atoms";
 import {
   formatMeetingDate,
   formatSubmittedAt,
@@ -7,7 +8,6 @@ import {
   lifecycleStatusLabel,
   type CheckInDetailData,
   type CheckInDetailMember,
-  type LeaderPulseDisplay,
   type SessionReviewStatus,
 } from "@/lib/admin/check-ins";
 
@@ -51,13 +51,6 @@ function statusBadge(status: SessionReviewStatus) {
       return <PBadge tone="neutral">{status}</PBadge>;
   }
 }
-
-const PULSE_LABELS: Record<LeaderPulseDisplay, { label: string; tone: PTone }> =
-  {
-    healthy: { label: "Healthy", tone: "healthy" },
-    watch: { label: "Watch", tone: "watch" },
-    needs_follow_up: { label: "Needs follow-up", tone: "followup" },
-  };
 
 function attendanceBadge(status: CheckInDetailMember["attendanceStatus"]) {
   if (status === "present") return <PBadge tone="healthy">Present</PBadge>;

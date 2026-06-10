@@ -56,7 +56,7 @@ export function DangerZoneConsole({
         <h2 className="m-0 font-display text-xl font-semibold text-ink">
           Danger Zone
         </h2>
-        <p className="m-0 max-w-[640px] font-sans text-sm text-ink2">
+        <p className="m-0 max-w-lede font-sans text-sm text-ink2">
           Guarded actions grouped by risk, lowest first. The cards below are
           launchers, not buttons — opening one only reveals its workflow.
           Nothing runs until you type that workflow&rsquo;s confirmation phrase,

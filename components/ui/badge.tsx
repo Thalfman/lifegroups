@@ -13,6 +13,17 @@ export type BadgeTone =
   | "blue"
   | "ghost";
 
+/** Meaning → tone, as one importable object. Surface-local status maps key
+ *  their domain enums off these names (e.g. `overdue: STATUS_TONES.followUp`)
+ *  so the meaning of each hue can't drift per surface. */
+export const STATUS_TONES = {
+  well: "sage",
+  watch: "amber",
+  followUp: "clay",
+  concern: "rose",
+  info: "blue",
+} as const satisfies Record<string, BadgeTone>;
+
 const TONES: Record<BadgeTone, string> = {
   neutral: "border border-line bg-surfaceAlt text-ink2",
   sage: "bg-sageSoft text-sageDeep",

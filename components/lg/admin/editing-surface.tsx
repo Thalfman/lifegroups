@@ -89,7 +89,7 @@ export function EditingSurface({
               opener.focus();
             }
           }}
-          className="fixed inset-y-0 right-0 z-drawer flex h-dvh w-full flex-col overflow-y-auto bg-bg shadow-softLg data-[state=open]:animate-[lg-drawer-in_200ms_ease-out] md:w-[min(460px,94vw)] md:border-l md:border-line"
+          className="fixed inset-y-0 right-0 z-drawer flex h-dvh w-full flex-col bg-bg shadow-softLg data-[state=open]:animate-[lg-drawer-in_200ms_ease-out] md:w-[min(460px,94vw)] md:border-l md:border-line"
         >
           <header className="relative grid gap-1.5 border-b border-line bg-surface px-5 py-[18px]">
             {eyebrow ? (
@@ -113,10 +113,12 @@ export function EditingSurface({
             </button>
           </header>
 
-          <div className="grid gap-4 px-5 py-[18px]">{children}</div>
+          <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-[18px]">
+            {children}
+          </div>
 
           {footer ? (
-            <footer className="sticky bottom-0 mt-auto flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
+            <footer className="flex flex-wrap justify-end gap-2.5 border-t border-line bg-surface px-5 py-3.5">
               {footer}
             </footer>
           ) : null}

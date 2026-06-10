@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
 
 // Shared presentational shell for the Danger Zone workflow cards (Super Admin
 // redesign).
@@ -73,10 +73,10 @@ const PILL_TONE: Record<
   DangerPillTone,
   { tone: BadgeTone; className?: string }
 > = {
-  ready: { tone: "sage" },
-  reversible: { tone: "sage" },
+  ready: { tone: STATUS_TONES.well },
+  reversible: { tone: STATUS_TONES.well },
   locked: { tone: "ghost", className: "bg-surface" },
-  confirm: { tone: "amber" },
+  confirm: { tone: STATUS_TONES.watch },
   info: { tone: "ghost", className: "bg-surface text-ink2" },
 };
 

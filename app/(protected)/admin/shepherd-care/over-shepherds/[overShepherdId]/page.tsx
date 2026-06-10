@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  cardClassName as CARD,
+  cardHeadingClassName as CARD_HEADING,
+} from "@/components/lg/Card";
 import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/lg/PageHeader";
 import { OverShepherdEditForm } from "@/components/admin/shepherd-care/over-shepherd-edit-form";
@@ -11,8 +15,6 @@ import { isUuid } from "@/lib/shared/uuid";
 
 export const dynamic = "force-dynamic";
 
-const CARD = "rounded-lg border border-line bg-surface p-card";
-const CARD_HEADING = "m-0 mb-3 font-display text-lg font-medium text-ink";
 const BACK_LINK = "font-sans text-sm text-ink2 underline hover:text-ink";
 const ERROR_BANNER =
   "m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-base text-clayDeep";

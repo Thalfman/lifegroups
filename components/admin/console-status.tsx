@@ -1,5 +1,5 @@
 import { Icon, type IconName } from "@/components/lg/Icon";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Badge, STATUS_TONES, type BadgeTone } from "@/components/ui/badge";
 import { P } from "@/lib/pastoral";
 
 // The console's shared risk/status vocabulary (#451). Every state pairs a
@@ -94,14 +94,17 @@ const STATUS_BADGE_TONE: Record<
   StatusTone,
   { tone: BadgeTone; className?: string }
 > = {
-  good: { tone: "sage" },
-  guarded: { tone: "sage", className: "border border-sage bg-surface" },
-  warning: { tone: "amber" },
-  blocked: { tone: "rose" },
+  good: { tone: STATUS_TONES.well },
+  guarded: {
+    tone: STATUS_TONES.well,
+    className: "border border-sage bg-surface",
+  },
+  warning: { tone: STATUS_TONES.watch },
+  blocked: { tone: STATUS_TONES.concern },
   disabled: { tone: "ghost" },
-  active: { tone: "sage" },
+  active: { tone: STATUS_TONES.well },
   planned: { tone: "ghost", className: "text-ink2" },
-  destructive: { tone: "rose", className: "bg-rose text-white" },
+  destructive: { tone: STATUS_TONES.concern, className: "bg-rose text-white" },
   readonly: { tone: "ghost", className: "text-ink2" },
 };
 
