@@ -180,17 +180,19 @@ land in `graphify-out/memory/` (tracked, committed) and are re-ingested into
 `graph.json` on the next update, so the graph grows smarter from what gets
 asked.
 
-npm scripts for the visual/diagnostic outputs (HTML artifacts are gitignored,
-local-only): `graph:tree` (collapsible D3 tree), `graph:flow` (Mermaid
-call-flow architecture), `graph:health` (multigraph diagnosis + token-reduction
-benchmark), `graph:rebuild` (force re-extraction after refactors that delete
-code).
+npm scripts for the visual/diagnostic outputs (the HTML visuals are committed
+and refreshed by the pre-commit hook; see
+[`docs/graphify-guide.md`](./docs/graphify-guide.md)): `graph:tree`
+(collapsible D3 tree), `graph:flow` (Mermaid call-flow architecture),
+`graph:health` (multigraph diagnosis + token-reduction benchmark),
+`graph:rebuild` (force re-extraction after refactors that delete code).
 
 The graph keeps itself updated:
 
 - the pre-commit hook runs `graphify update .` (AST-only, no API key) and
-  stages the refreshed graph into the same commit (skipped on partial commits
-  with unstaged changes);
+  stages the refreshed graph — and, when the graph changed, the regenerated
+  HTML visuals — into the same commit (skipped on partial commits with
+  unstaged changes);
 - a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
   installs the CLI if needed (pinned via `.graphify-version` — bump
   deliberately; both hooks refuse to write graph artifacts with any other

@@ -2,18 +2,28 @@ npx lint-staged
 npm run typecheck
 npm run test:run
 
-# Refresh the graphify knowledge graph and include it in this commit.
+# Refresh the graphify knowledge graph (and its committed HTML visuals) and
+# include them in this commit.
 # Skips when the CLI isn't installed or isn't the pinned version (so graph
 # artifacts stay reproducible), and skips on partial commits (unstaged
 # tracked changes) so the committed graph never describes uncommitted work.
-# Never blocks the commit.
+# GRAPHIFY_VIZ_NODE_LIMIT keeps graph.html emitting past the 5000-node
+# default; tree/callflow regenerate only when graph.json actually changed
+# because the callflow export isn't byte-stable (it would churn every
+# commit otherwise). Never blocks the commit.
 if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
   if [ "$(graphify --version 2>/dev/null | awk '{print $2}')" != "$(cat .graphify-version 2>/dev/null)" ]; then
     echo "[pre-commit] graphify on PATH is not the version in .graphify-version; skipping graph refresh"
   elif git diff --quiet -- . ':(exclude)graphify-out' &&
     [ -z "$(git ls-files --others --exclude-standard -- . ':(exclude)graphify-out')" ]; then
-    (graphify update . && git add graphify-out) ||
-      echo "[pre-commit] graphify update failed; committing without graph refresh"
+    (
+      GRAPHIFY_VIZ_NODE_LIMIT=10000 graphify update . &&
+        if ! git diff --quiet -- graphify-out/graph.json; then
+          graphify tree &&
+            graphify export callflow-html --output graphify-out/CALLFLOW.html
+        fi &&
+        git add graphify-out
+    ) || echo "[pre-commit] graphify update failed; committing without graph refresh"
   else
     echo "[pre-commit] unstaged or untracked files present; skipping graph refresh"
   fi
