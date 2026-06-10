@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PButton, PLinkButton } from "@/components/pastoral/button";
@@ -22,6 +22,9 @@ import {
   FormStatus,
 } from "@/components/admin/forms/action-form";
 import type { LeaderReadinessStage } from "@/types/enums";
+// Type-only: the data module itself is server-side, the import is erased at
+// build time.
+import type { PipelineMemberOption } from "@/components/admin/leader-pipeline/leader-pipeline-data";
 
 // Design-system form field classes (12px uppercase label → full-width input
 // with the global focus ring).
@@ -35,7 +38,13 @@ function StageBadge({ stage }: { stage: LeaderReadinessStage }) {
   return <Badge tone={ready ? "sage" : "neutral"}>{STAGE_LABEL[stage]}</Badge>;
 }
 
-function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
+function ApprenticeEditForm({
+  a,
+  memberOptions,
+}: {
+  a: ApprenticeView;
+  memberOptions: PipelineMemberOption[];
+}) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateApprentice
   );
@@ -44,14 +53,24 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
     formAction: archiveAction,
     pending: archivePending,
   } = useActionForm<{ id: string }>(adminArchiveApprentice);
+  // A linked member who is no longer among the group's active members (left
+  // the group, deactivated) must stay selectable — otherwise an unrelated save
+  // would post member_id="" and silently unlink them.
+  const staleLink =
+    a.memberId !== null && !memberOptions.some((m) => m.id === a.memberId)
+      ? [{ id: a.memberId, name: `${a.displayName} (current link)` }]
+      : [];
   return (
     <div className="mt-2.5 grid gap-2.5">
       <form action={formAction} className="grid gap-2.5">
         <input type="hidden" name="apprentice_id" value={a.id} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label className={LABEL}>Apprentice name</label>
+            <label htmlFor={`ap-edit-name-${a.id}`} className={LABEL}>
+              Apprentice name
+            </label>
             <input
+              id={`ap-edit-name-${a.id}`}
               name="display_name"
               type="text"
               maxLength={120}
@@ -60,8 +79,31 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
             />
           </div>
           <div>
-            <label className={LABEL}>Readiness stage</label>
+            <label htmlFor={`ap-edit-member-${a.id}`} className={LABEL}>
+              Group member
+            </label>
             <select
+              id={`ap-edit-member-${a.id}`}
+              name="member_id"
+              defaultValue={a.memberId ?? ""}
+              className={INPUT}
+            >
+              <option value="">No linked member</option>
+              {[...staleLink, ...memberOptions].map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
+          <div>
+            <label htmlFor={`ap-edit-stage-${a.id}`} className={LABEL}>
+              Readiness stage
+            </label>
+            <select
+              id={`ap-edit-stage-${a.id}`}
               name="readiness_stage"
               defaultValue={a.stage}
               className={INPUT}
@@ -73,27 +115,31 @@ function ApprenticeEditForm({ a }: { a: ApprenticeView }) {
               ))}
             </select>
           </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
           <div>
-            <label className={LABEL}>Expected ready by</label>
+            <label htmlFor={`ap-edit-date-${a.id}`} className={LABEL}>
+              Expected ready by
+            </label>
             <input
+              id={`ap-edit-date-${a.id}`}
               name="expected_ready_on"
               type="date"
               defaultValue={a.expectedReadyOn ?? ""}
               className={INPUT}
             />
           </div>
-          <div>
-            <label className={LABEL}>Notes</label>
-            <input
-              name="notes"
-              type="text"
-              maxLength={2000}
-              defaultValue={a.notes ?? ""}
-              className={INPUT}
-            />
-          </div>
+        </div>
+        <div>
+          <label htmlFor={`ap-edit-notes-${a.id}`} className={LABEL}>
+            Notes
+          </label>
+          <input
+            id={`ap-edit-notes-${a.id}`}
+            name="notes"
+            type="text"
+            maxLength={2000}
+            defaultValue={a.notes ?? ""}
+            className={INPUT}
+          />
         </div>
         <div className="flex items-center gap-2.5">
           <PButton type="submit" tone="terra" size="sm" disabled={pending}>
@@ -131,7 +177,13 @@ function AdvanceStageButton({ a }: { a: ApprenticeView }) {
   );
 }
 
-function ApprenticeRow({ a }: { a: ApprenticeView }) {
+function ApprenticeRow({
+  a,
+  memberOptions,
+}: {
+  a: ApprenticeView;
+  memberOptions: PipelineMemberOption[];
+}) {
   const [editing, setEditing] = useState(false);
   return (
     <div className="grid gap-2 rounded-sm border border-line px-3.5 py-3">
@@ -155,19 +207,39 @@ function ApprenticeRow({ a }: { a: ApprenticeView }) {
           {editing ? "Close" : "Edit"}
         </Button>
       </div>
-      {editing ? <ApprenticeEditForm a={a} /> : null}
+      {editing ? (
+        <ApprenticeEditForm a={a} memberOptions={memberOptions} />
+      ) : null}
     </div>
   );
 }
 
 function AddApprenticeForm({
   availableGroups,
+  memberOptionsByGroup,
 }: {
   availableGroups: { id: string; name: string }[];
+  memberOptionsByGroup: Record<string, PipelineMemberOption[]>;
 }) {
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminCreateApprentice
   );
+  // Group, member, and name are controlled: the chosen group filters the
+  // member dropdown, and picking a member fills the name — which stays
+  // editable, since a name-only apprentice (no members record yet) is valid.
+  const [groupId, setGroupId] = useState("");
+  const [memberId, setMemberId] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const memberOptions = memberOptionsByGroup[groupId] ?? NO_MEMBER_OPTIONS;
+  // React resets the uncontrolled fields once the create lands; mirror that
+  // for the controlled trio so the form clears as one.
+  useEffect(() => {
+    if (state?.ok) {
+      setGroupId("");
+      setMemberId("");
+      setDisplayName("");
+    }
+  }, [state]);
   if (availableGroups.length === 0) {
     return (
       <div className="grid justify-items-start gap-2">
@@ -182,7 +254,7 @@ function AddApprenticeForm({
   }
   return (
     <form action={formAction} className="grid gap-2.5">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr_1fr] md:gap-2.5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
         <div>
           <label htmlFor="ap-group" className={LABEL}>
             Group
@@ -190,7 +262,11 @@ function AddApprenticeForm({
           <select
             id="ap-group"
             name="group_id"
-            defaultValue=""
+            value={groupId}
+            onChange={(e) => {
+              setGroupId(e.target.value);
+              setMemberId("");
+            }}
             className={INPUT}
           >
             <option value="" disabled>
@@ -204,6 +280,38 @@ function AddApprenticeForm({
           </select>
         </div>
         <div>
+          <label htmlFor="ap-member" className={LABEL}>
+            Group member
+          </label>
+          <select
+            id="ap-member"
+            name="member_id"
+            value={memberId}
+            onChange={(e) => {
+              setMemberId(e.target.value);
+              const picked = memberOptions.find((m) => m.id === e.target.value);
+              if (picked) setDisplayName(picked.name);
+            }}
+            disabled={groupId === "" || memberOptions.length === 0}
+            className={INPUT}
+          >
+            <option value="">
+              {groupId === ""
+                ? "Select a group first…"
+                : memberOptions.length === 0
+                  ? "No active members in this group"
+                  : "No linked member — type a name"}
+            </option>
+            {memberOptions.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
+        <div>
           <label htmlFor="ap-name" className={LABEL}>
             Apprentice name
           </label>
@@ -213,6 +321,8 @@ function AddApprenticeForm({
             type="text"
             maxLength={120}
             placeholder="e.g. Tony L."
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
             className={INPUT}
           />
         </div>
@@ -269,12 +379,18 @@ function AddApprenticeForm({
   );
 }
 
+// Stable empty list so groups without member options pass the same reference
+// on every render.
+const NO_MEMBER_OPTIONS: PipelineMemberOption[] = [];
+
 export function LeaderPipeline({
   rollup,
   availableGroups,
+  memberOptionsByGroup,
 }: {
   rollup: PipelineRollup;
   availableGroups: { id: string; name: string }[];
+  memberOptionsByGroup: Record<string, PipelineMemberOption[]>;
 }) {
   return (
     <section className="grid gap-5 rounded-lg border border-line bg-surface p-card">
@@ -291,7 +407,10 @@ export function LeaderPipeline({
         </p>
       </header>
 
-      <AddApprenticeForm availableGroups={availableGroups} />
+      <AddApprenticeForm
+        availableGroups={availableGroups}
+        memberOptionsByGroup={memberOptionsByGroup}
+      />
 
       {rollup.stages.map((section) => (
         <div key={section.stage} className="grid gap-2">
@@ -306,7 +425,15 @@ export function LeaderPipeline({
               None at this stage.
             </p>
           ) : (
-            section.apprentices.map((a) => <ApprenticeRow key={a.id} a={a} />)
+            section.apprentices.map((a) => (
+              <ApprenticeRow
+                key={a.id}
+                a={a}
+                memberOptions={
+                  memberOptionsByGroup[a.groupId] ?? NO_MEMBER_OPTIONS
+                }
+              />
+            ))
           )}
         </div>
       ))}

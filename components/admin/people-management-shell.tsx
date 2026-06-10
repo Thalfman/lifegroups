@@ -217,6 +217,7 @@ export function PeopleManagementShell({
             <LeaderPipeline
               rollup={pipeline.rollup}
               availableGroups={pipeline.availableGroups}
+              memberOptionsByGroup={pipeline.memberOptionsByGroup}
             />
           )}
         </section>

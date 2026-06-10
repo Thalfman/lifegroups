@@ -115,6 +115,7 @@ async function loadMultiplyPageData(): Promise<{ tabs: MultiplyTab[] }> {
         <LeaderPipeline
           rollup={leaders.rollup}
           availableGroups={leaders.availableGroups}
+          memberOptionsByGroup={leaders.memberOptionsByGroup}
         />
       ),
     },
