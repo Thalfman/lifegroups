@@ -488,6 +488,24 @@ export async function fetchActiveMemberships(
   return { data: data ?? [], error: null };
 }
 
+// Column allowlist for the full-row members fetchers (#495). Names every
+// MembersRow column so the directory surfaces keep their data, while a future
+// members column (members carry pastoral signals like care_sensitivity_flag)
+// no longer flows to every caller by default. Pinned by a colocated test.
+export const MEMBER_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "household_name",
+  "status",
+  "care_sensitivity_flag",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof MembersRow)[];
+
+const MEMBER_SELECT = MEMBER_COLUMNS.join(", ");
+
 export async function fetchMembersByIds(
   client: ReadClient,
   ids: string[]
@@ -495,8 +513,9 @@ export async function fetchMembersByIds(
   if (ids.length === 0) return { data: [], error: null };
   const { data, error } = await client
     .from("members")
-    .select("*")
-    .in("id", ids);
+    .select(MEMBER_SELECT)
+    .in("id", ids)
+    .returns<MembersRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchMembersByIds", error) };
   return { data: data ?? [], error: null };
@@ -621,19 +640,38 @@ export const GUEST_PIPELINE_STAGES: GuestPipelineStage[] = [
 // super_admin / ministry_admin via the Phase 4 policies.
 // -------------------------------------------------------------------------
 
+// Column allowlist for the admin profiles directory read (#495). Names every
+// ProfilesRow column — the directory renders contact + role/status and the
+// row type is the trust boundary — so a future profiles column cannot
+// silently widen this high-fan-out read. The per-request session profile
+// read has its own narrower allowlist in lib/auth/session.ts (#492).
+export const PROFILE_COLUMNS = [
+  "id",
+  "auth_user_id",
+  "full_name",
+  "email",
+  "phone",
+  "role",
+  "status",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof ProfilesRow)[];
+
+const PROFILE_SELECT = PROFILE_COLUMNS.join(", ");
+
 export async function fetchProfilesForAdmin(
   client: ReadClient,
   options: { roles?: UserRole[]; statuses?: ProfileStatus[] } = {}
 ): Promise<ReadResult<ProfilesRow[]>> {
   let query = client
     .from("profiles")
-    .select("*")
+    .select(PROFILE_SELECT)
     .order("full_name", { ascending: true });
   if (options.roles && options.roles.length > 0)
     query = query.in("role", options.roles);
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<ProfilesRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchProfilesForAdmin", error) };
   return { data: data ?? [], error: null };
@@ -645,22 +683,36 @@ export async function fetchAllMembers(
 ): Promise<ReadResult<MembersRow[]>> {
   let query = client
     .from("members")
-    .select("*")
+    .select(MEMBER_SELECT)
     .order("full_name", { ascending: true });
   if (options.statuses && options.statuses.length > 0)
     query = query.in("status", options.statuses);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<MembersRow[]>();
   if (error) return { data: null, error: wrapError("fetchAllMembers", error) };
   return { data: data ?? [], error: null };
 }
+
+// Column allowlist for the group-leader assignment read (#495); every
+// GroupLeadersRow column, pinned by a colocated test.
+export const GROUP_LEADER_COLUMNS = [
+  "id",
+  "group_id",
+  "profile_id",
+  "role",
+  "assigned_at",
+  "active",
+  "created_at",
+] as const satisfies readonly (keyof GroupLeadersRow)[];
+
+const GROUP_LEADER_SELECT = GROUP_LEADER_COLUMNS.join(", ");
 
 export async function fetchAllGroupLeaders(
   client: ReadClient,
   options: { activeOnly?: boolean } = {}
 ): Promise<ReadResult<GroupLeadersRow[]>> {
-  let query = client.from("group_leaders").select("*");
+  let query = client.from("group_leaders").select(GROUP_LEADER_SELECT);
   if (options.activeOnly) query = query.eq("active", true);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupLeadersRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchAllGroupLeaders", error) };
   return { data: data ?? [], error: null };

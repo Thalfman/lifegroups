@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { ReadClient } from "@/lib/supabase/read-core";
 import {
+  fetchAllGroupLeaders,
   fetchAllGroups,
+  fetchAllMembers,
   fetchGroupsByIds,
+  fetchMembersByIds,
+  fetchProfilesForAdmin,
   GROUP_COLUMNS,
+  GROUP_LEADER_COLUMNS,
+  MEMBER_COLUMNS,
+  PROFILE_COLUMNS,
 } from "@/lib/supabase/read-models";
 
 // Pins the shared read-model column allowlists (#495), following the shape of
@@ -135,6 +142,103 @@ describe("groups read column allowlist (#495)", () => {
     expect(calls.get("groups")).toEqual([
       PINNED_GROUP_COLUMNS.join(", "),
       PINNED_GROUP_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── profiles ─────────────────────────────────────────────────────────────────
+
+const PINNED_PROFILE_COLUMNS = [
+  "id",
+  "auth_user_id",
+  "full_name",
+  "email",
+  "phone",
+  "role",
+  "status",
+  "created_at",
+  "updated_at",
+] as const;
+
+describe("profiles read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the profiles read must be a deliberate diff here", () => {
+    expect([...PROFILE_COLUMNS]).toEqual([...PINNED_PROFILE_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(PROFILE_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the profiles read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchProfilesForAdmin(client);
+    });
+    expect(calls.get("profiles")).toEqual([PINNED_PROFILE_COLUMNS.join(", ")]);
+  });
+});
+
+// ── members ──────────────────────────────────────────────────────────────────
+
+const PINNED_MEMBER_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "household_name",
+  "status",
+  "care_sensitivity_flag",
+  "created_at",
+  "updated_at",
+] as const;
+
+describe("members read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the members reads must be a deliberate diff here", () => {
+    expect([...MEMBER_COLUMNS]).toEqual([...PINNED_MEMBER_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(MEMBER_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the members reads", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchAllMembers(client);
+      await fetchMembersByIds(client, [UUID_A]);
+    });
+    expect(calls.get("members")).toEqual([
+      PINNED_MEMBER_COLUMNS.join(", "),
+      PINNED_MEMBER_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── group_leaders ────────────────────────────────────────────────────────────
+
+const PINNED_GROUP_LEADER_COLUMNS = [
+  "id",
+  "group_id",
+  "profile_id",
+  "role",
+  "assigned_at",
+  "active",
+  "created_at",
+] as const;
+
+describe("group_leaders read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the group-leaders read must be a deliberate diff here", () => {
+    expect([...GROUP_LEADER_COLUMNS]).toEqual([...PINNED_GROUP_LEADER_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_LEADER_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the group-leaders read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchAllGroupLeaders(client);
+    });
+    expect(calls.get("group_leaders")).toEqual([
+      PINNED_GROUP_LEADER_COLUMNS.join(", "),
     ]);
   });
 });
