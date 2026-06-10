@@ -187,6 +187,23 @@ export async function fetchGuestNamesByIds(
   };
 }
 
+// Column allowlist for the recent-audit reader (#495); every AuditEventsRow
+// column (the activity feeds render actor attribution + metadata), pinned by
+// a colocated test so a future audit column cannot silently widen this read.
+export const AUDIT_EVENT_COLUMNS = [
+  "id",
+  "actor_profile_id",
+  "action",
+  "entity_type",
+  "entity_id",
+  "metadata",
+  "created_at",
+  "actor_name",
+  "actor_email",
+] as const satisfies readonly (keyof AuditEventsRow)[];
+
+const AUDIT_EVENT_SELECT = AUDIT_EVENT_COLUMNS.join(", ");
+
 export async function fetchRecentAuditEvents(
   client: ReadClient,
   options: { limit?: number; actionsLike?: string | string[] } = {}
@@ -194,7 +211,7 @@ export async function fetchRecentAuditEvents(
   const limit = options.limit ?? 25;
   let query = client
     .from("audit_events")
-    .select("*")
+    .select(AUDIT_EVENT_SELECT)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (options.actionsLike) {
@@ -226,7 +243,7 @@ export async function fetchRecentAuditEvents(
       query = query.like("action", options.actionsLike);
     }
   }
-  const { data, error } = await query;
+  const { data, error } = await query.returns<AuditEventsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchRecentAuditEvents", error) };
   return { data: data ?? [], error: null };

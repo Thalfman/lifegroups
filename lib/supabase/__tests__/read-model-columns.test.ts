@@ -4,6 +4,7 @@ import {
   APP_SETTINGS_COLUMNS,
   ATTENDANCE_RECORD_COLUMNS,
   ATTENDANCE_SESSION_COLUMNS,
+  AUDIT_EVENT_COLUMNS,
   fetchActiveMemberships,
   fetchAllGroupLeaders,
   fetchAllGroups,
@@ -21,6 +22,7 @@ import {
   fetchNewGuestsForGroupSince,
   fetchProfilesForAdmin,
   fetchAllGroupMetricSettings,
+  fetchRecentAuditEvents,
   GROUP_CALENDAR_EVENT_COLUMNS,
   GROUP_COLUMNS,
   GROUP_HEALTH_UPDATE_COLUMNS,
@@ -526,6 +528,39 @@ describe("group_metric_settings read column allowlist (#495)", () => {
     expect(calls.get("group_metric_settings")).toEqual([
       PINNED_GROUP_METRIC_SETTINGS_COLUMNS.join(", "),
       PINNED_GROUP_METRIC_SETTINGS_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── audit_events ─────────────────────────────────────────────────────────────
+
+const PINNED_AUDIT_EVENT_COLUMNS = [
+  "id",
+  "actor_profile_id",
+  "action",
+  "entity_type",
+  "entity_id",
+  "metadata",
+  "created_at",
+  "actor_name",
+  "actor_email",
+] as const;
+
+describe("audit_events read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the recent-audit read must be a deliberate diff here", () => {
+    expect([...AUDIT_EVENT_COLUMNS]).toEqual([...PINNED_AUDIT_EVENT_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(AUDIT_EVENT_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the recent-audit read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchRecentAuditEvents(client);
+    });
+    expect(calls.get("audit_events")).toEqual([
+      PINNED_AUDIT_EVENT_COLUMNS.join(", "),
     ]);
   });
 });
