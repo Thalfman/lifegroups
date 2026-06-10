@@ -9,6 +9,7 @@ import {
   useActionForm,
   FormStatus,
 } from "@/components/admin/forms/action-form";
+import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import type { ShepherdCareFollowUpStatus } from "@/types/enums";
 
 type Transition = {
@@ -39,6 +40,11 @@ function transitionsFor(status: ShepherdCareFollowUpStatus): Transition[] {
   }
 }
 
+// Exported so the copy stays byte-locked by the confirm-action-button test.
+export function archiveFollowUpConfirmMessage(followUpTitle: string): string {
+  return `Archive the follow-up "${followUpTitle}"? It leaves every queue but stays in history; it can't be un-archived from here.`;
+}
+
 export function CareFollowUpStatusControls({
   followUpId,
   followUpTitle,
@@ -55,24 +61,8 @@ export function CareFollowUpStatusControls({
   const { state, formAction, pending } = useActionForm<{ id: string }>(
     adminUpdateShepherdCareFollowUpStatus
   );
-  // Archive is its own action with its own pending/error state, available in
-  // every status so an accidental/test follow-up can be cleaned up whether it's
-  // still open or already done.
-  const archive = useActionForm<{ id: string }>(
-    adminArchiveShepherdCareFollowUp
-  );
 
   const transitions = transitionsFor(status);
-
-  function confirmArchive(e: React.FormEvent<HTMLFormElement>) {
-    if (
-      !window.confirm(
-        `Archive the follow-up "${followUpTitle}"? It leaves every queue but stays in history; it can't be un-archived from here.`
-      )
-    ) {
-      e.preventDefault();
-    }
-  }
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
@@ -99,28 +89,27 @@ export function CareFollowUpStatusControls({
             </PButton>
           </form>
         ))}
-        <form action={archive.formAction} onSubmit={confirmArchive}>
-          <input type="hidden" name="follow_up_id" value={followUpId} />
-          <input
-            type="hidden"
-            name="shepherd_profile_id"
-            value={shepherdProfileId}
-          />
-          <PButton
-            type="submit"
-            tone="ghost"
-            size="sm"
-            disabled={archive.pending}
-            aria-label={`Archive follow-up: ${followUpTitle}${
-              followUpDueDate ? ` (due ${followUpDueDate})` : ""
-            }`}
-          >
-            {archive.pending ? "Archiving…" : "Archive"}
-          </PButton>
-        </form>
+        {/* Archive is its own action with its own pending/error state (the
+            status line renders with its button), available in every status so
+            an accidental/test follow-up can be cleaned up whether it's still
+            open or already done. */}
+        <ConfirmActionButton
+          action={adminArchiveShepherdCareFollowUp}
+          confirmMessage={archiveFollowUpConfirmMessage(followUpTitle)}
+          hiddenFields={[
+            { name: "follow_up_id", value: followUpId },
+            { name: "shepherd_profile_id", value: shepherdProfileId },
+          ]}
+          idleLabel="Archive"
+          pendingLabel="Archiving…"
+          tone="ghost"
+          ariaLabel={`Archive follow-up: ${followUpTitle}${
+            followUpDueDate ? ` (due ${followUpDueDate})` : ""
+          }`}
+          alignEnd={false}
+        />
       </div>
       <FormStatus state={state} />
-      <FormStatus state={archive.state} />
     </div>
   );
 }
