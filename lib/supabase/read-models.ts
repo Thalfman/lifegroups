@@ -603,6 +603,26 @@ export async function fetchAssignedGroupIdsForProfile(
   return { data: (data ?? []).map((row) => row.group_id), error: null };
 }
 
+// Column allowlist for the full-row guests fetcher (#495); every GuestsRow
+// column, pinned by a colocated test. The admin directory read above uses the
+// narrower GUEST_DIRECTORY_COLUMNS projection instead.
+export const GUEST_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "first_attended_group_id",
+  "first_attended_date",
+  "pipeline_stage",
+  "assigned_group_id",
+  "follow_up_owner_id",
+  "notes",
+  "created_at",
+  "updated_at",
+] as const satisfies readonly (keyof GuestsRow)[];
+
+const GUEST_SELECT = GUEST_COLUMNS.join(", ");
+
 export async function fetchNewGuestsForGroupSince(
   client: ReadClient,
   groupId: string,
@@ -610,9 +630,10 @@ export async function fetchNewGuestsForGroupSince(
 ): Promise<ReadResult<GuestsRow[]>> {
   const { data, error } = await client
     .from("guests")
-    .select("*")
+    .select(GUEST_SELECT)
     .or(`first_attended_group_id.eq.${groupId},assigned_group_id.eq.${groupId}`)
-    .gte("first_attended_date", sinceIsoDate);
+    .gte("first_attended_date", sinceIsoDate)
+    .returns<GuestsRow[]>();
   if (error)
     return {
       data: null,
@@ -647,13 +668,37 @@ export type CalendarEventReadOptions = {
 // produce some groups evaluated as if they had no calendar override.
 const CALENDAR_EVENTS_PAGE_LIMIT = 10000;
 
+// Column allowlist for the group-calendar fetcher (#495); every
+// GroupCalendarEventsRow column, pinned by a colocated test. This read is
+// reachable from both admin and leader calendar surfaces, so the pin matters
+// doubly: a future admin-only calendar column added to the table cannot flow
+// into a leader context without showing up as a deliberate diff here.
+export const GROUP_CALENDAR_EVENT_COLUMNS = [
+  "id",
+  "group_id",
+  "event_date",
+  "start_time",
+  "end_time",
+  "event_type",
+  "status",
+  "title",
+  "description",
+  "created_by",
+  "updated_by",
+  "created_at",
+  "updated_at",
+  "archived_at",
+] as const satisfies readonly (keyof GroupCalendarEventsRow)[];
+
+const GROUP_CALENDAR_EVENT_SELECT = GROUP_CALENDAR_EVENT_COLUMNS.join(", ");
+
 export async function fetchGroupCalendarEvents(
   client: ReadClient,
   options: CalendarEventReadOptions = {}
 ): Promise<ReadResult<GroupCalendarEventsRow[]>> {
   let query = client
     .from("group_calendar_events")
-    .select("*")
+    .select(GROUP_CALENDAR_EVENT_SELECT)
     .order("event_date", { ascending: true })
     .order("start_time", { ascending: true, nullsFirst: true });
   if (options.groupId) query = query.eq("group_id", options.groupId);
@@ -669,7 +714,7 @@ export async function fetchGroupCalendarEvents(
     query = query.is("archived_at", null);
   }
   query = query.range(0, CALENDAR_EVENTS_PAGE_LIMIT - 1);
-  const { data, error } = await query;
+  const { data, error } = await query.returns<GroupCalendarEventsRow[]>();
   if (error)
     return { data: null, error: wrapError("fetchGroupCalendarEvents", error) };
   return { data: data ?? [], error: null };

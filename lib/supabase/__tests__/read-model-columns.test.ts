@@ -9,14 +9,18 @@ import {
   fetchAllMembers,
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
+  fetchGroupCalendarEvents,
   fetchGroupsByIds,
   fetchLatestHealthUpdates,
   fetchMembersByIds,
+  fetchNewGuestsForGroupSince,
   fetchProfilesForAdmin,
+  GROUP_CALENDAR_EVENT_COLUMNS,
   GROUP_COLUMNS,
   GROUP_HEALTH_UPDATE_COLUMNS,
   GROUP_LEADER_COLUMNS,
   GROUP_MEMBERSHIP_COLUMNS,
+  GUEST_COLUMNS,
   MEMBER_COLUMNS,
   PROFILE_COLUMNS,
 } from "@/lib/supabase/read-models";
@@ -369,6 +373,80 @@ describe("group_health_updates read column allowlist (#495)", () => {
     });
     expect(calls.get("group_health_updates")).toEqual([
       PINNED_GROUP_HEALTH_UPDATE_COLUMNS.join(", "),
+    ]);
+  });
+});
+
+// ── guests ───────────────────────────────────────────────────────────────────
+
+const PINNED_GUEST_COLUMNS = [
+  "id",
+  "full_name",
+  "email",
+  "phone",
+  "first_attended_group_id",
+  "first_attended_date",
+  "pipeline_stage",
+  "assigned_group_id",
+  "follow_up_owner_id",
+  "notes",
+  "created_at",
+  "updated_at",
+] as const;
+
+describe("guests read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the guests read must be a deliberate diff here", () => {
+    expect([...GUEST_COLUMNS]).toEqual([...PINNED_GUEST_COLUMNS]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GUEST_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the guests read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchNewGuestsForGroupSince(client, UUID_A, "2026-01-01");
+    });
+    expect(calls.get("guests")).toEqual([PINNED_GUEST_COLUMNS.join(", ")]);
+  });
+});
+
+// ── group_calendar_events ────────────────────────────────────────────────────
+
+const PINNED_GROUP_CALENDAR_EVENT_COLUMNS = [
+  "id",
+  "group_id",
+  "event_date",
+  "start_time",
+  "end_time",
+  "event_type",
+  "status",
+  "title",
+  "description",
+  "created_by",
+  "updated_by",
+  "created_at",
+  "updated_at",
+  "archived_at",
+] as const;
+
+describe("group_calendar_events read column allowlist (#495)", () => {
+  it("pins the exact allowlist — widening the calendar read must be a deliberate diff here", () => {
+    expect([...GROUP_CALENDAR_EVENT_COLUMNS]).toEqual([
+      ...PINNED_GROUP_CALENDAR_EVENT_COLUMNS,
+    ]);
+  });
+
+  it("never selects '*'", () => {
+    expect(GROUP_CALENDAR_EVENT_COLUMNS).not.toContain("*");
+  });
+
+  it("passes exactly the joined allowlist to the calendar read", async () => {
+    const calls = await captureSelects(async (client) => {
+      await fetchGroupCalendarEvents(client);
+    });
+    expect(calls.get("group_calendar_events")).toEqual([
+      PINNED_GROUP_CALENDAR_EVENT_COLUMNS.join(", "),
     ]);
   });
 });
