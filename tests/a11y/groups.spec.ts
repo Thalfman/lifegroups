@@ -140,21 +140,30 @@ test.describe("groups directory editing surface", () => {
 
   test("the five list tabs are present and switchable", async ({ page }) => {
     const surface = page.locator(SURFACE);
+    // Each tab's accessible name carries its membership count (e.g. "All
+    // groups 2"), so match on the label prefix rather than the whole name.
     for (const name of [
-      "All Groups",
-      "Needs Setup",
-      "Needs Health Check",
-      "Needs Attention",
-      "Archived",
+      /^All groups/,
+      /^Needs setup/,
+      /^Needs health check/,
+      /^Needs attention/,
+      /^Archived/,
     ]) {
       await expect(surface.getByRole("tab", { name })).toBeVisible();
     }
     // Switching to Archived selects it (no active groups appear there in the
     // demo data, so it shows the empty state rather than the active cards).
-    await surface.getByRole("tab", { name: "Archived" }).click();
+    await surface.getByRole("tab", { name: /^Archived/ }).click();
     await expect(
-      surface.getByRole("tab", { name: "Archived" })
+      surface.getByRole("tab", { name: /^Archived/ })
     ).toHaveAttribute("aria-selected", "true");
+    // The active tab's membership rule renders under the tab bar, so the
+    // bucket's meaning is visible, not just its name.
+    await expect(
+      surface.getByText(
+        "Archived groups are kept, not deleted — restore one any time."
+      )
+    ).toBeVisible();
   });
 
   test("New group opens the create drawer and returns focus on close", async ({

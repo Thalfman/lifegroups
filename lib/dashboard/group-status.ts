@@ -148,3 +148,22 @@ export function matchesListTab(
       return needsAttention(input);
   }
 }
+
+// Operator-facing description of each tab's membership rule, rendered under
+// the tab bar so a group's presence in a bucket is explainable on sight — the
+// predicates above are otherwise invisible code. Lives beside the rules it
+// describes so the copy and the predicate can't drift apart unnoticed.
+const LIST_TAB_DESCRIPTIONS: Record<GroupListTab, string> = {
+  all: "Every group that isn’t archived.",
+  needs_setup:
+    "Groups missing a leader, meeting day/time, or a capacity to measure against.",
+  needs_health_check:
+    "Groups with no Group-Health Grade yet, or missing a required rating.",
+  needs_attention:
+    "Groups with a low Group-Health Grade, full or near-full capacity, an open follow-up, or a leader-care concern.",
+  archived: "Archived groups are kept, not deleted — restore one any time.",
+};
+
+export function listTabDescription(tab: GroupListTab): string {
+  return LIST_TAB_DESCRIPTIONS[tab];
+}

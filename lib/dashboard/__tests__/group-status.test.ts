@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  listTabDescription,
   matchesListTab,
   needsAttention,
   needsHealthCheck,
   setupCategory,
+  type GroupListTab,
   type GroupTabInput,
   type GroupTriageSignals,
 } from "@/lib/dashboard/group-status";
@@ -151,5 +153,31 @@ describe("matchesListTab", () => {
     expect(
       matchesListTab("needs_attention", baseInput({ capacity: "full" }))
     ).toBe(true);
+  });
+});
+
+describe("listTabDescription", () => {
+  it("describes every tab's membership rule in operator words", () => {
+    const tabs: GroupListTab[] = [
+      "all",
+      "needs_setup",
+      "needs_health_check",
+      "needs_attention",
+      "archived",
+    ];
+    for (const tab of tabs) {
+      expect(listTabDescription(tab).length).toBeGreaterThan(0);
+    }
+    // The descriptions must name the rule's actual legs so the copy and the
+    // predicates above can't drift apart unnoticed.
+    expect(listTabDescription("needs_setup")).toContain("leader");
+    expect(listTabDescription("needs_setup")).toContain("capacity");
+    expect(listTabDescription("needs_health_check")).toContain(
+      "Group-Health Grade"
+    );
+    expect(listTabDescription("needs_attention")).toContain("follow-up");
+    expect(listTabDescription("needs_attention")).toContain("capacity");
+    // Archive is the soft, reversible exit (CONTEXT.md) — the copy says so.
+    expect(listTabDescription("archived")).toContain("restore");
   });
 });
