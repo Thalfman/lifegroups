@@ -1,5 +1,18 @@
 import type { Config } from "tailwindcss";
 
+// Palette colors live in CSS vars (full colors, not channel triples), so
+// Tailwind can't compose slash-opacity (`bg-ink/45`) on them by itself — it
+// silently emits nothing. This closure makes every token alpha-capable via
+// color-mix. Plain usages (`bg-ink`, where Tailwind passes 1 or its
+// `var(--tw-*-opacity)` placeholder — the legacy `*-opacity-N` utilities are
+// unused here) keep emitting the raw var. The cast is because Tailwind's
+// Config type omits the function-color form its resolver supports.
+const varColor = (cssVar: string): string =>
+  (({ opacityValue }: { opacityValue?: string }) =>
+    !opacityValue || opacityValue === "1" || opacityValue.startsWith("var(")
+      ? `var(${cssVar})`
+      : `color-mix(in oklab, var(${cssVar}) calc(${opacityValue} * 100%), transparent)`) as unknown as string;
+
 export default {
   darkMode: ["class"],
   content: [
@@ -27,32 +40,32 @@ export default {
         "destructive-foreground": "hsl(var(--destructive-foreground))",
         border: "hsl(var(--border))",
         ring: "hsl(var(--ring))",
-        // Warm pastoral palette — direct CSS-var bindings
-        bg: "var(--c-bg)",
-        surface: "var(--c-surface)",
-        surfaceAlt: "var(--c-surfaceAlt)",
-        sidebar: "var(--c-sidebar)",
-        line: "var(--c-line)",
-        lineSoft: "var(--c-lineSoft)",
-        ink: "var(--c-ink)",
-        ink2: "var(--c-ink2)",
-        ink3: "var(--c-ink3)",
-        ink4: "var(--c-ink4)",
-        sage: "var(--c-sage)",
-        sageDeep: "var(--c-sageDeep)",
-        sageSoft: "var(--c-sageSoft)",
-        sageTint: "var(--c-sageTint)",
-        clay: "var(--c-clay)",
-        clayDeep: "var(--c-clayDeep)",
-        claySoft: "var(--c-claySoft)",
-        clayTint: "var(--c-clayTint)",
-        amber: "var(--c-amber)",
-        amberText: "var(--c-amberText)",
-        amberSoft: "var(--c-amberSoft)",
-        rose: "var(--c-rose)",
-        roseSoft: "var(--c-roseSoft)",
-        blue: "var(--c-blue)",
-        blueSoft: "var(--c-blueSoft)",
+        // Warm pastoral palette — CSS-var bindings, alpha-capable (varColor)
+        bg: varColor("--c-bg"),
+        surface: varColor("--c-surface"),
+        surfaceAlt: varColor("--c-surfaceAlt"),
+        sidebar: varColor("--c-sidebar"),
+        line: varColor("--c-line"),
+        lineSoft: varColor("--c-lineSoft"),
+        ink: varColor("--c-ink"),
+        ink2: varColor("--c-ink2"),
+        ink3: varColor("--c-ink3"),
+        ink4: varColor("--c-ink4"),
+        sage: varColor("--c-sage"),
+        sageDeep: varColor("--c-sageDeep"),
+        sageSoft: varColor("--c-sageSoft"),
+        sageTint: varColor("--c-sageTint"),
+        clay: varColor("--c-clay"),
+        clayDeep: varColor("--c-clayDeep"),
+        claySoft: varColor("--c-claySoft"),
+        clayTint: varColor("--c-clayTint"),
+        amber: varColor("--c-amber"),
+        amberText: varColor("--c-amberText"),
+        amberSoft: varColor("--c-amberSoft"),
+        rose: varColor("--c-rose"),
+        roseSoft: varColor("--c-roseSoft"),
+        blue: varColor("--c-blue"),
+        blueSoft: varColor("--c-blueSoft"),
       },
       fontFamily: {
         display: [
