@@ -1,5 +1,10 @@
 # Product
 
+> Brand/design register. For the full end-product definition — feature
+> inventory, placement (routes/nav/flags), privacy model, and the dated
+> current-state assessment — see
+> [`docs/PRODUCT_DEFINITION.md`](./docs/PRODUCT_DEFINITION.md).
+
 ## Register
 
 product
@@ -16,9 +21,10 @@ product
   Console for platform/account administration, flags, and the danger zone.
 - **Over-Shepherds**. Coaches who log in to a coverage-scoped Care surface
   over the Leaders they cover. Light, occasional use; read-mostly.
-- **Leaders / Co-Leaders** (gated, future). A group-scoped Care surface
-  (Care Notes + Prayer Requests + group calendar) held behind the
-  `leader_surface` switch until Julian's go-ahead.
+- **Leaders / Co-Leaders** (live by default, ADR 0024). A group-scoped Care
+  surface (Care Notes + Prayer Requests + group calendar). The
+  `leader_surface` switch remains as the Super-Admin off-switch; check-ins
+  stay behind their own gate.
 
 The job to be done is shepherding: noticing who needs attention, recording
 care faithfully, and planning multiplication — not analytics or data entry

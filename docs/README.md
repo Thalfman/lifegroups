@@ -11,6 +11,11 @@ has been archived.
 > and **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)** (closed;
 > delivered across #372–#382). Glossary: [`../CONTEXT.md`](../CONTEXT.md).
 >
+> 📖 **The end product, in one document:**
+> [`PRODUCT_DEFINITION.md`](./PRODUCT_DEFINITION.md) — audience, feature
+> inventory, placement (routes/nav/flags), theme, privacy model, and a dated
+> current-state assessment.
+>
 > ⭐ **Original North Star:** [`julian-inputs/SYSTEMS_CONVERSATION.md`](./julian-inputs/SYSTEMS_CONVERSATION.md)
 > — Julian's twelve questions (2026-05-27); re-shaped into Care/Plan/Multiply by the pivot.
 >
@@ -51,6 +56,7 @@ has been archived.
 
 | Doc                                                                    | What it is                                                                                                                                                                              |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`PRODUCT_DEFINITION.md`](./PRODUCT_DEFINITION.md)                     | 📖 The end product in one document: roles, feature inventory, route/flag placement, theme, privacy model, current-state assessment.                                                     |
 | [`architecture/ARCHITECTURE.md`](./architecture/ARCHITECTURE.md)       | Stack, routes, auth, RLS, read/write paths.                                                                                                                                             |
 | [`architecture/DATABASE_SCHEMA.md`](./architecture/DATABASE_SCHEMA.md) | Tables and the core model.                                                                                                                                                              |
 | [`architecture/RLS_VISIBILITY.md`](./architecture/RLS_VISIBILITY.md)   | The read-visibility matrix — what each tier can/can't `SELECT`.                                                                                                                         |
