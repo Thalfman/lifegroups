@@ -7,7 +7,7 @@
 > Q9–Q12). It re-frames the work that today is split across Launch Planning and
 > the Multiplication planner into **one connected flow**.
 >
-> **Supersedes** [`MULTIPLICATION_PLANNER.md`](../archive/MULTIPLICATION_PLANNER.md) (the
+> **Supersedes** `MULTIPLICATION_PLANNER.md` (retired; in git history — the
 > narrower "replace the Google Doc" spec) and folds in the launch-planning
 > capacity story. Traces to [`../PRD.md`](../PRD.md) Q9–Q11 and
 > [`../adr/0006-multiplication-planner-supersedes-google-doc.md`](../adr/0006-multiplication-planner-supersedes-google-doc.md).

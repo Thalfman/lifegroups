@@ -16,11 +16,10 @@ detail UI. Over-shepherd write of care follow-ups (#104) remains out of scope.
 
 ## Shipped — as-built summary
 
-The detailed as-built specs are archived under
-[`docs/archive/`](../archive/README.md) as
-`SC_1A_SHEPHERD_CARE_FOUNDATION.md`,
+The detailed as-built specs — `SC_1A_SHEPHERD_CARE_FOUNDATION.md`,
 `SC_2_OVER_SHEPHERD_COVERAGE_TRACKING.md`, and
-`SC_3_JULIAN_CARE_DASHBOARD.md`.
+`SC_3_JULIAN_CARE_DASHBOARD.md` — are retired; in git history
+(`git log -- docs/archive`).
 
 **Route.** `/admin/shepherd-care` (directory + dashboard summary above)
 and `/admin/shepherd-care/[profileId]` (detail page; `profileId` is the
@@ -261,8 +260,8 @@ Care-specific task list. **Never** exposed to leaders. Separate from
 ### Shipped: a private-to-Julian tier (SC.4, from Q8)
 
 Julian asked for notes "that should only be readable by you" — readable by
-**Julian alone**, excluding even `super_admin`. The design spec is archived at
-[`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md);
+**Julian alone**, excluding even `super_admin`. The design spec,
+`SC_4_PRIVATE_CARE_NOTES_SPEC.md`, is retired; in git history;
 the decision is recorded in [`adr/0003`](../adr/0003-private-care-note-encryption.md)
 and summarized in [`adr/0004`](../adr/0004-systems-conversation-architecture.md) D5.
 
@@ -396,7 +395,7 @@ SC.2 (over-shepherd coverage) is a separate prompt outline:
 
 ### SC.4 — Private / encrypted care notes — NEW (from Q8) — ✅ SHIPPED
 
-- Full design (archived): [`SC_4_PRIVATE_CARE_NOTES_SPEC.md`](../archive/SC_4_PRIVATE_CARE_NOTES_SPEC.md);
+- Full design: `SC_4_PRIVATE_CARE_NOTES_SPEC.md` (retired; in git history);
   decision in [`adr/0003`](../adr/0003-private-care-note-encryption.md).
 - **Interpretation chosen: Tier 2** — client-side **zero-knowledge encryption**
   (keys wrapped under WebAuthn PRF + recovery code, server stores ciphertext only),

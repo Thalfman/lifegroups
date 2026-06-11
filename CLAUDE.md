@@ -9,8 +9,8 @@ architecture decisions — those live in dedicated docs. Read these first:
   table, and the security posture.
 - **[`CONTEXT.md`](./CONTEXT.md)** — the domain glossary. **Use this
   vocabulary** in code, UX copy, and commit messages.
-- **[`docs/README.md`](./docs/README.md)** — the documentation index (what's
-  live, what's archived).
+- **[`docs/README.md`](./docs/README.md)** — the documentation index (historical
+  docs are retired to git history, not kept in-tree).
 - **[`AGENTS.md`](./AGENTS.md)** — review priorities for the (advisory) Codex
   loop; the P0 list there is the source of the security invariants below.
 
@@ -68,7 +68,7 @@ lib/                  auth/         session, roles, leader-surface flag
 types/                Hand-rolled Supabase row types + enums (the trust boundary)
 supabase/             migrations/ (schema + RLS), seed/, functions/ (Edge), dev/
 tests/                a11y/ Playwright specs + harness, stubs/
-docs/                 adr/ (decisions), architecture/, agents/, plans/, archive/
+docs/                 adr/ (decisions), architecture/, agents/, plans/
 middleware.ts         Refreshes the Supabase session cookie on every request
 ```
 
