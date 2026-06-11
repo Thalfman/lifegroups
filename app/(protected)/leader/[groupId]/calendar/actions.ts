@@ -13,12 +13,7 @@ import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
-import {
-  rpcLeaderArchiveGroupCalendarEvent,
-  rpcLeaderCreateGroupCalendarEvent,
-  rpcLeaderRestoreGroupCalendarEvent,
-  rpcLeaderUpdateGroupCalendarEvent,
-} from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 
 type ActionInput<T> = T | FormData;
 
@@ -64,11 +59,14 @@ function rawGroupId(raw: Record<string, unknown>): string {
 // surface tight.
 function requireOwnedGroupId(
   raw: Record<string, unknown>,
-  assignedGroupIds: string[],
+  assignedGroupIds: string[]
 ): { ok: true; groupId: string } | { ok: false; error: string } {
   const value = rawGroupId(raw);
   if (!value) {
-    return { ok: false, error: "group_id is required for leader calendar mutations." };
+    return {
+      ok: false,
+      error: "group_id is required for leader calendar mutations.",
+    };
   }
   if (!assignedGroupIds.includes(value)) {
     return { ok: false, error: CALENDAR_NOT_ASSIGNED };
@@ -78,7 +76,10 @@ function requireOwnedGroupId(
 
 // ----- leaderCreateCalendarEvent ------------------------------------------
 
-const CREATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventCreatePayload, { id: string }> = {
+const CREATE_EVENT_SPEC: LeaderWriteActionSpec<
+  CalendarEventCreatePayload,
+  { id: string }
+> = {
   name: "leader.calendar.create_event",
   read: payloadFromInput,
   validate: validateCalendarEventCreatePayload,
@@ -96,7 +97,7 @@ const CREATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventCreatePayload, { id:
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
   rpc: (client, value) =>
-    rpcLeaderCreateGroupCalendarEvent(client, {
+    leaderRpc(client, "leader_create_group_calendar_event", {
       p_group_id: value.group_id,
       p_event_date: value.event_date,
       // Phase 5A.6 correction: meeting time is always inherited from the
@@ -114,7 +115,7 @@ const CREATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventCreatePayload, { id:
 
 export async function leaderCreateCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runLeaderWriteAction(CREATE_EVENT_SPEC, prev, input);
 }
@@ -125,7 +126,7 @@ export async function leaderCreateCalendarEvent(
 // validation, so the validated event_id never leaks across groups.
 function ownershipGuard(
   actor: { assignedGroupIds: string[] },
-  raw: Record<string, unknown>,
+  raw: Record<string, unknown>
 ) {
   const ownership = requireOwnedGroupId(raw, actor.assignedGroupIds);
   return ownership.ok
@@ -133,14 +134,17 @@ function ownershipGuard(
     : ({ ok: false, error: ownership.error, code: "not_assigned" } as const);
 }
 
-const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventUpdatePayload, { id: string }> = {
+const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<
+  CalendarEventUpdatePayload,
+  { id: string }
+> = {
   name: "leader.calendar.update_event",
   read: payloadFromInput,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventUpdatePayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   rpc: (client, value) =>
-    rpcLeaderUpdateGroupCalendarEvent(client, {
+    leaderRpc(client, "leader_update_group_calendar_event", {
       p_event_id: value.event_id,
       p_event_date: value.event_date,
       p_start_time: null,
@@ -156,49 +160,59 @@ const UPDATE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventUpdatePayload, { id:
 
 export async function leaderUpdateCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runLeaderWriteAction(UPDATE_EVENT_SPEC, prev, input);
 }
 
 // ----- leaderArchiveCalendarEvent -----------------------------------------
 
-const ARCHIVE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventArchivePayload, { id: string }> = {
+const ARCHIVE_EVENT_SPEC: LeaderWriteActionSpec<
+  CalendarEventArchivePayload,
+  { id: string }
+> = {
   name: "leader.calendar.archive_event",
   read: payloadFromInput,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   rpc: (client, value) =>
-    rpcLeaderArchiveGroupCalendarEvent(client, { p_event_id: value.event_id }),
+    leaderRpc(client, "leader_archive_group_calendar_event", {
+      p_event_id: value.event_id,
+    }),
   revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
   noDataError: "The calendar event was not archived. Please try again.",
 };
 
 export async function leaderArchiveCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runLeaderWriteAction(ARCHIVE_EVENT_SPEC, prev, input);
 }
 
 // ----- leaderRestoreCalendarEvent -----------------------------------------
 
-const RESTORE_EVENT_SPEC: LeaderWriteActionSpec<CalendarEventArchivePayload, { id: string }> = {
+const RESTORE_EVENT_SPEC: LeaderWriteActionSpec<
+  CalendarEventArchivePayload,
+  { id: string }
+> = {
   name: "leader.calendar.restore_event",
   read: payloadFromInput,
   guardRaw: ownershipGuard,
   validate: validateCalendarEventIdPayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   rpc: (client, value) =>
-    rpcLeaderRestoreGroupCalendarEvent(client, { p_event_id: value.event_id }),
+    leaderRpc(client, "leader_restore_group_calendar_event", {
+      p_event_id: value.event_id,
+    }),
   revalidate: (_value, raw) => leaderCalendarPaths(rawGroupId(raw)),
   noDataError: "The calendar event was not restored. Please try again.",
 };
 
 export async function leaderRestoreCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runLeaderWriteAction(RESTORE_EVENT_SPEC, prev, input);
 }

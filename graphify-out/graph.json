@@ -4,16 +4,16 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3414,
-    "raw_edge_count": 7877,
+    "raw_node_count": 3309,
+    "raw_edge_count": 7593,
     "raw_source_file_count": 477,
     "selected_file_count": 480,
     "preserved_file_node_count": 122,
-    "grouped_bucket_count": 58,
+    "grouped_bucket_count": 59,
     "grouped_file_count": 355,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T22:42:27.721Z"
+    "generated_at": "2026-06-11T23:32:47.181Z"
   },
   "nodes": [
     {
@@ -237,9 +237,9 @@
       "color": "#4E79A7",
       "file_type": "code",
       "raw_inbound_weight": 0,
-      "raw_outbound_weight": 51,
-      "degree": 50,
-      "size": 23.96
+      "raw_outbound_weight": 50,
+      "degree": 49,
+      "size": 23.85
     },
     {
       "id": "bucket_bucket_core_route_page_layout_18a8xs",
@@ -492,40 +492,17 @@
       "size": 16.8
     },
     {
-      "id": "file_file_app_protected_admin_groups_groupid_calendar_actions_ts_v6qf2q",
-      "label": "Admin Groups Calendar Actions",
-      "title": "app/(protected)/admin/groups/[groupId]/calendar/actions.ts\nServer Action / Calendar\n1 file, 15 symbols",
-      "source_file": "app/(protected)/admin/groups/[groupId]/calendar/actions.ts",
+      "id": "bucket_bucket_calendar_server_action_1sx02z",
+      "label": "Calendar Server Action",
+      "title": "Calendar Server Action bucket\nServer Action / Calendar\n2 files, 29 symbols\napp/(protected)/admin/groups/[groupId]/calendar/actions.ts\napp/(protected)/leader/[groupId]/calendar/actions.ts",
+      "source_file": "module/calendar/server_action",
       "source_files": [
-        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 15,
-      "grouped": false,
-      "category": "server_action",
-      "category_label": "Server Action",
-      "community": 1,
-      "community_name": "Server Action",
-      "feature": "calendar",
-      "feature_label": "Calendar",
-      "color": "#F28E2B",
-      "file_type": "code",
-      "raw_inbound_weight": 4,
-      "raw_outbound_weight": 17,
-      "degree": 21,
-      "size": 20.1
-    },
-    {
-      "id": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "label": "Leader Calendar Actions",
-      "title": "app/(protected)/leader/[groupId]/calendar/actions.ts\nServer Action / Calendar\n1 file, 14 symbols",
-      "source_file": "app/(protected)/leader/[groupId]/calendar/actions.ts",
-      "source_files": [
+        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts",
         "app/(protected)/leader/[groupId]/calendar/actions.ts"
       ],
-      "file_count": 1,
-      "symbol_count": 14,
-      "grouped": false,
+      "file_count": 2,
+      "symbol_count": 29,
+      "grouped": true,
       "category": "server_action",
       "category_label": "Server Action",
       "community": 1,
@@ -533,16 +510,16 @@
       "feature": "calendar",
       "feature_label": "Calendar",
       "color": "#F28E2B",
-      "file_type": "code",
-      "raw_inbound_weight": 4,
-      "raw_outbound_weight": 17,
-      "degree": 21,
-      "size": 20.1
+      "file_type": "module-bucket",
+      "raw_inbound_weight": 8,
+      "raw_outbound_weight": 28,
+      "degree": 36,
+      "size": 22.88
     },
     {
       "id": "bucket_bucket_care_server_action_1gicso",
       "label": "Care Server Action",
-      "title": "Care Server Action bucket\nServer Action / Care\n6 files, 41 symbols\napp/(protected)/admin/shepherd-care/care-notes-actions.ts\napp/(protected)/leader/follow-up-actions.ts\napp/(protected)/admin/follow-ups/actions.ts\napp/(protected)/admin/shepherd-care/leader-grade-actions.ts\napp/(protected)/leader/[groupId]/care/actions.ts\napp/(protected)/over-shepherd/[profileId]/actions.ts",
+      "title": "Care Server Action bucket\nServer Action / Care\n6 files, 41 symbols\napp/(protected)/leader/follow-up-actions.ts\napp/(protected)/admin/shepherd-care/care-notes-actions.ts\napp/(protected)/admin/shepherd-care/leader-grade-actions.ts\napp/(protected)/admin/follow-ups/actions.ts\napp/(protected)/leader/[groupId]/care/actions.ts\napp/(protected)/over-shepherd/[profileId]/actions.ts",
       "source_file": "module/care/server_action",
       "source_files": [
         "app/(protected)/admin/follow-ups/actions.ts",
@@ -564,9 +541,9 @@
       "color": "#F28E2B",
       "file_type": "module-bucket",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 52,
-      "degree": 56,
-      "size": 26.41
+      "raw_outbound_weight": 48,
+      "degree": 52,
+      "size": 25.98
     },
     {
       "id": "file_file_app_protected_admin_shepherd_care_actions_ts_7k9w9h",
@@ -588,14 +565,14 @@
       "color": "#F28E2B",
       "file_type": "code",
       "raw_inbound_weight": 15,
-      "raw_outbound_weight": 35,
-      "degree": 50,
-      "size": 23.96
+      "raw_outbound_weight": 20,
+      "degree": 35,
+      "size": 22.17
     },
     {
       "id": "bucket_bucket_core_server_action_1ecz9d",
       "label": "Core Server Action",
-      "title": "Core Server Action bucket\nServer Action / Core\n15 files, 75 symbols\napp/(protected)/admin/super-admin/activity-reset-actions.ts\napp/(protected)/admin/super-admin/account-actions.ts\napp/(protected)/admin/super-admin/clean-slate-actions.ts\napp/(protected)/admin/super-admin/people-import-actions.ts\napp/(protected)/admin/super-admin/test-accounts-actions.ts\napp/(protected)/admin/super-admin/launch-prep-actions.ts\napp/(protected)/admin/super-admin/reset-all-actions.ts\napp/(protected)/leader/actions.ts\napp/(protected)/admin/super-admin/coverage-actions.ts\napp/(protected)/actions.ts\napp/(protected)/admin/super-admin/actions.ts\napp/(protected)/admin/super-admin/audit-reset-actions.ts\n...3 more",
+      "title": "Core Server Action bucket\nServer Action / Core\n15 files, 75 symbols\napp/(protected)/admin/super-admin/activity-reset-actions.ts\napp/(protected)/admin/super-admin/clean-slate-actions.ts\napp/(protected)/admin/super-admin/account-actions.ts\napp/(protected)/admin/super-admin/people-import-actions.ts\napp/(protected)/admin/super-admin/test-accounts-actions.ts\napp/(protected)/admin/super-admin/launch-prep-actions.ts\napp/(protected)/admin/super-admin/reset-all-actions.ts\napp/(protected)/leader/actions.ts\napp/(protected)/actions.ts\napp/(protected)/admin/super-admin/coverage-actions.ts\napp/(protected)/admin/super-admin/actions.ts\napp/(protected)/admin/super-admin/audit-reset-actions.ts\n...3 more",
       "source_file": "module/core/server_action",
       "source_files": [
         "app/(protected)/actions.ts",
@@ -626,9 +603,9 @@
       "color": "#F28E2B",
       "file_type": "module-bucket",
       "raw_inbound_weight": 23,
-      "raw_outbound_weight": 135,
-      "degree": 143.95,
-      "size": 34.6
+      "raw_outbound_weight": 132,
+      "degree": 140.95,
+      "size": 34.4
     },
     {
       "id": "file_file_app_protected_admin_super_admin_permanent_delete_actions_ts_uzkfq0",
@@ -650,9 +627,9 @@
       "color": "#F28E2B",
       "file_type": "code",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 35,
-      "degree": 34.8,
-      "size": 22.14
+      "raw_outbound_weight": 34,
+      "degree": 33.8,
+      "size": 22.01
     },
     {
       "id": "file_file_app_protected_admin_super_admin_attention_reset_actions_ts_1hvneb",
@@ -674,9 +651,9 @@
       "color": "#F28E2B",
       "file_type": "code",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 27,
-      "degree": 28.1,
-      "size": 21.22
+      "raw_outbound_weight": 25,
+      "degree": 26.1,
+      "size": 20.92
     },
     {
       "id": "file_file_app_protected_admin_super_admin_history_reset_actions_ts_1f7f9z",
@@ -698,9 +675,9 @@
       "color": "#F28E2B",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 22,
-      "degree": 21.4,
-      "size": 20.17
+      "raw_outbound_weight": 21,
+      "degree": 20.4,
+      "size": 20
     },
     {
       "id": "bucket_bucket_groups_server_action_yojrb7",
@@ -723,9 +700,9 @@
       "color": "#F28E2B",
       "file_type": "module-bucket",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 21,
-      "degree": 26,
-      "size": 21.49
+      "raw_outbound_weight": 18,
+      "degree": 23,
+      "size": 21.02
     },
     {
       "id": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
@@ -747,9 +724,9 @@
       "color": "#F28E2B",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 18,
-      "degree": 20,
-      "size": 19.93
+      "raw_outbound_weight": 17,
+      "degree": 19,
+      "size": 19.76
     },
     {
       "id": "bucket_bucket_people_server_action_ei7ga4",
@@ -773,20 +750,20 @@
       "color": "#F28E2B",
       "file_type": "module-bucket",
       "raw_inbound_weight": 7,
-      "raw_outbound_weight": 30,
-      "degree": 31.8,
-      "size": 22.74
+      "raw_outbound_weight": 29,
+      "degree": 30.8,
+      "size": 22.6
     },
     {
       "id": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
       "label": "Admin People Actions",
-      "title": "app/(protected)/admin/people/actions.ts\nServer Action / People\n1 file, 24 symbols",
+      "title": "app/(protected)/admin/people/actions.ts\nServer Action / People\n1 file, 27 symbols",
       "source_file": "app/(protected)/admin/people/actions.ts",
       "source_files": [
         "app/(protected)/admin/people/actions.ts"
       ],
       "file_count": 1,
-      "symbol_count": 24,
+      "symbol_count": 27,
       "grouped": false,
       "category": "server_action",
       "category_label": "Server Action",
@@ -796,23 +773,24 @@
       "feature_label": "People",
       "color": "#F28E2B",
       "file_type": "code",
-      "raw_inbound_weight": 8,
-      "raw_outbound_weight": 19,
-      "degree": 27,
-      "size": 21.05
+      "raw_inbound_weight": 15,
+      "raw_outbound_weight": 14,
+      "degree": 29,
+      "size": 21.35
     },
     {
       "id": "bucket_bucket_plan_server_action_16yw4v",
       "label": "Plan Server Action",
-      "title": "Plan Server Action bucket\nServer Action / Plan\n3 files, 40 symbols\napp/(protected)/admin/plan/actions.ts\napp/(protected)/admin/leader-pipeline/actions.ts\napp/(protected)/admin/launch-planning/scenario-actions.ts",
+      "title": "Plan Server Action bucket\nServer Action / Plan\n4 files, 57 symbols\napp/(protected)/admin/launch-planning/actions.ts\napp/(protected)/admin/plan/actions.ts\napp/(protected)/admin/launch-planning/scenario-actions.ts\napp/(protected)/admin/leader-pipeline/actions.ts",
       "source_file": "module/plan/server_action",
       "source_files": [
+        "app/(protected)/admin/launch-planning/actions.ts",
         "app/(protected)/admin/launch-planning/scenario-actions.ts",
         "app/(protected)/admin/leader-pipeline/actions.ts",
         "app/(protected)/admin/plan/actions.ts"
       ],
-      "file_count": 3,
-      "symbol_count": 40,
+      "file_count": 4,
+      "symbol_count": 57,
       "grouped": true,
       "category": "server_action",
       "category_label": "Server Action",
@@ -822,45 +800,21 @@
       "feature_label": "Plan",
       "color": "#F28E2B",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 13,
-      "raw_outbound_weight": 32,
-      "degree": 45,
-      "size": 24.4
-    },
-    {
-      "id": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
-      "label": "Admin Launch Planning Actions",
-      "title": "app/(protected)/admin/launch-planning/actions.ts\nServer Action / Plan\n1 file, 17 symbols",
-      "source_file": "app/(protected)/admin/launch-planning/actions.ts",
-      "source_files": [
-        "app/(protected)/admin/launch-planning/actions.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 17,
-      "grouped": false,
-      "category": "server_action",
-      "category_label": "Server Action",
-      "community": 1,
-      "community_name": "Server Action",
-      "feature": "plan",
-      "feature_label": "Plan",
-      "color": "#F28E2B",
-      "file_type": "code",
-      "raw_inbound_weight": 6,
-      "raw_outbound_weight": 15,
-      "degree": 21,
-      "size": 20.1
+      "raw_inbound_weight": 19,
+      "raw_outbound_weight": 33,
+      "degree": 52,
+      "size": 25.5
     },
     {
       "id": "file_file_app_protected_admin_settings_actions_ts_2cfnr1",
       "label": "Admin Settings Actions",
-      "title": "app/(protected)/admin/settings/actions.ts\nServer Action / Settings\n1 file, 33 symbols",
+      "title": "app/(protected)/admin/settings/actions.ts\nServer Action / Settings\n1 file, 35 symbols",
       "source_file": "app/(protected)/admin/settings/actions.ts",
       "source_files": [
         "app/(protected)/admin/settings/actions.ts"
       ],
       "file_count": 1,
-      "symbol_count": 33,
+      "symbol_count": 35,
       "grouped": false,
       "category": "server_action",
       "category_label": "Server Action",
@@ -870,10 +824,10 @@
       "feature_label": "Settings",
       "color": "#F28E2B",
       "file_type": "code",
-      "raw_inbound_weight": 12,
-      "raw_outbound_weight": 26,
-      "degree": 38,
-      "size": 22.55
+      "raw_inbound_weight": 14,
+      "raw_outbound_weight": 17,
+      "degree": 31,
+      "size": 21.63
     },
     {
       "id": "bucket_bucket_settings_server_action_13yoia",
@@ -980,13 +934,13 @@
     {
       "id": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
       "label": "Admin Admin Master Calendar Shell",
-      "title": "components/admin/admin-master-calendar-shell.tsx\nFeature Component / Calendar\n1 file, 19 symbols",
+      "title": "components/admin/admin-master-calendar-shell.tsx\nFeature Component / Calendar\n1 file, 14 symbols",
       "source_file": "components/admin/admin-master-calendar-shell.tsx",
       "source_files": [
         "components/admin/admin-master-calendar-shell.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 19,
+      "symbol_count": 14,
       "grouped": false,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -997,9 +951,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 1,
-      "raw_outbound_weight": 20,
-      "degree": 20,
-      "size": 19.93
+      "raw_outbound_weight": 18,
+      "degree": 18,
+      "size": 19.58
     },
     {
       "id": "bucket_bucket_care_feature_component_1sfwud",
@@ -1136,13 +1090,13 @@
     {
       "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
       "label": "Admin Follow Ups Follow Ups Shell",
-      "title": "components/admin/follow-ups/follow-ups-shell.tsx\nFeature Component / Care\n1 file, 14 symbols",
+      "title": "components/admin/follow-ups/follow-ups-shell.tsx\nFeature Component / Care\n1 file, 5 symbols",
       "source_file": "components/admin/follow-ups/follow-ups-shell.tsx",
       "source_files": [
         "components/admin/follow-ups/follow-ups-shell.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 14,
+      "symbol_count": 5,
       "grouped": false,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1268,9 +1222,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 81,
-      "degree": 83,
-      "size": 27.12
+      "raw_outbound_weight": 68,
+      "degree": 70,
+      "size": 25.97
     },
     {
       "id": "file_file_components_admin_forms_field_styles_ts_88z2jm",
@@ -1299,13 +1253,13 @@
     {
       "id": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
       "label": "Admin Super Admin Console Shell",
-      "title": "components/admin/super-admin-console-shell.tsx\nFeature Component / Core\n1 file, 38 symbols",
+      "title": "components/admin/super-admin-console-shell.tsx\nFeature Component / Core\n1 file, 30 symbols",
       "source_file": "components/admin/super-admin-console-shell.tsx",
       "source_files": [
         "components/admin/super-admin-console-shell.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 38,
+      "symbol_count": 30,
       "grouped": false,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1315,10 +1269,10 @@
       "feature_label": "Core",
       "color": "#59A14F",
       "file_type": "code",
-      "raw_inbound_weight": 40,
-      "raw_outbound_weight": 6,
-      "degree": 43.4,
-      "size": 23.21
+      "raw_inbound_weight": 31,
+      "raw_outbound_weight": 5,
+      "degree": 33.4,
+      "size": 21.96
     },
     {
       "id": "file_file_components_admin_forms_confirm_action_button_tsx_nlk7nv",
@@ -1595,7 +1549,7 @@
     {
       "id": "bucket_bucket_people_feature_component_1c53f7",
       "label": "People Feature Component",
-      "title": "People Feature Component bucket\nFeature Component / People\n16 files, 73 symbols\ncomponents/admin/forms/invite-workflow-form.tsx\ncomponents/admin/guests/guest-card.tsx\ncomponents/admin/guests/guests-shell.tsx\ncomponents/admin/person-detail/person-detail-shell.tsx\ncomponents/admin/people-directory.tsx\ncomponents/admin/guests/guest-create-form.tsx\ncomponents/admin/guests/guests-data.ts\ncomponents/admin/forms/member-form.tsx\ncomponents/admin/forms/assign-member-form.tsx\ncomponents/admin/forms/leader-profile-form.tsx\ncomponents/admin/person-detail/person-group-assign.tsx\ncomponents/admin/forms/profile-status-form.tsx\n...4 more",
+      "title": "People Feature Component bucket\nFeature Component / People\n16 files, 73 symbols\ncomponents/admin/forms/invite-workflow-form.tsx\ncomponents/admin/guests/guest-card.tsx\ncomponents/admin/guests/guests-shell.tsx\ncomponents/admin/person-detail/person-detail-shell.tsx\ncomponents/admin/guests/guest-create-form.tsx\ncomponents/admin/guests/guests-data.ts\ncomponents/admin/people-directory.tsx\ncomponents/admin/forms/member-form.tsx\ncomponents/admin/forms/assign-member-form.tsx\ncomponents/admin/forms/leader-profile-form.tsx\ncomponents/admin/person-detail/person-group-assign.tsx\ncomponents/admin/forms/profile-status-form.tsx\n...4 more",
       "source_file": "module/people/feature_component",
       "source_files": [
         "components/admin/forms/assign-member-form.tsx",
@@ -1626,10 +1580,10 @@
       "feature_label": "People",
       "color": "#59A14F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 24,
+      "raw_inbound_weight": 23,
       "raw_outbound_weight": 117,
-      "degree": 107.35,
-      "size": 32.15
+      "degree": 106.35,
+      "size": 32.07
     },
     {
       "id": "file_file_components_admin_people_people_data_ts_1k1ju9",
@@ -1658,7 +1612,7 @@
     {
       "id": "bucket_bucket_plan_feature_component_1cb94q",
       "label": "Plan Feature Component",
-      "title": "Plan Feature Component bucket\nFeature Component / Plan\n20 files, 96 symbols\ncomponents/admin/plan/prospect-card.tsx\ncomponents/admin/planning/planning-by-leader-list.tsx\ncomponents/admin/launch-planning/scenario-form.tsx\ncomponents/admin/launch-planning/launch-planning-panels.tsx\ncomponents/admin/launch-planning/assumptions-form.tsx\ncomponents/admin/plan/prospect-board.tsx\ncomponents/admin/planning/planning-calendar-panel.tsx\ncomponents/admin/leader-pipeline/leader-pipeline.tsx\ncomponents/admin/launch-planning/scenarios-panel.tsx\ncomponents/admin/plan/prospect-create-form.tsx\ncomponents/admin/launch-planning/church-attendance-card.tsx\ncomponents/admin/launch-planning/percent-field.tsx\n...8 more",
+      "title": "Plan Feature Component bucket\nFeature Component / Plan\n19 files, 90 symbols\ncomponents/admin/planning/planning-by-leader-list.tsx\ncomponents/admin/launch-planning/scenario-form.tsx\ncomponents/admin/launch-planning/launch-planning-panels.tsx\ncomponents/admin/launch-planning/assumptions-form.tsx\ncomponents/admin/plan/prospect-board.tsx\ncomponents/admin/planning/planning-calendar-panel.tsx\ncomponents/admin/leader-pipeline/leader-pipeline.tsx\ncomponents/admin/launch-planning/scenarios-panel.tsx\ncomponents/admin/plan/prospect-create-form.tsx\ncomponents/admin/launch-planning/church-attendance-card.tsx\ncomponents/admin/launch-planning/percent-field.tsx\ncomponents/admin/launch-planning/lazy-panels.tsx\n...7 more",
       "source_file": "module/plan/feature_component",
       "source_files": [
         "components/admin/launch-planning/assumptions-form.tsx",
@@ -1676,14 +1630,13 @@
         "components/admin/launch-planning/summary-cards.tsx",
         "components/admin/leader-pipeline/leader-pipeline.tsx",
         "components/admin/plan/prospect-board.tsx",
-        "components/admin/plan/prospect-card.tsx",
         "components/admin/plan/prospect-create-form.tsx",
         "components/admin/planning/planning-by-leader-list.tsx",
         "components/admin/planning/planning-calendar-panel.tsx",
         "components/admin/planning/planning-shell.tsx"
       ],
-      "file_count": 20,
-      "symbol_count": 96,
+      "file_count": 19,
+      "symbol_count": 90,
       "grouped": true,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1693,10 +1646,10 @@
       "feature_label": "Plan",
       "color": "#59A14F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 31,
-      "raw_outbound_weight": 137,
-      "degree": 129.3,
-      "size": 34.02
+      "raw_inbound_weight": 30,
+      "raw_outbound_weight": 118,
+      "degree": 113.55,
+      "size": 32.84
     },
     {
       "id": "file_file_components_admin_launch_planning_launch_planning_data_ts_1ip6p0",
@@ -1771,6 +1724,30 @@
       "size": 20.1
     },
     {
+      "id": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "label": "Admin Plan Prospect Card",
+      "title": "components/admin/plan/prospect-card.tsx\nFeature Component / Plan\n1 file, 6 symbols",
+      "source_file": "components/admin/plan/prospect-card.tsx",
+      "source_files": [
+        "components/admin/plan/prospect-card.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 6,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "plan",
+      "feature_label": "Plan",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 1,
+      "raw_outbound_weight": 19,
+      "degree": 19,
+      "size": 19.76
+    },
+    {
       "id": "file_file_components_admin_settings_settings_data_ts_1japar",
       "label": "Admin Settings Settings Data",
       "title": "components/admin/settings/settings-data.ts\nFeature Component / Settings\n1 file, 9 symbols",
@@ -1838,9 +1815,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 23,
-      "degree": 25,
-      "size": 20.75
+      "raw_outbound_weight": 20,
+      "degree": 22,
+      "size": 20.27
     },
     {
       "id": "bucket_bucket_settings_feature_component_dodmi2",
@@ -1868,16 +1845,39 @@
       "size": 17.97
     },
     {
+      "id": "file_file_lib_admin_private_notes_session_ts_9kcyw8",
+      "label": "Admin Private Notes Session",
+      "title": "lib/admin/private-notes-session.ts\nDomain Module / Auth\n1 file, 9 symbols",
+      "source_file": "lib/admin/private-notes-session.ts",
+      "source_files": [
+        "lib/admin/private-notes-session.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 9,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "auth",
+      "feature_label": "Auth",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 2,
+      "raw_outbound_weight": 18,
+      "degree": 20,
+      "size": 19.93
+    },
+    {
       "id": "bucket_bucket_auth_domain_module_by1nae",
       "label": "Auth Domain Module",
-      "title": "Auth Domain Module bucket\nDomain Module / Auth\n2 files, 11 symbols\nlib/admin/private-notes-session.ts\nlib/supabase/middleware.ts",
+      "title": "Auth Domain Module bucket\nDomain Module / Auth\n1 file, 2 symbols\nlib/supabase/middleware.ts",
       "source_file": "module/auth/domain_module",
       "source_files": [
-        "lib/admin/private-notes-session.ts",
         "lib/supabase/middleware.ts"
       ],
-      "file_count": 2,
-      "symbol_count": 11,
+      "file_count": 1,
+      "symbol_count": 2,
       "grouped": true,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -1887,10 +1887,10 @@
       "feature_label": "Auth",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 4,
-      "raw_outbound_weight": 21,
-      "degree": 25,
-      "size": 21.33
+      "raw_inbound_weight": 2,
+      "raw_outbound_weight": 3,
+      "degree": 5,
+      "size": 16.47
     },
     {
       "id": "file_file_lib_calendar_occurrences_ts_1riutk",
@@ -1911,10 +1911,10 @@
       "feature_label": "Calendar",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 76,
+      "raw_inbound_weight": 75,
       "raw_outbound_weight": 7,
-      "degree": 77.45,
-      "size": 26.64
+      "degree": 76.45,
+      "size": 26.55
     },
     {
       "id": "file_file_lib_admin_check_ins_ts_wni7fr",
@@ -1959,10 +1959,10 @@
       "feature_label": "Calendar",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 34,
+      "raw_inbound_weight": 32,
       "raw_outbound_weight": 3,
-      "degree": 36,
-      "size": 22.3
+      "degree": 34,
+      "size": 22.04
     },
     {
       "id": "file_file_lib_admin_check_in_due_ts_m796ct",
@@ -2039,7 +2039,7 @@
     {
       "id": "bucket_bucket_care_domain_module_1ue8s8",
       "label": "Care Domain Module",
-      "title": "Care Domain Module bucket\nDomain Module / Care\n8 files, 57 symbols\nlib/admin/care-note-feed.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/shepherd-care-attention.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
+      "title": "Care Domain Module bucket\nDomain Module / Care\n8 files, 57 symbols\nlib/admin/care-note-feed.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/admin/shepherd-care-attention.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
       "source_file": "module/care/domain_module",
       "source_files": [
         "app/(protected)/over-shepherd/loading.tsx",
@@ -2062,10 +2062,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 56,
+      "raw_inbound_weight": 57,
       "raw_outbound_weight": 12,
-      "degree": 66,
-      "size": 27.76
+      "degree": 67,
+      "size": 27.86
     },
     {
       "id": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
@@ -2086,10 +2086,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 13,
+      "raw_inbound_weight": 9,
       "raw_outbound_weight": 26,
-      "degree": 39,
-      "size": 22.68
+      "degree": 35,
+      "size": 22.17
     },
     {
       "id": "file_file_lib_admin_shepherd_care_view_ts_1wysd2",
@@ -2118,7 +2118,7 @@
     {
       "id": "bucket_bucket_core_domain_module_1kz81h",
       "label": "Core Domain Module",
-      "title": "Core Domain Module bucket\nDomain Module / Core\n30 files, 165 symbols\nlib/admin/ministry-year.ts\nlib/admin/care-area.ts\nlib/admin/action-result.ts\nlib/admin/leader-health-read.ts\nlib/admin/leader-rubric-grade.ts\nlib/admin/jsonb-decode.ts\nlib/admin/cell-coverage.ts\nlib/admin/frozen-surface.ts\nlib/admin/overview-period.ts\nlib/admin/permanent-deletion.ts\nlib/leader/action-result.ts\nlib/admin/health-status-labels.ts\n...18 more",
+      "title": "Core Domain Module bucket\nDomain Module / Core\n30 files, 165 symbols\nlib/admin/ministry-year.ts\nlib/admin/care-area.ts\nlib/admin/action-result.ts\nlib/admin/leader-health-read.ts\nlib/admin/leader-rubric-grade.ts\nlib/admin/jsonb-decode.ts\nlib/admin/cell-coverage.ts\nlib/admin/frozen-surface.ts\nlib/admin/overview-period.ts\nlib/admin/permanent-deletion.ts\nlib/leader/action-result.ts\nlib/admin/history-reset.ts\n...18 more",
       "source_file": "module/core/domain_module",
       "source_files": [
         "app/(protected)/admin/loading.tsx",
@@ -2163,9 +2163,9 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 161,
+      "raw_inbound_weight": 156,
       "raw_outbound_weight": 74,
-      "degree": 194.1,
+      "degree": 189.1,
       "size": 38
     },
     {
@@ -2307,10 +2307,34 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 22,
+      "raw_inbound_weight": 23,
       "raw_outbound_weight": 0,
-      "degree": 22,
-      "size": 20.27
+      "degree": 23,
+      "size": 20.43
+    },
+    {
+      "id": "file_file_lib_admin_planning_views_ts_x888t2",
+      "label": "Admin Planning Views",
+      "title": "lib/admin/planning-views.ts\nDomain Module / Core\n1 file, 8 symbols",
+      "source_file": "lib/admin/planning-views.ts",
+      "source_files": [
+        "lib/admin/planning-views.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 8,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 10,
+      "raw_outbound_weight": 12,
+      "degree": 20,
+      "size": 19.93
     },
     {
       "id": "file_file_app_page_tsx_70256d",
@@ -2335,30 +2359,6 @@
       "raw_outbound_weight": 21,
       "degree": 20,
       "size": 19.93
-    },
-    {
-      "id": "file_file_lib_admin_planning_views_ts_x888t2",
-      "label": "Admin Planning Views",
-      "title": "lib/admin/planning-views.ts\nDomain Module / Core\n1 file, 7 symbols",
-      "source_file": "lib/admin/planning-views.ts",
-      "source_files": [
-        "lib/admin/planning-views.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 7,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 9,
-      "raw_outbound_weight": 12,
-      "degree": 19,
-      "size": 19.76
     },
     {
       "id": "file_file_lib_admin_capacity_board_ts_1yu97i",
@@ -2510,13 +2510,13 @@
     {
       "id": "file_file_lib_dashboard_queries_ts_13envh",
       "label": "Dashboard Queries",
-      "title": "lib/dashboard/queries.ts\nDomain Module / Home\n1 file, 17 symbols",
+      "title": "lib/dashboard/queries.ts\nDomain Module / Home\n1 file, 16 symbols",
       "source_file": "lib/dashboard/queries.ts",
       "source_files": [
         "lib/dashboard/queries.ts"
       ],
       "file_count": 1,
-      "symbol_count": 17,
+      "symbol_count": 16,
       "grouped": false,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2527,9 +2527,9 @@
       "color": "#B07AA1",
       "file_type": "code",
       "raw_inbound_weight": 3,
-      "raw_outbound_weight": 82,
-      "degree": 80.45,
-      "size": 26.9
+      "raw_outbound_weight": 78,
+      "degree": 76.45,
+      "size": 26.55
     },
     {
       "id": "bucket_bucket_home_domain_module_h6qg0x",
@@ -2581,10 +2581,10 @@
       "feature_label": "Home",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 68,
+      "raw_inbound_weight": 69,
       "raw_outbound_weight": 17,
-      "degree": 68.4,
-      "size": 25.82
+      "degree": 69.4,
+      "size": 25.91
     },
     {
       "id": "file_file_lib_dashboard_labels_ts_tbyfwm",
@@ -2635,6 +2635,30 @@
       "size": 24.29
     },
     {
+      "id": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "label": "Dashboard Demo Seed",
+      "title": "lib/dashboard/demo-seed.ts\nDomain Module / Home\n1 file, 22 symbols",
+      "source_file": "lib/dashboard/demo-seed.ts",
+      "source_files": [
+        "lib/dashboard/demo-seed.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 22,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "home",
+      "feature_label": "Home",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 3,
+      "raw_outbound_weight": 30,
+      "degree": 33,
+      "size": 21.9
+    },
+    {
       "id": "file_file_lib_dashboard_group_status_ts_n4d1zp",
       "label": "Dashboard Group Status",
       "title": "lib/dashboard/group-status.ts\nDomain Module / Home\n1 file, 10 symbols",
@@ -2659,39 +2683,15 @@
       "size": 20.9
     },
     {
-      "id": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
-      "label": "Dashboard Demo Seed",
-      "title": "lib/dashboard/demo-seed.ts\nDomain Module / Home\n1 file, 13 symbols",
-      "source_file": "lib/dashboard/demo-seed.ts",
-      "source_files": [
-        "lib/dashboard/demo-seed.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 13,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "home",
-      "feature_label": "Home",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 2,
-      "raw_outbound_weight": 22,
-      "degree": 24,
-      "size": 20.59
-    },
-    {
       "id": "file_file_lib_dashboard_fallback_data_ts_1j7cve",
       "label": "Dashboard Fallback Data",
-      "title": "lib/dashboard/fallback-data.ts\nDomain Module / Home\n1 file, 15 symbols",
+      "title": "lib/dashboard/fallback-data.ts\nDomain Module / Home\n1 file, 14 symbols",
       "source_file": "lib/dashboard/fallback-data.ts",
       "source_files": [
         "lib/dashboard/fallback-data.ts"
       ],
       "file_count": 1,
-      "symbol_count": 15,
+      "symbol_count": 14,
       "grouped": false,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2702,9 +2702,9 @@
       "color": "#B07AA1",
       "file_type": "code",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 18,
-      "degree": 23,
-      "size": 20.43
+      "raw_outbound_weight": 19,
+      "degree": 24,
+      "size": 20.59
     },
     {
       "id": "file_file_lib_admin_cell_readiness_ts_1ej927",
@@ -2852,33 +2852,6 @@
       "size": 26.69
     },
     {
-      "id": "bucket_bucket_plan_domain_module_1mbebr",
-      "label": "Plan Domain Module",
-      "title": "Plan Domain Module bucket\nDomain Module / Plan\n4 files, 36 symbols\nlib/dashboard/launch-planning-snapshot.ts\nlib/admin/prospect-next-step.ts\nlib/admin/prospect-funnel.ts\nlib/admin/prospect-interest.ts",
-      "source_file": "module/plan/domain_module",
-      "source_files": [
-        "lib/admin/prospect-funnel.ts",
-        "lib/admin/prospect-interest.ts",
-        "lib/admin/prospect-next-step.ts",
-        "lib/dashboard/launch-planning-snapshot.ts"
-      ],
-      "file_count": 4,
-      "symbol_count": 36,
-      "grouped": true,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "plan",
-      "feature_label": "Plan",
-      "color": "#B07AA1",
-      "file_type": "module-bucket",
-      "raw_inbound_weight": 27,
-      "raw_outbound_weight": 19,
-      "degree": 45,
-      "size": 24.72
-    },
-    {
       "id": "file_file_lib_admin_leader_pipeline_ts_1xv79f",
       "label": "Admin Leader Pipeline",
       "title": "lib/admin/leader-pipeline.ts\nDomain Module / Plan\n1 file, 12 symbols",
@@ -2903,6 +2876,56 @@
       "size": 22.04
     },
     {
+      "id": "bucket_bucket_plan_domain_module_1mbebr",
+      "label": "Plan Domain Module",
+      "title": "Plan Domain Module bucket\nDomain Module / Plan\n3 files, 33 symbols\nlib/admin/prospect-next-step.ts\nlib/admin/prospect-funnel.ts\nlib/admin/prospect-interest.ts",
+      "source_file": "module/plan/domain_module",
+      "source_files": [
+        "lib/admin/prospect-funnel.ts",
+        "lib/admin/prospect-interest.ts",
+        "lib/admin/prospect-next-step.ts"
+      ],
+      "file_count": 3,
+      "symbol_count": 33,
+      "grouped": true,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "plan",
+      "feature_label": "Plan",
+      "color": "#B07AA1",
+      "file_type": "module-bucket",
+      "raw_inbound_weight": 22,
+      "raw_outbound_weight": 4,
+      "degree": 25,
+      "size": 21.75
+    },
+    {
+      "id": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "label": "Dashboard Launch Planning Snapshot",
+      "title": "lib/dashboard/launch-planning-snapshot.ts\nDomain Module / Plan\n1 file, 3 symbols",
+      "source_file": "lib/dashboard/launch-planning-snapshot.ts",
+      "source_files": [
+        "lib/dashboard/launch-planning-snapshot.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 3,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "plan",
+      "feature_label": "Plan",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 5,
+      "raw_outbound_weight": 15,
+      "degree": 20,
+      "size": 19.93
+    },
+    {
       "id": "file_file_lib_admin_feature_flags_ts_1ph5it",
       "label": "Admin Feature Flags",
       "title": "lib/admin/feature-flags.ts\nDomain Module / Settings\n1 file, 15 symbols",
@@ -2921,10 +2944,10 @@
       "feature_label": "Settings",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 19,
+      "raw_inbound_weight": 16,
       "raw_outbound_weight": 10,
-      "degree": 29,
-      "size": 21.35
+      "degree": 26,
+      "size": 20.9
     },
     {
       "id": "bucket_bucket_settings_domain_module_11y1so",
@@ -2996,10 +3019,10 @@
       "feature_label": "Care",
       "color": "#76B7B2",
       "file_type": "code",
-      "raw_inbound_weight": 8,
+      "raw_inbound_weight": 12,
       "raw_outbound_weight": 18,
-      "degree": 26,
-      "size": 20.9
+      "degree": 30,
+      "size": 21.49
     },
     {
       "id": "file_file_lib_supabase_read_models_ts_19ohwx",
@@ -3367,13 +3390,13 @@
     {
       "id": "bucket_bucket_care_rpc_write_boundary_1hvv1q",
       "label": "Care RPC/Write Boundary",
-      "title": "Care RPC/Write Boundary bucket\nRPC/Write Boundary / Care\n1 file, 3 symbols\nlib/over-shepherd/rpc.ts",
+      "title": "Care RPC/Write Boundary bucket\nRPC/Write Boundary / Care\n1 file, 4 symbols\nlib/over-shepherd/rpc.ts",
       "source_file": "module/care/rpc_write_boundary",
       "source_files": [
         "lib/over-shepherd/rpc.ts"
       ],
       "file_count": 1,
-      "symbol_count": 3,
+      "symbol_count": 4,
       "grouped": true,
       "category": "rpc_write_boundary",
       "category_label": "RPC/Write Boundary",
@@ -3387,30 +3410,6 @@
       "raw_outbound_weight": 3,
       "degree": 4,
       "size": 16.1
-    },
-    {
-      "id": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "label": "Admin Rpc",
-      "title": "lib/admin/rpc.ts\nRPC/Write Boundary / Core\n1 file, 125 symbols",
-      "source_file": "lib/admin/rpc.ts",
-      "source_files": [
-        "lib/admin/rpc.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 125,
-      "grouped": false,
-      "category": "rpc_write_boundary",
-      "category_label": "RPC/Write Boundary",
-      "community": 5,
-      "community_name": "RPC/Write Boundary",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#E15759",
-      "file_type": "code",
-      "raw_inbound_weight": 128,
-      "raw_outbound_weight": 125,
-      "degree": 243.25,
-      "size": 37.17
     },
     {
       "id": "file_file_lib_admin_run_action_ts_1x8hfe",
@@ -3437,6 +3436,56 @@
       "size": 32.3
     },
     {
+      "id": "file_file_lib_admin_rpc_ts_qlr9mh",
+      "label": "Admin Rpc",
+      "title": "lib/admin/rpc.ts\nRPC/Write Boundary / Core\n1 file, 35 symbols",
+      "source_file": "lib/admin/rpc.ts",
+      "source_files": [
+        "lib/admin/rpc.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 35,
+      "grouped": false,
+      "category": "rpc_write_boundary",
+      "category_label": "RPC/Write Boundary",
+      "community": 5,
+      "community_name": "RPC/Write Boundary",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#E15759",
+      "file_type": "code",
+      "raw_inbound_weight": 53,
+      "raw_outbound_weight": 28,
+      "degree": 71.25,
+      "size": 26.08
+    },
+    {
+      "id": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "label": "Core RPC/Write Boundary",
+      "title": "Core RPC/Write Boundary bucket\nRPC/Write Boundary / Core\n3 files, 18 symbols\nlib/leader/rpc.ts\nlib/account/rpc.ts\nlib/usage/rpc.ts",
+      "source_file": "module/core/rpc_write_boundary",
+      "source_files": [
+        "lib/account/rpc.ts",
+        "lib/leader/rpc.ts",
+        "lib/usage/rpc.ts"
+      ],
+      "file_count": 3,
+      "symbol_count": 18,
+      "grouped": true,
+      "category": "rpc_write_boundary",
+      "category_label": "RPC/Write Boundary",
+      "community": 5,
+      "community_name": "RPC/Write Boundary",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#E15759",
+      "file_type": "module-bucket",
+      "raw_inbound_weight": 14,
+      "raw_outbound_weight": 11,
+      "degree": 24,
+      "size": 21.59
+    },
+    {
       "id": "file_file_lib_shared_rpc_ts_1ve8w5",
       "label": "Shared Rpc",
       "title": "lib/shared/rpc.ts\nRPC/Write Boundary / Core\n1 file, 7 symbols",
@@ -3455,10 +3504,10 @@
       "feature_label": "Core",
       "color": "#E15759",
       "file_type": "code",
-      "raw_inbound_weight": 122,
+      "raw_inbound_weight": 23,
       "raw_outbound_weight": 2,
-      "degree": 123,
-      "size": 30.19
+      "degree": 24,
+      "size": 20.59
     },
     {
       "id": "file_file_lib_leader_run_action_ts_fv5kdy",
@@ -3485,30 +3534,6 @@
       "size": 20.27
     },
     {
-      "id": "file_file_lib_leader_rpc_ts_154rtc",
-      "label": "Leader Rpc",
-      "title": "lib/leader/rpc.ts\nRPC/Write Boundary / Core\n1 file, 20 symbols",
-      "source_file": "lib/leader/rpc.ts",
-      "source_files": [
-        "lib/leader/rpc.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 20,
-      "grouped": false,
-      "category": "rpc_write_boundary",
-      "category_label": "RPC/Write Boundary",
-      "community": 5,
-      "community_name": "RPC/Write Boundary",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#E15759",
-      "file_type": "code",
-      "raw_inbound_weight": 10,
-      "raw_outbound_weight": 12,
-      "degree": 21,
-      "size": 20.1
-    },
-    {
       "id": "file_file_lib_shared_run_action_ts_17wise",
       "label": "Shared Run Action",
       "title": "lib/shared/run-action.ts\nRPC/Write Boundary / Core\n1 file, 7 symbols",
@@ -3531,31 +3556,6 @@
       "raw_outbound_weight": 6,
       "degree": 15,
       "size": 19
-    },
-    {
-      "id": "bucket_bucket_core_rpc_write_boundary_n6grhw",
-      "label": "Core RPC/Write Boundary",
-      "title": "Core RPC/Write Boundary bucket\nRPC/Write Boundary / Core\n2 files, 5 symbols\nlib/account/rpc.ts\nlib/usage/rpc.ts",
-      "source_file": "module/core/rpc_write_boundary",
-      "source_files": [
-        "lib/account/rpc.ts",
-        "lib/usage/rpc.ts"
-      ],
-      "file_count": 2,
-      "symbol_count": 5,
-      "grouped": true,
-      "category": "rpc_write_boundary",
-      "category_label": "RPC/Write Boundary",
-      "community": 5,
-      "community_name": "RPC/Write Boundary",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#E15759",
-      "file_type": "module-bucket",
-      "raw_inbound_weight": 8,
-      "raw_outbound_weight": 6,
-      "degree": 14,
-      "size": 19.38
     },
     {
       "id": "file_file_lib_auth_session_ts_1falso",
@@ -3693,10 +3693,10 @@
       "feature_label": "Calendar",
       "color": "#BAB0AC",
       "file_type": "code",
-      "raw_inbound_weight": 51,
+      "raw_inbound_weight": 52,
       "raw_outbound_weight": 0,
-      "degree": 21.25,
-      "size": 20.15
+      "degree": 22.25,
+      "size": 20.31
     },
     {
       "id": "file_file_lib_utils_ts_1hfszh",
@@ -3719,8 +3719,8 @@
       "file_type": "code",
       "raw_inbound_weight": 109,
       "raw_outbound_weight": 0,
-      "degree": 44.1,
-      "size": 23.29
+      "degree": 44.7,
+      "size": 23.36
     },
     {
       "id": "file_file_lib_shared_uuid_ts_da5eyb",
@@ -4026,8 +4026,8 @@
       "file_type": "code",
       "raw_inbound_weight": 67,
       "raw_outbound_weight": 5,
-      "degree": 35.2,
-      "size": 22.2
+      "degree": 35.85,
+      "size": 22.28
     },
     {
       "id": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
@@ -4265,17 +4265,16 @@
     {
       "id": "bucket_bucket_core_validation_xi3dff",
       "label": "Core Validation",
-      "title": "Core Validation bucket\nValidation / Core\n5 files, 41 symbols\nlib/admin/validation/index.ts\nlib/admin/validation/super-admin.ts\nlib/admin/validation/leader-health.ts\nlib/admin/validation/group-rubric-grade.ts\nlib/leader/validation.ts",
+      "title": "Core Validation bucket\nValidation / Core\n4 files, 40 symbols\nlib/admin/validation/super-admin.ts\nlib/admin/validation/leader-health.ts\nlib/admin/validation/group-rubric-grade.ts\nlib/leader/validation.ts",
       "source_file": "module/core/validation",
       "source_files": [
         "lib/admin/validation/group-rubric-grade.ts",
-        "lib/admin/validation/index.ts",
         "lib/admin/validation/leader-health.ts",
         "lib/admin/validation/super-admin.ts",
         "lib/leader/validation.ts"
       ],
-      "file_count": 5,
-      "symbol_count": 41,
+      "file_count": 4,
+      "symbol_count": 40,
       "grouped": true,
       "category": "validation",
       "category_label": "Validation",
@@ -4286,9 +4285,9 @@
       "color": "#FF9DA7",
       "file_type": "module-bucket",
       "raw_inbound_weight": 6,
-      "raw_outbound_weight": 54,
-      "degree": 43.25,
-      "size": 24.78
+      "raw_outbound_weight": 34,
+      "degree": 29.25,
+      "size": 22.7
     },
     {
       "id": "file_file_lib_admin_validation_people_ts_1xsuqz",
@@ -4313,6 +4312,30 @@
       "raw_outbound_weight": 27,
       "degree": 20.5,
       "size": 20.02
+    },
+    {
+      "id": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "label": "Admin Validation Index",
+      "title": "lib/admin/validation/index.ts\nValidation / Core\n1 file, 1 symbols",
+      "source_file": "lib/admin/validation/index.ts",
+      "source_files": [
+        "lib/admin/validation/index.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 1,
+      "grouped": false,
+      "category": "validation",
+      "category_label": "Validation",
+      "community": 9,
+      "community_name": "Validation",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#FF9DA7",
+      "file_type": "code",
+      "raw_inbound_weight": 0,
+      "raw_outbound_weight": 20,
+      "degree": 20,
+      "size": 19.93
     },
     {
       "id": "file_file_lib_admin_validation_groups_ts_yi2j4g",
@@ -4897,22 +4920,6 @@
     },
     {
       "source": "bucket_bucket_auth_domain_module_by1nae",
-      "target": "bucket_bucket_core_observability_security_lfj4mc",
-      "weight": 17,
-      "visual_weight": 17,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 17
-      },
-      "raw_edge_count": 17,
-      "examples": [
-        "lib/admin/private-notes-session.ts -> lib/crypto/encoding.ts",
-        "lib/admin/private-notes-session.ts -> lib/crypto/private-notes.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_auth_domain_module_by1nae",
       "target": "bucket_bucket_core_supabase_read_adapter_1jkozp",
       "weight": 3,
       "visual_weight": 3,
@@ -4926,21 +4933,6 @@
       "raw_edge_count": 3,
       "examples": [
         "lib/supabase/middleware.ts -> lib/supabase/config.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_auth_domain_module_by1nae",
-      "target": "file_file_lib_shared_action_result_ts_1t7duc",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": true,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/private-notes-session.ts -> lib/shared/action-result.ts"
       ]
     },
     {
@@ -5454,6 +5446,99 @@
       ]
     },
     {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/leader/rpc.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "contains",
+      "relation_counts": {
+        "contains": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "app/(protected)/leader/[groupId]/calendar/actions.ts -> app/(protected)/leader/[groupId]/calendar/page.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/admin/rpc.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "file_file_lib_admin_run_action_ts_1x8hfe",
+      "weight": 7,
+      "visual_weight": 7,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 4,
+        "imports": 3
+      },
+      "raw_edge_count": 7,
+      "examples": [
+        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/admin/run-action.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
+      "weight": 12,
+      "visual_weight": 12,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 12
+      },
+      "raw_edge_count": 12,
+      "examples": [
+        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/calendar/payload.ts",
+        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/calendar/payload.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_server_action_1sx02z",
+      "target": "file_file_lib_leader_run_action_ts_fv5kdy",
+      "weight": 6,
+      "visual_weight": 6,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 4,
+        "imports": 2
+      },
+      "raw_edge_count": 6,
+      "examples": [
+        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/leader/run-action.ts"
+      ]
+    },
+    {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "bucket_bucket_care_supabase_read_adapter_1cgqij",
       "weight": 2,
@@ -5558,21 +5643,6 @@
       "raw_edge_count": 1,
       "examples": [
         "lib/admin/care-note-visibility.ts -> types/enums.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_feature_component_1sfwud",
-      "target": "bucket_bucket_auth_domain_module_by1nae",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/shepherd-care/private-notes-section.tsx -> lib/admin/private-notes-session.ts"
       ]
     },
     {
@@ -5967,6 +6037,21 @@
         "components/admin/care/group-rubric-grade-entry.tsx -> lib/admin/health-rubric.ts",
         "components/admin/shepherd-care/leader-health-grade.tsx -> lib/admin/health-rubric.ts",
         "components/admin/shepherd-care/shepherd-care-detail-data.ts -> lib/admin/health-rubric.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_feature_component_1sfwud",
+      "target": "file_file_lib_admin_private_notes_session_ts_9kcyw8",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/shepherd-care/private-notes-section.tsx -> lib/admin/private-notes-session.ts"
       ]
     },
     {
@@ -6480,15 +6565,32 @@
     },
     {
       "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 6,
-      "visual_weight": 6,
+      "target": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 6
+        "imports": 2,
+        "calls": 1
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 3,
+      "examples": [
+        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/rpc.ts",
+        "app/(protected)/leader/follow-up-actions.ts -> lib/leader/rpc.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_server_action_1gicso",
+      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 3
+      },
+      "raw_edge_count": 3,
       "examples": [
         "app/(protected)/admin/follow-ups/actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/shepherd-care/care-notes-actions.ts -> lib/admin/rpc.ts",
@@ -6545,23 +6647,6 @@
         "app/(protected)/admin/shepherd-care/care-notes-actions.ts -> lib/auth/session.ts",
         "app/(protected)/leader/follow-up-actions.ts -> lib/auth/session.ts",
         "app/(protected)/over-shepherd/[profileId]/actions.ts -> lib/auth/session.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_leader_rpc_ts_154rtc",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 3,
-        "calls": 1
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/rpc.ts",
-        "app/(protected)/leader/follow-up-actions.ts -> lib/leader/rpc.ts"
       ]
     },
     {
@@ -7164,30 +7249,32 @@
     {
       "source": "bucket_bucket_core_feature_component_lncng4",
       "target": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 2,
       "examples": [
+        "components/admin/forms/assign-leader-form.tsx -> app/(protected)/admin/people/actions.ts",
         "components/admin/forms/change-leader-role-form.tsx -> app/(protected)/admin/people/actions.ts"
       ]
     },
     {
       "source": "bucket_bucket_core_feature_component_lncng4",
       "target": "file_file_app_protected_admin_settings_actions_ts_2cfnr1",
-      "weight": 3,
-      "visual_weight": 3,
+      "weight": 4,
+      "visual_weight": 4,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3
+        "imports": 4
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 4,
       "examples": [
+        "components/admin/forms/metric-defaults-form.tsx -> app/(protected)/admin/settings/actions.ts",
         "components/admin/forms/clear-group-metric-overrides-button.tsx -> app/(protected)/admin/settings/actions.ts",
         "components/admin/forms/group-metric-overrides-form.tsx -> app/(protected)/admin/settings/actions.ts",
         "components/admin/forms/reset-metric-defaults-button.tsx -> app/(protected)/admin/settings/actions.ts"
@@ -7499,22 +7586,6 @@
     },
     {
       "source": "bucket_bucket_core_feature_component_lncng4",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/forms/assign-leader-form.tsx -> lib/admin/rpc.ts",
-        "components/admin/forms/metric-defaults-form.tsx -> lib/admin/rpc.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_feature_component_lncng4",
       "target": "file_file_lib_auth_roles_ts_8mdnvc",
       "weight": 2,
       "visual_weight": 2,
@@ -7655,18 +7726,34 @@
     {
       "source": "bucket_bucket_core_rpc_write_boundary_n6grhw",
       "target": "file_file_lib_shared_rpc_ts_1ve8w5",
-      "weight": 6,
-      "visual_weight": 6,
+      "weight": 9,
+      "visual_weight": 9,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 4,
-        "calls": 2
+        "imports": 6,
+        "calls": 3
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 9,
       "examples": [
         "lib/account/rpc.ts -> lib/shared/rpc.ts",
+        "lib/leader/rpc.ts -> lib/shared/rpc.ts",
         "lib/usage/rpc.ts -> lib/shared/rpc.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "target": "file_file_types_enums_ts_19rgpl",
+      "weight": 2,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/leader/rpc.ts -> types/enums.ts"
       ]
     },
     {
@@ -7703,6 +7790,21 @@
         "app/(protected)/admin/super-admin/launch-prep-actions.ts -> lib/admin/action-result.ts",
         "app/(protected)/admin/super-admin/people-import-actions.ts -> lib/admin/action-result.ts",
         "app/(protected)/admin/super-admin/people-import-actions.ts -> lib/admin/people-import.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_core_server_action_1ecz9d",
+      "target": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "app/(protected)/leader/actions.ts -> lib/leader/rpc.ts"
       ]
     },
     {
@@ -7773,15 +7875,15 @@
     {
       "source": "bucket_bucket_core_server_action_1ecz9d",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 20,
-      "visual_weight": 20,
+      "weight": 17,
+      "visual_weight": 17,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 13,
+        "imports": 10,
         "calls": 7
       },
-      "raw_edge_count": 20,
+      "raw_edge_count": 17,
       "examples": [
         "app/(protected)/admin/super-admin/account-actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/super-admin/actions.ts -> lib/admin/rpc.ts",
@@ -7828,21 +7930,6 @@
         "app/(protected)/admin/super-admin/actions.ts -> lib/auth/session.ts",
         "app/(protected)/admin/super-admin/activity-reset-actions.ts -> lib/auth/session.ts",
         "app/(protected)/admin/super-admin/audit-reset-actions.ts -> lib/auth/session.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_server_action_1ecz9d",
-      "target": "file_file_lib_leader_rpc_ts_154rtc",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/leader/actions.ts -> lib/leader/rpc.ts"
       ]
     },
     {
@@ -8011,98 +8098,6 @@
     },
     {
       "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_care_validation_80v2ph",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/care-notes.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_groups_validation_19iahb",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/group-health.ts",
-        "lib/admin/validation/index.ts -> lib/admin/validation/health-rubric.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_multiply_validation_104qic",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/multiplication-pillars.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_people_validation_5xfxcz",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/guests.ts",
-        "lib/admin/validation/index.ts -> lib/admin/validation/invite-link.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_plan_validation_2f2ecz",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/leader-pipeline.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "bucket_bucket_settings_validation_8ejlyd",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/settings.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
       "target": "file_file_lib_admin_group_health_override_ts_o8orwv",
       "weight": 2,
       "visual_weight": 2,
@@ -8119,143 +8114,21 @@
     },
     {
       "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/follow-ups.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_group_categories_ts_6deyt4",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/group-categories.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_groups_ts_yi2j4g",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/groups.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_launch_planning_ts_1lr1a4",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/launch-planning.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_people_ts_1xsuqz",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/people.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/prospects.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_readiness_rule_ts_v7d20f",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/readiness-rule.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
       "target": "file_file_lib_admin_validation_shared_ts_bwlac5",
-      "weight": 16,
-      "visual_weight": 16,
+      "weight": 15,
+      "visual_weight": 15,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
         "imports": 8,
         "calls": 4,
-        "imports_from": 3,
-        "re_exports": 1
+        "imports_from": 3
       },
-      "raw_edge_count": 16,
+      "raw_edge_count": 15,
       "examples": [
         "lib/admin/validation/group-rubric-grade.ts -> lib/admin/validation/shared.ts",
-        "lib/admin/validation/index.ts -> lib/admin/validation/shared.ts",
         "lib/admin/validation/leader-health.ts -> lib/admin/validation/shared.ts",
         "lib/admin/validation/super-admin.ts -> lib/admin/validation/shared.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_core_validation_xi3dff",
-      "target": "file_file_lib_admin_validation_shepherd_care_ts_1ptkkh",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "re_exports",
-      "relation_counts": {
-        "re_exports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/index.ts -> lib/admin/validation/shepherd-care.ts"
       ]
     },
     {
@@ -8408,6 +8281,21 @@
     {
       "source": "bucket_bucket_groups_feature_component_1dluny",
       "target": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/group-detail/group-roster-manager.tsx -> app/(protected)/admin/people/actions.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_feature_component_1dluny",
+      "target": "file_file_app_protected_admin_settings_actions_ts_2cfnr1",
       "weight": 1,
       "visual_weight": 1,
       "softened": false,
@@ -8417,7 +8305,7 @@
       },
       "raw_edge_count": 1,
       "examples": [
-        "components/admin/group-detail/group-roster-manager.tsx -> app/(protected)/admin/people/actions.ts"
+        "components/admin/settings/health-rubric-editor.tsx -> app/(protected)/admin/settings/actions.ts"
       ]
     },
     {
@@ -8605,22 +8493,6 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/group-management-shell.tsx -> lib/admin/metrics.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_groups_feature_component_1dluny",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 4
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "components/admin/group-detail/group-roster-manager.tsx -> lib/admin/rpc.ts",
-        "components/admin/settings/health-rubric-editor.tsx -> lib/admin/rpc.ts"
       ]
     },
     {
@@ -8830,14 +8702,14 @@
     {
       "source": "bucket_bucket_groups_server_action_yojrb7",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 6,
-      "visual_weight": 6,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 6
+        "imports": 3
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 3,
       "examples": [
         "app/(protected)/admin/group-health/grade-actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/groups/actions.ts -> lib/admin/rpc.ts"
@@ -10315,19 +10187,20 @@
     {
       "source": "bucket_bucket_people_feature_component_1c53f7",
       "target": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 7,
+      "visual_weight": 7,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 4
+        "imports": 7
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 7,
       "examples": [
         "components/admin/forms/leader-profile-form.tsx -> app/(protected)/admin/people/actions.ts",
         "components/admin/forms/member-form.tsx -> app/(protected)/admin/people/actions.ts",
-        "components/admin/forms/deactivate-profile-button.tsx -> app/(protected)/admin/people/actions.ts",
-        "components/admin/forms/deactivate-member-button.tsx -> app/(protected)/admin/people/actions.ts"
+        "components/admin/person-detail/person-group-assign.tsx -> app/(protected)/admin/people/actions.ts",
+        "components/admin/forms/assign-member-form.tsx -> app/(protected)/admin/people/actions.ts",
+        "components/admin/forms/deactivate-profile-button.tsx -> app/(protected)/admin/people/actions.ts"
       ]
     },
     {
@@ -10453,22 +10326,6 @@
         "components/admin/forms/member-form.tsx -> components/ui/button.tsx",
         "components/admin/people-directory.tsx -> components/ui/button.tsx",
         "components/admin/person-detail/person-group-assign.tsx -> components/ui/button.tsx"
-      ]
-    },
-    {
-      "source": "bucket_bucket_people_feature_component_1c53f7",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 3,
-      "visual_weight": 3,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 3
-      },
-      "raw_edge_count": 3,
-      "examples": [
-        "components/admin/forms/assign-member-form.tsx -> lib/admin/rpc.ts",
-        "components/admin/person-detail/person-group-assign.tsx -> lib/admin/rpc.ts"
       ]
     },
     {
@@ -10787,15 +10644,15 @@
     {
       "source": "bucket_bucket_people_server_action_ei7ga4",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3,
+        "imports": 2,
         "calls": 1
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 3,
       "examples": [
         "app/(protected)/admin/guests/actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/super-admin/invite-link-actions.ts -> lib/admin/rpc.ts"
@@ -11041,37 +10898,6 @@
     },
     {
       "source": "bucket_bucket_plan_domain_module_1mbebr",
-      "target": "file_file_lib_admin_launch_planning_ts_1n9kfx",
-      "weight": 10,
-      "visual_weight": 10,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 5,
-        "imports": 5
-      },
-      "raw_edge_count": 10,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/launch-planning.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_domain_module_1mbebr",
-      "target": "file_file_lib_admin_metrics_ts_pnjhin",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/metrics.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_domain_module_1mbebr",
       "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
       "weight": 1,
       "visual_weight": 1,
@@ -11098,38 +10924,6 @@
       "raw_edge_count": 1,
       "examples": [
         "lib/admin/prospect-next-step.ts -> lib/admin/validation/shared.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_domain_module_1mbebr",
-      "target": "file_file_lib_dashboard_admin_group_model_ts_f08ewc",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/admin-group-model.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_domain_module_1mbebr",
-      "target": "file_file_lib_dashboard_types_ts_1oi588",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/types.ts"
       ]
     },
     {
@@ -11167,36 +10961,35 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "bucket_bucket_plan_domain_module_1mbebr",
-      "weight": 6,
-      "visual_weight": 6,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 6
+        "imports": 2
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 2,
       "examples": [
         "components/admin/plan/prospect-board.tsx -> lib/admin/prospect-funnel.ts",
-        "components/admin/plan/prospect-board.tsx -> lib/admin/prospect-next-step.ts",
-        "components/admin/plan/prospect-card.tsx -> lib/admin/prospect-funnel.ts",
-        "components/admin/plan/prospect-card.tsx -> lib/admin/prospect-next-step.ts"
+        "components/admin/plan/prospect-board.tsx -> lib/admin/prospect-next-step.ts"
       ]
     },
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "bucket_bucket_plan_server_action_16yw4v",
-      "weight": 9,
-      "visual_weight": 9,
+      "weight": 7,
+      "visual_weight": 7,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 9
+        "imports": 7
       },
-      "raw_edge_count": 9,
+      "raw_edge_count": 7,
       "examples": [
+        "components/admin/launch-planning/assumptions-form.tsx -> app/(protected)/admin/launch-planning/actions.ts",
+        "components/admin/launch-planning/church-attendance-card.tsx -> app/(protected)/admin/launch-planning/actions.ts",
         "components/admin/launch-planning/scenario-form.tsx -> app/(protected)/admin/launch-planning/scenario-actions.ts",
-        "components/admin/plan/prospect-create-form.tsx -> app/(protected)/admin/plan/actions.ts",
-        "components/admin/plan/prospect-card.tsx -> app/(protected)/admin/plan/actions.ts"
+        "components/admin/plan/prospect-create-form.tsx -> app/(protected)/admin/plan/actions.ts"
       ]
     },
     {
@@ -11218,22 +11011,6 @@
     },
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
-      "target": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/launch-planning/assumptions-form.tsx -> app/(protected)/admin/launch-planning/actions.ts",
-        "components/admin/launch-planning/church-attendance-card.tsx -> app/(protected)/admin/launch-planning/actions.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
       "weight": 1,
       "visual_weight": 1,
@@ -11250,36 +11027,21 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_components_admin_forms_action_form_tsx_jk4xro",
-      "weight": 18,
-      "visual_weight": 18,
+      "weight": 14,
+      "visual_weight": 14,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 10,
-        "calls": 8
+        "imports": 8,
+        "calls": 6
       },
-      "raw_edge_count": 18,
+      "raw_edge_count": 14,
       "examples": [
         "components/admin/launch-planning/assumptions-form.tsx -> components/admin/forms/action-form.tsx",
         "components/admin/launch-planning/church-attendance-card.tsx -> components/admin/forms/action-form.tsx",
         "components/admin/launch-planning/scenario-form.tsx -> components/admin/forms/action-form.tsx",
         "components/admin/leader-pipeline/leader-pipeline.tsx -> components/admin/forms/action-form.tsx",
-        "components/admin/plan/prospect-card.tsx -> components/admin/forms/action-form.tsx"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_feature_component_1cb94q",
-      "target": "file_file_components_admin_forms_confirm_action_button_tsx_nlk7nv",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/plan/prospect-card.tsx -> components/admin/forms/confirm-action-button.tsx"
+        "components/admin/plan/prospect-create-form.tsx -> components/admin/forms/action-form.tsx"
       ]
     },
     {
@@ -11336,17 +11098,31 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_components_admin_plan_plan_data_ts_rmd88h",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
-        "components/admin/plan/prospect-board.tsx -> components/admin/plan/plan-data.ts",
-        "components/admin/plan/prospect-card.tsx -> components/admin/plan/plan-data.ts"
+        "components/admin/plan/prospect-board.tsx -> components/admin/plan/plan-data.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_feature_component_1cb94q",
+      "target": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-board.tsx -> components/admin/plan/prospect-card.tsx"
       ]
     },
     {
@@ -11367,14 +11143,14 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_components_pastoral_button_tsx_goum4k",
-      "weight": 8,
-      "visual_weight": 2.8,
+      "weight": 7,
+      "visual_weight": 2.45,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 8
+        "imports": 7
       },
-      "raw_edge_count": 8,
+      "raw_edge_count": 7,
       "examples": [
         "components/admin/launch-planning/assumptions-form.tsx -> components/pastoral/button.tsx",
         "components/admin/launch-planning/church-attendance-card.tsx -> components/pastoral/button.tsx",
@@ -11468,17 +11244,16 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
-        "components/admin/plan/prospect-board.tsx -> lib/admin/validation/prospects.ts",
-        "components/admin/plan/prospect-card.tsx -> lib/admin/validation/prospects.ts"
+        "components/admin/plan/prospect-board.tsx -> lib/admin/validation/prospects.ts"
       ]
     },
     {
@@ -11546,21 +11321,6 @@
     },
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
-      "target": "file_file_lib_supabase_prospect_reads_ts_1kc4ya",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/plan/prospect-card.tsx -> lib/supabase/prospect-reads.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_lib_supabase_server_ts_rkv6z4",
       "weight": 1,
       "visual_weight": 1,
@@ -11577,18 +11337,17 @@
     {
       "source": "bucket_bucket_plan_feature_component_1cb94q",
       "target": "file_file_lib_utils_ts_1hfszh",
-      "weight": 4,
-      "visual_weight": 1.4,
+      "weight": 2,
+      "visual_weight": 1,
       "softened": true,
       "relation": "calls",
       "relation_counts": {
-        "calls": 2,
-        "imports": 2
+        "calls": 1,
+        "imports": 1
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 2,
       "examples": [
-        "components/admin/plan/prospect-board.tsx -> lib/utils.ts",
-        "components/admin/plan/prospect-card.tsx -> lib/utils.ts"
+        "components/admin/plan/prospect-board.tsx -> lib/utils.ts"
       ]
     },
     {
@@ -11770,16 +11529,32 @@
     },
     {
       "source": "bucket_bucket_plan_server_action_16yw4v",
+      "target": "bucket_bucket_plan_feature_component_1cb94q",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "contains",
+      "relation_counts": {
+        "contains": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "app/(protected)/admin/launch-planning/actions.ts -> components/admin/launch-planning/launch-planning-shell.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_server_action_16yw4v",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 12,
-      "visual_weight": 12,
+      "weight": 4,
+      "visual_weight": 4,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 12
+        "imports": 4
       },
-      "raw_edge_count": 12,
+      "raw_edge_count": 4,
       "examples": [
+        "app/(protected)/admin/launch-planning/actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/launch-planning/scenario-actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/leader-pipeline/actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/plan/actions.ts -> lib/admin/rpc.ts"
@@ -11788,16 +11563,17 @@
     {
       "source": "bucket_bucket_plan_server_action_16yw4v",
       "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 20,
-      "visual_weight": 20,
+      "weight": 28,
+      "visual_weight": 28,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 13,
-        "imports": 7
+        "calls": 19,
+        "imports": 9
       },
-      "raw_edge_count": 20,
+      "raw_edge_count": 28,
       "examples": [
+        "app/(protected)/admin/launch-planning/actions.ts -> lib/admin/run-action.ts",
         "app/(protected)/admin/launch-planning/scenario-actions.ts -> lib/admin/run-action.ts",
         "app/(protected)/admin/leader-pipeline/actions.ts -> lib/admin/run-action.ts",
         "app/(protected)/admin/plan/actions.ts -> lib/admin/run-action.ts"
@@ -12664,14 +12440,14 @@
     {
       "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/group-health/actions.ts -> lib/admin/rpc.ts"
       ]
@@ -12693,8 +12469,8 @@
       ]
     },
     {
-      "source": "file_file_app_protected_admin_groups_groupid_calendar_actions_ts_v6qf2q",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
+      "source": "file_file_app_protected_admin_groups_groupid_calendar_page_tsx_1anr2b",
+      "target": "bucket_bucket_calendar_server_action_1sx02z",
       "weight": 4,
       "visual_weight": 4,
       "softened": false,
@@ -12704,38 +12480,7 @@
       },
       "raw_edge_count": 4,
       "examples": [
-        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/admin/rpc.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_groups_groupid_calendar_actions_ts_v6qf2q",
-      "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 7,
-      "visual_weight": 7,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 4,
-        "imports": 3
-      },
-      "raw_edge_count": 7,
-      "examples": [
-        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/admin/run-action.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_groups_groupid_calendar_actions_ts_v6qf2q",
-      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
-      "weight": 6,
-      "visual_weight": 6,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 6
-      },
-      "raw_edge_count": 6,
-      "examples": [
-        "app/(protected)/admin/groups/[groupId]/calendar/actions.ts -> lib/calendar/payload.ts"
+        "app/(protected)/admin/groups/[groupId]/calendar/page.tsx -> app/(protected)/admin/groups/[groupId]/calendar/actions.ts"
       ]
     },
     {
@@ -12751,21 +12496,6 @@
       "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/groups/[groupId]/calendar/page.tsx -> components/lg/Card.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_groups_groupid_calendar_page_tsx_1anr2b",
-      "target": "file_file_app_protected_admin_groups_groupid_calendar_actions_ts_v6qf2q",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 4
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "app/(protected)/admin/groups/[groupId]/calendar/page.tsx -> app/(protected)/admin/groups/[groupId]/calendar/actions.ts"
       ]
     },
     {
@@ -13099,52 +12829,6 @@
       ]
     },
     {
-      "source": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
-      "target": "bucket_bucket_plan_feature_component_1cb94q",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "contains",
-      "relation_counts": {
-        "contains": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/admin/launch-planning/actions.ts -> components/admin/launch-planning/launch-planning-shell.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 6,
-      "visual_weight": 6,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 6
-      },
-      "raw_edge_count": 6,
-      "examples": [
-        "app/(protected)/admin/launch-planning/actions.ts -> lib/admin/rpc.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
-      "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 8,
-      "visual_weight": 8,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 6,
-        "imports": 2
-      },
-      "raw_edge_count": 8,
-      "examples": [
-        "app/(protected)/admin/launch-planning/actions.ts -> lib/admin/run-action.ts"
-      ]
-    },
-    {
       "source": "file_file_app_protected_admin_page_tsx_1rzdvd",
       "target": "bucket_bucket_core_domain_module_1kz81h",
       "weight": 6,
@@ -13352,14 +13036,14 @@
     {
       "source": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 9,
-      "visual_weight": 9,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 9
+        "imports": 1
       },
-      "raw_edge_count": 9,
+      "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/people/actions.ts -> lib/admin/rpc.ts"
       ]
@@ -13367,15 +13051,15 @@
     {
       "source": "file_file_app_protected_admin_people_actions_ts_8zj3nf",
       "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 9,
-      "visual_weight": 9,
+      "weight": 12,
+      "visual_weight": 12,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 6,
+        "calls": 9,
         "imports": 3
       },
-      "raw_edge_count": 9,
+      "raw_edge_count": 12,
       "examples": [
         "app/(protected)/admin/people/actions.ts -> lib/admin/run-action.ts"
       ]
@@ -13539,14 +13223,14 @@
     {
       "source": "file_file_app_protected_admin_settings_actions_ts_2cfnr1",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 12,
-      "visual_weight": 12,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 12
+        "imports": 1
       },
-      "raw_edge_count": 12,
+      "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/settings/actions.ts -> lib/admin/rpc.ts"
       ]
@@ -13554,15 +13238,15 @@
     {
       "source": "file_file_app_protected_admin_settings_actions_ts_2cfnr1",
       "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 14,
-      "visual_weight": 14,
+      "weight": 16,
+      "visual_weight": 16,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 11,
+        "calls": 13,
         "imports": 3
       },
-      "raw_edge_count": 14,
+      "raw_edge_count": 16,
       "examples": [
         "app/(protected)/admin/settings/actions.ts -> lib/admin/run-action.ts"
       ]
@@ -13570,15 +13254,15 @@
     {
       "source": "file_file_app_protected_admin_shepherd_care_actions_ts_7k9w9h",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 17,
-      "visual_weight": 17,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
-      "relation": "imports",
+      "relation": "contains",
       "relation_counts": {
-        "imports": 16,
-        "contains": 1
+        "contains": 1,
+        "imports": 1
       },
-      "raw_edge_count": 17,
+      "raw_edge_count": 2,
       "examples": [
         "app/(protected)/admin/shepherd-care/actions.ts -> lib/admin/rpc.ts"
       ]
@@ -13793,15 +13477,15 @@
     {
       "source": "file_file_app_protected_admin_super_admin_attention_reset_actions_ts_1hvneb",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 6,
-      "visual_weight": 6,
+      "weight": 4,
+      "visual_weight": 4,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
         "calls": 3,
-        "imports": 3
+        "imports": 1
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 4,
       "examples": [
         "app/(protected)/admin/super-admin/attention-reset-actions.ts -> lib/admin/rpc.ts"
       ]
@@ -13903,15 +13587,15 @@
     {
       "source": "file_file_app_protected_admin_super_admin_history_reset_actions_ts_1f7f9z",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
         "calls": 2,
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 3,
       "examples": [
         "app/(protected)/admin/super-admin/history-reset-actions.ts -> lib/admin/rpc.ts"
       ]
@@ -14080,14 +13764,14 @@
     {
       "source": "file_file_app_protected_admin_super_admin_page_tsx_19c026",
       "target": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/super-admin/page.tsx -> components/admin/super-admin-console-shell.tsx"
       ]
@@ -14221,15 +13905,15 @@
     {
       "source": "file_file_app_protected_admin_super_admin_permanent_delete_actions_ts_uzkfq0",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 7,
-      "visual_weight": 7,
+      "weight": 6,
+      "visual_weight": 6,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
         "calls": 4,
-        "imports": 3
+        "imports": 2
       },
-      "raw_edge_count": 7,
+      "raw_edge_count": 6,
       "examples": [
         "app/(protected)/admin/super-admin/permanent-delete-actions.ts -> lib/admin/rpc.ts"
       ]
@@ -14297,67 +13981,6 @@
       ]
     },
     {
-      "source": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "target": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "contains",
-      "relation_counts": {
-        "contains": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/leader/[groupId]/calendar/actions.ts -> app/(protected)/leader/[groupId]/calendar/page.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
-      "weight": 6,
-      "visual_weight": 6,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 6
-      },
-      "raw_edge_count": 6,
-      "examples": [
-        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/calendar/payload.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "target": "file_file_lib_leader_rpc_ts_154rtc",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 4
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/leader/rpc.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "target": "file_file_lib_leader_run_action_ts_fv5kdy",
-      "weight": 6,
-      "visual_weight": 6,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 4,
-        "imports": 2
-      },
-      "raw_edge_count": 6,
-      "examples": [
-        "app/(protected)/leader/[groupId]/calendar/actions.ts -> lib/leader/run-action.ts"
-      ]
-    },
-    {
       "source": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
       "target": "bucket_bucket_auth_shared_ui_primitive_ft6izb",
       "weight": 2,
@@ -14375,6 +13998,21 @@
     },
     {
       "source": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
+      "target": "bucket_bucket_calendar_server_action_1sx02z",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "app/(protected)/leader/[groupId]/calendar/page.tsx -> app/(protected)/leader/[groupId]/calendar/actions.ts"
+      ]
+    },
+    {
+      "source": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
       "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
       "weight": 1,
       "visual_weight": 1,
@@ -14386,21 +14024,6 @@
       "raw_edge_count": 1,
       "examples": [
         "app/(protected)/leader/[groupId]/calendar/page.tsx -> components/pastoral/shell.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_leader_groupid_calendar_page_tsx_1c3z0b",
-      "target": "file_file_app_protected_leader_groupid_calendar_actions_ts_jlys1x",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 4
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "app/(protected)/leader/[groupId]/calendar/page.tsx -> app/(protected)/leader/[groupId]/calendar/actions.ts"
       ]
     },
     {
@@ -15069,36 +14692,6 @@
     {
       "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
       "target": "file_file_lib_admin_planning_views_ts_x888t2",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/admin-master-calendar-shell.tsx -> lib/admin/planning-views.ts"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
-      "target": "file_file_lib_calendar_occurrences_ts_1riutk",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/admin-master-calendar-shell.tsx -> lib/calendar/occurrences.ts"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
-      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
       "weight": 3,
       "visual_weight": 3,
       "softened": false,
@@ -15107,6 +14700,36 @@
         "imports": 3
       },
       "raw_edge_count": 3,
+      "examples": [
+        "components/admin/admin-master-calendar-shell.tsx -> lib/admin/planning-views.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
+      "target": "file_file_lib_calendar_occurrences_ts_1riutk",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/admin-master-calendar-shell.tsx -> lib/calendar/occurrences.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
+      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
       "examples": [
         "components/admin/admin-master-calendar-shell.tsx -> lib/calendar/payload.ts"
       ]
@@ -15451,6 +15074,21 @@
     },
     {
       "source": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
+      "target": "bucket_bucket_care_domain_module_1ue8s8",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/follow-ups/follow-ups-shell.tsx -> lib/admin/shepherd-care-follow-ups.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
       "target": "bucket_bucket_care_feature_component_1sfwud",
       "weight": 2,
       "visual_weight": 2,
@@ -15493,21 +15131,6 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/follow-ups/follow-ups-shell.tsx -> components/admin/super-admin/inline-delete.tsx"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
-      "target": "bucket_bucket_people_feature_component_1c53f7",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "contains",
-      "relation_counts": {
-        "contains": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/follow-ups/follow-ups-shell.tsx -> components/admin/people-directory.tsx"
       ]
     },
     {
@@ -16725,7 +16348,7 @@
     },
     {
       "source": "file_file_components_admin_multiplication_multiplication_planner_tsx_7eexxv",
-      "target": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
+      "target": "bucket_bucket_plan_server_action_16yw4v",
       "weight": 3,
       "visual_weight": 3,
       "softened": false,
@@ -17369,6 +16992,144 @@
       ]
     },
     {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "bucket_bucket_plan_domain_module_1mbebr",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> lib/admin/prospect-funnel.ts",
+        "components/admin/plan/prospect-card.tsx -> lib/admin/prospect-next-step.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "bucket_bucket_plan_server_action_16yw4v",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> app/(protected)/admin/plan/actions.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_components_admin_forms_action_form_tsx_jk4xro",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 2,
+        "imports": 2
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> components/admin/forms/action-form.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_components_admin_forms_confirm_action_button_tsx_nlk7nv",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> components/admin/forms/confirm-action-button.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_components_admin_plan_plan_data_ts_rmd88h",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> components/admin/plan/plan-data.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_components_pastoral_button_tsx_goum4k",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> components/pastoral/button.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> lib/admin/validation/prospects.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_lib_supabase_prospect_reads_ts_1kc4ya",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> lib/supabase/prospect-reads.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_plan_prospect_card_tsx_1wogu8",
+      "target": "file_file_lib_utils_ts_1hfszh",
+      "weight": 2,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/plan/prospect-card.tsx -> lib/utils.ts"
+      ]
+    },
+    {
       "source": "file_file_components_admin_settings_groups_catalog_editor_tsx_14n855",
       "target": "bucket_bucket_core_domain_module_1kz81h",
       "weight": 4,
@@ -17955,18 +17716,16 @@
     {
       "source": "file_file_components_admin_settings_shell_tsx_zphrh",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 3,
-      "visual_weight": 3,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2,
-        "calls": 1
+        "imports": 1
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 1,
       "examples": [
-        "components/admin/settings-shell.tsx -> lib/admin/cell-coverage.ts",
-        "components/admin/settings-shell.tsx -> lib/admin/health-status-labels.ts"
+        "components/admin/settings-shell.tsx -> lib/admin/cell-coverage.ts"
       ]
     },
     {
@@ -18111,14 +17870,14 @@
     {
       "source": "file_file_components_admin_settings_shell_tsx_zphrh",
       "target": "file_file_lib_admin_metrics_ts_pnjhin",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
         "components/admin/settings-shell.tsx -> lib/admin/metrics.ts"
       ]
@@ -18170,21 +17929,6 @@
     },
     {
       "source": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
-      "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/super-admin-console-shell.tsx -> lib/admin/feature-flags.ts"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
       "target": "file_file_lib_utils_ts_1hfszh",
       "weight": 4,
       "visual_weight": 1.4,
@@ -18211,21 +17955,6 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/super-admin-console.tsx -> components/admin/forms/password-reset-form.tsx"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
-      "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 3,
-      "visual_weight": 3,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 3
-      },
-      "raw_edge_count": 3,
-      "examples": [
-        "components/admin/super-admin-console.tsx -> lib/admin/audit-summary.ts"
       ]
     },
     {
@@ -18327,14 +18056,14 @@
     {
       "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
       "target": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
-      "weight": 38,
-      "visual_weight": 38,
+      "weight": 30,
+      "visual_weight": 30,
       "softened": false,
       "relation": "contains",
       "relation_counts": {
-        "contains": 38
+        "contains": 30
       },
-      "raw_edge_count": 38,
+      "raw_edge_count": 30,
       "examples": [
         "components/admin/super-admin-console.tsx -> components/admin/super-admin-console-shell.tsx"
       ]
@@ -18352,21 +18081,6 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/super-admin-console.tsx -> components/ui/button.tsx"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
-      "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/super-admin-console.tsx -> lib/admin/feature-flags.ts"
       ]
     },
     {
@@ -18638,7 +18352,7 @@
     },
     {
       "source": "file_file_lib_admin_capacity_board_ts_1yu97i",
-      "target": "file_file_app_protected_admin_launch_planning_actions_ts_1fdti6",
+      "target": "bucket_bucket_plan_server_action_16yw4v",
       "weight": 1,
       "visual_weight": 1,
       "softened": false,
@@ -19974,6 +19688,37 @@
       ]
     },
     {
+      "source": "file_file_lib_admin_private_notes_session_ts_9kcyw8",
+      "target": "bucket_bucket_core_observability_security_lfj4mc",
+      "weight": 17,
+      "visual_weight": 17,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 17
+      },
+      "raw_edge_count": 17,
+      "examples": [
+        "lib/admin/private-notes-session.ts -> lib/crypto/encoding.ts",
+        "lib/admin/private-notes-session.ts -> lib/crypto/private-notes.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_private_notes_session_ts_9kcyw8",
+      "target": "file_file_lib_shared_action_result_ts_1t7duc",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/private-notes-session.ts -> lib/shared/action-result.ts"
+      ]
+    },
+    {
       "source": "file_file_lib_admin_rpc_ts_qlr9mh",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
       "weight": 1,
@@ -20006,14 +19751,14 @@
     {
       "source": "file_file_lib_admin_rpc_ts_qlr9mh",
       "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 6,
-      "visual_weight": 6,
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 6
+        "calls": 1
       },
-      "raw_edge_count": 6,
+      "raw_edge_count": 1,
       "examples": [
         "lib/admin/rpc.ts -> lib/admin/run-action.ts"
       ]
@@ -20036,15 +19781,15 @@
     {
       "source": "file_file_lib_admin_rpc_ts_qlr9mh",
       "target": "file_file_lib_shared_rpc_ts_1ve8w5",
-      "weight": 101,
-      "visual_weight": 101,
+      "weight": 9,
+      "visual_weight": 9,
       "softened": false,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
-        "calls": 95,
-        "imports": 6
+        "imports": 6,
+        "calls": 3
       },
-      "raw_edge_count": 101,
+      "raw_edge_count": 9,
       "examples": [
         "lib/admin/rpc.ts -> lib/shared/rpc.ts"
       ]
@@ -20255,6 +20000,21 @@
     },
     {
       "source": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
+      "target": "bucket_bucket_core_rpc_write_boundary_n6grhw",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "contains",
+      "relation_counts": {
+        "contains": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/follow-ups.ts -> lib/leader/rpc.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
       "target": "file_file_app_protected_admin_groups_groupid_page_tsx_1tyzwd",
       "weight": 1,
       "visual_weight": 1,
@@ -20298,21 +20058,6 @@
       "raw_edge_count": 6,
       "examples": [
         "lib/admin/validation/follow-ups.ts -> lib/admin/validation/shared.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
-      "target": "file_file_lib_leader_rpc_ts_154rtc",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "contains",
-      "relation_counts": {
-        "contains": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/admin/validation/follow-ups.ts -> lib/leader/rpc.ts"
       ]
     },
     {
@@ -20547,6 +20292,250 @@
       "raw_edge_count": 4,
       "examples": [
         "lib/admin/validation/groups.ts -> types/enums.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_care_validation_80v2ph",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/care-notes.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_core_validation_xi3dff",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 3
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/group-rubric-grade.ts",
+        "lib/admin/validation/index.ts -> lib/admin/validation/leader-health.ts",
+        "lib/admin/validation/index.ts -> lib/admin/validation/super-admin.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_groups_validation_19iahb",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/group-health.ts",
+        "lib/admin/validation/index.ts -> lib/admin/validation/health-rubric.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_multiply_validation_104qic",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/multiplication-pillars.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_people_validation_5xfxcz",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/guests.ts",
+        "lib/admin/validation/index.ts -> lib/admin/validation/invite-link.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_plan_validation_2f2ecz",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/leader-pipeline.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "bucket_bucket_settings_validation_8ejlyd",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/settings.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/follow-ups.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_group_categories_ts_6deyt4",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/group-categories.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_groups_ts_yi2j4g",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/groups.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_launch_planning_ts_1lr1a4",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/launch-planning.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_people_ts_1xsuqz",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/people.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/prospects.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_readiness_rule_ts_v7d20f",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/readiness-rule.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_shared_ts_bwlac5",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/shared.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_validation_index_ts_1njhz4",
+      "target": "file_file_lib_admin_validation_shepherd_care_ts_1ptkkh",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "re_exports",
+      "relation_counts": {
+        "re_exports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/validation/index.ts -> lib/admin/validation/shepherd-care.ts"
       ]
     },
     {
@@ -21318,31 +21307,30 @@
     },
     {
       "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
-      "target": "bucket_bucket_plan_domain_module_1mbebr",
-      "weight": 2,
-      "visual_weight": 2,
+      "target": "file_file_lib_admin_attention_reset_ts_137ah9",
+      "weight": 1,
+      "visual_weight": 1,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
+        "imports": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 1,
       "examples": [
-        "lib/dashboard/demo-seed.ts -> lib/dashboard/launch-planning-snapshot.ts"
+        "lib/dashboard/demo-seed.ts -> lib/admin/attention-reset.ts"
       ]
     },
     {
       "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
       "target": "file_file_lib_admin_metrics_ts_pnjhin",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2
+        "imports": 3
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 3,
       "examples": [
         "lib/dashboard/demo-seed.ts -> lib/admin/metrics.ts"
       ]
@@ -21380,23 +21368,7 @@
     },
     {
       "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
-      "target": "file_file_lib_dashboard_types_ts_1oi588",
-      "weight": 7,
-      "visual_weight": 7,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 6,
-        "imports_from": 1
-      },
-      "raw_edge_count": 7,
-      "examples": [
-        "lib/dashboard/demo-seed.ts -> lib/dashboard/types.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_fallback_data_ts_1j7cve",
-      "target": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
       "weight": 2,
       "visual_weight": 2,
       "softened": false,
@@ -21406,6 +21378,68 @@
         "imports_from": 1
       },
       "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/dashboard/launch-planning-snapshot.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "file_file_lib_dashboard_types_ts_1oi588",
+      "weight": 8,
+      "visual_weight": 8,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 7,
+        "imports_from": 1
+      },
+      "raw_edge_count": 8,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/dashboard/types.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "file_file_lib_shared_church_time_ts_1f2bbe",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/shared/church-time.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "file_file_lib_supabase_shepherd_care_reads_ts_3wtt84",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/supabase/shepherd-care-reads.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_fallback_data_ts_1j7cve",
+      "target": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2,
+        "imports_from": 1
+      },
+      "raw_edge_count": 3,
       "examples": [
         "lib/dashboard/fallback-data.ts -> lib/dashboard/demo-seed.ts"
       ]
@@ -21611,6 +21645,69 @@
       ]
     },
     {
+      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "target": "file_file_lib_admin_launch_planning_ts_1n9kfx",
+      "weight": 10,
+      "visual_weight": 10,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 5,
+        "imports": 5
+      },
+      "raw_edge_count": 10,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/launch-planning.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "target": "file_file_lib_admin_metrics_ts_pnjhin",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/metrics.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "target": "file_file_lib_dashboard_admin_group_model_ts_f08ewc",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/admin-group-model.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "target": "file_file_lib_dashboard_types_ts_1oi588",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/types.ts"
+      ]
+    },
+    {
       "source": "file_file_lib_dashboard_queries_ts_13envh",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
       "weight": 1,
@@ -21638,23 +21735,6 @@
       "raw_edge_count": 2,
       "examples": [
         "lib/dashboard/queries.ts -> lib/admin/overview-period.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_queries_ts_13envh",
-      "target": "bucket_bucket_plan_domain_module_1mbebr",
-      "weight": 3,
-      "visual_weight": 3,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1,
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 3,
-      "examples": [
-        "lib/dashboard/queries.ts -> lib/dashboard/launch-planning-snapshot.ts"
       ]
     },
     {
@@ -21687,22 +21767,6 @@
       "raw_edge_count": 4,
       "examples": [
         "lib/dashboard/queries.ts -> lib/admin/metrics.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_queries_ts_13envh",
-      "target": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 2,
-        "imports": 2
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "lib/dashboard/queries.ts -> lib/admin/shepherd-care-dashboard.ts"
       ]
     },
     {
@@ -21767,6 +21831,23 @@
       "raw_edge_count": 3,
       "examples": [
         "lib/dashboard/queries.ts -> lib/dashboard/fallback-data.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_queries_ts_13envh",
+      "target": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "lib/dashboard/queries.ts -> lib/dashboard/launch-planning-snapshot.ts"
       ]
     },
     {
@@ -21981,37 +22062,6 @@
       "raw_edge_count": 9,
       "examples": [
         "lib/dashboard/types.ts -> types/enums.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_leader_rpc_ts_154rtc",
-      "target": "file_file_lib_shared_rpc_ts_1ve8w5",
-      "weight": 10,
-      "visual_weight": 10,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 8,
-        "imports": 2
-      },
-      "raw_edge_count": 10,
-      "examples": [
-        "lib/leader/rpc.ts -> lib/shared/rpc.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_leader_rpc_ts_154rtc",
-      "target": "file_file_types_enums_ts_19rgpl",
-      "weight": 2,
-      "visual_weight": 1,
-      "softened": true,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/leader/rpc.ts -> types/enums.ts"
       ]
     },
     {
@@ -22850,5 +22900,5 @@
       ]
     }
   ],
-  "built_at_commit": "6eec8b461654710783ec9d506bfc754972d6afcd"
+  "built_at_commit": "1920c2e9815d1f05308809b88d2348d02747dc56"
 }

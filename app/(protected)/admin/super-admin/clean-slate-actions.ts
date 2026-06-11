@@ -11,11 +11,7 @@ import {
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
-import {
-  rpcSuperAdminCleanSlateWipe,
-  rpcSuperAdminCleanSlateRevert,
-  rpcSuperAdminCleanSlateImport,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   CLEAN_SLATE_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
@@ -87,7 +83,11 @@ export async function superAdminCleanSlateWipe(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminCleanSlateWipe(client);
+  const { data: snapshotId, error } = await adminRpc(
+    client,
+    "super_admin_clean_slate_wipe",
+    {}
+  );
   if (error) {
     // An already-clear history is an idempotent no-op, not a failure: surface it
     // as a neutral success so a reset with nothing to clear doesn't read as a
@@ -155,8 +155,9 @@ export async function superAdminCleanSlateRevert(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminCleanSlateRevert(
+  const { data: snapshotId, error } = await adminRpc(
     client,
+    "super_admin_clean_slate_revert",
     { p_snapshot_id: submittedId }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -235,9 +236,13 @@ export async function superAdminCleanSlateImport(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data, error } = await rpcSuperAdminCleanSlateImport(client, {
-    p_payload: parsed,
-  });
+  const { data, error } = await adminRpc(
+    client,
+    "super_admin_clean_slate_import",
+    {
+      p_payload: parsed,
+    }
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) {
     return actionFail(["The import did not complete. Please try again."]);

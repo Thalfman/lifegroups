@@ -14,7 +14,7 @@ import {
   parsePeopleImport,
   type PersonImportRowError,
 } from "@/lib/admin/people-import";
-import { rpcSuperAdminBulkImportPeople } from "@/lib/admin/rpc";
+import { adminTextRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -65,9 +65,13 @@ export async function superAdminBulkImportPeople(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data, error } = await rpcSuperAdminBulkImportPeople(client, {
-    p_rows: rowsToCreate,
-  });
+  const { data, error } = await adminTextRpc(
+    client,
+    "super_admin_bulk_import_people",
+    {
+      p_rows: rowsToCreate,
+    }
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!data) {
     return actionFail(["The import did not complete. Please try again."]);

@@ -10,7 +10,7 @@ import {
   validateGroupRubricGradePayload,
   type GroupRubricGradePayload,
 } from "@/lib/admin/validation";
-import { rpcAdminSetGroupRubricGrade } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { decodeRubricCriteria } from "@/lib/admin/health-rubric";
 import { resolveGroupRubricGrade } from "@/lib/admin/group-rubric-grade";
 import { fetchHealthRubric } from "@/lib/supabase/health-rubric-reads";
@@ -61,7 +61,7 @@ const SET_GRADE_SPEC: AdminWriteActionSpec<
       periodMonth,
     });
 
-    return rpcAdminSetGroupRubricGrade(client, {
+    return adminRpc(client, "admin_set_group_rubric_grade", {
       p_group_id: value.group_id,
       p_ministry_year: value.ministry_year,
       p_criterion_scores: value.criterion_scores,

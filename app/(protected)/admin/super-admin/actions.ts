@@ -13,7 +13,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { rpcSuperAdminUpdateProfileRole } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -51,7 +51,7 @@ const UPDATE_PROFILE_ROLE_SPEC: AdminWriteActionSpec<
     new_role: value.new_role,
   }),
   rpc: (client, value) =>
-    rpcSuperAdminUpdateProfileRole(client, {
+    adminRpc(client, "super_admin_update_profile_role", {
       p_profile_id: value.profile_id,
       p_new_role: value.new_role,
     }),

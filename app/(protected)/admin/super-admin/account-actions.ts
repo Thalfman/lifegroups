@@ -19,10 +19,7 @@ import {
   isRecord,
   type SetProfileStatusPayload,
 } from "@/lib/admin/validation";
-import {
-  rpcSuperAdminSetProfileStatus,
-  rpcSuperAdminLogPasswordReset,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { resolveSiteOrigin } from "@/lib/shared/site-origin";
 
 const REVALIDATE_PATH = "/admin/super-admin";
@@ -48,7 +45,7 @@ const SET_PROFILE_STATUS_SPEC: AdminWriteActionSpec<
     status: value.status,
   }),
   rpc: (client, value) =>
-    rpcSuperAdminSetProfileStatus(client, {
+    adminRpc(client, "super_admin_set_profile_status", {
       p_profile_id: value.profile_id,
       p_status: value.status,
     }),
@@ -129,7 +126,7 @@ export async function superAdminRequestPasswordReset(
   // Best-effort audit. The email already went out; a logging failure should not
   // be reported to the operator as a reset failure.
   if (profileId) {
-    await rpcSuperAdminLogPasswordReset(client, {
+    await adminRpc(client, "super_admin_log_password_reset", {
       p_profile_id: normalizeUuid(profileId),
     });
   }

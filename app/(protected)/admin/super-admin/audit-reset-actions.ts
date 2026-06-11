@@ -7,7 +7,7 @@ import {
   type AdminWriteActionSpec,
   type ValidationResult,
 } from "@/lib/admin/run-action";
-import { rpcSuperAdminResetAuditLogs } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { AUDIT_RESET_CONFIRM_PHRASE } from "@/lib/admin/danger-zone";
 
 const REVALIDATE_PATH = "/admin/super-admin";
@@ -40,7 +40,7 @@ const RESET_AUDIT_LOGS_SPEC: AdminWriteActionSpec<
   auth: requireSuperAdminSession,
   keys: ["confirm"],
   validate: validateAuditResetPayload,
-  rpc: (client) => rpcSuperAdminResetAuditLogs(client),
+  rpc: (client) => adminRpc(client, "super_admin_reset_audit_logs", {}),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The audit log was not reset. Please try again.",
 };

@@ -40,24 +40,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminArchiveShepherdCareFollowUp,
-  rpcAdminAssignShepherdToOverShepherd,
-  rpcAdminCreateOverShepherd,
-  rpcAdminCreateShepherdCareFollowUp,
-  rpcAdminEndShepherdCoverageAssignment,
-  rpcAdminAddPrivateNoteKeySlot,
-  rpcAdminEnrollPrivateNoteKeys,
-  rpcAdminLogShepherdCareInteraction,
-  rpcAdminRemovePrivateNoteKeySlot,
-  rpcAdminRotatePrivateNoteRecovery,
-  rpcAdminSetOverShepherdActive,
-  rpcAdminUpdateOverShepherd,
-  rpcAdminUpdateShepherdCareFollowUp,
-  rpcAdminUpdateShepherdCareFollowUpStatus,
-  rpcAdminUpsertShepherdCarePrivateNote,
-  rpcAdminUpsertShepherdCareProfile,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const UPSERT_KEYS = [
   "shepherd_profile_id",
@@ -214,7 +197,7 @@ const UPSERT_PROFILE_SPEC: AdminWriteActionSpec<
     summary_set: value.set_admin_summary,
   }),
   rpc: (client, value) =>
-    rpcAdminUpsertShepherdCareProfile(client, {
+    adminRpc(client, "admin_upsert_shepherd_care_profile", {
       p_shepherd_profile_id: value.shepherd_profile_id,
       p_current_status: value.current_status,
       p_set_current_status: value.set_current_status,
@@ -251,7 +234,7 @@ const LOG_INTERACTION_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    rpcAdminLogShepherdCareInteraction(client, {
+    adminRpc(client, "admin_log_shepherd_care_interaction", {
       p_shepherd_profile_id: value.shepherd_profile_id,
       p_interaction_at: value.interaction_at,
       p_interaction_type: value.interaction_type,
@@ -301,7 +284,7 @@ const CREATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    rpcAdminCreateShepherdCareFollowUp(client, {
+    adminRpc(client, "admin_create_shepherd_care_follow_up", {
       p_care_profile_id: value.care_profile_id,
       p_title: value.title,
       p_due_date: value.due_date,
@@ -330,7 +313,7 @@ const UPDATE_CARE_FOLLOW_UP_STATUS_SPEC: AdminWriteActionSpec<
   fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
   okFields: (value) => ({ status: value.status }),
   rpc: (client, value) =>
-    rpcAdminUpdateShepherdCareFollowUpStatus(client, {
+    adminRpc(client, "admin_update_shepherd_care_follow_up_status", {
       p_follow_up_id: value.follow_up_id,
       p_new_status: value.status,
     }),
@@ -356,7 +339,7 @@ const ARCHIVE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
   validate: validateArchiveShepherdCareFollowUpPayload,
   fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
   rpc: (client, value) =>
-    rpcAdminArchiveShepherdCareFollowUp(client, {
+    adminRpc(client, "admin_archive_shepherd_care_follow_up", {
       p_follow_up_id: value.follow_up_id,
     }),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
@@ -385,7 +368,7 @@ const UPDATE_CARE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
     notes_set: value.set_notes,
   }),
   rpc: (client, value) =>
-    rpcAdminUpdateShepherdCareFollowUp(client, {
+    adminRpc(client, "admin_update_shepherd_care_follow_up", {
       p_follow_up_id: value.follow_up_id,
       p_title: value.title,
       p_set_due_date: value.set_due_date,
@@ -421,7 +404,7 @@ const CREATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    rpcAdminCreateOverShepherd(client, {
+    adminRpc(client, "admin_create_over_shepherd", {
       p_full_name: value.full_name,
       p_email: value.email,
       p_phone: value.phone,
@@ -457,7 +440,7 @@ const UPDATE_OVER_SHEPHERD_SPEC: AdminWriteActionSpec<
     has_notes: value.notes !== null,
   }),
   rpc: (client, value) =>
-    rpcAdminUpdateOverShepherd(client, {
+    adminRpc(client, "admin_update_over_shepherd", {
       p_over_shepherd_id: value.over_shepherd_id,
       p_full_name: value.full_name,
       p_email: value.email,
@@ -495,7 +478,7 @@ const SET_OVER_SHEPHERD_ACTIVE_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ active: value.active }),
   rpc: (client, value) =>
-    rpcAdminSetOverShepherdActive(client, {
+    adminRpc(client, "admin_set_over_shepherd_active", {
       p_over_shepherd_id: value.over_shepherd_id,
       p_active: value.active,
     }),
@@ -527,7 +510,7 @@ const ASSIGN_COVERAGE_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ over_shepherd_id: value.over_shepherd_id }),
   rpc: (client, value) =>
-    rpcAdminAssignShepherdToOverShepherd(client, {
+    adminRpc(client, "admin_assign_shepherd_to_over_shepherd", {
       p_shepherd_profile_id: value.shepherd_profile_id,
       p_over_shepherd_id: value.over_shepherd_id,
       p_assigned_at: value.assigned_at,
@@ -557,7 +540,7 @@ const END_COVERAGE_SPEC: AdminWriteActionSpec<
   validate: validateEndShepherdCoverageAssignmentPayload,
   fields: (_actor, value) => ({ target_assignment_id: value.assignment_id }),
   rpc: (client, value) =>
-    rpcAdminEndShepherdCoverageAssignment(client, {
+    adminRpc(client, "admin_end_shepherd_coverage_assignment", {
       p_assignment_id: value.assignment_id,
       p_ended_at: value.ended_at,
     }),
@@ -591,7 +574,7 @@ const ENROLL_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
   validate: validateEnrollPrivateNoteKeysPayload,
   okFields: (value) => ({ slot_count: value.slots.length }),
   rpc: (client, value) =>
-    rpcAdminEnrollPrivateNoteKeys(client, {
+    adminRpc(client, "admin_enroll_private_note_keys", {
       p_dek_version: value.dek_version,
       p_slots: value.slots,
     }),
@@ -624,7 +607,7 @@ const UPSERT_PRIVATE_NOTE_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ body_set: value.set_body }),
   rpc: (client, value) =>
-    rpcAdminUpsertShepherdCarePrivateNote(client, {
+    adminRpc(client, "admin_upsert_shepherd_care_private_note", {
       p_care_profile_id: value.care_profile_id,
       p_ciphertext: value.ciphertext,
       p_iv: value.iv,
@@ -667,7 +650,7 @@ const ADD_KEY_SLOT_SPEC: AdminWriteActionSpec<
   validate: validateAddPrivateNoteKeySlotPayload,
   okFields: (value) => ({ has_label: value.label !== null }),
   rpc: (client, value) =>
-    rpcAdminAddPrivateNoteKeySlot(client, {
+    adminRpc(client, "admin_add_private_note_key_slot", {
       p_slot_type: "passkey",
       p_credential_id: value.credential_id,
       p_label: value.label,
@@ -701,7 +684,7 @@ const ROTATE_RECOVERY_SPEC: AdminWriteActionSpec<
   keys: ["hkdf_salt", "wrapped_dek", "wrap_iv", "label", "shepherd_profile_id"],
   validate: validateRotatePrivateNoteRecoveryPayload,
   rpc: (client, value) =>
-    rpcAdminRotatePrivateNoteRecovery(client, {
+    adminRpc(client, "admin_rotate_private_note_recovery", {
       p_hkdf_salt: value.hkdf_salt,
       p_wrapped_dek: value.wrapped_dek,
       p_wrap_iv: value.wrap_iv,
@@ -733,7 +716,9 @@ const REMOVE_KEY_SLOT_SPEC: AdminWriteActionSpec<
   validate: validateRemovePrivateNoteKeySlotPayload,
   fields: (_actor, value) => ({ target_slot_id: value.slot_id }),
   rpc: (client, value) =>
-    rpcAdminRemovePrivateNoteKeySlot(client, { p_slot_id: value.slot_id }),
+    adminRpc(client, "admin_remove_private_note_key_slot", {
+      p_slot_id: value.slot_id,
+    }),
   revalidate: (_value, raw) => revalidateShepherdFromRaw(raw),
   noDataError: "The unlock method couldn't be removed. Please try again.",
 };

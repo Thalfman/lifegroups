@@ -11,7 +11,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { requireOverShepherdSession } from "@/lib/auth/session";
-import { rpcOverShepherdLogBroadNote } from "@/lib/over-shepherd/rpc";
+import { overShepherdRpc } from "@/lib/over-shepherd/rpc";
 
 const LOG_BROAD_NOTE_KEYS = ["shepherd_profile_id", "note"] as const;
 
@@ -32,7 +32,7 @@ const LOG_BROAD_NOTE_SPEC: AdminWriteActionSpec<
   }),
   okFields: () => ({ has_note: true }),
   rpc: (client, value) =>
-    rpcOverShepherdLogBroadNote(client, {
+    overShepherdRpc(client, "over_shepherd_log_broad_note", {
       p_shepherd_profile_id: value.shepherd_profile_id,
       p_note: value.note,
     }),
@@ -42,7 +42,7 @@ const LOG_BROAD_NOTE_SPEC: AdminWriteActionSpec<
 
 export async function overShepherdLogBroadNote(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<OverShepherdBroadNotePayload>,
+  input: ActionInput<OverShepherdBroadNotePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(LOG_BROAD_NOTE_SPEC, prev, input);
 }

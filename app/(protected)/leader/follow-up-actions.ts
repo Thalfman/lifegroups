@@ -11,7 +11,7 @@ import {
   actionOk,
   mapRpcError,
 } from "@/lib/leader/action-result";
-import { rpcLeaderUpdateFollowUpStatus } from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 
 const REVALIDATE_PATHS = ["/leader", "/admin/follow-ups", "/admin"] as const;
 
@@ -24,16 +24,33 @@ function revalidateAll(): void {
 // callsite to avoid the helper duplicating the per-action outcome line.
 type RequireLeaderResult =
   | { ok: true; profileId: string }
-  | { ok: false; kind: "anonymous" | "profile_missing" | "inactive" | "not_leader"; error: string }
-  | { ok: false; kind: "backend_error"; stage: "profile_lookup" | "leader_assignments"; error: string };
+  | {
+      ok: false;
+      kind: "anonymous" | "profile_missing" | "inactive" | "not_leader";
+      error: string;
+    }
+  | {
+      ok: false;
+      kind: "backend_error";
+      stage: "profile_lookup" | "leader_assignments";
+      error: string;
+    };
 
 async function requireLeaderActor(): Promise<RequireLeaderResult> {
   const session = await getCurrentSession();
   switch (session.kind) {
     case "anonymous":
-      return { ok: false, kind: "anonymous", error: "You need to sign in to do that." };
+      return {
+        ok: false,
+        kind: "anonymous",
+        error: "You need to sign in to do that.",
+      };
     case "profile_missing":
-      return { ok: false, kind: "profile_missing", error: "Your account isn't set up yet." };
+      return {
+        ok: false,
+        kind: "profile_missing",
+        error: "Your account isn't set up yet.",
+      };
     case "backend_error":
       return {
         ok: false,
@@ -43,7 +60,11 @@ async function requireLeaderActor(): Promise<RequireLeaderResult> {
       };
     case "authenticated": {
       if (session.profile.status !== "active")
-        return { ok: false, kind: "inactive", error: "Your account isn't active." };
+        return {
+          ok: false,
+          kind: "inactive",
+          error: "Your account isn't active.",
+        };
       // Shepherd (leader) surface gated per
       // docs/adr/0002-oversight-ladder-and-leader-gating.md. No caller --
       // including leader / co_leader -- may run this leader action; deny
@@ -72,7 +93,7 @@ function payloadFromInput(input: unknown): Record<string, unknown> {
 
 export async function leaderUpdateFollowUpStatus(
   _prev: ActionResult<{ id: string }> | undefined,
-  input: FormData | { follow_up_id: string; status: "in_progress" | "done" },
+  input: FormData | { follow_up_id: string; status: "in_progress" | "done" }
 ): Promise<ActionResult<{ id: string }>> {
   const ctx = startActionLog("leader.follow_up.update_status");
 
@@ -83,7 +104,10 @@ export async function leaderUpdateFollowUpStatus(
       // than "denied", which would imply the user was authenticated and
       // refused. The auth_backend_error code is the same taxonomy used by
       // the central session helper in lib/auth/session.ts.
-      ctx.finish("fail", { error_code: "auth_backend_error", stage: auth.stage });
+      ctx.finish("fail", {
+        error_code: "auth_backend_error",
+        stage: auth.stage,
+      });
     } else {
       ctx.finish("denied", { error_code: "auth_denied", reason: auth.kind });
     }
@@ -109,10 +133,14 @@ export async function leaderUpdateFollowUpStatus(
     return actionFail(["Database is not configured."]);
   }
 
-  const { data, error } = await rpcLeaderUpdateFollowUpStatus(client, {
-    p_follow_up_id: v.value.follow_up_id,
-    p_status: v.value.status,
-  });
+  const { data, error } = await leaderRpc(
+    client,
+    "leader_update_follow_up_status",
+    {
+      p_follow_up_id: v.value.follow_up_id,
+      p_status: v.value.status,
+    }
+  );
 
   if (error) {
     ctx.finish("fail", {

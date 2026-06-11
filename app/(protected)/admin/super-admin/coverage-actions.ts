@@ -12,10 +12,7 @@ import {
   type AssignCoveragePayload,
   type EndCoveragePayload,
 } from "@/lib/admin/validation";
-import {
-  rpcAdminAssignShepherdToOverShepherd,
-  rpcAdminEndShepherdCoverageAssignment,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/super-admin";
 
@@ -39,7 +36,7 @@ const ASSIGN_COVERAGE_SPEC: AdminWriteActionSpec<
     over_shepherd_id: value.over_shepherd_id,
   }),
   rpc: (client, value) =>
-    rpcAdminAssignShepherdToOverShepherd(client, {
+    adminRpc(client, "admin_assign_shepherd_to_over_shepherd", {
       p_shepherd_profile_id: value.shepherd_profile_id,
       p_over_shepherd_id: value.over_shepherd_id,
       p_assigned_at: value.assigned_at,
@@ -65,7 +62,7 @@ const END_COVERAGE_SPEC: AdminWriteActionSpec<
   validate: validateEndCoveragePayload,
   fields: (_actor, value) => ({ assignment_id: value.assignment_id }),
   rpc: (client, value) =>
-    rpcAdminEndShepherdCoverageAssignment(client, {
+    adminRpc(client, "admin_end_shepherd_coverage_assignment", {
       p_assignment_id: value.assignment_id,
       p_ended_at: value.ended_at,
     }),

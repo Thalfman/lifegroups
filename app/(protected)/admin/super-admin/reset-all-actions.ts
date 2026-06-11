@@ -10,7 +10,7 @@ import {
   mapRpcError,
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
-import { rpcSuperAdminResetAll } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   RESET_ALL_CONFIRM_PHRASE,
   type ResetAllSuccess,
@@ -67,7 +67,11 @@ export async function superAdminResetAll(
   // The RPC composes launch prep + both attention resets atomically; it is
   // idempotent (never raises nothing_to_wipe), so a returned null id just means
   // "history was already clear", not a failure.
-  const { data: snapshotId, error } = await rpcSuperAdminResetAll(client);
+  const { data: snapshotId, error } = await adminRpc(
+    client,
+    "super_admin_reset_all",
+    {}
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
 
   // Read the cleared total back from the history snapshot row by id (RLS-gated

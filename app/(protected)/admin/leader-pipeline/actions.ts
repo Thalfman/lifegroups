@@ -15,12 +15,7 @@ import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminAdvanceApprenticeStage,
-  rpcAdminArchiveApprentice,
-  rpcAdminCreateApprentice,
-  rpcAdminUpdateApprentice,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 // The pipeline is the supply side of the Capacity Board (#185) and the
 // staffing forecast (#186); revalidate those surfaces so a stage advance shows
@@ -79,7 +74,7 @@ const CREATE_APPRENTICE_SPEC: AdminWriteActionSpec<
   read: readApprenticeForm,
   validate: validateCreateApprenticePayload,
   rpc: (client, value) =>
-    rpcAdminCreateApprentice(client, {
+    adminRpc(client, "admin_create_apprentice", {
       p_group_id: value.group_id,
       p_display_name: value.display_name,
       p_member_id: value.member_id,
@@ -108,7 +103,7 @@ const UPDATE_APPRENTICE_SPEC: AdminWriteActionSpec<
   read: readApprenticeForm,
   validate: validateUpdateApprenticePayload,
   rpc: (client, value) =>
-    rpcAdminUpdateApprentice(client, {
+    adminRpc(client, "admin_update_apprentice", {
       p_apprentice_id: value.apprentice_id,
       p_display_name: value.display_name,
       p_member_id: value.member_id,
@@ -143,7 +138,7 @@ const ADVANCE_STAGE_SPEC: AdminWriteActionSpec<
       : (input as Record<string, unknown>),
   validate: validateAdvanceApprenticeStagePayload,
   rpc: (client, value) =>
-    rpcAdminAdvanceApprenticeStage(client, {
+    adminRpc(client, "admin_advance_apprentice_stage", {
       p_apprentice_id: value.apprentice_id,
       p_readiness_stage: value.readiness_stage,
     }),
@@ -171,7 +166,9 @@ const ARCHIVE_APPRENTICE_SPEC: AdminWriteActionSpec<
       : (input as Record<string, unknown>),
   validate: validateApprenticeIdPayload,
   rpc: (client, value) =>
-    rpcAdminArchiveApprentice(client, { p_apprentice_id: value.apprentice_id }),
+    adminRpc(client, "admin_archive_apprentice", {
+      p_apprentice_id: value.apprentice_id,
+    }),
   revalidate: () => APPRENTICE_REVALIDATE,
   noDataError: "The apprentice was not removed. Please try again.",
 };

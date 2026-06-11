@@ -14,12 +14,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminArchiveGroupCalendarEvent,
-  rpcAdminCreateGroupCalendarEvent,
-  rpcAdminRestoreGroupCalendarEvent,
-  rpcAdminUpdateGroupCalendarEvent,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 // Calendar forms may post arbitrary entries, so the runner lifts the whole
 // FormData rather than a fixed key list. The id-keyed actions (update,
@@ -69,14 +64,17 @@ type EventIdValue = CalendarEventArchivePayload;
 
 // ----- adminCreateCalendarEvent -------------------------------------------
 
-const CREATE_EVENT_SPEC: AdminWriteActionSpec<CreateEventValue, { id: string }> = {
+const CREATE_EVENT_SPEC: AdminWriteActionSpec<
+  CreateEventValue,
+  { id: string }
+> = {
   name: "admin.calendar.create_event",
   read: payloadFromInput,
   validate: validateCalendarEventCreatePayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (value, id) => ({ event_type: value.event_type, new_event_id: id }),
   rpc: (client, value) =>
-    rpcAdminCreateGroupCalendarEvent(client, {
+    adminRpc(client, "admin_create_group_calendar_event", {
       p_group_id: value.group_id,
       p_event_date: value.event_date,
       // Phase 5A.6 correction: meeting time is always inherited from the
@@ -94,21 +92,24 @@ const CREATE_EVENT_SPEC: AdminWriteActionSpec<CreateEventValue, { id: string }> 
 
 export async function adminCreateCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_EVENT_SPEC, prev, input);
 }
 
 // ----- adminUpdateCalendarEvent -------------------------------------------
 
-const UPDATE_EVENT_SPEC: AdminWriteActionSpec<UpdateEventValue, { id: string }> = {
+const UPDATE_EVENT_SPEC: AdminWriteActionSpec<
+  UpdateEventValue,
+  { id: string }
+> = {
   name: "admin.calendar.update_event",
   read: payloadFromInput,
   validate: validateCalendarEventUpdatePayload,
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
   rpc: (client, value) =>
-    rpcAdminUpdateGroupCalendarEvent(client, {
+    adminRpc(client, "admin_update_group_calendar_event", {
       p_event_id: value.event_id,
       p_event_date: value.event_date,
       p_start_time: null,
@@ -127,7 +128,7 @@ const UPDATE_EVENT_SPEC: AdminWriteActionSpec<UpdateEventValue, { id: string }> 
 
 export async function adminUpdateCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_EVENT_SPEC, prev, input);
 }
@@ -141,7 +142,9 @@ const ARCHIVE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
   rpc: (client, value) =>
-    rpcAdminArchiveGroupCalendarEvent(client, { p_event_id: value.event_id }),
+    adminRpc(client, "admin_archive_group_calendar_event", {
+      p_event_id: value.event_id,
+    }),
   revalidate: (_value, raw) => {
     const groupId = groupIdFromRaw(raw);
     return groupId ? calendarPaths(groupId) : [];
@@ -151,7 +154,7 @@ const ARCHIVE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
 
 export async function adminArchiveCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(ARCHIVE_EVENT_SPEC, prev, input);
 }
@@ -165,7 +168,9 @@ const RESTORE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
   fields: (_actor, value) => ({ target_event_id: value.event_id }),
   okFields: (_value, _id, raw) => ({ target_group_id: groupIdFromRaw(raw) }),
   rpc: (client, value) =>
-    rpcAdminRestoreGroupCalendarEvent(client, { p_event_id: value.event_id }),
+    adminRpc(client, "admin_restore_group_calendar_event", {
+      p_event_id: value.event_id,
+    }),
   revalidate: (_value, raw) => {
     const groupId = groupIdFromRaw(raw);
     return groupId ? calendarPaths(groupId) : [];
@@ -175,7 +180,7 @@ const RESTORE_EVENT_SPEC: AdminWriteActionSpec<EventIdValue, { id: string }> = {
 
 export async function adminRestoreCalendarEvent(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<Record<string, unknown>>,
+  input: ActionInput<Record<string, unknown>>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(RESTORE_EVENT_SPEC, prev, input);
 }

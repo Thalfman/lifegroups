@@ -1,6 +1,8 @@
-// Typed wrappers around the leader Postgres RPCs. Each pins the function
-// name and argument shape and delegates to `callUuidRpc`, which owns the
-// supabase-js `as never` cast and the uuid trust-boundary read. See
+// Declarative RPC gateway for the leader surface (the "RPC gateway" half of
+// ADR 0001). Mirrors lib/admin/rpc.ts: one typed table keyed by the LITERAL
+// Postgres function name, and a generic entry point (`leaderRpc`) that pins
+// name + args together at the call site and delegates to `callUuidRpc`, which
+// owns the supabase-js cast and the uuid trust-boundary read. See
 // `lib/shared/rpc.ts`.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
@@ -9,8 +11,6 @@ import type {
   GroupCalendarEventType,
 } from "@/types/enums";
 import { callUuidRpc, type UuidRpcResult } from "@/lib/shared/rpc";
-
-type RpcResult = UuidRpcResult;
 
 export type LeaderCheckinStatus =
   | "submitted"
@@ -35,13 +35,6 @@ export type LeaderSubmitGroupCheckinArgs = {
   p_attendance: LeaderAttendanceEntry[];
 };
 
-export function rpcLeaderSubmitGroupCheckin(
-  client: AppSupabaseClient,
-  args: LeaderSubmitGroupCheckinArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_submit_group_checkin", args);
-}
-
 // Phase 5C.0 leader follow-up status update.
 export type LeaderUpdateFollowUpStatus = "in_progress" | "done";
 
@@ -49,13 +42,6 @@ export type LeaderUpdateFollowUpStatusArgs = {
   p_follow_up_id: string;
   p_status: LeaderUpdateFollowUpStatus;
 };
-
-export function rpcLeaderUpdateFollowUpStatus(
-  client: AppSupabaseClient,
-  args: LeaderUpdateFollowUpStatusArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_update_follow_up_status", args);
-}
 
 // Phase 5A.6 group calendar leader RPCs.
 
@@ -70,13 +56,6 @@ export type LeaderCreateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export function rpcLeaderCreateGroupCalendarEvent(
-  client: AppSupabaseClient,
-  args: LeaderCreateGroupCalendarEventArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_create_group_calendar_event", args);
-}
-
 export type LeaderUpdateGroupCalendarEventArgs = {
   p_event_id: string;
   p_event_date: string;
@@ -88,27 +67,6 @@ export type LeaderUpdateGroupCalendarEventArgs = {
   p_description: string | null;
 };
 
-export function rpcLeaderUpdateGroupCalendarEvent(
-  client: AppSupabaseClient,
-  args: LeaderUpdateGroupCalendarEventArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_update_group_calendar_event", args);
-}
-
-export function rpcLeaderArchiveGroupCalendarEvent(
-  client: AppSupabaseClient,
-  args: { p_event_id: string }
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_archive_group_calendar_event", args);
-}
-
-export function rpcLeaderRestoreGroupCalendarEvent(
-  client: AppSupabaseClient,
-  args: { p_event_id: string }
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_restore_group_calendar_event", args);
-}
-
 // Pivot slice 11 (#382 / ADR 0020): a leader's group-scoped Care Note /
 // Prayer Request. Author = the leader; subject = the group. The RPC enforces
 // auth_is_leader_of(group) and writes the paired, body-free audit row.
@@ -117,16 +75,23 @@ export type LeaderWriteGroupNoteArgs = {
   p_body: string;
 };
 
-export function rpcLeaderWriteGroupCareNote(
-  client: AppSupabaseClient,
-  args: LeaderWriteGroupNoteArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_write_group_care_note", args);
-}
+// The uuid-channel args map, keyed by the LITERAL Postgres function name.
+// Every leader RPC returns a uuid on success.
+export type LeaderUuidRpcArgs = {
+  leader_submit_group_checkin: LeaderSubmitGroupCheckinArgs;
+  leader_update_follow_up_status: LeaderUpdateFollowUpStatusArgs;
+  leader_create_group_calendar_event: LeaderCreateGroupCalendarEventArgs;
+  leader_update_group_calendar_event: LeaderUpdateGroupCalendarEventArgs;
+  leader_archive_group_calendar_event: { p_event_id: string };
+  leader_restore_group_calendar_event: { p_event_id: string };
+  leader_write_group_care_note: LeaderWriteGroupNoteArgs;
+  leader_write_group_prayer_request: LeaderWriteGroupNoteArgs;
+};
 
-export function rpcLeaderWriteGroupPrayerRequest(
+export function leaderRpc<K extends keyof LeaderUuidRpcArgs>(
   client: AppSupabaseClient,
-  args: LeaderWriteGroupNoteArgs
-): Promise<RpcResult> {
-  return callUuidRpc(client, "leader_write_group_prayer_request", args);
+  name: K,
+  args: LeaderUuidRpcArgs[K]
+): Promise<UuidRpcResult> {
+  return callUuidRpc(client, name, args);
 }

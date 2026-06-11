@@ -10,10 +10,7 @@ import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
-import {
-  rpcLeaderWriteGroupCareNote,
-  rpcLeaderWriteGroupPrayerRequest,
-} from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 
 // Pivot slice 11 (#382 / ADR 0020) server actions: a leader's group-scoped
 // Care Note + Prayer Request. Both reuse the shared leader write-action runner
@@ -74,7 +71,7 @@ const CARE_NOTE_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (_value, id) => ({ new_care_note_id: id, has_body: true }),
   rpc: (client, value) =>
-    rpcLeaderWriteGroupCareNote(client, {
+    leaderRpc(client, "leader_write_group_care_note", {
       p_group_id: value.group_id,
       p_body: value.body,
     }),
@@ -102,7 +99,7 @@ const PRAYER_REQUEST_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (_value, id) => ({ new_prayer_request_id: id, has_body: true }),
   rpc: (client, value) =>
-    rpcLeaderWriteGroupPrayerRequest(client, {
+    leaderRpc(client, "leader_write_group_prayer_request", {
       p_group_id: value.group_id,
       p_body: value.body,
     }),

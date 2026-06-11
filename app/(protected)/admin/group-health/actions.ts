@@ -12,10 +12,7 @@ import {
   type GroupIdPayload,
   type GroupHealthRatingsPayload,
 } from "@/lib/admin/validation";
-import {
-  rpcAdminUpsertGroupHealthAssessment,
-  rpcAdminSetGroupHealthRatings,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   attendanceConsistency,
   computeGrade,
@@ -101,7 +98,7 @@ const RECOMPUTE_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
       group_question_score: ratingsRes.data.group_question_score,
     });
     if (recomputed.error) return { data: null, error: recomputed.error };
-    return rpcAdminUpsertGroupHealthAssessment(client, {
+    return adminRpc(client, "admin_upsert_group_health_assessment", {
       p_group_id: value.group_id,
       p_period_month: currentPeriodMonthIso(),
       p_attendance_pct: recomputed.data.attendance_pct,
@@ -162,7 +159,7 @@ const RATINGS_SPEC: AdminWriteActionSpec<
     });
     if (recomputed.error) return { data: null, error: recomputed.error };
 
-    return rpcAdminSetGroupHealthRatings(client, {
+    return adminRpc(client, "admin_set_group_health_ratings", {
       p_group_id: value.group_id,
       p_period_month: currentPeriodMonthIso(),
       p_spiritual_growth_score: value.spiritual_growth_score,

@@ -7,7 +7,7 @@ import {
   type AdminWriteActionSpec,
   type ValidationResult,
 } from "@/lib/admin/run-action";
-import { rpcSuperAdminSetPlatformConfig } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { getFeatureFlagDefinition } from "@/lib/admin/feature-flags";
 import { isRecord } from "@/lib/admin/validation";
 
@@ -55,7 +55,7 @@ const SET_FEATURE_FLAG_SPEC: AdminWriteActionSpec<
   validate: validateSetFeatureFlag,
   fields: (_actor, value) => ({ flag_key: value.key, enabled: value.enabled }),
   rpc: (client, value) =>
-    rpcSuperAdminSetPlatformConfig(client, {
+    adminRpc(client, "super_admin_set_platform_config", {
       p_config: {
         feature_flags: { [value.key]: { enabled: value.enabled } },
       },

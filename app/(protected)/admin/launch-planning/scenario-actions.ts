@@ -13,12 +13,7 @@ import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminArchiveLaunchPlanningScenario,
-  rpcAdminCreateLaunchPlanningScenario,
-  rpcAdminSetCurrentLaunchPlanningScenario,
-  rpcAdminUpdateLaunchPlanningScenario,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
@@ -146,7 +141,7 @@ const CREATE_SCENARIO_SPEC: AdminWriteActionSpec<
   validate: validateCreateLaunchPlanningScenarioPayload,
   okFields: (value) => scenarioOkFields(value),
   rpc: (client, value) =>
-    rpcAdminCreateLaunchPlanningScenario(client, {
+    adminRpc(client, "admin_create_launch_planning_scenario", {
       p_name: value.name,
       p_description: value.description,
       p_assumptions: value.assumptions as Record<string, unknown>,
@@ -174,7 +169,7 @@ const UPDATE_SCENARIO_SPEC: AdminWriteActionSpec<
   validate: validateUpdateLaunchPlanningScenarioPayload,
   okFields: (value) => scenarioOkFields(value),
   rpc: (client, value) =>
-    rpcAdminUpdateLaunchPlanningScenario(client, {
+    adminRpc(client, "admin_update_launch_planning_scenario", {
       p_scenario_id: value.scenario_id,
       p_name: value.name,
       p_description: value.description,
@@ -202,7 +197,7 @@ const ARCHIVE_SCENARIO_SPEC: AdminWriteActionSpec<
   read: readScenarioId,
   validate: validateScenarioIdPayload,
   rpc: (client, value) =>
-    rpcAdminArchiveLaunchPlanningScenario(client, {
+    adminRpc(client, "admin_archive_launch_planning_scenario", {
       p_scenario_id: value.scenario_id,
     }),
   revalidate: () => SCENARIO_REVALIDATE_PATHS,
@@ -226,7 +221,7 @@ const SET_CURRENT_SCENARIO_SPEC: AdminWriteActionSpec<
   read: readScenarioId,
   validate: validateScenarioIdPayload,
   rpc: (client, value) =>
-    rpcAdminSetCurrentLaunchPlanningScenario(client, {
+    adminRpc(client, "admin_set_current_launch_planning_scenario", {
       p_scenario_id: value.scenario_id,
     }),
   revalidate: () => SCENARIO_REVALIDATE_PATHS,

@@ -32,21 +32,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminResetMetricDefaults,
-  rpcAdminSetHealthRubric,
-  rpcAdminUpdateMetricDefaults,
-  rpcAdminUpsertGroupMetricSettings,
-  rpcAdminCreateGroupCategory,
-  rpcAdminRenameGroupCategory,
-  rpcAdminArchiveGroupCategory,
-  rpcAdminSetCategoryTypeCell,
-  rpcAdminSetCategoryTypeTargetCount,
-  rpcAdminSetGroupCategory,
-  rpcAdminSetReadinessRule,
-  rpcAdminSetAudienceReadinessRule,
-  rpcAdminSetCellTriggerOverrides,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { revalidateTag } from "next/cache";
 import { METRIC_DEFAULTS_CACHE_TAG } from "@/lib/supabase/cached-config";
 
@@ -173,7 +159,7 @@ const UPDATE_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
       : null,
   okFields: (value) => ({ changed_field_count: Object.keys(value).length }),
   rpc: (client, value) =>
-    rpcAdminUpdateMetricDefaults(client, {
+    adminRpc(client, "admin_update_metric_defaults", {
       p_settings: value as Record<string, unknown>,
     }),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
@@ -206,7 +192,7 @@ const UPSERT_GROUP_METRIC_SPEC: AdminWriteActionSpec<
   validate: validateGroupMetricSettingsPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: (client, value) =>
-    rpcAdminUpsertGroupMetricSettings(client, {
+    adminRpc(client, "admin_upsert_group_metric_settings", {
       p_group_id: value.group_id,
       p_capacity_override: value.capacity_override,
       p_capacity_warning_threshold_pct_override:
@@ -244,7 +230,7 @@ const RESET_METRIC_DEFAULTS_SPEC: AdminWriteActionSpec<
   name: "admin.settings.reset_metric_defaults",
   read: () => ({}),
   validate: () => ({ ok: true, value: {} }),
-  rpc: (client) => rpcAdminResetMetricDefaults(client),
+  rpc: (client) => adminRpc(client, "admin_reset_metric_defaults", {}),
   revalidate: () => SETTINGS_REVALIDATE_PATHS,
   noDataError: "The defaults were not reset. Please try again.",
 };
@@ -280,7 +266,7 @@ const SET_HEALTH_RUBRIC_SPEC: AdminWriteActionSpec<
     criteria_count: value.criteria.length,
   }),
   rpc: (client, value) =>
-    rpcAdminSetHealthRubric(client, {
+    adminRpc(client, "admin_set_health_rubric", {
       p_kind: value.kind,
       p_criteria: value.criteria as unknown as Array<Record<string, unknown>>,
     }),
@@ -320,7 +306,7 @@ const CREATE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
   keys: ["label"],
   validate: validateCreateGroupCategoryPayload,
   rpc: (client, value) =>
-    rpcAdminCreateGroupCategory(client, { p_label: value.label }),
+    adminRpc(client, "admin_create_group_category", { p_label: value.label }),
   revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
   noDataError: "The category was not created. Please try again.",
 };
@@ -341,7 +327,7 @@ const RENAME_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
   validate: validateRenameGroupCategoryPayload,
   fields: (_actor, value) => ({ target_category_id: value.categoryId }),
   rpc: (client, value) =>
-    rpcAdminRenameGroupCategory(client, {
+    adminRpc(client, "admin_rename_group_category", {
       p_category_id: value.categoryId,
       p_label: value.label,
     }),
@@ -365,7 +351,9 @@ const ARCHIVE_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
   validate: validateArchiveGroupCategoryPayload,
   fields: (_actor, value) => ({ target_category_id: value.categoryId }),
   rpc: (client, value) =>
-    rpcAdminArchiveGroupCategory(client, { p_category_id: value.categoryId }),
+    adminRpc(client, "admin_archive_group_category", {
+      p_category_id: value.categoryId,
+    }),
   revalidate: () => GROUP_CATEGORY_REVALIDATE_PATHS,
   noDataError: "The category was not removed. Please try again.",
 };
@@ -390,7 +378,7 @@ const SET_CATEGORY_TYPE_CELL_SPEC: AdminWriteActionSpec<
     active: value.active,
   }),
   rpc: (client, value) =>
-    rpcAdminSetCategoryTypeCell(client, {
+    adminRpc(client, "admin_set_category_type_cell", {
       p_category_id: value.categoryId,
       p_audience_category: value.audienceCategory,
       p_active: value.active,
@@ -422,7 +410,7 @@ const SET_CATEGORY_TYPE_TARGET_COUNT_SPEC: AdminWriteActionSpec<
     target_count: value.count,
   }),
   rpc: (client, value) =>
-    rpcAdminSetCategoryTypeTargetCount(client, {
+    adminRpc(client, "admin_set_category_type_target_count", {
       p_category_id: value.categoryId,
       p_audience_category: value.audienceCategory,
       p_count: value.count,
@@ -464,7 +452,7 @@ const SET_GROUP_CATEGORY_SPEC: AdminWriteActionSpec<
     target_category_id: value.category_id,
   }),
   rpc: (client, value) =>
-    rpcAdminSetGroupCategory(client, {
+    adminRpc(client, "admin_set_group_category", {
       p_group_id: value.group_id,
       p_audience_category: value.audience_category,
       p_category_id: value.category_id,
@@ -502,7 +490,7 @@ const SET_READINESS_RULE_SPEC: AdminWriteActionSpec<
   validate: validateReadinessRulePayload,
   fields: (_actor, value) => ({ ministry_year: value.ministryYear }),
   rpc: (client, value) =>
-    rpcAdminSetReadinessRule(client, {
+    adminRpc(client, "admin_set_readiness_rule", {
       p_ministry_year: value.ministryYear,
       p_rule: value.rule as unknown as Record<string, unknown>,
     }),
@@ -532,7 +520,7 @@ const SET_AUDIENCE_READINESS_RULE_SPEC: AdminWriteActionSpec<
     audience_category: value.audienceCategory,
   }),
   rpc: (client, value) =>
-    rpcAdminSetAudienceReadinessRule(client, {
+    adminRpc(client, "admin_set_audience_readiness_rule", {
       p_ministry_year: value.ministryYear,
       p_audience_category: value.audienceCategory,
       p_rule: value.rule as unknown as Record<string, unknown>,
@@ -560,7 +548,7 @@ const SET_CELL_TRIGGER_OVERRIDES_SPEC: AdminWriteActionSpec<
     audience_category: value.audienceCategory,
   }),
   rpc: (client, value) =>
-    rpcAdminSetCellTriggerOverrides(client, {
+    adminRpc(client, "admin_set_cell_trigger_overrides", {
       p_category_id: value.categoryId,
       p_audience_category: value.audienceCategory,
       p_overrides: value.overrides as unknown as Record<string, unknown>,

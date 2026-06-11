@@ -9,10 +9,7 @@ import {
   actionOk,
   mapRpcError,
 } from "@/lib/admin/action-result";
-import {
-  rpcSuperAdminResetActivity,
-  rpcSuperAdminClearActivityReset,
-} from "@/lib/admin/rpc";
+import { adminJsonRpc } from "@/lib/admin/rpc";
 import type { ActivityResetSuccess } from "@/lib/admin/danger-zone";
 
 // The RPC returns the baseline DATE as a jsonb scalar. Trust-boundary read:
@@ -38,7 +35,11 @@ export async function superAdminResetActivity(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data, error } = await rpcSuperAdminResetActivity(client);
+  const { data, error } = await adminJsonRpc(
+    client,
+    "super_admin_reset_activity",
+    {}
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
 
   revalidatePath("/admin");
@@ -58,7 +59,11 @@ export async function superAdminClearActivityReset(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { error } = await rpcSuperAdminClearActivityReset(client);
+  const { error } = await adminJsonRpc(
+    client,
+    "super_admin_clear_activity_reset",
+    {}
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
 
   revalidatePath("/admin");
