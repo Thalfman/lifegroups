@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d179efe5`
+- Built from commit: `d68ccbc9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -508,7 +508,7 @@ Nodes (14): dependencies, clsx, lucide-react, next, @radix-ui/react-dialog, reac
 
 ### Community 40 - "Community 40"
 Cohesion: 0.11
-Nodes (41): DrawerBody(), statusTone(), GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard(), statusTone(), statusStripeColor() (+33 more)
+Nodes (39): DrawerBody(), statusTone(), GridCellView(), OccurrencePill(), statusTone(), OccurrenceCard(), statusTone(), statusStripeColor() (+31 more)
 
 ### Community 41 - "Community 41"
 Cohesion: 0.06
@@ -639,8 +639,8 @@ Cohesion: 0.50
 Nodes (3): name, private, version
 
 ### Community 73 - "Community 73"
-Cohesion: 0.14
-Nodes (21): CalendarEventWritablePayload, coerceEventType(), EVENT_STATUS_LABELS, EVENT_STATUSES, EVENT_TYPE_LABELS, EVENT_TYPES, isEventStatus(), isEventType() (+13 more)
+Cohesion: 0.12
+Nodes (23): CalendarEventWritablePayload, coerceEventType(), EVENT_STATUS_LABELS, EVENT_STATUS_OPTIONS, EVENT_STATUSES, EVENT_TYPE_LABELS, EVENT_TYPE_OPTIONS, EVENT_TYPES (+15 more)
 
 ### Community 74 - "Community 74"
 Cohesion: 0.22
