@@ -1,6 +1,6 @@
 # Architecture Graph Report - plan
 
-Generated: 2026-06-11T16:14:26.335Z
+Generated: 2026-06-11T18:29:59.778Z
 
 ## Summary
 - Nodes: 1499

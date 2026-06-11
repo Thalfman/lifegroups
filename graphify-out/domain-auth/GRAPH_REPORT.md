@@ -1,6 +1,6 @@
 # Architecture Graph Report - domain-auth
 
-Generated: 2026-06-11T16:14:26.526Z
+Generated: 2026-06-11T18:29:59.943Z
 
 ## Summary
 - Nodes: 378

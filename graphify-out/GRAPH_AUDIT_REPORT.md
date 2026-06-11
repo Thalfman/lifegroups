@@ -10,17 +10,17 @@
 
 ## community overview
 - Path: graphify-out/community-overview.html
-- Nodes: 160
-- Edges: 1258
-- Default visible edges: 269
-- Communities: 160
+- Nodes: 161
+- Edges: 1268
+- Default visible edges: 270
+- Communities: 161
 - Excluded-folder hits: none
 
 ## raw full graph
 - Path: graphify-out/raw-full-graph.html
 - Nodes: 3546
 - Edges: 8287
-- Communities: 160
+- Communities: 161
 - Use: deep inspection only; not the default architecture overview
 - Excluded-folder hits: none
 

@@ -1,18 +1,18 @@
 # Architecture Graph Report - full
 
-Generated: 2026-06-11T16:14:26.056Z
+Generated: 2026-06-11T18:29:59.547Z
 
 ## Summary
 - Nodes: 3546
 - Edges: 8287
-- Communities: 160
+- Communities: 161
 - Staged files: 624
 - Architecture overview nodes: 13
 - Architecture overview edges: 109
 - Architecture overview default visible edges: 34
-- Community overview nodes: 160
-- Community overview edges: 1258
-- Community overview default visible edges: 269
+- Community overview nodes: 161
+- Community overview edges: 1268
+- Community overview default visible edges: 270
 
 ## Exclusion Audit
 - OK: node_modules: 0
@@ -44,17 +44,17 @@ Generated: 2026-06-11T16:14:26.056Z
 
 ## Largest Communities
 - Admin Form Components (66 nodes, inferred)
-- Admin RPC Layer (58 nodes, inferred)
+- Admin RPC Layer (65 nodes, inferred)
 - Admin Form Components (52 nodes, inferred)
 - Plan Pipeline (51 nodes, inferred)
 - Group Management UI (49 nodes, inferred)
 - Admin Form Components (48 nodes, inferred)
 - Admin RPC Layer (47 nodes, inferred)
 - Supabase Care Data Access (46 nodes, inferred)
+- Admin RPC Layer (43 nodes, inferred)
 - Multiplication Readiness (42 nodes, inferred)
 - Admin Dashboard Widgets (42 nodes, inferred)
 - Group Management UI (41 nodes, inferred)
-- Admin Form Components (41 nodes, inferred)
 
 ## Inferred Community Labels
 | ID | Label | Source | Basis |
@@ -111,11 +111,11 @@ Generated: 2026-06-11T16:14:26.056Z
 
 ### Admin RPC Layer (1)
 - app/(protected)/admin/shepherd-care/actions.ts (35)
-- lib/admin/rpc.ts (15)
+- lib/admin/rpc.ts (17)
+- app/(protected)/admin/super-admin/coverage-actions.ts (5)
 - lib/over-shepherd/rpc.ts (3)
 - lib/shared/rpc.ts (2)
 - lib/usage/rpc.ts (2)
-- lib/account/rpc.ts (1)
 
 ### Admin Form Components (2)
 - components/admin/forms/field-styles.ts (4)
@@ -159,6 +159,14 @@ Generated: 2026-06-11T16:14:26.056Z
 - components/admin/care/notes-feed-shell.tsx (6)
 - app/(protected)/admin/follow-ups/page.tsx (2)
 
+### Admin RPC Layer (8)
+- app/(protected)/admin/shepherd-care/actions.ts (12)
+- app/(protected)/admin/shepherd-care/care-notes-actions.ts (10)
+- app/(protected)/admin/settings/actions.ts (4)
+- components/admin/shepherd-care/care-follow-up-status-controls.tsx (4)
+- lib/admin/rpc.ts (4)
+- components/admin/shepherd-care/coverage-assignment-form.tsx (2)
+
 ### Multiplication Readiness (9)
 - lib/admin/multiplication.ts (18)
 - components/admin/multiplication/multiplication-planner.tsx (17)
@@ -196,21 +204,13 @@ Generated: 2026-06-11T16:14:26.056Z
 - app/(protected)/admin/launch-planning/page.tsx (4)
 - components/admin/planning/planning-calendar-panel.tsx (4)
 
-### Admin Validation (14)
-- lib/admin/validation/people.ts (23)
-- lib/admin/validation/super-admin.ts (12)
-- app/(protected)/admin/people/actions.ts (2)
-- lib/admin/validation/shared.ts (2)
-- lib/admin/validation/prospects.ts (1)
-- lib/admin/validation/shepherd-care.ts (1)
-
-### Admin RPC Layer (38)
-- lib/admin/rpc.ts (8)
-- app/(protected)/admin/follow-ups/actions.ts (7)
-- app/(protected)/admin/group-health/actions.ts (6)
-- app/(protected)/admin/super-admin/actions.ts (4)
-- app/(protected)/over-shepherd/[profileId]/actions.ts (4)
-- app/(protected)/admin/group-health/grade-actions.ts (3)
+### Plan Pipeline (15)
+- components/admin/admin-master-calendar-grid.tsx (5)
+- components/calendar/calendar-month-grid.tsx (5)
+- lib/admin/master-calendar-label.ts (5)
+- components/admin/admin-master-calendar-drawer.tsx (4)
+- components/admin/planning/planning-by-leader-list.tsx (4)
+- lib/calendar/occurrences.ts (4)
 
 ## Label And Edge Controls
 - The default graph.html is architecture-overview.html, not the raw full graph.

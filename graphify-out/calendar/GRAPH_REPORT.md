@@ -1,6 +1,6 @@
 # Architecture Graph Report - calendar
 
-Generated: 2026-06-11T16:14:26.485Z
+Generated: 2026-06-11T18:29:59.911Z
 
 ## Summary
 - Nodes: 1498

@@ -1,6 +1,6 @@
 # Architecture Graph Report - care
 
-Generated: 2026-06-11T16:14:26.428Z
+Generated: 2026-06-11T18:29:59.868Z
 
 ## Summary
 - Nodes: 1704
