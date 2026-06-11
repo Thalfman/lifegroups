@@ -8,7 +8,7 @@ No prior context assumed.
 [Graphify](https://github.com/safishamsi/graphify) scans the codebase and
 builds a **knowledge graph** of it: every function, component, table, and doc
 becomes a _node_, and every "X calls Y" / "X imports Y" relationship becomes
-an _edge_. The result is a map of the whole app (~6,600 nodes, ~15,700 edges)
+an _edge_. The result is a map of the whole app (~4,900 nodes, ~14,100 edges)
 that both humans and AI assistants can query instead of grepping through raw
 files.
 
@@ -51,7 +51,7 @@ pages will open but stay blank.
   details and connections. Colors are _communities_ — clusters of code that
   belong together. (They have placeholder names like "Community 12" until an
   LLM API key is configured; the structure is still meaningful.) This is the
-  biggest page (~6 MB) and the densest — give it a few seconds to settle.
+  biggest page (~5 MB) and the densest — give it a few seconds to settle.
 - **`GRAPH_TREE.html` — the tree.** Starts at the repo root; click folders to
   expand them down to files and the functions/components inside. Each symbol
   has an inspector showing what it calls. Best for "what's in this part of the
