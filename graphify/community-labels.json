@@ -1,0 +1,251 @@
+{
+  "features": {
+    "auth": "Auth",
+    "calendar": "Calendar",
+    "care": "Care",
+    "core": "Core",
+    "groups": "Groups",
+    "home": "Home",
+    "multiply": "Multiply",
+    "people": "People",
+    "plan": "Plan",
+    "settings": "Settings",
+    "shared": "Shared"
+  },
+  "categories": [
+    {
+      "id": "route_page_layout",
+      "label": "Route/Page/Layout",
+      "color": "#4E79A7"
+    },
+    { "id": "server_action", "label": "Server Action", "color": "#F28E2B" },
+    {
+      "id": "feature_component",
+      "label": "Feature Component",
+      "color": "#59A14F"
+    },
+    { "id": "domain_module", "label": "Domain Module", "color": "#B07AA1" },
+    {
+      "id": "supabase_read_adapter",
+      "label": "Supabase Read Adapter",
+      "color": "#76B7B2"
+    },
+    {
+      "id": "rpc_write_boundary",
+      "label": "RPC/Write Boundary",
+      "color": "#E15759"
+    },
+    {
+      "id": "auth_session_boundary",
+      "label": "Auth/Session Boundary",
+      "color": "#EDC948"
+    },
+    { "id": "shared_plumbing", "label": "Shared Plumbing", "color": "#BAB0AC" },
+    {
+      "id": "shared_ui_primitive",
+      "label": "Shared UI Primitive",
+      "color": "#9C755F"
+    },
+    { "id": "validation", "label": "Validation", "color": "#FF9DA7" },
+    {
+      "id": "observability_security",
+      "label": "Observability/Security",
+      "color": "#8CD17D"
+    },
+    { "id": "type_vocabulary", "label": "Type/Vocabulary", "color": "#86BCB6" }
+  ],
+  "heuristics": [
+    {
+      "label": "Auth Flow",
+      "patterns": [
+        "(^|/)lib/auth/",
+        "(^|/)app/(login|auth|invite|forgot-password|reset-password|welcome)/",
+        "logoutAction",
+        "require[A-Za-z]+Session",
+        "middleware\\.ts"
+      ]
+    },
+    {
+      "label": "Admin Action Runner",
+      "patterns": [
+        "lib/admin/run-action",
+        "lib/shared/run-action",
+        "runAdminWriteAction",
+        "runAction"
+      ]
+    },
+    {
+      "label": "Admin RPC Layer",
+      "patterns": [
+        "lib/admin/.+rpc",
+        "lib/shared/rpc",
+        "rpc\\(",
+        "call[A-Za-z]*Rpc"
+      ]
+    },
+    {
+      "label": "Supabase Data Access",
+      "patterns": [
+        "lib/supabase",
+        "supabase.*reads",
+        "read-model",
+        "read-batch",
+        "createSupabaseServerClient"
+      ]
+    },
+    {
+      "label": "Private Notes Security",
+      "patterns": [
+        "private-notes",
+        "lib/crypto",
+        "encrypted",
+        "decrypt",
+        "encrypt"
+      ]
+    },
+    {
+      "label": "Application Shell",
+      "patterns": [
+        "components/lg/shell",
+        "components/lg/Avatar",
+        "app/layout",
+        "TopBar",
+        "MobileBottomNav"
+      ]
+    },
+    {
+      "label": "Frozen Surface Copy",
+      "patterns": ["frozen-surface-copy", "retired", "frozen"]
+    },
+    {
+      "label": "Care Surface",
+      "patterns": [
+        "shepherd-care",
+        "follow-up",
+        "(^|/)care",
+        "care-note",
+        "over-shepherd"
+      ]
+    },
+    {
+      "label": "Plan Pipeline",
+      "patterns": [
+        "admin/plan",
+        "planning",
+        "launch-planning",
+        "leader-pipeline",
+        "prospect"
+      ]
+    },
+    {
+      "label": "Multiply Surface",
+      "patterns": ["multiply", "multiplication", "readiness", "pillar"]
+    },
+    {
+      "label": "Calendar Surface",
+      "patterns": [
+        "calendar",
+        "check-in",
+        "checkin",
+        "occurrence",
+        "church-time"
+      ]
+    },
+    {
+      "label": "People Directory",
+      "patterns": [
+        "people",
+        "person-detail",
+        "profile",
+        "member",
+        "guest",
+        "invite"
+      ]
+    },
+    {
+      "label": "Groups Surface",
+      "patterns": [
+        "groups",
+        "group-health",
+        "group-detail",
+        "group-management",
+        "health-rubric",
+        "capacity"
+      ]
+    },
+    {
+      "label": "Settings Surface",
+      "patterns": [
+        "settings",
+        "feature-flag",
+        "app-config",
+        "editable-copy",
+        "group-categories",
+        "multiply-trigger"
+      ]
+    },
+    {
+      "label": "Super Admin Operations",
+      "patterns": [
+        "super-admin",
+        "clean-slate",
+        "reset",
+        "permanent-delete",
+        "audit"
+      ]
+    },
+    {
+      "label": "Shared UI Primitives",
+      "patterns": [
+        "components/ui",
+        "components/pastoral",
+        "components/lg/Icon",
+        "button",
+        "badge",
+        "dialog",
+        "card",
+        "cn\\("
+      ]
+    },
+    {
+      "label": "Admin Form Components",
+      "patterns": [
+        "components/admin/forms",
+        "lib/forms",
+        "action-form",
+        "confirm-action",
+        "field-styles"
+      ]
+    },
+    {
+      "label": "Admin Validation",
+      "patterns": [
+        "lib/admin/validation",
+        "ValidationResult",
+        "normalize",
+        "assert"
+      ]
+    },
+    {
+      "label": "Observability and Security",
+      "patterns": [
+        "lib/observability",
+        "lib/security",
+        "rate-limit",
+        "instrument",
+        "logger"
+      ]
+    },
+    {
+      "label": "Dashboard and Navigation",
+      "patterns": [
+        "dashboard",
+        "home",
+        "hub",
+        "nav",
+        "hidden-nav",
+        "active-nav"
+      ]
+    }
+  ]
+}

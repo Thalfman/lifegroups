@@ -1,7 +1,8 @@
-# Graphify outputs are regenerable. graph.json merges via graphify's
-# JSON-aware merge driver (registered by scripts/graphify-session-start.sh);
-# on machines without it, git falls back to a normal conflict — resolve by
-# taking either side and running `graphify update .`. Generated files are
-# collapsed in PR diffs.
-graphify-out/graph.json merge=graphify
-graphify-out/** linguist-generated=true
+# Graphify root outputs are regenerable. graph.json merges via graphify's
+# JSON-aware merge driver when scripts/graphify-session-start.sh registers it.
+graphify-out/graph.json merge=graphify linguist-generated=true
+graphify-out/graph.html linguist-generated=true
+graphify-out/GRAPH_REPORT.md linguist-generated=true
+graphify-out/GRAPH_TREE.html linguist-generated=true
+graphify-out/.graphify_labels.json linguist-generated=true
+graphify-out/PRODUCT_SURFACE_REPORT.md linguist-generated=true

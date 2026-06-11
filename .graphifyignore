@@ -1,32 +1,65 @@
-# Corpus scope for the graphify knowledge graph (gitignore syntax).
-# NOTE: when this file exists graphify stops falling back to .gitignore, so
-# any .gitignore rule that matters for extraction must be repeated here
-# (node_modules, .next, .git, graphify-out are built-in skips already).
+# Hard fallback corpus scope for direct Graphify runs.
+# Normal repo automation uses scripts/graphify.mjs and graphify/scopes.json.
 
-# Mirrored from .gitignore — local artifacts and secrets, never corpus
-/test-results
-/playwright-report
-/blob-report
-.env*
-tsconfig.tsbuildinfo
-.DS_Store
-supabase/dev/link_test_users.sql
-supabase/dev/link_super_admin.sql
-
-# Tooling infrastructure, not the codebase the graph should describe
-.husky/
-.claude/
-.agents/
-skills-lock.json
-
-# Documentation: the graph describes the code architecture; prose docs and
-# their dense cross-links drown the code signal (root-anchored so the
-# graphify-out/memory/ loop keeps re-ingesting saved answers).
+# Documentation and prose
 /docs/
-/*.md
 /.github/
+*.md
+*.mdx
+*.png
+*.svg
 
-# Shell scripts: graphify's bash extractor embeds the absolute checkout path
-# in file/entry node IDs, which breaks graph reproducibility across machines.
-# Remove this once fixed upstream (https://github.com/safishamsi/graphify).
-*.sh
+# Tests and harness-only routes
+**/__tests__/
+*.test.*
+*.spec.*
+/tests/
+/app/a11y-harness/
+
+# Generated DB/type noise
+/types/database.ts
+/lib/supabase/types.ts
+*database.types.ts
+
+# Graphify tooling/output
+/.graphify/
+/graphify/
+/graphify-out/
+/.graphify-version
+
+# Package, lock, and tool metadata
+/package.json
+/package-lock.json
+/skills-lock.json
+/components.json
+/.lintstagedrc
+/.prettierrc
+/.prettierignore
+/eslint.config.mjs
+/next.config.ts
+/postcss.config.mjs
+/playwright.config.ts
+/tailwind.config.ts
+/tsconfig.json
+/tsconfig.tsbuildinfo
+
+# Build output and machine-local artifacts
+/node_modules/
+/.next/
+/out/
+/dist/
+/coverage/
+/test-results/
+/playwright-report/
+/blob-report/
+/.claude/
+/.agents/
+/.husky/
+.env*
+*.log
+*.tmp
+.DS_Store
+
+# Generic scripts and local Supabase helpers
+/scripts/
+/supabase/dev/
