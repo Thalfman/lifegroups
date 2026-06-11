@@ -13,7 +13,7 @@
     "grouped_file_count": 363,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T23:36:52.050Z"
+    "generated_at": "2026-06-11T23:37:51.347Z"
   },
   "nodes": [
     {
@@ -23115,5 +23115,5 @@
       ]
     }
   ],
-  "built_at_commit": "ca3c23c0d7dc19ce3eba909501ab0f00e7471637"
+  "built_at_commit": "106a6a76dbe8cc8dc3541db336f5a01463edf440"
 }
