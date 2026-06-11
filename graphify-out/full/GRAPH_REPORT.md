@@ -1,15 +1,22 @@
 # Architecture Graph Report - full
 
-Generated: 2026-06-11T15:08:15.461Z
+Generated: 2026-06-11T16:14:26.206Z
 
 ## Summary
-- Nodes: 3581
-- Edges: 8378
+- Nodes: 3546
+- Edges: 8287
 - Communities: 160
-- Staged files: 504
+- Staged files: 624
+- Architecture overview nodes: 13
+- Architecture overview edges: 109
+- Architecture overview default visible edges: 34
+- Community overview nodes: 160
+- Community overview edges: 1258
+- Community overview default visible edges: 269
 
 ## Exclusion Audit
 - OK: node_modules: 0
+- OK: app/a11y-harness: 0
 - OK: .next: 0
 - OK: dist/build/out: 0
 - OK: coverage: 0
@@ -27,190 +34,188 @@ Generated: 2026-06-11T15:08:15.461Z
 - cn() (115) - lib/utils.ts
 - callUuidRpc() (108) - lib/shared/rpc.ts
 - runAdminWriteAction() (108) - lib/admin/run-action.ts
-- groups-directory.tsx (96) - components/admin/groups-directory.tsx
 - useActionForm() (96) - components/admin/forms/action-form.tsx
-- harness-client.tsx (93) - app/a11y-harness/harness-client.tsx
+- groups-directory.tsx (95) - components/admin/groups-directory.tsx
 - super-admin-console.tsx (84) - components/admin/super-admin-console.tsx
 - read-models.ts (81) - lib/supabase/read-models.ts
 - queries.ts (75) - lib/dashboard/queries.ts
 - actions.ts (70) - app/(protected)/admin/shepherd-care/actions.ts
+- admin-group-model.ts (68) - lib/dashboard/admin-group-model.ts
 
 ## Largest Communities
-- Admin RPC Layer (88 nodes, inferred)
-- Group Management UI (68 nodes, inferred)
-- Group Management UI (62 nodes, inferred)
-- Admin Form Components (60 nodes, inferred)
-- Admin RPC Layer (54 nodes, inferred)
-- Admin RPC Layer (52 nodes, inferred)
-- Admin Validation (50 nodes, inferred)
-- Plan Pipeline (49 nodes, inferred)
-- Admin People Actions (45 nodes, inferred)
-- Plan Pipeline (45 nodes, inferred)
-- Plan Pipeline (45 nodes, inferred)
-- Admin RPC Layer (45 nodes, inferred)
+- Admin Form Components (66 nodes, inferred)
+- Admin RPC Layer (58 nodes, inferred)
+- Admin Form Components (52 nodes, inferred)
+- Plan Pipeline (51 nodes, inferred)
+- Group Management UI (49 nodes, inferred)
+- Admin Form Components (48 nodes, inferred)
+- Admin RPC Layer (47 nodes, inferred)
+- Supabase Care Data Access (46 nodes, inferred)
+- Multiplication Readiness (42 nodes, inferred)
+- Admin Dashboard Widgets (42 nodes, inferred)
+- Group Management UI (41 nodes, inferred)
+- Admin Form Components (41 nodes, inferred)
 
 ## Inferred Community Labels
 | ID | Label | Source | Basis |
 | --- | --- | --- | --- |
-| 0 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 1 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
-| 2 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
-| 3 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
-| 4 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 5 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 6 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
-| 7 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
-| 8 | Admin People Actions | inferred | top files matched /admin\/people\/actions\|components\/admin\/people\|person-detail\|people-management\|adminassign\|admincreate(member\|leader\|ministry)\|deactivate(member\|profile)\|membership/i |
-| 9 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
-| 10 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
-| 11 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 12 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
-| 13 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
-| 14 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
-| 15 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
-| 16 | Admin Dashboard Widgets | inferred | top files matched /components\/lg\/admin\/dashboard\|lib\/dashboard/i |
-| 17 | Multiplication Readiness | inferred | top files matched /multiply\|multiplication\|pillar\|readiness\|capacity\|candidate\|apprentice/i |
-| 18 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
-| 19 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
-| 20 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 21 | Supabase Multiplication Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 22 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 23 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 24 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
-| 25 | Calendar Pages | inferred | top files matched /calendar\|occurrence\|event\|schedule/i |
-| 26 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
-| 27 | Private Notes Crypto | inferred | top files matched /lib\/crypto\|private-notes-session\|sealed-note\|passkey/i |
-| 28 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
-| 29 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 30 | Settings Actions | inferred | top files matched /settings\/actions\|settings_\|group-category\|metric-default\|readiness-rule/i |
-| 31 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
-| 32 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 33 | Check Ins and Attendance | inferred | top files matched /check-ins\|check_ins\|attendance/i |
-| 34 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
-| 35 | Auth Flow | inferred | top files matched /(^\|\/)lib\/auth\/\|(^\|\/)app\/(login\|auth\|invite\|forgot-password\|reset-password)\/\|logoutAction\|require[A-Za-z]+Session\|middleware\.ts/i |
-| 36 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 37 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
-| 38 | Auth Flow | inferred | top files matched /(^\|\/)lib\/auth\/\|(^\|\/)app\/(login\|auth\|invite\|forgot-password\|reset-password)\/\|logoutAction\|require[A-Za-z]+Session\|middleware\.ts/i |
-| 39 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
+| 0 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 1 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
+| 2 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 3 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
+| 4 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
+| 5 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 6 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
+| 7 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 8 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
+| 9 | Multiplication Readiness | inferred | top files matched /multiply\|multiplication\|pillar\|readiness\|capacity\|candidate\|apprentice/i |
+| 10 | Admin Dashboard Widgets | inferred | top files matched /components\/lg\/admin\/dashboard\|lib\/dashboard/i |
+| 11 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
+| 12 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 13 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
+| 14 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
+| 15 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
+| 16 | Multiplication Readiness | inferred | top files matched /multiply\|multiplication\|pillar\|readiness\|capacity\|candidate\|apprentice/i |
+| 17 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 18 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 19 | Multiplication Readiness | inferred | top files matched /multiply\|multiplication\|pillar\|readiness\|capacity\|candidate\|apprentice/i |
+| 20 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 21 | Supabase Plan Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 22 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 23 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 24 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 25 | Supabase Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 26 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
+| 27 | Supabase Plan Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 28 | Supabase Care Data Access | inferred | top files matched /lib\/supabase\|supabase.*reads\|read-model\|read-batch/i |
+| 29 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
+| 30 | Plan Pipeline | inferred | top files matched /admin\/plan\|prospect\|planning\|launch-planning\|scenario/i |
+| 31 | Private Notes Crypto | inferred | top files matched /lib\/crypto\|private-notes-session\|sealed-note\|passkey/i |
+| 32 | Calendar Pages | inferred | top files matched /calendar\|occurrence\|event\|schedule/i |
+| 33 | Admin Validation | inferred | top files matched /lib\/admin\/validation\//i |
+| 34 | Check Ins and Attendance | inferred | top files matched /check-ins\|check_ins\|attendance/i |
+| 35 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 36 | Group Management UI | inferred | top files matched /admin\/groups\|groups-directory\|group-detail\|group-roster\|group-health/i |
+| 37 | Admin Form Components | inferred | top files matched /components\/admin\/forms\|lib\/forms\|action-form\|confirm-action/i |
+| 38 | Admin RPC Layer | inferred | top files matched /lib\/admin\/rpc\.ts\|lib\/shared\/rpc\.ts\|rpc\(\)\|safeRpc/i |
+| 39 | Care Notes and Follow Ups | inferred | top files matched /care-note\|care_notes\|follow-up\|follow_ups\|private-notes\|private_notes/i |
 
 ## Top Files Per Community
-### Admin RPC Layer (0)
-- lib/admin/rpc.ts (52)
-- app/(protected)/admin/settings/actions.ts (22)
-- lib/shared/rpc.ts (6)
+### Admin Form Components (0)
+- components/admin/super-admin-console-shell.tsx (32)
+- lib/admin/audit-summary.ts (9)
+- components/admin/audit-trail-section.tsx (4)
+- components/admin/console-status.tsx (4)
+- components/admin/danger-zone-console.tsx (4)
+- components/admin/system-status-checklist.tsx (4)
+
+### Admin RPC Layer (1)
+- app/(protected)/admin/shepherd-care/actions.ts (35)
+- lib/admin/rpc.ts (15)
 - lib/over-shepherd/rpc.ts (3)
-- lib/shared/uuid.ts (2)
+- lib/shared/rpc.ts (2)
 - lib/usage/rpc.ts (2)
+- lib/account/rpc.ts (1)
 
-### Group Management UI (1)
-- app/(protected)/admin/multiply/page.tsx (5)
-- app/(protected)/admin/check-ins/[groupId]/page.tsx (4)
-- app/(protected)/admin/check-ins/page.tsx (4)
-- app/(protected)/admin/page.tsx (3)
-- app/(protected)/admin/shepherd-care/over-shepherds/page.tsx (3)
-- components/lg/PageHeader.tsx (3)
-
-### Group Management UI (2)
-- components/admin/groups-directory.tsx (39)
-- lib/dashboard/groups-table-prefs.ts (10)
-- lib/dashboard/group-status.ts (7)
-- lib/dashboard/labels.ts (3)
-- components/admin/group-management-shell.tsx (2)
-- lib/admin/metrics.ts (1)
-
-### Admin Form Components (3)
+### Admin Form Components (2)
 - components/admin/forms/field-styles.ts (4)
-- components/admin/follow-ups/follow-up-status-controls.tsx (3)
 - components/admin/forms/action-form.tsx (3)
 - components/admin/forms/change-leader-role-form.tsx (3)
-- app/(protected)/admin/shepherd-care/actions.ts (2)
 - components/admin/attention-reset-entity-button.tsx (2)
+- components/admin/care/group-rubric-grade-entry.tsx (2)
+- components/admin/forms/coverage-assign-form.tsx (2)
 
-### Admin RPC Layer (4)
-- app/(protected)/admin/shepherd-care/actions.ts (43)
-- lib/admin/rpc.ts (6)
-- components/admin/shepherd-care/private-notes-section.tsx (2)
-- lib/admin/private-notes-session.ts (2)
-- lib/crypto/private-notes.ts (1)
-
-### Admin RPC Layer (5)
-- components/leader/check-in-form.tsx (12)
-- components/admin/person-detail/person-detail-shell.tsx (9)
-- components/admin/person-detail/person-tabs.ts (4)
-- components/admin/group-detail/group-roster-manager.tsx (3)
-- components/admin/super-admin-collapsible-section.tsx (3)
-- lib/admin/rpc.ts (3)
-
-### Admin Validation (6)
-- lib/admin/validation/people.ts (23)
-- lib/admin/validation/super-admin.ts (12)
-- lib/admin/validation/prospects.ts (11)
-- app/(protected)/admin/people/actions.ts (2)
-- lib/admin/validation/shared.ts (2)
-
-### Plan Pipeline (7)
+### Plan Pipeline (3)
 - components/lg/admin/dashboard/overview-primitives.tsx (7)
+- lib/dashboard/types.ts (7)
 - components/lg/admin/dashboard/LaunchPlanningOverviewCard.tsx (4)
-- lib/dashboard/types.ts (4)
 - components/lg/admin/dashboard/GuestPipelineFunnelCard.tsx (3)
 - components/lg/admin/dashboard/InterestFunnelOverviewCard.tsx (3)
 - components/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx (3)
 
-### Admin People Actions (8)
-- app/a11y-harness/harness-client.tsx (34)
-- components/admin/people-management-shell.tsx (5)
-- components/admin/people/people-tabs.ts (3)
-- app/a11y-harness/page.tsx (2)
-- components/admin/super-admin-section-anchors.tsx (1)
+### Group Management UI (4)
+- components/admin/groups-directory.tsx (39)
+- lib/dashboard/groups-table-prefs.ts (10)
 
-### Plan Pipeline (9)
-- components/calendar/calendar-month-grid.tsx (5)
-- components/pastoral/atoms.tsx (5)
-- lib/admin/master-calendar-label.ts (5)
-- components/admin/admin-master-calendar-drawer.tsx (4)
-- lib/calendar/occurrences.ts (4)
-- components/admin/admin-master-calendar-grid.tsx (3)
+### Admin Form Components (5)
+- components/admin/person-detail/person-detail-shell.tsx (11)
+- components/admin/person-detail/person-tabs.ts (4)
+- components/admin/super-admin-console-shell.tsx (4)
+- components/admin/group-detail/group-roster-manager.tsx (3)
+- components/admin/super-admin-collapsible-section.tsx (3)
+- lib/forms/action-form-view.ts (3)
 
-### Plan Pipeline (10)
-- lib/admin/multiplication.ts (19)
-- components/admin/multiplication/multiplication-planner.tsx (18)
+### Admin RPC Layer (6)
+- lib/admin/rpc.ts (33)
+- app/(protected)/admin/plan/actions.ts (8)
+- lib/shared/rpc.ts (4)
+- lib/shared/uuid.ts (2)
+
+### Supabase Care Data Access (7)
+- lib/admin/care-note-feed.ts (11)
+- lib/supabase/care-note-feed-reads.ts (10)
+- app/(protected)/admin/care/page.tsx (8)
+- components/admin/care/notes-feed-data.ts (6)
+- components/admin/care/notes-feed-shell.tsx (6)
+- app/(protected)/admin/follow-ups/page.tsx (2)
+
+### Multiplication Readiness (9)
+- lib/admin/multiplication.ts (18)
+- components/admin/multiplication/multiplication-planner.tsx (17)
 - lib/admin/audience.ts (5)
-- components/admin/launch-planning/launch-planning-data.ts (1)
 - components/admin/multiply/multiply-grid.tsx (1)
 - lib/admin/capacity-board.ts (1)
 
-### Admin RPC Layer (11)
-- lib/admin/group-health.ts (19)
-- lib/admin/group-health-read.ts (11)
-- app/(protected)/admin/group-health/actions.ts (7)
-- lib/admin/rpc.ts (2)
-- components/admin/group-health/group-health-data.ts (1)
-- components/admin/groups/group-management-data.ts (1)
+### Admin Dashboard Widgets (10)
+- lib/dashboard/types.ts (20)
+- lib/dashboard/admin-group-model.ts (19)
+- types/enums.ts (2)
+- lib/admin/metrics.ts (1)
 
-### Group Management UI (12)
+### Group Management UI (11)
+- app/(protected)/admin/check-ins/[groupId]/page.tsx (4)
+- app/(protected)/admin/check-ins/page.tsx (4)
+- app/(protected)/admin/shepherd-care/over-shepherds/page.tsx (3)
+- components/lg/PageHeader.tsx (3)
+- lib/admin/check-ins.ts (3)
+- app/(protected)/admin/group-health/page.tsx (2)
+
+### Admin Form Components (12)
+- components/admin/settings/groups-catalog-editor.tsx (20)
+- lib/admin/group-type-list.ts (8)
+- components/admin/forms/group-category-options.ts (5)
+- components/admin/forms/meeting-schedule-options.ts (3)
+- components/admin/forms/group-edit-form.tsx (2)
+- types/enums.ts (2)
+
+### Group Management UI (13)
 - lib/calendar/occurrences.ts (7)
 - app/(protected)/leader/[groupId]/calendar/page.tsx (6)
 - app/(protected)/admin/groups/[groupId]/calendar/page.tsx (5)
 - app/(protected)/admin/calendar/page.tsx (4)
 - app/(protected)/admin/launch-planning/page.tsx (4)
-- app/(protected)/admin/planning/page.tsx (4)
+- components/admin/planning/planning-calendar-panel.tsx (4)
 
-### Plan Pipeline (13)
-- lib/admin/launch-planning.ts (28)
-- components/admin/launch-planning/launch-planning-data.ts (7)
-- lib/admin/group-capacity-inputs.ts (3)
-- lib/dashboard/launch-planning-snapshot.ts (3)
-- lib/admin/capacity-board.ts (1)
-- lib/admin/leader-pipeline.ts (1)
+### Admin Validation (14)
+- lib/admin/validation/people.ts (23)
+- lib/admin/validation/super-admin.ts (12)
+- app/(protected)/admin/people/actions.ts (2)
+- lib/admin/validation/shared.ts (2)
+- lib/admin/validation/prospects.ts (1)
+- lib/admin/validation/shepherd-care.ts (1)
 
-### Group Management UI (14)
-- components/admin/groups/group-detail-data.ts (19)
-- app/(protected)/admin/groups/[groupId]/page.tsx (17)
-- lib/dashboard/labels.ts (5)
-- lib/admin/editable-copy.ts (1)
-- lib/calendar/occurrences.ts (1)
+### Admin RPC Layer (38)
+- lib/admin/rpc.ts (8)
+- app/(protected)/admin/follow-ups/actions.ts (7)
+- app/(protected)/admin/group-health/actions.ts (6)
+- app/(protected)/admin/super-admin/actions.ts (4)
+- app/(protected)/over-shepherd/[profileId]/actions.ts (4)
+- app/(protected)/admin/group-health/grade-actions.ts (3)
 
 ## Label And Edge Controls
-- Node labels are hidden by default except hubs.
+- The default graph.html is architecture-overview.html, not the raw full graph.
+- Raw Full Graph is kept as raw-full-graph.html for deep inspection only.
+- Community Overview is kept as community-overview.html with original community IDs in details.
+- Raw graph node labels are hidden by default except hubs.
 - Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html.
 - Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types.

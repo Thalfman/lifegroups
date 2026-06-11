@@ -1,6 +1,6 @@
 {
   "slice": "multiply",
-  "generatedAt": "2026-06-11T15:08:15.543Z",
+  "generatedAt": "2026-06-11T16:14:26.378Z",
   "stagedFileCount": 148,
   "nodeCount": 1515,
   "edgeCount": 3082,
@@ -8963,6 +8963,11 @@
       "examples": []
     },
     {
+      "name": "app/a11y-harness",
+      "count": 0,
+      "examples": []
+    },
+    {
       "name": ".next",
       "count": 0,
       "examples": []
@@ -9012,5 +9017,27 @@
       "count": 0,
       "examples": []
     }
-  ]
+  ],
+  "views": {
+    "raw": {
+      "label": "Feature Graph",
+      "nodeCount": 1515,
+      "edgeCount": 3082,
+      "path": "graph.html"
+    },
+    "architecture": {
+      "label": "Architecture Overview",
+      "nodeCount": 13,
+      "edgeCount": 60,
+      "defaultVisibleEdges": 20,
+      "path": "architecture-overview.html"
+    },
+    "community": {
+      "label": "Community Overview",
+      "nodeCount": 81,
+      "edgeCount": 422,
+      "defaultVisibleEdges": 73,
+      "path": "community-overview.html"
+    }
+  }
 }

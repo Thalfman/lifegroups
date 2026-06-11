@@ -23,6 +23,17 @@
     "graph:report": "node scripts/graphify.mjs report",
     "graph:health": "node scripts/graphify.mjs health",
     "graph:rebuild": "npm run graph:full",
+    "domain:auth": "node scripts/graphify.mjs domain auth",
+    "domain:groups": "node scripts/graphify.mjs domain groups",
+    "domain:people": "node scripts/graphify.mjs domain people",
+    "domain:plan": "node scripts/graphify.mjs domain plan",
+    "domain:multiply": "node scripts/graphify.mjs domain multiply",
+    "domain:care": "node scripts/graphify.mjs domain care",
+    "domain:calendar": "node scripts/graphify.mjs domain calendar",
+    "domain:settings": "node scripts/graphify.mjs domain settings",
+    "domain:super-admin": "node scripts/graphify.mjs domain super-admin",
+    "domain:supabase": "node scripts/graphify.mjs domain supabase",
+    "domain:shared-ui": "node scripts/graphify.mjs domain shared-ui",
     "prepare": "husky"
   },
   "dependencies": {

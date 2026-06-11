@@ -1,15 +1,22 @@
 # Architecture Graph Report - multiply
 
-Generated: 2026-06-11T15:08:15.543Z
+Generated: 2026-06-11T16:14:26.378Z
 
 ## Summary
 - Nodes: 1515
 - Edges: 3082
 - Communities: 81
 - Staged files: 148
+- Architecture overview nodes: 13
+- Architecture overview edges: 60
+- Architecture overview default visible edges: 20
+- Community overview nodes: 81
+- Community overview edges: 422
+- Community overview default visible edges: 73
 
 ## Exclusion Audit
 - OK: node_modules: 0
+- OK: app/a11y-harness: 0
 - OK: .next: 0
 - OK: dist/build/out: 0
 - OK: coverage: 0
@@ -173,6 +180,6 @@ Generated: 2026-06-11T15:08:15.543Z
 - lib/admin/group-capacity-inputs.ts (3)
 
 ## Label And Edge Controls
-- Node labels are hidden by default except hubs.
+- Raw graph node labels are hidden by default except hubs.
 - Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html.
 - Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types.

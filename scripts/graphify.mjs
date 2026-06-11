@@ -90,6 +90,159 @@ const sliceConfigs = {
   },
 };
 
+const domainConfigs = [
+  {
+    id: "auth",
+    label: "Auth",
+    command: "npm run domain:auth",
+    layout: { x: -420, y: -260 },
+    patterns: [
+      /(^|\/)middleware\.ts$/,
+      /(^|\/)lib\/auth\//,
+      /(^|\/)app\/(login|auth|invite|forgot-password|reset-password)(\/|$)/,
+      /auth|session|role|logout|login|password|invite/i,
+    ],
+  },
+  {
+    id: "groups",
+    label: "Groups",
+    command: "npm run domain:groups",
+    layout: { x: -480, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/groups(\/|$)/,
+      /(^|\/)components\/admin\/groups?/,
+      /group-|groups-|group_detail|group_roster|group_health|group_type/i,
+    ],
+  },
+  {
+    id: "people",
+    label: "People",
+    command: "npm run domain:people",
+    layout: { x: -288, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/people(\/|$)/,
+      /(^|\/)components\/admin\/people(\/|$)/,
+      /people|person|profile|guest|membership|member-detail|leader-detail/i,
+    ],
+  },
+  {
+    id: "plan",
+    label: "Plan",
+    command: "npm run domain:plan",
+    layout: { x: -96, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/(plan|planning|launch-planning)(\/|$)/,
+      /(^|\/)components\/admin\/(plan|planning|launch-planning)(\/|$)/,
+      /launch-planning|planning|prospect|scenario|apprentice|candidate/i,
+    ],
+  },
+  {
+    id: "multiply",
+    label: "Multiply",
+    command: "npm run domain:multiply",
+    layout: { x: 96, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/(multiply|leader-pipeline)(\/|$)/,
+      /(^|\/)components\/admin\/(multiply|multiplication)(\/|$)/,
+      /multiply|multiplication|readiness|capacity|pillar|leader-pipeline/i,
+    ],
+  },
+  {
+    id: "care",
+    label: "Care",
+    command: "npm run domain:care",
+    layout: { x: 288, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/(care|shepherd-care|follow-ups)(\/|$)/,
+      /(^|\/)app\/\(protected\)\/over-shepherd(\/|$)/,
+      /(^|\/)components\/admin\/(care|shepherd-care|follow-ups)(\/|$)/,
+      /(^|\/)components\/over-shepherd(\/|$)/,
+      /care|shepherd|follow-up|follow_ups|private-note|private_note|coverage/i,
+    ],
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    command: "npm run domain:calendar",
+    layout: { x: 480, y: 0 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/(calendar|check-ins)(\/|$)/,
+      /(^|\/)components\/calendar(\/|$)/,
+      /(^|\/)lib\/calendar(\/|$)/,
+      /calendar|occurrence|event|check-in|attendance|meeting|schedule/i,
+    ],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    command: "npm run domain:settings",
+    layout: { x: -360, y: 260 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/admin\/settings(\/|$)/,
+      /(^|\/)components\/admin\/settings(\/|$)/,
+      /settings|group-category|metric-default|readiness-rule|rubric/i,
+    ],
+  },
+  {
+    id: "super-admin",
+    label: "Super Admin",
+    command: "npm run domain:super-admin",
+    layout: { x: -120, y: 260 },
+    patterns: [
+      /super-admin|permanent-delete|permanent-deletion|reset-all|platform-config|test-accounts|manage-test-auth-users/i,
+    ],
+  },
+  {
+    id: "supabase",
+    label: "Supabase/Data",
+    command: "npm run domain:supabase",
+    layout: { x: 120, y: 260 },
+    patterns: [
+      /(^|\/)lib\/supabase(\/|$)/,
+      /(^|\/)supabase\/(functions|migrations|seed)(\/|$)/,
+      /(^|\/)lib\/admin\/rpc\.ts$/,
+      /read-model|read-models|safeRpc|rpc\.ts/i,
+    ],
+  },
+  {
+    id: "shared-ui",
+    label: "Shared UI",
+    command: "npm run domain:shared-ui",
+    layout: { x: 360, y: 260 },
+    patterns: [
+      /(^|\/)components\/ui(\/|$)/,
+      /(^|\/)components\/lg(\/|$)/,
+      /segmented-tabs|button|badge|dialog|shell|card|empty-state|skeleton/i,
+    ],
+  },
+  {
+    id: "app-shell",
+    label: "App Shell",
+    command: "node scripts/graphify.mjs domain app-shell",
+    layout: { x: 0, y: -260 },
+    patterns: [
+      /(^|\/)app\/(layout|page|loading|error|not-found)\.[tj]sx?$/,
+      /(^|\/)app\/\(protected\)\/(layout|page|loading|error)\.[tj]sx?$/,
+      /(^|\/)lib\/dashboard(\/|$)/,
+      /navigation|nav-items|dashboard|home-hub|layout|page-shell/i,
+    ],
+  },
+  {
+    id: "leader-workspace",
+    label: "Leader Workspace",
+    command: "node scripts/graphify.mjs domain leader-workspace",
+    layout: { x: 420, y: -260 },
+    patterns: [
+      /(^|\/)app\/\(protected\)\/leader(\/|$)/,
+      /(^|\/)components\/leader(\/|$)/,
+      /(^|\/)lib\/leader(\/|$)/,
+      /leader-workspace|leader-/i,
+    ],
+  },
+];
+
+const domainById = new Map(domainConfigs.map((domain) => [domain.id, domain]));
+
 const palette = [
   "#4E79A7",
   "#F28E2B",
@@ -215,6 +368,10 @@ function main() {
       buildSlice(args[0] || "full", parseOptions(args.slice(1)));
       return;
     }
+    if (cmd === "domain") {
+      buildDomainGraph(args[0], parseOptions(args.slice(1)));
+      return;
+    }
     if (sliceConfigs[cmd]) {
       buildSlice(cmd, parseOptions(args));
       return;
@@ -243,12 +400,15 @@ function main() {
 function printHelp() {
   console.log(`Usage:
   node scripts/graphify.mjs build <full|plan|multiply|care|calendar> [--include-tests] [--no-root-mirror]
+  node scripts/graphify.mjs domain <auth|groups|people|plan|multiply|care|calendar|settings|super-admin|supabase|shared-ui>
   node scripts/graphify.mjs tree [full|plan|multiply|care|calendar]
   node scripts/graphify.mjs report
   node scripts/graphify.mjs clean
 
 Generated graphs are written to graphify-out/<slice>/. The full graph is also
-mirrored to graphify-out/ so graphify query/explain keep their default path.`);
+mirrored to graphify-out/. The default HTML view is the aggregate architecture
+overview; the raw full graph is written as raw-full-graph.html for deep
+inspection.`);
 }
 
 function parseOptions(args) {
@@ -308,6 +468,56 @@ function buildSlice(slice, options = {}) {
   log(
     options,
     `Wrote ${slice} graph to ${path.relative(repoRoot, sliceOutDir)}.`
+  );
+}
+
+function buildDomainGraph(domainId, options = {}) {
+  if (!domainId || !domainById.has(domainId)) {
+    throw new Error(
+      `Unknown graph domain "${domainId || ""}". Expected one of: ${domainConfigs
+        .map((domain) => domain.id)
+        .join(", ")}`
+    );
+  }
+
+  const graphifyBin = resolveGraphifyBin(true);
+  assertGraphifyVersion(graphifyBin);
+
+  const files = selectFilesForDomain(domainId, options);
+  if (files.length === 0) {
+    throw new Error(`No files matched graph domain "${domainId}".`);
+  }
+
+  const slice = `domain-${domainId}`;
+  const sliceStageDir = path.join(stageRoot, slice);
+  const sliceOutDir = path.join(graphifyOutRoot, slice);
+  safeRemove(sliceStageDir, workRoot);
+  copyFilesToStage(files, sliceStageDir);
+
+  log(options, `Staged ${files.length} files for ${domainId} domain graph.`);
+  runGraphify(graphifyBin, ["extract", sliceStageDir, "--max-workers", "1"], {
+    quiet: options.quiet,
+  });
+  runGraphify(graphifyBin, ["cluster-only", sliceStageDir, "--no-label"], {
+    quiet: options.quiet,
+  });
+
+  const generatedDir = path.join(sliceStageDir, "graphify-out");
+  const graphJson = path.join(generatedDir, "graph.json");
+  if (!fs.existsSync(graphJson)) {
+    throw new Error(`Graphify did not write ${graphJson}`);
+  }
+
+  postprocessOutput(generatedDir, slice, files);
+  runTreeForOutput(graphifyBin, generatedDir, slice, sliceStageDir, options);
+
+  safeRemove(sliceOutDir, graphifyOutRoot);
+  copyDirectory(generatedDir, sliceOutDir);
+
+  writeCombinedReport();
+  log(
+    options,
+    `Wrote ${domainId} domain graph to ${path.relative(repoRoot, sliceOutDir)}.`
   );
 }
 
@@ -397,6 +607,48 @@ function selectFilesForSlice(slice, options) {
   return [...selected].sort((a, b) => a.localeCompare(b));
 }
 
+function selectFilesForDomain(domainId, options) {
+  const repoFiles = listRepoFiles();
+  const candidates = repoFiles
+    .filter((file) => isSourceCandidate(file, options))
+    .sort((a, b) => a.localeCompare(b));
+  const candidateSet = new Set(candidates);
+  const dependencyDomains = new Set([
+    domainId,
+    "auth",
+    "supabase",
+    "shared-ui",
+    "app-shell",
+  ]);
+
+  const seeds = candidates.filter(
+    (file) => classifyDomainForFile(file).id === domainId
+  );
+  const selected = new Set(seeds);
+  const queue = [...seeds];
+
+  while (queue.length > 0) {
+    const file = queue.shift();
+    if (!codeExtensions.has(path.posix.extname(file))) continue;
+    for (const importedFile of importedLocalFiles(file, candidateSet)) {
+      const importedDomain = classifyDomainForFile(importedFile).id;
+      if (!dependencyDomains.has(importedDomain)) continue;
+      if (!selected.has(importedFile)) {
+        selected.add(importedFile);
+        if (importedDomain === domainId) queue.push(importedFile);
+      }
+    }
+  }
+
+  for (const file of candidates) {
+    if (file === "middleware.ts" || file === "types/enums.ts") {
+      selected.add(file);
+    }
+  }
+
+  return [...selected].sort((a, b) => a.localeCompare(b));
+}
+
 function listRepoFiles() {
   const result = spawnSync(
     "git",
@@ -423,6 +675,7 @@ function isSourceCandidate(file, options) {
 
   if (
     lower.startsWith("node_modules/") ||
+    lower.startsWith("app/a11y-harness/") ||
     lower.startsWith(".next/") ||
     lower.startsWith("dist/") ||
     lower.startsWith("build/") ||
@@ -497,6 +750,42 @@ function matchesSlice(file, slice) {
   );
 }
 
+function classifyDomainForNode(node) {
+  return classifyDomain(node.source_file || node.id || node.label || "");
+}
+
+function classifyDomainForFile(file) {
+  return classifyDomain(file);
+}
+
+function classifyDomain(value) {
+  const normalized = toSlash(value).toLowerCase();
+  const orderedDomainIds = [
+    "supabase",
+    "super-admin",
+    "auth",
+    "leader-workspace",
+    "settings",
+    "care",
+    "calendar",
+    "multiply",
+    "plan",
+    "people",
+    "groups",
+    "shared-ui",
+    "app-shell",
+  ];
+
+  for (const domainId of orderedDomainIds) {
+    const domain = domainById.get(domainId);
+    if (domain.patterns.some((pattern) => pattern.test(normalized))) {
+      return domain;
+    }
+  }
+
+  return domainById.get("app-shell");
+}
+
 function importedLocalFiles(file, candidateSet) {
   const abs = path.join(repoRoot, file);
   if (!fs.existsSync(abs)) return [];
@@ -550,6 +839,7 @@ function postprocessOutput(outDir, slice, stagedFiles) {
   const graphPath = path.join(outDir, "graph.json");
   const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
   const edges = graph.links || graph.edges || [];
+  const nodes = graph.nodes || [];
   const overrides = readCommunityOverrides();
   const previousAnalysis = readAnalysis(outDir);
   const stagedFileCount =
@@ -559,6 +849,34 @@ function postprocessOutput(outDir, slice, stagedFiles) {
         ? previousAnalysis.stagedFileCount
         : uniqueSourceFileCount(graph);
   const analysis = analyzeGraph(graph, slice, stagedFileCount, overrides);
+  const domainOverview = buildDomainOverview(nodes, edges, analysis);
+  const communityOverview = buildCommunityOverview(nodes, edges, analysis);
+  analysis.views = {
+    raw: {
+      label: slice === "full" ? "Raw Full Graph" : "Feature Graph",
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      path: slice === "full" ? "raw-full-graph.html" : "graph.html",
+    },
+    architecture: {
+      label: "Architecture Overview",
+      nodeCount: domainOverview.nodes.length,
+      edgeCount: domainOverview.edges.length,
+      defaultVisibleEdges: domainOverview.edges.filter(
+        (edge) => !edge.hiddenByDefault
+      ).length,
+      path: "architecture-overview.html",
+    },
+    community: {
+      label: "Community Overview",
+      nodeCount: communityOverview.nodes.length,
+      edgeCount: communityOverview.edges.length,
+      defaultVisibleEdges: communityOverview.edges.filter(
+        (edge) => !edge.hiddenByDefault
+      ).length,
+      path: "community-overview.html",
+    },
+  };
 
   fs.writeFileSync(
     path.join(outDir, ".graphify_labels.json"),
@@ -572,10 +890,43 @@ function postprocessOutput(outDir, slice, stagedFiles) {
     path.join(outDir, "GRAPH_REPORT.md"),
     renderReport(analysis) + "\n"
   );
-  fs.writeFileSync(
-    path.join(outDir, "graph.html"),
-    renderHtml(graph.nodes || [], edges, analysis, slice)
-  );
+
+  if (slice === "full") {
+    const architectureHtml = renderOverviewHtml(domainOverview, {
+      title: "Architecture Overview",
+      subtitle:
+        "Default map: domains are collapsed first, node size shows total symbols, and edge width shows cross-domain relationships.",
+    });
+    fs.writeFileSync(
+      path.join(outDir, "architecture-overview.html"),
+      architectureHtml
+    );
+    fs.writeFileSync(path.join(outDir, "graph.html"), architectureHtml);
+    fs.writeFileSync(
+      path.join(outDir, "community-overview.html"),
+      renderOverviewHtml(communityOverview, {
+        title: "Community Overview",
+        subtitle:
+          "Detected Graphify communities collapsed to one node each. Tooltips and details preserve the original community ID.",
+      })
+    );
+    fs.writeFileSync(
+      path.join(outDir, "raw-full-graph.html"),
+      renderHtml(nodes, edges, analysis, slice, {
+        title: "Raw Full Graph",
+        subtitle:
+          "Deep inspection only. This is the complete Graphify graph and is not intended as the architecture overview.",
+      })
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(outDir, "graph.html"),
+      renderHtml(nodes, edges, analysis, slice, {
+        title: `${sliceConfigs[slice]?.label || titleFromPath(slice)} Feature Graph`,
+        subtitle: "Feature or domain drilldown graph for focused inspection.",
+      })
+    );
+  }
 }
 
 function analyzeGraph(graph, slice, stagedFileCount, overrides) {
@@ -773,6 +1124,7 @@ function topNodes(nodes, degrees, limit) {
 function suspectedNoise(nodes) {
   const patterns = [
     { name: "node_modules", pattern: /(^|\/)node_modules(\/|$)/ },
+    { name: "app/a11y-harness", pattern: /(^|\/)app\/a11y-harness(\/|$)/ },
     { name: ".next", pattern: /(^|\/)\.next(\/|$)/ },
     { name: "dist/build/out", pattern: /(^|\/)(dist|build|out)(\/|$)/ },
     { name: "coverage", pattern: /(^|\/)coverage(\/|$)/ },
@@ -811,6 +1163,306 @@ function suspectedNoise(nodes) {
   });
 }
 
+function buildDomainOverview(nodes, edges, analysis) {
+  const productNodes = nodes.filter(isProductArchitectureNode);
+  const productNodeById = new Map(productNodes.map((node) => [node.id, node]));
+  const stats = new Map(
+    domainConfigs.map((domain) => [
+      domain.id,
+      {
+        id: domain.id,
+        label: domain.label,
+        command: domain.command,
+        nodeCount: 0,
+        files: new Set(),
+        fileCounts: new Map(),
+        communityCounts: new Map(),
+        topNodes: [],
+      },
+    ])
+  );
+
+  for (const node of productNodes) {
+    const domain = classifyDomainForNode(node);
+    const item = stats.get(domain.id);
+    item.nodeCount += 1;
+    if (node.source_file) {
+      item.files.add(toSlash(node.source_file));
+      increment(item.fileCounts, toSlash(node.source_file));
+    }
+    increment(item.communityCounts, String(node.community ?? "unknown"));
+  }
+
+  const degrees = degreeMap(edges);
+  for (const node of productNodes) {
+    const domain = classifyDomainForNode(node);
+    const item = stats.get(domain.id);
+    item.topNodes.push({
+      id: node.id,
+      label: node.label || node.id,
+      sourceFile: node.source_file || "",
+      degree: degrees.get(node.id) || 0,
+    });
+  }
+
+  const edgeMap = aggregateEdges(edges, productNodeById, (node) => {
+    return classifyDomainForNode(node).id;
+  });
+
+  const viewNodes = domainConfigs.map((domain) => {
+    const item = stats.get(domain.id);
+    const fileCount = item.files.size;
+    const topCommunities = topEntries(item.communityCounts, 5).map((entry) => ({
+      id: entry.key,
+      label: analysis.labels[entry.key] || `Community ${entry.key}`,
+      count: entry.count,
+    }));
+    const color = palette[Math.abs(hashCode(domain.id)) % palette.length];
+    return {
+      id: domain.id,
+      label: domain.label,
+      groupLabel: domain.label,
+      kind: "domain",
+      x: domain.layout.x,
+      y: domain.layout.y,
+      fixed: true,
+      color,
+      command: domain.command,
+      nodeCount: item.nodeCount,
+      fileCount,
+      symbolCount: item.nodeCount,
+      size: sizeForCount(item.nodeCount, 28, 78),
+      topFiles: topEntries(item.fileCounts, 8).map((entry) => ({
+        file: entry.key,
+        count: entry.count,
+      })),
+      topCommunities,
+      topNodes: item.topNodes
+        .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
+        .slice(0, 8),
+    };
+  });
+
+  return {
+    kind: "architecture",
+    label: "Architecture Overview",
+    rawNodeCount: nodes.length,
+    rawEdgeCount: edges.length,
+    productNodeCount: productNodes.length,
+    nodes: viewNodes,
+    edges: finalizeAggregateEdges(
+      [...edgeMap.values()].sort(
+        (a, b) => b.count - a.count || a.from.localeCompare(b.from)
+      ),
+      "architecture",
+      "domain-edge"
+    ),
+  };
+}
+
+function buildCommunityOverview(nodes, edges, analysis) {
+  const productNodes = nodes.filter(isProductArchitectureNode);
+  const productNodeById = new Map(productNodes.map((node) => [node.id, node]));
+  const stats = new Map();
+
+  for (const node of productNodes) {
+    const communityId = String(node.community ?? "unknown");
+    if (!stats.has(communityId)) {
+      stats.set(communityId, {
+        id: communityId,
+        label: analysis.labels[communityId] || `Community ${communityId}`,
+        nodeCount: 0,
+        files: new Set(),
+        fileCounts: new Map(),
+        domainCounts: new Map(),
+      });
+    }
+    const item = stats.get(communityId);
+    item.nodeCount += 1;
+    if (node.source_file) {
+      item.files.add(toSlash(node.source_file));
+      increment(item.fileCounts, toSlash(node.source_file));
+    }
+    increment(item.domainCounts, classifyDomainForNode(node).id);
+  }
+
+  const grouped = new Map(domainConfigs.map((domain) => [domain.id, []]));
+  for (const item of stats.values()) {
+    const dominantDomainId =
+      topEntries(item.domainCounts, 1)[0]?.key || "app-shell";
+    const domain =
+      domainById.get(dominantDomainId) || domainById.get("app-shell");
+    grouped.get(domain.id).push(item);
+  }
+
+  const viewNodes = [];
+  for (const domain of domainConfigs) {
+    const items = (grouped.get(domain.id) || []).sort(
+      (a, b) => b.nodeCount - a.nodeCount || a.label.localeCompare(b.label)
+    );
+    const startY = -420;
+    const rowGap = 82;
+    items.forEach((item, index) => {
+      const color = palette[Math.abs(hashCode(domain.id)) % palette.length];
+      viewNodes.push({
+        id: item.id,
+        label: item.label,
+        groupLabel: domain.label,
+        kind: "community",
+        communityId: item.id,
+        domainId: domain.id,
+        domainLabel: domain.label,
+        x: domain.layout.x,
+        y: startY + index * rowGap,
+        fixed: true,
+        color,
+        nodeCount: item.nodeCount,
+        fileCount: item.files.size,
+        symbolCount: item.nodeCount,
+        size: sizeForCount(item.nodeCount, 14, 40),
+        topFiles: topEntries(item.fileCounts, 8).map((entry) => ({
+          file: entry.key,
+          count: entry.count,
+        })),
+        topCommunities: [],
+        topNodes: [],
+      });
+    });
+  }
+
+  const edgeMap = aggregateEdges(edges, productNodeById, (node) =>
+    String(node.community ?? "unknown")
+  );
+
+  return {
+    kind: "community",
+    label: "Community Overview",
+    rawNodeCount: nodes.length,
+    rawEdgeCount: edges.length,
+    productNodeCount: productNodes.length,
+    nodes: viewNodes,
+    edges: finalizeAggregateEdges(
+      [...edgeMap.values()].sort(
+        (a, b) => b.count - a.count || a.from.localeCompare(b.from)
+      ),
+      "community",
+      "community-edge"
+    ),
+  };
+}
+
+function finalizeAggregateEdges(edges, kind, idPrefix) {
+  const counts = edges.map((edge) => edge.count);
+  const threshold =
+    kind === "architecture"
+      ? Math.max(8, Math.round(percentile(counts, 0.7)))
+      : Math.max(4, Math.round(percentile(counts, 0.85)));
+  return edges.map((edge, index) => ({
+    ...edge,
+    id: `${idPrefix}-${index}`,
+    width: widthForCount(edge.count),
+    hiddenByDefault: edge.count < threshold,
+    visibilityThreshold: threshold,
+  }));
+}
+
+function aggregateEdges(edges, nodeById, groupingFn) {
+  const edgeMap = new Map();
+  for (const edge of edges) {
+    const sourceId = edge.source ?? edge.from;
+    const targetId = edge.target ?? edge.to;
+    const sourceNode = nodeById.get(sourceId);
+    const targetNode = nodeById.get(targetId);
+    if (!sourceNode || !targetNode) continue;
+    const from = groupingFn(sourceNode);
+    const to = groupingFn(targetNode);
+    if (!from || !to || from === to) continue;
+    const key = `${from} -> ${to}`;
+    if (!edgeMap.has(key)) {
+      edgeMap.set(key, {
+        from,
+        to,
+        count: 0,
+        relationCounts: new Map(),
+        examples: [],
+      });
+    }
+    const item = edgeMap.get(key);
+    item.count += 1;
+    increment(item.relationCounts, edge.relation || edge.label || "related");
+    if (item.examples.length < 8) {
+      item.examples.push({
+        source: sourceNode.label || sourceId,
+        target: targetNode.label || targetId,
+        relation: edge.relation || edge.label || "related",
+        file: edge.source_file || sourceNode.source_file || "",
+      });
+    }
+  }
+
+  for (const item of edgeMap.values()) {
+    item.relations = topEntries(item.relationCounts, 5).map((entry) => ({
+      relation: entry.key,
+      count: entry.count,
+    }));
+    delete item.relationCounts;
+  }
+
+  return edgeMap;
+}
+
+function isProductArchitectureNode(node) {
+  const file = toSlash(node.source_file || "");
+  if (!file) return true;
+  return !isProductArchitectureNoisePath(file);
+}
+
+function isProductArchitectureNoisePath(file) {
+  const lower = toSlash(file).toLowerCase();
+  return (
+    lower.startsWith("app/a11y-harness/") ||
+    lower.startsWith("node_modules/") ||
+    lower.startsWith(".next/") ||
+    lower.startsWith("dist/") ||
+    lower.startsWith("build/") ||
+    lower.startsWith("out/") ||
+    lower.startsWith("coverage/") ||
+    lower.startsWith("graphify-out/") ||
+    lower.startsWith(".graphify/") ||
+    lower.startsWith("graphify/") ||
+    lower.startsWith(".agents/skills/graphify/") ||
+    lower.startsWith("scripts/graphify") ||
+    isTestPath(lower) ||
+    lower === "types/database.ts" ||
+    lower === "next-env.d.ts" ||
+    lower.endsWith(".d.ts") ||
+    lower.endsWith(".generated.ts") ||
+    lower.endsWith(".generated.tsx") ||
+    lower.includes("/generated/") ||
+    lower.includes("/__generated__/")
+  );
+}
+
+function increment(map, key, amount = 1) {
+  map.set(key, (map.get(key) || 0) + amount);
+}
+
+function topEntries(map, limit) {
+  return [...map.entries()]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, limit)
+    .map(([key, count]) => ({ key, count }));
+}
+
+function sizeForCount(count, min, max) {
+  if (count <= 0) return Math.max(18, min - 8);
+  return Math.max(min, Math.min(max, min + Math.sqrt(count) * 2.7));
+}
+
+function widthForCount(count) {
+  return Math.max(1, Math.min(12, 1 + Math.sqrt(count) * 0.7));
+}
+
 function renderReport(analysis) {
   const lines = [];
   lines.push(`# Architecture Graph Report - ${analysis.slice}`);
@@ -822,6 +1474,26 @@ function renderReport(analysis) {
   lines.push(`- Edges: ${analysis.edgeCount}`);
   lines.push(`- Communities: ${analysis.communityCount}`);
   lines.push(`- Staged files: ${analysis.stagedFileCount}`);
+  if (analysis.views) {
+    lines.push(
+      `- Architecture overview nodes: ${analysis.views.architecture.nodeCount}`
+    );
+    lines.push(
+      `- Architecture overview edges: ${analysis.views.architecture.edgeCount}`
+    );
+    lines.push(
+      `- Architecture overview default visible edges: ${analysis.views.architecture.defaultVisibleEdges}`
+    );
+    lines.push(
+      `- Community overview nodes: ${analysis.views.community.nodeCount}`
+    );
+    lines.push(
+      `- Community overview edges: ${analysis.views.community.edgeCount}`
+    );
+    lines.push(
+      `- Community overview default visible edges: ${analysis.views.community.defaultVisibleEdges}`
+    );
+  }
   lines.push("");
 
   lines.push("## Exclusion Audit");
@@ -868,7 +1540,18 @@ function renderReport(analysis) {
   }
 
   lines.push("## Label And Edge Controls");
-  lines.push("- Node labels are hidden by default except hubs.");
+  if (analysis.slice === "full") {
+    lines.push(
+      "- The default graph.html is architecture-overview.html, not the raw full graph."
+    );
+    lines.push(
+      "- Raw Full Graph is kept as raw-full-graph.html for deep inspection only."
+    );
+    lines.push(
+      "- Community Overview is kept as community-overview.html with original community IDs in details."
+    );
+  }
+  lines.push("- Raw graph node labels are hidden by default except hubs.");
   lines.push(
     "- Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html."
   );
@@ -878,7 +1561,7 @@ function renderReport(analysis) {
   return lines.join("\n");
 }
 
-function renderHtml(nodes, edges, analysis, slice) {
+function renderHtml(nodes, edges, analysis, slice, options = {}) {
   const degrees = degreeMap(edges);
   const preparedNodes = nodes.map((node) => {
     const community = String(node.community ?? "unknown");
@@ -938,12 +1621,17 @@ function renderHtml(nodes, edges, analysis, slice) {
     )
   );
 
+  const title = options.title || `${sliceConfigs[slice]?.label || slice} Graph`;
+  const subtitle =
+    options.subtitle ||
+    "Raw Graphify graph with label controls for focused inspection.";
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lifegroups ${escapeHtml(slice)} architecture graph</title>
+<title>lifegroups ${escapeHtml(title)}</title>
 <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
 <style>
   * { box-sizing: border-box; }
@@ -952,6 +1640,7 @@ function renderHtml(nodes, edges, analysis, slice) {
   #sidebar { width: 360px; background: #171b24; border-left: 1px solid #303746; display: flex; flex-direction: column; }
   #top { padding: 14px; border-bottom: 1px solid #303746; }
   #top h1 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
+  #subtitle { margin-bottom: 8px; color: #9ca3af; font-size: 12px; line-height: 1.4; }
   #stats { color: #9ca3af; font-size: 12px; line-height: 1.5; }
   #search { width: 100%; margin-top: 10px; background: #0f131a; color: #f9fafb; border: 1px solid #374151; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
   #search-results { display: none; max-height: 150px; overflow: auto; border-bottom: 1px solid #303746; padding: 6px 10px; }
@@ -982,7 +1671,8 @@ function renderHtml(nodes, edges, analysis, slice) {
 <div id="graph"></div>
 <aside id="sidebar">
   <div id="top">
-    <h1>${escapeHtml(sliceConfigs[slice]?.label || slice)} Graph</h1>
+    <h1>${escapeHtml(title)}</h1>
+    <div id="subtitle">${escapeHtml(subtitle)}</div>
     <div id="stats">${preparedNodes.length} nodes - ${preparedEdges.length} edges - ${legend.length} communities - hub label degree ${hubDegree}</div>
     <input id="search" type="search" placeholder="Search nodes">
   </div>
@@ -1254,6 +1944,304 @@ LEGEND.forEach(function(c) {
 `;
 }
 
+function renderOverviewHtml(view, options = {}) {
+  const title = options.title || view.label;
+  const subtitle = options.subtitle || "";
+  const isArchitecture = view.kind === "architecture";
+  const preparedNodes = view.nodes.map((node) => ({
+    ...node,
+    title: [
+      node.label,
+      node.kind === "community" ? `Community ID: ${node.communityId}` : "",
+      `Group: ${node.groupLabel || node.domainLabel || node.label}`,
+      `Symbols: ${node.symbolCount}`,
+      `Files: ${node.fileCount}`,
+      node.command ? `Command: ${node.command}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  }));
+  const preparedEdges = view.edges.map((edge) => ({
+    ...edge,
+    title: [
+      `${edge.from} -> ${edge.to}`,
+      `Relationships: ${edge.count}`,
+      edge.relations?.length
+        ? `Relations: ${edge.relations
+            .map((relation) => `${relation.relation} (${relation.count})`)
+            .join(", ")}`
+        : "",
+      edge.examples?.length
+        ? `Examples: ${edge.examples
+            .slice(0, 3)
+            .map(
+              (example) =>
+                `${example.source} -> ${example.target} (${example.relation})`
+            )
+            .join("; ")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  }));
+  const defaultVisibleEdges = preparedEdges.filter(
+    (edge) => !edge.hiddenByDefault
+  ).length;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lifegroups ${escapeHtml(title)}</title>
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: #0f1218; color: #e5e7eb; font-family: Arial, sans-serif; }
+  #graph { flex: 1; min-width: 0; background: radial-gradient(circle at center, #161b24 0, #0f1218 62%); }
+  #sidebar { width: 380px; background: #171b24; border-left: 1px solid #303746; display: flex; flex-direction: column; }
+  #top { padding: 14px; border-bottom: 1px solid #303746; }
+  #top h1 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+  #subtitle { margin-bottom: 10px; color: #aab2c0; font-size: 12px; line-height: 1.45; }
+  #stats { color: #9ca3af; font-size: 12px; line-height: 1.55; }
+  #controls { padding: 10px 14px; border-bottom: 1px solid #303746; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  #controls label { display: flex; align-items: center; gap: 7px; color: #d1d5db; font-size: 12px; }
+  input[type="checkbox"] { width: 14px; height: 14px; accent-color: #60a5fa; }
+  #info { padding: 14px; border-bottom: 1px solid #303746; max-height: 46vh; overflow: auto; }
+  #info h2, #list h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: #9ca3af; }
+  #info-content { font-size: 12px; line-height: 1.55; color: #d1d5db; }
+  .field { margin: 0 0 7px; }
+  .field b { color: #f9fafb; }
+  .muted { color: #9ca3af; }
+  .pill { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 6px; border: 1px solid #3f4758; border-radius: 999px; color: #d1d5db; font-size: 11px; }
+  a { color: #93c5fd; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  #list { flex: 1; overflow: auto; padding: 12px 14px; }
+  .list-item { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 6px 4px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+  .list-item:hover { background: #242b38; }
+  .dot { width: 11px; height: 11px; border-radius: 999px; }
+  .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .count { color: #9ca3af; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<aside id="sidebar">
+  <div id="top">
+    <h1>${escapeHtml(title)}</h1>
+    <div id="subtitle">${escapeHtml(subtitle)}</div>
+    <div id="stats">
+      ${preparedNodes.length} aggregate nodes - ${preparedEdges.length} aggregate edges<br>
+      ${defaultVisibleEdges} edges shown by default; toggle Weak Edges for all<br>
+      ${view.productNodeCount} product nodes from ${view.rawNodeCount} raw nodes<br>
+      ${view.rawEdgeCount} raw relationships collapsed by ${isArchitecture ? "domain" : "community"}
+    </div>
+  </div>
+  <div id="controls">
+    <label><input id="show-labels" type="checkbox" checked> Labels</label>
+    <label><input id="edge-counts" type="checkbox"> Edge Counts</label>
+    <label><input id="weak-edges" type="checkbox"> Weak Edges</label>
+    <label><input id="fit-view" type="checkbox" checked> Fit On Load</label>
+    <label><input id="highlight-neighbors" type="checkbox" checked> Neighbors</label>
+  </div>
+  <div id="info">
+    <h2>Selection</h2>
+    <div id="info-content"><span class="muted">Click an aggregate node or edge to inspect counts and examples.</span></div>
+  </div>
+  <div id="list">
+    <h2>${isArchitecture ? "Domains" : "Communities"}</h2>
+    <div id="node-list"></div>
+  </div>
+</aside>
+<script>
+const RAW_NODES = ${safeJson(preparedNodes)};
+const RAW_EDGES = ${safeJson(preparedEdges)};
+const IS_ARCHITECTURE = ${safeJson(isArchitecture)};
+const byId = new Map(RAW_NODES.map(function(node) { return [node.id, node]; }));
+const edgeById = new Map(RAW_EDGES.map(function(edge) { return [edge.id, edge]; }));
+const adjacency = new Map();
+RAW_EDGES.forEach(function(edge) {
+  if (!adjacency.has(edge.from)) adjacency.set(edge.from, new Set());
+  if (!adjacency.has(edge.to)) adjacency.set(edge.to, new Set());
+  adjacency.get(edge.from).add(edge.to);
+  adjacency.get(edge.to).add(edge.from);
+});
+
+function esc(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[ch];
+  });
+}
+
+function nodeFont() {
+  return {
+    size: document.getElementById("show-labels").checked ? (IS_ARCHITECTURE ? 16 : 11) : 0,
+    color: "#f9fafb",
+    strokeWidth: 4,
+    strokeColor: "#111827",
+  };
+}
+
+function edgeLabel(edge) {
+  return document.getElementById("edge-counts").checked ? String(edge.count) : "";
+}
+
+const nodesDS = new vis.DataSet(RAW_NODES.map(function(node) {
+  return {
+    id: node.id,
+    label: node.label,
+    title: node.title,
+    x: node.x,
+    y: node.y,
+    fixed: { x: true, y: true },
+    shape: "dot",
+    size: node.size,
+    color: {
+      background: node.color,
+      border: node.color,
+      highlight: { background: "#f8fafc", border: node.color },
+    },
+    font: nodeFont(),
+  };
+}));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map(function(edge) {
+  return {
+    id: edge.id,
+    from: edge.from,
+    to: edge.to,
+    label: edgeLabel(edge),
+    title: edge.title,
+    width: edge.width,
+    hidden: edge.hiddenByDefault,
+    color: { color: "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: 0.5 },
+    arrows: { to: { enabled: true, scaleFactor: 0.45 } },
+    smooth: { type: "cubicBezier", roundness: 0.25 },
+  };
+}));
+
+const network = new vis.Network(document.getElementById("graph"), { nodes: nodesDS, edges: edgesDS }, {
+  physics: false,
+  layout: { improvedLayout: false },
+  interaction: { hover: true, tooltipDelay: 80, hideEdgesOnDrag: true },
+  nodes: { borderWidth: 2 },
+  edges: { selectionWidth: 3 },
+});
+
+network.once("afterDrawing", function() {
+  if (document.getElementById("fit-view").checked) {
+    network.fit({ animation: false });
+  }
+});
+
+network.on("click", function(params) {
+  if (params.nodes && params.nodes.length) {
+    showNode(params.nodes[0]);
+    return;
+  }
+  if (params.edges && params.edges.length) {
+    showEdge(params.edges[0]);
+    return;
+  }
+  nodesDS.update(RAW_NODES.map(function(node) { return { id: node.id, opacity: 1 }; }));
+  edgesDS.update(RAW_EDGES.map(function(edge) { return { id: edge.id, color: { color: "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: 0.5 } }; }));
+  document.getElementById("info-content").innerHTML = '<span class="muted">Click an aggregate node or edge to inspect counts and examples.</span>';
+});
+
+function refreshLabels() {
+  nodesDS.update(RAW_NODES.map(function(node) { return { id: node.id, font: nodeFont() }; }));
+}
+
+function refreshEdgeLabels() {
+  edgesDS.update(RAW_EDGES.map(function(edge) { return { id: edge.id, label: edgeLabel(edge) }; }));
+}
+
+function refreshEdgeVisibility() {
+  const showWeak = document.getElementById("weak-edges").checked;
+  edgesDS.update(RAW_EDGES.map(function(edge) {
+    return { id: edge.id, hidden: edge.hiddenByDefault && !showWeak };
+  }));
+}
+
+function showNode(nodeId) {
+  const node = byId.get(nodeId);
+  if (!node) return;
+  const neighbors = adjacency.get(nodeId) || new Set();
+  if (document.getElementById("highlight-neighbors").checked) {
+    nodesDS.update(RAW_NODES.map(function(item) {
+      const active = item.id === nodeId || neighbors.has(item.id);
+      return { id: item.id, opacity: active ? 1 : 0.22 };
+    }));
+    edgesDS.update(RAW_EDGES.map(function(edge) {
+      const active = edge.from === nodeId || edge.to === nodeId;
+      return { id: edge.id, color: { color: active ? "#f8fafc" : "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: active ? 0.9 : 0.15 } };
+    }));
+  }
+  const files = (node.topFiles || []).map(function(file) {
+    return '<span class="pill">' + esc(file.file) + ' (' + file.count + ')</span>';
+  }).join("");
+  const communities = (node.topCommunities || []).map(function(item) {
+    return '<span class="pill">' + esc(item.label) + ' (' + item.count + ')</span>';
+  }).join("");
+  const hubs = (node.topNodes || []).map(function(item) {
+    return '<span class="pill">' + esc(item.label) + ' (' + item.degree + ')</span>';
+  }).join("");
+  const drilldown = node.command
+    ? '<div class="field">Drilldown: <code>' + esc(node.command) + '</code></div><div class="field"><a href="' + esc("domain-" + node.id + "/graph.html") + '">Open generated drilldown if present</a></div>'
+    : "";
+  document.getElementById("info-content").innerHTML =
+    '<div class="field"><b>' + esc(node.label) + '</b></div>' +
+    (node.communityId ? '<div class="field">Community ID: ' + esc(node.communityId) + '</div>' : "") +
+    '<div class="field">Group: ' + esc(node.groupLabel || node.domainLabel || "-") + '</div>' +
+    '<div class="field">Symbols: ' + node.symbolCount + '</div>' +
+    '<div class="field">Files: ' + node.fileCount + '</div>' +
+    drilldown +
+    (communities ? '<div class="field muted">Top communities</div><div class="field">' + communities + '</div>' : "") +
+    (hubs ? '<div class="field muted">Top hubs</div><div class="field">' + hubs + '</div>' : "") +
+    (files ? '<div class="field muted">Top files</div><div class="field">' + files + '</div>' : "");
+}
+
+function showEdge(edgeId) {
+  const edge = edgeById.get(edgeId);
+  if (!edge) return;
+  const relations = (edge.relations || []).map(function(item) {
+    return '<span class="pill">' + esc(item.relation) + ' (' + item.count + ')</span>';
+  }).join("");
+  const examples = (edge.examples || []).map(function(example) {
+    return '<div class="field">' + esc(example.source) + ' -> ' + esc(example.target) + ' <span class="muted">' + esc(example.relation) + '</span><br><span class="muted">' + esc(example.file || "") + '</span></div>';
+  }).join("");
+  document.getElementById("info-content").innerHTML =
+    '<div class="field"><b>' + esc(byId.get(edge.from)?.label || edge.from) + ' -> ' + esc(byId.get(edge.to)?.label || edge.to) + '</b></div>' +
+    '<div class="field">Relationships: ' + edge.count + '</div>' +
+    (relations ? '<div class="field muted">Relation types</div><div class="field">' + relations + '</div>' : "") +
+    (examples ? '<div class="field muted">Examples</div>' + examples : "");
+}
+
+document.getElementById("show-labels").addEventListener("change", refreshLabels);
+document.getElementById("edge-counts").addEventListener("change", refreshEdgeLabels);
+document.getElementById("weak-edges").addEventListener("change", refreshEdgeVisibility);
+
+const listEl = document.getElementById("node-list");
+RAW_NODES.slice().sort(function(a, b) {
+  return b.symbolCount - a.symbolCount || a.label.localeCompare(b.label);
+}).forEach(function(node) {
+  const item = document.createElement("div");
+  item.className = "list-item";
+  item.title = node.title;
+  item.innerHTML = '<span class="dot" style="background:' + node.color + '"></span><span class="label">' + esc(node.label) + '</span><span class="count">' + node.symbolCount + '</span>';
+  item.addEventListener("click", function() {
+    network.focus(node.id, { scale: IS_ARCHITECTURE ? 1.05 : 1.3, animation: true });
+    network.selectNodes([node.id]);
+    showNode(node.id);
+  });
+  listEl.appendChild(item);
+});
+</script>
+</body>
+</html>
+`;
+}
+
 function writeCombinedReport() {
   fs.mkdirSync(graphifyOutRoot, { recursive: true });
   const dirs = outputDirsWithGraphs();
@@ -1261,20 +2249,64 @@ function writeCombinedReport() {
   for (const { slice, dir } of dirs) {
     const reportSlice = slice === "default-full" ? "full" : slice;
     postprocessOutput(dir, reportSlice, []);
+  }
+
+  const rootAnalysis = fs.existsSync(path.join(graphifyOutRoot, "graph.json"))
+    ? readAnalysis(graphifyOutRoot)
+    : null;
+  if (rootAnalysis?.views) {
+    sections.push("## default architecture overview");
+    sections.push("- Path: graphify-out/architecture-overview.html");
+    sections.push(`- Nodes: ${rootAnalysis.views.architecture.nodeCount}`);
+    sections.push(`- Edges: ${rootAnalysis.views.architecture.edgeCount}`);
+    sections.push(
+      `- Default visible edges: ${rootAnalysis.views.architecture.defaultVisibleEdges}`
+    );
+    sections.push("- Communities: n/a; collapsed to product domains");
+    sections.push(
+      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
+    );
+    sections.push("");
+
+    sections.push("## community overview");
+    sections.push("- Path: graphify-out/community-overview.html");
+    sections.push(`- Nodes: ${rootAnalysis.views.community.nodeCount}`);
+    sections.push(`- Edges: ${rootAnalysis.views.community.edgeCount}`);
+    sections.push(
+      `- Default visible edges: ${rootAnalysis.views.community.defaultVisibleEdges}`
+    );
+    sections.push(`- Communities: ${rootAnalysis.views.community.nodeCount}`);
+    sections.push(
+      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
+    );
+    sections.push("");
+
+    sections.push("## raw full graph");
+    sections.push("- Path: graphify-out/raw-full-graph.html");
+    sections.push(`- Nodes: ${rootAnalysis.views.raw.nodeCount}`);
+    sections.push(`- Edges: ${rootAnalysis.views.raw.edgeCount}`);
+    sections.push(`- Communities: ${rootAnalysis.communityCount}`);
+    sections.push(
+      "- Use: deep inspection only; not the default architecture overview"
+    );
+    sections.push(
+      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
+    );
+    sections.push("");
+  }
+
+  for (const { slice, dir } of dirs) {
+    if (slice === "default-full" || slice === "full") continue;
     const analysis = readAnalysis(dir);
     sections.push(`## ${slice}`);
     sections.push(`- Path: ${toSlash(path.relative(repoRoot, dir))}`);
+    sections.push(
+      `- HTML: ${toSlash(path.relative(repoRoot, path.join(dir, "graph.html")))}`
+    );
     sections.push(`- Nodes: ${analysis.nodeCount}`);
     sections.push(`- Edges: ${analysis.edgeCount}`);
     sections.push(`- Communities: ${analysis.communityCount}`);
-    sections.push(
-      `- Excluded-folder hits: ${
-        analysis.noise
-          .filter((item) => item.count > 0)
-          .map((item) => `${item.name}=${item.count}`)
-          .join(", ") || "none"
-      }`
-    );
+    sections.push(`- Excluded-folder hits: ${excludedFolderSummary(analysis)}`);
     sections.push(
       `- Largest communities: ${analysis.largestCommunities
         .slice(0, 5)
@@ -1286,6 +2318,15 @@ function writeCombinedReport() {
   fs.writeFileSync(
     path.join(graphifyOutRoot, "GRAPH_AUDIT_REPORT.md"),
     sections.join("\n") + "\n"
+  );
+}
+
+function excludedFolderSummary(analysis) {
+  return (
+    analysis.noise
+      .filter((item) => item.count > 0)
+      .map((item) => `${item.name}=${item.count}`)
+      .join(", ") || "none"
   );
 }
 
@@ -1310,6 +2351,11 @@ function outputDirsWithGraphs() {
     const dir = path.join(graphifyOutRoot, slice);
     if (fs.existsSync(path.join(dir, "graph.json"))) dirs.push({ slice, dir });
   }
+  for (const domain of domainConfigs) {
+    const slice = `domain-${domain.id}`;
+    const dir = path.join(graphifyOutRoot, slice);
+    if (fs.existsSync(path.join(dir, "graph.json"))) dirs.push({ slice, dir });
+  }
   return dirs;
 }
 
@@ -1329,6 +2375,9 @@ function mirrorFullOutput(fullDir) {
   const files = [
     "graph.json",
     "graph.html",
+    "architecture-overview.html",
+    "community-overview.html",
+    "raw-full-graph.html",
     "GRAPH_REPORT.md",
     "GRAPH_TREE.html",
     ".graphify_labels.json",

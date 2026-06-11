@@ -12,6 +12,7 @@
 /test-results/
 /playwright-report/
 /blob-report/
+/app/a11y-harness/
 .env*
 tsconfig.tsbuildinfo
 .DS_Store

@@ -1,15 +1,22 @@
 # Architecture Graph Report - plan
 
-Generated: 2026-06-11T15:08:15.513Z
+Generated: 2026-06-11T16:14:26.335Z
 
 ## Summary
 - Nodes: 1499
 - Edges: 3043
 - Communities: 67
 - Staged files: 138
+- Architecture overview nodes: 13
+- Architecture overview edges: 50
+- Architecture overview default visible edges: 15
+- Community overview nodes: 67
+- Community overview edges: 359
+- Community overview default visible edges: 72
 
 ## Exclusion Audit
 - OK: node_modules: 0
+- OK: app/a11y-harness: 0
 - OK: .next: 0
 - OK: dist/build/out: 0
 - OK: coverage: 0
@@ -191,6 +198,6 @@ Generated: 2026-06-11T15:08:15.513Z
 - lib/shared/church-time.ts (1)
 
 ## Label And Edge Controls
-- Node labels are hidden by default except hubs.
+- Raw graph node labels are hidden by default except hubs.
 - Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html.
 - Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types.

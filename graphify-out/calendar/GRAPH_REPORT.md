@@ -1,15 +1,22 @@
 # Architecture Graph Report - calendar
 
-Generated: 2026-06-11T15:08:15.603Z
+Generated: 2026-06-11T16:14:26.485Z
 
 ## Summary
 - Nodes: 1498
 - Edges: 3103
 - Communities: 69
 - Staged files: 153
+- Architecture overview nodes: 13
+- Architecture overview edges: 55
+- Architecture overview default visible edges: 18
+- Community overview nodes: 69
+- Community overview edges: 382
+- Community overview default visible edges: 92
 
 ## Exclusion Audit
 - OK: node_modules: 0
+- OK: app/a11y-harness: 0
 - OK: .next: 0
 - OK: dist/build/out: 0
 - OK: coverage: 0
@@ -188,6 +195,6 @@ Generated: 2026-06-11T15:08:15.603Z
 - components/calendar/calendar-archived-actions.tsx (1)
 
 ## Label And Edge Controls
-- Node labels are hidden by default except hubs.
+- Raw graph node labels are hidden by default except hubs.
 - Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html.
 - Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types.
