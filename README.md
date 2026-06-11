@@ -75,6 +75,9 @@ multiplication by type/cell (ADR 0019/0021). Delivered via PRD #371 and slices
   (Leader Care Note is group-scoped, amending 0017) — and
   **PRD [#371](https://github.com/Thalfman/lifegroups/issues/371)**,
   sliced into **#372–#382**.
+- [`docs/PRODUCT_DEFINITION.md`](./docs/PRODUCT_DEFINITION.md) — 📖 **the end
+  product in one document:** roles, feature inventory by surface, placement
+  (routes/nav/flags), theme, privacy model, and a dated current-state assessment.
 - [`CONTEXT.md`](./CONTEXT.md) — the domain glossary (Care Note, Prayer Request,
   Prospect, Over-Shepherd, Ministry Year, …). Use this vocabulary.
 - [`docs/julian-inputs/SYSTEMS_CONVERSATION.md`](./docs/julian-inputs/SYSTEMS_CONVERSATION.md)
