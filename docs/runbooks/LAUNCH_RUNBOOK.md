@@ -105,6 +105,12 @@ until Julian's explicit go-ahead.
       4. After the **next** merge to `main`, re-check the same list to
          confirm the integration no longer redeploys it. _Eng_
 
+      Known side effect: the Super-Admin console's **Test accounts** panel
+      calls this function for its status chip, so with the function deleted
+      it reports the tooling as not deployed and its actions fail. That is
+      the **expected production posture**, not a regression — issue #522
+      tracks rendering it as a calm "not installed" state.
+
 ## 5. Real data in, test data out
 
 - [ ] **Audit the 8 existing accounts**: as of 2026-06-11 production has 1
@@ -130,7 +136,9 @@ until Julian's explicit go-ahead.
 ## 6. Go / no-go
 
 - [ ] **Per-role smoke test**: Tom (super-admin console, danger zone
-      visible), Julian (Care accordion incl. transparency toggle → Plan
+      visible; the Test accounts chip reporting the seeding function as not
+      deployed is the expected production posture per §4 / issue #522, not a
+      failure), Julian (Care accordion incl. transparency toggle → Plan
       funnel → Multiply boards, no dead links), a scratch leader account
       (lands on `/leader` and sees only its own group — `leader_surface` is
       on by default per ADR 0024; remove the scratch account afterwards).
