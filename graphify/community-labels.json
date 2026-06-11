@@ -1,0 +1,9 @@
+{
+  "__instructions": "Community IDs can change when the graph changes. Add labels under the matching graph output name. Slice labels win first, then shared labels, then inferred labels.",
+  "shared": {},
+  "full": {},
+  "plan": {},
+  "multiply": {},
+  "care": {},
+  "calendar": {}
+}
