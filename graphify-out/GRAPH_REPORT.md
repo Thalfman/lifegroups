@@ -1,16 +1,16 @@
 # Graph Report - lifegroups  (2026-06-11)
 
 ## Corpus Check
-- 1024 files · ~864,943 words
+- 1024 files · ~865,020 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6636 nodes · 15701 edges · 309 communities (292 shown, 17 thin omitted)
+- 6636 nodes · 15701 edges · 308 communities (291 shown, 17 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 102 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1b1ccb0a`
+- Built from commit: `d68ccbc9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -154,7 +154,6 @@
 - [[_COMMUNITY_Community 137|Community 137]]
 - [[_COMMUNITY_Community 138|Community 138]]
 - [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
 - [[_COMMUNITY_Community 141|Community 141]]
 - [[_COMMUNITY_Community 142|Community 142]]
 - [[_COMMUNITY_Community 143|Community 143]]
@@ -345,7 +344,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (309 total, 17 thin omitted)
+## Communities (308 total, 17 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.02
@@ -445,7 +444,7 @@ Nodes (19): UpcomingEventsStrip(), HealthBadgeProps, healthToTone, LifecycleBadg
 
 ### Community 24 - "Community 24"
 Cohesion: 0.07
-Nodes (43): GroupHealthSignals, GroupManagementData, buildGroupManagementData(), EMPTY_GROUP_MANAGEMENT_DATA, GroupManagementReads, loadGroupManagementData(), supabaseGroupManagementReads(), AdminPersonDetailPage() (+35 more)
+Nodes (44): GroupHealthSignals, GroupManagementData, buildGroupManagementData(), EMPTY_GROUP_MANAGEMENT_DATA, GroupManagementReads, loadGroupManagementData(), supabaseGroupManagementReads(), AdminPersonDetailPage() (+36 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.12
@@ -461,7 +460,7 @@ Nodes (57): AdminMasterCalendarShell(), loadMasterCalendar(), Params, Search, Pa
 
 ### Community 28 - "Community 28"
 Cohesion: 0.09
-Nodes (41): fetchAdminWeeklyCheckInReview(), attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines() (+33 more)
+Nodes (42): fetchAdminWeeklyCheckInReview(), attendanceConsistency, attendanceTrend, AttendanceWeekTally, BUILT_IN_GROUP_HEALTH_RUBRIC, ComputedGrade, computeGrade(), decodeCutLines() (+34 more)
 
 ### Community 29 - "Community 29"
 Cohesion: 0.07
@@ -484,8 +483,8 @@ Cohesion: 0.12
 Nodes (16): scripts, build, dev, graph:flow, graph:health, graph:rebuild, graph:tree, lint (+8 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.08
-Nodes (32): formatDueLabel(), laterIso(), CareAttentionReason, REASON_PRIORITY, coverageTierForShepherd(), buildAttentionQueue(), buildCoverageBuckets(), buildFollowUpStats() (+24 more)
+Cohesion: 0.11
+Nodes (31): formatDueLabel(), laterIso(), REASON_PRIORITY, coverageTierForShepherd(), buildAttentionQueue(), buildCoverageBuckets(), buildFollowUpStats(), buildRecentInteractions() (+23 more)
 
 ### Community 35 - "Community 35"
 Cohesion: 0.24
@@ -500,8 +499,8 @@ Cohesion: 0.13
 Nodes (14): buildLaunchPlanningPanels(), CreateScenarioForm, eyebrowStyle, panelTitleStyle, PlanLaunchWidget(), PlanningShell(), PlanningTabKey, TABS (+6 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.10
-Nodes (21): prayerRequestStatusChipLabel(), FeedItemCard(), MyCareNotes(), NoteCard(), MyShepherdsTable(), roleLabel, formatIsoDate(), formatIsoDateOr() (+13 more)
+Cohesion: 0.08
+Nodes (21): BuildCareAreaInput, CareAttentionReason, CareAttentionItem, MyShepherdsTable(), roleLabel, CareAttentionQueue(), REASON_LABEL, REASON_TONE (+13 more)
 
 ### Community 39 - "Community 39"
 Cohesion: 0.14
@@ -528,8 +527,8 @@ Cohesion: 0.08
 Nodes (45): CapacityRule, HealthRule, InterestRule, ReadinessLetter, ReadinessPillarKey, ResolvedReadinessPillar, resolvePillar(), resolveReadinessRuleWithSources() (+37 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.11
-Nodes (16): buildCareNoteFeed(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject(), SealedLeaderSummary (+8 more)
+Cohesion: 0.07
+Nodes (30): buildCareNoteFeed(), CARE_FEED_KIND_LABELS, CareFeedFilter, CareFeedItem, CareFeedItemKind, filterCareFeed(), noteSubject(), SealedLeaderSummary (+22 more)
 
 ### Community 46 - "Community 46"
 Cohesion: 0.05
@@ -588,8 +587,8 @@ Cohesion: 0.11
 Nodes (34): boolOr(), CellReadinessOverride, CellReadinessSignal, decodeCapacityRule(), decodeCellOverride(), decodeHealthRule(), decodeInterestRule(), decodePerTypeRule() (+26 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.12
-Nodes (23): CareDashboardSummary, buildShepherdCareTriageLink(), buildShepherdCareViewHref(), CoverageFilter, DirectoryFilter, firstValue(), ParamValue, resolveCareInitialTabFromParams() (+15 more)
+Cohesion: 0.09
+Nodes (26): buildShepherdCareViewHref(), CanonicalCareTabKey, CareTabKey, CoverageFilter, DirectoryFilter, firstValue(), normalizeCareTabKey(), ParamValue (+18 more)
 
 ### Community 61 - "Community 61"
 Cohesion: 0.05
@@ -600,8 +599,8 @@ Cohesion: 0.14
 Nodes (14): ASSIGNABLE_ROLES, AUTH_USER_LABELS, Delivery, DELIVERY_HINTS, DELIVERY_OPTIONS, EXPIRY_OPTIONS, formatExpiry(), GROUP_ASSIGNMENT_LABELS (+6 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.11
-Nodes (23): combinedOpenFollowUpCount(), buildSealedSummary(), buildNotesFeedData(), EMPTY_NOTES_FEED, NotesFeedContext, NotesFeedData, NotesFeedReads, supabaseNotesFeedReads() (+15 more)
+Cohesion: 0.13
+Nodes (22): combinedOpenFollowUpCount(), buildSealedSummary(), buildNotesFeedData(), EMPTY_NOTES_FEED, NotesFeedContext, NotesFeedData, NotesFeedReads, supabaseNotesFeedReads() (+14 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.13
@@ -668,8 +667,8 @@ Cohesion: 0.16
 Nodes (16): buildCellCoverage(), CellCoverage, cellKey(), countsTowardCoverage(), COVERAGE_LIFECYCLE_STATES, CoverageCellInput, CoverageGroupInput, sortByLargestShortfall() (+8 more)
 
 ### Community 80 - "Community 80"
-Cohesion: 0.11
-Nodes (30): addDaysIso(), GRAIN_CHIP, GRAIN_LABEL, OVERVIEW_GRAINS, overviewPeriodRange, pad2(), toFollowUpItem(), ADMIN_FALLBACK (+22 more)
+Cohesion: 0.12
+Nodes (28): addDaysIso(), GRAIN_CHIP, GRAIN_LABEL, OVERVIEW_GRAINS, overviewPeriodRange, pad2(), toFollowUpItem(), ADMIN_FALLBACK (+20 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.09
@@ -696,8 +695,8 @@ Cohesion: 0.05
 Nodes (50): AuditCategory, AuditEntry, AuditWorkspace(), CATEGORY_FILTERS, FilteredResults(), CareGradeEntryBundle, isNoteTransparencyGranted(), resolveLeaderGradeSeed() (+42 more)
 
 ### Community 87 - "Community 87"
-Cohesion: 0.10
-Nodes (30): buildCareArea(), BuildCareAreaInput, CareArea, careDetailHref(), CareItem, CareItemActionLabel, CareItemDueTone, daysFromToday() (+22 more)
+Cohesion: 0.13
+Nodes (22): buildCareArea(), CareArea, careDetailHref(), CareItem, CareItemActionLabel, CareItemDueTone, daysFromToday(), dueLabelFor() (+14 more)
 
 ### Community 88 - "Community 88"
 Cohesion: 0.18
@@ -728,8 +727,8 @@ Cohesion: 0.12
 Nodes (18): ARCHIVE_EVENT_SPEC, CREATE_EVENT_SPEC, RESTORE_EVENT_SPEC, UPDATE_EVENT_SPEC, ActionInput, leaderArchiveCalendarEvent(), leaderCreateCalendarEvent(), leaderRestoreCalendarEvent() (+10 more)
 
 ### Community 95 - "Community 95"
-Cohesion: 0.06
-Nodes (48): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACE_META, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetBaselineRowLike, AttentionResetScope, AttentionResetSurface, buildSurfaceBaselines() (+40 more)
+Cohesion: 0.04
+Nodes (61): ATTENTION_RESET_SCOPES, ATTENTION_RESET_SURFACE_META, ATTENTION_RESET_SURFACES, AttentionBaselines, AttentionResetBaselineRowLike, AttentionResetScope, AttentionResetSurface, buildSurfaceBaselines() (+53 more)
 
 ### Community 96 - "Community 96"
 Cohesion: 0.11
@@ -748,8 +747,8 @@ Cohesion: 0.07
 Nodes (26): 0. Source, 1. Visual principles from the prototype, 2. Color, typography, spacing, card, badge, navigation patterns, 3. Safe to reuse (route-scoped, no globals), 4. Risky for this app (needs scoping, not in first PR), 5. Do **not** implement directly (high-risk), 6. Route-by-route adaptation plan, 7. Explicit grouping (+18 more)
 
 ### Community 100 - "Community 100"
-Cohesion: 0.06
-Nodes (28): AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), AdminFollowUpsData, buildGuestsData(), EMPTY_GUESTS_DATA (+20 more)
+Cohesion: 0.10
+Nodes (15): AdminFollowUpsReads, buildAdminFollowUpsData(), EMPTY_ADMIN_FOLLOW_UPS_DATA, loadAdminFollowUpsData(), supabaseAdminFollowUpsReads(), AdminFollowUpsData, buildGuestsData(), EMPTY_GUESTS_DATA (+7 more)
 
 ### Community 101 - "Community 101"
 Cohesion: 0.08
@@ -898,10 +897,6 @@ Nodes (19): Attendance-consistency definition, Cadence, Candidate grading dimens
 ### Community 138 - "Community 138"
 Cohesion: 0.60
 Nodes (4): isActiveNavHref(), NAV_ALIAS_TO_CANONICAL, resolveCanonicalPath(), AREA_HREFS
-
-### Community 140 - "Community 140"
-Cohesion: 0.23
-Nodes (7): CanonicalCareTabKey, CareTabKey, normalizeCareTabKey(), CareShell(), CareTab, tabItemClassName(), TABS
 
 ### Community 141 - "Community 141"
 Cohesion: 0.10
