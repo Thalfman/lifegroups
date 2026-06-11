@@ -1,6 +1,6 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-11T23:32:47.204Z
+Generated: 2026-06-11T23:33:46.489Z
 
 ## Summary
 - Scope: product
@@ -20,7 +20,7 @@ Generated: 2026-06-11T23:32:47.204Z
 - OK: package/lock metadata: 0
 
 ## Excluded Candidate Files
-- tests: 238
+- tests: 243
 - data-boundary-only generated types: 1
 
 ## Category Counts

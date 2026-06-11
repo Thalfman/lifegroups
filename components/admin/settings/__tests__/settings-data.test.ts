@@ -120,6 +120,53 @@ describe("buildSettingsData — degradation", () => {
     expect(data.errors.readiness).toBeNull();
   });
 
+  it("maps the overrides and rubric failures one-to-one onto their tab keys", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchAllGroupMetricSettings: async () => fail("overrides boom"),
+        fetchGroupHealthRubric: async () => fail("group rubric boom"),
+        fetchLeaderHealthRubric: async () => fail("leader rubric boom"),
+      }),
+      { isSuperAdmin: false }
+    );
+
+    expect(data.errors.overrides).toBe("overrides boom");
+    expect(data.errors.groupRubric).toBe("group rubric boom");
+    expect(data.errors.leaderRubric).toBe("leader rubric boom");
+    // Each failed read degrades only its own tab's data…
+    expect(data.groupMetricSettings).toEqual([]);
+    expect(data.groupRubricCriteria).toEqual([]);
+    expect(data.leaderRubricCriteria).toEqual([]);
+    // …and the keys fed by the surviving reads stay null.
+    expect(data.errors.defaults).toBeNull();
+    expect(data.errors.groupCategories).toBeNull();
+    expect(data.errors.readiness).toBeNull();
+  });
+
+  it("reports the defaults as live when a stored row decodes", async () => {
+    const data = await buildSettingsData(
+      emptyReads({
+        fetchMetricDefaults: async () =>
+          ok({
+            id: "settings-1",
+            setting_key: "metric_defaults",
+            setting_value: { shepherd_care_stale_days_direct: 14 },
+            created_at: "2026-06-01T00:00:00Z",
+            updated_at: "2026-06-01T00:00:00Z",
+          }),
+      }),
+      { isSuperAdmin: false }
+    );
+
+    expect(data.defaultsSource).toBe("live");
+    expect(data.errors.defaults).toBeNull();
+    expect(data.defaults.shepherd_care_stale_days_direct).toBe(14);
+    // Keys absent from the stored row fall back per-field to the built-ins.
+    expect(data.defaults.shepherd_care_stale_days_delegated).toBe(
+      BUILT_IN_METRIC_DEFAULTS.shepherd_care_stale_days_delegated
+    );
+  });
+
   it("documents the no-database fallback shape", () => {
     const empty = emptySettingsData(true);
     expect(empty.isSuperAdmin).toBe(true);

@@ -6,6 +6,10 @@ import {
   buildPeoplePipelineData,
   type PeopleReads,
 } from "@/components/admin/people/people-data";
+import {
+  BUILT_IN_METRIC_DEFAULTS,
+  careCadenceWindowsFromDefaults,
+} from "@/lib/admin/metrics";
 import type { ReadResult } from "@/lib/supabase/read-core";
 
 const ok = <T>(data: T): ReadResult<T> => ({ data, error: null });
@@ -133,5 +137,57 @@ describe("buildPeopleNeedsContact", () => {
       { todayIso: "2026-06-04" }
     );
     expect(set.size).toBe(0);
+  });
+
+  // Waterfall sequencing: the assignments + defaults reads resolve FIRST, and
+  // their outputs are the directory read's arguments — the same windows and
+  // delegated set the Care area uses, so the two never disagree.
+  it("threads todayIso, the decoded cadence windows, and the delegated set into the directory read", async () => {
+    let captured: Parameters<PeopleReads["fetchShepherdCareDirectory"]>[0];
+    await buildPeopleNeedsContact(
+      emptyReads({
+        fetchActiveCoverageAssignments: async () =>
+          ok([
+            { shepherd_profile_id: "sh-1" },
+            { shepherd_profile_id: "sh-2" },
+          ] as never),
+        fetchShepherdCareDirectory: async (options) => {
+          captured = options;
+          return ok([]);
+        },
+      }),
+      { todayIso: "2026-06-04" }
+    );
+
+    expect(captured?.todayIso).toBe("2026-06-04");
+    // A missing defaults row (ok(null)) decodes to the built-in cadence
+    // windows; they are decoded once here and handed to the directory read.
+    expect(captured?.windows).toEqual(
+      careCadenceWindowsFromDefaults(BUILT_IN_METRIC_DEFAULTS)
+    );
+    expect(captured?.delegatedShepherdIds).toEqual(new Set(["sh-1", "sh-2"]));
+  });
+
+  it("passes delegatedShepherdIds: undefined (not an empty set) when the coverage read fails", async () => {
+    // Omitted means "treat every shepherd as delegated" — the conservative
+    // longer window. An empty set would instead treat everyone as directly
+    // overseen and over-flag needs-contact off a failed read.
+    let captured: Parameters<PeopleReads["fetchShepherdCareDirectory"]>[0];
+    const set = await buildPeopleNeedsContact(
+      emptyReads({
+        fetchActiveCoverageAssignments: async () => fail("coverage boom"),
+        fetchShepherdCareDirectory: async (options) => {
+          captured = options;
+          return ok([
+            { profile: { id: "p1" }, needs_attention: true },
+          ] as never);
+        },
+      }),
+      { todayIso: "2026-06-04" }
+    );
+
+    expect(captured?.delegatedShepherdIds).toBeUndefined();
+    // The indicator still derives from the directory read that did succeed.
+    expect(set).toEqual(new Set(["p1"]));
   });
 });
