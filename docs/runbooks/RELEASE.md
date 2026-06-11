@@ -80,6 +80,20 @@ local/test tooling — never deploy it to production (the launch runbook has
 it removed). Anything else found deployed in production (e.g. a scratch/test
 function) should be deleted, not left "just in case".
 
+**Beware the implicit deploy path.** The Supabase GitHub integration's
+deploy-to-production step redeploys every Edge Function declared in
+`supabase/config.toml` on each push to `main` — it is not limited to the two
+named above. This is how `manage-test-auth-users` returned to production on
+2026-06-09 minutes after being manually deleted: the push that recorded the
+deletion triggered the integration, which redeployed it. The guard is
+`enabled = false` on that function's block in `config.toml`; both the blanket
+CLI deploy and the integration skip disabled functions. If a new test-only
+function is ever added, give it `enabled = false` from the first commit.
+After any merge that touches `supabase/functions/` or `config.toml`, verify
+the production function list still shows exactly `invite-user` and
+`redeem-invite` (Dashboard → Edge Functions, or the MCP `list_edge_functions`
+tool).
+
 ## When something goes wrong
 
 - A failed `db push` leaves the failed migration unrecorded — fix the SQL,

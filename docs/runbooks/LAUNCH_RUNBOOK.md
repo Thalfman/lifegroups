@@ -7,7 +7,15 @@ Vercel / GitHub dashboards — account-holder access) or **Eng** (repo or
 MCP/CLI work an engineering session can do and verify).
 
 The launch wave is deliberate (ADR 0009/0016/0017): **Julian + Tom first**,
-Over-Shepherds shortly after, Leaders stay behind the `leader_surface` flag
+Over-Shepherds shortly after, Leaders last. Since ADR 0024 the
+`leader_surface` flag is **on (and verified) by default**, so the Leader wave
+is gated by *account issuance*, not the flag — but that gate only holds once
+no leader accounts exist. Today production still has 3 `leader` + 1
+`co_leader` accounts, and `requireLeader()` admits any **active** leader
+profile while the flag is live, so anyone holding (or resetting) those
+credentials can reach `/leader` right now. Completing the account audit
+(§5) — archiving/deactivating those four — is therefore a **blocker** for
+calling Leader access invite-gated; after that, no Leader gets an invite
 until Julian's explicit go-ahead.
 
 ## 1. Platform safety net
@@ -40,6 +48,11 @@ until Julian's explicit go-ahead.
       RLS on, `set_updated_at` `search_path` pinned, `audit_events_archive`
       has a PK, `rls_auto_enable` EXECUTE revoked from API roles — verified
       2026-06-10. _Eng_
+- [x] **Security advisors clean**: re-run 2026-06-11 via MCP `get_advisors` —
+      0 errors; the WARNs are the by-design SECURITY DEFINER RPC pattern
+      (every RPC re-checks the caller's role internally) plus
+      `peek_invitation` for `anon` (the invite token is the credential).
+      Re-run after any RLS/grant-touching migration. _Eng_
 - [ ] From now on, every release follows [`RELEASE.md`](./RELEASE.md) —
       schema and code ship together. _Everyone_
 
@@ -72,18 +85,43 @@ until Julian's explicit go-ahead.
       from production project `juvytverslrcqbkxgkvg` and verified
       2026-06-10; production now has only `invite-user` and `redeem-invite`.
       _Eng_
-- [x] **Remove `manage-test-auth-users` from production** (it exists for
+- [ ] **Remove `manage-test-auth-users` from production** (it exists for
       local/test-user seeding; production should run only `invite-user` and
-      `redeem-invite`) — deleted from production project
-      `juvytverslrcqbkxgkvg` and verified 2026-06-10; production now has
-      only `invite-user` and `redeem-invite`. _Eng_
+      `redeem-invite`). It was deleted 2026-06-09, but the Supabase GitHub
+      integration **redeployed it minutes later** — its deploy-to-production
+      step pushes every function declared in `supabase/config.toml` on each
+      push to `main` (see [`RELEASE.md`](./RELEASE.md) § Edge Functions).
+      Re-verified still ACTIVE in production 2026-06-11. Do it in this order:
+      1. Merge the `enabled = false` guard on the function's `config.toml`
+         block (so the next push to `main` can't redeploy it). _Eng_
+      2. Then delete it:
+         `supabase functions delete manage-test-auth-users --project-ref juvytverslrcqbkxgkvg`
+         (or Dashboard → Edge Functions → delete). _Tom_
+      3. **Verify immediately** — before any other runbook step continues:
+         the production function list (Dashboard → Edge Functions, or MCP
+         `list_edge_functions` against `juvytverslrcqbkxgkvg`) shows exactly
+         `invite-user` + `redeem-invite`. Catches a missed, failed, or
+         wrong-project deletion on the spot. _Tom + Eng_
+      4. After the **next** merge to `main`, re-check the same list to
+         confirm the integration no longer redeploys it. _Eng_
+
+      Known side effect: the Super-Admin console's **Test accounts** panel
+      calls this function for its status chip, so with the function deleted
+      it reports the tooling as not deployed and its actions fail. That is
+      the **expected production posture**, not a regression — issue #522
+      tracks rendering it as a calm "not installed" state.
 
 ## 5. Real data in, test data out
 
-- [ ] **Audit the 7 existing accounts**: today production has 1
-      `super_admin`, 2 `ministry_admin`s, 3 `leader`s, 0 `over_shepherd`s.
-      Keep Tom (`super_admin`) + Julian (`ministry_admin`); remove or archive
-      every test/demo account and its profile. _Tom + Julian_
+- [ ] **Audit the 8 existing accounts**: as of 2026-06-11 production has 1
+      `super_admin`, **3** `ministry_admin`s, 3 `leader`s, 1 `co_leader`,
+      0 `over_shepherd`s (one `ministry_admin` more than the 2026-06-10
+      count — identify it during the audit). Keep Tom (`super_admin`) +
+      Julian (`ministry_admin`); remove or archive every test/demo account
+      and its profile. The 3 `leader` + 1 `co_leader` accounts are the
+      priority: `leader_surface` is live (ADR 0024), so they can reach
+      `/leader` until archived/deactivated — this item blocks the "Leader
+      access is invite-gated" claim in the intro. _Tom + Julian_
 - [ ] **Load the real roster**: groups, leaders, members (Super-Admin bulk
       import accepts CSV: `full_name`, email, phone, groups). Today: 21
       groups but 1 member row — rosters are not loaded. _Julian_
@@ -98,9 +136,13 @@ until Julian's explicit go-ahead.
 ## 6. Go / no-go
 
 - [ ] **Per-role smoke test**: Tom (super-admin console, danger zone
-      visible), Julian (Care accordion incl. transparency toggle → Plan
-      funnel → Multiply boards, no dead links), a leader account (lands on
-      `/unauthorized` while `leader_surface` is off). _Tom + Julian_
+      visible; the Test accounts chip reporting the seeding function as not
+      deployed is the expected production posture per §4 / issue #522, not a
+      failure), Julian (Care accordion incl. transparency toggle → Plan
+      funnel → Multiply boards, no dead links), a scratch leader account
+      (lands on `/leader` and sees only its own group — `leader_surface` is
+      on by default per ADR 0024; remove the scratch account afterwards).
+      _Tom + Julian_
 - [ ] **Julian sign-off**: he runs one real week's workflow (log a care
       interaction, add a prospect, check Multiply) and agrees it replaces
       the spreadsheet. _Julian_
@@ -110,9 +152,10 @@ until Julian's explicit go-ahead.
 1. **Over-Shepherds**: create their accounts, assign coverage, verify the
    `/over-shepherd` surface against real data, then invite the three of
    them.
-2. **Leaders**: only after Julian's explicit go-ahead — flip
-   `leader_surface` per the verify-before-flip rule (ADR 0009), having
-   re-run the RLS smoke checks with a real leader account first.
+2. **Leaders**: only after Julian's explicit go-ahead — `leader_surface` is
+   already on + verified (ADR 0024), so the gate is sending the invites.
+   Before the first batch, re-run the RLS smoke checks with a real leader
+   account (sees only their own group; no `admin_private_note` anywhere).
 3. **Periodic hygiene**: re-run Supabase advisors after any
    RLS/grant-touching migration (see [`RELEASE.md`](./RELEASE.md)); verify
    backups monthly (see [`BACKUP_AND_RESTORE.md`](./BACKUP_AND_RESTORE.md)).

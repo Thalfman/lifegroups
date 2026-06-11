@@ -4,7 +4,20 @@
 
 project_id = "lifegroups"
 
+# Local/test tooling only — must NEVER run in production. `enabled = false`
+# makes every config-driven deploy path (blanket `supabase functions deploy`
+# and the Supabase GitHub integration's deploy-to-production step, which
+# deploys all functions declared in this file on every push to main) skip it.
+# That integration is how the function silently returned to production on
+# 2026-06-09 minutes after being deleted. Note `enabled = false` also stops
+# the local stack from serving this function, so the Super-Admin
+# test-accounts panel can't reach it locally. For local test-account
+# seeding use `npm run seed:test-auth` / `npm run remove:test-auth`
+# (standalone scripts, no Edge Function involved); if you specifically need
+# the console panel, temporarily set `enabled = true` in your working copy
+# and never commit that change.
 [functions.manage-test-auth-users]
+enabled = false
 verify_jwt = true
 
 # Caller is an authenticated super_admin; the function re-verifies the JWT and

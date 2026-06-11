@@ -30,7 +30,10 @@ GRAPHIFY_VERSION="$(cat .graphify-version 2>/dev/null)"
     # merges work in shells where ~/.local/bin isn't on PATH.
     git config merge.graphify.driver "$(command -v graphify) merge-driver %O %A %B"
     if [ "$(graphify --version 2>/dev/null | awk '{print $2}')" = "$GRAPHIFY_VERSION" ]; then
-      [ -f graphify-out/graph.json ] && graphify update .
+      # GRAPHIFY_VIZ_NODE_LIMIT keeps graph.html emitting past the 5000-node
+      # default, same as the pre-commit hook — without it, an update silently
+      # deletes the committed graph.html (this graph is ~6,600 nodes).
+      [ -f graphify-out/graph.json ] && GRAPHIFY_VIZ_NODE_LIMIT=10000 graphify update .
     else
       echo "graphify on PATH is not $GRAPHIFY_VERSION; skipping auto-update so graph artifacts stay reproducible"
     fi
