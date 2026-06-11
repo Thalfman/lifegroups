@@ -1,10 +1,10 @@
 # Graph Report - LifeGroups Product Surface (2026-06-11)
 
 ## Summary
-- Clean graph: 181 nodes · 1150 edges
-- Raw extraction collapsed: 3309 symbol nodes · 7593 symbol edges · 477 source files
+- Clean graph: 181 nodes · 1154 edges
+- Raw extraction collapsed: 3311 symbol nodes · 7611 symbol edges · 478 source files
 - File nodes preserved: 122
-- Module buckets: 59 buckets containing 355 lower-degree files
+- Module buckets: 59 buckets containing 356 lower-degree files
 - Self-edges removed after collapse.
 - Shared plumbing, shared UI primitive, and type/vocabulary edges are visually softened.
 
@@ -51,15 +51,15 @@
 - People Feature Component (106.35) - Feature Component, People
 - Enums Types (99.05) - Type/Vocabulary, Shared
 - Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
-- Supabase Read Core (81) - Supabase Read Adapter, Core
+- Care Domain Module (83) - Domain Module, Care
+- Supabase Read Core (82) - Supabase Read Adapter, Core
+- Dashboard Queries (79.45) - Domain Module, Home
 - Admin Launch Planning (78) - Domain Module, Plan
 - Calendar Occurrences (76.45) - Domain Module, Calendar
-- Dashboard Queries (76.45) - Domain Module, Home
 - Admin Groups Group Detail Data (75) - Feature Component, Groups
 - Admin Check Ins (73.1) - Domain Module, Calendar
+- Dashboard Types (71.4) - Domain Module, Home
 - Admin Rpc (71.25) - RPC/Write Boundary, Core
-- Admin Super Admin Console (70) - Feature Component, Core
-- Home Domain Module (69.45) - Domain Module, Home
 
 ## Top Weighted Links
 - Core Feature Component -> Admin Forms Action Form: 54 symbol links

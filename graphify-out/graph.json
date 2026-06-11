@@ -4,16 +4,16 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3309,
-    "raw_edge_count": 7593,
-    "raw_source_file_count": 477,
-    "selected_file_count": 480,
+    "raw_node_count": 3311,
+    "raw_edge_count": 7611,
+    "raw_source_file_count": 478,
+    "selected_file_count": 481,
     "preserved_file_node_count": 122,
     "grouped_bucket_count": 59,
-    "grouped_file_count": 355,
+    "grouped_file_count": 356,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T23:33:46.466Z"
+    "generated_at": "2026-06-11T23:34:50.072Z"
   },
   "nodes": [
     {
@@ -2039,7 +2039,7 @@
     {
       "id": "bucket_bucket_care_domain_module_1ue8s8",
       "label": "Care Domain Module",
-      "title": "Care Domain Module bucket\nDomain Module / Care\n8 files, 57 symbols\nlib/admin/care-note-feed.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/admin/shepherd-care-attention.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
+      "title": "Care Domain Module bucket\nDomain Module / Care\n9 files, 59 symbols\nlib/dashboard/shepherd-care-summary.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/care-note-feed.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/admin/shepherd-care-attention.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
       "source_file": "module/care/domain_module",
       "source_files": [
         "app/(protected)/over-shepherd/loading.tsx",
@@ -2048,11 +2048,12 @@
         "lib/admin/shepherd-care-attention.ts",
         "lib/admin/shepherd-care-cadence.ts",
         "lib/admin/shepherd-care-follow-ups.ts",
+        "lib/dashboard/shepherd-care-summary.ts",
         "lib/over-shepherd/coverage.ts",
         "lib/over-shepherd/read-models.ts"
       ],
-      "file_count": 8,
-      "symbol_count": 57,
+      "file_count": 9,
+      "symbol_count": 59,
       "grouped": true,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2062,10 +2063,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 57,
-      "raw_outbound_weight": 12,
-      "degree": 67,
-      "size": 27.86
+      "raw_inbound_weight": 63,
+      "raw_outbound_weight": 24,
+      "degree": 83,
+      "size": 29.44
     },
     {
       "id": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
@@ -2086,10 +2087,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 9,
+      "raw_inbound_weight": 13,
       "raw_outbound_weight": 26,
-      "degree": 35,
-      "size": 22.17
+      "degree": 39,
+      "size": 22.68
     },
     {
       "id": "file_file_lib_admin_shepherd_care_view_ts_1wysd2",
@@ -2307,10 +2308,10 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 23,
+      "raw_inbound_weight": 24,
       "raw_outbound_weight": 0,
-      "degree": 23,
-      "size": 20.43
+      "degree": 24,
+      "size": 20.59
     },
     {
       "id": "file_file_lib_admin_planning_views_ts_x888t2",
@@ -2527,9 +2528,33 @@
       "color": "#B07AA1",
       "file_type": "code",
       "raw_inbound_weight": 3,
-      "raw_outbound_weight": 78,
-      "degree": 76.45,
-      "size": 26.55
+      "raw_outbound_weight": 81,
+      "degree": 79.45,
+      "size": 26.82
+    },
+    {
+      "id": "file_file_lib_dashboard_types_ts_1oi588",
+      "label": "Dashboard Types",
+      "title": "lib/dashboard/types.ts\nDomain Module / Home\n1 file, 33 symbols",
+      "source_file": "lib/dashboard/types.ts",
+      "source_files": [
+        "lib/dashboard/types.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 33,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "home",
+      "feature_label": "Home",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 71,
+      "raw_outbound_weight": 17,
+      "degree": 71.4,
+      "size": 26.1
     },
     {
       "id": "bucket_bucket_home_domain_module_h6qg0x",
@@ -2561,30 +2586,6 @@
       "raw_outbound_weight": 36,
       "degree": 69.45,
       "size": 28.09
-    },
-    {
-      "id": "file_file_lib_dashboard_types_ts_1oi588",
-      "label": "Dashboard Types",
-      "title": "lib/dashboard/types.ts\nDomain Module / Home\n1 file, 33 symbols",
-      "source_file": "lib/dashboard/types.ts",
-      "source_files": [
-        "lib/dashboard/types.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 33,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "home",
-      "feature_label": "Home",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 69,
-      "raw_outbound_weight": 17,
-      "degree": 69.4,
-      "size": 25.91
     },
     {
       "id": "file_file_lib_dashboard_labels_ts_tbyfwm",
@@ -2654,9 +2655,9 @@
       "color": "#B07AA1",
       "file_type": "code",
       "raw_inbound_weight": 3,
-      "raw_outbound_weight": 30,
-      "degree": 33,
-      "size": 21.9
+      "raw_outbound_weight": 32,
+      "degree": 35,
+      "size": 22.17
     },
     {
       "id": "file_file_lib_dashboard_group_status_ts_n4d1zp",
@@ -2975,6 +2976,30 @@
       "size": 21.33
     },
     {
+      "id": "file_file_lib_supabase_shepherd_care_reads_ts_3wtt84",
+      "label": "Supabase Shepherd Care Reads",
+      "title": "lib/supabase/shepherd-care-reads.ts\nSupabase Read Adapter / Care\n1 file, 34 symbols",
+      "source_file": "lib/supabase/shepherd-care-reads.ts",
+      "source_files": [
+        "lib/supabase/shepherd-care-reads.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 34,
+      "grouped": false,
+      "category": "supabase_read_adapter",
+      "category_label": "Supabase Read Adapter",
+      "community": 4,
+      "community_name": "Supabase Read Adapter",
+      "feature": "care",
+      "feature_label": "Care",
+      "color": "#76B7B2",
+      "file_type": "code",
+      "raw_inbound_weight": 15,
+      "raw_outbound_weight": 18,
+      "degree": 33,
+      "size": 21.9
+    },
+    {
       "id": "bucket_bucket_care_supabase_read_adapter_1cgqij",
       "label": "Care Supabase Read Adapter",
       "title": "Care Supabase Read Adapter bucket\nSupabase Read Adapter / Care\n3 files, 27 symbols\nlib/supabase/care-note-reads.ts\nlib/supabase/care-note-feed-reads.ts\nlib/supabase/follow-up-reads.ts",
@@ -2999,30 +3024,6 @@
       "raw_outbound_weight": 17,
       "degree": 32,
       "size": 22.77
-    },
-    {
-      "id": "file_file_lib_supabase_shepherd_care_reads_ts_3wtt84",
-      "label": "Supabase Shepherd Care Reads",
-      "title": "lib/supabase/shepherd-care-reads.ts\nSupabase Read Adapter / Care\n1 file, 34 symbols",
-      "source_file": "lib/supabase/shepherd-care-reads.ts",
-      "source_files": [
-        "lib/supabase/shepherd-care-reads.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 34,
-      "grouped": false,
-      "category": "supabase_read_adapter",
-      "category_label": "Supabase Read Adapter",
-      "community": 4,
-      "community_name": "Supabase Read Adapter",
-      "feature": "care",
-      "feature_label": "Care",
-      "color": "#76B7B2",
-      "file_type": "code",
-      "raw_inbound_weight": 12,
-      "raw_outbound_weight": 18,
-      "degree": 30,
-      "size": 21.49
     },
     {
       "id": "file_file_lib_supabase_read_models_ts_19ohwx",
@@ -3091,10 +3092,10 @@
       "feature_label": "Core",
       "color": "#76B7B2",
       "file_type": "code",
-      "raw_inbound_weight": 81,
+      "raw_inbound_weight": 82,
       "raw_outbound_weight": 0,
-      "degree": 81,
-      "size": 26.95
+      "degree": 82,
+      "size": 27.04
     },
     {
       "id": "file_file_lib_supabase_reads_seam_ts_11p3lu",
@@ -5586,6 +5587,53 @@
     },
     {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
+      "target": "file_file_lib_admin_attention_reset_ts_137ah9",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/dashboard/shepherd-care-summary.ts -> lib/admin/attention-reset.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_domain_module_1ue8s8",
+      "target": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 2,
+        "imports": 2
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "lib/dashboard/shepherd-care-summary.ts -> lib/admin/shepherd-care-dashboard.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_domain_module_1ue8s8",
+      "target": "file_file_lib_dashboard_types_ts_1oi588",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/shepherd-care-summary.ts -> lib/dashboard/types.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "file_file_lib_shared_uuid_ts_da5eyb",
       "weight": 1,
       "visual_weight": 1,
@@ -5602,31 +5650,34 @@
     {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "file_file_lib_supabase_read_core_ts_1eaf45",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
-        "calls": 1,
-        "imports": 1
+        "imports": 2,
+        "calls": 1
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 3,
       "examples": [
-        "lib/admin/shepherd-care-attention.ts -> lib/supabase/read-core.ts"
+        "lib/admin/shepherd-care-attention.ts -> lib/supabase/read-core.ts",
+        "lib/dashboard/shepherd-care-summary.ts -> lib/supabase/read-core.ts"
       ]
     },
     {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "file_file_lib_supabase_shepherd_care_reads_ts_3wtt84",
-      "weight": 2,
-      "visual_weight": 2,
+      "weight": 5,
+      "visual_weight": 5,
       "softened": false,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
+        "imports": 3,
         "calls": 2
       },
-      "raw_edge_count": 2,
+      "raw_edge_count": 5,
       "examples": [
+        "lib/dashboard/shepherd-care-summary.ts -> lib/supabase/shepherd-care-reads.ts",
         "lib/over-shepherd/read-models.ts -> lib/supabase/shepherd-care-reads.ts"
       ]
     },
@@ -21291,6 +21342,22 @@
     },
     {
       "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "bucket_bucket_care_domain_module_1ue8s8",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/dashboard/shepherd-care-summary.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
       "target": "bucket_bucket_home_domain_module_h6qg0x",
       "weight": 7,
       "visual_weight": 7,
@@ -21710,16 +21777,19 @@
     {
       "source": "file_file_lib_dashboard_queries_ts_13envh",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 4,
+      "visual_weight": 4,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2,
+        "calls": 1,
+        "imports_from": 1
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 4,
       "examples": [
-        "lib/dashboard/queries.ts -> lib/admin/shepherd-care-cadence.ts"
+        "lib/dashboard/queries.ts -> lib/admin/shepherd-care-cadence.ts",
+        "lib/dashboard/queries.ts -> lib/dashboard/shepherd-care-summary.ts"
       ]
     },
     {
@@ -22900,5 +22970,5 @@
       ]
     }
   ],
-  "built_at_commit": "1a78560dc59a0b1ff24ebcbcd0bef9179eb94932"
+  "built_at_commit": "964d2ac27c08ac14801ad279c1821689acafd437"
 }

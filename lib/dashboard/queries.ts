@@ -49,10 +49,7 @@ import type {
 } from "./types";
 import { buildAdminGroupModel, toFollowUpItem } from "./admin-group-model";
 import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
-import {
-  buildShepherdCareDashboardModel,
-  countAllAttentionItems,
-} from "@/lib/admin/shepherd-care-dashboard";
+import { buildShepherdCareSummary } from "./shepherd-care-summary";
 import { LEADER_READINESS_STAGES } from "@/lib/admin/leader-pipeline";
 import {
   overviewPeriodRange,
@@ -134,76 +131,8 @@ function computeAttendanceRhythm(
 // below stay here because they are read-dependent: each consumes its own
 // `ReadResult` and degrades to an explicit `available:false` state.
 
-function buildShepherdCareSummary(
-  shepherdDirectoryRes: Awaited<
-    ReturnType<typeof fetchShepherdCareDirectoryForAdmin>
-  >,
-  overShepherdsRes: Awaited<ReturnType<typeof fetchOverShepherdsForAdmin>>,
-  assignmentsRes: Awaited<
-    ReturnType<typeof fetchActiveShepherdCoverageAssignmentsForAdmin>
-  >,
-  windows: CareCadenceWindows,
-  todayIso: string,
-  baselines: AttentionBaselines
-): ShepherdCareDashboardSummary {
-  // Active over-shepherds (coaches) — the list is fetched with archived rows
-  // included, so filter to active. null when that read failed, so a transient
-  // error renders as "—" rather than a misleading real "0 coverage capacity".
-  const activeOverShepherds = overShepherdsRes.error
-    ? null
-    : (overShepherdsRes.data ?? []).filter((o) => o.active).length;
-  if (shepherdDirectoryRes.error || !shepherdDirectoryRes.data) {
-    return {
-      totalActiveShepherds: 0,
-      needsAttention: 0,
-      overdueTouchpoints: 0,
-      notContactedRecently: 0,
-      noCareProfile: 0,
-      unassignedCoverage: 0,
-      activeOverShepherds,
-      attentionItemsTotal: 0,
-      coverageAvailable: false,
-      available: false,
-      error: shepherdDirectoryRes.error?.message ?? "unavailable",
-    };
-  }
-  const assignmentsAvailable = assignmentsRes.error === null;
-  const model = buildShepherdCareDashboardModel({
-    entries: shepherdDirectoryRes.data,
-    assignments: assignmentsRes.data ?? [],
-    overShepherds: overShepherdsRes.data ?? [],
-    recentInteractions: [],
-    todayIso,
-    assignmentsAvailable,
-    windows,
-    baselines,
-  });
-  const attentionItemsTotal = countAllAttentionItems(
-    shepherdDirectoryRes.data,
-    assignmentsRes.data ?? [],
-    todayIso,
-    { coverageAvailable: assignmentsAvailable, windows, baselines }
-  );
-  return {
-    totalActiveShepherds: model.summary.totalActiveShepherds,
-    needsAttention: model.summary.needsAttention,
-    overdueTouchpoints: model.summary.overdueTouchpoints,
-    notContactedRecently: model.summary.notContactedRecently,
-    noCareProfile: model.summary.noCareProfile,
-    unassignedCoverage: model.summary.unassignedCoverage,
-    activeOverShepherds,
-    attentionItemsTotal,
-    coverageAvailable: model.coverageAvailable,
-    available: true,
-    // If the coverage assignments read failed, surface the error so the
-    // dashboard card can warn that the unassigned-coverage count and the
-    // no_over_shepherd reason are suppressed — matches the explicit
-    // error banner shown on /admin/shepherd-care.
-    error: assignmentsAvailable
-      ? null
-      : (assignmentsRes.error?.message ?? "Coverage data unavailable."),
-  };
-}
+// buildShepherdCareSummary moved to lib/dashboard/shepherd-care-summary.ts so
+// the demo fallback derives the Care headline card through the same rule.
 
 // Leader-pipeline + multiplication rollups for the executive landing. Both are
 // read-dependent and intentionally OUTSIDE the firstError gate: a failure here

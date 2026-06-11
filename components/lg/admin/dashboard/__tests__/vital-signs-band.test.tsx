@@ -68,12 +68,21 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
 
     // Active groups — from the derived demo summary (8 active groups).
     expect(cardSlice(html, "Active groups")).toContain(">8<");
-    // Active leaders — shepherdCare.totalActiveShepherds.
-    expect(cardSlice(html, "Active leaders")).toContain(">24<");
-    // Leaders needing care — shepherdCare.needsAttention, of the active total.
+    // Active leaders / Leaders needing care — from the Care demo seed routed
+    // through the live summary rule (lib/dashboard/shepherd-care-summary.ts),
+    // so the expectations read the derived seed rather than pinning literals
+    // that drift when the attention rules change.
+    const care = ADMIN_FALLBACK.shepherdCare;
+    expect(care.totalActiveShepherds).toBeGreaterThan(0);
+    expect(care.needsAttention).toBeGreaterThan(0);
+    expect(cardSlice(html, "Active leaders")).toContain(
+      `>${care.totalActiveShepherds}<`
+    );
     const needsCare = cardSlice(html, "Leaders needing care");
-    expect(needsCare).toContain(">3<");
-    expect(needsCare).toContain("of 24 active leaders");
+    expect(needsCare).toContain(`>${care.needsAttention}<`);
+    expect(needsCare).toContain(
+      `of ${care.totalActiveShepherds} active leaders`
+    );
     // Prospects in funnel — the three live states (5 + 3 + 2); Joined is the
     // roll-up meta, mirroring the Interest Funnel card's partition.
     const funnel = cardSlice(html, "Prospects in funnel");
@@ -165,7 +174,7 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
 
   it("degrades the dashboard-derived tiles to — when the whole read degraded", () => {
     // degraded ⇒ `data` is demo fallback; the band must not present its demo
-    // counts (8 groups, 24 leaders, …) as live figures.
+    // counts (8 groups, 8 leaders, …) as live figures.
     const html = render({ degraded: true, showLaunchPlanning: true });
 
     for (const title of [
@@ -180,6 +189,8 @@ describe("VitalSignsBand pivot metrics (#476)", () => {
       expect(cardSlice(html, title)).toContain("—");
     }
     expect(cardSlice(html, "Active groups")).not.toContain(">8<");
-    expect(cardSlice(html, "Active leaders")).not.toContain(">24<");
+    expect(cardSlice(html, "Active leaders")).not.toContain(
+      `>${ADMIN_FALLBACK.shepherdCare.totalActiveShepherds}<`
+    );
   });
 });

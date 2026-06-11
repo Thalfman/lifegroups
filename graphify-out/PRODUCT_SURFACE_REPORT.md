@@ -1,14 +1,14 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-11T23:33:46.489Z
+Generated: 2026-06-11T23:34:50.096Z
 
 ## Summary
 - Scope: product
-- Staged files: 480
-- Raw extraction: 3309 symbol nodes, 7593 symbol edges, 477 source files
-- Clean graph: 181 nodes, 1150 edges
+- Staged files: 481
+- Raw extraction: 3311 symbol nodes, 7611 symbol edges, 478 source files
+- Clean graph: 181 nodes, 1154 edges
 - Preserved file nodes: 122
-- Grouped lower-degree files: 355 files into 59 module buckets
+- Grouped lower-degree files: 356 files into 59 module buckets
 - Output: graphify-out
 
 ## Exclusion Audit
@@ -60,15 +60,15 @@ Generated: 2026-06-11T23:33:46.489Z
 - Plan Feature Component (113.55) - Feature Component, Plan
 - Admin Metrics (107) - Domain Module, Core
 - People Feature Component (106.35) - Feature Component, People
+- Care Domain Module (83) - Domain Module, Care
+- Dashboard Queries (79.45) - Domain Module, Home
 - Admin Launch Planning (78) - Domain Module, Plan
 - Calendar Occurrences (76.45) - Domain Module, Calendar
-- Dashboard Queries (76.45) - Domain Module, Home
 - Admin Groups Group Detail Data (75) - Feature Component, Groups
 - Admin Check Ins (73.1) - Domain Module, Calendar
+- Dashboard Types (71.4) - Domain Module, Home
 - Admin Super Admin Console (70) - Feature Component, Core
 - Home Domain Module (69.45) - Domain Module, Home
-- Dashboard Types (69.4) - Domain Module, Home
-- Care Domain Module (67) - Domain Module, Care
 
 ## Boundary Hubs
 - Supabase Read Models (208.45) - Supabase Read Adapter, Core
@@ -77,7 +77,7 @@ Generated: 2026-06-11T23:33:46.489Z
 - Supabase Server (133) - Supabase Read Adapter, Core
 - Auth Session (131) - Auth/Session Boundary, Auth
 - Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
-- Supabase Read Core (81) - Supabase Read Adapter, Core
+- Supabase Read Core (82) - Supabase Read Adapter, Core
 - Admin Rpc (71.25) - RPC/Write Boundary, Core
 - Supabase Reads Seam (56) - Supabase Read Adapter, Core
 - Care Server Action (52) - Server Action, Care
@@ -111,12 +111,12 @@ Generated: 2026-06-11T23:33:46.489Z
 - Groups Shared UI Primitive (10) - Shared UI Primitive, Groups
 
 ## Cross-Feature Coupling
-- Care <-> Core: 315 symbol links
+- Care <-> Core: 317 symbol links
   - Care Domain Module -> Core Domain Module (2)
-  - Care Domain Module -> Supabase Read Core (2)
+  - Care Domain Module -> Admin Attention Reset (1)
+  - Care Domain Module -> Supabase Read Core (3)
   - Care Feature Component -> Core Domain Module (11)
   - Care Feature Component -> Core Feature Component (3)
-  - Care Feature Component -> Core Observability/Security (1)
 - Core <-> Groups: 206 symbol links
   - Core Domain Module -> Groups Supabase Read Adapter (3)
   - Core Domain Module -> Admin Group Health Override (4)
@@ -177,12 +177,12 @@ Generated: 2026-06-11T23:33:46.489Z
   - Care Route/Page/Layout -> Auth Session (10)
   - Care Server Action -> Auth Session (4)
   - Admin Care Page -> Auth Roles (2)
-- Care <-> Groups: 23 symbol links
-  - Care Feature Component -> Groups Server Action (1)
-  - Care Feature Component -> Groups Supabase Read Adapter (1)
-  - Care Feature Component -> Admin Groups Page (1)
-  - Care Feature Component -> Admin Group Health Override (2)
-  - Care Feature Component -> Admin Health Rubric (7)
+- Care <-> Home: 24 symbol links
+  - Care Domain Module -> Dashboard Types (2)
+  - Care Feature Component -> Dashboard Labels (5)
+  - Home Domain Module -> Admin Validation Follow Ups (1)
+  - Admin Follow Ups Follow Ups Shell -> Dashboard Labels (4)
+  - Dashboard Demo Seed -> Care Domain Module (2)
 
 ## Grouped Module Buckets
 - Core Feature Component: 44 files, 123 symbols, degree 261.85
@@ -194,8 +194,8 @@ Generated: 2026-06-11T23:33:46.489Z
 - People Feature Component: 16 files, 73 symbols, degree 106.35
 - Core Server Action: 15 files, 75 symbols, degree 140.95
 - Home Shared UI Primitive: 14 files, 43 symbols, degree 38.25
+- Care Domain Module: 9 files, 59 symbols, degree 83
 - Home Domain Module: 8 files, 59 symbols, degree 69.45
-- Care Domain Module: 8 files, 57 symbols, degree 67
 - Care Route/Page/Layout: 7 files, 19 symbols, degree 56.1
 - Calendar Feature Component: 7 files, 32 symbols, degree 48.8
 - Care Server Action: 6 files, 41 symbols, degree 52
