@@ -202,8 +202,10 @@ The graph keeps itself updated:
   toward `graphify query` when they reach for grep/find or read source files
   to answer architecture questions.
 
-Corpus scope is controlled by `.graphifyignore` (tooling dirs, secrets, and —
-until fixed upstream — `*.sh` are excluded; see comments there).
+Corpus scope is controlled by `.graphifyignore` (tooling dirs, secrets,
+prose docs — `docs/`, root markdown, `.github/` — and, until fixed upstream,
+`*.sh` are excluded, so the graph describes the code architecture only; see
+comments there).
 
 Manual refresh: `graphify update .`. If a `graph.json` merge conflicts on a
 machine without graphify, take either side and regenerate. `graphify-out/cache/`
