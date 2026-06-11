@@ -1,32 +1,69 @@
-# Corpus scope for the graphify knowledge graph (gitignore syntax).
-# NOTE: when this file exists graphify stops falling back to .gitignore, so
-# any .gitignore rule that matters for extraction must be repeated here
-# (node_modules, .next, .git, graphify-out are built-in skips already).
+# Corpus scope for the Graphify knowledge graph (gitignore syntax).
+# NOTE: when this file exists Graphify stops falling back to .gitignore, so any
+# .gitignore rule that matters for extraction must be repeated here.
 
-# Mirrored from .gitignore — local artifacts and secrets, never corpus
-/test-results
-/playwright-report
-/blob-report
+# Local artifacts and secrets, never corpus
+/node_modules/
+/.next/
+/dist/
+/build/
+/out/
+/coverage/
+/test-results/
+/playwright-report/
+/blob-report/
 .env*
 tsconfig.tsbuildinfo
 .DS_Store
 supabase/dev/link_test_users.sql
 supabase/dev/link_super_admin.sql
 
-# Tooling infrastructure, not the codebase the graph should describe
-.husky/
-.claude/
-.agents/
-skills-lock.json
+# Generated Graphify outputs and staging. The runner writes graphs here, but
+# they must never be scanned back into the next graph.
+/graphify-out/
+/.graphify/
+/graphify/
 
-# Documentation: the graph describes the code architecture; prose docs and
-# their dense cross-links drown the code signal (root-anchored so the
-# graphify-out/memory/ loop keeps re-ingesting saved answers).
+# Tooling infrastructure, not the app architecture graph.
+/.husky/
+/.claude/
+/.agents/
+skills-lock.json
+scripts/graphify*
+
+# Tests are intentionally excluded from architecture graphs. Build a test graph
+# separately by running the wrapper with --include-tests.
+/tests/
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.test.js
+**/*.test.jsx
+**/*.spec.ts
+**/*.spec.tsx
+**/*.spec.js
+**/*.spec.jsx
+
+# Generated and lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+next-env.d.ts
+types/database.ts
+**/*.d.ts
+**/*.generated.ts
+**/*.generated.tsx
+**/generated/**
+**/__generated__/**
+
+# Documentation: the graph describes code architecture; prose docs and their
+# dense cross-links drown the code signal.
 /docs/
 /*.md
 /.github/
 
-# Shell scripts: graphify's bash extractor embeds the absolute checkout path
+# Shell scripts: Graphify's bash extractor embeds the absolute checkout path
 # in file/entry node IDs, which breaks graph reproducibility across machines.
 # Remove this once fixed upstream (https://github.com/safishamsi/graphify).
 *.sh

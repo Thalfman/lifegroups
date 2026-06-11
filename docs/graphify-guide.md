@@ -1,176 +1,144 @@
-# Graphify: what it is and how to use it
+# Graphify architecture graphs
 
-A plain-English guide to the knowledge graph that lives in `graphify-out/`.
-No prior context assumed.
+Graphify is used here as an architecture map, not as a dump of every file in
+the repository. The repo wrapper stages a clean subset of source files into
+`.graphify/stage/<slice>/`, runs the pinned Graphify CLI, then writes named
+outputs under `graphify-out/<slice>/`.
 
-## What is this?
+The default full graph is also mirrored to `graphify-out/graph.json`,
+`graphify-out/graph.html`, `graphify-out/GRAPH_REPORT.md`, and
+`graphify-out/GRAPH_TREE.html` so `graphify query`, `graphify explain`, and
+older docs keep working.
 
-[Graphify](https://github.com/safishamsi/graphify) scans the codebase and
-builds a **knowledge graph** of it: every function, component, table, and doc
-becomes a _node_, and every "X calls Y" / "X imports Y" relationship becomes
-an _edge_. The result is a map of the whole app (~4,900 nodes, ~14,100 edges)
-that both humans and AI assistants can query instead of grepping through raw
-files.
+## Commands
 
-Everything it produces lives in `graphify-out/`:
+| Command                  | Output                                   | Use                                                                    |
+| ------------------------ | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run graph:clean`    | `.graphify/stage/` removed               | Clear transient staging only. Generated graph outputs are left intact. |
+| `npm run graph:full`     | `graphify-out/full/` plus default mirror | Full code architecture graph.                                          |
+| `npm run graph:tree`     | `GRAPH_TREE.html` for the full graph     | Regenerate the tree view from an existing graph.                       |
+| `npm run graph:plan`     | `graphify-out/plan/`                     | Plan, prospect, planning, and launch pipeline slice.                   |
+| `npm run graph:multiply` | `graphify-out/multiply/`                 | Multiplication readiness, capacity, launch, and leader pipeline slice. |
+| `npm run graph:care`     | `graphify-out/care/`                     | Care, shepherd care, follow-ups, notes, and over-shepherd slice.       |
+| `npm run graph:calendar` | `graphify-out/calendar/`                 | Calendar, attendance, events, and check-in slice.                      |
+| `npm run graph:report`   | `graphify-out/GRAPH_AUDIT_REPORT.md`     | Rebuild reports from existing graph outputs.                           |
 
-| File              | What it is                                                                                                              |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `graph.json`      | The raw graph data. Machine-readable; powers everything else. You never read this directly.                             |
-| `GRAPH_REPORT.md` | A human-readable summary: the most connected "god nodes", surprising connections, suggested questions. Good first read. |
-| `graph.html`      | 🔍 **The interactive graph** — every node and edge, explorable in a browser.                                            |
-| `GRAPH_TREE.html` | 🌳 A collapsible folder-tree view — like a file explorer, but each file expands into its symbols.                       |
-| `CALLFLOW.html`   | 🔀 Architecture flow diagrams (Mermaid) — how calls flow between the big parts of the system.                           |
-| `memory/`         | Saved question-and-answer results that get folded back into the graph (see "Memory loop" below).                        |
-| `cache/`          | Machine-local extraction cache. Gitignored — ignore it.                                                                 |
-
-All of these except `cache/` are **committed to the repo** and refreshed
-automatically (see "How it stays updated").
-
-## How to view the HTML graphs
-
-The three `.html` files are plain web pages — no server, no build step. They
-do load their chart libraries (vis-network, D3, Mermaid) from public CDNs, so
-you need an internet connection for them to render; on an offline machine the
-pages will open but stay blank.
-
-1. Pull the repo (`git pull`).
-2. Open the file in any browser:
-   - **macOS:** `open graphify-out/graph.html`
-   - **Windows:** `start graphify-out\graph.html` (or just double-click it in Explorer)
-   - **Linux:** `xdg-open graphify-out/graph.html`
-
-> **Note:** GitHub's website will _not_ render these pages — clicking
-> `graph.html` on github.com shows you source code, not the graph. You have to
-> open them from a local checkout (or download the raw file and open it).
-
-### What each page gives you
-
-- **`graph.html` — the interactive graph.** The whole codebase as a zoomable
-  node-and-edge map. Scroll to zoom, drag to pan, click a node to see its
-  details and connections. Colors are _communities_ — clusters of code that
-  belong together. (They have placeholder names like "Community 12" until an
-  LLM API key is configured; the structure is still meaningful.) This is the
-  biggest page (~5 MB) and the densest — give it a few seconds to settle.
-- **`GRAPH_TREE.html` — the tree.** Starts at the repo root; click folders to
-  expand them down to files and the functions/components inside. Each symbol
-  has an inspector showing what it calls. Best for "what's in this part of the
-  app?"
-- **`CALLFLOW.html` — the flow diagrams.** A page of architecture diagrams
-  showing how calls flow between major areas, with zoom/pan controls and call
-  tables. Best for "how does data move through the system?"
-
-## How to ask it questions (CLI)
-
-If you have the `graphify` CLI installed (see Setup below), you can query the
-graph from the repo root without opening anything:
+You can regenerate a slice tree with:
 
 ```bash
-# "How does X work?" — returns a small, focused subgraph
-graphify query "how does the care notes transparency toggle work"
-
-# "What is X?" — plain-language explanation of one node and its neighbors
-graphify explain "run-action"
-
-# "How are A and B connected?"
-graphify path "leader surface flag" "super admin console"
-
-# "What breaks if I change X?" — reverse-impact, run before touching shared code
-graphify affected "lib/admin/run-action.ts"
+npm run graph:tree -- care
 ```
 
-These are also the commands AI assistants (Claude, etc.) are nudged to use in
-this repo instead of grepping — same graph, same answers.
-
-### Memory loop
-
-When a session produces a non-obvious architecture answer, it can be saved
-back into the graph so the next question benefits:
+You can include tests for a one-off graph with:
 
 ```bash
-graphify save-result --question "…" --answer "…" --nodes <label> …
+node scripts/graphify.mjs build care --include-tests
 ```
 
-Entries land in `graphify-out/memory/` (committed) and are re-ingested on the
-next graph update.
+Tests are excluded by default because they dominated the previous graph and
+made feature architecture hard to inspect.
 
-## How it stays updated
+## What is excluded
 
-**You normally do nothing.** Two hooks keep everything fresh:
+The wrapper and `.graphifyignore` exclude:
 
-1. **The pre-commit hook** (`.husky/pre-commit`): every time anyone commits,
-   it re-scans the code (`graphify update .` — fast, AST-only, no API key
-   needed) and stages the refreshed `graph.json`, `GRAPH_REPORT.md`, and — when
-   the graph actually changed — the three HTML pages into that same commit. So
-   whatever is on `main` always describes the code on `main`.
-2. **A Claude Code session-start hook** installs the CLI if missing and
-   refreshes the graph in the background when an AI session begins.
+- `node_modules`, `.next`, `dist`, `build`, `out`, and `coverage`
+- `graphify-out`, `.graphify`, `graphify`, and Graphify skill/tooling files
+- temp folders and local agent/tooling folders
+- generated files, lock files, `next-env.d.ts`, and `types/database.ts`
+- docs and root markdown files
+- tests unless `--include-tests` is passed
 
-The hook deliberately **skips** the refresh (without blocking your commit) when:
+The report flags any excluded folder or generated file that still appears in a
+graph so regressions are visible.
 
-- the `graphify` CLI isn't installed, or its version doesn't match the one
-  pinned in `.graphify-version` (keeps the committed artifacts reproducible);
-- you're making a _partial_ commit (unstaged changes exist) — so the committed
-  graph never describes uncommitted work.
+## Community labels
 
-In those cases the graph simply catches up on the next full commit from a
-machine that has the right CLI.
+Manual community labels live in:
 
-### Manual refresh commands
+```text
+graphify/community-labels.json
+```
 
-| Command                 | When to use it                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `graphify update .`     | Re-scan after code changes (the pre-commit hook runs this for you).              |
-| `npm run graph:rebuild` | After a refactor that _deleted_ code — forces a full rebuild (`update --force`). |
-| `npm run graph:tree`    | Regenerate `GRAPH_TREE.html` only.                                               |
-| `npm run graph:flow`    | Regenerate `CALLFLOW.html` only.                                                 |
-| `npm run graph:health`  | Diagnostics: multigraph check + token-reduction benchmark.                       |
+Add overrides under the matching graph name:
 
-One quirk: this graph is over graphify's default 5,000-node limit for the
-HTML viz, so regenerating `graph.html` by hand needs the limit raised:
+```json
+{
+  "care": {
+    "13": "Shepherd Care Detail Data"
+  }
+}
+```
+
+Label precedence is:
+
+1. slice override, such as `care["13"]`
+2. `shared["13"]`
+3. inferred label based on dominant folders, files, hubs, and feature terms
+4. `Community N` fallback
+
+Community IDs can change after a graph rebuild, so use the report to confirm
+the ID before adding an override.
+
+## Viewing the graph
+
+Open `graphify-out/<slice>/graph.html` in a browser. It uses vis-network from
+a public CDN, so the HTML can open locally but needs network access for the
+library to load.
+
+The HTML avoids label clutter by default:
+
+- hub labels are shown
+- all labels are hidden unless `Show Labels` is enabled
+- selecting a community labels that community
+- selecting a node labels its neighbors
+- zooming in reveals more local labels
+
+Edges are also quiet by default:
+
+- edge labels are hidden unless `Edge Labels` is enabled
+- hovering an edge shows the relationship details
+- selecting an edge shows source, target, relation, context, confidence, and
+  source location in the side panel when Graphify exposed that data
+
+## Reports
+
+Each graph output gets `GRAPH_REPORT.md` with:
+
+- node count, edge count, and community count
+- top hubs
+- largest communities
+- inferred labels and label source
+- top files per community
+- suspected noise
+- whether excluded folders still appear
+
+`graphify-out/GRAPH_AUDIT_REPORT.md` summarizes all generated outputs.
+
+## Setup
+
+The pinned Graphify CLI version lives in `.graphify-version`. The wrapper first
+looks for `graphify` on PATH, then checks the Windows Python user Scripts
+location where `pip install --user graphifyy` places `graphify.exe`.
+
+Install the pinned version if needed:
 
 ```bash
-GRAPHIFY_VIZ_NODE_LIMIT=10000 graphify update . --force
+python -m pip install --user "graphifyy==$(cat .graphify-version)"
 ```
 
-(The pre-commit hook already sets this for you.)
+On Windows PowerShell:
 
-## Setup (one-time, per machine)
-
-The CLI is a Python tool. The pinned version lives in `.graphify-version`
-(currently `0.8.36`) — the hooks refuse to write graph artifacts with any
-other version, so install exactly that:
-
-```bash
-uv tool install "graphifyy==$(cat .graphify-version)"
-# or, without uv:
-pipx install "graphifyy==$(cat .graphify-version)"
+```powershell
+python -m pip install --user "graphifyy==$(Get-Content .graphify-version)"
 ```
 
-(The package is `graphifyy` — two y's — but the command is `graphify`.)
+## Limits
 
-Verify: `graphify --version` should print the pinned version.
+Feature slicing is file-based plus local import closure. It gives smaller,
+more readable architecture graphs, but it does not prove runtime reachability.
+If a feature depends on a dynamic import or a string-built path, add a manual
+seed pattern in `scripts/graphify.mjs` or run the full graph.
 
-## Troubleshooting
-
-- **"graphify on PATH is not the version in .graphify-version; skipping graph
-  refresh" at commit time** — your installed CLI doesn't match the pin.
-  Reinstall with the pinned version (above). Your commit still went through;
-  only the graph refresh was skipped.
-- **"unstaged or untracked files present; skipping graph refresh"** — you made
-  a partial commit. Expected; the graph catches up on the next clean commit.
-- **Merge conflict on `graph.json`** — a custom merge driver usually handles
-  this. If you hit one on a machine _without_ graphify installed: take either
-  side, finish the merge, and let the next pre-commit regenerate it.
-- **`graph.html` feels slow in the browser** — it's a ~6,600-node force layout;
-  give it a moment to settle, and prefer `GRAPH_TREE.html` for quick lookups.
-- **Community names are "Community N"** — expected until an LLM API key is
-  available; run `graphify label .` once one is configured.
-
-## What's deliberately _not_ in the graph
-
-Corpus scope is controlled by `.graphifyignore` — tooling directories,
-secrets, prose documentation (`docs/`, root markdown, `.github/`), and
-(until fixed upstream) `*.sh` scripts are excluded, so the graph describes
-the code architecture only. The `graphify-out/memory/` loop still re-ingests
-saved answers. See the comments in that file.
+The full graph is still large. Prefer `graph:care`, `graph:plan`,
+`graph:multiply`, and `graph:calendar` for day-to-day architecture review.
