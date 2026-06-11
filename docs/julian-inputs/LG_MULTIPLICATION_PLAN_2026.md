@@ -29,7 +29,7 @@ The source lists two timeline headers:
 > followed by a flat list of leaders. The underlying document has no table,
 > tabs, or columns, so the source does **not** unambiguously assign each leader
 > below to a timeline bucket. The groupings reproduced below are by **gender
-> category** and **age bracket** (which *are* recoverable from document order);
+> category** and **age bracket** (which _are_ recoverable from document order);
 > the 2026-vs-2027 split is **not** and must be confirmed with Julian.
 
 ## Reading the entries (interpretation)
@@ -47,8 +47,8 @@ Names, counts, and notes below are verbatim from the source.
 
 ## Men's (5 groups)
 
-- **20's – 30's** — *(none listed)*
-- **30's – 40's** — *(none listed)*
+- **20's – 30's** — _(none listed)_
+- **30's – 40's** — _(none listed)_
 - **50's – 60's**
   - George Kelly (9)
 - **60's – 70's**
@@ -60,7 +60,7 @@ Names, counts, and notes below are verbatim from the source.
 
 ## Women's (6 groups)
 
-- **20's – 30's** — *(none listed)*
+- **20's – 30's** — _(none listed)_
 - **30's – 40's**
   - Stephanie Hichox (15) (?)
 - **50's – 60's**
@@ -70,7 +70,7 @@ Names, counts, and notes below are verbatim from the source.
   - Gail Blair (4)
   - Donna Lawrence (13)
   - Judi Tripp (9)
-- **Multi-generational** — *(none listed)*
+- **Multi-generational** — _(none listed)_
 - **Spanish speaking**
   - Sandra Lea (?)
 
@@ -81,7 +81,7 @@ Names, counts, and notes below are verbatim from the source.
 
 - **Young professionals**
   - Keith and Joy Krispin (17)
-  - Mike and Mary Jo Beasley (?) — *(on the same source line as the Krispins)*
+  - Mike and Mary Jo Beasley (?) — _(on the same source line as the Krispins)_
   - Caleb and Kate Senyshyn (8)
 - **Young families**
   - Ben and Gracie Bertsche (12)
@@ -92,7 +92,7 @@ Names, counts, and notes below are verbatim from the source.
   - Andre and Lindsey Patrick (12) (Marshalls)
 - **Families with young professional kids**
   - Dennis Rens (15) (?)
-  - *Note from source:* "Might be an option to launch a group from 'scratch'.
+  - _Note from source:_ "Might be an option to launch a group from 'scratch'.
     The following couples below are interested in joining this type of group:"
     - Karl and Lori Asen
     - Mike and MaryJo Beasley (?)
@@ -113,7 +113,7 @@ Names, counts, and notes below are verbatim from the source.
 
 ## How this maps to Launch Planning
 
-This is the real-world data behind [`../LAUNCH_PLANNING_PLAN.md`](../archive/LAUNCH_PLANNING_PLAN.md):
+This is the real-world data behind `LAUNCH_PLANNING_PLAN.md` (retired; in git history):
 
 - The **multiplication criteria** above are exactly the launch triggers Julian
   named in answer 10 (12+ members, 3+ years, need for a similar-stage group).

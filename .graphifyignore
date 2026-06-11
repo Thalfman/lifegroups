@@ -17,8 +17,14 @@ supabase/dev/link_super_admin.sql
 .husky/
 .claude/
 .agents/
-.understand-anything/
 skills-lock.json
+
+# Documentation: the graph describes the code architecture; prose docs and
+# their dense cross-links drown the code signal (root-anchored so the
+# graphify-out/memory/ loop keeps re-ingesting saved answers).
+/docs/
+/*.md
+/.github/
 
 # Shell scripts: graphify's bash extractor embeds the absolute checkout path
 # in file/entry node IDs, which breaks graph reproducibility across machines.

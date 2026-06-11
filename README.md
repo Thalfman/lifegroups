@@ -87,9 +87,8 @@ multiplication by type/cell (ADR 0019/0021). Delivered via PRD #371 and slices
   by PRD #371, kept as the historical record.
 - [`docs/adr/0004-systems-conversation-architecture.md`](./docs/adr/0004-systems-conversation-architecture.md)
   — the architecture decisions mapped to Q1–Q12 (pre-pivot).
-- [`docs/README.md`](./docs/README.md) — the documentation index (what's live, what's archived).
-- [`docs/archive/`](./docs/archive/README.md) — everything off the North-Star path.
-  History, not current truth.
+- [`docs/README.md`](./docs/README.md) — the documentation index. Everything off
+  the North-Star path has been retired to git history (`git log -- docs/archive`).
 
 ## The oversight ladder (role model)
 
@@ -227,8 +226,9 @@ Two clarifications:
 5. Visit `/login` and sign in with the email + password you set.
 
 Real users (e.g. Julian as `ministry_admin`, over-shepherds, additional leaders)
-are invited from `/admin/super-admin` once a `super_admin` is signed in. See
-[`docs/archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md`](./docs/archive/SUPER_ADMIN_INVITE_USER_WORKFLOW.md).
+are invited from `/admin/super-admin` once a `super_admin` is signed in. (The
+original walkthrough, `SUPER_ADMIN_INVITE_USER_WORKFLOW.md`, is retired; in git
+history.)
 
 ## Supabase notes
 
@@ -247,6 +247,5 @@ oversight, and emergency access.
 
 ## Implementation history
 
-Historical phase specs and verification logs have been moved to
-[`docs/archive/`](./docs/archive/README.md) so this README stays focused on
-current state. See the archive README for the full listing.
+Historical phase specs and verification logs have been retired to git history
+(`git log -- docs/archive`) so this README stays focused on current state.

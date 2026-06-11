@@ -53,7 +53,7 @@ not drifting, not half-decided:
 - **External / public / communications-director surfaces** → **out of scope** (EXT.1).
 - **Weekly check-in as the headline** → **demoted.** Check-ins now feed only the Health
   Pulse; they are not the landing surface (the old "This week" framing; see
-  [`archive/PRODUCT_SURFACE_AUDIT_2026-05.md`](./archive/PRODUCT_SURFACE_AUDIT_2026-05.md)).
+  `PRODUCT_SURFACE_AUDIT_2026-05.md`, retired; in git history).
 
 The original concept still **lingers in the code, schema, and copy** (dormant routes, a
 deprecated role, half-finished renames). Those concrete artifacts and their suggested
@@ -160,7 +160,7 @@ critical (≈60% in a group today); still figuring out how to capture church num
 **Status:** 🟡 **Shipped, but being re-framed.** LP.1 capacity/demand model +
 church-attendance snapshots ship (migration `20260528140000`). The reliable
 _capture_ of church attendance is a known operational gap, not a code gap. Detail
-now in [`archive/LAUNCH_PLANNING_PLAN.md`](./archive/LAUNCH_PLANNING_PLAN.md).
+now in `LAUNCH_PLANNING_PLAN.md` (retired; in git history).
 ➡️ **Active plan:** the capacity story is being re-framed into the integrated
 workspace in [`plans/CAPACITY_AND_MULTIPLICATION_PRD.md`](./plans/CAPACITY_AND_MULTIPLICATION_PRD.md)
 — issue-slicing for Q9–Q11 should follow that plan, not treat job 2 as closed.
@@ -238,4 +238,4 @@ pipeline, so it is being unified rather than treated as closed.
    the Google Doc **by adoption, not by decree**, and the 2026/2027 split becomes in-app
    data Julian sets per group, not a paper decision
    ([ADR 0006](./adr/0006-multiplication-planner-supersedes-google-doc.md); build spec
-   [`archive/MULTIPLICATION_PLANNER.md`](./archive/MULTIPLICATION_PLANNER.md)).
+   `MULTIPLICATION_PLANNER.md`, retired; in git history).
