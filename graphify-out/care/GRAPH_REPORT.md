@@ -1,15 +1,22 @@
 # Architecture Graph Report - care
 
-Generated: 2026-06-11T15:08:15.574Z
+Generated: 2026-06-11T16:14:26.428Z
 
 ## Summary
 - Nodes: 1704
 - Edges: 3573
 - Communities: 91
 - Staged files: 213
+- Architecture overview nodes: 13
+- Architecture overview edges: 59
+- Architecture overview default visible edges: 19
+- Community overview nodes: 91
+- Community overview edges: 502
+- Community overview default visible edges: 98
 
 ## Exclusion Audit
 - OK: node_modules: 0
+- OK: app/a11y-harness: 0
 - OK: .next: 0
 - OK: dist/build/out: 0
 - OK: coverage: 0
@@ -166,6 +173,6 @@ Generated: 2026-06-11T15:08:15.574Z
 - lib/admin/validation/shared.ts (1)
 
 ## Label And Edge Controls
-- Node labels are hidden by default except hubs.
+- Raw graph node labels are hidden by default except hubs.
 - Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html.
 - Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types.

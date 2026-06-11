@@ -3,46 +3,100 @@
 Graphify is used here as an architecture map, not as a dump of every file in
 the repository. The repo wrapper stages a clean subset of source files into
 `.graphify/stage/<slice>/`, runs the pinned Graphify CLI, then writes named
-outputs under `graphify-out/<slice>/`.
+outputs under `graphify-out/`.
 
-The default full graph is also mirrored to `graphify-out/graph.json`,
-`graphify-out/graph.html`, `graphify-out/GRAPH_REPORT.md`, and
-`graphify-out/GRAPH_TREE.html` so `graphify query`, `graphify explain`, and
-older docs keep working.
+The default view is aggregate-first:
+
+- `graphify-out/graph.html` mirrors `architecture-overview.html`
+- `architecture-overview.html` collapses the raw graph to product domains
+- `community-overview.html` collapses detected Graphify communities
+- `raw-full-graph.html` keeps the complete raw graph for deep inspection only
+
+The raw `graphify-out/graph.json` is still preserved so `graphify query` and
+`graphify explain` can use the full graph data.
 
 ## Commands
 
 | Command                  | Output                                   | Use                                                                    |
 | ------------------------ | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `npm run graph:clean`    | `.graphify/stage/` removed               | Clear transient staging only. Generated graph outputs are left intact. |
-| `npm run graph:full`     | `graphify-out/full/` plus default mirror | Full code architecture graph.                                          |
+| `npm run graph:full`     | `graphify-out/full/` plus default mirror | Rebuild raw full graph and aggregate overview files.                   |
 | `npm run graph:tree`     | `GRAPH_TREE.html` for the full graph     | Regenerate the tree view from an existing graph.                       |
 | `npm run graph:plan`     | `graphify-out/plan/`                     | Plan, prospect, planning, and launch pipeline slice.                   |
 | `npm run graph:multiply` | `graphify-out/multiply/`                 | Multiplication readiness, capacity, launch, and leader pipeline slice. |
 | `npm run graph:care`     | `graphify-out/care/`                     | Care, shepherd care, follow-ups, notes, and over-shepherd slice.       |
 | `npm run graph:calendar` | `graphify-out/calendar/`                 | Calendar, attendance, events, and check-in slice.                      |
-| `npm run graph:report`   | `graphify-out/GRAPH_AUDIT_REPORT.md`     | Rebuild reports from existing graph outputs.                           |
+| `npm run graph:report`   | `graphify-out/GRAPH_AUDIT_REPORT.md`     | Rebuild reports and derived HTML from existing graph JSON.             |
 
-You can regenerate a slice tree with:
+## Architecture views
+
+### `architecture-overview.html`
+
+This is the default architecture map. It collapses raw nodes into these
+domains:
+
+- Auth
+- Groups
+- People
+- Plan
+- Multiply
+- Care
+- Calendar
+- Settings
+- Super Admin
+- Supabase/Data
+- Shared UI
+- App Shell
+- Leader Workspace
+
+Node size represents total symbols in the domain. Edge width represents the
+number of raw relationships between domains. Labels are visible by default.
+
+Weak edges are hidden by default so the map opens readable. Enable `Weak Edges`
+to reveal all collapsed domain relationships.
+
+### `community-overview.html`
+
+This collapses each detected Graphify community into one node. The node label
+uses the semantic community name. Original community IDs remain in tooltips and
+the selection panel.
+
+Weak cross-community edges are hidden by default. Enable `Weak Edges` to inspect
+all cross-community links.
+
+### `raw-full-graph.html`
+
+This is the complete raw Graphify graph. It is intentionally labeled "Raw Full
+Graph" and is for deep inspection only, not for architecture overview.
+
+## Domain drilldowns
+
+Domain commands build smaller raw graphs under `graphify-out/domain-<name>/`.
+They stage same-domain files plus immediate shared/auth/data dependencies.
 
 ```bash
-npm run graph:tree -- care
+npm run domain:auth
+npm run domain:groups
+npm run domain:people
+npm run domain:plan
+npm run domain:multiply
+npm run domain:care
+npm run domain:calendar
+npm run domain:settings
+npm run domain:super-admin
+npm run domain:supabase
+npm run domain:shared-ui
 ```
 
-You can include tests for a one-off graph with:
-
-```bash
-node scripts/graphify.mjs build care --include-tests
-```
-
-Tests are excluded by default because they dominated the previous graph and
-made feature architecture hard to inspect.
+The architecture overview details panel also shows the matching drilldown
+command for each domain.
 
 ## What is excluded
 
 The wrapper and `.graphifyignore` exclude:
 
 - `node_modules`, `.next`, `dist`, `build`, `out`, and `coverage`
+- `app/a11y-harness`
 - `graphify-out`, `.graphify`, `graphify`, and Graphify skill/tooling files
 - temp folders and local agent/tooling folders
 - generated files, lock files, `next-env.d.ts`, and `types/database.ts`
@@ -80,32 +134,12 @@ Label precedence is:
 Community IDs can change after a graph rebuild, so use the report to confirm
 the ID before adding an override.
 
-## Viewing the graph
-
-Open `graphify-out/<slice>/graph.html` in a browser. It uses vis-network from
-a public CDN, so the HTML can open locally but needs network access for the
-library to load.
-
-The HTML avoids label clutter by default:
-
-- hub labels are shown
-- all labels are hidden unless `Show Labels` is enabled
-- selecting a community labels that community
-- selecting a node labels its neighbors
-- zooming in reveals more local labels
-
-Edges are also quiet by default:
-
-- edge labels are hidden unless `Edge Labels` is enabled
-- hovering an edge shows the relationship details
-- selecting an edge shows source, target, relation, context, confidence, and
-  source location in the side panel when Graphify exposed that data
-
 ## Reports
 
 Each graph output gets `GRAPH_REPORT.md` with:
 
-- node count, edge count, and community count
+- raw node count, edge count, and community count
+- aggregate view counts when applicable
 - top hubs
 - largest communities
 - inferred labels and label source
@@ -113,7 +147,8 @@ Each graph output gets `GRAPH_REPORT.md` with:
 - suspected noise
 - whether excluded folders still appear
 
-`graphify-out/GRAPH_AUDIT_REPORT.md` summarizes all generated outputs.
+`graphify-out/GRAPH_AUDIT_REPORT.md` summarizes all generated outputs,
+including default visible edge counts for aggregate views.
 
 ## Setup
 
@@ -135,10 +170,11 @@ python -m pip install --user "graphifyy==$(Get-Content .graphify-version)"
 
 ## Limits
 
-Feature slicing is file-based plus local import closure. It gives smaller,
-more readable architecture graphs, but it does not prove runtime reachability.
+Feature and domain slicing are file-based plus limited import closure. They are
+useful for architecture inspection, but they do not prove runtime reachability.
 If a feature depends on a dynamic import or a string-built path, add a manual
 seed pattern in `scripts/graphify.mjs` or run the full graph.
 
-The full graph is still large. Prefer `graph:care`, `graph:plan`,
-`graph:multiply`, and `graph:calendar` for day-to-day architecture review.
+The raw full graph is still large by design. Start with
+`architecture-overview.html`, then use `community-overview.html`, feature
+graphs, or `domain:*` drilldowns before opening `raw-full-graph.html`.
