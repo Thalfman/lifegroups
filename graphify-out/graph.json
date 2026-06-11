@@ -4,8 +4,8 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3409,
-    "raw_edge_count": 7871,
+    "raw_node_count": 3414,
+    "raw_edge_count": 7877,
     "raw_source_file_count": 477,
     "selected_file_count": 480,
     "preserved_file_node_count": 122,
@@ -13,7 +13,7 @@
     "grouped_file_count": 355,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T22:39:43.289Z"
+    "generated_at": "2026-06-11T22:42:27.721Z"
   },
   "nodes": [
     {
@@ -3560,13 +3560,13 @@
     {
       "id": "file_file_lib_auth_session_ts_1falso",
       "label": "Auth Session",
-      "title": "lib/auth/session.ts\nAuth/Session Boundary / Auth\n1 file, 22 symbols",
+      "title": "lib/auth/session.ts\nAuth/Session Boundary / Auth\n1 file, 27 symbols",
       "source_file": "lib/auth/session.ts",
       "source_files": [
         "lib/auth/session.ts"
       ],
       "file_count": 1,
-      "symbol_count": 22,
+      "symbol_count": 27,
       "grouped": false,
       "category": "auth_session_boundary",
       "category_label": "Auth/Session Boundary",
@@ -3577,14 +3577,14 @@
       "color": "#EDC948",
       "file_type": "code",
       "raw_inbound_weight": 122,
-      "raw_outbound_weight": 10,
-      "degree": 132,
-      "size": 30.81
+      "raw_outbound_weight": 9,
+      "degree": 131,
+      "size": 30.74
     },
     {
       "id": "bucket_bucket_auth_auth_session_boundary_1jxy8z",
       "label": "Auth Auth/Session Boundary",
-      "title": "Auth Auth/Session Boundary bucket\nAuth/Session Boundary / Auth\n20 files, 61 symbols\napp/login/actions.ts\napp/reset-password/actions.ts\napp/forgot-password/actions.ts\napp/welcome/actions.ts\nlib/auth/leader-surface-flag.ts\nlib/auth/hub-tiles.ts\napp/auth/confirm/route.ts\napp/login/next-path.ts\napp/login/login-form.tsx\napp/reset-password/page.tsx\napp/unauthorized/page.tsx\napp/welcome/page.tsx\n...8 more",
+      "title": "Auth Auth/Session Boundary bucket\nAuth/Session Boundary / Auth\n20 files, 61 symbols\napp/login/actions.ts\napp/reset-password/actions.ts\napp/forgot-password/actions.ts\napp/welcome/actions.ts\nlib/auth/hub-tiles.ts\nlib/auth/leader-surface-flag.ts\napp/auth/confirm/route.ts\napp/login/next-path.ts\napp/login/login-form.tsx\napp/reset-password/page.tsx\napp/unauthorized/page.tsx\napp/welcome/page.tsx\n...8 more",
       "source_file": "module/auth/auth_session_boundary",
       "source_files": [
         "app/auth/confirm/route.ts",
@@ -3619,10 +3619,10 @@
       "feature_label": "Auth",
       "color": "#EDC948",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 43,
+      "raw_inbound_weight": 42,
       "raw_outbound_weight": 106,
-      "degree": 91.5,
-      "size": 31.22
+      "degree": 90.5,
+      "size": 31.14
     },
     {
       "id": "file_file_lib_auth_roles_ts_8mdnvc",
@@ -21021,16 +21021,16 @@
     {
       "source": "file_file_lib_auth_session_ts_1falso",
       "target": "bucket_bucket_auth_auth_session_boundary_1jxy8z",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 2,
+        "calls": 1,
         "imports": 1,
         "imports_from": 1
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 3,
       "examples": [
         "lib/auth/session.ts -> lib/auth/leader-surface-flag.ts"
       ]
@@ -22850,5 +22850,5 @@
       ]
     }
   ],
-  "built_at_commit": "d4e6be96c9ee5d3eb974c001eac612b4c2b01361"
+  "built_at_commit": "6eec8b461654710783ec9d506bfc754972d6afcd"
 }

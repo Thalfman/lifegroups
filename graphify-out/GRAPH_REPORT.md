@@ -2,7 +2,7 @@
 
 ## Summary
 - Clean graph: 180 nodes · 1148 edges
-- Raw extraction collapsed: 3409 symbol nodes · 7871 symbol edges · 477 source files
+- Raw extraction collapsed: 3414 symbol nodes · 7877 symbol edges · 477 source files
 - File nodes preserved: 122
 - Module buckets: 58 buckets containing 355 lower-degree files
 - Self-edges removed after collapse.
@@ -45,14 +45,14 @@
 - Admin Run Action (155) - RPC/Write Boundary, Core
 - Core Server Action (143.95) - Server Action, Core
 - Supabase Server (133) - Supabase Read Adapter, Core
-- Auth Session (132) - Auth/Session Boundary, Auth
+- Auth Session (131) - Auth/Session Boundary, Auth
 - Admin Validation Shared (130.05) - Validation, Core
 - Plan Feature Component (129.3) - Feature Component, Plan
 - Shared Rpc (123) - RPC/Write Boundary, Core
 - People Feature Component (107.35) - Feature Component, People
 - Admin Metrics (107) - Domain Module, Core
 - Enums Types (99.05) - Type/Vocabulary, Shared
-- Auth Auth/Session Boundary (91.5) - Auth/Session Boundary, Auth
+- Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
 - Admin Super Admin Console (83) - Feature Component, Core
 - Supabase Read Core (81) - Supabase Read Adapter, Core
 - Dashboard Queries (80.45) - Domain Module, Home

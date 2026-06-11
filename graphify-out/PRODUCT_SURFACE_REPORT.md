@@ -1,11 +1,11 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-11T22:39:43.313Z
+Generated: 2026-06-11T22:42:27.745Z
 
 ## Summary
 - Scope: product
 - Staged files: 480
-- Raw extraction: 3409 symbol nodes, 7871 symbol edges, 477 source files
+- Raw extraction: 3414 symbol nodes, 7877 symbol edges, 477 source files
 - Clean graph: 180 nodes, 1148 edges
 - Preserved file nodes: 122
 - Grouped lower-degree files: 355 files into 58 module buckets
@@ -76,9 +76,9 @@ Generated: 2026-06-11T22:39:43.313Z
 - Admin Run Action (155) - RPC/Write Boundary, Core
 - Core Server Action (143.95) - Server Action, Core
 - Supabase Server (133) - Supabase Read Adapter, Core
-- Auth Session (132) - Auth/Session Boundary, Auth
+- Auth Session (131) - Auth/Session Boundary, Auth
 - Shared Rpc (123) - RPC/Write Boundary, Core
-- Auth Auth/Session Boundary (91.5) - Auth/Session Boundary, Auth
+- Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
 - Supabase Read Core (81) - Supabase Read Adapter, Core
 - Care Server Action (56) - Server Action, Care
 - Supabase Reads Seam (56) - Supabase Read Adapter, Core
@@ -189,7 +189,7 @@ Generated: 2026-06-11T22:39:43.313Z
 - Care Feature Component: 37 files, 107 symbols, degree 200.75
 - Core Domain Module: 30 files, 165 symbols, degree 194.1
 - Plan Feature Component: 20 files, 96 symbols, degree 129.3
-- Auth Auth/Session Boundary: 20 files, 61 symbols, degree 91.5
+- Auth Auth/Session Boundary: 20 files, 61 symbols, degree 90.5
 - Shared Shared UI Primitive: 18 files, 40 symbols, degree 33.3
 - People Feature Component: 16 files, 73 symbols, degree 107.35
 - Core Server Action: 15 files, 75 symbols, degree 143.95
