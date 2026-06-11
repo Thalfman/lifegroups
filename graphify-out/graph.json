@@ -4,16 +4,16 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3311,
-    "raw_edge_count": 7611,
-    "raw_source_file_count": 478,
-    "selected_file_count": 481,
+    "raw_node_count": 3380,
+    "raw_edge_count": 7741,
+    "raw_source_file_count": 485,
+    "selected_file_count": 488,
     "preserved_file_node_count": 122,
     "grouped_bucket_count": 59,
-    "grouped_file_count": 356,
+    "grouped_file_count": 363,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-11T23:35:49.126Z"
+    "generated_at": "2026-06-11T23:36:52.050Z"
   },
   "nodes": [
     {
@@ -286,10 +286,10 @@
       "feature_label": "Groups",
       "color": "#4E79A7",
       "file_type": "code",
-      "raw_inbound_weight": 8,
+      "raw_inbound_weight": 9,
       "raw_outbound_weight": 42,
-      "degree": 44.1,
-      "size": 23.29
+      "degree": 45.1,
+      "size": 23.41
     },
     {
       "id": "bucket_bucket_groups_route_page_layout_1ilm66",
@@ -682,14 +682,15 @@
     {
       "id": "bucket_bucket_groups_server_action_yojrb7",
       "label": "Groups Server Action",
-      "title": "Groups Server Action bucket\nServer Action / Groups\n2 files, 18 symbols\napp/(protected)/admin/groups/actions.ts\napp/(protected)/admin/group-health/grade-actions.ts",
+      "title": "Groups Server Action bucket\nServer Action / Groups\n3 files, 25 symbols\napp/(protected)/admin/group-health/actions.ts\napp/(protected)/admin/groups/actions.ts\napp/(protected)/admin/group-health/grade-actions.ts",
       "source_file": "module/groups/server_action",
       "source_files": [
+        "app/(protected)/admin/group-health/actions.ts",
         "app/(protected)/admin/group-health/grade-actions.ts",
         "app/(protected)/admin/groups/actions.ts"
       ],
-      "file_count": 2,
-      "symbol_count": 18,
+      "file_count": 3,
+      "symbol_count": 25,
       "grouped": true,
       "category": "server_action",
       "category_label": "Server Action",
@@ -699,34 +700,10 @@
       "feature_label": "Groups",
       "color": "#F28E2B",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 5,
-      "raw_outbound_weight": 18,
-      "degree": 23,
-      "size": 21.02
-    },
-    {
-      "id": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "label": "Admin Group Health Actions",
-      "title": "app/(protected)/admin/group-health/actions.ts\nServer Action / Groups\n1 file, 7 symbols",
-      "source_file": "app/(protected)/admin/group-health/actions.ts",
-      "source_files": [
-        "app/(protected)/admin/group-health/actions.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 7,
-      "grouped": false,
-      "category": "server_action",
-      "category_label": "Server Action",
-      "community": 1,
-      "community_name": "Server Action",
-      "feature": "groups",
-      "feature_label": "Groups",
-      "color": "#F28E2B",
-      "file_type": "code",
-      "raw_inbound_weight": 2,
-      "raw_outbound_weight": 17,
-      "degree": 19,
-      "size": 19.76
+      "raw_inbound_weight": 7,
+      "raw_outbound_weight": 35,
+      "degree": 42,
+      "size": 24.05
     },
     {
       "id": "bucket_bucket_people_server_action_ei7ga4",
@@ -908,6 +885,30 @@
       "size": 25.83
     },
     {
+      "id": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
+      "label": "Admin Admin Master Calendar Shell",
+      "title": "components/admin/admin-master-calendar-shell.tsx\nFeature Component / Calendar\n1 file, 14 symbols",
+      "source_file": "components/admin/admin-master-calendar-shell.tsx",
+      "source_files": [
+        "components/admin/admin-master-calendar-shell.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 14,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "calendar",
+      "feature_label": "Calendar",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 1,
+      "raw_outbound_weight": 28,
+      "degree": 28,
+      "size": 21.2
+    },
+    {
       "id": "file_file_components_admin_admin_master_calendar_grid_tsx_i4r4kv",
       "label": "Admin Admin Master Calendar Grid",
       "title": "components/admin/admin-master-calendar-grid.tsx\nFeature Component / Calendar\n1 file, 5 symbols",
@@ -930,30 +931,6 @@
       "raw_outbound_weight": 23,
       "degree": 24,
       "size": 20.59
-    },
-    {
-      "id": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
-      "label": "Admin Admin Master Calendar Shell",
-      "title": "components/admin/admin-master-calendar-shell.tsx\nFeature Component / Calendar\n1 file, 14 symbols",
-      "source_file": "components/admin/admin-master-calendar-shell.tsx",
-      "source_files": [
-        "components/admin/admin-master-calendar-shell.tsx"
-      ],
-      "file_count": 1,
-      "symbol_count": 14,
-      "grouped": false,
-      "category": "feature_component",
-      "category_label": "Feature Component",
-      "community": 2,
-      "community_name": "Feature Component",
-      "feature": "calendar",
-      "feature_label": "Calendar",
-      "color": "#59A14F",
-      "file_type": "code",
-      "raw_inbound_weight": 1,
-      "raw_outbound_weight": 18,
-      "degree": 18,
-      "size": 19.58
     },
     {
       "id": "bucket_bucket_care_feature_component_1sfwud",
@@ -1040,6 +1017,30 @@
       "size": 22.04
     },
     {
+      "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
+      "label": "Admin Follow Ups Follow Ups Shell",
+      "title": "components/admin/follow-ups/follow-ups-shell.tsx\nFeature Component / Care\n1 file, 5 symbols",
+      "source_file": "components/admin/follow-ups/follow-ups-shell.tsx",
+      "source_files": [
+        "components/admin/follow-ups/follow-ups-shell.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 5,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "care",
+      "feature_label": "Care",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 1,
+      "raw_outbound_weight": 28,
+      "degree": 26.05,
+      "size": 20.91
+    },
+    {
       "id": "file_file_components_admin_care_care_data_ts_1e69ml",
       "label": "Admin Care Care Data",
       "title": "components/admin/care/care-data.ts\nFeature Component / Care\n1 file, 7 symbols",
@@ -1086,30 +1087,6 @@
       "raw_outbound_weight": 14,
       "degree": 21,
       "size": 20.1
-    },
-    {
-      "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
-      "label": "Admin Follow Ups Follow Ups Shell",
-      "title": "components/admin/follow-ups/follow-ups-shell.tsx\nFeature Component / Care\n1 file, 5 symbols",
-      "source_file": "components/admin/follow-ups/follow-ups-shell.tsx",
-      "source_files": [
-        "components/admin/follow-ups/follow-ups-shell.tsx"
-      ],
-      "file_count": 1,
-      "symbol_count": 5,
-      "grouped": false,
-      "category": "feature_component",
-      "category_label": "Feature Component",
-      "community": 2,
-      "community_name": "Feature Component",
-      "feature": "care",
-      "feature_label": "Care",
-      "color": "#59A14F",
-      "file_type": "code",
-      "raw_inbound_weight": 1,
-      "raw_outbound_weight": 19,
-      "degree": 17.05,
-      "size": 19.4
     },
     {
       "id": "bucket_bucket_core_feature_component_lncng4",
@@ -1173,9 +1150,9 @@
       "feature_label": "Core",
       "color": "#59A14F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 102,
+      "raw_inbound_weight": 103,
       "raw_outbound_weight": 271,
-      "degree": 261.85,
+      "degree": 262.85,
       "size": 38
     },
     {
@@ -1222,9 +1199,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 68,
-      "degree": 70,
-      "size": 25.97
+      "raw_outbound_weight": 82,
+      "degree": 84,
+      "size": 27.21
     },
     {
       "id": "file_file_components_admin_forms_field_styles_ts_88z2jm",
@@ -1270,9 +1247,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 31,
-      "raw_outbound_weight": 5,
-      "degree": 33.4,
-      "size": 21.96
+      "raw_outbound_weight": 9,
+      "degree": 37.4,
+      "size": 22.48
     },
     {
       "id": "file_file_components_admin_forms_confirm_action_button_tsx_nlk7nv",
@@ -1318,9 +1295,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 12,
-      "raw_outbound_weight": 63,
-      "degree": 75,
-      "size": 26.42
+      "raw_outbound_weight": 62,
+      "degree": 74,
+      "size": 26.33
     },
     {
       "id": "file_file_components_admin_groups_directory_tsx_qivs9f",
@@ -1815,9 +1792,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 20,
-      "degree": 22,
-      "size": 20.27
+      "raw_outbound_weight": 24,
+      "degree": 26,
+      "size": 20.9
     },
     {
       "id": "bucket_bucket_settings_feature_component_dodmi2",
@@ -1911,10 +1888,10 @@
       "feature_label": "Calendar",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 75,
+      "raw_inbound_weight": 78,
       "raw_outbound_weight": 7,
-      "degree": 76.45,
-      "size": 26.55
+      "degree": 79.45,
+      "size": 26.82
     },
     {
       "id": "file_file_lib_admin_check_ins_ts_wni7fr",
@@ -1959,10 +1936,10 @@
       "feature_label": "Calendar",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 32,
+      "raw_inbound_weight": 36,
       "raw_outbound_weight": 3,
-      "degree": 34,
-      "size": 22.04
+      "degree": 38,
+      "size": 22.55
     },
     {
       "id": "file_file_lib_admin_check_in_due_ts_m796ct",
@@ -2013,6 +1990,30 @@
       "size": 21.17
     },
     {
+      "id": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "label": "Admin Master Calendar View",
+      "title": "lib/admin/master-calendar-view.ts\nDomain Module / Calendar\n1 file, 21 symbols",
+      "source_file": "lib/admin/master-calendar-view.ts",
+      "source_files": [
+        "lib/admin/master-calendar-view.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 21,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "calendar",
+      "feature_label": "Calendar",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 11,
+      "raw_outbound_weight": 10,
+      "degree": 20,
+      "size": 19.93
+    },
+    {
       "id": "bucket_bucket_calendar_domain_module_1kxzzo",
       "label": "Calendar Domain Module",
       "title": "Calendar Domain Module bucket\nDomain Module / Calendar\n1 file, 5 symbols\nlib/admin/master-calendar-label.ts",
@@ -2039,12 +2040,13 @@
     {
       "id": "bucket_bucket_care_domain_module_1ue8s8",
       "label": "Care Domain Module",
-      "title": "Care Domain Module bucket\nDomain Module / Care\n9 files, 59 symbols\nlib/dashboard/shepherd-care-summary.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/care-note-feed.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/admin/shepherd-care-attention.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
+      "title": "Care Domain Module bucket\nDomain Module / Care\n10 files, 79 symbols\nlib/dashboard/shepherd-care-summary.ts\nlib/admin/shepherd-care-cadence.ts\nlib/admin/care-note-feed.ts\nlib/admin/follow-up-queue.ts\nlib/admin/shepherd-care-attention.ts\nlib/admin/shepherd-care-follow-ups.ts\nlib/over-shepherd/read-models.ts\nlib/over-shepherd/coverage.ts\napp/(protected)/over-shepherd/loading.tsx\nlib/admin/care-note-visibility.ts",
       "source_file": "module/care/domain_module",
       "source_files": [
         "app/(protected)/over-shepherd/loading.tsx",
         "lib/admin/care-note-feed.ts",
         "lib/admin/care-note-visibility.ts",
+        "lib/admin/follow-up-queue.ts",
         "lib/admin/shepherd-care-attention.ts",
         "lib/admin/shepherd-care-cadence.ts",
         "lib/admin/shepherd-care-follow-ups.ts",
@@ -2052,8 +2054,8 @@
         "lib/over-shepherd/coverage.ts",
         "lib/over-shepherd/read-models.ts"
       ],
-      "file_count": 9,
-      "symbol_count": 59,
+      "file_count": 10,
+      "symbol_count": 79,
       "grouped": true,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2063,10 +2065,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 63,
-      "raw_outbound_weight": 24,
-      "degree": 83,
-      "size": 29.44
+      "raw_inbound_weight": 71,
+      "raw_outbound_weight": 26,
+      "degree": 92,
+      "size": 30.33
     },
     {
       "id": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
@@ -2119,7 +2121,7 @@
     {
       "id": "bucket_bucket_core_domain_module_1kz81h",
       "label": "Core Domain Module",
-      "title": "Core Domain Module bucket\nDomain Module / Core\n30 files, 165 symbols\nlib/admin/ministry-year.ts\nlib/admin/care-area.ts\nlib/admin/action-result.ts\nlib/admin/leader-health-read.ts\nlib/admin/leader-rubric-grade.ts\nlib/admin/jsonb-decode.ts\nlib/admin/cell-coverage.ts\nlib/admin/frozen-surface.ts\nlib/admin/overview-period.ts\nlib/admin/permanent-deletion.ts\nlib/leader/action-result.ts\nlib/admin/history-reset.ts\n...18 more",
+      "title": "Core Domain Module bucket\nDomain Module / Core\n34 files, 189 symbols\nlib/admin/ministry-year.ts\nlib/admin/care-area.ts\nlib/admin/action-result.ts\nlib/admin/leader-health-read.ts\nlib/admin/leader-rubric-grade.ts\nlib/admin/jsonb-decode.ts\nlib/admin/cell-coverage.ts\nlib/admin/frozen-surface.ts\nlib/admin/super-admin-console-model.ts\nlib/admin/overview-period.ts\nlib/admin/permanent-deletion.ts\nlib/admin/audit-summary.ts\n...22 more",
       "source_file": "module/core/domain_module",
       "source_files": [
         "app/(protected)/admin/loading.tsx",
@@ -2128,12 +2130,14 @@
         "lib/account/validation.ts",
         "lib/admin/action-result.ts",
         "lib/admin/audit-summary.ts",
+        "lib/admin/audit-trail-entries.ts",
         "lib/admin/care-area.ts",
         "lib/admin/care-next-action.ts",
         "lib/admin/care-temporal.ts",
         "lib/admin/cell-coverage.ts",
         "lib/admin/frozen-surface-copy.ts",
         "lib/admin/frozen-surface.ts",
+        "lib/admin/group-metric-overrides.ts",
         "lib/admin/group-rubric-grade-read.ts",
         "lib/admin/group-type-list.ts",
         "lib/admin/health-status-labels.ts",
@@ -2147,14 +2151,16 @@
         "lib/admin/people-import.ts",
         "lib/admin/permanent-deletion.ts",
         "lib/admin/prayer-request-status.ts",
+        "lib/admin/super-admin-console-model.ts",
+        "lib/admin/super-admin-usage-model.ts",
         "lib/admin/view-preferences.ts",
         "lib/leader/action-result.ts",
         "lib/leader/group-note-validation.ts",
         "lib/usage/actions.ts",
         "lib/usage/areas.ts"
       ],
-      "file_count": 30,
-      "symbol_count": 165,
+      "file_count": 34,
+      "symbol_count": 189,
       "grouped": true,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2164,9 +2170,9 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 156,
-      "raw_outbound_weight": 74,
-      "degree": 189.1,
+      "raw_inbound_weight": 182,
+      "raw_outbound_weight": 87,
+      "degree": 212.1,
       "size": 38
     },
     {
@@ -2188,10 +2194,10 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 101,
+      "raw_inbound_weight": 102,
       "raw_outbound_weight": 7,
-      "degree": 107,
-      "size": 29.03
+      "degree": 108,
+      "size": 29.11
     },
     {
       "id": "file_file_lib_admin_care_accordion_ts_7aazcg",
@@ -2316,13 +2322,13 @@
     {
       "id": "file_file_lib_admin_planning_views_ts_x888t2",
       "label": "Admin Planning Views",
-      "title": "lib/admin/planning-views.ts\nDomain Module / Core\n1 file, 8 symbols",
+      "title": "lib/admin/planning-views.ts\nDomain Module / Core\n1 file, 7 symbols",
       "source_file": "lib/admin/planning-views.ts",
       "source_files": [
         "lib/admin/planning-views.ts"
       ],
       "file_count": 1,
-      "symbol_count": 8,
+      "symbol_count": 7,
       "grouped": false,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2945,22 +2951,23 @@
       "feature_label": "Settings",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 16,
+      "raw_inbound_weight": 26,
       "raw_outbound_weight": 10,
-      "degree": 26,
-      "size": 20.9
+      "degree": 36,
+      "size": 22.3
     },
     {
       "id": "bucket_bucket_settings_domain_module_11y1so",
       "label": "Settings Domain Module",
-      "title": "Settings Domain Module bucket\nDomain Module / Settings\n2 files, 17 symbols\nlib/admin/app-config-decode.ts\nlib/admin/editable-copy.ts",
+      "title": "Settings Domain Module bucket\nDomain Module / Settings\n3 files, 22 symbols\nlib/admin/app-config-decode.ts\nlib/admin/editable-copy.ts\nlib/admin/feature-flag-display.ts",
       "source_file": "module/settings/domain_module",
       "source_files": [
         "lib/admin/app-config-decode.ts",
-        "lib/admin/editable-copy.ts"
+        "lib/admin/editable-copy.ts",
+        "lib/admin/feature-flag-display.ts"
       ],
-      "file_count": 2,
-      "symbol_count": 17,
+      "file_count": 3,
+      "symbol_count": 22,
       "grouped": true,
       "category": "domain_module",
       "category_label": "Domain Module",
@@ -2970,10 +2977,10 @@
       "feature_label": "Settings",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 25,
-      "raw_outbound_weight": 2,
-      "degree": 25,
-      "size": 21.33
+      "raw_inbound_weight": 27,
+      "raw_outbound_weight": 7,
+      "degree": 32,
+      "size": 22.77
     },
     {
       "id": "file_file_lib_supabase_shepherd_care_reads_ts_3wtt84",
@@ -4652,10 +4659,10 @@
       "feature_label": "Shared",
       "color": "#86BCB6",
       "file_type": "code",
-      "raw_inbound_weight": 193,
+      "raw_inbound_weight": 196,
       "raw_outbound_weight": 4,
-      "degree": 99.05,
-      "size": 28.43
+      "degree": 100.05,
+      "size": 28.5
     }
   ],
   "links": [
@@ -5587,6 +5594,21 @@
     },
     {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
+      "target": "file_file_app_protected_admin_groups_groupid_page_tsx_1tyzwd",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/follow-up-queue.ts -> app/(protected)/admin/groups/[groupId]/page.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "file_file_lib_admin_attention_reset_ts_137ah9",
       "weight": 1,
       "visual_weight": 1,
@@ -5684,16 +5706,17 @@
     {
       "source": "bucket_bucket_care_domain_module_1ue8s8",
       "target": "file_file_types_enums_ts_19rgpl",
-      "weight": 1,
+      "weight": 2,
       "visual_weight": 1,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 2,
       "examples": [
-        "lib/admin/care-note-visibility.ts -> types/enums.ts"
+        "lib/admin/care-note-visibility.ts -> types/enums.ts",
+        "lib/admin/follow-up-queue.ts -> types/enums.ts"
       ]
     },
     {
@@ -6988,18 +7011,20 @@
     {
       "source": "bucket_bucket_core_domain_module_1kz81h",
       "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
-      "weight": 3,
-      "visual_weight": 3,
+      "weight": 7,
+      "visual_weight": 7,
       "softened": false,
       "relation": "calls",
       "relation_counts": {
-        "calls": 2,
-        "imports": 1
+        "calls": 4,
+        "imports": 3
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 7,
       "examples": [
+        "lib/admin/super-admin-usage-model.ts -> lib/admin/feature-flags.ts",
         "lib/admin/needs-attention-mutes.ts -> lib/admin/feature-flags.ts",
-        "lib/admin/frozen-surface.ts -> lib/admin/feature-flags.ts"
+        "lib/admin/frozen-surface.ts -> lib/admin/feature-flags.ts",
+        "lib/admin/super-admin-console-model.ts -> lib/admin/feature-flags.ts"
       ]
     },
     {
@@ -7050,6 +7075,21 @@
         "lib/admin/group-rubric-grade-read.ts -> lib/admin/health-rubric.ts",
         "lib/admin/leader-health-read.ts -> lib/admin/health-rubric.ts",
         "lib/admin/leader-rubric-grade.ts -> lib/admin/health-rubric.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_core_domain_module_1kz81h",
+      "target": "file_file_lib_admin_metrics_ts_pnjhin",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/group-metric-overrides.ts -> lib/admin/metrics.ts"
       ]
     },
     {
@@ -8300,6 +8340,21 @@
     },
     {
       "source": "bucket_bucket_groups_feature_component_1dluny",
+      "target": "bucket_bucket_groups_server_action_yojrb7",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/group-health/group-health-editor.tsx -> app/(protected)/admin/group-health/actions.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_feature_component_1dluny",
       "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
       "weight": 2,
       "visual_weight": 1,
@@ -8312,21 +8367,6 @@
       "examples": [
         "components/admin/group-detail/group-roster-manager.tsx -> components/lg/Card.tsx",
         "components/admin/group-health/group-health-editor.tsx -> components/lg/admin/editing-surface.tsx"
-      ]
-    },
-    {
-      "source": "bucket_bucket_groups_feature_component_1dluny",
-      "target": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "components/admin/group-health/group-health-editor.tsx -> app/(protected)/admin/group-health/actions.ts"
       ]
     },
     {
@@ -8693,15 +8733,16 @@
     {
       "source": "bucket_bucket_groups_server_action_yojrb7",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 2,
       "examples": [
+        "app/(protected)/admin/group-health/actions.ts -> lib/admin/ministry-year.ts",
         "app/(protected)/admin/group-health/grade-actions.ts -> lib/admin/ministry-year.ts"
       ]
     },
@@ -8718,6 +8759,38 @@
       "raw_edge_count": 1,
       "examples": [
         "app/(protected)/admin/group-health/grade-actions.ts -> lib/supabase/health-rubric-reads.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_server_action_yojrb7",
+      "target": "file_file_lib_admin_group_health_read_ts_13rmye",
+      "weight": 5,
+      "visual_weight": 5,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 3,
+        "calls": 2
+      },
+      "raw_edge_count": 5,
+      "examples": [
+        "app/(protected)/admin/group-health/actions.ts -> lib/admin/group-health-read.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_groups_server_action_yojrb7",
+      "target": "file_file_lib_admin_group_health_ts_1gbsh8",
+      "weight": 5,
+      "visual_weight": 5,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4,
+        "calls": 1
+      },
+      "raw_edge_count": 5,
+      "examples": [
+        "app/(protected)/admin/group-health/actions.ts -> lib/admin/group-health.ts"
       ]
     },
     {
@@ -8753,15 +8826,16 @@
     {
       "source": "bucket_bucket_groups_server_action_yojrb7",
       "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 3,
-      "visual_weight": 3,
+      "weight": 4,
+      "visual_weight": 4,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3
+        "imports": 4
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 4,
       "examples": [
+        "app/(protected)/admin/group-health/actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/group-health/grade-actions.ts -> lib/admin/rpc.ts",
         "app/(protected)/admin/groups/actions.ts -> lib/admin/rpc.ts"
       ]
@@ -8769,16 +8843,17 @@
     {
       "source": "bucket_bucket_groups_server_action_yojrb7",
       "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 11,
-      "visual_weight": 11,
+      "weight": 16,
+      "visual_weight": 16,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 6,
-        "calls": 5
+        "imports": 9,
+        "calls": 7
       },
-      "raw_edge_count": 11,
+      "raw_edge_count": 16,
       "examples": [
+        "app/(protected)/admin/group-health/actions.ts -> lib/admin/run-action.ts",
         "app/(protected)/admin/group-health/grade-actions.ts -> lib/admin/run-action.ts",
         "app/(protected)/admin/groups/actions.ts -> lib/admin/run-action.ts"
       ]
@@ -11695,7 +11770,7 @@
     },
     {
       "source": "bucket_bucket_settings_domain_module_11y1so",
-      "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
+      "target": "bucket_bucket_core_feature_component_lncng4",
       "weight": 1,
       "visual_weight": 1,
       "softened": false,
@@ -11705,7 +11780,24 @@
       },
       "raw_edge_count": 1,
       "examples": [
-        "lib/admin/app-config-decode.ts -> lib/admin/feature-flags.ts"
+        "lib/admin/feature-flag-display.ts -> components/admin/console-status.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_settings_domain_module_11y1so",
+      "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
+      "weight": 5,
+      "visual_weight": 5,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 4,
+        "calls": 1
+      },
+      "raw_edge_count": 5,
+      "examples": [
+        "lib/admin/app-config-decode.ts -> lib/admin/feature-flags.ts",
+        "lib/admin/feature-flag-display.ts -> lib/admin/feature-flags.ts"
       ]
     },
     {
@@ -12439,84 +12531,6 @@
       "raw_edge_count": 3,
       "examples": [
         "app/(protected)/admin/care/page.tsx -> lib/supabase/server.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/admin/group-health/actions.ts -> lib/admin/ministry-year.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "target": "file_file_lib_admin_group_health_read_ts_13rmye",
-      "weight": 5,
-      "visual_weight": 5,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 3,
-        "calls": 2
-      },
-      "raw_edge_count": 5,
-      "examples": [
-        "app/(protected)/admin/group-health/actions.ts -> lib/admin/group-health-read.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "target": "file_file_lib_admin_group_health_ts_1gbsh8",
-      "weight": 5,
-      "visual_weight": 5,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 4,
-        "calls": 1
-      },
-      "raw_edge_count": 5,
-      "examples": [
-        "app/(protected)/admin/group-health/actions.ts -> lib/admin/group-health.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "target": "file_file_lib_admin_rpc_ts_qlr9mh",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/admin/group-health/actions.ts -> lib/admin/rpc.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_group_health_actions_ts_1pyfvm",
-      "target": "file_file_lib_admin_run_action_ts_1x8hfe",
-      "weight": 5,
-      "visual_weight": 5,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 3,
-        "calls": 2
-      },
-      "raw_edge_count": 5,
-      "examples": [
-        "app/(protected)/admin/group-health/actions.ts -> lib/admin/run-action.ts"
       ]
     },
     {
@@ -14742,15 +14756,30 @@
     },
     {
       "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
-      "target": "file_file_lib_admin_planning_views_ts_x888t2",
-      "weight": 3,
-      "visual_weight": 3,
+      "target": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "weight": 11,
+      "visual_weight": 11,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3
+        "imports": 11
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 11,
+      "examples": [
+        "components/admin/admin-master-calendar-shell.tsx -> lib/admin/master-calendar-view.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
+      "target": "file_file_lib_admin_planning_views_ts_x888t2",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
       "examples": [
         "components/admin/admin-master-calendar-shell.tsx -> lib/admin/planning-views.ts"
       ]
@@ -15126,16 +15155,16 @@
     {
       "source": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 10,
+      "visual_weight": 10,
       "softened": false,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
-        "calls": 1
+        "imports": 10
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 10,
       "examples": [
-        "components/admin/follow-ups/follow-ups-shell.tsx -> lib/admin/shepherd-care-follow-ups.ts"
+        "components/admin/follow-ups/follow-ups-shell.tsx -> lib/admin/follow-up-queue.ts"
       ]
     },
     {
@@ -15745,21 +15774,6 @@
       "raw_edge_count": 2,
       "examples": [
         "components/admin/groups-directory.tsx -> types/enums.ts"
-      ]
-    },
-    {
-      "source": "file_file_components_admin_groups_group_detail_data_ts_1an0ov",
-      "target": "bucket_bucket_care_domain_module_1ue8s8",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "components/admin/groups/group-detail-data.ts -> lib/admin/shepherd-care-follow-ups.ts"
       ]
     },
     {
@@ -17767,16 +17781,18 @@
     {
       "source": "file_file_components_admin_settings_shell_tsx_zphrh",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 5,
+      "visual_weight": 5,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 4,
+        "calls": 1
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 5,
       "examples": [
-        "components/admin/settings-shell.tsx -> lib/admin/cell-coverage.ts"
+        "components/admin/settings-shell.tsx -> lib/admin/cell-coverage.ts",
+        "components/admin/settings-shell.tsx -> lib/admin/group-metric-overrides.ts"
       ]
     },
     {
@@ -17965,6 +17981,38 @@
     },
     {
       "source": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
+      "target": "bucket_bucket_core_domain_module_1kz81h",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 3
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "components/admin/super-admin-console-shell.tsx -> lib/admin/super-admin-console-model.ts",
+        "components/admin/super-admin-console-shell.tsx -> lib/admin/super-admin-usage-model.ts",
+        "components/admin/super-admin-console-shell.tsx -> lib/admin/audit-trail-entries.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
+      "target": "bucket_bucket_settings_domain_module_11y1so",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/super-admin-console-shell.tsx -> lib/admin/feature-flag-display.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_super_admin_console_shell_tsx_1dvncp",
       "target": "file_file_components_ui_button_tsx_oeuxi6",
       "weight": 1,
       "visual_weight": 1,
@@ -18006,6 +18054,25 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/super-admin-console.tsx -> components/admin/forms/password-reset-form.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
+      "target": "bucket_bucket_core_domain_module_1kz81h",
+      "weight": 11,
+      "visual_weight": 11,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 7,
+        "contains": 3,
+        "re_exports": 1
+      },
+      "raw_edge_count": 11,
+      "examples": [
+        "components/admin/super-admin-console.tsx -> lib/admin/audit-trail-entries.ts",
+        "components/admin/super-admin-console.tsx -> lib/admin/super-admin-console-model.ts",
+        "components/admin/super-admin-console.tsx -> lib/admin/super-admin-usage-model.ts"
       ]
     },
     {
@@ -18077,16 +18144,17 @@
     {
       "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
       "target": "bucket_bucket_settings_domain_module_11y1so",
-      "weight": 1,
-      "visual_weight": 1,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 1
+        "imports": 2
       },
-      "raw_edge_count": 1,
+      "raw_edge_count": 2,
       "examples": [
-        "components/admin/super-admin-console.tsx -> lib/admin/app-config-decode.ts"
+        "components/admin/super-admin-console.tsx -> lib/admin/app-config-decode.ts",
+        "components/admin/super-admin-console.tsx -> lib/admin/feature-flag-display.ts"
       ]
     },
     {
@@ -18132,6 +18200,21 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/super-admin-console.tsx -> components/ui/button.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_super_admin_console_tsx_kkym3m",
+      "target": "file_file_lib_admin_feature_flags_ts_1ph5it",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/super-admin-console.tsx -> lib/admin/feature-flags.ts"
       ]
     },
     {
@@ -19398,6 +19481,68 @@
       "raw_edge_count": 5,
       "examples": [
         "lib/admin/master-calendar.ts -> types/enums.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "target": "file_file_lib_admin_planning_views_ts_x888t2",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/admin/master-calendar-view.ts -> lib/admin/planning-views.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "target": "file_file_lib_calendar_occurrences_ts_1riutk",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2,
+        "calls": 1
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "lib/admin/master-calendar-view.ts -> lib/calendar/occurrences.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "target": "file_file_lib_calendar_payload_ts_1pgwvd",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 3,
+        "calls": 1
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "lib/admin/master-calendar-view.ts -> lib/calendar/payload.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_admin_master_calendar_view_ts_18hyiv",
+      "target": "file_file_types_enums_ts_19rgpl",
+      "weight": 2,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/admin/master-calendar-view.ts -> types/enums.ts"
       ]
     },
     {
@@ -22970,5 +23115,5 @@
       ]
     }
   ],
-  "built_at_commit": "965f29ef47276f98e1b96f3bc89850ab77068c56"
+  "built_at_commit": "ca3c23c0d7dc19ce3eba909501ab0f00e7471637"
 }

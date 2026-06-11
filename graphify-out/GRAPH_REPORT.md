@@ -1,20 +1,20 @@
 # Graph Report - LifeGroups Product Surface (2026-06-11)
 
 ## Summary
-- Clean graph: 181 nodes · 1154 edges
-- Raw extraction collapsed: 3311 symbol nodes · 7611 symbol edges · 478 source files
+- Clean graph: 181 nodes · 1162 edges
+- Raw extraction collapsed: 3380 symbol nodes · 7741 symbol edges · 485 source files
 - File nodes preserved: 122
-- Module buckets: 59 buckets containing 356 lower-degree files
+- Module buckets: 59 buckets containing 363 lower-degree files
 - Self-edges removed after collapse.
 - Shared plumbing, shared UI primitive, and type/vocabulary edges are visually softened.
 
 ## Categories
-- Domain Module: 45
+- Domain Module: 46
 - Feature Component: 36
 - Route/Page/Layout: 19
 - Supabase Read Adapter: 17
 - Validation: 17
-- Server Action: 14
+- Server Action: 13
 - Shared UI Primitive: 13
 - RPC/Write Boundary: 7
 - Shared Plumbing: 6
@@ -25,8 +25,8 @@
 ## Product Areas
 - Core: 43
 - Care: 20
-- Groups: 18
-- Calendar: 15
+- Groups: 17
+- Calendar: 16
 - Multiply: 15
 - Plan: 15
 - Home: 14
@@ -36,10 +36,10 @@
 - Auth: 7
 
 ## Top Hubs
-- Core Feature Component (261.85) - Feature Component, Core
+- Core Feature Component (262.85) - Feature Component, Core
+- Core Domain Module (212.1) - Domain Module, Core
 - Supabase Read Models (208.45) - Supabase Read Adapter, Core
 - Care Feature Component (200.75) - Feature Component, Care
-- Core Domain Module (189.1) - Domain Module, Core
 - Admin Forms Action Form (158.05) - Feature Component, Core
 - Admin Run Action (155) - RPC/Write Boundary, Core
 - Core Server Action (140.95) - Server Action, Core
@@ -47,19 +47,19 @@
 - Auth Session (131) - Auth/Session Boundary, Auth
 - Admin Validation Shared (130.05) - Validation, Core
 - Plan Feature Component (113.55) - Feature Component, Plan
-- Admin Metrics (107) - Domain Module, Core
+- Admin Metrics (108) - Domain Module, Core
 - People Feature Component (106.35) - Feature Component, People
-- Enums Types (99.05) - Type/Vocabulary, Shared
+- Enums Types (100.05) - Type/Vocabulary, Shared
+- Care Domain Module (92) - Domain Module, Care
 - Auth Auth/Session Boundary (90.5) - Auth/Session Boundary, Auth
-- Care Domain Module (83) - Domain Module, Care
+- Admin Super Admin Console (84) - Feature Component, Core
 - Supabase Read Core (82) - Supabase Read Adapter, Core
+- Calendar Occurrences (79.45) - Domain Module, Calendar
 - Dashboard Queries (79.45) - Domain Module, Home
 - Admin Launch Planning (78) - Domain Module, Plan
-- Calendar Occurrences (76.45) - Domain Module, Calendar
-- Admin Groups Group Detail Data (75) - Feature Component, Groups
+- Admin Groups Group Detail Data (74) - Feature Component, Groups
 - Admin Check Ins (73.1) - Domain Module, Calendar
 - Dashboard Types (71.4) - Domain Module, Home
-- Admin Rpc (71.25) - RPC/Write Boundary, Core
 
 ## Top Weighted Links
 - Core Feature Component -> Admin Forms Action Form: 54 symbol links

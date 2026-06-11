@@ -17,6 +17,20 @@ import type {
   AdminFollowUpEntry,
   GuestDirectoryEntry,
 } from "@/lib/supabase/read-models";
+import {
+  FOLLOW_UP_DUE_FILTERS,
+  FOLLOW_UP_PRIORITY_FILTERS,
+  FOLLOW_UP_STATUS_FILTERS,
+  FOLLOW_UP_STATUS_ORDER,
+  coerceSavedIdFilter,
+  filterFollowUps,
+  followUpDueWindow,
+  isFollowUpOverdue,
+  isFollowUpsViewSnapshot,
+  partitionFollowUpsByStatus,
+  type FollowUpDueFilter,
+  type FollowUpStatusFilter,
+} from "@/lib/admin/follow-up-queue";
 import { FollowUpCreateForm } from "./follow-up-create-form";
 import { FollowUpStatusControls } from "./follow-up-status-controls";
 import { SuperAdminInlineDelete } from "@/components/admin/super-admin/inline-delete";
@@ -44,90 +58,12 @@ export type AdminFollowUpsData = {
   };
 };
 
-const STATUS_ORDER: FollowUpStatus[] = [
-  "open",
-  "in_progress",
-  "snoozed",
-  "done",
-];
-
 const STATUS_LABEL: Record<FollowUpStatus, string> = {
   open: "Open",
   in_progress: "In progress",
   snoozed: "Snoozed",
   done: "Done",
 };
-
-const PRIORITY_FILTERS: { value: "all" | FollowUpPriority; label: string }[] = [
-  { value: "all", label: "Any priority" },
-  { value: "high", label: "High" },
-  { value: "normal", label: "Normal" },
-  { value: "low", label: "Low" },
-];
-
-const DUE_FILTERS: { value: DueFilter; label: string }[] = [
-  { value: "all", label: "Any due date" },
-  { value: "overdue", label: "Overdue" },
-  { value: "this_week", label: "Due this week" },
-  { value: "no_due_date", label: "No due date" },
-];
-
-type DueFilter = "all" | "overdue" | "this_week" | "no_due_date";
-
-// The surface leads with open work, so the status filter defaults to "active"
-// (everything not yet done). "all" shows every status; a single status narrows
-// to it.
-type StatusFilter = "active" | "all" | FollowUpStatus;
-
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: "active", label: "Open items" },
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In progress" },
-  { value: "snoozed", label: "Snoozed" },
-  { value: "done", label: "Done" },
-  { value: "all", label: "All statuses" },
-];
-
-// Saved views & filters (PRD req 12, #263): the persisted shape for this
-// surface. Group/guest/assignee filters are free-form ids ("all" or a uuid),
-// so they validate as plain strings — a stale id simply matches nothing and
-// the list shows its empty state, the same as a no-match live filter.
-type FollowUpsViewSnapshot = {
-  showFilters: boolean;
-  statusFilter: StatusFilter;
-  priorityFilter: "all" | FollowUpPriority;
-  dueFilter: DueFilter;
-  assigneeFilter: string;
-  groupFilter: string;
-  guestFilter: string;
-};
-
-const STATUS_FILTER_VALUES = new Set<string>(
-  STATUS_FILTERS.map((f) => f.value)
-);
-const PRIORITY_FILTER_VALUES = new Set<string>(
-  PRIORITY_FILTERS.map((f) => f.value)
-);
-const DUE_FILTER_VALUES = new Set<string>(DUE_FILTERS.map((f) => f.value));
-
-function isFollowUpsViewSnapshot(
-  value: unknown
-): value is FollowUpsViewSnapshot {
-  if (value === null || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.showFilters === "boolean" &&
-    typeof v.statusFilter === "string" &&
-    STATUS_FILTER_VALUES.has(v.statusFilter) &&
-    typeof v.priorityFilter === "string" &&
-    PRIORITY_FILTER_VALUES.has(v.priorityFilter) &&
-    typeof v.dueFilter === "string" &&
-    DUE_FILTER_VALUES.has(v.dueFilter) &&
-    typeof v.assigneeFilter === "string" &&
-    typeof v.groupFilter === "string" &&
-    typeof v.guestFilter === "string"
-  );
-}
 
 export function AdminFollowUpsShell({
   data,
@@ -151,11 +87,12 @@ export function AdminFollowUpsShell({
   const drawer = useEditingDrawer();
 
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [statusFilter, setStatusFilter] =
+    useState<FollowUpStatusFilter>("active");
   const [priorityFilter, setPriorityFilter] = useState<
     "all" | FollowUpPriority
   >("all");
-  const [dueFilter, setDueFilter] = useState<DueFilter>("all");
+  const [dueFilter, setDueFilter] = useState<FollowUpDueFilter>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [guestFilter, setGuestFilter] = useState<string>("all");
@@ -202,104 +139,47 @@ export function AdminFollowUpsShell({
       setPriorityFilter(saved.priorityFilter);
       setDueFilter(saved.dueFilter);
       setAssigneeFilter(
-        saved.assigneeFilter === "all" || profilesById.has(saved.assigneeFilter)
-          ? saved.assigneeFilter
-          : "all"
+        coerceSavedIdFilter(saved.assigneeFilter, profilesById)
       );
-      setGroupFilter(
-        saved.groupFilter === "all" || groupsById.has(saved.groupFilter)
-          ? saved.groupFilter
-          : "all"
-      );
-      setGuestFilter(
-        saved.guestFilter === "all" || guestsById.has(saved.guestFilter)
-          ? saved.guestFilter
-          : "all"
-      );
+      setGroupFilter(coerceSavedIdFilter(saved.groupFilter, groupsById));
+      setGuestFilter(coerceSavedIdFilter(saved.guestFilter, guestsById));
     },
     validate: isFollowUpsViewSnapshot,
   });
 
-  const { today, inSevenDays } = useMemo(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    const week = new Date(t);
-    week.setDate(week.getDate() + 7);
-    return { today: t, inSevenDays: week };
-  }, []);
+  const dueWindow = useMemo(() => followUpDueWindow(new Date()), []);
+  const { today } = dueWindow;
 
-  const filtered = useMemo(() => {
-    return followUps.filter((fu) => {
-      if (statusFilter === "active") {
-        if (fu.status === "done") return false;
-      } else if (statusFilter !== "all" && fu.status !== statusFilter) {
-        return false;
-      }
-      if (priorityFilter !== "all" && fu.priority !== priorityFilter)
-        return false;
-      if (assigneeFilter !== "all" && fu.assigned_to !== assigneeFilter)
-        return false;
-      if (groupFilter !== "all" && fu.related_group_id !== groupFilter)
-        return false;
-      if (guestFilter !== "all" && fu.related_guest_id !== guestFilter)
-        return false;
-      if (dueFilter !== "all") {
-        if (dueFilter === "no_due_date") {
-          if (fu.due_date) return false;
-        } else if (!fu.due_date) {
-          return false;
-        } else {
-          const due = new Date(`${fu.due_date}T00:00:00`);
-          if (dueFilter === "overdue") {
-            if (due >= today) return false;
-          } else if (dueFilter === "this_week") {
-            if (due < today || due > inSevenDays) return false;
-          }
-        }
-      }
-      return true;
-    });
-  }, [
-    followUps,
-    statusFilter,
-    priorityFilter,
-    dueFilter,
-    assigneeFilter,
-    groupFilter,
-    guestFilter,
-    today,
-    inSevenDays,
-  ]);
+  const filtered = useMemo(
+    () =>
+      filterFollowUps(
+        followUps,
+        {
+          statusFilter,
+          priorityFilter,
+          dueFilter,
+          assigneeFilter,
+          groupFilter,
+          guestFilter,
+        },
+        dueWindow
+      ),
+    [
+      followUps,
+      statusFilter,
+      priorityFilter,
+      dueFilter,
+      assigneeFilter,
+      groupFilter,
+      guestFilter,
+      dueWindow,
+    ]
+  );
 
-  const grouped = useMemo(() => {
-    const out: Record<FollowUpStatus, AdminFollowUpEntry[]> = {
-      open: [],
-      in_progress: [],
-      snoozed: [],
-      done: [],
-    };
-    for (const fu of filtered) out[fu.status].push(fu);
-    for (const status of STATUS_ORDER) {
-      out[status].sort((a, b) => {
-        // due_date asc (nulls last); then priority high > normal > low; then
-        // created_at desc. Due date leads so the default view answers "what's
-        // due next" first.
-        if (a.due_date && b.due_date && a.due_date !== b.due_date)
-          return a.due_date.localeCompare(b.due_date);
-        if (a.due_date && !b.due_date) return -1;
-        if (!a.due_date && b.due_date) return 1;
-        const pOrder: Record<FollowUpPriority, number> = {
-          high: 0,
-          normal: 1,
-          low: 2,
-        };
-        if (a.priority !== b.priority)
-          return pOrder[a.priority] - pOrder[b.priority];
-        return b.created_at.localeCompare(a.created_at);
-      });
-    }
-    return out;
-  }, [filtered]);
+  const grouped = useMemo(
+    () => partitionFollowUpsByStatus(filtered),
+    [filtered]
+  );
 
   const sortedGroups = useMemo(
     () => [...groups].sort((a, b) => a.name.localeCompare(b.name)),
@@ -379,11 +259,11 @@ export function AdminFollowUpsShell({
                 id="fu-status"
                 value={statusFilter}
                 onChange={(e) =>
-                  setStatusFilter(e.target.value as StatusFilter)
+                  setStatusFilter(e.target.value as FollowUpStatusFilter)
                 }
                 className={FIELD_INPUT}
               >
-                {STATUS_FILTERS.map((s) => (
+                {FOLLOW_UP_STATUS_FILTERS.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
@@ -402,7 +282,7 @@ export function AdminFollowUpsShell({
                 }
                 className={FIELD_INPUT}
               >
-                {PRIORITY_FILTERS.map((p) => (
+                {FOLLOW_UP_PRIORITY_FILTERS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label}
                   </option>
@@ -416,10 +296,12 @@ export function AdminFollowUpsShell({
               <select
                 id="fu-due"
                 value={dueFilter}
-                onChange={(e) => setDueFilter(e.target.value as DueFilter)}
+                onChange={(e) =>
+                  setDueFilter(e.target.value as FollowUpDueFilter)
+                }
                 className={FIELD_INPUT}
               >
-                {DUE_FILTERS.map((d) => (
+                {FOLLOW_UP_DUE_FILTERS.map((d) => (
                   <option key={d.value} value={d.value}>
                     {d.label}
                   </option>
@@ -506,7 +388,7 @@ export function AdminFollowUpsShell({
           </div>
         ) : (
           <div className="grid gap-7">
-            {STATUS_ORDER.map((status) => {
+            {FOLLOW_UP_STATUS_ORDER.map((status) => {
               const list = grouped[status];
               if (list.length === 0) return null;
               return (
@@ -602,11 +484,7 @@ function FollowUpRow({
     ? profilesById.get(followUp.assigned_to)
     : null;
 
-  const dueDate = followUp.due_date
-    ? new Date(`${followUp.due_date}T00:00:00`)
-    : null;
-  const isOverdue =
-    dueDate !== null && followUp.status !== "done" && dueDate < today;
+  const isOverdue = isFollowUpOverdue(followUp, today);
 
   const links: string[] = [];
   if (group) links.push(`Group: ${group.name}`);

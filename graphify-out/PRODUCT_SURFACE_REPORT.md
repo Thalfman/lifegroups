@@ -1,14 +1,14 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-11T23:35:49.149Z
+Generated: 2026-06-11T23:36:52.074Z
 
 ## Summary
 - Scope: product
-- Staged files: 481
-- Raw extraction: 3311 symbol nodes, 7611 symbol edges, 478 source files
-- Clean graph: 181 nodes, 1154 edges
+- Staged files: 488
+- Raw extraction: 3380 symbol nodes, 7741 symbol edges, 485 source files
+- Clean graph: 181 nodes, 1162 edges
 - Preserved file nodes: 122
-- Grouped lower-degree files: 356 files into 59 module buckets
+- Grouped lower-degree files: 363 files into 59 module buckets
 - Output: graphify-out
 
 ## Exclusion Audit
@@ -20,16 +20,16 @@ Generated: 2026-06-11T23:35:49.149Z
 - OK: package/lock metadata: 0
 
 ## Excluded Candidate Files
-- tests: 244
+- tests: 251
 - data-boundary-only generated types: 1
 
 ## Category Counts
-- Domain Module: 45
+- Domain Module: 46
 - Feature Component: 36
 - Route/Page/Layout: 19
 - Supabase Read Adapter: 17
 - Validation: 17
-- Server Action: 14
+- Server Action: 13
 - Shared UI Primitive: 13
 - RPC/Write Boundary: 7
 - Shared Plumbing: 6
@@ -40,8 +40,8 @@ Generated: 2026-06-11T23:35:49.149Z
 ## Product Area Counts
 - Core: 43
 - Care: 20
-- Groups: 18
-- Calendar: 15
+- Groups: 17
+- Calendar: 16
 - Multiply: 15
 - Plan: 15
 - Home: 14
@@ -51,23 +51,23 @@ Generated: 2026-06-11T23:35:49.149Z
 - Auth: 7
 
 ## Product Hubs
-- Core Feature Component (261.85) - Feature Component, Core
+- Core Feature Component (262.85) - Feature Component, Core
+- Core Domain Module (212.1) - Domain Module, Core
 - Care Feature Component (200.75) - Feature Component, Care
-- Core Domain Module (189.1) - Domain Module, Core
 - Admin Forms Action Form (158.05) - Feature Component, Core
 - Core Server Action (140.95) - Server Action, Core
 - Admin Validation Shared (130.05) - Validation, Core
 - Plan Feature Component (113.55) - Feature Component, Plan
-- Admin Metrics (107) - Domain Module, Core
+- Admin Metrics (108) - Domain Module, Core
 - People Feature Component (106.35) - Feature Component, People
-- Care Domain Module (83) - Domain Module, Care
+- Care Domain Module (92) - Domain Module, Care
+- Admin Super Admin Console (84) - Feature Component, Core
+- Calendar Occurrences (79.45) - Domain Module, Calendar
 - Dashboard Queries (79.45) - Domain Module, Home
 - Admin Launch Planning (78) - Domain Module, Plan
-- Calendar Occurrences (76.45) - Domain Module, Calendar
-- Admin Groups Group Detail Data (75) - Feature Component, Groups
+- Admin Groups Group Detail Data (74) - Feature Component, Groups
 - Admin Check Ins (73.1) - Domain Module, Calendar
 - Dashboard Types (71.4) - Domain Module, Home
-- Admin Super Admin Console (70) - Feature Component, Core
 - Home Domain Module (69.45) - Domain Module, Home
 
 ## Boundary Hubs
@@ -83,15 +83,15 @@ Generated: 2026-06-11T23:35:49.149Z
 - Care Server Action (52) - Server Action, Care
 - Plan Server Action (52) - Server Action, Plan
 - Auth Roles (47.45) - Auth/Session Boundary, Auth
+- Groups Server Action (42) - Server Action, Groups
 - Supabase Maintenance Reads (38) - Supabase Read Adapter, Core
 - Calendar Server Action (36) - Server Action, Calendar
 - Admin Shepherd Care Actions (35) - Server Action, Care
 - Admin Super Admin Permanent Delete Actions (33.8) - Server Action, Core
 - Supabase Group Categories Reads (33) - Supabase Read Adapter, Settings
-- Supabase Multiplication Config Reads (33) - Supabase Read Adapter, Multiply
 
 ## Softened Shared Hubs
-- Enums Types (99.05) - Type/Vocabulary, Shared
+- Enums Types (100.05) - Type/Vocabulary, Shared
 - Utils (44.7) - Shared Plumbing, Shared
 - Home Shared UI Primitive (38.25) - Shared UI Primitive, Home
 - Pastoral Button (35.85) - Shared UI Primitive, Shared
@@ -141,9 +141,9 @@ Generated: 2026-06-11T23:35:49.149Z
   - Auth Auth/Session Boundary -> Core RPC/Write Boundary (6)
   - Auth Auth/Session Boundary -> Core Server Action (1)
   - Auth Auth/Session Boundary -> Admin Super Admin Console (1)
-- Core <-> Settings: 116 symbol links
+- Core <-> Settings: 129 symbol links
   - Core Domain Module -> Settings Domain Module (3)
-  - Core Domain Module -> Admin Feature Flags (3)
+  - Core Domain Module -> Admin Feature Flags (7)
   - Core Feature Component -> Admin Settings Actions (4)
   - Core Feature Component -> Admin Feature Flags (6)
   - Core Server Action -> Admin Feature Flags (2)
@@ -185,16 +185,16 @@ Generated: 2026-06-11T23:35:49.149Z
   - Dashboard Demo Seed -> Care Domain Module (2)
 
 ## Grouped Module Buckets
-- Core Feature Component: 44 files, 123 symbols, degree 261.85
+- Core Feature Component: 44 files, 123 symbols, degree 262.85
 - Care Feature Component: 37 files, 107 symbols, degree 200.75
-- Core Domain Module: 30 files, 165 symbols, degree 189.1
+- Core Domain Module: 34 files, 189 symbols, degree 212.1
 - Auth Auth/Session Boundary: 20 files, 61 symbols, degree 90.5
 - Plan Feature Component: 19 files, 90 symbols, degree 113.55
 - Shared Shared UI Primitive: 18 files, 40 symbols, degree 33.3
 - People Feature Component: 16 files, 73 symbols, degree 106.35
 - Core Server Action: 15 files, 75 symbols, degree 140.95
 - Home Shared UI Primitive: 14 files, 43 symbols, degree 38.25
-- Care Domain Module: 9 files, 59 symbols, degree 83
+- Care Domain Module: 10 files, 79 symbols, degree 92
 - Home Domain Module: 8 files, 59 symbols, degree 69.45
 - Care Route/Page/Layout: 7 files, 19 symbols, degree 56.1
 - Calendar Feature Component: 7 files, 32 symbols, degree 48.8
