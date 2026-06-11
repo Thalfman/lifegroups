@@ -24,17 +24,13 @@ supabase/dev/link_super_admin.sql
 # Claude Code agent worktrees (transient, isolated)
 .claude/worktrees/
 
-# Graphify staging workspace (transient, rebuilt by npm graph commands)
+# Graphify staging and local-only extraction state.
 /.graphify/
-
-# Graphify knowledge graph: graph, report, and HTML visuals are committed
-# (the pre-commit hook refreshes them all); the extraction cache and manifest
-# are machine-local (absolute paths / mtimes) and are not. The lockfile must
-# stay ignored or pre-commit's "untracked files present" check would skip
-# every graph refresh.
-/graphify-out/cache/
-/graphify-out/*/cache/
-/graphify-out/manifest.json
-/graphify-out/*/manifest.json
+/graphify-out/*/
+!/graphify-out/memory/
+!/graphify-out/memory/**
+/graphify-out/**/cache/
+/graphify-out/**/manifest.json
+/graphify-out/**/*.log
 /graphify-out/.update.log
 /graphify-out/.rebuild.lock

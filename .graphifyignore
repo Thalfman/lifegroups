@@ -1,70 +1,65 @@
-# Corpus scope for the Graphify knowledge graph (gitignore syntax).
-# NOTE: when this file exists Graphify stops falling back to .gitignore, so any
-# .gitignore rule that matters for extraction must be repeated here.
+# Hard fallback corpus scope for direct Graphify runs.
+# Normal repo automation uses scripts/graphify.mjs and graphify/scopes.json.
 
-# Local artifacts and secrets, never corpus
+# Documentation and prose
+/docs/
+/.github/
+*.md
+*.mdx
+*.png
+*.svg
+
+# Tests and harness-only routes
+**/__tests__/
+*.test.*
+*.spec.*
+/tests/
+/app/a11y-harness/
+
+# Generated DB/type noise
+/types/database.ts
+/lib/supabase/types.ts
+*database.types.ts
+
+# Graphify tooling/output
+/.graphify/
+/graphify/
+/graphify-out/
+/.graphify-version
+
+# Package, lock, and tool metadata
+/package.json
+/package-lock.json
+/skills-lock.json
+/components.json
+/.lintstagedrc
+/.prettierrc
+/.prettierignore
+/eslint.config.mjs
+/next.config.ts
+/postcss.config.mjs
+/playwright.config.ts
+/tailwind.config.ts
+/tsconfig.json
+/tsconfig.tsbuildinfo
+
+# Build output and machine-local artifacts
 /node_modules/
 /.next/
-/dist/
-/build/
 /out/
+/dist/
 /coverage/
 /test-results/
 /playwright-report/
 /blob-report/
-/app/a11y-harness/
-.env*
-tsconfig.tsbuildinfo
-.DS_Store
-supabase/dev/link_test_users.sql
-supabase/dev/link_super_admin.sql
-
-# Generated Graphify outputs and staging. The runner writes graphs here, but
-# they must never be scanned back into the next graph.
-/graphify-out/
-/.graphify/
-/graphify/
-
-# Tooling infrastructure, not the app architecture graph.
-/.husky/
 /.claude/
 /.agents/
-skills-lock.json
-scripts/graphify*
+/.husky/
+.env*
+*.log
+*.tmp
+.DS_Store
 
-# Tests are intentionally excluded from architecture graphs. Build a test graph
-# separately by running the wrapper with --include-tests.
-/tests/
-**/__tests__/
-**/*.test.ts
-**/*.test.tsx
-**/*.test.js
-**/*.test.jsx
-**/*.spec.ts
-**/*.spec.tsx
-**/*.spec.js
-**/*.spec.jsx
-
-# Generated and lock files
-package-lock.json
-pnpm-lock.yaml
-yarn.lock
-bun.lockb
-next-env.d.ts
-types/database.ts
-**/*.d.ts
-**/*.generated.ts
-**/*.generated.tsx
-**/generated/**
-**/__generated__/**
-
-# Documentation: the graph describes code architecture; prose docs and their
-# dense cross-links drown the code signal.
-/docs/
-/*.md
-/.github/
-
-# Shell scripts: Graphify's bash extractor embeds the absolute checkout path
-# in file/entry node IDs, which breaks graph reproducibility across machines.
-# Remove this once fixed upstream (https://github.com/safishamsi/graphify).
-*.sh
+# Generic scripts and local Supabase helpers
+/scripts/
+/supabase/dev/

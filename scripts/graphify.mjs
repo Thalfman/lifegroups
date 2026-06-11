@@ -1,2414 +1,2059 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = process.cwd();
-const graphifyOutRoot = path.join(repoRoot, "graphify-out");
-const workRoot = path.join(repoRoot, ".graphify");
-const stageRoot = path.join(workRoot, "stage");
-const overridesPath = path.join(repoRoot, "graphify", "community-labels.json");
-const versionPath = path.join(repoRoot, ".graphify-version");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const CONFIG_PATH = path.join(ROOT, "graphify", "scopes.json");
+const LABELS_PATH = path.join(ROOT, "graphify", "community-labels.json");
+const config = readJson(CONFIG_PATH);
+const labelConfig = readJson(LABELS_PATH);
+const categoryConfig = buildCategoryConfig(labelConfig);
+const outputRoot = path.join(ROOT, config.outputRoot);
+const stageRoot = path.join(ROOT, config.stageRoot);
+const command = process.argv[2] || "product";
+let graphifyExe;
+let gitExe;
 
-const sourceExtensions = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-  ".sql",
-]);
+process.chdir(ROOT);
 
-const codeExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
-
-const sliceConfigs = {
-  full: {
-    label: "Full Architecture",
-    seedPatterns: [/.*/],
-  },
-  plan: {
-    label: "Plan and Launch Pipeline",
-    seedPatterns: [
-      /(^|\/)app\/\(protected\)\/admin\/plan\//,
-      /(^|\/)app\/\(protected\)\/admin\/planning\//,
-      /(^|\/)app\/\(protected\)\/admin\/launch-planning\//,
-      /(^|\/)components\/admin\/plan\//,
-      /(^|\/)components\/admin\/planning\//,
-      /(^|\/)components\/admin\/launch-planning\//,
-      /(^|\/)lib\/admin\/(planning|planning-views|launch-planning)\.ts$/,
-      /(^|\/)lib\/admin\/validation\/launch-planning\.ts$/,
-      /prospect|launch[-_]planning|scenario|apprentice|candidate/i,
-    ],
-  },
-  multiply: {
-    label: "Multiplication Readiness",
-    seedPatterns: [
-      /(^|\/)app\/\(protected\)\/admin\/multiply\//,
-      /(^|\/)app\/\(protected\)\/admin\/launch-planning\//,
-      /(^|\/)app\/\(protected\)\/admin\/leader-pipeline\//,
-      /(^|\/)components\/admin\/multiply\//,
-      /(^|\/)components\/admin\/multiplication\//,
-      /(^|\/)components\/admin\/launch-planning\//,
-      /(^|\/)lib\/admin\/(multiply|multiplication|multiply-grid|multiply-trigger|multiplication-pillars|launch-planning)\.ts$/,
-      /(^|\/)lib\/supabase\/multiplication-config-reads\.ts$/,
-      /multiply|multiplication|readiness|capacity|pillar|candidate|apprentice|leader[-_]pipeline/i,
-    ],
-  },
-  care: {
-    label: "Care and Shepherd Workflows",
-    seedPatterns: [
-      /(^|\/)app\/\(protected\)\/admin\/care\//,
-      /(^|\/)app\/\(protected\)\/admin\/shepherd-care\//,
-      /(^|\/)app\/\(protected\)\/admin\/follow-ups\//,
-      /(^|\/)app\/\(protected\)\/leader\/.*\/care\//,
-      /(^|\/)app\/\(protected\)\/over-shepherd\//,
-      /(^|\/)components\/admin\/care\//,
-      /(^|\/)components\/admin\/shepherd-care\//,
-      /(^|\/)components\/admin\/follow-ups\//,
-      /(^|\/)components\/over-shepherd\//,
-      /(^|\/)lib\/admin\/(care|care-|shepherd-care|shepherd-care-|care-note|care-next|care-area|care-temporal|care-accordion|care-note-feed|care-note-visibility|member-care|follow-ups)/,
-      /(^|\/)lib\/supabase\/(care|care-|shepherd-care|member-care|follow-up)/,
-      /care|shepherd|follow[-_]up|private[-_]note|care[-_]note|over[-_]shepherd|leader[-_]health/i,
-    ],
-  },
-  calendar: {
-    label: "Calendar and Attendance",
-    seedPatterns: [
-      /(^|\/)app\/\(protected\)\/admin\/calendar\//,
-      /(^|\/)app\/\(protected\)\/admin\/planning\//,
-      /(^|\/)app\/\(protected\)\/admin\/check-ins\//,
-      /(^|\/)app\/\(protected\)\/leader\/.*\/calendar\//,
-      /(^|\/)app\/\(protected\)\/admin\/groups\/.*\/calendar\//,
-      /(^|\/)components\/calendar\//,
-      /(^|\/)components\/admin\/admin-master-calendar/,
-      /(^|\/)lib\/calendar\//,
-      /(^|\/)lib\/admin\/(master-calendar|master-calendar-label|check-ins)\.ts$/,
-      /calendar|occurrence|event|check[-_]in|attendance|meeting|schedule/i,
-    ],
-  },
-};
-
-const domainConfigs = [
-  {
-    id: "auth",
-    label: "Auth",
-    command: "npm run domain:auth",
-    layout: { x: -420, y: -260 },
-    patterns: [
-      /(^|\/)middleware\.ts$/,
-      /(^|\/)lib\/auth\//,
-      /(^|\/)app\/(login|auth|invite|forgot-password|reset-password)(\/|$)/,
-      /auth|session|role|logout|login|password|invite/i,
-    ],
-  },
-  {
-    id: "groups",
-    label: "Groups",
-    command: "npm run domain:groups",
-    layout: { x: -480, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/groups(\/|$)/,
-      /(^|\/)components\/admin\/groups?/,
-      /group-|groups-|group_detail|group_roster|group_health|group_type/i,
-    ],
-  },
-  {
-    id: "people",
-    label: "People",
-    command: "npm run domain:people",
-    layout: { x: -288, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/people(\/|$)/,
-      /(^|\/)components\/admin\/people(\/|$)/,
-      /people|person|profile|guest|membership|member-detail|leader-detail/i,
-    ],
-  },
-  {
-    id: "plan",
-    label: "Plan",
-    command: "npm run domain:plan",
-    layout: { x: -96, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/(plan|planning|launch-planning)(\/|$)/,
-      /(^|\/)components\/admin\/(plan|planning|launch-planning)(\/|$)/,
-      /launch-planning|planning|prospect|scenario|apprentice|candidate/i,
-    ],
-  },
-  {
-    id: "multiply",
-    label: "Multiply",
-    command: "npm run domain:multiply",
-    layout: { x: 96, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/(multiply|leader-pipeline)(\/|$)/,
-      /(^|\/)components\/admin\/(multiply|multiplication)(\/|$)/,
-      /multiply|multiplication|readiness|capacity|pillar|leader-pipeline/i,
-    ],
-  },
-  {
-    id: "care",
-    label: "Care",
-    command: "npm run domain:care",
-    layout: { x: 288, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/(care|shepherd-care|follow-ups)(\/|$)/,
-      /(^|\/)app\/\(protected\)\/over-shepherd(\/|$)/,
-      /(^|\/)components\/admin\/(care|shepherd-care|follow-ups)(\/|$)/,
-      /(^|\/)components\/over-shepherd(\/|$)/,
-      /care|shepherd|follow-up|follow_ups|private-note|private_note|coverage/i,
-    ],
-  },
-  {
-    id: "calendar",
-    label: "Calendar",
-    command: "npm run domain:calendar",
-    layout: { x: 480, y: 0 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/(calendar|check-ins)(\/|$)/,
-      /(^|\/)components\/calendar(\/|$)/,
-      /(^|\/)lib\/calendar(\/|$)/,
-      /calendar|occurrence|event|check-in|attendance|meeting|schedule/i,
-    ],
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    command: "npm run domain:settings",
-    layout: { x: -360, y: 260 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/admin\/settings(\/|$)/,
-      /(^|\/)components\/admin\/settings(\/|$)/,
-      /settings|group-category|metric-default|readiness-rule|rubric/i,
-    ],
-  },
-  {
-    id: "super-admin",
-    label: "Super Admin",
-    command: "npm run domain:super-admin",
-    layout: { x: -120, y: 260 },
-    patterns: [
-      /super-admin|permanent-delete|permanent-deletion|reset-all|platform-config|test-accounts|manage-test-auth-users/i,
-    ],
-  },
-  {
-    id: "supabase",
-    label: "Supabase/Data",
-    command: "npm run domain:supabase",
-    layout: { x: 120, y: 260 },
-    patterns: [
-      /(^|\/)lib\/supabase(\/|$)/,
-      /(^|\/)supabase\/(functions|migrations|seed)(\/|$)/,
-      /(^|\/)lib\/admin\/rpc\.ts$/,
-      /read-model|read-models|safeRpc|rpc\.ts/i,
-    ],
-  },
-  {
-    id: "shared-ui",
-    label: "Shared UI",
-    command: "npm run domain:shared-ui",
-    layout: { x: 360, y: 260 },
-    patterns: [
-      /(^|\/)components\/ui(\/|$)/,
-      /(^|\/)components\/lg(\/|$)/,
-      /segmented-tabs|button|badge|dialog|shell|card|empty-state|skeleton/i,
-    ],
-  },
-  {
-    id: "app-shell",
-    label: "App Shell",
-    command: "node scripts/graphify.mjs domain app-shell",
-    layout: { x: 0, y: -260 },
-    patterns: [
-      /(^|\/)app\/(layout|page|loading|error|not-found)\.[tj]sx?$/,
-      /(^|\/)app\/\(protected\)\/(layout|page|loading|error)\.[tj]sx?$/,
-      /(^|\/)lib\/dashboard(\/|$)/,
-      /navigation|nav-items|dashboard|home-hub|layout|page-shell/i,
-    ],
-  },
-  {
-    id: "leader-workspace",
-    label: "Leader Workspace",
-    command: "node scripts/graphify.mjs domain leader-workspace",
-    layout: { x: 420, y: -260 },
-    patterns: [
-      /(^|\/)app\/\(protected\)\/leader(\/|$)/,
-      /(^|\/)components\/leader(\/|$)/,
-      /(^|\/)lib\/leader(\/|$)/,
-      /leader-workspace|leader-/i,
-    ],
-  },
-];
-
-const domainById = new Map(domainConfigs.map((domain) => [domain.id, domain]));
-
-const palette = [
-  "#4E79A7",
-  "#F28E2B",
-  "#E15759",
-  "#76B7B2",
-  "#59A14F",
-  "#EDC948",
-  "#B07AA1",
-  "#FF9DA7",
-  "#9C755F",
-  "#BAB0AC",
-  "#6B7280",
-  "#2563EB",
-  "#16A34A",
-  "#DC2626",
-  "#9333EA",
-  "#0F766E",
-];
-
-const labelRules = [
-  {
-    label: "Admin Form Components",
-    pattern: /components\/admin\/forms|lib\/forms|action-form|confirm-action/i,
-  },
-  {
-    label: "Admin RPC Layer",
-    pattern: /lib\/admin\/rpc\.ts|lib\/shared\/rpc\.ts|rpc\(\)|safeRpc/i,
-  },
-  {
-    label: "Admin Action Runner",
-    pattern:
-      /lib\/admin\/run-action|lib\/shared\/run-action|lib\/admin\/action-result|lib\/shared\/action-result|runAction/i,
-  },
-  { label: "Admin Validation", pattern: /lib\/admin\/validation\//i },
-  {
-    label: "Supabase Data Access",
-    pattern: /lib\/supabase|supabase.*reads|read-model|read-batch/i,
-  },
-  {
-    label: "Private Notes Crypto",
-    pattern: /lib\/crypto|private-notes-session|sealed-note|passkey/i,
-  },
-  {
-    label: "Auth Flow",
-    pattern:
-      /(^|\/)lib\/auth\/|(^|\/)app\/(login|auth|invite|forgot-password|reset-password)\/|logoutAction|require[A-Za-z]+Session|middleware\.ts/i,
-  },
-  {
-    label: "Group Management UI",
-    pattern:
-      /admin\/groups|groups-directory|group-detail|group-roster|group-health/i,
-  },
-  {
-    label: "Plan Pipeline",
-    pattern: /admin\/plan|prospect|planning|launch-planning|scenario/i,
-  },
-  {
-    label: "Multiplication Readiness",
-    pattern:
-      /multiply|multiplication|pillar|readiness|capacity|candidate|apprentice/i,
-  },
-  {
-    label: "Settings Actions",
-    pattern:
-      /settings\/actions|settings_|group-category|metric-default|readiness-rule/i,
-  },
-  {
-    label: "Shepherd Care Workflows",
-    pattern:
-      /shepherd-care|over-shepherd|shepherd_care|leader-health|coverage/i,
-  },
-  {
-    label: "Care Notes and Follow Ups",
-    pattern:
-      /care-note|care_notes|follow-up|follow_ups|private-notes|private_notes/i,
-  },
-  { label: "Calendar Pages", pattern: /calendar|occurrence|event|schedule/i },
-  {
-    label: "Check Ins and Attendance",
-    pattern: /check-ins|check_ins|attendance/i,
-  },
-  {
-    label: "Admin Dashboard Widgets",
-    pattern: /components\/lg\/admin\/dashboard|lib\/dashboard/i,
-  },
-  {
-    label: "Admin People Actions",
-    pattern:
-      /admin\/people\/actions|components\/admin\/people|person-detail|people-management|adminassign|admincreate(member|leader|ministry)|deactivate(member|profile)|membership/i,
-  },
-  { label: "Leader Workspace", pattern: /leader\/|leader-|leader_/i },
-  {
-    label: "Super Admin Console",
-    pattern:
-      /super-admin|permanent-delete|reset-all|platform-config|test-accounts/i,
-  },
-  {
-    label: "Shared UI Primitives",
-    pattern: /components\/ui|segmented-tabs|button|badge|dialog|shell|card/i,
-  },
-  { label: "Database Migrations", pattern: /supabase\/migrations|\.sql$/i },
-];
-
-function main() {
-  const [command, ...args] = process.argv.slice(2);
-  const cmd = command || "help";
-
-  try {
-    if (cmd === "help" || cmd === "--help" || cmd === "-h") {
-      printHelp();
-      return;
-    }
-    if (cmd === "clean") {
-      clean();
-      return;
-    }
-    if (cmd === "has-cli") {
-      const bin = resolveGraphifyBin(false);
-      if (!bin) process.exit(1);
-      return;
-    }
-    if (cmd === "build") {
-      buildSlice(args[0] || "full", parseOptions(args.slice(1)));
-      return;
-    }
-    if (cmd === "domain") {
-      buildDomainGraph(args[0], parseOptions(args.slice(1)));
-      return;
-    }
-    if (sliceConfigs[cmd]) {
-      buildSlice(cmd, parseOptions(args));
-      return;
-    }
-    if (cmd === "tree") {
-      buildTree(args[0] || "full");
-      return;
-    }
-    if (cmd === "report") {
-      writeCombinedReport();
-      return;
-    }
-    if (cmd === "health") {
-      runHealth(args[0] || "full");
-      return;
-    }
-    console.error(`Unknown graphify command: ${cmd}`);
-    printHelp();
-    process.exit(1);
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+if (command === "features") {
+  for (const scopeName of config.featureOrder) {
+    runScope(scopeName);
   }
+} else if (command === "overview") {
+  writeOverview();
+} else if (command === "tree") {
+  writeTree();
+} else if (command === "health") {
+  runHealth();
+} else if (command === "list") {
+  console.log(Object.keys(config.scopes).join("\n"));
+} else if (config.scopes[command]) {
+  runScope(command);
+} else {
+  fail(`Unknown graphify command: ${command}`);
 }
 
-function printHelp() {
-  console.log(`Usage:
-  node scripts/graphify.mjs build <full|plan|multiply|care|calendar> [--include-tests] [--no-root-mirror]
-  node scripts/graphify.mjs domain <auth|groups|people|plan|multiply|care|calendar|settings|super-admin|supabase|shared-ui>
-  node scripts/graphify.mjs tree [full|plan|multiply|care|calendar]
-  node scripts/graphify.mjs report
-  node scripts/graphify.mjs clean
-
-Generated graphs are written to graphify-out/<slice>/. The full graph is also
-mirrored to graphify-out/. The default HTML view is the aggregate architecture
-overview; the raw full graph is written as raw-full-graph.html for deep
-inspection.`);
-}
-
-function parseOptions(args) {
-  return {
-    includeTests: args.includes("--include-tests"),
-    noRootMirror: args.includes("--no-root-mirror"),
-    quiet: args.includes("--quiet"),
-  };
-}
-
-function buildSlice(slice, options = {}) {
-  const config = sliceConfigs[slice];
-  if (!config) {
-    throw new Error(
-      `Unknown graph slice "${slice}". Expected one of: ${Object.keys(sliceConfigs).join(", ")}`
-    );
+function runScope(scopeName) {
+  const scope = config.scopes[scopeName];
+  const selected = selectScopeFiles(scope);
+  if (selected.files.length === 0) {
+    fail(`Scope "${scopeName}" selected zero files`);
   }
 
-  const graphifyBin = resolveGraphifyBin(true);
-  assertGraphifyVersion(graphifyBin);
+  const stageDir = path.join(stageRoot, scopeName);
+  const generatedDir = path.join(stageDir, "graphify-out");
+  const destDir = path.join(outputRoot, scope.output);
 
-  const files = selectFilesForSlice(slice, options);
-  if (files.length === 0) {
-    throw new Error(`No files matched graph slice "${slice}".`);
-  }
-
-  const sliceStageDir = path.join(stageRoot, slice);
-  const sliceOutDir = path.join(graphifyOutRoot, slice);
-  safeRemove(sliceStageDir, workRoot);
-  copyFilesToStage(files, sliceStageDir);
-
-  log(options, `Staged ${files.length} files for ${slice} graph.`);
-  runGraphify(graphifyBin, ["extract", sliceStageDir, "--max-workers", "1"], {
-    quiet: options.quiet,
-  });
-  runGraphify(graphifyBin, ["cluster-only", sliceStageDir, "--no-label"], {
-    quiet: options.quiet,
-  });
-
-  const generatedDir = path.join(sliceStageDir, "graphify-out");
-  const graphJson = path.join(generatedDir, "graph.json");
-  if (!fs.existsSync(graphJson)) {
-    throw new Error(`Graphify did not write ${graphJson}`);
-  }
-
-  postprocessOutput(generatedDir, slice, files);
-  runTreeForOutput(graphifyBin, generatedDir, slice, sliceStageDir, options);
-
-  safeRemove(sliceOutDir, graphifyOutRoot);
-  copyDirectory(generatedDir, sliceOutDir);
-
-  if (slice === "full" && !options.noRootMirror) {
-    mirrorFullOutput(sliceOutDir);
-  }
-
-  writeCombinedReport();
-  log(
-    options,
-    `Wrote ${slice} graph to ${path.relative(repoRoot, sliceOutDir)}.`
-  );
-}
-
-function buildDomainGraph(domainId, options = {}) {
-  if (!domainId || !domainById.has(domainId)) {
-    throw new Error(
-      `Unknown graph domain "${domainId || ""}". Expected one of: ${domainConfigs
-        .map((domain) => domain.id)
-        .join(", ")}`
-    );
-  }
-
-  const graphifyBin = resolveGraphifyBin(true);
-  assertGraphifyVersion(graphifyBin);
-
-  const files = selectFilesForDomain(domainId, options);
-  if (files.length === 0) {
-    throw new Error(`No files matched graph domain "${domainId}".`);
-  }
-
-  const slice = `domain-${domainId}`;
-  const sliceStageDir = path.join(stageRoot, slice);
-  const sliceOutDir = path.join(graphifyOutRoot, slice);
-  safeRemove(sliceStageDir, workRoot);
-  copyFilesToStage(files, sliceStageDir);
-
-  log(options, `Staged ${files.length} files for ${domainId} domain graph.`);
-  runGraphify(graphifyBin, ["extract", sliceStageDir, "--max-workers", "1"], {
-    quiet: options.quiet,
-  });
-  runGraphify(graphifyBin, ["cluster-only", sliceStageDir, "--no-label"], {
-    quiet: options.quiet,
-  });
-
-  const generatedDir = path.join(sliceStageDir, "graphify-out");
-  const graphJson = path.join(generatedDir, "graph.json");
-  if (!fs.existsSync(graphJson)) {
-    throw new Error(`Graphify did not write ${graphJson}`);
-  }
-
-  postprocessOutput(generatedDir, slice, files);
-  runTreeForOutput(graphifyBin, generatedDir, slice, sliceStageDir, options);
-
-  safeRemove(sliceOutDir, graphifyOutRoot);
-  copyDirectory(generatedDir, sliceOutDir);
-
-  writeCombinedReport();
-  log(
-    options,
-    `Wrote ${domainId} domain graph to ${path.relative(repoRoot, sliceOutDir)}.`
-  );
-}
-
-function clean() {
-  safeRemove(stageRoot, workRoot);
-  safeRemove(path.join(workRoot, "tmp"), workRoot);
   console.log(
-    "Removed Graphify staging folders under .graphify/. Generated graph outputs were left intact."
+    `[graphify] ${scope.title}: staging ${selected.files.length} tracked files`
   );
-}
+  resetDirectory(stageDir, stageRoot);
+  for (const file of selected.files) {
+    const source = path.join(ROOT, file);
+    const target = path.join(stageDir, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileWithRetry(source, target);
+  }
 
-function buildTree(slice) {
-  const graphifyBin = resolveGraphifyBin(true);
-  assertGraphifyVersion(graphifyBin);
-  const outDir = outputDirForSlice(slice);
-  if (!fs.existsSync(path.join(outDir, "graph.json"))) {
-    throw new Error(
-      `No graph exists at ${path.relative(repoRoot, outDir)}. Run npm run graph:${slice} first.`
+  runGraphify(["extract", stageDir, "--out", stageDir, "--max-workers", "1"], {
+    GRAPHIFY_VIZ_NODE_LIMIT: "10000",
+  });
+
+  runGraphify(
+    [
+      "cluster-only",
+      stageDir,
+      "--graph",
+      path.join(generatedDir, "graph.json"),
+      "--no-label",
+    ],
+    { GRAPHIFY_VIZ_NODE_LIMIT: "10000" }
+  );
+
+  if (scope.cleanGraph) {
+    writeCleanGraphOutputs(
+      generatedDir,
+      buildCleanGraph(
+        readJson(path.join(generatedDir, "graph.json")),
+        scope,
+        selected
+      )
+    );
+  } else {
+    runGraphify(
+      [
+        "tree",
+        "--graph",
+        path.join(generatedDir, "graph.json"),
+        "--output",
+        path.join(generatedDir, "GRAPH_TREE.html"),
+        "--root",
+        stageDir,
+        "--label",
+        `LifeGroups ${scope.title}`,
+      ],
+      {}
     );
   }
-  runTreeForOutput(graphifyBin, outDir, slice, repoRoot, {});
-}
 
-function runHealth(slice) {
-  const graphifyBin = resolveGraphifyBin(true);
-  assertGraphifyVersion(graphifyBin);
-  const outDir = outputDirForSlice(slice);
-  const graphJson = path.join(outDir, "graph.json");
-  if (!fs.existsSync(graphJson)) {
-    throw new Error(`No graph exists at ${path.relative(repoRoot, outDir)}.`);
+  copyDurableOutputs(generatedDir, destDir, scopeName, scope);
+  const graph = readJson(path.join(destDir, "graph.json"));
+  if (scope.cleanGraph) {
+    writeCleanGraphLabels(destDir, graph);
+  } else {
+    const labels = inferCommunityLabels(analyzeGraph(graph));
+    applyCommunityLabels(destDir, labels);
   }
-  runGraphify(
-    graphifyBin,
-    ["diagnose", "multigraph", "--graph", graphJson],
-    {}
-  );
-  runGraphify(graphifyBin, ["benchmark", graphJson], {});
-}
-
-function runTreeForOutput(graphifyBin, outDir, slice, rootDir, options = {}) {
-  runGraphify(
-    graphifyBin,
-    [
-      "tree",
-      "--graph",
-      path.join(outDir, "graph.json"),
-      "--output",
-      path.join(outDir, "GRAPH_TREE.html"),
-      "--root",
-      rootDir,
-      "--label",
-      `lifegroups ${slice}`,
-    ],
-    { quiet: options.quiet }
+  const report = scope.cleanGraph
+    ? buildCleanScopeReport(scopeName, scope, graph, selected)
+    : buildScopeReport(scopeName, scope, graph, selected);
+  writeTextFile(path.join(destDir, scope.report), report);
+  console.log(
+    `[graphify] ${scope.title}: wrote ${path.relative(ROOT, destDir)}`
   );
 }
 
-function selectFilesForSlice(slice, options) {
-  const repoFiles = listRepoFiles();
-  const candidates = repoFiles
-    .filter((file) => isSourceCandidate(file, options))
-    .sort((a, b) => a.localeCompare(b));
+function selectScopeFiles(scope) {
+  const trackedFiles = gitLsFiles();
+  const include = mergeMatchers(
+    scope.include,
+    scope.includeBoundarySet ? { files: config.baseBoundaryFiles } : {}
+  );
+  const excluded = new Map();
+  const files = [];
 
-  if (slice === "full") return candidates;
-
-  const candidateSet = new Set(candidates);
-  const seeds = candidates.filter((file) => matchesSlice(file, slice));
-  const selected = new Set(seeds);
-  const queue = [...seeds];
-
-  while (queue.length > 0) {
-    const file = queue.shift();
-    if (!codeExtensions.has(path.posix.extname(file))) continue;
-    for (const importedFile of importedLocalFiles(file, candidateSet)) {
-      if (!selected.has(importedFile)) {
-        selected.add(importedFile);
-        queue.push(importedFile);
-      }
+  for (const file of trackedFiles) {
+    if (!matchesMatcher(file, include)) continue;
+    const exclusion = firstMatchingRule(file, [
+      ...config.baseExclude,
+      ...(scope.exclude || []),
+    ]);
+    if (exclusion) {
+      excluded.set(exclusion.label, (excluded.get(exclusion.label) || 0) + 1);
+      continue;
     }
+    files.push(file);
   }
 
-  for (const file of candidates) {
-    if (file === "middleware.ts" || file === "types/enums.ts")
-      selected.add(file);
-  }
-
-  return [...selected].sort((a, b) => a.localeCompare(b));
+  files.sort();
+  return { files, excluded };
 }
 
-function selectFilesForDomain(domainId, options) {
-  const repoFiles = listRepoFiles();
-  const candidates = repoFiles
-    .filter((file) => isSourceCandidate(file, options))
-    .sort((a, b) => a.localeCompare(b));
-  const candidateSet = new Set(candidates);
-  const dependencyDomains = new Set([
-    domainId,
-    "auth",
-    "supabase",
-    "shared-ui",
-    "app-shell",
-  ]);
-
-  const seeds = candidates.filter(
-    (file) => classifyDomainForFile(file).id === domainId
-  );
-  const selected = new Set(seeds);
-  const queue = [...seeds];
-
-  while (queue.length > 0) {
-    const file = queue.shift();
-    if (!codeExtensions.has(path.posix.extname(file))) continue;
-    for (const importedFile of importedLocalFiles(file, candidateSet)) {
-      const importedDomain = classifyDomainForFile(importedFile).id;
-      if (!dependencyDomains.has(importedDomain)) continue;
-      if (!selected.has(importedFile)) {
-        selected.add(importedFile);
-        if (importedDomain === domainId) queue.push(importedFile);
-      }
-    }
-  }
-
-  for (const file of candidates) {
-    if (file === "middleware.ts" || file === "types/enums.ts") {
-      selected.add(file);
-    }
-  }
-
-  return [...selected].sort((a, b) => a.localeCompare(b));
-}
-
-function listRepoFiles() {
-  const result = spawnSync(
-    "git",
-    ["ls-files", "--cached", "--others", "--exclude-standard"],
-    {
-      cwd: repoRoot,
-      encoding: "utf8",
-    }
-  );
+function gitLsFiles() {
+  const result = spawnSync(getGit(), ["ls-files", "-z"], {
+    cwd: ROOT,
+    encoding: "buffer",
+  });
   if (result.status !== 0) {
-    throw new Error(`git ls-files failed: ${result.stderr || result.stdout}`);
+    fail(
+      `git ls-files failed: ${result.error || result.stderr?.toString("utf8") || "unknown error"}`
+    );
   }
-  return result.stdout.split(/\r?\n/).map(toSlash).filter(Boolean);
+  return result.stdout
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean)
+    .map(normalizePath);
 }
 
-function isSourceCandidate(file, options) {
-  const p = toSlash(file);
-  const lower = p.toLowerCase();
-  const ext = path.posix.extname(p);
-
-  if (!sourceExtensions.has(ext)) return false;
-  if (!isArchitectureRoot(p)) return false;
-  if (!options.includeTests && isTestPath(p)) return false;
-
-  if (
-    lower.startsWith("node_modules/") ||
-    lower.startsWith("app/a11y-harness/") ||
-    lower.startsWith(".next/") ||
-    lower.startsWith("dist/") ||
-    lower.startsWith("build/") ||
-    lower.startsWith("out/") ||
-    lower.startsWith("coverage/") ||
-    lower.startsWith("graphify-out/") ||
-    lower.startsWith(".graphify/") ||
-    lower.startsWith("graphify/") ||
-    lower.startsWith(".agents/") ||
-    lower.startsWith(".claude/") ||
-    lower.startsWith(".github/") ||
-    lower.startsWith(".husky/") ||
-    lower.startsWith("test-results/") ||
-    lower.startsWith("playwright-report/") ||
-    lower.startsWith("blob-report/") ||
-    lower.startsWith("tmp/") ||
-    lower.startsWith("temp/") ||
-    lower.startsWith(".tmp/")
-  ) {
-    return false;
-  }
-
-  if (
-    lower === "types/database.ts" ||
-    lower === "next-env.d.ts" ||
-    lower.endsWith(".d.ts") ||
-    lower.endsWith(".generated.ts") ||
-    lower.endsWith(".generated.tsx") ||
-    lower.includes("/generated/") ||
-    lower.includes("/__generated__/")
-  ) {
-    return false;
-  }
-
-  if (
-    lower.endsWith("package-lock.json") ||
-    lower.endsWith("pnpm-lock.yaml") ||
-    lower.endsWith("yarn.lock") ||
-    lower.endsWith("bun.lockb") ||
-    lower.endsWith("skills-lock.json")
-  ) {
-    return false;
-  }
-
-  if (lower.startsWith("scripts/graphify")) return false;
-  return true;
-}
-
-function isArchitectureRoot(file) {
-  return (
-    file.startsWith("app/") ||
-    file.startsWith("components/") ||
-    file.startsWith("lib/") ||
-    file.startsWith("supabase/functions/") ||
-    file.startsWith("supabase/migrations/") ||
-    file.startsWith("supabase/seed/") ||
-    file === "middleware.ts" ||
-    file === "types/enums.ts"
-  );
-}
-
-function isTestPath(file) {
-  return /(^|\/)(__tests__|tests)(\/|$)|\.(test|spec)\.[cm]?[jt]sx?$/.test(
-    file
-  );
-}
-
-function matchesSlice(file, slice) {
-  const normalized = toSlash(file);
-  return sliceConfigs[slice].seedPatterns.some((pattern) =>
-    pattern.test(normalized)
-  );
-}
-
-function classifyDomainForNode(node) {
-  return classifyDomain(node.source_file || node.id || node.label || "");
-}
-
-function classifyDomainForFile(file) {
-  return classifyDomain(file);
-}
-
-function classifyDomain(value) {
-  const normalized = toSlash(value).toLowerCase();
-  const orderedDomainIds = [
-    "supabase",
-    "super-admin",
-    "auth",
-    "leader-workspace",
-    "settings",
-    "care",
-    "calendar",
-    "multiply",
-    "plan",
-    "people",
-    "groups",
-    "shared-ui",
-    "app-shell",
+function getGit() {
+  if (gitExe) return gitExe;
+  const candidates = [
+    path.join(
+      process.env.ProgramFiles || "C:\\Program Files",
+      "Git",
+      "cmd",
+      "git.exe"
+    ),
+    path.join(
+      process.env.ProgramFiles || "C:\\Program Files",
+      "Git",
+      "bin",
+      "git.exe"
+    ),
+    "git",
   ];
 
-  for (const domainId of orderedDomainIds) {
-    const domain = domainById.get(domainId);
-    if (domain.patterns.some((pattern) => pattern.test(normalized))) {
-      return domain;
+  for (const candidate of candidates) {
+    const result = spawnSync(candidate, ["--version"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    if (result.status === 0) {
+      gitExe = candidate;
+      return gitExe;
     }
   }
 
-  return domainById.get("app-shell");
+  fail("Unable to run git.");
 }
 
-function importedLocalFiles(file, candidateSet) {
-  const abs = path.join(repoRoot, file);
-  if (!fs.existsSync(abs)) return [];
-
-  const source = fs.readFileSync(abs, "utf8");
-  const imports = [];
-  const importRe =
-    /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s*)?["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/g;
-
-  for (const match of source.matchAll(importRe)) {
-    const spec = match[1] || match[2];
-    const resolved = resolveImport(file, spec, candidateSet);
-    if (resolved) imports.push(resolved);
-  }
-
-  return imports;
-}
-
-function resolveImport(fromFile, spec, candidateSet) {
-  if (!spec || (!spec.startsWith(".") && !spec.startsWith("@/"))) return null;
-
-  const base = spec.startsWith("@/")
-    ? spec.slice(2)
-    : path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), spec));
-
-  const directExt = path.posix.extname(base);
-  const attempts = [];
-  if (directExt) {
-    attempts.push(base);
-  } else {
-    for (const ext of [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]) {
-      attempts.push(`${base}${ext}`);
-      attempts.push(`${base}/index${ext}`);
-    }
-  }
-
-  return attempts.find((candidate) => candidateSet.has(candidate)) || null;
-}
-
-function copyFilesToStage(files, destinationRoot) {
-  for (const file of files) {
-    const source = path.join(repoRoot, file);
-    const destination = path.join(destinationRoot, file);
-    assertInside(destinationRoot, destination);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.copyFileSync(source, destination);
-  }
-}
-
-function postprocessOutput(outDir, slice, stagedFiles) {
-  const graphPath = path.join(outDir, "graph.json");
-  const graph = JSON.parse(fs.readFileSync(graphPath, "utf8"));
-  const edges = graph.links || graph.edges || [];
-  const nodes = graph.nodes || [];
-  const overrides = readCommunityOverrides();
-  const previousAnalysis = readAnalysis(outDir);
-  const stagedFileCount =
-    stagedFiles.length > 0
-      ? stagedFiles.length
-      : previousAnalysis?.stagedFileCount > 0
-        ? previousAnalysis.stagedFileCount
-        : uniqueSourceFileCount(graph);
-  const analysis = analyzeGraph(graph, slice, stagedFileCount, overrides);
-  const domainOverview = buildDomainOverview(nodes, edges, analysis);
-  const communityOverview = buildCommunityOverview(nodes, edges, analysis);
-  analysis.views = {
-    raw: {
-      label: slice === "full" ? "Raw Full Graph" : "Feature Graph",
-      nodeCount: nodes.length,
-      edgeCount: edges.length,
-      path: slice === "full" ? "raw-full-graph.html" : "graph.html",
+function buildCategoryConfig(labels) {
+  const fallbackCategories = [
+    { id: "route_page_layout", label: "Route/Page/Layout", color: "#4E79A7" },
+    { id: "server_action", label: "Server Action", color: "#F28E2B" },
+    { id: "feature_component", label: "Feature Component", color: "#59A14F" },
+    { id: "domain_module", label: "Domain Module", color: "#B07AA1" },
+    {
+      id: "supabase_read_adapter",
+      label: "Supabase Read Adapter",
+      color: "#76B7B2",
     },
-    architecture: {
-      label: "Architecture Overview",
-      nodeCount: domainOverview.nodes.length,
-      edgeCount: domainOverview.edges.length,
-      defaultVisibleEdges: domainOverview.edges.filter(
-        (edge) => !edge.hiddenByDefault
-      ).length,
-      path: "architecture-overview.html",
+    { id: "rpc_write_boundary", label: "RPC/Write Boundary", color: "#E15759" },
+    {
+      id: "auth_session_boundary",
+      label: "Auth/Session Boundary",
+      color: "#EDC948",
     },
-    community: {
-      label: "Community Overview",
-      nodeCount: communityOverview.nodes.length,
-      edgeCount: communityOverview.edges.length,
-      defaultVisibleEdges: communityOverview.edges.filter(
-        (edge) => !edge.hiddenByDefault
-      ).length,
-      path: "community-overview.html",
+    { id: "shared_plumbing", label: "Shared Plumbing", color: "#BAB0AC" },
+    {
+      id: "shared_ui_primitive",
+      label: "Shared UI Primitive",
+      color: "#9C755F",
+    },
+    { id: "validation", label: "Validation", color: "#FF9DA7" },
+    {
+      id: "observability_security",
+      label: "Observability/Security",
+      color: "#8CD17D",
+    },
+    { id: "type_vocabulary", label: "Type/Vocabulary", color: "#86BCB6" },
+  ];
+
+  const categories = (
+    labels.categories?.length ? labels.categories : fallbackCategories
+  ).map((category, index) => ({
+    ...category,
+    community: index,
+  }));
+
+  return {
+    categories,
+    byId: new Map(categories.map((category) => [category.id, category])),
+    featureLabels: labels.features || {
+      auth: "Auth",
+      calendar: "Calendar",
+      care: "Care",
+      core: "Core",
+      groups: "Groups",
+      home: "Home",
+      multiply: "Multiply",
+      people: "People",
+      plan: "Plan",
+      settings: "Settings",
+      shared: "Shared",
     },
   };
+}
 
-  fs.writeFileSync(
-    path.join(outDir, ".graphify_labels.json"),
-    JSON.stringify(analysis.labels, null, 2) + "\n"
-  );
-  fs.writeFileSync(
-    path.join(outDir, ".graphify_analysis.json"),
-    JSON.stringify(analysis, null, 2) + "\n"
-  );
-  fs.writeFileSync(
-    path.join(outDir, "GRAPH_REPORT.md"),
-    renderReport(analysis) + "\n"
-  );
+function buildCleanGraph(rawGraph, scope, selected) {
+  const cleanConfig = config.cleanGraph || {};
+  const rawNodes = rawGraph.nodes || [];
+  const rawLinks = rawGraph.links || rawGraph.edges || [];
+  const nodeById = new Map(rawNodes.map((node) => [node.id, node]));
+  const fileStats = new Map();
+  const fileLinks = [];
 
-  if (slice === "full") {
-    const architectureHtml = renderOverviewHtml(domainOverview, {
-      title: "Architecture Overview",
-      subtitle:
-        "Default map: domains are collapsed first, node size shows total symbols, and edge width shows cross-domain relationships.",
+  for (const node of rawNodes) {
+    const file = normalizeMaybe(node.source_file);
+    if (!file) continue;
+    const stats = ensureFileStats(fileStats, file);
+    stats.symbolCount += 1;
+    if (node.community !== undefined) {
+      stats.rawCommunities.set(
+        String(node.community),
+        (stats.rawCommunities.get(String(node.community)) || 0) + 1
+      );
+    }
+  }
+
+  for (const link of rawLinks) {
+    const sourceFile = normalizeMaybe(
+      nodeById.get(link.source)?.source_file || link.source_file
+    );
+    const targetFile = normalizeMaybe(nodeById.get(link.target)?.source_file);
+    if (!sourceFile || !targetFile || sourceFile === targetFile) continue;
+
+    const weight = cleanWeight(link.weight);
+    const sourceStats = ensureFileStats(fileStats, sourceFile);
+    const targetStats = ensureFileStats(fileStats, targetFile);
+    sourceStats.outboundWeight += weight;
+    sourceStats.degreeWeight += weight;
+    sourceStats.outboundCount += 1;
+    sourceStats.degreeCount += 1;
+    targetStats.inboundWeight += weight;
+    targetStats.degreeWeight += weight;
+    targetStats.inboundCount += 1;
+    targetStats.degreeCount += 1;
+
+    fileLinks.push({
+      sourceFile,
+      targetFile,
+      weight,
+      relation: link.relation || "edge",
+      sourceLocation: link.source_location || "",
     });
-    fs.writeFileSync(
-      path.join(outDir, "architecture-overview.html"),
-      architectureHtml
+  }
+
+  const statsList = [...fileStats.values()]
+    .map((stats) => ({ ...stats, ...classifyCleanFile(stats.file) }))
+    .sort(
+      (a, b) => b.degreeWeight - a.degreeWeight || a.file.localeCompare(b.file)
     );
-    fs.writeFileSync(path.join(outDir, "graph.html"), architectureHtml);
-    fs.writeFileSync(
-      path.join(outDir, "community-overview.html"),
-      renderOverviewHtml(communityOverview, {
-        title: "Community Overview",
-        subtitle:
-          "Detected Graphify communities collapsed to one node each. Tooltips and details preserve the original community ID.",
-      })
+  const preserve = chooseCleanPreservedFiles(statsList, cleanConfig);
+  const grouped = groupCleanFiles(statsList, preserve);
+  const fileToGroupId = new Map();
+
+  for (const group of grouped.values()) {
+    for (const file of group.files) {
+      fileToGroupId.set(file, group.id);
+    }
+  }
+
+  const edgeMap = new Map();
+  for (const link of fileLinks) {
+    const source = fileToGroupId.get(link.sourceFile);
+    const target = fileToGroupId.get(link.targetFile);
+    if (!source || !target || source === target) continue;
+
+    const sourceNode = grouped.get(source);
+    const targetNode = grouped.get(target);
+    const key = `${source}\u0000${target}`;
+    if (!edgeMap.has(key)) {
+      edgeMap.set(key, {
+        source,
+        target,
+        weight: 0,
+        rawEdgeCount: 0,
+        relationCounts: new Map(),
+        softened:
+          isSoftenedCleanCategory(sourceNode.category) ||
+          isSoftenedCleanCategory(targetNode.category),
+        examples: [],
+      });
+    }
+
+    const edge = edgeMap.get(key);
+    edge.weight += link.weight;
+    edge.rawEdgeCount += 1;
+    edge.relationCounts.set(
+      link.relation,
+      (edge.relationCounts.get(link.relation) || 0) + 1
     );
-    fs.writeFileSync(
-      path.join(outDir, "raw-full-graph.html"),
-      renderHtml(nodes, edges, analysis, slice, {
-        title: "Raw Full Graph",
-        subtitle:
-          "Deep inspection only. This is the complete Graphify graph and is not intended as the architecture overview.",
-      })
+    const example = `${link.sourceFile} -> ${link.targetFile}`;
+    if (edge.examples.length < 5 && !edge.examples.includes(example))
+      edge.examples.push(example);
+  }
+
+  const softFactor = Number(cleanConfig.softenedEdgeWeight || 0.35);
+  const links = [...edgeMap.values()]
+    .map((edge) => ({
+      source: edge.source,
+      target: edge.target,
+      weight: roundWeight(edge.weight),
+      visual_weight: roundWeight(
+        edge.softened ? Math.max(1, edge.weight * softFactor) : edge.weight
+      ),
+      softened: edge.softened,
+      relation: topMapEntry(edge.relationCounts)?.[0] || "edge",
+      relation_counts: Object.fromEntries(
+        [...edge.relationCounts.entries()].sort(
+          (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+        )
+      ),
+      raw_edge_count: edge.rawEdgeCount,
+      examples: edge.examples,
+    }))
+    .sort(
+      (a, b) =>
+        a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
     );
+
+  const degreeByNode = new Map();
+  for (const link of links) {
+    degreeByNode.set(
+      link.source,
+      (degreeByNode.get(link.source) || 0) + link.visual_weight
+    );
+    degreeByNode.set(
+      link.target,
+      (degreeByNode.get(link.target) || 0) + link.visual_weight
+    );
+  }
+
+  const nodes = [...grouped.values()]
+    .map((node) => finalizeCleanNode(node, degreeByNode.get(node.id) || 0))
+    .sort(
+      (a, b) =>
+        a.community - b.community ||
+        a.feature.localeCompare(b.feature) ||
+        b.degree - a.degree ||
+        a.label.localeCompare(b.label) ||
+        a.id.localeCompare(b.id)
+    );
+
+  return {
+    directed: true,
+    multigraph: false,
+    graph: {
+      name: `LifeGroups ${scope.title} Clean File/Module Graph`,
+      kind: "clean-file-module",
+      raw_node_count: rawNodes.length,
+      raw_edge_count: rawLinks.length,
+      raw_source_file_count: fileStats.size,
+      selected_file_count: selected.files.length,
+      preserved_file_node_count: [...grouped.values()].filter(
+        (node) => !node.grouped
+      ).length,
+      grouped_bucket_count: [...grouped.values()].filter((node) => node.grouped)
+        .length,
+      grouped_file_count: [...grouped.values()]
+        .filter((node) => node.grouped)
+        .reduce((count, node) => count + node.files.length, 0),
+      target_min_nodes: cleanConfig.targetMinNodes || 80,
+      target_max_nodes: cleanConfig.targetMaxNodes || 200,
+      generated_at: new Date().toISOString(),
+    },
+    nodes,
+    links,
+    built_at_commit: rawGraph.built_at_commit,
+  };
+}
+
+function ensureFileStats(fileStats, file) {
+  if (!fileStats.has(file)) {
+    fileStats.set(file, {
+      file,
+      symbolCount: 0,
+      inboundWeight: 0,
+      outboundWeight: 0,
+      degreeWeight: 0,
+      inboundCount: 0,
+      outboundCount: 0,
+      degreeCount: 0,
+      rawCommunities: new Map(),
+    });
+  }
+  return fileStats.get(file);
+}
+
+function chooseCleanPreservedFiles(statsList, cleanConfig) {
+  const targetMax = cleanConfig.targetMaxNodes || 200;
+  const requestedTop = cleanConfig.preserveTopFiles || 120;
+  const minimumTop = cleanConfig.minimumPreserveTopFiles || 60;
+  const boundaryFiles = new Set([
+    ...(config.baseBoundaryFiles || []),
+    ...(cleanConfig.preserveFiles || []),
+  ]);
+  let best = null;
+
+  for (let top = requestedTop; top >= minimumTop; top -= 10) {
+    const preserve = new Set(
+      statsList.slice(0, top).map((stats) => stats.file)
+    );
+    for (const file of boundaryFiles) {
+      if (statsList.some((stats) => stats.file === file)) preserve.add(file);
+    }
+
+    const totalNodes =
+      preserve.size +
+      new Set(
+        statsList
+          .filter((stats) => !preserve.has(stats.file))
+          .map(bucketKeyForCleanFile)
+      ).size;
+    best = { preserve, totalNodes };
+    if (totalNodes <= targetMax) return preserve;
+  }
+
+  return best?.preserve || new Set();
+}
+
+function groupCleanFiles(statsList, preserve) {
+  const groups = new Map();
+
+  for (const stats of statsList) {
+    const groupKey = preserve.has(stats.file)
+      ? `file:${stats.file}`
+      : `bucket:${bucketKeyForCleanFile(stats)}`;
+    const grouped = !preserve.has(stats.file);
+    const id = stableNodeId(grouped ? "bucket" : "file", groupKey);
+
+    if (!groups.has(id)) {
+      const category = categoryForId(stats.category);
+      groups.set(id, {
+        id,
+        grouped,
+        key: groupKey,
+        label: grouped
+          ? bucketLabelForCleanFile(stats)
+          : cleanFileLabel(stats.file),
+        title: grouped ? bucketTitleForCleanFile(stats) : stats.file,
+        source_file: grouped ? bucketSourceForCleanFile(stats) : stats.file,
+        source_files: [],
+        files: [],
+        file_count: 0,
+        symbol_count: 0,
+        raw_inbound_weight: 0,
+        raw_outbound_weight: 0,
+        category: stats.category,
+        category_label: category.label,
+        community: category.community,
+        community_name: category.label,
+        feature: stats.feature,
+        feature_label: featureLabel(stats.feature),
+        color: category.color,
+        file_type: grouped ? "module-bucket" : "code",
+      });
+    }
+
+    const group = groups.get(id);
+    group.files.push(stats.file);
+    group.source_files.push(stats.file);
+    group.file_count += 1;
+    group.symbol_count += stats.symbolCount;
+    group.raw_inbound_weight += stats.inboundWeight;
+    group.raw_outbound_weight += stats.outboundWeight;
+  }
+
+  return groups;
+}
+
+function finalizeCleanNode(node, degree) {
+  const fileBonus = Math.log2(node.file_count + 1);
+  const size = Math.max(
+    12,
+    Math.min(38, 12 + Math.sqrt(degree) * 1.55 + fileBonus)
+  );
+  return {
+    id: node.id,
+    label: node.label,
+    title: cleanNodeTitle(node),
+    source_file: node.source_file,
+    source_files: node.source_files.sort(),
+    file_count: node.file_count,
+    symbol_count: node.symbol_count,
+    grouped: node.grouped,
+    category: node.category,
+    category_label: node.category_label,
+    community: node.community,
+    community_name: node.community_name,
+    feature: node.feature,
+    feature_label: node.feature_label,
+    color: node.color,
+    file_type: node.file_type,
+    raw_inbound_weight: roundWeight(node.raw_inbound_weight),
+    raw_outbound_weight: roundWeight(node.raw_outbound_weight),
+    degree: roundWeight(degree),
+    size: roundWeight(size),
+  };
+}
+
+function classifyCleanFile(file) {
+  const lower = file.toLowerCase();
+  let category = "domain_module";
+
+  if (
+    lower === "middleware.ts" ||
+    lower.startsWith("lib/auth/") ||
+    /^app\/(auth|login|invite|forgot-password|reset-password|welcome|unauthorized)\//.test(
+      lower
+    )
+  ) {
+    category = "auth_session_boundary";
+  } else if (/^app\/.*\/(actions|[a-z0-9-]+-actions|route)\.ts$/.test(lower)) {
+    category = "server_action";
+  } else if (/^app\/.*\/(page|layout)\.tsx?$/.test(lower)) {
+    category = "route_page_layout";
+  } else if (
+    /(^|\/)(rpc|run-action)\.ts$/.test(lower) ||
+    lower.includes("/rpc/")
+  ) {
+    category = "rpc_write_boundary";
+  } else if (
+    lower.startsWith("lib/supabase/") &&
+    /(read|reads|read-model|batch|config|cached-config|server)/.test(lower)
+  ) {
+    category = "supabase_read_adapter";
+  } else if (
+    lower.startsWith("lib/admin/validation/") ||
+    lower.startsWith("lib/leader/validation")
+  ) {
+    category = "validation";
+  } else if (
+    lower.startsWith("components/ui/") ||
+    lower.startsWith("components/lg/") ||
+    lower.startsWith("components/pastoral/") ||
+    lower.startsWith("components/auth/") ||
+    lower.startsWith("components/sign-in/")
+  ) {
+    category = "shared_ui_primitive";
+  } else if (lower.startsWith("components/")) {
+    category = "feature_component";
+  } else if (
+    lower.startsWith("lib/observability/") ||
+    lower.startsWith("lib/security/") ||
+    lower.startsWith("lib/crypto/")
+  ) {
+    category = "observability_security";
+  } else if (
+    lower.startsWith("lib/shared/") ||
+    lower.startsWith("lib/forms/") ||
+    lower.startsWith("lib/hooks/") ||
+    lower === "lib/utils.ts"
+  ) {
+    category = "shared_plumbing";
+  } else if (lower.startsWith("types/")) {
+    category = "type_vocabulary";
+  }
+
+  return { category, feature: featureForCleanFile(file, category) };
+}
+
+function featureForCleanFile(file, category) {
+  const tagged = featureTag(file);
+  if (tagged) return tagged;
+  const lower = file.toLowerCase();
+  if (
+    category === "auth_session_boundary" ||
+    /auth|login|session|middleware|password|invite|welcome|unauthorized/.test(
+      lower
+    )
+  )
+    return "auth";
+  if (isSoftenedCleanCategory(category) || category === "type_vocabulary")
+    return "shared";
+  return "core";
+}
+
+function bucketKeyForCleanFile(stats) {
+  return `${stats.feature}:${stats.category}`;
+}
+
+function bucketLabelForCleanFile(stats) {
+  return `${featureLabel(stats.feature)} ${categoryForId(stats.category).label}`;
+}
+
+function bucketTitleForCleanFile(stats) {
+  return `${featureLabel(stats.feature)} ${categoryForId(stats.category).label} bucket`;
+}
+
+function bucketSourceForCleanFile(stats) {
+  return `module/${stats.feature}/${stats.category}`;
+}
+
+function cleanFileLabel(file) {
+  const parts = file.split("/");
+  const filename = parts.at(-1) || file;
+  const stem = filename.replace(/\.[cm]?[tj]sx?$/i, "");
+
+  if (parts[0] === "app") {
+    const routeParts = parts
+      .slice(1, -1)
+      .filter((part) => !part.startsWith("(") && !part.startsWith("["))
+      .map(humanizePathPart);
+    const routeName = titleCase(routeParts.slice(-3).join(" "));
+    return routeName
+      ? `${routeName} ${routeFileKind(stem)}`
+      : `App ${routeFileKind(stem)}`;
+  }
+
+  if (parts[0] === "components") {
+    return (
+      titleCase(parts.slice(1).map(humanizePathPart).slice(-3).join(" ")) ||
+      filename
+    );
+  }
+
+  if (parts[0] === "lib") {
+    return (
+      titleCase(parts.slice(1).map(humanizePathPart).slice(-3).join(" ")) ||
+      filename
+    );
+  }
+
+  return labelFromPath(file);
+}
+
+function cleanNodeTitle(node) {
+  const lines = [
+    node.title,
+    `${node.category_label} / ${node.feature_label}`,
+    `${node.file_count} file${node.file_count === 1 ? "" : "s"}, ${node.symbol_count} symbols`,
+  ];
+  if (node.grouped) lines.push(...node.source_files.slice(0, 12));
+  if (node.grouped && node.source_files.length > 12)
+    lines.push(`...${node.source_files.length - 12} more`);
+  return lines.join("\n");
+}
+
+function categoryForId(id) {
+  return categoryConfig.byId.get(id) || categoryConfig.categories[0];
+}
+
+function featureLabel(feature) {
+  return categoryConfig.featureLabels[feature] || titleCase(feature);
+}
+
+function isSoftenedCleanCategory(category) {
+  return ["shared_plumbing", "shared_ui_primitive", "type_vocabulary"].includes(
+    category
+  );
+}
+
+function cleanWeight(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function roundWeight(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+function topMapEntry(map) {
+  return [...map.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  )[0];
+}
+
+function stableNodeId(prefix, value) {
+  const slug = String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 72);
+  return `${prefix}_${slug || "node"}_${stableHash(value)}`;
+}
+
+function stableHash(value) {
+  let hash = 5381;
+  for (const char of String(value)) {
+    hash = (hash * 33) ^ char.charCodeAt(0);
+  }
+  return (hash >>> 0).toString(36).slice(0, 6);
+}
+
+function writeCleanGraphOutputs(generatedDir, graph) {
+  writeTextFile(
+    path.join(generatedDir, "graph.json"),
+    `${JSON.stringify(graph, null, 2)}\n`
+  );
+  writeTextFile(
+    path.join(generatedDir, "graph.html"),
+    buildCleanGraphHtml(graph)
+  );
+  writeTextFile(
+    path.join(generatedDir, "GRAPH_REPORT.md"),
+    buildCleanGraphReport(graph)
+  );
+  writeTextFile(
+    path.join(generatedDir, "GRAPH_TREE.html"),
+    buildCleanTreeHtml(graph)
+  );
+}
+
+function writeCleanGraphLabels(destDir, graph) {
+  const used = new Set(graph.nodes.map((node) => String(node.community)));
+  const labels = Object.fromEntries(
+    categoryConfig.categories
+      .filter((category) => used.has(String(category.community)))
+      .map((category) => [String(category.community), category.label])
+  );
+  writeTextFile(
+    path.join(destDir, ".graphify_labels.json"),
+    `${JSON.stringify(labels, null, 2)}\n`
+  );
+}
+
+function buildCleanGraphReport(graph) {
+  const meta = graph.graph || {};
+  const categoryCounts = countBy(graph.nodes, (node) => node.category_label);
+  const featureCounts = countBy(graph.nodes, (node) => node.feature_label);
+  const topHubs = graph.nodes
+    .slice()
+    .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
+    .slice(0, 24);
+  const topLinks = graph.links
+    .slice()
+    .sort((a, b) => b.weight - a.weight || a.source.localeCompare(b.source))
+    .slice(0, 20);
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+
+  return [
+    `# Graph Report - ${meta.name || "LifeGroups Product Surface"} (${new Date().toISOString().slice(0, 10)})`,
+    "",
+    "## Summary",
+    `- Clean graph: ${graph.nodes.length} nodes · ${graph.links.length} edges`,
+    `- Raw extraction collapsed: ${meta.raw_node_count} symbol nodes · ${meta.raw_edge_count} symbol edges · ${meta.raw_source_file_count} source files`,
+    `- File nodes preserved: ${meta.preserved_file_node_count}`,
+    `- Module buckets: ${meta.grouped_bucket_count} buckets containing ${meta.grouped_file_count} lower-degree files`,
+    "- Self-edges removed after collapse.",
+    "- Shared plumbing, shared UI primitive, and type/vocabulary edges are visually softened.",
+    "",
+    "## Categories",
+    ...formatCountMap(categoryCounts),
+    "",
+    "## Product Areas",
+    ...formatCountMap(featureCounts),
+    "",
+    "## Top Hubs",
+    ...topHubs.map(
+      (node) =>
+        `- ${node.label} (${node.degree}) - ${node.category_label}, ${node.feature_label}`
+    ),
+    "",
+    "## Top Weighted Links",
+    ...topLinks.map((link) => {
+      const source = nodeById.get(link.source);
+      const target = nodeById.get(link.target);
+      const softened = link.softened ? ", softened" : "";
+      return `- ${source?.label || link.source} -> ${target?.label || link.target}: ${link.weight} symbol links${softened}`;
+    }),
+    "",
+  ].join("\n");
+}
+
+function buildCleanScopeReport(scopeName, scope, graph, selected) {
+  const meta = graph.graph || {};
+  const audit = buildNoiseAudit(selected.files, scopeName);
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const categoryCounts = countBy(graph.nodes, (node) => node.category_label);
+  const featureCounts = countBy(graph.nodes, (node) => node.feature_label);
+  const productHubs = graph.nodes
+    .filter(
+      (node) =>
+        !isSoftenedCleanCategory(node.category) &&
+        ![
+          "auth_session_boundary",
+          "rpc_write_boundary",
+          "supabase_read_adapter",
+        ].includes(node.category)
+    )
+    .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
+    .slice(0, 18);
+  const boundaryHubs = graph.nodes
+    .filter((node) =>
+      [
+        "server_action",
+        "auth_session_boundary",
+        "rpc_write_boundary",
+        "supabase_read_adapter",
+      ].includes(node.category)
+    )
+    .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
+    .slice(0, 18);
+  const sharedHubs = graph.nodes
+    .filter(
+      (node) =>
+        isSoftenedCleanCategory(node.category) ||
+        node.category === "shared_plumbing"
+    )
+    .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
+    .slice(0, 18);
+  const coupling = cleanCrossFeatureCoupling(graph, nodeById).slice(0, 12);
+  const buckets = graph.nodes
+    .filter((node) => node.grouped)
+    .sort(
+      (a, b) =>
+        b.file_count - a.file_count ||
+        b.degree - a.degree ||
+        a.label.localeCompare(b.label)
+    )
+    .slice(0, 24);
+
+  return [
+    `# ${scope.title} Graph Report`,
+    "",
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "## Summary",
+    `- Scope: ${scopeName}`,
+    `- Staged files: ${selected.files.length}`,
+    `- Raw extraction: ${meta.raw_node_count} symbol nodes, ${meta.raw_edge_count} symbol edges, ${meta.raw_source_file_count} source files`,
+    `- Clean graph: ${graph.nodes.length} nodes, ${graph.links.length} edges`,
+    `- Preserved file nodes: ${meta.preserved_file_node_count}`,
+    `- Grouped lower-degree files: ${meta.grouped_file_count} files into ${meta.grouped_bucket_count} module buckets`,
+    `- Output: ${path.posix.join("graphify-out", scope.output === "." ? "" : scope.output) || "graphify-out"}`,
+    "",
+    "## Exclusion Audit",
+    ...audit.map((item) => `- ${item.status}: ${item.label}: ${item.count}`),
+    "",
+    "## Excluded Candidate Files",
+    ...formatCounts(selected.excluded),
+    "",
+    "## Category Counts",
+    ...formatCountMap(categoryCounts),
+    "",
+    "## Product Area Counts",
+    ...formatCountMap(featureCounts),
+    "",
+    "## Product Hubs",
+    ...formatCleanNodes(productHubs),
+    "",
+    "## Boundary Hubs",
+    ...formatCleanNodes(boundaryHubs),
+    "",
+    "## Softened Shared Hubs",
+    ...formatCleanNodes(sharedHubs),
+    "",
+    "## Cross-Feature Coupling",
+    ...formatCleanCoupling(coupling),
+    "",
+    "## Grouped Module Buckets",
+    ...buckets.map(
+      (node) =>
+        `- ${node.label}: ${node.file_count} files, ${node.symbol_count} symbols, degree ${node.degree}`
+    ),
+    "",
+  ].join("\n");
+}
+
+function cleanCrossFeatureCoupling(graph, nodeById) {
+  const pairs = new Map();
+  for (const link of graph.links) {
+    const source = nodeById.get(link.source);
+    const target = nodeById.get(link.target);
+    if (!source || !target) continue;
+    if (source.feature === target.feature) continue;
+    if (
+      isSoftenedCleanCategory(source.category) ||
+      isSoftenedCleanCategory(target.category)
+    )
+      continue;
+
+    const key = [source.feature_label, target.feature_label]
+      .sort()
+      .join(" <-> ");
+    if (!pairs.has(key)) pairs.set(key, { pair: key, weight: 0, examples: [] });
+    const entry = pairs.get(key);
+    entry.weight += link.weight;
+    const example = `${source.label} -> ${target.label} (${link.weight})`;
+    if (entry.examples.length < 5 && !entry.examples.includes(example))
+      entry.examples.push(example);
+  }
+
+  return [...pairs.values()].sort(
+    (a, b) => b.weight - a.weight || a.pair.localeCompare(b.pair)
+  );
+}
+
+function formatCleanNodes(nodes) {
+  if (nodes.length === 0) return ["- None found."];
+  return nodes.map(
+    (node) =>
+      `- ${node.label} (${node.degree}) - ${node.category_label}, ${node.feature_label}`
+  );
+}
+
+function formatCleanCoupling(coupling) {
+  if (coupling.length === 0)
+    return ["- None found after subtracting softened shared nodes."];
+  return coupling.flatMap((entry) => [
+    `- ${entry.pair}: ${roundWeight(entry.weight)} symbol links`,
+    ...entry.examples.map((example) => `  - ${example}`),
+  ]);
+}
+
+function countBy(items, keyFn) {
+  const counts = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
+}
+
+function formatCountMap(counts) {
+  if (counts.size === 0) return ["- None."];
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label, count]) => `- ${label}: ${count}`);
+}
+
+function buildCleanGraphHtml(graph) {
+  const nodes = graph.nodes.map((node) => ({
+    id: node.id,
+    label: node.label,
+    group: node.category,
+    title: node.title,
+    value: Math.max(1, node.size),
+    color: {
+      background: node.color,
+      border: node.color,
+      highlight: { background: "#ffffff", border: node.color },
+    },
+    font: { color: "#f8fafc", size: node.grouped ? 14 : 12 },
+    shape: node.grouped ? "box" : "dot",
+    categoryLabel: node.category_label,
+    featureLabel: node.feature_label,
+    sourceFile: node.source_file,
+    fileCount: node.file_count,
+    symbolCount: node.symbol_count,
+    degree: node.degree,
+  }));
+  const edges = graph.links.map((link) => ({
+    id: `${link.source}->${link.target}`,
+    from: link.source,
+    to: link.target,
+    value: Math.max(1, link.visual_weight),
+    width: Math.max(1, Math.min(8, Math.sqrt(link.visual_weight))),
+    arrows: { to: { enabled: true, scaleFactor: 0.45 } },
+    color: link.softened
+      ? {
+          color: "rgba(148, 163, 184, 0.26)",
+          highlight: "rgba(148, 163, 184, 0.7)",
+        }
+      : { color: "rgba(203, 213, 225, 0.48)", highlight: "#ffffff" },
+    title: `${link.weight} symbol links${link.softened ? " (softened)" : ""}`,
+    softened: link.softened,
+  }));
+  const legend = categoryConfig.categories
+    .filter((category) =>
+      graph.nodes.some((node) => node.category === category.id)
+    )
+    .map((category) => ({
+      id: category.id,
+      label: category.label,
+      color: category.color,
+      count: graph.nodes.filter((node) => node.category === category.id).length,
+    }));
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LifeGroups Product Surface Graph</title>
+  <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
+    integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
+    crossorigin="anonymous"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; height: 100vh; overflow: hidden; display: grid; grid-template-columns: 1fr 330px; background: #101828; color: #e5e7eb; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #graph { min-width: 0; height: 100vh; border-right: 1px solid rgba(148, 163, 184, 0.22); }
+    #sidebar { min-width: 0; height: 100vh; display: flex; flex-direction: column; background: #111827; }
+    header { padding: 14px 16px; border-bottom: 1px solid rgba(148, 163, 184, 0.22); }
+    h1 { margin: 0; font-size: 15px; font-weight: 650; }
+    .stats { margin-top: 6px; color: #9ca3af; font-size: 12px; }
+    #search { width: 100%; margin-top: 12px; border: 1px solid #374151; border-radius: 6px; background: #0f172a; color: #f8fafc; padding: 8px 10px; font-size: 13px; }
+    #search-results { max-height: 180px; overflow: auto; display: none; border-bottom: 1px solid rgba(148, 163, 184, 0.22); padding: 8px; }
+    .search-item { padding: 6px 8px; border-radius: 5px; cursor: pointer; color: #d1d5db; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-item:hover { background: #1f2937; color: #ffffff; }
+    #details { padding: 14px 16px; border-bottom: 1px solid rgba(148, 163, 184, 0.22); min-height: 170px; font-size: 12px; line-height: 1.45; color: #cbd5e1; }
+    #details h2 { margin: 0 0 8px; color: #f8fafc; font-size: 14px; }
+    #details .muted { color: #94a3b8; }
+    #legend { padding: 14px 16px; overflow: auto; flex: 1; }
+    #legend h2 { margin: 0 0 10px; color: #f8fafc; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .legend-row { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 5px 0; font-size: 12px; color: #d1d5db; }
+    .legend-row input { width: 14px; height: 14px; margin: 0; }
+    .dot { width: 11px; height: 11px; border-radius: 999px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+    .count { color: #94a3b8; }
+    #fallback { display: none; padding: 24px; color: #f8fafc; }
+    @media (max-width: 820px) { body { grid-template-columns: 1fr; grid-template-rows: minmax(420px, 1fr) auto; overflow: auto; } #graph { height: 58vh; border-right: 0; border-bottom: 1px solid rgba(148, 163, 184, 0.22); } #sidebar { height: auto; max-height: none; } }
+  </style>
+</head>
+<body>
+  <div id="graph"><div id="fallback">Graph renderer unavailable. Open graph.json for the clean file/module graph data.</div></div>
+  <aside id="sidebar">
+    <header>
+      <h1>LifeGroups Product Surface</h1>
+      <div class="stats">${graph.nodes.length} nodes · ${graph.links.length} edges · collapsed from ${graph.graph.raw_node_count} symbols</div>
+      <input id="search" type="search" placeholder="Search files and modules" autocomplete="off">
+    </header>
+    <div id="search-results"></div>
+    <section id="details"><span class="muted">Click a node to inspect it.</span></section>
+    <section id="legend"><h2>Categories</h2></section>
+  </aside>
+  <script>
+    const NODES = ${jsonForHtml(nodes)};
+    const EDGES = ${jsonForHtml(edges)};
+    const LEGEND = ${jsonForHtml(legend)};
+    const graphEl = document.getElementById("graph");
+    const fallbackEl = document.getElementById("fallback");
+    const detailsEl = document.getElementById("details");
+    const searchEl = document.getElementById("search");
+    const searchResultsEl = document.getElementById("search-results");
+    const legendEl = document.getElementById("legend");
+
+    if (!window.vis) {
+      fallbackEl.style.display = "block";
+    } else {
+      const nodes = new vis.DataSet(NODES);
+      const edges = new vis.DataSet(EDGES);
+      const network = new vis.Network(graphEl, { nodes, edges }, {
+        layout: { improvedLayout: true, randomSeed: 42 },
+        physics: { stabilization: { iterations: 180 }, barnesHut: { gravitationalConstant: -54000, springLength: 135, springConstant: 0.035, damping: 0.18 } },
+        interaction: { hover: true, navigationButtons: true, keyboard: true },
+        nodes: { borderWidth: 1.5, scaling: { min: 12, max: 38 } },
+        edges: { smooth: { type: "dynamic" }, selectionWidth: 2 },
+      });
+
+      const selectedCategories = new Set(LEGEND.map((item) => item.id));
+      renderLegend();
+
+      network.on("selectNode", (event) => {
+        const node = nodes.get(event.nodes[0]);
+        renderDetails(node);
+      });
+
+      searchEl.addEventListener("input", () => {
+        const query = searchEl.value.trim().toLowerCase();
+        if (!query) {
+          searchResultsEl.style.display = "none";
+          searchResultsEl.innerHTML = "";
+          return;
+        }
+        const matches = NODES.filter((node) =>
+          [node.label, node.sourceFile, node.categoryLabel, node.featureLabel].join(" ").toLowerCase().includes(query)
+        ).slice(0, 18);
+        searchResultsEl.style.display = "block";
+        searchResultsEl.innerHTML = matches.map((node) =>
+          '<div class="search-item" data-node-id="' + escapeAttr(node.id) + '">' +
+          escapeHtml(node.label) + '<br><span class="muted">' + escapeHtml(node.sourceFile) + '</span></div>'
+        ).join("");
+      });
+
+      searchResultsEl.addEventListener("click", (event) => {
+        const item = event.target.closest("[data-node-id]");
+        if (!item) return;
+        const id = item.getAttribute("data-node-id");
+        network.selectNodes([id]);
+        network.focus(id, { scale: 1.2, animation: true });
+        renderDetails(nodes.get(id));
+      });
+
+      function renderLegend() {
+        legendEl.innerHTML = '<h2>Categories</h2>' + LEGEND.map((item) =>
+          '<label class="legend-row"><input type="checkbox" checked data-category="' + escapeAttr(item.id) + '">' +
+          '<span><span class="dot" style="background:' + item.color + '"></span>' + escapeHtml(item.label) + '</span>' +
+          '<span class="count">' + item.count + '</span></label>'
+        ).join("");
+
+        legendEl.querySelectorAll("input[data-category]").forEach((checkbox) => {
+          checkbox.addEventListener("change", () => {
+            if (checkbox.checked) selectedCategories.add(checkbox.dataset.category);
+            else selectedCategories.delete(checkbox.dataset.category);
+            applyCategoryFilter();
+          });
+        });
+      }
+
+      function applyCategoryFilter() {
+        const visible = new Set();
+        nodes.update(NODES.map((node) => {
+          const hidden = !selectedCategories.has(node.group);
+          if (!hidden) visible.add(node.id);
+          return { id: node.id, hidden };
+        }));
+        edges.update(EDGES.map((edge) => ({ id: edge.id, hidden: !visible.has(edge.from) || !visible.has(edge.to) })));
+      }
+
+      function renderDetails(node) {
+        if (!node) return;
+        detailsEl.innerHTML =
+          '<h2>' + escapeHtml(node.label) + '</h2>' +
+          '<div><span class="dot" style="background:' + node.color.background + '"></span>' + escapeHtml(node.categoryLabel) + '</div>' +
+          '<div><strong>Area:</strong> ' + escapeHtml(node.featureLabel) + '</div>' +
+          '<div><strong>Source:</strong> ' + escapeHtml(node.sourceFile) + '</div>' +
+          '<div><strong>Files:</strong> ' + node.fileCount + '</div>' +
+          '<div><strong>Symbols:</strong> ' + node.symbolCount + '</div>' +
+          '<div><strong>Degree:</strong> ' + node.degree + '</div>';
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value);
+      }
+    }
+  </script>
+</body>
+</html>
+`;
+}
+
+function buildCleanTreeHtml(graph) {
+  const features = new Map();
+  for (const node of graph.nodes) {
+    if (!features.has(node.feature_label))
+      features.set(node.feature_label, new Map());
+    const categories = features.get(node.feature_label);
+    if (!categories.has(node.category_label))
+      categories.set(node.category_label, []);
+    categories.get(node.category_label).push(node);
+  }
+
+  const body = [...features.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([feature, categories]) => {
+      const categoryHtml = [...categories.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([category, nodes]) => {
+          const items = nodes
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map(
+              (node) =>
+                `<li><code>${escapeHtml(node.source_file)}</code> <span>${escapeHtml(node.label)}</span> <small>${node.file_count} file${node.file_count === 1 ? "" : "s"}, degree ${node.degree}</small></li>`
+            )
+            .join("\n");
+          return `<details open><summary>${escapeHtml(category)} (${nodes.length})</summary><ul>${items}</ul></details>`;
+        })
+        .join("\n");
+      return `<section><h2>${escapeHtml(feature)}</h2>${categoryHtml}</section>`;
+    })
+    .join("\n");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LifeGroups Product Surface Tree</title>
+  <style>
+    body { margin: 32px; color: #111827; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.45; }
+    h1 { margin-bottom: 4px; font-size: 24px; }
+    h2 { margin-top: 28px; font-size: 18px; }
+    details { border-top: 1px solid #e5e7eb; padding: 8px 0; }
+    summary { cursor: pointer; font-weight: 650; }
+    ul { margin: 8px 0 14px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    code { color: #334155; }
+    small { color: #64748b; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1>LifeGroups Product Surface Tree</h1>
+  <p>${graph.nodes.length} clean file/module nodes grouped by product area and category.</p>
+  ${body}
+</body>
+</html>
+`;
+}
+
+function jsonForHtml(value) {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}
+
+function copyDurableOutputs(sourceDir, destDir, scopeName, scope) {
+  mkdirSync(destDir, { recursive: true });
+  for (const file of config.durableOutputs) {
+    const source = path.join(sourceDir, file);
+    if (!existsSync(source)) {
+      fail(`Expected Graphify output missing: ${source}`);
+    }
+    copyFileWithRetry(source, path.join(destDir, file));
+  }
+  sanitizeDurableOutputs(destDir, scope);
+
+  if (scopeName === "product") {
+    removeLegacyRootArtifacts(destDir);
   } else {
-    fs.writeFileSync(
-      path.join(outDir, "graph.html"),
-      renderHtml(nodes, edges, analysis, slice, {
-        title: `${sliceConfigs[slice]?.label || titleFromPath(slice)} Feature Graph`,
-        subtitle: "Feature or domain drilldown graph for focused inspection.",
-      })
-    );
+    removeIgnoredGraphifyLocalState(destDir);
   }
 }
 
-function analyzeGraph(graph, slice, stagedFileCount, overrides) {
-  const nodes = graph.nodes || [];
-  const edges = graph.links || graph.edges || [];
-  const degrees = degreeMap(edges);
-  const communities = new Map();
+function sanitizeDurableOutputs(destDir, scope) {
+  const stableName = `LifeGroups ${scope.title}`;
+  const htmlPath = path.join(destDir, "graph.html");
+  const reportPath = path.join(destDir, "GRAPH_REPORT.md");
 
-  for (const node of nodes) {
-    const key = String(node.community ?? "unknown");
+  if (existsSync(htmlPath)) {
+    const html = readFileSync(htmlPath, "utf8").replace(
+      /<title>graphify - .*?<\/title>/s,
+      `<title>graphify - ${escapeHtml(stableName)}</title>`
+    );
+    writeTextFile(htmlPath, html);
+  }
+
+  if (existsSync(reportPath)) {
+    const report = readFileSync(reportPath, "utf8").replace(
+      /^# Graph Report - .*?(\s+\(\d{4}-\d{2}-\d{2}\))/m,
+      `# Graph Report - ${stableName}$1`
+    );
+    writeTextFile(reportPath, report);
+  }
+}
+
+function applyCommunityLabels(destDir, labels) {
+  const labelByCommunity = new Map(
+    labels.map((entry) => [String(entry.id), entry.label])
+  );
+  writeTextFile(
+    path.join(destDir, ".graphify_labels.json"),
+    `${JSON.stringify(Object.fromEntries(labelByCommunity), null, 2)}\n`
+  );
+
+  const replacements = [...labelByCommunity.entries()]
+    .filter(([id, label]) => label !== `Community ${id}`)
+    .sort((a, b) => b[0].length - a[0].length);
+
+  const htmlPath = path.join(destDir, "graph.html");
+  if (existsSync(htmlPath)) {
+    let html = readFileSync(htmlPath, "utf8");
+    for (const [id, label] of replacements) {
+      html = html.replaceAll(
+        `"community_name": "Community ${id}"`,
+        `"community_name": ${JSON.stringify(label)}`
+      );
+      html = html.replaceAll(
+        `"label": "Community ${id}"`,
+        `"label": ${JSON.stringify(label)}`
+      );
+    }
+    writeTextFile(htmlPath, html);
+  }
+
+  const reportPath = path.join(destDir, "GRAPH_REPORT.md");
+  if (existsSync(reportPath)) {
+    let report = readFileSync(reportPath, "utf8");
+    for (const [id, label] of replacements) {
+      report = report.replace(
+        new RegExp(`Community ${escapeRegExp(id)}(?!\\d)`, "g"),
+        label
+      );
+    }
+    writeTextFile(reportPath, report);
+  }
+}
+
+function removeLegacyRootArtifacts(destDir) {
+  const legacyFiles = [
+    ".graphify_analysis.json",
+    ".graphify_labels.json",
+    ".graphify_root",
+    "architecture-overview.html",
+    "CALLFLOW.html",
+    "community-overview.html",
+  ];
+  for (const file of legacyFiles) {
+    removeIfInside(path.join(destDir, file), outputRoot);
+  }
+  removeIgnoredGraphifyLocalState(destDir);
+}
+
+function removeIgnoredGraphifyLocalState(destDir) {
+  for (const name of ["cache", "manifest.json"]) {
+    removeIfInside(path.join(destDir, name), outputRoot);
+  }
+}
+
+function buildScopeReport(scopeName, scope, graph, selected) {
+  const analysis = analyzeGraph(graph);
+  const audit = buildNoiseAudit(analysis.files, scopeName);
+  const labels = inferCommunityLabels(analysis);
+  const featureHubs = analysis.topHubs
+    .filter(
+      (hub) =>
+        featureTag(hub.file) &&
+        !isSharedPlumbing(hub) &&
+        !isDataAuthBoundary(hub)
+    )
+    .slice(0, 16);
+  const sharedHubs = analysis.topHubs.filter(isSharedPlumbing).slice(0, 16);
+  const boundaryHubs = analysis.topHubs
+    .filter((hub) => isDataAuthBoundary(hub) && !isSharedPlumbing(hub))
+    .slice(0, 16);
+  const coupling = crossFeatureCoupling(graph, analysis.nodeById).slice(0, 10);
+  const candidates = cutCandidates(analysis).slice(0, 12);
+  const noisy = noisyFiles(analysis, audit);
+
+  return [
+    `# ${scope.title} Graph Report`,
+    "",
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "## Summary",
+    `- Scope: ${scopeName}`,
+    `- Staged files: ${selected.files.length}`,
+    `- Nodes: ${analysis.nodes.length}`,
+    `- Edges: ${analysis.links.length}`,
+    `- Communities: ${analysis.communityCount}`,
+    `- Output: ${path.posix.join("graphify-out", scope.output === "." ? "" : scope.output) || "graphify-out"}`,
+    "",
+    "## Exclusion Audit",
+    ...audit.map((item) => `- ${item.status}: ${item.label}: ${item.count}`),
+    "",
+    "## Excluded Candidate Files",
+    ...formatCounts(selected.excluded),
+    "",
+    "## Feature hubs",
+    ...formatHubs(featureHubs),
+    "",
+    "## Shared plumbing hubs",
+    ...formatHubs(sharedHubs),
+    "",
+    "## Data/auth boundary hubs",
+    ...formatHubs(boundaryHubs),
+    "",
+    "## Cross-feature coupling",
+    ...formatCoupling(coupling),
+    "",
+    "## Cut candidates",
+    ...formatCutCandidates(candidates),
+    "",
+    "## Noisy files",
+    ...formatNoisyFiles(noisy),
+    "",
+    "## Inferred community labels",
+    ...formatCommunityLabels(labels),
+    "",
+  ].join("\n");
+}
+
+function analyzeGraph(graph) {
+  const nodes = graph.nodes || [];
+  const links = graph.links || graph.edges || [];
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const degreeById = new Map();
+  const inboundByFile = new Map();
+  const outboundByFile = new Map();
+
+  for (const link of links) {
+    degreeById.set(link.source, (degreeById.get(link.source) || 0) + 1);
+    degreeById.set(link.target, (degreeById.get(link.target) || 0) + 1);
+
+    const sourceNode = nodeById.get(link.source);
+    const targetNode = nodeById.get(link.target);
+    const sourceFile = normalizeMaybe(
+      sourceNode?.source_file || link.source_file
+    );
+    const targetFile = normalizeMaybe(targetNode?.source_file);
+    if (sourceFile)
+      outboundByFile.set(sourceFile, (outboundByFile.get(sourceFile) || 0) + 1);
+    if (targetFile && sourceFile !== targetFile) {
+      inboundByFile.set(targetFile, (inboundByFile.get(targetFile) || 0) + 1);
+    }
+  }
+
+  const files = [
+    ...new Set(
+      nodes.map((node) => normalizeMaybe(node.source_file)).filter(Boolean)
+    ),
+  ].sort();
+  const topHubs = nodes
+    .map((node) => ({
+      id: node.id,
+      label: node.label || node.id,
+      file: normalizeMaybe(node.source_file),
+      community: node.community,
+      degree: degreeById.get(node.id) || 0,
+    }))
+    .filter((node) => node.degree > 0)
+    .sort(
+      (a, b) =>
+        b.degree - a.degree || String(a.file).localeCompare(String(b.file))
+    );
+
+  return {
+    nodes,
+    links,
+    nodeById,
+    files,
+    topHubs,
+    inboundByFile,
+    outboundByFile,
+    communityCount: new Set(
+      nodes
+        .map((node) => node.community)
+        .filter((community) => community !== undefined)
+    ).size,
+  };
+}
+
+function buildNoiseAudit(files, scopeName) {
+  const checks = [
+    ["tests", /(^|\/)__tests__(\/|$)|\.(test|spec)\.[cm]?[tj]sx?$/i],
+    [
+      "generated DB types",
+      /(^types\/database\.ts$|^lib\/supabase\/types\.ts$|database\.types\.ts$)/i,
+    ],
+    ["app/a11y-harness", /^app\/a11y-harness\//i],
+    ["docs", /(^docs\/|\.mdx?$)/i],
+    ["Graphify output/tooling", /(^graphify-out\/|^\.graphify\/|^graphify\/)/i],
+    [
+      "package/lock metadata",
+      /(^package(-lock)?\.json$|skills-lock\.json$|components\.json$)/i,
+    ],
+  ];
+  return checks.map(([label, pattern]) => {
+    const count = files.filter((file) => pattern.test(file)).length;
+    const expected =
+      scopeName === "data-boundary" && label === "generated DB types";
+    return {
+      label,
+      count,
+      expected,
+      status: count === 0 ? "OK" : expected ? "EXPECTED" : "CHECK",
+    };
+  });
+}
+
+function inferCommunityLabels(analysis) {
+  const heuristics = labelConfig.heuristics.map((heuristic) => ({
+    label: heuristic.label,
+    patterns: heuristic.patterns.map((pattern) => new RegExp(pattern, "i")),
+  }));
+  const communities = new Map();
+  for (const node of analysis.nodes) {
+    if (node.community === undefined) continue;
+    const key = String(node.community);
     if (!communities.has(key)) communities.set(key, []);
     communities.get(key).push(node);
   }
 
-  const labels = {};
-  const communityDetails = [];
-  for (const [communityId, communityNodes] of [...communities.entries()].sort(
-    compareCommunityIds
-  )) {
-    const manual = manualLabelFor(overrides, slice, communityId);
-    const inferred = inferCommunityLabel(communityId, communityNodes, degrees);
-    const label = manual || inferred.label || `Community ${communityId}`;
-    const source = manual ? "manual" : inferred.label ? "inferred" : "fallback";
-    labels[communityId] = label;
-    communityDetails.push({
-      id: communityId,
-      label,
-      source,
-      basis: manual ? "graphify/community-labels.json" : inferred.basis,
-      nodeCount: communityNodes.length,
-      topFiles: topFiles(communityNodes, 8),
-      topNodes: topNodes(communityNodes, degrees, 8),
-      dominantFolders: dominantFolders(communityNodes, 5),
-    });
-  }
-
-  const noise = suspectedNoise(nodes);
-  return {
-    slice,
-    generatedAt: new Date().toISOString(),
-    stagedFileCount,
-    nodeCount: nodes.length,
-    edgeCount: edges.length,
-    communityCount: communities.size,
-    labels,
-    topHubs: topNodes(nodes, degrees, 20),
-    largestCommunities: [...communityDetails]
-      .sort((a, b) => b.nodeCount - a.nodeCount)
-      .slice(0, 20),
-    communities: communityDetails.sort((a, b) => Number(a.id) - Number(b.id)),
-    noise,
-  };
-}
-
-function degreeMap(edges) {
-  const degrees = new Map();
-  for (const edge of edges) {
-    const source = edge.source ?? edge.from;
-    const target = edge.target ?? edge.to;
-    if (source) degrees.set(source, (degrees.get(source) || 0) + 1);
-    if (target) degrees.set(target, (degrees.get(target) || 0) + 1);
-  }
-  return degrees;
-}
-
-function readCommunityOverrides() {
-  if (!fs.existsSync(overridesPath)) return {};
-  return JSON.parse(fs.readFileSync(overridesPath, "utf8"));
-}
-
-function manualLabelFor(overrides, slice, communityId) {
-  const sliceOverrides = overrides[slice] || {};
-  const sharedOverrides = overrides.shared || {};
-  return sliceOverrides[communityId] || sharedOverrides[communityId] || null;
-}
-
-function inferCommunityLabel(communityId, nodes, degrees) {
-  const fileSignals = topFiles(nodes, 10)
-    .map((file) => file.file)
-    .join(" ");
-  const folderSignals = dominantFolders(nodes, 6)
-    .map((folder) => folder.folder)
-    .join(" ");
-  const nodeSignals = nodes
-    .flatMap((node) => [node.source_file, node.label, node.id])
-    .filter(Boolean)
-    .join(" ");
-
-  for (const rule of labelRules) {
-    if (rule.pattern.test(fileSignals)) {
+  return [...communities.entries()]
+    .map(([id, nodes]) => {
+      const match = bestCommunityHeuristic(nodes, heuristics);
       return {
-        label: refineLabel(rule.label, nodes),
-        basis: `top files matched ${rule.pattern}`,
+        id,
+        label: match?.label || fallbackCommunityLabel(nodes),
+        nodes: nodes.length,
+        topFiles: topFilesForNodes(nodes).slice(0, 4),
+        basis: match ? "heuristic" : "top-file",
       };
-    }
-  }
-
-  for (const rule of labelRules) {
-    if (rule.pattern.test(folderSignals)) {
-      return {
-        label: refineLabel(rule.label, nodes),
-        basis: `dominant folders matched ${rule.pattern}`,
-      };
-    }
-  }
-
-  for (const rule of labelRules) {
-    if (rule.pattern.test(nodeSignals)) {
-      return {
-        label: refineLabel(rule.label, nodes),
-        basis: `matched ${rule.pattern}`,
-      };
-    }
-  }
-
-  const folders = dominantFolders(nodes, 2);
-  if (folders.length > 0) {
-    return {
-      label: titleFromPath(folders[0].folder),
-      basis: `dominant folder ${folders[0].folder}`,
-    };
-  }
-
-  const hubs = topNodes(nodes, degrees, 1);
-  if (hubs.length > 0) {
-    return {
-      label: titleFromPath(hubs[0].label),
-      basis: `top node ${hubs[0].label}`,
-    };
-  }
-
-  return {
-    label: `Community ${communityId}`,
-    basis: "no dominant folder or hub",
-  };
+    })
+    .sort((a, b) => b.nodes - a.nodes || Number(a.id) - Number(b.id));
 }
 
-function refineLabel(label, nodes) {
-  const files = nodes.map((node) => node.source_file || "").join(" ");
-  if (label === "Supabase Data Access") {
-    if (/care/i.test(files)) return "Supabase Care Data Access";
-    if (/calendar|event/i.test(files)) return "Supabase Calendar Data Access";
-    if (/prospect|plan|launch/i.test(files)) return "Supabase Plan Data Access";
-    if (/multiply|multiplication/i.test(files))
-      return "Supabase Multiplication Data Access";
-  }
+function bestCommunityHeuristic(nodes, heuristics) {
+  return heuristics
+    .map((heuristic, index) => {
+      let score = 0;
+      for (const node of nodes) {
+        const file = normalizeMaybe(node.source_file);
+        const label = String(node.label || "");
+        for (const pattern of heuristic.patterns) {
+          if (file && pattern.test(file)) score += 8;
+          if (label && pattern.test(label)) score += 3;
+        }
+      }
+      return { ...heuristic, index, score };
+    })
+    .filter((heuristic) => heuristic.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0];
+}
+
+function fallbackCommunityLabel(nodes) {
+  const topFiles = topFilesForNodes(nodes).map(([file]) => file);
+  const joined = topFiles.join("\n").toLowerCase();
+  if (joined.includes("private-notes") || joined.includes("lib/crypto"))
+    return "Private Notes Security";
+  if (joined.includes("frozen-surface-copy")) return "Frozen Surface Copy";
   if (
-    label === "Shared Server Actions" &&
-    /app\/\(protected\)\/admin\/settings\/actions/i.test(files)
+    joined.includes("components/lg/shell") ||
+    joined.includes("topbar") ||
+    joined.includes("avatar")
   ) {
-    return "Settings Actions";
+    return "Application Shell";
   }
-  return label;
+
+  const primary = topFiles[0];
+  if (!primary) return "Unclassified Code Cluster";
+  return labelFromPath(primary);
 }
 
-function dominantFolders(nodes, limit) {
+function labelFromPath(file) {
+  const normalized = normalizeMaybe(file);
+  const parts = normalized.split("/").filter(Boolean);
+  const filename = parts.at(-1) || normalized;
+  const stem = filename.replace(/\.[cm]?[tj]sx?$/i, "");
+
+  if (parts[0] === "app") {
+    const routeParts = parts
+      .slice(1, -1)
+      .filter((part) => !part.startsWith("(") && !part.startsWith("["))
+      .map(humanizePathPart);
+    const routeName = titleCase(routeParts.slice(-2).join(" "));
+    const kind = routeFileKind(stem);
+    return routeName ? `${routeName} ${kind}` : `App Root ${kind}`;
+  }
+
+  if (parts[0] === "components") {
+    const componentParts = parts.slice(1).map(humanizePathPart);
+    const componentName = titleCase(componentParts.slice(-2).join(" "));
+    return componentName ? `${componentName} Components` : "Component Cluster";
+  }
+
+  if (parts[0] === "lib") {
+    const libParts = parts.slice(1).map(humanizePathPart);
+    const libName = titleCase(libParts.slice(-2).join(" "));
+    return libName ? `${libName} Logic` : "Library Logic";
+  }
+
+  if (parts[0] === "types") return `${titleCase(humanizePathPart(stem))} Types`;
+  if (parts[0] === "supabase")
+    return `${titleCase(parts.slice(-2).map(humanizePathPart).join(" "))} Database Boundary`;
+  return (
+    titleCase(parts.slice(-2).map(humanizePathPart).join(" ")) || "Code Cluster"
+  );
+}
+
+function routeFileKind(stem) {
+  if (stem === "page") return "Page";
+  if (stem === "layout") return "Layout";
+  if (stem === "actions") return "Actions";
+  if (stem === "route") return "Route";
+  return titleCase(humanizePathPart(stem));
+}
+
+function humanizePathPart(value) {
+  return String(value)
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\.[^.]+$/g, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+}
+
+function titleCase(value) {
+  return String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function topFilesForNodes(nodes) {
   const counts = new Map();
   for (const node of nodes) {
-    const file = node.source_file;
+    const file = normalizeMaybe(node.source_file);
     if (!file) continue;
-    const folder = toSlash(path.posix.dirname(toSlash(file)));
-    counts.set(folder, (counts.get(folder) || 0) + 1);
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([folder, count]) => ({ folder, count }));
-}
-
-function topFiles(nodes, limit) {
-  const counts = new Map();
-  for (const node of nodes) {
-    const file = node.source_file || "(unknown)";
     counts.set(file, (counts.get(file) || 0) + 1);
   }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([file, count]) => ({ file, count }));
-}
-
-function topNodes(nodes, degrees, limit) {
-  return nodes
-    .map((node) => ({
-      id: node.id,
-      label: node.label || node.id,
-      sourceFile: node.source_file || "",
-      degree: degrees.get(node.id) || 0,
-      community: String(node.community ?? "unknown"),
-    }))
-    .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
-    .slice(0, limit);
-}
-
-function suspectedNoise(nodes) {
-  const patterns = [
-    { name: "node_modules", pattern: /(^|\/)node_modules(\/|$)/ },
-    { name: "app/a11y-harness", pattern: /(^|\/)app\/a11y-harness(\/|$)/ },
-    { name: ".next", pattern: /(^|\/)\.next(\/|$)/ },
-    { name: "dist/build/out", pattern: /(^|\/)(dist|build|out)(\/|$)/ },
-    { name: "coverage", pattern: /(^|\/)coverage(\/|$)/ },
-    { name: "graphify-out", pattern: /(^|\/)graphify-out(\/|$)/ },
-    { name: ".graphify", pattern: /(^|\/)\.graphify(\/|$)/ },
-    {
-      name: "Graphify tooling",
-      pattern:
-        /(^|\/)(graphify|scripts\/graphify|\.agents\/skills\/graphify)(\/|\.|$)/,
-    },
-    {
-      name: "tests",
-      pattern: /(^|\/)(__tests__|tests)(\/|$)|\.(test|spec)\.[cm]?[jt]sx?$/,
-    },
-    {
-      name: "generated DB/types",
-      pattern: /types\/database\.ts|next-env\.d\.ts|\.generated\.[cm]?[jt]sx?$/,
-    },
-    {
-      name: "lock files",
-      pattern:
-        /(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|skills-lock\.json)$/,
-    },
-    { name: "temp folders", pattern: /(^|\/)(tmp|temp|\.tmp)(\/|$)/ },
-  ];
-
-  return patterns.map(({ name, pattern }) => {
-    const matches = nodes
-      .map((node) => node.source_file || "")
-      .filter((file) => pattern.test(toSlash(file)));
-    return {
-      name,
-      count: matches.length,
-      examples: [...new Set(matches)].slice(0, 8),
-    };
-  });
-}
-
-function buildDomainOverview(nodes, edges, analysis) {
-  const productNodes = nodes.filter(isProductArchitectureNode);
-  const productNodeById = new Map(productNodes.map((node) => [node.id, node]));
-  const stats = new Map(
-    domainConfigs.map((domain) => [
-      domain.id,
-      {
-        id: domain.id,
-        label: domain.label,
-        command: domain.command,
-        nodeCount: 0,
-        files: new Set(),
-        fileCounts: new Map(),
-        communityCounts: new Map(),
-        topNodes: [],
-      },
-    ])
+  return [...counts.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
   );
-
-  for (const node of productNodes) {
-    const domain = classifyDomainForNode(node);
-    const item = stats.get(domain.id);
-    item.nodeCount += 1;
-    if (node.source_file) {
-      item.files.add(toSlash(node.source_file));
-      increment(item.fileCounts, toSlash(node.source_file));
-    }
-    increment(item.communityCounts, String(node.community ?? "unknown"));
-  }
-
-  const degrees = degreeMap(edges);
-  for (const node of productNodes) {
-    const domain = classifyDomainForNode(node);
-    const item = stats.get(domain.id);
-    item.topNodes.push({
-      id: node.id,
-      label: node.label || node.id,
-      sourceFile: node.source_file || "",
-      degree: degrees.get(node.id) || 0,
-    });
-  }
-
-  const edgeMap = aggregateEdges(edges, productNodeById, (node) => {
-    return classifyDomainForNode(node).id;
-  });
-
-  const viewNodes = domainConfigs.map((domain) => {
-    const item = stats.get(domain.id);
-    const fileCount = item.files.size;
-    const topCommunities = topEntries(item.communityCounts, 5).map((entry) => ({
-      id: entry.key,
-      label: analysis.labels[entry.key] || `Community ${entry.key}`,
-      count: entry.count,
-    }));
-    const color = palette[Math.abs(hashCode(domain.id)) % palette.length];
-    return {
-      id: domain.id,
-      label: domain.label,
-      groupLabel: domain.label,
-      kind: "domain",
-      x: domain.layout.x,
-      y: domain.layout.y,
-      fixed: true,
-      color,
-      command: domain.command,
-      nodeCount: item.nodeCount,
-      fileCount,
-      symbolCount: item.nodeCount,
-      size: sizeForCount(item.nodeCount, 28, 78),
-      topFiles: topEntries(item.fileCounts, 8).map((entry) => ({
-        file: entry.key,
-        count: entry.count,
-      })),
-      topCommunities,
-      topNodes: item.topNodes
-        .sort((a, b) => b.degree - a.degree || a.label.localeCompare(b.label))
-        .slice(0, 8),
-    };
-  });
-
-  return {
-    kind: "architecture",
-    label: "Architecture Overview",
-    rawNodeCount: nodes.length,
-    rawEdgeCount: edges.length,
-    productNodeCount: productNodes.length,
-    nodes: viewNodes,
-    edges: finalizeAggregateEdges(
-      [...edgeMap.values()].sort(
-        (a, b) => b.count - a.count || a.from.localeCompare(b.from)
-      ),
-      "architecture",
-      "domain-edge"
-    ),
-  };
 }
 
-function buildCommunityOverview(nodes, edges, analysis) {
-  const productNodes = nodes.filter(isProductArchitectureNode);
-  const productNodeById = new Map(productNodes.map((node) => [node.id, node]));
-  const stats = new Map();
-
-  for (const node of productNodes) {
-    const communityId = String(node.community ?? "unknown");
-    if (!stats.has(communityId)) {
-      stats.set(communityId, {
-        id: communityId,
-        label: analysis.labels[communityId] || `Community ${communityId}`,
-        nodeCount: 0,
-        files: new Set(),
-        fileCounts: new Map(),
-        domainCounts: new Map(),
-      });
-    }
-    const item = stats.get(communityId);
-    item.nodeCount += 1;
-    if (node.source_file) {
-      item.files.add(toSlash(node.source_file));
-      increment(item.fileCounts, toSlash(node.source_file));
-    }
-    increment(item.domainCounts, classifyDomainForNode(node).id);
-  }
-
-  const grouped = new Map(domainConfigs.map((domain) => [domain.id, []]));
-  for (const item of stats.values()) {
-    const dominantDomainId =
-      topEntries(item.domainCounts, 1)[0]?.key || "app-shell";
-    const domain =
-      domainById.get(dominantDomainId) || domainById.get("app-shell");
-    grouped.get(domain.id).push(item);
-  }
-
-  const viewNodes = [];
-  for (const domain of domainConfigs) {
-    const items = (grouped.get(domain.id) || []).sort(
-      (a, b) => b.nodeCount - a.nodeCount || a.label.localeCompare(b.label)
-    );
-    const startY = -420;
-    const rowGap = 82;
-    items.forEach((item, index) => {
-      const color = palette[Math.abs(hashCode(domain.id)) % palette.length];
-      viewNodes.push({
-        id: item.id,
-        label: item.label,
-        groupLabel: domain.label,
-        kind: "community",
-        communityId: item.id,
-        domainId: domain.id,
-        domainLabel: domain.label,
-        x: domain.layout.x,
-        y: startY + index * rowGap,
-        fixed: true,
-        color,
-        nodeCount: item.nodeCount,
-        fileCount: item.files.size,
-        symbolCount: item.nodeCount,
-        size: sizeForCount(item.nodeCount, 14, 40),
-        topFiles: topEntries(item.fileCounts, 8).map((entry) => ({
-          file: entry.key,
-          count: entry.count,
-        })),
-        topCommunities: [],
-        topNodes: [],
-      });
-    });
-  }
-
-  const edgeMap = aggregateEdges(edges, productNodeById, (node) =>
-    String(node.community ?? "unknown")
-  );
-
-  return {
-    kind: "community",
-    label: "Community Overview",
-    rawNodeCount: nodes.length,
-    rawEdgeCount: edges.length,
-    productNodeCount: productNodes.length,
-    nodes: viewNodes,
-    edges: finalizeAggregateEdges(
-      [...edgeMap.values()].sort(
-        (a, b) => b.count - a.count || a.from.localeCompare(b.from)
-      ),
-      "community",
-      "community-edge"
-    ),
-  };
-}
-
-function finalizeAggregateEdges(edges, kind, idPrefix) {
-  const counts = edges.map((edge) => edge.count);
-  const threshold =
-    kind === "architecture"
-      ? Math.max(8, Math.round(percentile(counts, 0.7)))
-      : Math.max(4, Math.round(percentile(counts, 0.85)));
-  return edges.map((edge, index) => ({
-    ...edge,
-    id: `${idPrefix}-${index}`,
-    width: widthForCount(edge.count),
-    hiddenByDefault: edge.count < threshold,
-    visibilityThreshold: threshold,
-  }));
-}
-
-function aggregateEdges(edges, nodeById, groupingFn) {
-  const edgeMap = new Map();
-  for (const edge of edges) {
-    const sourceId = edge.source ?? edge.from;
-    const targetId = edge.target ?? edge.to;
-    const sourceNode = nodeById.get(sourceId);
-    const targetNode = nodeById.get(targetId);
+function crossFeatureCoupling(graph, nodeById) {
+  const pairs = new Map();
+  for (const link of graph.links || graph.edges || []) {
+    const sourceNode = nodeById.get(link.source);
+    const targetNode = nodeById.get(link.target);
     if (!sourceNode || !targetNode) continue;
-    const from = groupingFn(sourceNode);
-    const to = groupingFn(targetNode);
-    if (!from || !to || from === to) continue;
-    const key = `${from} -> ${to}`;
-    if (!edgeMap.has(key)) {
-      edgeMap.set(key, {
-        from,
-        to,
-        count: 0,
-        relationCounts: new Map(),
-        examples: [],
-      });
-    }
-    const item = edgeMap.get(key);
-    item.count += 1;
-    increment(item.relationCounts, edge.relation || edge.label || "related");
-    if (item.examples.length < 8) {
-      item.examples.push({
-        source: sourceNode.label || sourceId,
-        target: targetNode.label || targetId,
-        relation: edge.relation || edge.label || "related",
-        file: edge.source_file || sourceNode.source_file || "",
-      });
-    }
+
+    const sourceHub = hubFromNode(sourceNode, 0);
+    const targetHub = hubFromNode(targetNode, 0);
+    if (isSharedPlumbing(sourceHub) || isSharedPlumbing(targetHub)) continue;
+    if (isDataAuthBoundary(sourceHub) || isDataAuthBoundary(targetHub))
+      continue;
+
+    const sourceFeature = featureTag(sourceHub.file);
+    const targetFeature = featureTag(targetHub.file);
+    if (!sourceFeature || !targetFeature || sourceFeature === targetFeature)
+      continue;
+
+    const key = [sourceFeature, targetFeature].sort().join(" <-> ");
+    if (!pairs.has(key)) pairs.set(key, { pair: key, count: 0, examples: [] });
+    const entry = pairs.get(key);
+    entry.count += 1;
+
+    const example = `${sourceHub.file || "(unknown)"} -> ${targetHub.file || "(unknown)"} (${link.relation || "edge"})`;
+    if (!entry.examples.includes(example) && entry.examples.length < 5)
+      entry.examples.push(example);
   }
-
-  for (const item of edgeMap.values()) {
-    item.relations = topEntries(item.relationCounts, 5).map((entry) => ({
-      relation: entry.key,
-      count: entry.count,
-    }));
-    delete item.relationCounts;
-  }
-
-  return edgeMap;
-}
-
-function isProductArchitectureNode(node) {
-  const file = toSlash(node.source_file || "");
-  if (!file) return true;
-  return !isProductArchitectureNoisePath(file);
-}
-
-function isProductArchitectureNoisePath(file) {
-  const lower = toSlash(file).toLowerCase();
-  return (
-    lower.startsWith("app/a11y-harness/") ||
-    lower.startsWith("node_modules/") ||
-    lower.startsWith(".next/") ||
-    lower.startsWith("dist/") ||
-    lower.startsWith("build/") ||
-    lower.startsWith("out/") ||
-    lower.startsWith("coverage/") ||
-    lower.startsWith("graphify-out/") ||
-    lower.startsWith(".graphify/") ||
-    lower.startsWith("graphify/") ||
-    lower.startsWith(".agents/skills/graphify/") ||
-    lower.startsWith("scripts/graphify") ||
-    isTestPath(lower) ||
-    lower === "types/database.ts" ||
-    lower === "next-env.d.ts" ||
-    lower.endsWith(".d.ts") ||
-    lower.endsWith(".generated.ts") ||
-    lower.endsWith(".generated.tsx") ||
-    lower.includes("/generated/") ||
-    lower.includes("/__generated__/")
+  return [...pairs.values()].sort(
+    (a, b) => b.count - a.count || a.pair.localeCompare(b.pair)
   );
 }
 
-function increment(map, key, amount = 1) {
-  map.set(key, (map.get(key) || 0) + amount);
-}
+function cutCandidates(analysis) {
+  const byFile = new Map();
+  for (const hub of analysis.topHubs) {
+    if (!hub.file) continue;
+    if (!/^app\/.*\/(page|layout|actions|route)\.tsx?$/.test(hub.file))
+      continue;
+    if (isSharedPlumbing(hub) || isDataAuthBoundary(hub)) continue;
+    if (forbiddenCutCandidate(hub.file)) continue;
 
-function topEntries(map, limit) {
-  return [...map.entries()]
-    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
-    .slice(0, limit)
-    .map(([key, count]) => ({ key, count }));
-}
-
-function sizeForCount(count, min, max) {
-  if (count <= 0) return Math.max(18, min - 8);
-  return Math.max(min, Math.min(max, min + Math.sqrt(count) * 2.7));
-}
-
-function widthForCount(count) {
-  return Math.max(1, Math.min(12, 1 + Math.sqrt(count) * 0.7));
-}
-
-function renderReport(analysis) {
-  const lines = [];
-  lines.push(`# Architecture Graph Report - ${analysis.slice}`);
-  lines.push("");
-  lines.push(`Generated: ${analysis.generatedAt}`);
-  lines.push("");
-  lines.push("## Summary");
-  lines.push(`- Nodes: ${analysis.nodeCount}`);
-  lines.push(`- Edges: ${analysis.edgeCount}`);
-  lines.push(`- Communities: ${analysis.communityCount}`);
-  lines.push(`- Staged files: ${analysis.stagedFileCount}`);
-  if (analysis.views) {
-    lines.push(
-      `- Architecture overview nodes: ${analysis.views.architecture.nodeCount}`
-    );
-    lines.push(
-      `- Architecture overview edges: ${analysis.views.architecture.edgeCount}`
-    );
-    lines.push(
-      `- Architecture overview default visible edges: ${analysis.views.architecture.defaultVisibleEdges}`
-    );
-    lines.push(
-      `- Community overview nodes: ${analysis.views.community.nodeCount}`
-    );
-    lines.push(
-      `- Community overview edges: ${analysis.views.community.edgeCount}`
-    );
-    lines.push(
-      `- Community overview default visible edges: ${analysis.views.community.defaultVisibleEdges}`
-    );
-  }
-  lines.push("");
-
-  lines.push("## Exclusion Audit");
-  for (const item of analysis.noise) {
-    const status = item.count === 0 ? "OK" : "CHECK";
-    lines.push(`- ${status}: ${item.name}: ${item.count}`);
-    if (item.examples.length > 0) {
-      lines.push(`  - Examples: ${item.examples.join(", ")}`);
-    }
-  }
-  lines.push("");
-
-  lines.push("## Top Hubs");
-  for (const hub of analysis.topHubs.slice(0, 12)) {
-    lines.push(`- ${hub.label} (${hub.degree}) - ${hub.sourceFile}`);
-  }
-  lines.push("");
-
-  lines.push("## Largest Communities");
-  for (const community of analysis.largestCommunities.slice(0, 12)) {
-    lines.push(
-      `- ${community.label} (${community.nodeCount} nodes, ${community.source})`
-    );
-  }
-  lines.push("");
-
-  lines.push("## Inferred Community Labels");
-  lines.push("| ID | Label | Source | Basis |");
-  lines.push("| --- | --- | --- | --- |");
-  for (const community of analysis.communities.slice(0, 40)) {
-    lines.push(
-      `| ${community.id} | ${community.label} | ${community.source} | ${sanitizeTableCell(community.basis || "")} |`
-    );
-  }
-  lines.push("");
-
-  lines.push("## Top Files Per Community");
-  for (const community of analysis.largestCommunities.slice(0, 15)) {
-    lines.push(`### ${community.label} (${community.id})`);
-    for (const file of community.topFiles.slice(0, 6)) {
-      lines.push(`- ${file.file} (${file.count})`);
-    }
-    lines.push("");
-  }
-
-  lines.push("## Label And Edge Controls");
-  if (analysis.slice === "full") {
-    lines.push(
-      "- The default graph.html is architecture-overview.html, not the raw full graph."
-    );
-    lines.push(
-      "- Raw Full Graph is kept as raw-full-graph.html for deep inspection only."
-    );
-    lines.push(
-      "- Community Overview is kept as community-overview.html with original community IDs in details."
-    );
-  }
-  lines.push("- Raw graph node labels are hidden by default except hubs.");
-  lines.push(
-    "- Use Show Labels, Hub Labels, Selected Community, Neighbor Labels, and Zoom Labels in graph.html."
-  );
-  lines.push(
-    "- Edge labels are hidden by default. Select an edge or enable Edge Labels to inspect relationship types."
-  );
-  return lines.join("\n");
-}
-
-function renderHtml(nodes, edges, analysis, slice, options = {}) {
-  const degrees = degreeMap(edges);
-  const preparedNodes = nodes.map((node) => {
-    const community = String(node.community ?? "unknown");
-    const degree = degrees.get(node.id) || 0;
-    const color = palette[Math.abs(hashCode(community)) % palette.length];
-    return {
-      id: node.id,
-      label: node.label || node.id,
-      source_file: node.source_file || "",
-      file_type: node.file_type || "code",
-      community,
-      community_name: analysis.labels[community] || `Community ${community}`,
-      degree,
-      color: {
-        background: color,
-        border: color,
-        highlight: { background: "#F8FAFC", border: color },
-      },
-      size: Math.max(8, Math.min(26, 8 + Math.sqrt(degree + 1) * 2.2)),
+    const feature = featureTag(hub.file);
+    if (!feature) continue;
+    const current = byFile.get(hub.file) || {
+      file: hub.file,
+      feature,
+      inbound: analysis.inboundByFile.get(hub.file) || 0,
+      outbound: analysis.outboundByFile.get(hub.file) || 0,
+      degree: 0,
+      reason: candidateReason(hub.file),
     };
-  });
+    current.degree += hub.degree;
+    byFile.set(hub.file, current);
+  }
 
-  const preparedEdges = edges.map((edge, index) => {
-    const relation = edge.relation || edge.label || "related";
-    return {
-      id: index,
-      from: edge.source ?? edge.from,
-      to: edge.target ?? edge.to,
-      relation,
-      context: edge.context || "",
-      confidence: edge.confidence || "",
-      confidence_score: edge.confidence_score ?? "",
-      source_file: edge.source_file || "",
-      source_location: edge.source_location || "",
-      weight: edge.weight || 1,
-    };
-  });
+  return [...byFile.values()]
+    .filter((candidate) => candidate.inbound <= 3)
+    .sort(
+      (a, b) =>
+        a.inbound - b.inbound ||
+        a.outbound - b.outbound ||
+        a.file.localeCompare(b.file)
+    );
+}
 
-  const legend = analysis.communities
-    .map((community) => ({
-      id: String(community.id),
-      label: community.label,
-      count: community.nodeCount,
-      source: community.source,
-      basis: community.basis,
-      color: palette[Math.abs(hashCode(String(community.id))) % palette.length],
-    }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+function noisyFiles(analysis, audit) {
+  const includedNoise = audit
+    .filter((item) => item.count > 0 && !item.expected)
+    .map((item) => `${item.label}: ${item.count} included`);
+  const dominantInfrastructure = analysis.topHubs
+    .filter((hub) => isSharedPlumbing(hub) || isDataAuthBoundary(hub))
+    .slice(0, 10)
+    .map((hub) => `${hub.file || hub.label} (${hub.degree})`);
+  return [...includedNoise, ...dominantInfrastructure];
+}
 
-  const hubDegree = Math.max(
-    8,
-    Math.round(
-      percentile(
-        preparedNodes.map((node) => node.degree),
-        0.92
-      )
+function featureTag(file) {
+  if (!file) return null;
+  const value = file.toLowerCase();
+  if (/shepherd-care|follow-up|over-shepherd|care-note|\/care\//.test(value))
+    return "care";
+  if (
+    /launch-planning|leader-pipeline|\/plan\/|\/planning\/|prospect/.test(value)
+  )
+    return "plan";
+  if (/multiply|multiplication|readiness|pillar/.test(value)) return "multiply";
+  if (/calendar|check-in|checkin|occurrence|church-time/.test(value))
+    return "calendar";
+  if (
+    /\/people\/|person-detail|people-directory|\/guests\/|guest|invite|member|profile/.test(
+      value
     )
+  )
+    return "people";
+  if (
+    /\/groups\/|group-health|group-detail|group-management|groups-directory|health-rubric|capacity/.test(
+      value
+    )
+  ) {
+    return "groups";
+  }
+  if (
+    /settings|feature-flag|app-config|editable-copy|group-categories|multiply-trigger/.test(
+      value
+    )
+  )
+    return "settings";
+  if (/dashboard|\/admin\/page\.tsx|\/leader\/page\.tsx|home|nav/.test(value))
+    return "home";
+  return null;
+}
+
+function isSharedPlumbing(hub) {
+  const value = `${hub.file || ""} ${hub.label || ""}`.toLowerCase();
+  return (
+    value.includes("lib/shared/") ||
+    value.includes("lib/forms/") ||
+    value.includes("lib/utils.ts") ||
+    value.includes("components/ui/") ||
+    value.includes("components/pastoral/") ||
+    value.includes("components/auth/") ||
+    value.includes("components/sign-in/") ||
+    value.includes("components/admin/forms/action-form") ||
+    value.includes("components/admin/forms/confirm-action-button") ||
+    value.includes("components/admin/forms/field-styles") ||
+    value.includes("runadminwriteaction") ||
+    value.includes("calluuidrpc") ||
+    value.includes("createsupabaseserverclient") ||
+    value.includes("useactionform") ||
+    value.includes("cn()") ||
+    value.includes("action-result")
   );
-
-  const title = options.title || `${sliceConfigs[slice]?.label || slice} Graph`;
-  const subtitle =
-    options.subtitle ||
-    "Raw Graphify graph with label controls for focused inspection.";
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lifegroups ${escapeHtml(title)}</title>
-<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: #101319; color: #e5e7eb; font-family: Arial, sans-serif; }
-  #graph { flex: 1; min-width: 0; }
-  #sidebar { width: 360px; background: #171b24; border-left: 1px solid #303746; display: flex; flex-direction: column; }
-  #top { padding: 14px; border-bottom: 1px solid #303746; }
-  #top h1 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
-  #subtitle { margin-bottom: 8px; color: #9ca3af; font-size: 12px; line-height: 1.4; }
-  #stats { color: #9ca3af; font-size: 12px; line-height: 1.5; }
-  #search { width: 100%; margin-top: 10px; background: #0f131a; color: #f9fafb; border: 1px solid #374151; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
-  #search-results { display: none; max-height: 150px; overflow: auto; border-bottom: 1px solid #303746; padding: 6px 10px; }
-  .search-item { padding: 5px 7px; border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-  .search-item:hover { background: #242b38; }
-  #controls { padding: 10px 14px; border-bottom: 1px solid #303746; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-  #controls label { display: flex; align-items: center; gap: 7px; color: #d1d5db; font-size: 12px; }
-  input[type="checkbox"] { width: 14px; height: 14px; accent-color: #60a5fa; }
-  #info { padding: 14px; border-bottom: 1px solid #303746; max-height: 290px; overflow: auto; }
-  #info h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: #9ca3af; }
-  #info-content { font-size: 12px; line-height: 1.55; color: #d1d5db; }
-  .field { margin: 0 0 6px; }
-  .field b { color: #f9fafb; }
-  .muted { color: #9ca3af; }
-  .neighbor { display: block; padding: 4px 6px; margin: 3px 0; border-left: 3px solid #4b5563; border-radius: 4px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .neighbor:hover { background: #242b38; }
-  #legend-wrap { flex: 1; overflow: auto; padding: 12px 14px; }
-  #legend-wrap h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: #9ca3af; }
-  .legend-item { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-  .legend-item:hover { background: #242b38; }
-  .legend-item.dimmed { opacity: 0.38; }
-  .legend-dot { width: 12px; height: 12px; border-radius: 999px; flex: 0 0 auto; }
-  .legend-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .legend-count { color: #9ca3af; font-size: 11px; }
-</style>
-</head>
-<body>
-<div id="graph"></div>
-<aside id="sidebar">
-  <div id="top">
-    <h1>${escapeHtml(title)}</h1>
-    <div id="subtitle">${escapeHtml(subtitle)}</div>
-    <div id="stats">${preparedNodes.length} nodes - ${preparedEdges.length} edges - ${legend.length} communities - hub label degree ${hubDegree}</div>
-    <input id="search" type="search" placeholder="Search nodes">
-  </div>
-  <div id="search-results"></div>
-  <div id="controls">
-    <label><input id="show-labels" type="checkbox"> Show Labels</label>
-    <label><input id="hub-labels" type="checkbox" checked> Hub Labels</label>
-    <label><input id="community-labels" type="checkbox" checked> Selected Community</label>
-    <label><input id="neighbor-labels" type="checkbox" checked> Neighbor Labels</label>
-    <label><input id="zoom-labels" type="checkbox" checked> Zoom Labels</label>
-    <label><input id="edge-labels" type="checkbox"> Edge Labels</label>
-  </div>
-  <div id="info">
-    <h2>Selection</h2>
-    <div id="info-content"><span class="muted">Click a node or edge to inspect it.</span></div>
-  </div>
-  <div id="legend-wrap">
-    <h2>Communities</h2>
-    <div id="legend"></div>
-  </div>
-</aside>
-<script>
-const RAW_NODES = ${safeJson(preparedNodes)};
-const RAW_EDGES = ${safeJson(preparedEdges)};
-const LEGEND = ${safeJson(legend)};
-const HUB_DEGREE = ${hubDegree};
-
-const byId = new Map(RAW_NODES.map(function(n) { return [n.id, n]; }));
-const adjacency = new Map();
-RAW_EDGES.forEach(function(e) {
-  if (!adjacency.has(e.from)) adjacency.set(e.from, []);
-  if (!adjacency.has(e.to)) adjacency.set(e.to, []);
-  adjacency.get(e.from).push({ edge: e, neighbor: e.to, direction: "out" });
-  adjacency.get(e.to).push({ edge: e, neighbor: e.from, direction: "in" });
-});
-
-const state = {
-  scale: 1,
-  selectedCommunity: null,
-  neighborIds: new Set(),
-  hiddenCommunities: new Set(),
-};
-
-function esc(value) {
-  return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch) {
-    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[ch];
-  });
 }
 
-function labelEnabled(node) {
-  if (document.getElementById("show-labels").checked) return true;
-  if (document.getElementById("hub-labels").checked && node.degree >= HUB_DEGREE) return true;
-  if (document.getElementById("community-labels").checked && node.community === state.selectedCommunity) return true;
-  if (document.getElementById("neighbor-labels").checked && state.neighborIds.has(node.id)) return true;
-  if (document.getElementById("zoom-labels").checked && state.scale >= 1.35 && node.degree >= Math.max(3, Math.round(HUB_DEGREE / 3))) return true;
-  return false;
+function isDataAuthBoundary(hub) {
+  const value = `${hub.file || ""} ${hub.label || ""}`.toLowerCase();
+  return (
+    value.includes("lib/supabase/") ||
+    value.includes("lib/auth/") ||
+    value.includes("middleware.ts") ||
+    value.includes("app/auth/") ||
+    value.includes("app/login/") ||
+    value.includes("app/invite/") ||
+    value.includes("app/forgot-password/") ||
+    value.includes("app/reset-password/") ||
+    value.includes("supabase/functions/") ||
+    value.includes("supabase/migrations/") ||
+    value.includes("types/database.ts") ||
+    value.includes("lib/supabase/types.ts") ||
+    value.includes("rpc.ts") ||
+    value.includes("createSupabaseServerClient".toLowerCase())
+  );
 }
 
-function nodeFont(node) {
-  return { size: labelEnabled(node) ? 12 : 0, color: "#f9fafb", strokeWidth: 3, strokeColor: "#111827" };
+function forbiddenCutCandidate(file) {
+  return /auth|rls|audit|rpc|session|middleware|settings|config|supabase|types\/enums|run-action/i.test(
+    file
+  );
 }
 
-function edgeLabel(edge) {
-  return document.getElementById("edge-labels").checked ? edge.relation : "";
-}
-
-function edgeTitle(edge) {
-  const source = byId.get(edge.from);
-  const target = byId.get(edge.to);
-  return [
-    (source ? source.label : edge.from) + " -> " + (target ? target.label : edge.to),
-    "Relation: " + edge.relation,
-    edge.context ? "Context: " + edge.context : "",
-    edge.confidence ? "Confidence: " + edge.confidence : "",
-    edge.source_file ? "Source: " + edge.source_file + (edge.source_location ? " " + edge.source_location : "") : "",
-  ].filter(Boolean).join("\\n");
-}
-
-const nodesDS = new vis.DataSet(RAW_NODES.map(function(n) {
-  return {
-    id: n.id,
-    label: n.label,
-    title: esc(n.label) + "\\n" + esc(n.community_name) + "\\n" + esc(n.source_file),
-    color: n.color,
-    size: n.size,
-    font: nodeFont(n),
-    _community: n.community,
-    _community_name: n.community_name,
-    _source_file: n.source_file,
-    _file_type: n.file_type,
-    _degree: n.degree,
-  };
-}));
-
-const edgesDS = new vis.DataSet(RAW_EDGES.map(function(e) {
-  return {
-    id: e.id,
-    from: e.from,
-    to: e.to,
-    label: edgeLabel(e),
-    title: edgeTitle(e),
-    width: Math.max(1, Math.min(4, Number(e.weight || 1))),
-    color: { color: "#475569", highlight: "#93c5fd", hover: "#93c5fd", opacity: 0.45 },
-    arrows: { to: { enabled: true, scaleFactor: 0.45 } },
-    _relation: e.relation,
-    _context: e.context,
-    _confidence: e.confidence,
-    _source_file: e.source_file,
-    _source_location: e.source_location,
-  };
-}));
-
-const network = new vis.Network(document.getElementById("graph"), { nodes: nodesDS, edges: edgesDS }, {
-  physics: {
-    enabled: true,
-    solver: "forceAtlas2Based",
-    forceAtlas2Based: { gravitationalConstant: -65, centralGravity: 0.006, springLength: 120, springConstant: 0.07, damping: 0.45, avoidOverlap: 0.8 },
-    stabilization: { iterations: 220, fit: true },
-  },
-  interaction: { hover: true, tooltipDelay: 80, hideEdgesOnDrag: true },
-  nodes: { shape: "dot", borderWidth: 1.5 },
-  edges: { smooth: { type: "continuous", roundness: 0.18 }, selectionWidth: 3 },
-});
-
-network.once("stabilizationIterationsDone", function() {
-  network.setOptions({ physics: { enabled: false } });
-});
-
-network.on("zoom", function(params) {
-  state.scale = params.scale;
-  refreshLabels();
-});
-
-network.on("click", function(params) {
-  if (params.nodes && params.nodes.length) {
-    showNode(params.nodes[0]);
-    return;
+function candidateReason(file) {
+  if (
+    /planning|check-ins|guests|leader-pipeline|group-health|launch-planning/i.test(
+      file
+    )
+  ) {
+    return "low-inbound hidden or legacy product surface";
   }
-  if (params.edges && params.edges.length) {
-    showEdge(params.edges[0]);
-    return;
-  }
-  state.selectedCommunity = null;
-  state.neighborIds.clear();
-  refreshLabels();
-  document.getElementById("info-content").innerHTML = '<span class="muted">Click a node or edge to inspect it.</span>';
-});
-
-function refreshLabels() {
-  nodesDS.update(RAW_NODES.map(function(n) { return { id: n.id, font: nodeFont(n) }; }));
+  return "low-inbound leaf route/action surface";
 }
 
-function refreshEdgeLabels() {
-  edgesDS.update(RAW_EDGES.map(function(e) { return { id: e.id, label: edgeLabel(e) }; }));
-}
-
-function showNode(nodeId) {
-  const node = byId.get(nodeId);
-  if (!node) return;
-  const neighbors = adjacency.get(nodeId) || [];
-  state.selectedCommunity = node.community;
-  state.neighborIds = new Set(neighbors.map(function(item) { return item.neighbor; }));
-  state.neighborIds.add(nodeId);
-  refreshLabels();
-
-  const rows = neighbors.slice(0, 30).map(function(item) {
-    const neighbor = byId.get(item.neighbor);
-    const edge = item.edge;
-    const color = neighbor && neighbor.color ? neighbor.color.background : "#64748b";
-    const arrow = item.direction === "out" ? "->" : "<-";
-    return '<span class="neighbor" style="border-left-color:' + color + '" onclick="focusNode(' + JSON.stringify(item.neighbor).replace(/"/g, "&quot;") + ')">' +
-      esc(arrow + " " + edge.relation + " " + (neighbor ? neighbor.label : item.neighbor)) +
-      '</span>';
-  }).join("");
-
-  document.getElementById("info-content").innerHTML =
-    '<div class="field"><b>' + esc(node.label) + '</b></div>' +
-    '<div class="field">Community: ' + esc(node.community_name) + '</div>' +
-    '<div class="field">Source: ' + esc(node.source_file || "-") + '</div>' +
-    '<div class="field">Type: ' + esc(node.file_type || "unknown") + '</div>' +
-    '<div class="field">Degree: ' + node.degree + '</div>' +
-    (neighbors.length ? '<div class="field muted">Neighbors (' + neighbors.length + ')</div>' + rows : "");
-}
-
-function showEdge(edgeId) {
-  const edge = edgesDS.get(edgeId);
-  if (!edge) return;
-  const source = byId.get(edge.from);
-  const target = byId.get(edge.to);
-  state.selectedCommunity = source ? source.community : null;
-  state.neighborIds = new Set([edge.from, edge.to]);
-  refreshLabels();
-  document.getElementById("info-content").innerHTML =
-    '<div class="field"><b>' + esc(source ? source.label : edge.from) + ' -> ' + esc(target ? target.label : edge.to) + '</b></div>' +
-    '<div class="field">Relation: ' + esc(edge._relation || "-") + '</div>' +
-    '<div class="field">Context: ' + esc(edge._context || "-") + '</div>' +
-    '<div class="field">Confidence: ' + esc(edge._confidence || "-") + '</div>' +
-    '<div class="field">Source: ' + esc(edge._source_file || "-") + (edge._source_location ? " " + esc(edge._source_location) : "") + '</div>';
-}
-
-function focusNode(nodeId) {
-  network.focus(nodeId, { scale: 1.45, animation: true });
-  network.selectNodes([nodeId]);
-  showNode(nodeId);
-}
-
-for (const id of ["show-labels", "hub-labels", "community-labels", "neighbor-labels", "zoom-labels"]) {
-  document.getElementById(id).addEventListener("change", refreshLabels);
-}
-document.getElementById("edge-labels").addEventListener("change", refreshEdgeLabels);
-
-const searchInput = document.getElementById("search");
-const searchResults = document.getElementById("search-results");
-searchInput.addEventListener("input", function() {
-  const q = searchInput.value.toLowerCase().trim();
-  searchResults.innerHTML = "";
-  if (!q) { searchResults.style.display = "none"; return; }
-  const matches = RAW_NODES.filter(function(n) {
-    return n.label.toLowerCase().includes(q) || n.source_file.toLowerCase().includes(q) || n.community_name.toLowerCase().includes(q);
-  }).slice(0, 30);
-  if (!matches.length) { searchResults.style.display = "none"; return; }
-  searchResults.style.display = "block";
-  matches.forEach(function(n) {
-    const el = document.createElement("div");
-    el.className = "search-item";
-    el.textContent = n.label + " - " + n.source_file;
-    el.style.borderLeft = "3px solid " + n.color.background;
-    el.onclick = function() {
-      searchInput.value = "";
-      searchResults.style.display = "none";
-      focusNode(n.id);
-    };
-    searchResults.appendChild(el);
-  });
-});
-
-const legendEl = document.getElementById("legend");
-LEGEND.forEach(function(c) {
-  const item = document.createElement("div");
-  item.className = "legend-item";
-  item.title = c.source + ": " + (c.basis || "");
-  const cb = document.createElement("input");
-  cb.type = "checkbox";
-  cb.checked = true;
-  cb.addEventListener("change", function(event) {
-    event.stopPropagation();
-    if (cb.checked) state.hiddenCommunities.delete(c.id); else state.hiddenCommunities.add(c.id);
-    item.classList.toggle("dimmed", !cb.checked);
-    nodesDS.update(RAW_NODES.filter(function(n) { return n.community === c.id; }).map(function(n) { return { id: n.id, hidden: !cb.checked }; }));
-  });
-  item.appendChild(cb);
-  item.insertAdjacentHTML("beforeend", '<span class="legend-dot" style="background:' + c.color + '"></span><span class="legend-label">' + esc(c.label) + '</span><span class="legend-count">' + c.count + '</span>');
-  item.addEventListener("click", function(event) {
-    if (event.target === cb) return;
-    state.selectedCommunity = c.id;
-    state.neighborIds.clear();
-    refreshLabels();
-    const ids = RAW_NODES.filter(function(n) { return n.community === c.id && !state.hiddenCommunities.has(c.id); }).map(function(n) { return n.id; });
-    if (ids.length) {
-      network.selectNodes(ids.slice(0, 100));
-      network.fit({ nodes: ids, animation: true });
-    }
-  });
-  legendEl.appendChild(item);
-});
-</script>
-</body>
-</html>
-`;
-}
-
-function renderOverviewHtml(view, options = {}) {
-  const title = options.title || view.label;
-  const subtitle = options.subtitle || "";
-  const isArchitecture = view.kind === "architecture";
-  const preparedNodes = view.nodes.map((node) => ({
-    ...node,
-    title: [
-      node.label,
-      node.kind === "community" ? `Community ID: ${node.communityId}` : "",
-      `Group: ${node.groupLabel || node.domainLabel || node.label}`,
-      `Symbols: ${node.symbolCount}`,
-      `Files: ${node.fileCount}`,
-      node.command ? `Command: ${node.command}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  }));
-  const preparedEdges = view.edges.map((edge) => ({
-    ...edge,
-    title: [
-      `${edge.from} -> ${edge.to}`,
-      `Relationships: ${edge.count}`,
-      edge.relations?.length
-        ? `Relations: ${edge.relations
-            .map((relation) => `${relation.relation} (${relation.count})`)
-            .join(", ")}`
-        : "",
-      edge.examples?.length
-        ? `Examples: ${edge.examples
-            .slice(0, 3)
-            .map(
-              (example) =>
-                `${example.source} -> ${example.target} (${example.relation})`
-            )
-            .join("; ")}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  }));
-  const defaultVisibleEdges = preparedEdges.filter(
-    (edge) => !edge.hiddenByDefault
-  ).length;
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lifegroups ${escapeHtml(title)}</title>
-<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body { margin: 0; height: 100vh; display: flex; overflow: hidden; background: #0f1218; color: #e5e7eb; font-family: Arial, sans-serif; }
-  #graph { flex: 1; min-width: 0; background: radial-gradient(circle at center, #161b24 0, #0f1218 62%); }
-  #sidebar { width: 380px; background: #171b24; border-left: 1px solid #303746; display: flex; flex-direction: column; }
-  #top { padding: 14px; border-bottom: 1px solid #303746; }
-  #top h1 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
-  #subtitle { margin-bottom: 10px; color: #aab2c0; font-size: 12px; line-height: 1.45; }
-  #stats { color: #9ca3af; font-size: 12px; line-height: 1.55; }
-  #controls { padding: 10px 14px; border-bottom: 1px solid #303746; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-  #controls label { display: flex; align-items: center; gap: 7px; color: #d1d5db; font-size: 12px; }
-  input[type="checkbox"] { width: 14px; height: 14px; accent-color: #60a5fa; }
-  #info { padding: 14px; border-bottom: 1px solid #303746; max-height: 46vh; overflow: auto; }
-  #info h2, #list h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: #9ca3af; }
-  #info-content { font-size: 12px; line-height: 1.55; color: #d1d5db; }
-  .field { margin: 0 0 7px; }
-  .field b { color: #f9fafb; }
-  .muted { color: #9ca3af; }
-  .pill { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 6px; border: 1px solid #3f4758; border-radius: 999px; color: #d1d5db; font-size: 11px; }
-  a { color: #93c5fd; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  #list { flex: 1; overflow: auto; padding: 12px 14px; }
-  .list-item { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 6px 4px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-  .list-item:hover { background: #242b38; }
-  .dot { width: 11px; height: 11px; border-radius: 999px; }
-  .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .count { color: #9ca3af; font-size: 11px; }
-</style>
-</head>
-<body>
-<div id="graph"></div>
-<aside id="sidebar">
-  <div id="top">
-    <h1>${escapeHtml(title)}</h1>
-    <div id="subtitle">${escapeHtml(subtitle)}</div>
-    <div id="stats">
-      ${preparedNodes.length} aggregate nodes - ${preparedEdges.length} aggregate edges<br>
-      ${defaultVisibleEdges} edges shown by default; toggle Weak Edges for all<br>
-      ${view.productNodeCount} product nodes from ${view.rawNodeCount} raw nodes<br>
-      ${view.rawEdgeCount} raw relationships collapsed by ${isArchitecture ? "domain" : "community"}
-    </div>
-  </div>
-  <div id="controls">
-    <label><input id="show-labels" type="checkbox" checked> Labels</label>
-    <label><input id="edge-counts" type="checkbox"> Edge Counts</label>
-    <label><input id="weak-edges" type="checkbox"> Weak Edges</label>
-    <label><input id="fit-view" type="checkbox" checked> Fit On Load</label>
-    <label><input id="highlight-neighbors" type="checkbox" checked> Neighbors</label>
-  </div>
-  <div id="info">
-    <h2>Selection</h2>
-    <div id="info-content"><span class="muted">Click an aggregate node or edge to inspect counts and examples.</span></div>
-  </div>
-  <div id="list">
-    <h2>${isArchitecture ? "Domains" : "Communities"}</h2>
-    <div id="node-list"></div>
-  </div>
-</aside>
-<script>
-const RAW_NODES = ${safeJson(preparedNodes)};
-const RAW_EDGES = ${safeJson(preparedEdges)};
-const IS_ARCHITECTURE = ${safeJson(isArchitecture)};
-const byId = new Map(RAW_NODES.map(function(node) { return [node.id, node]; }));
-const edgeById = new Map(RAW_EDGES.map(function(edge) { return [edge.id, edge]; }));
-const adjacency = new Map();
-RAW_EDGES.forEach(function(edge) {
-  if (!adjacency.has(edge.from)) adjacency.set(edge.from, new Set());
-  if (!adjacency.has(edge.to)) adjacency.set(edge.to, new Set());
-  adjacency.get(edge.from).add(edge.to);
-  adjacency.get(edge.to).add(edge.from);
-});
-
-function esc(value) {
-  return String(value == null ? "" : value).replace(/[&<>"']/g, function(ch) {
-    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[ch];
-  });
-}
-
-function nodeFont() {
-  return {
-    size: document.getElementById("show-labels").checked ? (IS_ARCHITECTURE ? 16 : 11) : 0,
-    color: "#f9fafb",
-    strokeWidth: 4,
-    strokeColor: "#111827",
-  };
-}
-
-function edgeLabel(edge) {
-  return document.getElementById("edge-counts").checked ? String(edge.count) : "";
-}
-
-const nodesDS = new vis.DataSet(RAW_NODES.map(function(node) {
+function hubFromNode(node, degree) {
   return {
     id: node.id,
-    label: node.label,
-    title: node.title,
-    x: node.x,
-    y: node.y,
-    fixed: { x: true, y: true },
-    shape: "dot",
-    size: node.size,
-    color: {
-      background: node.color,
-      border: node.color,
-      highlight: { background: "#f8fafc", border: node.color },
-    },
-    font: nodeFont(),
+    label: node.label || node.id,
+    file: normalizeMaybe(node.source_file),
+    community: node.community,
+    degree,
   };
-}));
+}
 
-const edgesDS = new vis.DataSet(RAW_EDGES.map(function(edge) {
-  return {
-    id: edge.id,
-    from: edge.from,
-    to: edge.to,
-    label: edgeLabel(edge),
-    title: edge.title,
-    width: edge.width,
-    hidden: edge.hiddenByDefault,
-    color: { color: "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: 0.5 },
-    arrows: { to: { enabled: true, scaleFactor: 0.45 } },
-    smooth: { type: "cubicBezier", roundness: 0.25 },
+function formatHubs(hubs) {
+  if (hubs.length === 0) return ["- None found."];
+  return hubs.map(
+    (hub) => `- ${hub.label} (${hub.degree}) - ${hub.file || "unknown file"}`
+  );
+}
+
+function formatCounts(counts) {
+  if (counts.size === 0) return ["- None."];
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label, count]) => `- ${label}: ${count}`);
+}
+
+function formatCoupling(coupling) {
+  if (coupling.length === 0)
+    return [
+      "- None found after subtracting shared plumbing and data/auth boundary nodes.",
+    ];
+  return coupling.flatMap((entry) => [
+    `- ${entry.pair}: ${entry.count} links`,
+    ...entry.examples.map((example) => `  - ${example}`),
+  ]);
+}
+
+function formatCutCandidates(candidates) {
+  if (candidates.length === 0)
+    return ["- None found by the low-coupling route/action heuristic."];
+  return candidates.map(
+    (candidate) =>
+      `- ${candidate.file} - ${candidate.feature}, inbound ${candidate.inbound}, outbound ${candidate.outbound}; ${candidate.reason}`
+  );
+}
+
+function formatNoisyFiles(noisy) {
+  if (noisy.length === 0) return ["- None found."];
+  return noisy.map((item) => `- ${item}`);
+}
+
+function formatCommunityLabels(labels) {
+  if (labels.length === 0) return ["- None found."];
+  return [
+    "| Community | Label | Nodes | Basis | Top files |",
+    "| --- | --- | ---: | --- | --- |",
+    ...labels.map((entry) => {
+      const topFiles = entry.topFiles
+        .map(([file, count]) => `${file} (${count})`)
+        .join("; ");
+      return `| ${entry.id} | ${entry.label} | ${entry.nodes} | ${entry.basis} | ${topFiles} |`;
+    }),
+  ];
+}
+
+function writeOverview() {
+  const graphPath = path.join(outputRoot, "graph.json");
+  if (!existsSync(graphPath)) {
+    fail(
+      "graphify-out/graph.json does not exist. Run npm.cmd run graph:product first."
+    );
+  }
+
+  const graph = readJson(graphPath);
+  const analysis = analyzeGraph(graph);
+  const labels = inferCommunityLabels(analysis);
+  const coupling = crossFeatureCoupling(graph, analysis.nodeById).slice(0, 12);
+  const overviewDir = path.join(outputRoot, "overview");
+  mkdirSync(overviewDir, { recursive: true });
+
+  const json = {
+    generatedAt: new Date().toISOString(),
+    source: "graphify-out/graph.json",
+    nodeCount: analysis.nodes.length,
+    edgeCount: analysis.links.length,
+    communityCount: analysis.communityCount,
+    topHubs: analysis.topHubs.slice(0, 40),
+    communityLabels: labels,
+    crossFeatureCoupling: coupling,
   };
-}));
-
-const network = new vis.Network(document.getElementById("graph"), { nodes: nodesDS, edges: edgesDS }, {
-  physics: false,
-  layout: { improvedLayout: false },
-  interaction: { hover: true, tooltipDelay: 80, hideEdgesOnDrag: true },
-  nodes: { borderWidth: 2 },
-  edges: { selectionWidth: 3 },
-});
-
-network.once("afterDrawing", function() {
-  if (document.getElementById("fit-view").checked) {
-    network.fit({ animation: false });
-  }
-});
-
-network.on("click", function(params) {
-  if (params.nodes && params.nodes.length) {
-    showNode(params.nodes[0]);
-    return;
-  }
-  if (params.edges && params.edges.length) {
-    showEdge(params.edges[0]);
-    return;
-  }
-  nodesDS.update(RAW_NODES.map(function(node) { return { id: node.id, opacity: 1 }; }));
-  edgesDS.update(RAW_EDGES.map(function(edge) { return { id: edge.id, color: { color: "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: 0.5 } }; }));
-  document.getElementById("info-content").innerHTML = '<span class="muted">Click an aggregate node or edge to inspect counts and examples.</span>';
-});
-
-function refreshLabels() {
-  nodesDS.update(RAW_NODES.map(function(node) { return { id: node.id, font: nodeFont() }; }));
+  writeTextFile(
+    path.join(overviewDir, ".graphify_analysis.json"),
+    `${JSON.stringify(json, null, 2)}\n`
+  );
+  writeTextFile(
+    path.join(overviewDir, "architecture-overview.html"),
+    overviewHtml("Architecture Overview", json.topHubs, coupling)
+  );
+  writeTextFile(
+    path.join(overviewDir, "community-overview.html"),
+    communityHtml(labels)
+  );
+  console.log("[graphify] overview: wrote graphify-out/overview");
 }
 
-function refreshEdgeLabels() {
-  edgesDS.update(RAW_EDGES.map(function(edge) { return { id: edge.id, label: edgeLabel(edge) }; }));
+function overviewHtml(title, hubs, coupling) {
+  return htmlPage(
+    title,
+    [
+      "<h2>Top hubs</h2>",
+      "<ul>",
+      ...hubs.map(
+        (hub) =>
+          `<li><strong>${escapeHtml(hub.label)}</strong> (${hub.degree}) - ${escapeHtml(hub.file || "")}</li>`
+      ),
+      "</ul>",
+      "<h2>Cross-feature coupling</h2>",
+      "<ul>",
+      ...coupling.map(
+        (entry) =>
+          `<li><strong>${escapeHtml(entry.pair)}</strong>: ${entry.count}</li>`
+      ),
+      "</ul>",
+    ].join("\n")
+  );
 }
 
-function refreshEdgeVisibility() {
-  const showWeak = document.getElementById("weak-edges").checked;
-  edgesDS.update(RAW_EDGES.map(function(edge) {
-    return { id: edge.id, hidden: edge.hiddenByDefault && !showWeak };
-  }));
+function communityHtml(labels) {
+  return htmlPage(
+    "Community Overview",
+    [
+      "<table>",
+      "<thead><tr><th>Community</th><th>Label</th><th>Nodes</th><th>Top files</th></tr></thead>",
+      "<tbody>",
+      ...labels.map((entry) => {
+        const files = entry.topFiles
+          .map(([file, count]) => `${file} (${count})`)
+          .join("; ");
+        return `<tr><td>${escapeHtml(entry.id)}</td><td>${escapeHtml(entry.label)}</td><td>${entry.nodes}</td><td>${escapeHtml(files)}</td></tr>`;
+      }),
+      "</tbody>",
+      "</table>",
+    ].join("\n")
+  );
 }
 
-function showNode(nodeId) {
-  const node = byId.get(nodeId);
-  if (!node) return;
-  const neighbors = adjacency.get(nodeId) || new Set();
-  if (document.getElementById("highlight-neighbors").checked) {
-    nodesDS.update(RAW_NODES.map(function(item) {
-      const active = item.id === nodeId || neighbors.has(item.id);
-      return { id: item.id, opacity: active ? 1 : 0.22 };
-    }));
-    edgesDS.update(RAW_EDGES.map(function(edge) {
-      const active = edge.from === nodeId || edge.to === nodeId;
-      return { id: edge.id, color: { color: active ? "#f8fafc" : "#64748b", highlight: "#f8fafc", hover: "#93c5fd", opacity: active ? 0.9 : 0.15 } };
-    }));
-  }
-  const files = (node.topFiles || []).map(function(file) {
-    return '<span class="pill">' + esc(file.file) + ' (' + file.count + ')</span>';
-  }).join("");
-  const communities = (node.topCommunities || []).map(function(item) {
-    return '<span class="pill">' + esc(item.label) + ' (' + item.count + ')</span>';
-  }).join("");
-  const hubs = (node.topNodes || []).map(function(item) {
-    return '<span class="pill">' + esc(item.label) + ' (' + item.degree + ')</span>';
-  }).join("");
-  const drilldown = node.command
-    ? '<div class="field">Drilldown: <code>' + esc(node.command) + '</code></div><div class="field"><a href="' + esc("domain-" + node.id + "/graph.html") + '">Open generated drilldown if present</a></div>'
-    : "";
-  document.getElementById("info-content").innerHTML =
-    '<div class="field"><b>' + esc(node.label) + '</b></div>' +
-    (node.communityId ? '<div class="field">Community ID: ' + esc(node.communityId) + '</div>' : "") +
-    '<div class="field">Group: ' + esc(node.groupLabel || node.domainLabel || "-") + '</div>' +
-    '<div class="field">Symbols: ' + node.symbolCount + '</div>' +
-    '<div class="field">Files: ' + node.fileCount + '</div>' +
-    drilldown +
-    (communities ? '<div class="field muted">Top communities</div><div class="field">' + communities + '</div>' : "") +
-    (hubs ? '<div class="field muted">Top hubs</div><div class="field">' + hubs + '</div>' : "") +
-    (files ? '<div class="field muted">Top files</div><div class="field">' + files + '</div>' : "");
-}
-
-function showEdge(edgeId) {
-  const edge = edgeById.get(edgeId);
-  if (!edge) return;
-  const relations = (edge.relations || []).map(function(item) {
-    return '<span class="pill">' + esc(item.relation) + ' (' + item.count + ')</span>';
-  }).join("");
-  const examples = (edge.examples || []).map(function(example) {
-    return '<div class="field">' + esc(example.source) + ' -> ' + esc(example.target) + ' <span class="muted">' + esc(example.relation) + '</span><br><span class="muted">' + esc(example.file || "") + '</span></div>';
-  }).join("");
-  document.getElementById("info-content").innerHTML =
-    '<div class="field"><b>' + esc(byId.get(edge.from)?.label || edge.from) + ' -> ' + esc(byId.get(edge.to)?.label || edge.to) + '</b></div>' +
-    '<div class="field">Relationships: ' + edge.count + '</div>' +
-    (relations ? '<div class="field muted">Relation types</div><div class="field">' + relations + '</div>' : "") +
-    (examples ? '<div class="field muted">Examples</div>' + examples : "");
-}
-
-document.getElementById("show-labels").addEventListener("change", refreshLabels);
-document.getElementById("edge-counts").addEventListener("change", refreshEdgeLabels);
-document.getElementById("weak-edges").addEventListener("change", refreshEdgeVisibility);
-
-const listEl = document.getElementById("node-list");
-RAW_NODES.slice().sort(function(a, b) {
-  return b.symbolCount - a.symbolCount || a.label.localeCompare(b.label);
-}).forEach(function(node) {
-  const item = document.createElement("div");
-  item.className = "list-item";
-  item.title = node.title;
-  item.innerHTML = '<span class="dot" style="background:' + node.color + '"></span><span class="label">' + esc(node.label) + '</span><span class="count">' + node.symbolCount + '</span>';
-  item.addEventListener("click", function() {
-    network.focus(node.id, { scale: IS_ARCHITECTURE ? 1.05 : 1.3, animation: true });
-    network.selectNodes([node.id]);
-    showNode(node.id);
-  });
-  listEl.appendChild(item);
-});
-</script>
+function htmlPage(title, body) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 32px; color: #111827; line-height: 1.45; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  ${body}
 </body>
 </html>
 `;
 }
 
-function writeCombinedReport() {
-  fs.mkdirSync(graphifyOutRoot, { recursive: true });
-  const dirs = outputDirsWithGraphs();
-  const sections = ["# Graphify Architecture Outputs", ""];
-  for (const { slice, dir } of dirs) {
-    const reportSlice = slice === "default-full" ? "full" : slice;
-    postprocessOutput(dir, reportSlice, []);
+function mergeMatchers(...matchers) {
+  const merged = {
+    files: [],
+    prefixes: [],
+    suffixes: [],
+    contains: [],
+    regex: [],
+  };
+  for (const matcher of matchers.filter(Boolean)) {
+    for (const key of Object.keys(merged)) {
+      merged[key].push(...(matcher[key] || []));
+    }
   }
-
-  const rootAnalysis = fs.existsSync(path.join(graphifyOutRoot, "graph.json"))
-    ? readAnalysis(graphifyOutRoot)
-    : null;
-  if (rootAnalysis?.views) {
-    sections.push("## default architecture overview");
-    sections.push("- Path: graphify-out/architecture-overview.html");
-    sections.push(`- Nodes: ${rootAnalysis.views.architecture.nodeCount}`);
-    sections.push(`- Edges: ${rootAnalysis.views.architecture.edgeCount}`);
-    sections.push(
-      `- Default visible edges: ${rootAnalysis.views.architecture.defaultVisibleEdges}`
-    );
-    sections.push("- Communities: n/a; collapsed to product domains");
-    sections.push(
-      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
-    );
-    sections.push("");
-
-    sections.push("## community overview");
-    sections.push("- Path: graphify-out/community-overview.html");
-    sections.push(`- Nodes: ${rootAnalysis.views.community.nodeCount}`);
-    sections.push(`- Edges: ${rootAnalysis.views.community.edgeCount}`);
-    sections.push(
-      `- Default visible edges: ${rootAnalysis.views.community.defaultVisibleEdges}`
-    );
-    sections.push(`- Communities: ${rootAnalysis.views.community.nodeCount}`);
-    sections.push(
-      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
-    );
-    sections.push("");
-
-    sections.push("## raw full graph");
-    sections.push("- Path: graphify-out/raw-full-graph.html");
-    sections.push(`- Nodes: ${rootAnalysis.views.raw.nodeCount}`);
-    sections.push(`- Edges: ${rootAnalysis.views.raw.edgeCount}`);
-    sections.push(`- Communities: ${rootAnalysis.communityCount}`);
-    sections.push(
-      "- Use: deep inspection only; not the default architecture overview"
-    );
-    sections.push(
-      `- Excluded-folder hits: ${excludedFolderSummary(rootAnalysis)}`
-    );
-    sections.push("");
-  }
-
-  for (const { slice, dir } of dirs) {
-    if (slice === "default-full" || slice === "full") continue;
-    const analysis = readAnalysis(dir);
-    sections.push(`## ${slice}`);
-    sections.push(`- Path: ${toSlash(path.relative(repoRoot, dir))}`);
-    sections.push(
-      `- HTML: ${toSlash(path.relative(repoRoot, path.join(dir, "graph.html")))}`
-    );
-    sections.push(`- Nodes: ${analysis.nodeCount}`);
-    sections.push(`- Edges: ${analysis.edgeCount}`);
-    sections.push(`- Communities: ${analysis.communityCount}`);
-    sections.push(`- Excluded-folder hits: ${excludedFolderSummary(analysis)}`);
-    sections.push(
-      `- Largest communities: ${analysis.largestCommunities
-        .slice(0, 5)
-        .map((c) => c.label)
-        .join(", ")}`
-    );
-    sections.push("");
-  }
-  fs.writeFileSync(
-    path.join(graphifyOutRoot, "GRAPH_AUDIT_REPORT.md"),
-    sections.join("\n") + "\n"
-  );
+  return merged;
 }
 
-function excludedFolderSummary(analysis) {
+function matchesMatcher(file, matcher = {}) {
+  const normalized = normalizePath(file);
   return (
-    analysis.noise
-      .filter((item) => item.count > 0)
-      .map((item) => `${item.name}=${item.count}`)
-      .join(", ") || "none"
+    (matcher.files || []).some(
+      (entry) => normalized === normalizePath(entry)
+    ) ||
+    (matcher.prefixes || []).some((prefix) =>
+      normalized.startsWith(normalizePath(prefix))
+    ) ||
+    (matcher.suffixes || []).some((suffix) => normalized.endsWith(suffix)) ||
+    (matcher.contains || []).some((part) =>
+      normalized.includes(normalizePath(part))
+    ) ||
+    (matcher.regex || []).some((pattern) =>
+      new RegExp(pattern, "i").test(normalized)
+    )
   );
 }
 
-function readAnalysis(dir) {
-  const analysisPath = path.join(dir, ".graphify_analysis.json");
-  if (!fs.existsSync(analysisPath)) return null;
-  return JSON.parse(fs.readFileSync(analysisPath, "utf8"));
+function firstMatchingRule(file, rules) {
+  return rules.find((rule) => matchesMatcher(file, rule));
 }
 
-function uniqueSourceFileCount(graph) {
-  return new Set(
-    (graph.nodes || []).map((node) => node.source_file).filter(Boolean)
-  ).size;
-}
-
-function outputDirsWithGraphs() {
-  const dirs = [];
-  if (fs.existsSync(path.join(graphifyOutRoot, "graph.json"))) {
-    dirs.push({ slice: "default-full", dir: graphifyOutRoot });
+function runGraphify(args, extraEnv) {
+  console.log(`[graphify] ${["graphify", ...args].join(" ")}`);
+  const result = spawnSync(getGraphify(), args, {
+    cwd: ROOT,
+    stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
+  });
+  if (result.status !== 0) {
+    fail(`Graphify failed with exit code ${result.status}`);
   }
-  for (const slice of Object.keys(sliceConfigs)) {
-    const dir = path.join(graphifyOutRoot, slice);
-    if (fs.existsSync(path.join(dir, "graph.json"))) dirs.push({ slice, dir });
-  }
-  for (const domain of domainConfigs) {
-    const slice = `domain-${domain.id}`;
-    const dir = path.join(graphifyOutRoot, slice);
-    if (fs.existsSync(path.join(dir, "graph.json"))) dirs.push({ slice, dir });
-  }
-  return dirs;
 }
 
-function outputDirForSlice(slice) {
-  if (slice === "default-full") return graphifyOutRoot;
-  const named = path.join(graphifyOutRoot, slice);
-  if (fs.existsSync(path.join(named, "graph.json"))) return named;
-  if (
-    slice === "full" &&
-    fs.existsSync(path.join(graphifyOutRoot, "graph.json"))
-  )
-    return graphifyOutRoot;
-  return named;
+function getGraphify() {
+  if (graphifyExe) return graphifyExe;
+  graphifyExe = resolveGraphify();
+  assertPinnedGraphifyVersion(graphifyExe);
+  return graphifyExe;
 }
 
-function mirrorFullOutput(fullDir) {
-  const files = [
-    "graph.json",
-    "graph.html",
-    "architecture-overview.html",
-    "community-overview.html",
-    "raw-full-graph.html",
-    "GRAPH_REPORT.md",
-    "GRAPH_TREE.html",
-    ".graphify_labels.json",
-    ".graphify_analysis.json",
-  ];
-  for (const file of files) {
-    const source = path.join(fullDir, file);
-    if (!fs.existsSync(source)) continue;
-    const destination = path.join(graphifyOutRoot, file);
-    assertInside(graphifyOutRoot, destination);
-    fs.copyFileSync(source, destination);
-  }
-  fs.writeFileSync(
-    path.join(graphifyOutRoot, ".graphify_root"),
-    repoRoot + "\n"
-  );
-}
-
-function resolveGraphifyBin(required) {
+function resolveGraphify() {
+  const envPath = process.env.GRAPHIFY_BIN;
   const candidates = [
-    process.env.GRAPHIFY_BIN,
+    envPath,
     "graphify",
+    process.env.APPDATA
+      ? path.join(
+          process.env.APPDATA,
+          "Python",
+          "Python312",
+          "Scripts",
+          "graphify.exe"
+        )
+      : null,
     path.join(
-      process.env.APPDATA || "",
-      "Python",
-      "Python312",
-      "Scripts",
-      "graphify.exe"
-    ),
-    path.join(
-      os.homedir(),
+      process.env.USERPROFILE || "",
       "AppData",
       "Roaming",
       "Python",
@@ -2416,152 +2061,165 @@ function resolveGraphifyBin(required) {
       "Scripts",
       "graphify.exe"
     ),
-    path.join(os.homedir(), ".local", "bin", "graphify"),
+    path.join(
+      process.env.LOCALAPPDATA || "",
+      "Programs",
+      "Python",
+      "Python312",
+      "Scripts",
+      "graphify.exe"
+    ),
   ].filter(Boolean);
 
   for (const candidate of candidates) {
-    const result = spawnSync(candidate, ["--version"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-    });
-    if (result.status === 0) return candidate;
-  }
-
-  if (required) {
-    throw new Error(
-      "Graphify CLI was not found. Install graphifyy at the version in .graphify-version."
-    );
-  }
-  return null;
-}
-
-function assertGraphifyVersion(graphifyBin) {
-  if (!fs.existsSync(versionPath)) return;
-  const expected = fs.readFileSync(versionPath, "utf8").trim();
-  if (!expected) return;
-  const result = spawnSync(graphifyBin, ["--version"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  const actual = (result.stdout || result.stderr || "").match(
-    /graphify\s+([^\s]+)/
-  )?.[1];
-  if (actual !== expected) {
-    throw new Error(
-      `Graphify version mismatch. Expected ${expected}, got ${actual || "unknown"}.`
-    );
-  }
-}
-
-function runGraphify(graphifyBin, args, options) {
-  const result = spawnSync(graphifyBin, args, {
-    cwd: repoRoot,
-    stdio: options.quiet ? "pipe" : "inherit",
-    encoding: options.quiet ? "utf8" : undefined,
-    env: {
-      ...process.env,
-      GRAPHIFY_VIZ_NODE_LIMIT: process.env.GRAPHIFY_VIZ_NODE_LIMIT || "10000",
-    },
-  });
-  if (result.status !== 0) {
-    const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
-    throw new Error(
-      `graphify ${args.join(" ")} failed.${output ? `\n${output}` : ""}`
-    );
-  }
-}
-
-function copyDirectory(source, destination) {
-  assertInside(graphifyOutRoot, destination);
-  fs.mkdirSync(destination, { recursive: true });
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    const sourcePath = path.join(source, entry.name);
-    const destinationPath = path.join(destination, entry.name);
-    assertInside(destination, destinationPath);
-    if (entry.isDirectory()) {
-      copyDirectory(sourcePath, destinationPath);
-    } else {
-      fs.copyFileSync(sourcePath, destinationPath);
+    if (candidate === "graphify") {
+      const result = spawnSync(candidate, ["--version"], { encoding: "utf8" });
+      if (result.status === 0) return candidate;
+      continue;
     }
+    if (existsSync(candidate)) return candidate;
   }
-}
 
-function safeRemove(target, allowedRoot) {
-  if (!fs.existsSync(target)) return;
-  assertInside(allowedRoot, target);
-  fs.rmSync(target, { recursive: true, force: true });
-}
-
-function assertInside(parent, target) {
-  const resolvedParent = path.resolve(parent);
-  const resolvedTarget = path.resolve(target);
-  const relative = path.relative(resolvedParent, resolvedTarget);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error(
-      `Refusing to operate outside ${resolvedParent}: ${resolvedTarget}`
-    );
-  }
-}
-
-function compareCommunityIds(a, b) {
-  return Number(a[0]) - Number(b[0]);
-}
-
-function sanitizeTableCell(value) {
-  return String(value).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
-}
-
-function titleFromPath(value) {
-  return String(value)
-    .replace(/\.[cm]?[jt]sx?$/, "")
-    .split(/[\/_\-.()[\]\s]+/)
-    .filter(Boolean)
-    .slice(-4)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function hashCode(value) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
-
-function percentile(values, p) {
-  const nums = values
-    .filter((value) => Number.isFinite(value))
-    .sort((a, b) => a - b);
-  if (nums.length === 0) return 0;
-  return nums[Math.min(nums.length - 1, Math.floor(nums.length * p))];
-}
-
-function safeJson(value) {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
-function escapeHtml(value) {
-  return String(value).replace(
-    /[&<>"']/g,
-    (ch) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-      })[ch]
+  fail(
+    "Unable to find graphify. Install graphifyy or set GRAPHIFY_BIN to graphify.exe."
   );
 }
 
-function log(options, message) {
-  if (!options.quiet) console.log(message);
+function assertPinnedGraphifyVersion(exe) {
+  const versionFile = path.join(ROOT, ".graphify-version");
+  if (!existsSync(versionFile)) return;
+  const expected = readFileSync(versionFile, "utf8").trim();
+  if (!expected) return;
+
+  const result = spawnSync(exe, ["--version"], { cwd: ROOT, encoding: "utf8" });
+  if (result.status !== 0) {
+    fail("Unable to check graphify version.");
+  }
+  const actual = result.stdout.trim().split(/\s+/).pop();
+  if (actual !== expected) {
+    fail(
+      `graphify version ${actual} does not match .graphify-version ${expected}`
+    );
+  }
 }
 
-function toSlash(value) {
-  return String(value).replace(/\\/g, "/");
+function writeTree() {
+  const graphPath = path.join(outputRoot, "graph.json");
+  if (!existsSync(graphPath)) {
+    fail(
+      "graphify-out/graph.json does not exist. Run npm.cmd run graph:product first."
+    );
+  }
+  runGraphify(
+    [
+      "tree",
+      "--graph",
+      graphPath,
+      "--output",
+      path.join(outputRoot, "GRAPH_TREE.html"),
+      "--root",
+      ROOT,
+      "--label",
+      "LifeGroups Product Surface",
+    ],
+    {}
+  );
 }
 
-main();
+function runHealth() {
+  const graphPath = path.join(outputRoot, "graph.json");
+  if (!existsSync(graphPath)) {
+    fail(
+      "graphify-out/graph.json does not exist. Run npm.cmd run graph:product first."
+    );
+  }
+  runGraphify(["diagnose", "multigraph", "--graph", graphPath], {});
+  runGraphify(["benchmark", graphPath], {});
+}
+
+function resetDirectory(target, allowedRoot) {
+  const resolvedTarget = path.resolve(target);
+  const resolvedRoot = path.resolve(allowedRoot);
+  if (!isInside(resolvedTarget, resolvedRoot)) {
+    fail(`Refusing to reset outside ${resolvedRoot}: ${resolvedTarget}`);
+  }
+  rmSync(resolvedTarget, { recursive: true, force: true });
+  mkdirSync(resolvedTarget, { recursive: true });
+}
+
+function removeIfInside(target, allowedRoot) {
+  const resolvedTarget = path.resolve(target);
+  const resolvedRoot = path.resolve(allowedRoot);
+  if (!isInside(resolvedTarget, resolvedRoot)) {
+    fail(`Refusing to remove outside ${resolvedRoot}: ${resolvedTarget}`);
+  }
+  if (!existsSync(resolvedTarget)) return;
+  const stat = statSync(resolvedTarget);
+  rmSync(resolvedTarget, { recursive: stat.isDirectory(), force: true });
+}
+
+function isInside(target, allowedRoot) {
+  return (
+    target === allowedRoot || target.startsWith(`${allowedRoot}${path.sep}`)
+  );
+}
+
+function readJson(file) {
+  return JSON.parse(readFileSync(file, "utf8"));
+}
+
+function copyFileWithRetry(source, target) {
+  retryTransientFsOperation(() => copyFileSync(source, target), target);
+}
+
+function writeTextFile(file, content) {
+  retryTransientFsOperation(() => writeFileSync(file, content), file);
+}
+
+function retryTransientFsOperation(operation, target) {
+  let lastError;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    try {
+      operation();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFsError(error) || attempt === 8) break;
+      sleep(125 * attempt);
+    }
+  }
+  throw lastError || new Error(`Unable to write ${target}`);
+}
+
+function isTransientFsError(error) {
+  return ["EBUSY", "EPERM", "EACCES", "UNKNOWN"].includes(error?.code);
+}
+
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function normalizeMaybe(file) {
+  return file ? normalizePath(file) : "";
+}
+
+function normalizePath(file) {
+  return file.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function fail(message) {
+  console.error(`[graphify] ${message}`);
+  process.exit(1);
+}
