@@ -11,7 +11,7 @@ import {
   runLeaderWriteAction,
   type LeaderWriteActionSpec,
 } from "@/lib/leader/run-action";
-import { rpcLeaderSubmitGroupCheckin } from "@/lib/leader/rpc";
+import { leaderRpc } from "@/lib/leader/rpc";
 import { readFrozenSurfaceFlagForLeader } from "@/lib/auth/leader-surface-flag";
 
 const REVALIDATE_LEADER = "/leader";
@@ -99,7 +99,7 @@ const SUBMIT_CHECKIN_SPEC: LeaderWriteActionSpec<
     new_session_id: id,
   }),
   rpc: (client, value) =>
-    rpcLeaderSubmitGroupCheckin(client, {
+    leaderRpc(client, "leader_submit_group_checkin", {
       p_group_id: value.group_id,
       p_meeting_week: value.meeting_week,
       p_meeting_date: value.meeting_date,
@@ -166,7 +166,7 @@ const QUICK_DID_NOT_MEET_SPEC: LeaderWriteActionSpec<
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   okFields: (_value, id) => ({ new_session_id: id }),
   rpc: (client, value) =>
-    rpcLeaderSubmitGroupCheckin(client, {
+    leaderRpc(client, "leader_submit_group_checkin", {
       p_group_id: value.group_id,
       p_meeting_week: value.meeting_week,
       p_meeting_date: value.meeting_date,

@@ -19,17 +19,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminAssignLeaderToGroup,
-  rpcAdminAssignMemberToGroup,
-  rpcAdminChangeLeaderRole,
-  rpcAdminCreateLeaderProfile,
-  rpcAdminCreateMember,
-  rpcAdminDeactivateMember,
-  rpcAdminDeactivateProfile,
-  rpcAdminEndGroupMembership,
-  rpcAdminUnassignLeaderFromGroup,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/people";
 
@@ -49,7 +39,7 @@ const CREATE_LEADER_SPEC: AdminWriteActionSpec<
   }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
-    rpcAdminCreateLeaderProfile(client, {
+    adminRpc(client, "admin_create_leader_profile", {
       p_full_name: value.full_name,
       p_email: value.email,
       p_phone: value.phone ?? null,
@@ -85,7 +75,7 @@ const CREATE_MEMBER_SPEC: AdminWriteActionSpec<
   }),
   okFields: (_value, id) => ({ new_profile_id: id }),
   rpc: (client, value) =>
-    rpcAdminCreateMember(client, {
+    adminRpc(client, "admin_create_member", {
       p_full_name: value.full_name,
       p_email: value.email ?? null,
       p_phone: value.phone ?? null,
@@ -126,7 +116,7 @@ const ASSIGN_LEADER_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ assigned_role: value.role }),
   rpc: (client, value) =>
-    rpcAdminAssignLeaderToGroup(client, {
+    adminRpc(client, "admin_assign_leader_to_group", {
       p_group_id: value.group_id,
       p_profile_id: value.profile_id,
       p_role: value.role,
@@ -165,7 +155,7 @@ const ASSIGN_MEMBER_SPEC: AdminWriteActionSpec<
     target_member_id: value.member_id,
   }),
   rpc: (client, value) =>
-    rpcAdminAssignMemberToGroup(client, {
+    adminRpc(client, "admin_assign_member_to_group", {
       p_group_id: value.group_id,
       p_member_id: value.member_id,
     }),
@@ -208,7 +198,7 @@ const UNASSIGN_LEADER_SPEC: AdminWriteActionSpec<
     target_profile_id: value.profile_id,
   }),
   rpc: (client, value) =>
-    rpcAdminUnassignLeaderFromGroup(client, {
+    adminRpc(client, "admin_unassign_leader_from_group", {
       p_group_id: value.group_id,
       p_profile_id: value.profile_id,
     }),
@@ -247,7 +237,7 @@ const END_MEMBERSHIP_SPEC: AdminWriteActionSpec<
     target_member_id: value.member_id,
   }),
   rpc: (client, value) =>
-    rpcAdminEndGroupMembership(client, {
+    adminRpc(client, "admin_end_group_membership", {
       p_group_id: value.group_id,
       p_member_id: value.member_id,
     }),
@@ -283,7 +273,9 @@ const DEACTIVATE_PROFILE_SPEC: AdminWriteActionSpec<
   },
   fields: (_actor, value) => ({ target_profile_id: value.profile_id }),
   rpc: (client, value) =>
-    rpcAdminDeactivateProfile(client, { p_profile_id: value.profile_id }),
+    adminRpc(client, "admin_deactivate_profile", {
+      p_profile_id: value.profile_id,
+    }),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The profile was not deactivated. Please try again.",
 };
@@ -308,7 +300,9 @@ const DEACTIVATE_MEMBER_SPEC: AdminWriteActionSpec<
   validate: validateDeactivateMemberPayload,
   fields: (_actor, value) => ({ target_member_id: value.member_id }),
   rpc: (client, value) =>
-    rpcAdminDeactivateMember(client, { p_member_id: value.member_id }),
+    adminRpc(client, "admin_deactivate_member", {
+      p_member_id: value.member_id,
+    }),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The member was not deactivated. Please try again.",
 };
@@ -348,7 +342,7 @@ const CHANGE_LEADER_ROLE_SPEC: AdminWriteActionSpec<
     new_role: value.new_role,
   }),
   rpc: (client, value) =>
-    rpcAdminChangeLeaderRole(client, {
+    adminRpc(client, "admin_change_leader_role", {
       p_profile_id: value.profile_id,
       p_new_role: value.new_role,
     }),

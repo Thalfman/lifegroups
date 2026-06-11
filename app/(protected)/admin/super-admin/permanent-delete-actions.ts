@@ -11,11 +11,7 @@ import {
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
-import {
-  rpcSuperAdminPermanentDelete,
-  rpcSuperAdminPermanentDeletePreflight,
-  rpcSuperAdminRestoreTombstone,
-} from "@/lib/admin/rpc";
+import { adminJsonRpc, adminRpc } from "@/lib/admin/rpc";
 import {
   PERMANENT_DELETE_CONFIRM_PHRASE,
   TOMBSTONE_RESTORE_CONFIRM_PHRASE,
@@ -120,10 +116,14 @@ export async function superAdminPermanentDeletePreflight(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data, error } = await rpcSuperAdminPermanentDeletePreflight(client, {
-    p_entity_type: target.entityType,
-    p_id: target.id,
-  });
+  const { data, error } = await adminJsonRpc(
+    client,
+    "super_admin_permanent_delete_preflight",
+    {
+      p_entity_type: target.entityType,
+      p_id: target.id,
+    }
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
 
   // Stamp the target onto the report so the card can discard it the moment the
@@ -160,8 +160,9 @@ export async function superAdminPermanentDelete(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: tombstoneId, error } = await rpcSuperAdminPermanentDelete(
+  const { data: tombstoneId, error } = await adminRpc(
     client,
+    "super_admin_permanent_delete",
     { p_entity_type: target.entityType, p_id: target.id }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -208,8 +209,9 @@ export async function superAdminInlineDelete(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: tombstoneId, error } = await rpcSuperAdminPermanentDelete(
+  const { data: tombstoneId, error } = await adminRpc(
     client,
+    "super_admin_permanent_delete",
     { p_entity_type: target.entityType, p_id: target.id }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -259,9 +261,13 @@ export async function superAdminRestoreTombstone(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data, error } = await rpcSuperAdminRestoreTombstone(client, {
-    p_tombstone_id: tombstoneId,
-  });
+  const { data, error } = await adminJsonRpc(
+    client,
+    "super_admin_restore_tombstone",
+    {
+      p_tombstone_id: tombstoneId,
+    }
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
   const doc = isRecord(data) ? data : {};
   if (typeof doc.entity_id !== "string") {

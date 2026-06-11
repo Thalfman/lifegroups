@@ -19,14 +19,7 @@ import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminArchiveMultiplicationCandidate,
-  rpcAdminCreateMultiplicationCandidate,
-  rpcAdminRecordChurchAttendanceSnapshot,
-  rpcAdminSetGroupCapacityTarget,
-  rpcAdminUpdateLaunchPlanningAssumptions,
-  rpcAdminUpdateMultiplicationCandidate,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH_LAUNCH_PLANNING = "/admin/launch-planning";
 const REVALIDATE_PATH_ADMIN = "/admin";
@@ -159,7 +152,7 @@ const UPDATE_ASSUMPTIONS_SPEC: AdminWriteActionSpec<
     has_notes_field: Object.prototype.hasOwnProperty.call(value, "notes"),
   }),
   rpc: (client, value) =>
-    rpcAdminUpdateLaunchPlanningAssumptions(client, {
+    adminRpc(client, "admin_update_launch_planning_assumptions", {
       p_settings: value as Record<string, unknown>,
     }),
   revalidate: () => [
@@ -196,7 +189,7 @@ const RECORD_ATTENDANCE_SPEC: AdminWriteActionSpec<
       : (input as Record<string, unknown>),
   validate: validateRecordChurchAttendancePayload,
   rpc: (client, value) =>
-    rpcAdminRecordChurchAttendanceSnapshot(client, {
+    adminRpc(client, "admin_record_church_attendance_snapshot", {
       p_snapshot_date: value.snapshot_date,
       p_attendance_count: value.attendance_count,
       p_note: value.note,
@@ -226,7 +219,7 @@ const CREATE_CANDIDATE_SPEC: AdminWriteActionSpec<
   read: readCandidateForm,
   validate: validateCreateMultiplicationCandidatePayload,
   rpc: (client, value) =>
-    rpcAdminCreateMultiplicationCandidate(client, {
+    adminRpc(client, "admin_create_multiplication_candidate", {
       p_group_id: value.group_id,
       p_target_year: value.target_year,
       p_status: value.status,
@@ -259,7 +252,7 @@ const UPDATE_CANDIDATE_SPEC: AdminWriteActionSpec<
   read: readCandidateForm,
   validate: validateUpdateMultiplicationCandidatePayload,
   rpc: (client, value) =>
-    rpcAdminUpdateMultiplicationCandidate(client, {
+    adminRpc(client, "admin_update_multiplication_candidate", {
       p_candidate_id: value.candidate_id,
       p_target_year: value.target_year,
       p_status: value.status,
@@ -296,7 +289,7 @@ const ARCHIVE_CANDIDATE_SPEC: AdminWriteActionSpec<
       : (input as Record<string, unknown>),
   validate: validateCandidateIdPayload,
   rpc: (client, value) =>
-    rpcAdminArchiveMultiplicationCandidate(client, {
+    adminRpc(client, "admin_archive_multiplication_candidate", {
       p_candidate_id: value.candidate_id,
     }),
   revalidate: () => CANDIDATE_REVALIDATE,
@@ -330,7 +323,7 @@ const SET_TARGET_SPEC: AdminWriteActionSpec<
       : (input as Record<string, unknown>),
   validate: validateSetGroupCapacityTargetPayload,
   rpc: (client, value) =>
-    rpcAdminSetGroupCapacityTarget(client, {
+    adminRpc(client, "admin_set_group_capacity_target", {
       p_group_id: value.group_id,
       p_target: value.target,
     }),

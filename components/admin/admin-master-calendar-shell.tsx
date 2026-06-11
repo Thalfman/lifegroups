@@ -16,12 +16,21 @@ import {
   filterOccurrencesForView,
   type PlanningViewKey,
 } from "@/lib/admin/planning-views";
-import { WEEKDAY_HEADERS, monthBounds } from "@/lib/calendar/occurrences";
 import {
-  EVENT_STATUS_OPTIONS,
-  EVENT_TYPE_OPTIONS,
-  friendlyEventTypeLabel,
-} from "@/lib/calendar/payload";
+  ALL_TYPE_OPTIONS,
+  calendarActiveFilterChips,
+  calendarFilterSummarySegments,
+  calendarListRange,
+  filterCalendarOccurrences,
+  hasActiveCalendarFilters,
+  isCalendarViewSnapshot,
+  responsiveViewMode,
+  viewModePreferenceToPersist,
+  type CalendarFilters,
+  type CalendarViewMode,
+} from "@/lib/admin/master-calendar-view";
+import { WEEKDAY_HEADERS } from "@/lib/calendar/occurrences";
+import { EVENT_STATUS_OPTIONS } from "@/lib/calendar/payload";
 import { P, fontBody, fontSans } from "@/lib/pastoral";
 import type {
   MasterCalendarGroupSummary,
@@ -33,61 +42,10 @@ import type {
   GroupCalendarEventType,
 } from "@/types/enums";
 
-type ViewMode = "month" | "list";
-
-type CalendarViewSnapshot = {
-  // null = the user never explicitly toggled the view, so the persisted state
-  // carries no opinion and the responsive default (below) decides on restore.
-  // Persisting the auto-selected mobile "list" as if it were a choice would
-  // wrongly override the desktop month default on a later visit (#263).
-  viewMode: ViewMode | null;
-  groupFilter: string[];
-  typeFilter: GroupCalendarEventType[];
-  statusFilter: GroupCalendarEventStatus[];
-  dayFilter: number[];
-  leaderFilter: string;
-  // The active opinionated view (#331), persisted alongside the filters so a
-  // return visit reopens on the same view. Absent on snapshots saved by the
-  // frozen /admin/calendar (which never sets the opinionated-views prop); the
-  // validator tolerates that and defaults to "all".
-  planningView?: PlanningViewKey;
-};
-
-const PLANNING_VIEW_KEYS = PLANNING_VIEWS.map((v) => v.key);
-
-const isPlanningViewKey = (v: unknown): v is PlanningViewKey =>
-  typeof v === "string" && PLANNING_VIEW_KEYS.includes(v as PlanningViewKey);
-
-const isStringArray = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((x) => typeof x === "string");
-
-// Validate a restored calendar view against its current shape. We check
-// structure (and the closed `viewMode` set, plus null for "no explicit
-// choice"), not membership: a stale group or leader id simply matches nothing
-// and the existing empty state offers a reset, which is friendlier than
-// silently dropping the whole saved view (#263).
-function isCalendarViewSnapshot(value: unknown): value is CalendarViewSnapshot {
-  if (value === null || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (
-    (v.viewMode === "month" || v.viewMode === "list" || v.viewMode === null) &&
-    isStringArray(v.groupFilter) &&
-    isStringArray(v.typeFilter) &&
-    isStringArray(v.statusFilter) &&
-    Array.isArray(v.dayFilter) &&
-    v.dayFilter.every((d) => typeof d === "number") &&
-    typeof v.leaderFilter === "string" &&
-    // Optional and only ever a known key; an older snapshot without it (or a
-    // stale key from a renamed view) falls back to "all" on restore.
-    (v.planningView === undefined || isPlanningViewKey(v.planningView))
-  );
-}
-
-const ALL_TYPE_OPTIONS: { value: GroupCalendarEventType; label: string }[] = [
-  ...EVENT_TYPE_OPTIONS,
-  { value: "off", label: friendlyEventTypeLabel("off") },
-  { value: "cancelled", label: friendlyEventTypeLabel("cancelled") },
-];
+// View-model branching (snapshot validation, filter composition, view-mode
+// rules, summary/chips) lives in lib/admin/master-calendar-view; this shell
+// owns state and rendering only.
+type ViewMode = CalendarViewMode;
 
 // Slugify a label/value into a DOM-safe, human-readable token for checkbox
 // `id`/`value` attributes (#371): "Anderson Life Group" → "anderson-life-group".
@@ -186,7 +144,7 @@ export function AdminMasterCalendarShell({
       // Only persist the view as a real preference once the user has toggled
       // it; otherwise leave it null so a return visit re-runs the responsive
       // default instead of inheriting an auto-selected mobile "list".
-      viewMode: userToggledRef.current ? viewMode : null,
+      viewMode: viewModePreferenceToPersist(viewMode, userToggledRef.current),
       groupFilter,
       typeFilter,
       statusFilter,
@@ -232,10 +190,10 @@ export function AdminMasterCalendarShell({
     if (userToggledRef.current) return;
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 720px)");
-    if (mq.matches) setViewMode("list");
+    if (mq.matches) setViewMode(responsiveViewMode(true, defaultViewMode));
     const onChange = (e: MediaQueryListEvent) => {
       if (userToggledRef.current) return;
-      setViewMode(e.matches ? "list" : defaultViewMode);
+      setViewMode(responsiveViewMode(e.matches, defaultViewMode));
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -258,28 +216,15 @@ export function AdminMasterCalendarShell({
     [planningViews, occurrences, planningView, todayIso]
   );
 
-  const filtered = useMemo(() => {
-    return viewScoped.filter((o) => {
-      if (groupFilter.length > 0 && !groupFilter.includes(o.groupId))
-        return false;
-      if (typeFilter.length > 0 && !typeFilter.includes(o.eventType))
-        return false;
-      if (statusFilter.length > 0 && !statusFilter.includes(o.status))
-        return false;
-      if (dayFilter.length > 0 && !dayFilter.includes(o.weekdayIndex))
-        return false;
-      if (leaderFilter && !o.leaders.some((l) => l.profileId === leaderFilter))
-        return false;
-      return true;
-    });
-  }, [
-    viewScoped,
-    groupFilter,
-    typeFilter,
-    statusFilter,
-    dayFilter,
-    leaderFilter,
-  ]);
+  const filters = useMemo<CalendarFilters>(
+    () => ({ groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter }),
+    [groupFilter, typeFilter, statusFilter, dayFilter, leaderFilter]
+  );
+
+  const filtered = useMemo(
+    () => filterCalendarOccurrences(viewScoped, filters),
+    [viewScoped, filters]
+  );
 
   const selected = useMemo(() => {
     if (!selectedKey) return null;
@@ -288,13 +233,7 @@ export function AdminMasterCalendarShell({
     );
   }, [filtered, selectedKey]);
 
-  const hasActiveFilters =
-    groupFilter.length +
-      typeFilter.length +
-      statusFilter.length +
-      dayFilter.length +
-      (leaderFilter ? 1 : 0) >
-    0;
+  const hasActiveFilters = hasActiveCalendarFilters(filters);
 
   const resetFilters = () => {
     setGroupFilter([]);
@@ -325,17 +264,13 @@ export function AdminMasterCalendarShell({
     setViewModeManual("list");
   };
 
-  const bounds = monthBounds(monthIso);
-
-  // The list normally re-clips to the visible month. The "This week" view
-  // (#331) is anchored to today's ISO week, which can spill into an adjacent
-  // month on the first/last days of a month; the panel widens the loaded set to
-  // include that out-of-month part of the week, and `viewScoped` is already
-  // narrowed to exactly the ISO week — so for this view the list must NOT clip
-  // to the month, or the widened occurrences would be dropped right back out.
-  const isThisWeek = planningViews && planningView === "this-week";
-  const listFromIso = isThisWeek ? null : (bounds?.firstIso ?? null);
-  const listToIso = isThisWeek ? null : (bounds?.lastIso ?? null);
+  // The list normally re-clips to the visible month; the "This week" view must
+  // not clip (its ISO week can spill past the month — see calendarListRange).
+  const { fromIso: listFromIso, toIso: listToIso } = calendarListRange({
+    monthIso,
+    planningViews,
+    planningView,
+  });
 
   const filterBar = (
     <FilterBar
@@ -438,13 +373,8 @@ export function AdminMasterCalendarShell({
       {planningViews ? (
         <ActiveFilterSummary
           planningView={planningView}
-          groups={groups}
+          filters={filters}
           leaderOptions={leaderOptions}
-          groupFilter={groupFilter}
-          typeFilter={typeFilter}
-          statusFilter={statusFilter}
-          dayFilter={dayFilter}
-          leaderFilter={leaderFilter}
           active={planningFiltersActive}
           onClear={clearAll}
         />
@@ -574,82 +504,22 @@ function PlanningViewSwitcher({
 // is showing without re-opening the advanced panel.
 function ActiveFilterSummary({
   planningView,
-  groups,
+  filters,
   leaderOptions,
-  groupFilter,
-  typeFilter,
-  statusFilter,
-  dayFilter,
-  leaderFilter,
   active,
   onClear,
 }: {
   planningView: PlanningViewKey;
-  groups: MasterCalendarGroupSummary[];
+  filters: CalendarFilters;
   leaderOptions: MasterCalendarLeader[];
-  groupFilter: string[];
-  typeFilter: GroupCalendarEventType[];
-  statusFilter: GroupCalendarEventStatus[];
-  dayFilter: number[];
-  leaderFilter: string;
   active: boolean;
   onClear: () => void;
 }) {
-  const parts = useMemo(() => {
-    const segments: string[] = [];
-
-    const viewLabel =
-      PLANNING_VIEWS.find((v) => v.key === planningView)?.label ??
-      "All meetings";
-    segments.push(viewLabel);
-
-    segments.push(
-      groupFilter.length === 0
-        ? "All groups"
-        : `${groupFilter.length} ${groupFilter.length === 1 ? "group" : "groups"}`
-    );
-
-    const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
-    segments.push(
-      typeFilter.length === 0
-        ? "All gathering types"
-        : typeFilter
-            .map((t) => typeLabels.get(t) ?? friendlyEventTypeLabel(t))
-            .join(", ")
-    );
-
-    const statusLabels = new Map(
-      EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
-    );
-    segments.push(
-      statusFilter.length === 0
-        ? "All statuses"
-        : statusFilter.map((s) => statusLabels.get(s) ?? s).join(", ")
-    );
-
-    segments.push(
-      dayFilter.length === 0
-        ? "All meeting days"
-        : dayFilter.map((d) => WEEKDAY_HEADERS[d] ?? `Day ${d}`).join(", ")
-    );
-
-    if (leaderFilter) {
-      const name =
-        leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
-        "Leader";
-      segments.push(name);
-    }
-
-    return segments;
-  }, [
-    planningView,
-    groupFilter,
-    typeFilter,
-    statusFilter,
-    dayFilter,
-    leaderFilter,
-    leaderOptions,
-  ]);
+  const parts = useMemo(
+    () =>
+      calendarFilterSummarySegments({ planningView, filters, leaderOptions }),
+    [planningView, filters, leaderOptions]
+  );
 
   return (
     <div
@@ -817,63 +687,37 @@ function FilterBar({
     [groups]
   );
 
-  // Flatten every active selection into removable chips. Order mirrors the
-  // field grid (group → type → status → day → leader) so the chip row reads
-  // as a compact summary of the controls below it.
+  // Flatten every active selection into removable chips (built pure in
+  // lib/admin/master-calendar-view; order mirrors the field grid). A chip's
+  // `remove` drops exactly one selection and keeps the other dimensions'
+  // identity, so handing every dimension back to its setter is a referential
+  // no-op for all but the removed one.
   const activeChips = useMemo<ActiveChip[]>(() => {
-    const chips: ActiveChip[] = [];
-    const groupLabels = new Map(groupOptions.map((o) => [o.value, o.label]));
-    const typeLabels = new Map(ALL_TYPE_OPTIONS.map((o) => [o.value, o.label]));
-    const statusLabels = new Map(
-      EVENT_STATUS_OPTIONS.map((o) => [o.value, o.label])
+    const filters: CalendarFilters = {
+      groupFilter,
+      typeFilter,
+      statusFilter,
+      dayFilter,
+      leaderFilter,
+    };
+    return calendarActiveFilterChips(filters, { groups, leaderOptions }).map(
+      (chip) => ({
+        key: chip.key,
+        category: chip.category,
+        label: chip.label,
+        onRemove: () => {
+          const next = chip.remove(filters);
+          setGroupFilter(next.groupFilter);
+          setTypeFilter(next.typeFilter);
+          setStatusFilter(next.statusFilter);
+          setDayFilter(next.dayFilter);
+          setLeaderFilter(next.leaderFilter);
+        },
+      })
     );
-
-    for (const id of groupFilter) {
-      chips.push({
-        key: `group:${id}`,
-        category: "Group",
-        label: groupLabels.get(id) ?? "Group",
-        onRemove: () => setGroupFilter(groupFilter.filter((v) => v !== id)),
-      });
-    }
-    for (const t of typeFilter) {
-      chips.push({
-        key: `type:${t}`,
-        category: "Type",
-        label: typeLabels.get(t) ?? friendlyEventTypeLabel(t),
-        onRemove: () => setTypeFilter(typeFilter.filter((v) => v !== t)),
-      });
-    }
-    for (const s of statusFilter) {
-      chips.push({
-        key: `status:${s}`,
-        category: "Status",
-        label: statusLabels.get(s) ?? s,
-        onRemove: () => setStatusFilter(statusFilter.filter((v) => v !== s)),
-      });
-    }
-    for (const d of dayFilter) {
-      chips.push({
-        key: `day:${d}`,
-        category: "Day",
-        label: WEEKDAY_HEADERS[d] ?? `Day ${d}`,
-        onRemove: () => setDayFilter(dayFilter.filter((v) => v !== d)),
-      });
-    }
-    if (leaderFilter) {
-      const name =
-        leaderOptions.find((l) => l.profileId === leaderFilter)?.name ??
-        "Leader";
-      chips.push({
-        key: `leader:${leaderFilter}`,
-        category: "Leader",
-        label: name,
-        onRemove: () => setLeaderFilter(""),
-      });
-    }
-    return chips;
   }, [
-    groupOptions,
+    groups,
+    leaderOptions,
     groupFilter,
     setGroupFilter,
     typeFilter,
@@ -884,7 +728,6 @@ function FilterBar({
     setDayFilter,
     leaderFilter,
     setLeaderFilter,
-    leaderOptions,
   ]);
 
   // Show the {n}/{m} hint only when filters are active AND there's

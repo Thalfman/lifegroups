@@ -19,6 +19,7 @@ import {
   DEMO_LAUNCH_PLANNING,
   DEMO_NOW_ISO,
   DEMO_SETUP_GAPS,
+  DEMO_SHEPHERD_CARE_SUMMARY,
   DEMO_SUMMARY,
 } from "./demo-seed";
 import { churchTodayIso } from "@/lib/shared/church-time";
@@ -86,19 +87,11 @@ const fallbackLeaderUpcoming: UpcomingCalendarEvent[] = [
   },
 ];
 
-const fallbackShepherdCare: ShepherdCareDashboardSummary = {
-  totalActiveShepherds: 24,
-  needsAttention: 3,
-  overdueTouchpoints: 2,
-  notContactedRecently: 4,
-  noCareProfile: 5,
-  unassignedCoverage: 6,
-  activeOverShepherds: 4,
-  attentionItemsTotal: 7,
-  coverageAvailable: true,
-  available: true,
-  error: null,
-};
+// Derived from the Care demo seed through the live summary rule
+// (lib/dashboard/shepherd-care-summary.ts) — never hardcoded, so a change to
+// the attention/cadence rules re-grades the demo card automatically.
+const fallbackShepherdCare: ShepherdCareDashboardSummary =
+  DEMO_SHEPHERD_CARE_SUMMARY;
 
 const fallbackLeaderPipeline: LeaderPipelineDashboardSummary = {
   counts: { identified: 4, in_training: 3, ready_to_lead: 2, launched: 1 },

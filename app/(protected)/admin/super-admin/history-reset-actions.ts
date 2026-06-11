@@ -11,10 +11,7 @@ import {
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
-import {
-  rpcSuperAdminResetHistoryCategory,
-  rpcSuperAdminResetHistoryCategoryRevert,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   HISTORY_RESET_CONFIRM_PHRASE,
   CLEAN_SLATE_RESTORE_CONFIRM_PHRASE,
@@ -97,8 +94,9 @@ export async function superAdminResetHistoryCategory(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminResetHistoryCategory(
+  const { data: snapshotId, error } = await adminRpc(
     client,
+    "super_admin_reset_history_category",
     { p_category: category }
   );
   if (error) {
@@ -164,10 +162,13 @@ export async function superAdminResetHistoryCategoryRevert(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } =
-    await rpcSuperAdminResetHistoryCategoryRevert(client, {
+  const { data: snapshotId, error } = await adminRpc(
+    client,
+    "super_admin_reset_history_category_revert",
+    {
       p_snapshot_id: submittedId,
-    });
+    }
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
   if (!snapshotId) {
     return actionFail(["The restore did not complete. Please try again."]);

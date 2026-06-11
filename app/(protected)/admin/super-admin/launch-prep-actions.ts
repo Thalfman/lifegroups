@@ -10,7 +10,7 @@ import {
   mapRpcError,
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
-import { rpcSuperAdminLaunchPrep } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   LAUNCH_PREP_CONFIRM_PHRASE,
   type LaunchPrepSuccess,
@@ -69,7 +69,11 @@ export async function superAdminLaunchPrep(
 
   // The RPC mutes + wipes + purges atomically; nothing_to_wipe is handled inside
   // it, so a returned null id means "history was already clear", not a failure.
-  const { data: snapshotId, error } = await rpcSuperAdminLaunchPrep(client);
+  const { data: snapshotId, error } = await adminRpc(
+    client,
+    "super_admin_launch_prep",
+    {}
+  );
   if (error) return actionFail([mapRpcError(error.message)]);
 
   // Read the cleared total back from the snapshot row by id (RLS-gated SELECT),

@@ -1,12 +1,16 @@
 // Single gateway for the narrow SECURITY DEFINER RPCs. Every
-// admin_*/leader_*/super_admin_* wrapper repeated the same two boundary
+// admin_*/leader_*/super_admin_* call repeats the same two boundary
 // casts: the `as never` that sidesteps supabase-js' generic resolution
 // (our hand-rolled Database type doesn't structurally match its internal
 // GenericSchema, in ways that don't affect `.from()` calls), and the
-// `readUuidRpcData` trust-boundary read of the uuid the RPC returns on
-// success. This collapses both into one place; the per-RPC wrappers in
-// `lib/admin/rpc.ts` and `lib/leader/rpc.ts` are now typed one-line
-// aliases that pin the function name and argument shape.
+// per-channel trust-boundary read of the value the RPC returns on success
+// (uuid / jsonb / text). This collapses both into one place. The
+// per-surface modules (`lib/admin/rpc.ts`, `lib/leader/rpc.ts`,
+// `lib/over-shepherd/rpc.ts`) layer a declarative, typed RPC table on top:
+// one args map per channel keyed by the LITERAL Postgres function name,
+// plus a generic entry point (`adminRpc`, `leaderRpc`, `overShepherdRpc`,
+// ...) whose key parameter pins the function name and argument shape
+// together at the call site.
 
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import { readUuidRpcData } from "@/lib/shared/uuid";

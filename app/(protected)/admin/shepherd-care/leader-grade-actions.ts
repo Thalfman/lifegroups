@@ -10,7 +10,7 @@ import {
   validateLeaderHealthGradePayload,
   type LeaderHealthGradePayload,
 } from "@/lib/admin/validation";
-import { rpcAdminSetLeaderRubricGrade } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { resolveLeaderGrade } from "@/lib/admin/leader-rubric-grade";
 import { fetchLeaderHealthRubric } from "@/lib/admin/leader-health-read";
 import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
@@ -65,7 +65,7 @@ const SET_LEADER_GRADE_SPEC: AdminWriteActionSpec<
       currentPeriodMonth: periodMonth,
     });
 
-    return rpcAdminSetLeaderRubricGrade(client, {
+    return adminRpc(client, "admin_set_leader_rubric_grade", {
       p_profile_id: value.profile_id,
       p_ministry_year: value.ministry_year,
       p_criterion_scores: value.criterion_scores,

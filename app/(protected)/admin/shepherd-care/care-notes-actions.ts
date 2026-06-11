@@ -15,11 +15,7 @@ import {
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
 import { requireOverShepherdOrAdminSession } from "@/lib/auth/session";
-import {
-  rpcAdminWriteCareNote,
-  rpcAdminWritePrayerRequest,
-  rpcSetNoteTransparencyGrant,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 // Pivot slice 9 (#381 / ADR 0017) server actions: author-private Care Notes +
 // Prayer Requests and the per-subject transparency toggle. All three reuse the
@@ -62,7 +58,7 @@ const WRITE_CARE_NOTE_SPEC: AdminWriteActionSpec<
   }),
   okFields: () => ({ has_body: true }),
   rpc: (client, value) =>
-    rpcAdminWriteCareNote(client, {
+    adminRpc(client, "admin_write_care_note", {
       p_subject_profile_id: value.subject_profile_id,
       p_body: value.body,
     }),
@@ -92,7 +88,7 @@ const WRITE_PRAYER_REQUEST_SPEC: AdminWriteActionSpec<
   }),
   okFields: () => ({ has_body: true }),
   rpc: (client, value) =>
-    rpcAdminWritePrayerRequest(client, {
+    adminRpc(client, "admin_write_prayer_request", {
       p_subject_profile_id: value.subject_profile_id,
       p_body: value.body,
     }),
@@ -122,7 +118,7 @@ const SET_GRANT_SPEC: AdminWriteActionSpec<
   }),
   okFields: (value) => ({ granted: value.granted }),
   rpc: (client, value) =>
-    rpcSetNoteTransparencyGrant(client, {
+    adminRpc(client, "set_note_transparency_grant", {
       p_subject_profile_id: value.subject_profile_id,
       p_granted: value.granted,
     }),

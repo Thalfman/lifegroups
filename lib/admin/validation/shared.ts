@@ -1,16 +1,14 @@
 // Phase 5A.0 validation contracts: pure TypeScript, no I/O, no Supabase. Reused by Phase 5A.1 server actions when writes are enabled.
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export {
+  isRecord,
+  normalizeUuid,
+  type ValidationResult,
+} from "@/lib/shared/validation-primitives";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // At least one digit; allow common phone punctuation; 7–20 chars total.
 const PHONE_RE = /^(?=[^\d]*\d)[+0-9().\- ]{7,20}$/;
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export function trimString(value: unknown): string | null {
   return typeof value === "string" ? value.trim() : null;
@@ -34,12 +32,6 @@ export function isEmail(value: string): boolean {
 
 export function isPhone(value: string): boolean {
   return PHONE_RE.test(value);
-}
-
-// Postgres stores UUIDs lowercase; canonicalize before any equality check
-// so case-only variants of an actor's own id cannot bypass self-target guards.
-export function normalizeUuid(value: string): string {
-  return value.toLowerCase();
 }
 
 export function readOptionalInteger(

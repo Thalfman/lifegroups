@@ -9,7 +9,7 @@ import {
   runAdminWriteAction,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import { rpcSuperAdminSetPlatformConfig } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import { requireSuperAdminSession } from "@/lib/auth/session";
 
 // Phase SAC.1 (#159): the Super Admin Console's audited write for platform
@@ -32,7 +32,7 @@ const SET_PLATFORM_CONFIG_SPEC: AdminWriteActionSpec<
         : {},
   validate: validatePlatformConfigPayload,
   rpc: (client, value) =>
-    rpcSuperAdminSetPlatformConfig(client, {
+    adminRpc(client, "super_admin_set_platform_config", {
       p_config: { console_tracer_note: value.console_tracer_note },
     }),
   revalidate: () => ["/admin/super-admin"],

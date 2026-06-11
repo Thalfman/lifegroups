@@ -9,8 +9,11 @@ import {
 import { PBadge } from "@/components/pastoral/atoms";
 import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
-import { hasActiveOverrides } from "@/lib/admin/metrics";
-import { groupHealthStatusLabel } from "@/lib/admin/health-status-labels";
+import {
+  buildOverrideRows,
+  overrideSummaryChips,
+  type OverrideRow,
+} from "@/lib/admin/group-metric-overrides";
 import type { MetricDefaults } from "@/lib/admin/metrics";
 import type { GroupMetricSettingsRow, GroupsRow } from "@/types/database";
 import { HealthRubricEditor } from "@/components/admin/settings/health-rubric-editor";
@@ -108,13 +111,8 @@ export function SettingsShell({
   const settingsByGroupId = new Map(
     data.groupMetricSettings.map((s) => [s.group_id, s])
   );
-  const groupsById = new Map(data.groups.map((g) => [g.id, g]));
 
-  const overrideRows = data.groupMetricSettings
-    .filter((s) => hasActiveOverrides(s))
-    .map((s) => ({ settings: s, group: groupsById.get(s.group_id) ?? null }))
-    .filter((row) => row.group !== null)
-    .sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? ""));
+  const overrideRows = buildOverrideRows(data.groups, data.groupMetricSettings);
 
   // Settings is organized around the Care/Plan/Multiply spine (ADR 0016): Care
   // owns the rubrics that grade leaders/groups, Multiply owns the per-type
@@ -363,7 +361,7 @@ function ThresholdsPanel({
 }: {
   data: SettingsShellData;
   settingsByGroupId: Map<string, GroupMetricSettingsRow>;
-  overrideRows: { settings: GroupMetricSettingsRow; group: GroupsRow | null }[];
+  overrideRows: OverrideRow[];
 }) {
   return (
     <div className="grid gap-9">
@@ -430,13 +428,11 @@ function ThresholdsPanel({
               />
             ) : (
               <ul className="m-0 grid list-none gap-3 p-0">
-                {overrideRows.map(({ group, settings }) =>
-                  group ? (
-                    <li key={settings.group_id}>
-                      <OverrideSummaryRow group={group} settings={settings} />
-                    </li>
-                  ) : null
-                )}
+                {overrideRows.map(({ group, settings }) => (
+                  <li key={settings.group_id}>
+                    <OverrideSummaryRow group={group} settings={settings} />
+                  </li>
+                ))}
               </ul>
             )}
           </section>
@@ -489,45 +485,10 @@ function OverrideSummaryRow({
   group: GroupsRow;
   settings: GroupMetricSettingsRow;
 }) {
-  const chips: {
-    key: string;
-    label: string;
-    tone?: "neutral" | "watch" | "followup";
-  }[] = [];
-  if (settings.capacity_override != null)
-    chips.push({ key: "cap", label: `Capacity ${settings.capacity_override}` });
-  if (settings.capacity_warning_threshold_pct_override != null)
-    chips.push({
-      key: "warn",
-      label: `Warning ${settings.capacity_warning_threshold_pct_override}%`,
-    });
-  if (settings.healthy_attendance_pct_override != null)
-    chips.push({
-      key: "att",
-      label: `Healthy ≥ ${settings.healthy_attendance_pct_override}%`,
-    });
-  if (settings.manual_health_status_override) {
-    // #478 (P2.2): echo the CANONICAL status label (the same map the override
-    // form's dropdown offers), never de-underscored enum text.
-    chips.push({
-      key: "health",
-      label: `Health: ${groupHealthStatusLabel(
-        settings.manual_health_status_override
-      )}`,
-      tone: "watch",
-    });
-  }
-  if (settings.exclude_from_capacity_metrics)
-    chips.push({
-      key: "ex",
-      label: "Excluded from capacity",
-      tone: "followup",
-    });
-  if (
-    settings.admin_metric_notes &&
-    settings.admin_metric_notes.trim().length > 0
-  )
-    chips.push({ key: "note", label: "Has notes" });
+  // #478 (P2.2): the chips echo the CANONICAL health-status label (the same
+  // map the override form's dropdown offers), never de-underscored enum text —
+  // pinned in lib/admin/group-metric-overrides.
+  const chips = overrideSummaryChips(settings);
 
   return (
     <article className="grid grid-cols-1 items-start gap-3 rounded-md border border-line bg-surface px-[18px] py-3.5 md:grid-cols-[1fr_auto]">

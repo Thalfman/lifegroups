@@ -10,7 +10,7 @@ import {
   mapRpcError,
 } from "@/lib/admin/action-result";
 import { validateCreateInviteLinkPayload } from "@/lib/admin/validation";
-import { rpcSuperAdminCreateInvitation } from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   generateInviteToken,
   hashInviteToken,
@@ -75,7 +75,7 @@ export async function superAdminCreateInviteLink(
   const rawToken = generateInviteToken();
   const tokenHash = hashInviteToken(rawToken);
 
-  const { error } = await rpcSuperAdminCreateInvitation(client, {
+  const { error } = await adminRpc(client, "super_admin_create_invitation", {
     p_token_hash: tokenHash,
     p_role: v.value.role,
     p_group_id: v.value.group_id ?? null,

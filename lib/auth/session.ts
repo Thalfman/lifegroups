@@ -213,23 +213,79 @@ function logGuardBackendError(
   });
 }
 
-export async function requireRole(
-  allowed: readonly UserRole[]
-): Promise<CurrentSession> {
+// ── Guard core ───────────────────────────────────────────────────────────
+// The oversight-ladder check itself, spelled once. Both guard tiers — the
+// redirecting page guards and the result-returning action guards — used to
+// re-spell the same five-branch ladder (anonymous / profile_missing /
+// backend_error / inactive / role) and differed only in how they exited.
+// The core resolves a verdict; the exit adapters below translate it
+// (redirect() for pages, a typed SessionGuardResult for actions). A new
+// tier or branch lands here once and both tiers pick it up.
+
+type GuardDenialReason =
+  | "anonymous"
+  | "profile_missing"
+  | "backend_error"
+  | "inactive"
+  | "role_not_allowed"
+  | "surface_not_live";
+
+type GuardVerdict =
+  | { kind: "admit"; session: CurrentSession }
+  | { kind: "deny"; reason: GuardDenialReason };
+
+async function resolveGuardVerdict(options: {
+  allowed: readonly UserRole[];
+  // Keeps each named guard's log identity on a transient backend_error.
+  label: string;
+  // The Leader guards additionally require the `leader_surface` frozen flag
+  // to resolve enabled+verified (ADR 0009/0017). Checked only after the role
+  // admits, so the leader-safe RPC is never called for other tiers.
+  requireLiveLeaderSurface?: boolean;
+}): Promise<GuardVerdict> {
   const session = await getCurrentSession();
   switch (session.kind) {
     case "anonymous":
-      redirect("/login");
+      return { kind: "deny", reason: "anonymous" };
     case "profile_missing":
-      redirect("/unauthorized");
+      return { kind: "deny", reason: "profile_missing" };
     case "backend_error":
-      logGuardBackendError("requireRole", session.stage);
-      redirect("/unauthorized?reason=unavailable");
-    case "authenticated":
-      if (session.profile.status !== "active") redirect("/unauthorized");
-      if (!allowed.includes(session.profile.role)) redirect("/unauthorized");
-      return session;
+      logGuardBackendError(options.label, session.stage);
+      return { kind: "deny", reason: "backend_error" };
+    case "authenticated": {
+      if (session.profile.status !== "active")
+        return { kind: "deny", reason: "inactive" };
+      if (!options.allowed.includes(session.profile.role))
+        return { kind: "deny", reason: "role_not_allowed" };
+      if (options.requireLiveLeaderSurface) {
+        const live = await readFrozenSurfaceFlagForLeader("leader_surface");
+        if (!live) return { kind: "deny", reason: "surface_not_live" };
+      }
+      return { kind: "admit", session };
+    }
   }
+}
+
+// Page-route exit: any denial becomes the redirect the pre-core guards
+// issued; only the backend_error reason carries a query hint.
+function redirectExit(verdict: GuardVerdict): CurrentSession {
+  if (verdict.kind === "admit") return verdict.session;
+  switch (verdict.reason) {
+    case "anonymous":
+      redirect("/login");
+    case "backend_error":
+      redirect("/unauthorized?reason=unavailable");
+    default:
+      redirect("/unauthorized");
+  }
+}
+
+export async function requireRole(
+  allowed: readonly UserRole[]
+): Promise<CurrentSession> {
+  return redirectExit(
+    await resolveGuardVerdict({ allowed, label: "requireRole" })
+  );
 }
 
 export const requireAdmin = () =>
@@ -257,31 +313,16 @@ export const requireOverShepherd = () =>
 // own independent `check_ins` frozen gate (which stays off), so flipping
 // leader_surface never exposes the check-in route/RPC.
 export async function requireLeader(): Promise<CurrentSession> {
-  const session = await getCurrentSession();
-  switch (session.kind) {
-    case "anonymous":
-      redirect("/login");
-    case "profile_missing":
-      redirect("/unauthorized");
-    case "backend_error":
-      logGuardBackendError("requireLeader", session.stage);
-      redirect("/unauthorized?reason=unavailable");
-    case "authenticated": {
-      if (session.profile.status !== "active") redirect("/unauthorized");
-      // Only leader / co_leader can ever reach the surface; every other role is
-      // no-access regardless of the flag.
-      if (
-        session.profile.role !== "leader" &&
-        session.profile.role !== "co_leader"
-      ) {
-        redirect("/unauthorized");
-      }
-      // ...and only when leader_surface is enabled-and-verified (ADR 0009).
-      const live = await readFrozenSurfaceFlagForLeader("leader_surface");
-      if (!live) redirect("/unauthorized");
-      return session;
-    }
-  }
+  // Only leader / co_leader can ever reach the surface — every other role is
+  // no-access regardless of the flag — and only while leader_surface is
+  // enabled-and-verified (ADR 0009).
+  return redirectExit(
+    await resolveGuardVerdict({
+      allowed: ["leader", "co_leader"],
+      label: "requireLeader",
+      requireLiveLeaderSurface: true,
+    })
+  );
 }
 
 export type SessionGuardResult =
@@ -295,28 +336,34 @@ export type SessionGuardResult =
 // identical across guards, so the named guards below differ only in the
 // admitted roles and the denial copy. `label` keeps each guard's existing
 // log identity on a transient backend_error.
-async function requireRoleSession(
-  allowed: readonly UserRole[],
-  denyMessage: string,
-  label: string
-): Promise<SessionGuardResult> {
-  const session = await getCurrentSession();
-  switch (session.kind) {
+// Server-action exit: any denial becomes the typed error string the action
+// surfaces in the UI. Role and surface denials share the guard's denyMessage.
+function resultExit(
+  verdict: GuardVerdict,
+  denyMessage: string
+): SessionGuardResult {
+  if (verdict.kind === "admit") return { ok: true, session: verdict.session };
+  switch (verdict.reason) {
     case "anonymous":
       return { ok: false, error: "You need to sign in to do that." };
     case "profile_missing":
       return { ok: false, error: "Your account isn't set up yet." };
     case "backend_error":
-      logGuardBackendError(label, session.stage);
       return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
-    case "authenticated": {
-      if (session.profile.status !== "active")
-        return { ok: false, error: "Your account isn't active." };
-      if (!allowed.includes(session.profile.role))
-        return { ok: false, error: denyMessage };
-      return { ok: true, session };
-    }
+    case "inactive":
+      return { ok: false, error: "Your account isn't active." };
+    case "role_not_allowed":
+    case "surface_not_live":
+      return { ok: false, error: denyMessage };
   }
+}
+
+async function requireRoleSession(
+  allowed: readonly UserRole[],
+  denyMessage: string,
+  label: string
+): Promise<SessionGuardResult> {
+  return resultExit(await resolveGuardVerdict({ allowed, label }), denyMessage);
 }
 
 // Server-action variant: admits super_admin + ministry_admin. Used by default
@@ -336,44 +383,29 @@ export async function requireLeaderActor(): Promise<
   | { ok: true; profileId: string; assignedGroupIds: string[] }
   | { ok: false; error: string }
 > {
-  const session = await getCurrentSession();
-  switch (session.kind) {
-    case "anonymous":
-      return { ok: false, error: "You need to sign in to do that." };
-    case "profile_missing":
-      return { ok: false, error: "Your account isn't set up yet." };
-    case "backend_error":
-      logGuardBackendError("requireLeaderActor", session.stage);
-      return { ok: false, error: TRANSIENT_ERROR_MESSAGE };
-    case "authenticated": {
-      if (session.profile.status !== "active")
-        return { ok: false, error: "Your account isn't active." };
-      // Shepherd (leader) surface, re-opened under the verify-before-flip gate
-      // (#376, ADR 0017 / 0009). Admit an active leader / co_leader only when
-      // `leader_surface` resolves enabled+verified (leader-safe RPC). Every
-      // other role, and any leader while the surface is not live, is denied
-      // here before any RPC is reached. Co-Leaders get parity with Leaders.
-      //
-      // This guard backs ONLY non-check-in leader writes (e.g. calendar). The
-      // check-in action stays behind its own `check_ins` frozen gate, so a live
-      // leader_surface does not let leader_submit_group_checkin run.
-      if (
-        session.profile.role !== "leader" &&
-        session.profile.role !== "co_leader"
-      ) {
-        return { ok: false, error: "The leader surface isn't available." };
-      }
-      const live = await readFrozenSurfaceFlagForLeader("leader_surface");
-      if (!live) {
-        return { ok: false, error: "The leader surface isn't available." };
-      }
-      return {
-        ok: true,
-        profileId: session.profile.id,
-        assignedGroupIds: session.assignedGroupIds,
-      };
-    }
-  }
+  // Shepherd (leader) surface, re-opened under the verify-before-flip gate
+  // (#376, ADR 0017 / 0009). Admit an active leader / co_leader only when
+  // `leader_surface` resolves enabled+verified (leader-safe RPC). Every
+  // other role, and any leader while the surface is not live, is denied
+  // here before any RPC is reached. Co-Leaders get parity with Leaders.
+  //
+  // This guard backs ONLY non-check-in leader writes (e.g. calendar). The
+  // check-in action stays behind its own `check_ins` frozen gate, so a live
+  // leader_surface does not let leader_submit_group_checkin run.
+  const result = resultExit(
+    await resolveGuardVerdict({
+      allowed: ["leader", "co_leader"],
+      label: "requireLeaderActor",
+      requireLiveLeaderSurface: true,
+    }),
+    "The leader surface isn't available."
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    profileId: result.session.profile.id,
+    assignedGroupIds: result.session.assignedGroupIds,
+  };
 }
 
 // Server-action variant for the Over-Shepherd surface (#126). Admits only an

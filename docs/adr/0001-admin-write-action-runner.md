@@ -1,7 +1,9 @@
 # ADR 0001: Admin write-action runner
 
-**Status:** Accepted (all admin action files migrated; leader runner + RPC
-gateway pending)
+**Status:** Accepted (all admin action files migrated; leader runner landed
+in `lib/leader/run-action.ts`; the declarative RPC gateway tables landed
+2026-06-11 in `lib/admin/rpc.ts`, `lib/leader/rpc.ts`, and
+`lib/over-shepherd/rpc.ts` — both pending halves are done)
 **Date:** 2026-05-28
 
 ## Context
@@ -52,8 +54,8 @@ wrapping actions in a higher-order function, "because the existing actions
 return discriminated `ActionResult<T>` shapes with many early exits — keeping
 control flow in the action avoids forcing every callsite into a closure."
 
-That reasoning targets a wrapper that hands the *imperative body with its early
-exits* to a closure. The runner does the opposite: it **owns** the control flow
+That reasoning targets a wrapper that hands the _imperative body with its early
+exits_ to a closure. The runner does the opposite: it **owns** the control flow
 and every early exit, and the action author supplies only pure data — a
 validator and two field-extractors — never a closure threading mutable logging
 state. There are no early exits left in the caller to obscure, so the
@@ -147,3 +149,12 @@ the RPC as defense in depth.
   the leader work) is gone; `readUuidRpcData` is tested beside it in
   `lib/shared/__tests__/uuid.test.ts`, and the gateway has its own coverage in
   `lib/shared/__tests__/rpc.test.ts`.
+- ~~Fold the one-line wrappers into declarative RPC tables~~ — done
+  2026-06-11. Each surface module now exports one args map per channel keyed
+  by the literal Postgres function name (`AdminUuidRpcArgs` /
+  `AdminJsonRpcArgs` / `AdminTextRpcArgs`, `LeaderUuidRpcArgs`,
+  `OverShepherdUuidRpcArgs`) and a generic entry point (`adminRpc` /
+  `adminJsonRpc` / `adminTextRpc`, `leaderRpc`, `overShepherdRpc`) whose key
+  parameter pins name + argument shape together at the call site. The per-RPC
+  wrapper functions are deleted; the named arg-type aliases stay exported.
+  Table coverage lives in `lib/admin/__tests__/rpc-table.test.ts`.

@@ -24,7 +24,21 @@ import {
   type AdminGroupModelInput,
 } from "./admin-group-model";
 import { buildLaunchPlanningSnapshot } from "./launch-planning-snapshot";
-import { decodeMetricDefaults, type MetricDefaults } from "@/lib/admin/metrics";
+import { buildShepherdCareSummary } from "./shepherd-care-summary";
+import {
+  buildCareDirectoryEntries,
+  type ActiveShepherdCoverageAssignmentSummary,
+  type OverShepherdListRow,
+  type ShepherdCareDirectoryEntry,
+  type ShepherdCareDirectorySummary,
+} from "@/lib/supabase/shepherd-care-reads";
+import { EMPTY_ATTENTION_BASELINES } from "@/lib/admin/attention-reset";
+import { churchTodayIso } from "@/lib/shared/church-time";
+import {
+  careCadenceWindowsFromDefaults,
+  decodeMetricDefaults,
+  type MetricDefaults,
+} from "@/lib/admin/metrics";
 import {
   STAMP,
   followUp,
@@ -42,6 +56,7 @@ import type {
   HealthSummary,
   LaunchPlanningDashboardSnapshot,
   SetupGaps,
+  ShepherdCareDashboardSummary,
 } from "./types";
 import type { LeaderFollowUpRow } from "@/lib/supabase/read-models";
 import type {
@@ -300,4 +315,153 @@ export const DEMO_LAUNCH_PLANNING: LaunchPlanningDashboardSnapshot =
     { data: DEMO_LAUNCH_ASSUMPTIONS_ROW, error: null },
     DEMO_ADMIN_MODEL.derivedRows,
     DEMO_METRIC_DEFAULTS
+  );
+
+// ---------------------------------------------------------------------------
+// Care (shepherd-care) demo seed. The Care headline card on the no-client
+// preview used to hardcode its counts (needsAttention: 3, …), which silently
+// drifted whenever the attention rules changed. Like the launch snapshot
+// above, the summary now derives from raw seed rows through the SAME builders
+// the live /admin path uses (buildCareDirectoryEntries stamps
+// needs_attention; buildShepherdCareSummary folds the model), so a rule
+// change re-grades the demo automatically.
+// ---------------------------------------------------------------------------
+
+type DemoCareProfile = Pick<
+  ProfilesRow,
+  "id" | "full_name" | "email" | "role" | "status"
+>;
+
+const demoCareProfile = (
+  id: string,
+  full_name: string,
+  email: string
+): DemoCareProfile => ({
+  id,
+  full_name,
+  email,
+  role: "leader",
+  status: "active",
+});
+
+// Eight active Leaders: two fresh, one flagged needs-follow-up, one overdue
+// touchpoint, one stale contact, one fresh, and two with no care profile yet.
+export const DEMO_CARE_PROFILES: DemoCareProfile[] = [
+  demoCareProfile("demo-care-l1", "Marcus Hill", "marcus@example.com"),
+  demoCareProfile("demo-care-l2", "Dana Ortiz", "dana@example.com"),
+  demoCareProfile("demo-care-l3", "Peter Okafor", "peter@example.com"),
+  demoCareProfile("demo-care-l4", "Sarah Kim", "sarah@example.com"),
+  demoCareProfile("demo-care-l5", "James Lee", "james@example.com"),
+  demoCareProfile("demo-care-l6", "Nia Brooks", "nia@example.com"),
+  demoCareProfile("demo-care-l7", "Maria Santos", "maria@example.com"),
+  demoCareProfile("demo-care-l8", "Aaron Webb", "aaron@example.com"),
+];
+
+const demoCareRow = (
+  shepherdProfileId: string,
+  current_status: ShepherdCareDirectorySummary["current_status"],
+  last_contact_at: string | null,
+  next_touchpoint_due: string | null
+): ShepherdCareDirectorySummary => ({
+  id: `demo-care-row-${shepherdProfileId}`,
+  shepherd_profile_id: shepherdProfileId,
+  current_status,
+  last_contact_at,
+  next_touchpoint_due,
+  archived_at: null,
+  created_at: "2026-01-05T12:00:00Z",
+  updated_at: "2026-05-01T12:00:00Z",
+});
+
+// Relative to DEMO_NOW_ISO (2026-05-18): l4's touchpoint is overdue, l5's
+// last contact is stale beyond either cadence window, l6/l7 have no care row.
+export const DEMO_CARE_ROWS: ShepherdCareDirectorySummary[] = [
+  demoCareRow("demo-care-l1", "doing_well", "2026-05-10", "2026-06-01"),
+  demoCareRow("demo-care-l2", "doing_well", "2026-05-04", "2026-05-25"),
+  demoCareRow("demo-care-l3", "needs_follow_up", "2026-05-12", "2026-05-22"),
+  demoCareRow("demo-care-l4", "doing_well", "2026-04-28", "2026-05-10"),
+  demoCareRow("demo-care-l5", "doing_well", "2026-03-01", null),
+  demoCareRow("demo-care-l8", "doing_well", "2026-05-11", "2026-05-30"),
+];
+
+export const DEMO_OVER_SHEPHERDS: OverShepherdListRow[] = [
+  {
+    id: "demo-os-1",
+    full_name: "David Burke",
+    email: "david@example.com",
+    phone: null,
+    active: true,
+    archived_at: null,
+    created_at: "2026-01-05T12:00:00Z",
+    updated_at: "2026-05-01T12:00:00Z",
+  },
+  {
+    id: "demo-os-2",
+    full_name: "Renee Park",
+    email: "renee@example.com",
+    phone: null,
+    active: true,
+    archived_at: null,
+    created_at: "2026-01-05T12:00:00Z",
+    updated_at: "2026-05-01T12:00:00Z",
+  },
+  {
+    id: "demo-os-3",
+    full_name: "Retired Coach",
+    email: null,
+    phone: null,
+    active: false,
+    archived_at: "2026-04-01T12:00:00Z",
+    created_at: "2026-01-05T12:00:00Z",
+    updated_at: "2026-04-01T12:00:00Z",
+  },
+];
+
+const demoAssignment = (
+  id: string,
+  shepherdProfileId: string,
+  overShepherd: OverShepherdListRow
+): ActiveShepherdCoverageAssignmentSummary => ({
+  id,
+  shepherd_profile_id: shepherdProfileId,
+  over_shepherd_id: overShepherd.id,
+  assigned_at: "2026-02-01",
+  over_shepherd: {
+    id: overShepherd.id,
+    full_name: overShepherd.full_name,
+    active: overShepherd.active,
+  },
+});
+
+// Six of the eight Leaders are covered; l6/l7 surface as unassigned coverage.
+export const DEMO_CARE_ASSIGNMENTS: ActiveShepherdCoverageAssignmentSummary[] =
+  [
+    demoAssignment("demo-cov-1", "demo-care-l1", DEMO_OVER_SHEPHERDS[0]),
+    demoAssignment("demo-cov-2", "demo-care-l2", DEMO_OVER_SHEPHERDS[0]),
+    demoAssignment("demo-cov-3", "demo-care-l3", DEMO_OVER_SHEPHERDS[0]),
+    demoAssignment("demo-cov-4", "demo-care-l4", DEMO_OVER_SHEPHERDS[1]),
+    demoAssignment("demo-cov-5", "demo-care-l5", DEMO_OVER_SHEPHERDS[1]),
+    demoAssignment("demo-cov-6", "demo-care-l8", DEMO_OVER_SHEPHERDS[1]),
+  ];
+
+const DEMO_CARE_WINDOWS = careCadenceWindowsFromDefaults(DEMO_METRIC_DEFAULTS);
+const DEMO_CARE_TODAY_ISO = churchTodayIso(new Date(DEMO_NOW_ISO));
+
+export const DEMO_CARE_DIRECTORY: ShepherdCareDirectoryEntry[] =
+  buildCareDirectoryEntries(DEMO_CARE_PROFILES, DEMO_CARE_ROWS, {
+    todayIso: DEMO_CARE_TODAY_ISO,
+    windows: DEMO_CARE_WINDOWS,
+    delegatedShepherdIds: new Set(
+      DEMO_CARE_ASSIGNMENTS.map((a) => a.shepherd_profile_id)
+    ),
+  });
+
+export const DEMO_SHEPHERD_CARE_SUMMARY: ShepherdCareDashboardSummary =
+  buildShepherdCareSummary(
+    { data: DEMO_CARE_DIRECTORY, error: null },
+    { data: DEMO_OVER_SHEPHERDS, error: null },
+    { data: DEMO_CARE_ASSIGNMENTS, error: null },
+    DEMO_CARE_WINDOWS,
+    DEMO_CARE_TODAY_ISO,
+    EMPTY_ATTENTION_BASELINES
   );

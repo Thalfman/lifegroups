@@ -18,13 +18,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminCreateProspect,
-  rpcAdminTransitionProspect,
-  rpcAdminSetProspectNextStep,
-  rpcAdminUpdateProspect,
-  rpcAdminArchiveProspect,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 // The Interest Funnel board reads from /admin/plan; the home dashboard also
 // surfaces funnel counts, so it is revalidated too. /admin/multiply's Interest
@@ -72,7 +66,7 @@ const CREATE_PROSPECT_SPEC: AdminWriteActionSpec<
   validate: validateCreateProspectPayload,
   okFields: (_value, id) => ({ new_prospect_id: id }),
   rpc: (client, value) =>
-    rpcAdminCreateProspect(client, {
+    adminRpc(client, "admin_create_prospect", {
       p_full_name: value.full_name,
       p_email: value.email,
       p_phone: value.phone,
@@ -102,7 +96,7 @@ const TRANSITION_PROSPECT_SPEC: AdminWriteActionSpec<
   fields: (_actor, value) => ({ target_prospect_id: value.prospect_id }),
   okFields: (value) => ({ state: value.state }),
   rpc: (client, value) =>
-    rpcAdminTransitionProspect(client, {
+    adminRpc(client, "admin_transition_prospect", {
       p_prospect_id: value.prospect_id,
       p_state: value.state,
       p_group_id: value.group_id,
@@ -139,7 +133,7 @@ const SET_NEXT_STEP_SPEC: AdminWriteActionSpec<
     has_note: value.additional_note != null,
   }),
   rpc: (client, value) =>
-    rpcAdminSetProspectNextStep(client, {
+    adminRpc(client, "admin_set_prospect_next_step", {
       p_prospect_id: value.prospect_id,
       p_next_step: value.next_step,
       p_additional_note: value.additional_note,
@@ -171,7 +165,7 @@ const UPDATE_PROSPECT_SPEC: AdminWriteActionSpec<
     has_phone: value.phone !== null,
   }),
   rpc: (client, value) =>
-    rpcAdminUpdateProspect(client, {
+    adminRpc(client, "admin_update_prospect", {
       p_prospect_id: value.prospect_id,
       p_full_name: value.full_name,
       p_email: value.email,
@@ -201,7 +195,9 @@ const ARCHIVE_PROSPECT_SPEC: AdminWriteActionSpec<
   validate: validateArchiveProspectPayload,
   fields: (_actor, value) => ({ target_prospect_id: value.prospect_id }),
   rpc: (client, value) =>
-    rpcAdminArchiveProspect(client, { p_prospect_id: value.prospect_id }),
+    adminRpc(client, "admin_archive_prospect", {
+      p_prospect_id: value.prospect_id,
+    }),
   revalidate: () => REVALIDATE_PATHS,
   noDataError: "The prospect wasn't archived. Please try again.",
 };

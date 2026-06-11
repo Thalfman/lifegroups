@@ -12,10 +12,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminCreateFollowUp,
-  rpcAdminUpdateFollowUpStatus,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATHS = [
   "/admin/follow-ups",
@@ -53,7 +50,10 @@ const UPDATE_STATUS_KEYS = [
 
 // ----- adminCreateFollowUp -----------------------------------------------
 
-const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<CreateFollowUpPayload, { id: string }> = {
+const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<
+  CreateFollowUpPayload,
+  { id: string }
+> = {
   name: "admin.follow_ups.create",
   keys: CREATE_FOLLOW_UP_KEYS,
   validate: validateCreateFollowUpPayload,
@@ -63,7 +63,7 @@ const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<CreateFollowUpPayload, { id: s
     priority: value.priority,
   }),
   rpc: (client, value) =>
-    rpcAdminCreateFollowUp(client, {
+    adminRpc(client, "admin_create_follow_up", {
       p_type: value.type,
       p_title: value.title,
       p_related_group_id: value.related_group_id,
@@ -81,7 +81,7 @@ const CREATE_FOLLOW_UP_SPEC: AdminWriteActionSpec<CreateFollowUpPayload, { id: s
 
 export async function adminCreateFollowUp(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateFollowUpPayload>,
+  input: ActionInput<CreateFollowUpPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_FOLLOW_UP_SPEC, prev, input);
 }
@@ -98,7 +98,7 @@ const UPDATE_STATUS_SPEC: AdminWriteActionSpec<
   fields: (_actor, value) => ({ target_follow_up_id: value.follow_up_id }),
   okFields: (value) => ({ new_status: value.status }),
   rpc: (client, value) =>
-    rpcAdminUpdateFollowUpStatus(client, {
+    adminRpc(client, "admin_update_follow_up_status", {
       p_follow_up_id: value.follow_up_id,
       p_status: value.status,
       p_set_leader_visible_note: value.set_leader_visible_note,
@@ -112,7 +112,7 @@ const UPDATE_STATUS_SPEC: AdminWriteActionSpec<
 
 export async function adminUpdateFollowUpStatus(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<AdminUpdateFollowUpStatusPayload>,
+  input: ActionInput<AdminUpdateFollowUpStatusPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_STATUS_SPEC, prev, input);
 }

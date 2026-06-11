@@ -12,13 +12,7 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminCloseGroup,
-  rpcAdminCreateGroup,
-  rpcAdminReopenGroup,
-  rpcAdminUpdateGroup,
-  type GroupRpcArgs,
-} from "@/lib/admin/rpc";
+import { adminRpc, type GroupRpcArgs } from "@/lib/admin/rpc";
 
 const REVALIDATE_PATH = "/admin/groups";
 
@@ -64,7 +58,8 @@ const CREATE_GROUP_SPEC: AdminWriteActionSpec<
   keys: GROUP_KEYS,
   validate: validateCreateGroupPayload,
   okFields: (_value, id) => ({ new_group_id: id }),
-  rpc: (client, value) => rpcAdminCreateGroup(client, payloadToRpcArgs(value)),
+  rpc: (client, value) =>
+    adminRpc(client, "admin_create_group", payloadToRpcArgs(value)),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The group was not created. Please try again.",
 };
@@ -91,7 +86,7 @@ const UPDATE_GROUP_SPEC: AdminWriteActionSpec<
   validate: validateUpdateGroupPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: (client, value) =>
-    rpcAdminUpdateGroup(client, {
+    adminRpc(client, "admin_update_group", {
       p_group_id: value.group_id,
       ...payloadToRpcArgs(value),
     }),
@@ -118,7 +113,7 @@ const CLOSE_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> = {
   validate: validateGroupIdPayload,
   fields: (_actor, value) => ({ target_group_id: value.group_id }),
   rpc: (client, value) =>
-    rpcAdminCloseGroup(client, { p_group_id: value.group_id }),
+    adminRpc(client, "admin_close_group", { p_group_id: value.group_id }),
   revalidate: () => REVALIDATE_PATH,
   noDataError: "The group was not closed. Please try again.",
 };
@@ -139,7 +134,7 @@ const REOPEN_GROUP_SPEC: AdminWriteActionSpec<GroupIdPayload, { id: string }> =
     validate: validateGroupIdPayload,
     fields: (_actor, value) => ({ target_group_id: value.group_id }),
     rpc: (client, value) =>
-      rpcAdminReopenGroup(client, { p_group_id: value.group_id }),
+      adminRpc(client, "admin_reopen_group", { p_group_id: value.group_id }),
     revalidate: () => REVALIDATE_PATH,
     noDataError: "The group was not reopened. Please try again.",
   };

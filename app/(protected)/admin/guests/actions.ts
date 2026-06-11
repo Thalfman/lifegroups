@@ -12,12 +12,13 @@ import {
   type ActionInput,
   type AdminWriteActionSpec,
 } from "@/lib/admin/run-action";
-import {
-  rpcAdminCreateGuest,
-  rpcAdminUpdateGuestPipeline,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 
-const REVALIDATE_PATHS = ["/admin/guests", "/admin", "/admin/follow-ups"] as const;
+const REVALIDATE_PATHS = [
+  "/admin/guests",
+  "/admin",
+  "/admin/follow-ups",
+] as const;
 
 const CREATE_GUEST_KEYS = [
   "full_name",
@@ -44,13 +45,19 @@ const UPDATE_GUEST_KEYS = [
 
 // ----- adminCreateGuest ---------------------------------------------------
 
-const CREATE_GUEST_SPEC: AdminWriteActionSpec<CreateGuestPayload, { id: string }> = {
+const CREATE_GUEST_SPEC: AdminWriteActionSpec<
+  CreateGuestPayload,
+  { id: string }
+> = {
   name: "admin.guests.create",
   keys: CREATE_GUEST_KEYS,
   validate: validateCreateGuestPayload,
-  okFields: (value, id) => ({ new_guest_id: id, pipeline_stage: value.pipeline_stage }),
+  okFields: (value, id) => ({
+    new_guest_id: id,
+    pipeline_stage: value.pipeline_stage,
+  }),
   rpc: (client, value) =>
-    rpcAdminCreateGuest(client, {
+    adminRpc(client, "admin_create_guest", {
       p_full_name: value.full_name,
       p_email: value.email,
       p_phone: value.phone,
@@ -67,21 +74,24 @@ const CREATE_GUEST_SPEC: AdminWriteActionSpec<CreateGuestPayload, { id: string }
 
 export async function adminCreateGuest(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<CreateGuestPayload>,
+  input: ActionInput<CreateGuestPayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(CREATE_GUEST_SPEC, prev, input);
 }
 
 // ----- adminUpdateGuestPipeline -------------------------------------------
 
-const UPDATE_GUEST_SPEC: AdminWriteActionSpec<UpdateGuestPipelinePayload, { id: string }> = {
+const UPDATE_GUEST_SPEC: AdminWriteActionSpec<
+  UpdateGuestPipelinePayload,
+  { id: string }
+> = {
   name: "admin.guests.update_pipeline",
   keys: UPDATE_GUEST_KEYS,
   validate: validateUpdateGuestPipelinePayload,
   fields: (_actor, value) => ({ target_guest_id: value.guest_id }),
   okFields: (value) => ({ pipeline_stage: value.pipeline_stage }),
   rpc: (client, value) =>
-    rpcAdminUpdateGuestPipeline(client, {
+    adminRpc(client, "admin_update_guest_pipeline", {
       p_guest_id: value.guest_id,
       p_pipeline_stage: value.pipeline_stage,
       p_set_assigned_group_id: value.set_assigned_group_id,
@@ -97,7 +107,7 @@ const UPDATE_GUEST_SPEC: AdminWriteActionSpec<UpdateGuestPipelinePayload, { id: 
 
 export async function adminUpdateGuestPipeline(
   prev: ActionResult<{ id: string }> | undefined,
-  input: ActionInput<UpdateGuestPipelinePayload>,
+  input: ActionInput<UpdateGuestPipelinePayload>
 ): Promise<ActionResult<{ id: string }>> {
   return runAdminWriteAction(UPDATE_GUEST_SPEC, prev, input);
 }

@@ -8,11 +8,7 @@ import {
   AuditWorkspace,
   type AuditEntry,
 } from "@/components/admin/audit-workspace";
-import {
-  AUDIT_ACTION_LABELS,
-  categorizeAuditAction,
-  summarizeAuditEvent,
-} from "@/lib/admin/audit-summary";
+import { buildAuditTrailEntries } from "@/lib/admin/audit-trail-entries";
 import {
   SuperAdminConsole,
   type SuperAdminWorkspace,
@@ -57,10 +53,18 @@ import {
   type ChecklistRow,
 } from "@/components/admin/system-status-checklist";
 import type { AppConfig } from "@/lib/admin/app-config-decode";
+import { buildFeatureFlagRows } from "@/lib/admin/feature-flag-display";
 import {
-  FEATURE_FLAG_DEFINITIONS,
-  resolveFlag,
-} from "@/lib/admin/feature-flags";
+  buildSuperAdminConsoleStatus,
+  LEGACY_HASH_ALIASES,
+  listAccountStatusProfiles,
+  type ConsoleStatusAction,
+  type SuperAdminConsoleStatus,
+  type SuperAdminNextAction,
+  type SuperAdminTestAccountsSummary,
+  type SuperAdminWorkspaceId,
+} from "@/lib/admin/super-admin-console-model";
+import { buildUsagePanelModel } from "@/lib/admin/super-admin-usage-model";
 import {
   StatusBadge,
   type StatusTone,
@@ -79,11 +83,9 @@ import type {
 export { StatusBadge, STATUS_STYLE } from "@/components/admin/console-status";
 export type { StatusTone } from "@/components/admin/console-status";
 
-export type SuperAdminTestAccountsSummary = {
-  label: string;
-  tone: StatusTone;
-  description: string;
-};
+// Moved to the pure console model (with the rest of the status derivation);
+// re-exported so existing importers (the super-admin page) keep working.
+export type { SuperAdminTestAccountsSummary } from "@/lib/admin/super-admin-console-model";
 
 // Phase SAC.4 (#164) coverage editing read shapes.
 export type SuperAdminConsoleCoverageAssignment = {
@@ -158,25 +160,11 @@ const CARD_CLASS = "rounded-lg border border-line bg-surface p-card";
 const CARD_GRID_CLASS = "grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-3.5";
 const TWO_CARD_GRID_CLASS = "grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3.5";
 
-// Fixed locale + UTC so the server-rendered status row matches whatever a later
-// re-render would produce (no hydration drift). Mirrors the danger cards.
-function formatStatusTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 // A small "go do it" link rendered inside status cards. Plain anchor on
 // purpose: the workspace switcher already listens for hash changes (including
 // the legacy aliases like #test-tools), so `#diagnostics` both flips the tab
 // and scrolls to the named section — no new navigation machinery (#454).
-type StatusAction = { label: string; hash: string };
-
-function StatusActionLink({ action }: { action: StatusAction }) {
+function StatusActionLink({ action }: { action: ConsoleStatusAction }) {
   return (
     <a
       href={`#${action.hash}`}
@@ -201,7 +189,7 @@ function StatusChip({
   value: string;
   tone: StatusTone;
   detail: string;
-  action?: StatusAction;
+  action?: ConsoleStatusAction;
 }) {
   return (
     <div className="grid min-w-0 content-start gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-3">
@@ -333,15 +321,6 @@ function ErrorBanner() {
   );
 }
 
-type NextAction = {
-  title: string;
-  body: string;
-  tone: StatusTone;
-  // The obvious next click, wired through the existing #hash → workspace
-  // mechanism (#454). Absent when there's nothing to open (e.g. launch-ready).
-  action?: StatusAction;
-};
-
 // Soft background + matching border per tone for the Next-step card (status
 // vocabulary: sage = well, amber = watch, rose = concern); the label picks up
 // the deep foreground of the same hue.
@@ -369,67 +348,7 @@ const NEXT_ACTION_LABEL_CLASS: Record<StatusTone, string> = {
   readonly: "text-ink2",
 };
 
-// The single most important thing to do right now, derived from the same
-// signals the status row uses. Surfaced at the top of the Readiness dashboard so
-// the operator isn't left to scan for what matters.
-function computeNextAction(input: {
-  errorCount: number;
-  checklistWarningCount: number;
-  testAccountsSummary: SuperAdminTestAccountsSummary;
-}): NextAction {
-  const { errorCount, checklistWarningCount, testAccountsSummary } = input;
-  if (errorCount > 0) {
-    return {
-      title: "Resolve load errors",
-      body: "Some data couldn’t be read. Check the database connection, then reload this page.",
-      tone: "warning",
-    };
-  }
-  if (testAccountsSummary.tone === "blocked") {
-    return {
-      title: "Check test-account tooling",
-      body: "The test-account status check came back blocked. Open Diagnostics → Test tools to look into it.",
-      tone: "warning",
-      action: { label: "Open Diagnostics", hash: "test-tools" },
-    };
-  }
-  if (testAccountsSummary.label === "Active") {
-    return {
-      title: "Disable test accounts before launch",
-      body: "Known-password test accounts are still enabled. Turn them off in Diagnostics → Test tools before going live.",
-      tone: "warning",
-      action: { label: "Review test accounts", hash: "test-tools" },
-    };
-  }
-  // Any remaining non-good test-account status (e.g. "Unknown" when the status
-  // check didn't return a clear answer) must not read as launch-ready, since we
-  // can't confirm the known-password accounts are off.
-  if (testAccountsSummary.tone !== "good") {
-    return {
-      title: "Confirm test-account status",
-      body: "Couldn’t confirm whether known-password test accounts are disabled. Check Diagnostics → Test tools before launch.",
-      tone: "warning",
-      action: { label: "Open Diagnostics", hash: "test-tools" },
-    };
-  }
-  if (checklistWarningCount > 0) {
-    return {
-      title: "Finish readiness setup",
-      body: `${checklistWarningCount} readiness check${
-        checklistWarningCount === 1 ? "" : "s"
-      } need attention. Review them in Diagnostics.`,
-      tone: "warning",
-      action: { label: "Open Diagnostics", hash: "diagnostics" },
-    };
-  }
-  return {
-    title: "You’re launch-ready",
-    body: "No outstanding readiness items. Day-to-day ministry work happens in /admin and /leader.",
-    tone: "good",
-  };
-}
-
-function NextActionCard({ action }: { action: NextAction }) {
+function NextActionCard({ action }: { action: SuperAdminNextAction }) {
   return (
     <div
       className={cn(
@@ -469,125 +388,38 @@ export function SuperAdminConsoleShell({
   testAccountsPanel: ReactNode;
   testAccountsSummary: SuperAdminTestAccountsSummary;
 }) {
-  const errorCount = Object.values(data.errors).filter(Boolean).length;
-  const checklistWarningCount = data.checklist.filter(
-    (row) => row.tone === "warn"
-  ).length;
-  const readinessTone: StatusTone =
-    errorCount > 0 || checklistWarningCount > 0 ? "warning" : "good";
-  const readinessLabel = readinessTone === "good" ? "Good" : "Warning";
-  let activeProfiles = 0;
-  for (const profile of data.profilesById.values()) {
-    if (profile.status === "active") activeProfiles += 1;
-  }
-
-  const lastEvent = data.auditEvents[0] ?? null;
-  const usageTrackingOn = resolveFlag(
-    data.appConfig.featureFlags,
-    "usage_tracking"
-  );
-  const nextAction = computeNextAction({
-    errorCount,
-    checklistWarningCount,
+  // Every status-row chip, the readiness signal, and the Next-step card come
+  // from the pure console model so the branching is unit-tested there; the
+  // shell only renders the result.
+  const status = buildSuperAdminConsoleStatus({
+    errors: data.errors,
+    checklist: data.checklist,
+    profiles: data.profilesById.values(),
+    latestAuditEventAt: data.auditEvents[0]?.created_at ?? null,
+    auditEventCount: data.auditEventCount,
+    featureFlags: data.appConfig.featureFlags,
     testAccountsSummary,
   });
 
   const statusRow = (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]">
-      <StatusChip
-        label="Readiness"
-        value={readinessLabel}
-        tone={readinessTone}
-        detail={
-          readinessTone === "good"
-            ? "No warnings or load errors"
-            : `${checklistWarningCount} warning${
-                checklistWarningCount === 1 ? "" : "s"
-              } · ${errorCount} load error${errorCount === 1 ? "" : "s"}`
-        }
-        action={
-          readinessTone === "good"
-            ? undefined
-            : { label: "Open Diagnostics", hash: "diagnostics" }
-        }
-      />
-      <StatusChip
-        label="Access"
-        value="Guarded"
-        tone="guarded"
-        detail={`${activeProfiles} active profile${
-          activeProfiles === 1 ? "" : "s"
-        }`}
-      />
-      <StatusChip
-        label="Test accounts"
-        value={testAccountsSummary.label}
-        tone={testAccountsSummary.tone}
-        detail={
-          testAccountsSummary.label === "Active"
-            ? "Known passwords are live — disable before launch"
-            : testAccountsSummary.label === "Disabled"
-              ? "Not enabled"
-              : testAccountsSummary.label === "Blocked"
-                ? "The status check couldn’t run"
-                : "Couldn’t confirm whether test accounts are off"
-        }
-        action={
-          testAccountsSummary.label === "Disabled"
-            ? undefined
-            : testAccountsSummary.label === "Active"
-              ? { label: "Review test accounts", hash: "test-tools" }
-              : { label: "Open Diagnostics", hash: "test-tools" }
-        }
-      />
-      <StatusChip
-        label="Last audit event"
-        value={lastEvent ? "Recorded" : "None"}
-        tone={lastEvent ? "active" : "planned"}
-        detail={
-          lastEvent
-            ? `${formatStatusTime(lastEvent.created_at)} UTC${
-                data.auditEventCount != null
-                  ? ` · ${data.auditEventCount} total`
-                  : ""
-              }`
-            : "No actions recorded yet"
-        }
-        action={lastEvent ? { label: "Open Audit", hash: "audit" } : undefined}
-      />
-      <StatusChip
-        label="Danger actions"
-        value="Locked"
-        tone="guarded"
-        detail="Type-to-confirm on every action"
-      />
-      <StatusChip
-        label="Usage tracking"
-        value={usageTrackingOn ? "On" : "Off"}
-        tone={usageTrackingOn ? "active" : "planned"}
-        detail={
-          usageTrackingOn
-            ? "Recording logins + area views"
-            : "Off — nothing is recorded"
-        }
-      />
+      {status.chips.map((chip) => (
+        <StatusChip key={chip.label} {...chip} />
+      ))}
     </div>
   );
 
-  const workspaces: SuperAdminWorkspace[] = [
+  // SuperAdminWorkspaceId keeps every tab id a hash the console model (and its
+  // LEGACY_HASH_ALIASES targets) declares.
+  const workspaces: (SuperAdminWorkspace & { id: SuperAdminWorkspaceId })[] = [
     {
       id: "readiness",
       label: "Readiness",
       node: (
         <ReadinessWorkspace
           data={data}
-          errorCount={errorCount}
-          checklistWarningCount={checklistWarningCount}
-          readinessTone={readinessTone}
-          readinessLabel={readinessLabel}
-          activeProfiles={activeProfiles}
+          status={status}
           testAccountsSummary={testAccountsSummary}
-          nextAction={nextAction}
         />
       ),
     },
@@ -629,7 +461,7 @@ export function SuperAdminConsoleShell({
       statusRow={statusRow}
       // Rendered above every workspace so a failed read stays visible no matter
       // which workspace is open (only the active panel mounts).
-      banner={errorCount > 0 ? <ErrorBanner /> : null}
+      banner={status.errorCount > 0 ? <ErrorBanner /> : null}
       workspaces={workspaces}
       defaultWorkspaceId="readiness"
       hashAliases={LEGACY_HASH_ALIASES}
@@ -637,48 +469,18 @@ export function SuperAdminConsoleShell({
   );
 }
 
-// Section-id hash → the workspace that hosts it, so a deep link (e.g. Settings'
-// "Open import" → /admin/super-admin#people-import, or a copied section-nav
-// link) opens the right workspace before scrolling — only the active workspace
-// panel mounts, so a hash into an unopened workspace would otherwise be a dead
-// anchor. Covers the old console's legacy anchors plus the section-nav ids.
-const LEGACY_HASH_ALIASES: Record<string, string> = {
-  overview: "readiness",
-  "change-role": "access",
-  invite: "access",
-  "account-status": "access",
-  "people-import": "access",
-  coverage: "access",
-  features: "config",
-  settings: "config",
-  "ministry-settings": "config",
-  "test-tools": "diagnostics",
-  maintenance: "diagnostics",
-  "danger-zone": "danger",
-};
-
 // ---------------------------------------------------------------------------
 // Workspace 1 — Readiness (default)
 // ---------------------------------------------------------------------------
 
 function ReadinessWorkspace({
   data,
-  errorCount,
-  checklistWarningCount,
-  readinessTone,
-  readinessLabel,
-  activeProfiles,
+  status,
   testAccountsSummary,
-  nextAction,
 }: {
   data: SuperAdminConsoleData;
-  errorCount: number;
-  checklistWarningCount: number;
-  readinessTone: StatusTone;
-  readinessLabel: string;
-  activeProfiles: number;
+  status: SuperAdminConsoleStatus;
   testAccountsSummary: SuperAdminTestAccountsSummary;
-  nextAction: NextAction;
 }) {
   return (
     <div className="grid min-w-0 gap-4">
@@ -686,23 +488,23 @@ function ReadinessWorkspace({
         title="Readiness"
         description="Whether the platform is ready, and the one thing worth doing next. The rest of the controls live in the workspaces above."
       />
-      <NextActionCard action={nextAction} />
+      <NextActionCard action={status.nextAction} />
       <div className={CARD_GRID_CLASS}>
         <CommandCard
           title="Readiness signal"
-          description={`${checklistWarningCount} readiness warning${
-            checklistWarningCount === 1 ? "" : "s"
-          } and ${errorCount} load error${
-            errorCount === 1 ? "" : "s"
+          description={`${status.checklistWarningCount} readiness warning${
+            status.checklistWarningCount === 1 ? "" : "s"
+          } and ${status.errorCount} load error${
+            status.errorCount === 1 ? "" : "s"
           } across the current reads.`}
-          status={{ label: readinessLabel, tone: readinessTone }}
+          status={{ label: status.readinessLabel, tone: status.readinessTone }}
         />
         <CommandCard
           title="Access"
           description="Role changes stay limited to active, non-self, non-super-admin profiles."
           status={{ label: "Good", tone: "good" }}
         >
-          <MetricRow label="Active profiles" value={activeProfiles} />
+          <MetricRow label="Active profiles" value={status.activeProfiles} />
           <MetricRow
             label="Eligible role targets"
             value={data.assignableProfiles.length}
@@ -801,9 +603,7 @@ function SubsectionHeader({ title, hint }: { title: string; hint: string }) {
 // profile is guarded server-side. Rendered as a status table with non-wrapping
 // action buttons.
 function AccountManagementCard({ data }: { data: SuperAdminConsoleData }) {
-  const profiles = Array.from(data.profilesById.values())
-    .filter((p) => p.role !== "super_admin")
-    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  const profiles = listAccountStatusProfiles(data.profilesById);
 
   return (
     <Panel id="account-status">
@@ -1000,10 +800,10 @@ function OwnerSettingsCard({ data }: { data: SuperAdminConsoleData }) {
 
 // Real feature-flag list with resolved state + toggles. Each row reads as a
 // switch with a name, badges (kind + resolved On/Off), a short risk note, and
-// the toggle. Frozen-surface rows carry the amber "watch" tint so they don't
-// read as ordinary toggles.
+// the toggle. The badge/risk-note wording is derived in the pure
+// feature-flag-display model; this card only renders the rows.
 function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
-  const flags = data.appConfig.featureFlags;
+  const rows = buildFeatureFlagRows(data.appConfig.featureFlags);
   return (
     <Panel id="features">
       <PanelTitle>Feature flags</PanelTitle>
@@ -1015,97 +815,52 @@ function FeatureFlagsCard({ data }: { data: SuperAdminConsoleData }) {
         navigation — hiding a tab does not block access to its pages.
       </p>
       <div className="grid gap-2.5">
-        {FEATURE_FLAG_DEFINITIONS.map((def) => {
-          const resolved = resolveFlag(flags, def.key);
-          const state = flags[def.key];
-          const enabled = state?.enabled === true;
-          const frozen = def.kind === "frozen_surface";
-          const navVis = def.kind === "nav_visibility";
-          const frozenHeldOff = frozen && enabled && state?.verified !== true;
-          const riskNote = frozenHeldOff
-            ? "Turned on, but held off until it passes its safety review."
-            : frozen
-              ? "Held — stays off until it passes a safety review, even when switched on."
-              : navVis
-                ? "Hiding the tab does not block access — anyone with the page's address can still open it."
-                : null;
-          return (
-            <div
-              key={def.key}
-              className={cn(
-                "flex flex-wrap items-start justify-between gap-3 rounded-sm border p-3",
-                // Frozen rows carry a distinct amber tint so they don't read
-                // as ordinary toggles (tinted surface, not a stripe).
-                frozen ? "border-amber bg-amberSoft" : "border-line"
-              )}
-            >
-              <div className="min-w-0 flex-1 basis-56">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-sans text-sm font-semibold text-ink">
-                    {def.label}
-                  </span>
-                  {/* The flag kind in operator terms (#461): "Standard"
-                      rather than the internal "new-surface" kind name. */}
-                  <StatusBadge
-                    label={frozen ? "Held" : navVis ? "Nav" : "Standard"}
-                    tone={frozen ? "warning" : "planned"}
-                  />
-                  {/* The effective state, readable before touching the
-                      switch (#457). Frozen surfaces distinguish "on but held
-                      pending verification" (warning) from "locked off"
-                      (guarded — protected on purpose). */}
-                  <StatusBadge
-                    label={
-                      frozen
-                        ? resolved
-                          ? "On"
-                          : enabled
-                            ? "Held off"
-                            : "Locked off"
-                        : resolved
-                          ? navVis
-                            ? "Shown"
-                            : "On"
-                          : navVis
-                            ? "Hidden"
-                            : "Off"
-                    }
-                    tone={
-                      frozen
-                        ? resolved
-                          ? "good"
-                          : enabled
-                            ? "warning"
-                            : "guarded"
-                        : resolved
-                          ? "good"
-                          : "disabled"
-                    }
-                  />
-                </div>
-                <p className="m-0 mt-1 font-sans text-xs leading-snug text-ink2">
-                  {def.description}
-                </p>
-                {riskNote ? (
-                  <p
-                    className={cn(
-                      "m-0 mt-1 font-sans text-xs",
-                      frozenHeldOff ? "text-amberText" : "text-ink2"
-                    )}
-                  >
-                    {riskNote}
-                  </p>
-                ) : null}
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={cn(
+              "flex flex-wrap items-start justify-between gap-3 rounded-sm border p-3",
+              // Frozen rows carry a distinct amber tint so they don't read
+              // as ordinary toggles (tinted surface, not a stripe).
+              row.frozen ? "border-amber bg-amberSoft" : "border-line"
+            )}
+          >
+            <div className="min-w-0 flex-1 basis-56">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-sans text-sm font-semibold text-ink">
+                  {row.label}
+                </span>
+                <StatusBadge
+                  label={row.kindBadge.label}
+                  tone={row.kindBadge.tone}
+                />
+                <StatusBadge
+                  label={row.stateBadge.label}
+                  tone={row.stateBadge.tone}
+                />
               </div>
-              <FeatureFlagToggleForm
-                flagKey={def.key}
-                flagLabel={def.label}
-                enabled={enabled}
-                held={frozen}
-              />
+              <p className="m-0 mt-1 font-sans text-xs leading-snug text-ink2">
+                {row.description}
+              </p>
+              {row.riskNote ? (
+                <p
+                  className={cn(
+                    "m-0 mt-1 font-sans text-xs",
+                    row.riskNote.heldOff ? "text-amberText" : "text-ink2"
+                  )}
+                >
+                  {row.riskNote.text}
+                </p>
+              ) : null}
             </div>
-          );
-        })}
+            <FeatureFlagToggleForm
+              flagKey={row.key}
+              flagLabel={row.label}
+              enabled={row.enabled}
+              held={row.frozen}
+            />
+          </div>
+        ))}
       </div>
       <FeatureFlagTechnicalNotes />
     </Panel>
@@ -1150,49 +905,16 @@ function FeatureFlagTechnicalNotes() {
 // Workspace 4 — Diagnostics
 // ---------------------------------------------------------------------------
 
-// Prettify a usage area slug for display ("super-admin" -> "Super admin",
-// "shepherd-care" -> "Shepherd care"). The first segment is capitalised, the
-// rest stay lowercase and the hyphens become spaces — enough to read, without
-// pretending to be a curated label.
-function labelForArea(slug: string): string {
-  const spaced = slug.replace(/-/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
 // Read-only usage telemetry: sign-ins and which top-level area each user opens,
-// recorded only while the usage_tracking flag is on (the panel resolves the flag
+// recorded only while the usage_tracking flag is on (the model resolves the flag
 // to tell "off" apart from "on but quiet"). Computed server-side from the recent
-// usage_events + the loaded profile map — no client interactivity needed.
+// usage_events + the loaded profile map — no client interactivity needed; the
+// tallies and empty-state branching live in the pure usage model.
 function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
-  const trackingOn = resolveFlag(data.appConfig.featureFlags, "usage_tracking");
-  const events = data.usageEvents;
-
-  const logins = events.filter((e) => e.event_type === "login");
-  const areaViews = events.filter((e) => e.event_type === "area_view");
-
-  // Distinct people seen across the loaded window (logins or area views).
-  const activeActors = new Set(
-    events.map((e) => e.actor_profile_id).filter((id): id is string => !!id)
-  );
-
-  // Area-view tally, busiest first.
-  const areaCounts = new Map<string, number>();
-  for (const view of areaViews) {
-    const area = view.area ?? "unknown";
-    areaCounts.set(area, (areaCounts.get(area) ?? 0) + 1);
-  }
-  const sortedAreas = [...areaCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const maxAreaCount = sortedAreas.length > 0 ? sortedAreas[0][1] : 0;
-
-  const recentLogins = logins.slice(0, 10).map((e) => {
-    const actor = e.actor_profile_id
-      ? data.profilesById.get(e.actor_profile_id)
-      : null;
-    return {
-      id: e.id,
-      name: actor?.full_name ?? "Unknown",
-      at: formatStatusTime(e.created_at),
-    };
+  const usage = buildUsagePanelModel({
+    events: data.usageEvents,
+    profilesById: data.profilesById,
+    featureFlags: data.appConfig.featureFlags,
   });
 
   return (
@@ -1200,8 +922,8 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <PanelTitle>Usage &amp; logins</PanelTitle>
         <StatusBadge
-          label={trackingOn ? "Tracking on" : "Tracking off"}
-          tone={trackingOn ? "active" : "disabled"}
+          label={usage.trackingOn ? "Tracking on" : "Tracking off"}
+          tone={usage.trackingOn ? "active" : "disabled"}
         />
       </div>
       <p className="m-0 font-sans text-sm text-ink2">
@@ -1212,13 +934,13 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
         facts only (which surface), never the content a user viewed.
       </p>
 
-      {!trackingOn && events.length === 0 ? (
+      {usage.emptyState === "tracking-off" ? (
         <p className="m-0 font-sans text-sm text-ink3">
           Tracking is off and nothing has been recorded. Turn on{" "}
           <strong>Usage &amp; login tracking</strong> in Config → Feature flags
           to start seeing logins and area usage here.
         </p>
-      ) : events.length === 0 ? (
+      ) : usage.emptyState === "tracking-on" ? (
         <p className="m-0 font-sans text-sm text-ink3">
           Tracking is on. No activity has been recorded yet — events will appear
           here as users sign in and move around the app.
@@ -1227,9 +949,9 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
         <>
           <div className={CARD_GRID_CLASS}>
             <div className="grid gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-3">
-              <MetricRow label="Sign-ins" value={logins.length} />
-              <MetricRow label="Area opens" value={areaViews.length} />
-              <MetricRow label="People seen" value={activeActors.size} />
+              <MetricRow label="Sign-ins" value={usage.loginCount} />
+              <MetricRow label="Area opens" value={usage.areaViewCount} />
+              <MetricRow label="People seen" value={usage.peopleSeenCount} />
             </div>
           </div>
 
@@ -1239,17 +961,17 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
                 title="Areas opened"
                 hint="How often each top-level area was entered, busiest first."
               />
-              {sortedAreas.length === 0 ? (
+              {usage.areaRows.length === 0 ? (
                 <p className="m-0 font-sans text-sm text-ink3">
                   No area views recorded yet.
                 </p>
               ) : (
                 <div className="grid gap-1.5">
-                  {sortedAreas.map(([area, count]) => (
-                    <div key={area} className="grid gap-1">
+                  {usage.areaRows.map((row) => (
+                    <div key={row.area} className="grid gap-1">
                       <div className="flex justify-between gap-3 font-sans text-xs text-ink2">
-                        <span>{labelForArea(area)}</span>
-                        <strong className="text-ink">{count}</strong>
+                        <span>{row.label}</span>
+                        <strong className="text-ink">{row.count}</strong>
                       </div>
                       <div
                         aria-hidden
@@ -1257,13 +979,7 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
                       >
                         <div
                           className="h-full bg-sage"
-                          style={{
-                            width: `${
-                              maxAreaCount > 0
-                                ? Math.round((count / maxAreaCount) * 100)
-                                : 0
-                            }%`,
-                          }}
+                          style={{ width: `${row.barPercent}%` }}
                         />
                       </div>
                     </div>
@@ -1277,13 +993,13 @@ function UsagePanel({ data }: { data: SuperAdminConsoleData }) {
                 title="Recent sign-ins"
                 hint="The latest logins, newest first."
               />
-              {recentLogins.length === 0 ? (
+              {usage.recentLogins.length === 0 ? (
                 <p className="m-0 font-sans text-sm text-ink3">
                   No sign-ins recorded yet.
                 </p>
               ) : (
                 <div className="grid gap-1.5">
-                  {recentLogins.map((login) => (
+                  {usage.recentLogins.map((login) => (
                     <div
                       key={login.id}
                       className="flex justify-between gap-3 font-sans text-xs text-ink2"
@@ -1361,19 +1077,6 @@ function DiagnosticsWorkspace({
 // Workspace 5 — Audit
 // ---------------------------------------------------------------------------
 
-// Match AuditTrailSection's timestamp format so the filtered list reads
-// identically to the default (unfiltered) list it sits beside.
-function formatAuditTimestamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
   const auditSection = (
     <AuditTrailSection
@@ -1394,23 +1097,11 @@ function AuditWorkspacePanel({ data }: { data: SuperAdminConsoleData }) {
 
   // The Map-dependent summaries are computed here, server-side, so the client
   // filter receives only flat, serialisable entries (RSC can't ship the Maps).
-  const entries: AuditEntry[] = data.auditEvents.map((event) => {
-    const actor = event.actor_profile_id
-      ? data.profilesById.get(event.actor_profile_id)
-      : null;
-    return {
-      id: event.id,
-      summary: summarizeAuditEvent(event, {
-        profilesById: data.profilesById,
-        membersById: data.membersById,
-        groupsById: data.groupsById,
-      }),
-      actionLabel: AUDIT_ACTION_LABELS[event.action] ?? event.action,
-      entityType: event.entity_type,
-      actorLabel: actor?.full_name ?? event.actor_name ?? null,
-      timestamp: formatAuditTimestamp(event.created_at),
-      category: categorizeAuditAction(event.action),
-    };
+  // Typed as AuditEntry so the lib model and the client filter can't drift.
+  const entries: AuditEntry[] = buildAuditTrailEntries(data.auditEvents, {
+    profilesById: data.profilesById,
+    membersById: data.membersById,
+    groupsById: data.groupsById,
   });
 
   return (

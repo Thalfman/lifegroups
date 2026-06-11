@@ -11,11 +11,7 @@ import {
 } from "@/lib/admin/action-result";
 import { isRecord } from "@/lib/admin/validation";
 import { isUuid } from "@/lib/shared/uuid";
-import {
-  rpcSuperAdminResetCareAttention,
-  rpcSuperAdminResetHealthAttention,
-  rpcSuperAdminResetAttentionRevert,
-} from "@/lib/admin/rpc";
+import { adminRpc } from "@/lib/admin/rpc";
 import {
   RESET_CARE_ATTENTION_CONFIRM_PHRASE,
   RESET_HEALTH_ATTENTION_CONFIRM_PHRASE,
@@ -121,8 +117,9 @@ export async function superAdminResetCareAttention(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminResetCareAttention(
+  const { data: snapshotId, error } = await adminRpc(
     client,
+    "super_admin_reset_care_attention",
     { p_scope: parsed.scope, p_entity_id: parsed.entityId }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -166,8 +163,9 @@ export async function superAdminResetHealthAttention(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminResetHealthAttention(
+  const { data: snapshotId, error } = await adminRpc(
     client,
+    "super_admin_reset_health_attention",
     { p_scope: parsed.scope, p_entity_id: parsed.entityId }
   );
   if (error) return actionFail([mapRpcError(error.message)]);
@@ -223,8 +221,9 @@ export async function superAdminResetAttentionRevert(
   const client = await createSupabaseServerClient();
   if (!client) return actionFail(["Database is not configured."]);
 
-  const { data: snapshotId, error } = await rpcSuperAdminResetAttentionRevert(
+  const { data: snapshotId, error } = await adminRpc(
     client,
+    "super_admin_reset_attention_revert",
     { p_snapshot_id: submittedId }
   );
   if (error) return actionFail([mapRpcError(error.message)]);

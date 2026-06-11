@@ -1,6 +1,7 @@
 import type { GuestsManagementData } from "@/components/admin/guests/guests-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchAllGroups,
@@ -46,29 +47,30 @@ export const EMPTY_GUESTS_DATA: GuestsManagementData = {
 export async function buildGuestsData(
   reads: GuestsReads
 ): Promise<GuestsManagementData> {
-  const [guestsResult, groupsResult, profilesResult] = await Promise.all([
-    reads.fetchGuests(),
-    reads.fetchAllGroups(),
-    reads.fetchProfilesForAdmin({
-      roles: ["super_admin", "ministry_admin", "leader", "co_leader"],
-      statuses: ["active"],
-    }),
-  ]);
+  const batch = await readBatch({
+    guests: () => reads.fetchGuests(),
+    groups: () => reads.fetchAllGroups(),
+    profiles: () =>
+      reads.fetchProfilesForAdmin({
+        roles: ["super_admin", "ministry_admin", "leader", "co_leader"],
+        statuses: ["active"],
+      }),
+  });
 
-  const guests = guestsResult.data ?? [];
+  const guests = batch.results.guests.data ?? [];
   const guestIds = guests.map((g) => g.id);
   const followUpCountsResult = await reads.fetchGuestFollowUpCounts(guestIds);
   const followUpCounts = followUpCountsResult.data ?? new Map<string, number>();
 
   return {
     guests,
-    groups: groupsResult.data ?? [],
-    ownerProfiles: profilesResult.data ?? [],
+    groups: batch.results.groups.data ?? [],
+    ownerProfiles: batch.results.profiles.data ?? [],
     openFollowUpsByGuest: Object.fromEntries(followUpCounts.entries()),
     errors: {
-      guests: guestsResult.error?.message ?? null,
-      groups: groupsResult.error?.message ?? null,
-      profiles: profilesResult.error?.message ?? null,
+      guests: batch.errors.guests,
+      groups: batch.errors.groups,
+      profiles: batch.errors.profiles,
       followUps: followUpCountsResult.error?.message ?? null,
     },
   };
