@@ -9,9 +9,14 @@ MCP/CLI work an engineering session can do and verify).
 The launch wave is deliberate (ADR 0009/0016/0017): **Julian + Tom first**,
 Over-Shepherds shortly after, Leaders last. Since ADR 0024 the
 `leader_surface` flag is **on (and verified) by default**, so the Leader wave
-is gated by *account issuance*, not the flag: no Leader gets an invite until
-Julian's explicit go-ahead, and the account audit (§5) removes the test
-leader accounts that exist today.
+is gated by *account issuance*, not the flag — but that gate only holds once
+no leader accounts exist. Today production still has 3 `leader` + 1
+`co_leader` accounts, and `requireLeader()` admits any **active** leader
+profile while the flag is live, so anyone holding (or resetting) those
+credentials can reach `/leader` right now. Completing the account audit
+(§5) — archiving/deactivating those four — is therefore a **blocker** for
+calling Leader access invite-gated; after that, no Leader gets an invite
+until Julian's explicit go-ahead.
 
 ## 1. Platform safety net
 
@@ -92,8 +97,13 @@ leader accounts that exist today.
       2. Then delete it:
          `supabase functions delete manage-test-auth-users --project-ref juvytverslrcqbkxgkvg`
          (or Dashboard → Edge Functions → delete). _Tom_
-      3. After the **next** merge to `main`, confirm the production function
-         list is exactly `invite-user` + `redeem-invite`. _Eng_
+      3. **Verify immediately** — before any other runbook step continues:
+         the production function list (Dashboard → Edge Functions, or MCP
+         `list_edge_functions` against `juvytverslrcqbkxgkvg`) shows exactly
+         `invite-user` + `redeem-invite`. Catches a missed, failed, or
+         wrong-project deletion on the spot. _Tom + Eng_
+      4. After the **next** merge to `main`, re-check the same list to
+         confirm the integration no longer redeploys it. _Eng_
 
 ## 5. Real data in, test data out
 
@@ -102,7 +112,10 @@ leader accounts that exist today.
       0 `over_shepherd`s (one `ministry_admin` more than the 2026-06-10
       count — identify it during the audit). Keep Tom (`super_admin`) +
       Julian (`ministry_admin`); remove or archive every test/demo account
-      and its profile. _Tom + Julian_
+      and its profile. The 3 `leader` + 1 `co_leader` accounts are the
+      priority: `leader_surface` is live (ADR 0024), so they can reach
+      `/leader` until archived/deactivated — this item blocks the "Leader
+      access is invite-gated" claim in the intro. _Tom + Julian_
 - [ ] **Load the real roster**: groups, leaders, members (Super-Admin bulk
       import accepts CSV: `full_name`, email, phone, groups). Today: 21
       groups but 1 member row — rosters are not loaded. _Julian_

@@ -9,8 +9,13 @@ project_id = "lifegroups"
 # and the Supabase GitHub integration's deploy-to-production step, which
 # deploys all functions declared in this file on every push to main) skip it.
 # That integration is how the function silently returned to production on
-# 2026-06-09 minutes after being deleted. To use it locally, serve it
-# explicitly: `supabase functions serve manage-test-auth-users`.
+# 2026-06-09 minutes after being deleted. Note `enabled = false` also stops
+# the local stack from serving this function, so the Super-Admin
+# test-accounts panel can't reach it locally. For local test-account
+# seeding use `npm run seed:test-auth` / `npm run remove:test-auth`
+# (standalone scripts, no Edge Function involved); if you specifically need
+# the console panel, temporarily set `enabled = true` in your working copy
+# and never commit that change.
 [functions.manage-test-auth-users]
 enabled = false
 verify_jwt = true
