@@ -6,10 +6,15 @@
 // shared with the admin validators and the RPC result readers, so a
 // case/format change lands in exactly one place.
 import { isUuid } from "@/lib/shared/uuid";
+// Cross-surface primitives (lib/shared/validation-primitives) — shared with
+// the admin validator clusters so the record/uuid trust checks have one home.
+import {
+  isRecord,
+  normalizeUuid,
+  type ValidationResult,
+} from "@/lib/shared/validation-primitives";
 
-export type ValidationResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: string[] };
+export type { ValidationResult };
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -44,19 +49,11 @@ export type LeaderCheckinPayload = {
 
 const LEADER_NOTE_MAX = 1000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isIsoDate(value: unknown): value is string {
   if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return false;
   // Reject obviously-bogus calendar values like 2026-13-40.
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
-}
-
-function normalizeUuid(value: string): string {
-  return value.toLowerCase();
 }
 
 function readBool(value: unknown): boolean {

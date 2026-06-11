@@ -118,9 +118,11 @@ async function countTable(
   client: ReadClient,
   table: CleanSlateTable
 ): Promise<number> {
+  // head:true returns no rows, but name the column anyway so the column
+  // allowlist discipline holds even here (every clean-slate table has `id`).
   const { count, error } = await client
     .from(table)
-    .select("*", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true });
   if (error) throw error;
   return count ?? 0;
 }

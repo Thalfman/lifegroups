@@ -4,6 +4,7 @@ import type {
 } from "@/components/admin/people-management-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
+import { readBatch } from "@/lib/supabase/read-batch";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import {
   fetchActiveMemberships,
@@ -87,19 +88,14 @@ export async function buildPeopleDirectoryData(
   reads: PeopleReads,
   options: { currentActorProfileId: string }
 ): Promise<PeopleManagementData> {
-  const [
-    profilesResult,
-    membersResult,
-    groupsResult,
-    leadersResult,
-    membershipsResult,
-  ] = await Promise.all([
-    reads.fetchProfilesForAdmin({ statuses: ["active", "inactive"] }),
-    reads.fetchAllMembers({ statuses: ["active", "inactive"] }),
-    reads.fetchAllGroups(),
-    reads.fetchAllGroupLeaders({ activeOnly: true }),
-    reads.fetchActiveMemberships(),
-  ]);
+  const batch = await readBatch({
+    profiles: () =>
+      reads.fetchProfilesForAdmin({ statuses: ["active", "inactive"] }),
+    members: () => reads.fetchAllMembers({ statuses: ["active", "inactive"] }),
+    groups: () => reads.fetchAllGroups(),
+    leaders: () => reads.fetchAllGroupLeaders({ activeOnly: true }),
+    memberships: () => reads.fetchActiveMemberships(),
+  });
 
   return {
     currentActorProfileId: options.currentActorProfileId,
@@ -107,20 +103,14 @@ export async function buildPeopleDirectoryData(
     // out of people-facing lists (directory + Leaders tab). Role-based per the
     // no-hardcoded-names rule. The Super Admin Console roster and role-change
     // form already exclude super_admin separately.
-    profiles: (profilesResult.data ?? []).filter(
+    profiles: (batch.results.profiles.data ?? []).filter(
       (p) => p.role !== "super_admin"
     ),
-    members: membersResult.data ?? [],
-    groups: groupsResult.data ?? [],
-    groupLeaders: leadersResult.data ?? [],
-    memberships: membershipsResult.data ?? [],
-    errors: {
-      profiles: profilesResult.error?.message ?? null,
-      members: membersResult.error?.message ?? null,
-      groups: groupsResult.error?.message ?? null,
-      leaders: leadersResult.error?.message ?? null,
-      memberships: membershipsResult.error?.message ?? null,
-    },
+    members: batch.results.members.data ?? [],
+    groups: batch.results.groups.data ?? [],
+    groupLeaders: batch.results.leaders.data ?? [],
+    memberships: batch.results.memberships.data ?? [],
+    errors: batch.errors,
   };
 }
 
