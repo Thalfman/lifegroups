@@ -1,4 +1,0 @@
-# Ephemeral scratch produced during /understand analysis runs.
-# These are deleted at the end of a successful run; never commit them.
-intermediate/
-tmp/

@@ -17,7 +17,6 @@ supabase/dev/link_super_admin.sql
 .husky/
 .claude/
 .agents/
-.understand-anything/
 skills-lock.json
 
 # Documentation: the graph describes the code architecture; prose docs and
