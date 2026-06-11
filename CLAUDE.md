@@ -180,24 +180,21 @@ land in `graphify-out/memory/` (tracked, committed) and are re-ingested into
 `graph.json` on the next update, so the graph grows smarter from what gets
 asked.
 
-npm scripts for the visual/diagnostic outputs (the HTML visuals are committed
-and refreshed by the pre-commit hook; see
-[`docs/graphify-guide.md`](./docs/graphify-guide.md)): `graph:tree`
-(collapsible D3 tree), `graph:flow` (Mermaid call-flow architecture),
-`graph:health` (multigraph diagnosis + token-reduction benchmark),
-`graph:rebuild` (force re-extraction after refactors that delete code).
+npm scripts (the committed outputs are refreshed by the pre-commit hook; see
+[`docs/graphify-guide.md`](./docs/graphify-guide.md)): `graph:product` rebuilds
+the clean Product Surface graph (raw extraction is an internal build step of
+`scripts/graphify.mjs`); `graph:rebuild` is an alias for it.
 
 The graph keeps itself updated:
 
-- the pre-commit hook runs `graphify update .` (AST-only, no API key) and
-  stages the refreshed graph — and, when the graph changed, the regenerated
-  HTML visuals — into the same commit (skipped on partial commits with
-  unstaged changes);
+- the pre-commit hook runs `npm run graph:product` (AST-only, no API key) and
+  stages the refreshed root outputs (`graph.json`, `graph.html`,
+  `GRAPH_REPORT.md`, `GRAPH_TREE.html`, `.graphify_labels.json`,
+  `PRODUCT_SURFACE_REPORT.md`) into the same commit;
 - a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
   installs the CLI if needed (pinned via `.graphify-version` — bump
-  deliberately; both hooks refuse to write graph artifacts with any other
-  version), registers the `graph.json` merge driver, and refreshes the graph
-  in the background;
+  deliberately), registers the `graph.json` merge driver, and refreshes the
+  graph in the background;
 - PreToolUse hooks in `.claude/settings.json` nudge (never block) agents
   toward `graphify query` when they reach for grep/find or read source files
   to answer architecture questions.
@@ -207,11 +204,10 @@ prose docs — `docs/`, root markdown, `.github/` — and, until fixed upstream,
 `*.sh` are excluded, so the graph describes the code architecture only; see
 comments there).
 
-Manual refresh: `graphify update .`. If a `graph.json` merge conflicts on a
-machine without graphify, take either side and regenerate. `graphify-out/cache/`
-and `graphify-out/manifest.json` are machine-local and gitignored; don't commit
-them. Community names are unlabeled placeholders until an LLM API key is
-available (`graphify label .`).
+Manual refresh: `npm run graph:product`. If a `graph.json` merge conflicts on
+a machine without graphify, take either side and regenerate. The `.graphify/`
+staging dir and `graphify-out/**/cache/` / `manifest.json` are machine-local
+and gitignored; don't commit them.
 
 ## Testing
 
