@@ -13,6 +13,7 @@
 // migration slices add their surface here and inherit the same gate.
 
 import { Suspense, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { GroupsDirectory } from "@/components/admin/groups-directory";
 import {
   CalendarOccurrenceEditor,
@@ -1007,11 +1008,16 @@ function Surface({
 }
 
 export function A11yHarnessClient() {
+  const searchParams = useSearchParams();
   const [, setSelected] = useState<MasterOccurrence | null>(null);
   // #469: whether the Settings surface renders the read-error payload.
   const [settingsReadErrors, setSettingsReadErrors] = useState(false);
   // #480: whether the Home surface renders the all-quiet (empty-state) payload.
   const [homeQuiet, setHomeQuiet] = useState(false);
+  const homeSetupVariant = searchParams.get("homeVariant") === "setup";
+  const homeHiddenNavAreas = homeSetupVariant
+    ? ["/admin/planning"]
+    : HOME_DEFAULT_HIDDEN_NAV;
   return (
     <main style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <h1>Admin accessible-name harness</h1>
@@ -1348,7 +1354,7 @@ export function A11yHarnessClient() {
       </button>
       <Surface id="home" heading="Home (admin landing)">
         <DashboardClient
-          key={homeQuiet ? "quiet" : "demo"}
+          key={`${homeQuiet ? "quiet" : "demo"}-${homeSetupVariant ? "setup" : "default"}`}
           data={homeQuiet ? HOME_QUIET_DATA : ADMIN_FALLBACK}
           interestFunnel={
             homeQuiet ? HOME_QUIET_FUNNEL : INTEREST_FUNNEL_FALLBACK
@@ -1360,7 +1366,7 @@ export function A11yHarnessClient() {
           scopeId={null}
           canResetActivity
           isSuperAdmin
-          hiddenNavAreas={HOME_DEFAULT_HIDDEN_NAV}
+          hiddenNavAreas={homeHiddenNavAreas}
         />
       </Surface>
 
