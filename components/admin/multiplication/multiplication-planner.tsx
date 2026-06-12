@@ -597,6 +597,8 @@ function AddCandidateForm({
     groupsByType,
     apprenticesByGroup,
   });
+  const canSubmit =
+    typeGroup.audience !== null && typeGroup.categoryId !== null;
   if (typeOptions.length === 0) {
     return (
       <p className="m-0 font-sans text-sm text-ink3">
@@ -712,9 +714,17 @@ function AddCandidateForm({
         />
       </div>
       <div className="flex items-center gap-2.5">
-        <PButton type="submit" tone="terra" size="md" disabled={pending}>
+        <PButton
+          type="submit"
+          tone="terra"
+          size="md"
+          disabled={pending || !canSubmit}
+        >
           {pending ? "Adding…" : "Add to pipeline"}
         </PButton>
+        {!canSubmit ? (
+          <p className={HINT}>Select a group type to enable Add to pipeline.</p>
+        ) : null}
         <FormStatus state={state} />
       </div>
     </form>

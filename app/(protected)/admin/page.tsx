@@ -124,6 +124,7 @@ export default async function AdminPage({
         mutedKeys={mutedKeys}
         canResetActivity={session.profile.role === "super_admin"}
         hiddenNavAreas={[...hiddenNavAreas]}
+        isSuperAdmin={session.profile.role === "super_admin"}
       />
     </>
   );

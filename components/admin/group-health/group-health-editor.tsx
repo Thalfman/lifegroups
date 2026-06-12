@@ -20,7 +20,7 @@ import {
 } from "@/components/admin/forms/action-form";
 import { EditingSurface } from "@/components/lg/admin/editing-surface";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { PButton } from "@/components/pastoral/button";
 import { cn } from "@/lib/utils";
 
@@ -248,7 +248,7 @@ function GroupHealthEditorBody({
             <span className="font-sans text-xs font-bold text-ink">
               Reset attention
             </span>
-            <SuperAdminOnlyBadge />
+            <SuperAdminOnlyMark />
           </div>
           <p className="m-0 font-sans text-xs text-ink2">
             Clear this group from the “overdue or missing health checks” card

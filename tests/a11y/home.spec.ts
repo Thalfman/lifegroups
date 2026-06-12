@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import { expectNoBlockingAxeViolations, gotoHarness, HARNESS } from "./harness";
 
 // Issue #480 (P2.4, HOME_CARE_SETTINGS_FINISH_LINE_PLAN) — Home a11y spec.
 // Mirrors the Settings suite: the real DashboardClient tree rendered in the
@@ -141,14 +141,54 @@ test.describe("home landing structure & accessible names (issue 480)", () => {
     await expect(home.getByText("Leader pipeline")).toHaveCount(0);
     await expect(home.getByText("Pipeline funnel")).toHaveCount(0);
     for (const href of [
-      "/admin/groups",
       "/admin/planning",
       "/admin/guests",
+      "/admin/groups",
+      "/admin/people",
       "/admin/launch-planning",
       "/admin/leader-pipeline",
+      "/admin/super-admin#people-import",
     ]) {
       await expect(home.locator(`a[href^="${href}"]`)).toHaveCount(0);
     }
+  });
+
+  test("default hidden nav suppresses setup recovery CTAs", async ({
+    page,
+  }) => {
+    const home = page.locator(HOME);
+    await expect(
+      home.locator('section[aria-labelledby="setup-recovery-checklist"]')
+    ).toHaveCount(0);
+    await expect(home.getByText("Setup checklist")).toHaveCount(0);
+    await expect(home.locator('a[href^="/admin/groups"]')).toHaveCount(0);
+    await expect(home.locator('a[href^="/admin/people"]')).toHaveCount(0);
+    await expect(
+      home.locator('a[href^="/admin/super-admin#people-import"]')
+    ).toHaveCount(0);
+  });
+
+  test("setup checklist exposes guided recovery CTAs", async ({ page }) => {
+    const response = await page.goto(`${HARNESS}?homeVariant=setup`, {
+      waitUntil: "networkidle",
+    });
+    expect(response?.status(), "harness route must be enabled").toBe(200);
+    await expect(page.locator(HOME)).toBeVisible();
+
+    const checklist = page.locator(
+      `${HOME} section[aria-labelledby="setup-recovery-checklist"]`
+    );
+    await expect(checklist).toBeVisible();
+    await expect(checklist.getByText("Setup checklist")).toBeVisible();
+    await expect(
+      checklist.getByRole("link", { name: /Import people/ })
+    ).toHaveAttribute("href", "/admin/super-admin#people-import");
+    await expect(
+      checklist.getByRole("link", { name: /Assign leaders/ })
+    ).toHaveAttribute("href", "/admin/groups?tab=needs_setup");
+    await expect(
+      checklist.getByRole("link", { name: /Assess health/ })
+    ).toHaveAttribute("href", "/admin/groups?tab=needs_health_check");
   });
 
   test("ranked next-actions queue rows carry contextual accessible names", async ({

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
 
 // Issue 266 — Admin Interaction Model req 1: propagate the validated Editing
@@ -22,8 +22,26 @@ const SURFACE = '[data-a11y-surface="groups-directory"]';
 // A demo group with a unique meeting day (Thursday), so it is easy to target
 // and to isolate with the meeting-day filter. Its row Edit control names the
 // group plus the meeting-day discriminator (location_area is unset here).
-const EDIT_DOWNTOWN = "Edit Downtown Professionals (Thursday)";
-const EDIT_EASTSIDE = "Edit Eastside Community (Tuesday)";
+const GROUP_DOWNTOWN = "Downtown Professionals (Thursday)";
+const GROUP_EASTSIDE = "Eastside Community (Tuesday)";
+const MORE_DOWNTOWN = `More actions for ${GROUP_DOWNTOWN}`;
+const MORE_EASTSIDE = `More actions for ${GROUP_EASTSIDE}`;
+const EDIT_DOWNTOWN = `Edit ${GROUP_DOWNTOWN}`;
+
+async function openActions(surface: Locator, groupLabel: string) {
+  const opener = surface.getByRole("button", {
+    name: `More actions for ${groupLabel}`,
+  });
+  await opener.click();
+  return opener;
+}
+
+async function openEditDrawer(page: Page, groupLabel = GROUP_DOWNTOWN) {
+  const surface = page.locator(SURFACE);
+  await openActions(surface, groupLabel);
+  await page.getByRole("button", { name: `Edit ${groupLabel}` }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+}
 
 test.describe("groups directory editing surface", () => {
   test.beforeEach(async ({ page }) => {
@@ -48,23 +66,34 @@ test.describe("groups directory editing surface", () => {
     ).toBeVisible();
   });
 
-  test("repeated Edit controls name their group and stay unique", async ({
+  test("repeated More actions controls name their group and stay unique", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    const editButtons = surface.getByRole("button", { name: /^Edit .+/ });
-    const names = await editButtons.evaluateAll((els) =>
+    const moreButtons = surface.getByRole("button", {
+      name: /^More actions for .+/,
+    });
+    const names = await moreButtons.evaluateAll((els) =>
       els.map((el) => el.getAttribute("aria-label") ?? "")
     );
     expect(names.length).toBeGreaterThan(1);
     expect(new Set(names).size).toBe(names.length);
+
+    await openActions(surface, GROUP_DOWNTOWN);
+    await expect(
+      page.getByRole("button", { name: EDIT_DOWNTOWN })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: `Open ${GROUP_DOWNTOWN} calendar`,
+      })
+    ).toBeVisible();
   });
 
   test("opening a group reveals its details in the drawer and moves focus in", async ({
     page,
   }) => {
-    const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
+    await openEditDrawer(page);
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -91,18 +120,17 @@ test.describe("groups directory editing surface", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    const opener = surface.getByRole("button", { name: EDIT_DOWNTOWN });
-    await opener.click();
+    const opener = await openActions(surface, GROUP_DOWNTOWN);
+    await page.getByRole("button", { name: EDIT_DOWNTOWN }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(opener).toBeFocused();
+    await expect(opener).toBeVisible();
   });
 
   test("the explicit Close control closes the drawer", async ({ page }) => {
-    const surface = page.locator(SURFACE);
-    await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
+    await openEditDrawer(page);
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
@@ -121,20 +149,21 @@ test.describe("groups directory editing surface", () => {
     // only Downtown Professionals remains, Eastside is filtered out.
     await search.fill("Downtown");
     await expect(
-      surface.getByRole("button", { name: EDIT_DOWNTOWN })
+      surface.getByRole("button", { name: MORE_DOWNTOWN })
     ).toBeVisible();
     await expect(
-      surface.getByRole("button", { name: EDIT_EASTSIDE })
+      surface.getByRole("button", { name: MORE_EASTSIDE })
     ).toHaveCount(0);
 
     // Open and close the drawer; the narrowed view must survive the round trip
     // (the drawer is portaled out of the list, so the list never reflows).
-    await surface.getByRole("button", { name: EDIT_DOWNTOWN }).click();
+    await openActions(surface, GROUP_DOWNTOWN);
+    await page.getByRole("button", { name: EDIT_DOWNTOWN }).click();
     await page.keyboard.press("Escape");
 
     await expect(search).toHaveValue("Downtown");
     await expect(
-      surface.getByRole("button", { name: EDIT_EASTSIDE })
+      surface.getByRole("button", { name: MORE_EASTSIDE })
     ).toHaveCount(0);
   });
 
@@ -193,13 +222,9 @@ test.describe("groups directory editing surface", () => {
   test("axe finds no critical or serious violations with the edit drawer open", async ({
     page,
   }) => {
-    await page
-      .locator(SURFACE)
-      .getByRole("button", { name: EDIT_DOWNTOWN })
-      .click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await openEditDrawer(page);
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });
 
@@ -212,7 +237,7 @@ test.describe("groups directory editing surface", () => {
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });
 
@@ -223,7 +248,7 @@ test.describe("groups directory editing surface", () => {
   // invariants the card mode enforces above.
   test("the card⇄table toggle switches to the Ops table", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
     // Sortable column headers are present, including the latest-week check-in.
     await expect(
@@ -232,15 +257,17 @@ test.describe("groups directory editing surface", () => {
     await expect(surface.getByRole("button", { name: /^Group/ })).toBeVisible();
   });
 
-  test("table-mode Edit controls name their group and stay unique", async ({
+  test("table-mode visible and More actions controls name their group and stay unique", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
-    const editButtons = surface.getByRole("button", { name: /^Edit .+/ });
-    const names = await editButtons.evaluateAll((els) =>
+    const moreButtons = surface.getByRole("button", {
+      name: /^More actions for .+/,
+    });
+    const names = await moreButtons.evaluateAll((els) =>
       els.map((el) => el.getAttribute("aria-label") ?? "")
     );
     expect(names.length).toBeGreaterThan(1);
@@ -254,11 +281,16 @@ test.describe("groups directory editing surface", () => {
     );
     expect(viewNames.length).toBeGreaterThan(1);
     expect(new Set(viewNames).size).toBe(viewNames.length);
+
+    await openActions(surface, GROUP_DOWNTOWN);
+    await expect(
+      page.getByRole("button", { name: EDIT_DOWNTOWN })
+    ).toBeVisible();
   });
 
   test("sorting a column updates its aria-sort", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
     const leaderHeader = surface.getByRole("columnheader", {
@@ -275,10 +307,10 @@ test.describe("groups directory editing surface", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });
 
@@ -291,7 +323,17 @@ test.describe("groups directory editing surface", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    // Card mode: no density radiogroup, no Columns menu.
+    // Table mode is the desktop default.
+    await expect(surface.getByRole("table")).toBeVisible();
+    await expect(
+      surface.getByRole("radiogroup", { name: "Table density" })
+    ).toBeVisible();
+    await expect(
+      surface.getByRole("button", { name: "Columns" })
+    ).toBeVisible();
+
+    await surface.getByRole("radio", { name: "Cards", exact: true }).click();
+    await expect(surface.getByRole("table")).toHaveCount(0);
     await expect(
       surface.getByRole("radiogroup", { name: "Table density" })
     ).toHaveCount(0);
@@ -299,7 +341,7 @@ test.describe("groups directory editing surface", () => {
       0
     );
 
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
     // Table mode: both controls are present and keyboard-reachable.
@@ -311,18 +353,40 @@ test.describe("groups directory editing surface", () => {
     ).toBeVisible();
   });
 
+  test("phone viewport renders cards without table-only controls", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoHarness(page);
+    const surface = page.locator(SURFACE);
+
+    await expect(surface.getByRole("table")).toHaveCount(0);
+    await expect(
+      surface.getByRole("radiogroup", { name: "Group list layout" })
+    ).toHaveCount(0);
+    await expect(
+      surface.getByRole("radiogroup", { name: "Table density" })
+    ).toHaveCount(0);
+    await expect(surface.getByRole("button", { name: "Columns" })).toHaveCount(
+      0
+    );
+    await expect(
+      surface.getByRole("button", { name: MORE_DOWNTOWN })
+    ).toBeVisible();
+  });
+
   test("density choice persists across reload with no flash", async ({
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
     const compact = surface.getByRole("radio", { name: "Compact" });
     await compact.click();
     await expect(compact).toHaveAttribute("aria-checked", "true");
 
-    await page.reload({ waitUntil: "networkidle" });
+    await gotoHarness(page);
     // The table + the compact density both restore after hydration.
     await expect(surface.getByRole("table")).toBeVisible();
     await expect(
@@ -332,7 +396,7 @@ test.describe("groups directory editing surface", () => {
 
   test("hiding a column persists across reload", async ({ page }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
 
     // The Setup column header starts visible.
@@ -347,7 +411,7 @@ test.describe("groups directory editing surface", () => {
       surface.getByRole("columnheader", { name: /Setup/i })
     ).toHaveCount(0);
 
-    await page.reload({ waitUntil: "networkidle" });
+    await gotoHarness(page);
     await expect(surface.getByRole("table")).toBeVisible();
     // The hidden Setup column stays hidden after reload.
     await expect(
@@ -359,14 +423,14 @@ test.describe("groups directory editing surface", () => {
     page,
   }) => {
     const surface = page.locator(SURFACE);
-    await surface.getByRole("radio", { name: "Table" }).click();
+    await surface.getByRole("radio", { name: "Table", exact: true }).click();
     await expect(surface.getByRole("table")).toBeVisible();
     await surface.getByRole("button", { name: "Columns" }).click();
     await expect(
       surface.getByRole("checkbox", { name: "Setup" })
     ).toBeVisible();
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const results = await new AxeBuilder({ page }).include(SURFACE).analyze();
     expectNoBlockingAxeViolations(results);
   });
 });

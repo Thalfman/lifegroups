@@ -44,6 +44,7 @@ export function ProspectCreateForm({
   // The chosen top type drives the category select's options. Resetting the type
   // clears the dependent category so a stale category from another type can't be
   // submitted.
+  const [fullName, setFullName] = useState("");
   const [audience, setAudience] = useState<GroupAudienceCategory | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
 
@@ -71,6 +72,7 @@ export function ProspectCreateForm({
   // forms' reset effect.
   useEffect(() => {
     if (!state?.ok) return;
+    setFullName("");
     setAudience("");
     setCategoryId("");
     setFullNameError(undefined);
@@ -81,6 +83,7 @@ export function ProspectCreateForm({
 
   const categoryOptions =
     audience === "" ? [] : categoryOptionsByAudience[audience];
+  const canSubmit = fullName.trim().length > 0;
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-3">
@@ -98,6 +101,7 @@ export function ProspectCreateForm({
             name="full_name"
             type="text"
             required
+            value={fullName}
             aria-required="true"
             aria-invalid={fullNameError ? "true" : undefined}
             aria-describedby="prospect-full_name-error"
@@ -110,6 +114,7 @@ export function ProspectCreateForm({
             onInput={() => {
               if (fullNameError) setFullNameError(undefined);
             }}
+            onChange={(e) => setFullName(e.target.value)}
             autoComplete="off"
             className={INPUT}
             placeholder="Avery Bennett"
@@ -202,9 +207,19 @@ export function ProspectCreateForm({
           </select>
         </div>
         <div>
-          <PButton type="submit" tone="terra" size="md" disabled={pending}>
+          <PButton
+            type="submit"
+            tone="terra"
+            size="md"
+            disabled={pending || !canSubmit}
+          >
             {pending ? "Saving…" : "Add prospect"}
           </PButton>
+          {!canSubmit ? (
+            <p className="m-0 mt-1.5 font-sans text-sm text-ink3">
+              Enter a full name to enable Add prospect.
+            </p>
+          ) : null}
         </div>
       </div>
       {/* successText is withheld once the timer fires so the confirmation

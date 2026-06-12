@@ -13,7 +13,7 @@ import { PrivateNotesSection } from "@/components/admin/shepherd-care/private-no
 import { CareNotesSection } from "@/components/admin/shepherd-care/care-notes-section";
 import { ShepherdCareStatusBadge } from "@/components/admin/shepherd-care/status-badge";
 import { AttentionResetEntityButton } from "@/components/admin/attention-reset-entity-button";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminOnlyMark } from "@/components/admin/super-admin-only-badge";
 import { LeaderDetailTabs } from "@/components/admin/shepherd-care/leader-detail-tabs";
 import { GroupRubricGradeEntry } from "@/components/admin/care/group-rubric-grade-entry";
 import { requireAdmin } from "@/lib/auth/session";
@@ -227,7 +227,7 @@ export default async function AdminShepherdCareDetailPage({
           <div className="mt-3.5 border-t border-line pt-3.5">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <span className={`${LABEL} mb-0`}>Reset attention</span>
-              <SuperAdminOnlyBadge />
+              <SuperAdminOnlyMark />
             </div>
             <p className="m-0 mb-2 font-sans text-sm leading-normal text-ink2">
               Clear this leader from the care queue with a fresh-start baseline

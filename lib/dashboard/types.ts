@@ -132,7 +132,10 @@ export interface HealthSummary {
   needsFollowUp: HealthGroupRow[];
   watch: HealthGroupRow[];
   healthy: HealthGroupRow[];
-  counts: Record<HealthBucket, number>;
+  counts: Record<HealthBucket, number> & {
+    not_assessed: number;
+    missing_required_ratings: number;
+  };
 }
 
 export type SetupGap = "capacity" | "leader" | "meeting_day_time" | "members";

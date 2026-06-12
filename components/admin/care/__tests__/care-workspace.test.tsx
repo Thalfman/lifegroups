@@ -71,6 +71,7 @@ function workspaceInput(
     care: careData(),
     enrichment: EMPTY_ENRICHMENT,
     notesFeed: EMPTY_NOTES_FEED,
+    hiddenNavAreas: [],
     ...overrides,
   };
 }

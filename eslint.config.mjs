@@ -11,9 +11,12 @@ const eslintConfig = [
     ignores: [
       ".next/**",
       ".agents/**",
+      "coverage/**",
       "graphify-out/**",
       "node_modules/**",
+      "playwright-report/**",
       "supabase/functions/**",
+      "test-results/**",
     ],
   },
   ...compat.extends("next/core-web-vitals"),

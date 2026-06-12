@@ -27,18 +27,18 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 
 ## Commands
 
-| Command                    | What it does                                 |
-| -------------------------- | -------------------------------------------- |
-| `npm run dev`              | Next dev server (http://localhost:3000)      |
-| `npm run build`            | Production build                             |
-| `npm run start`            | Serve the production build                   |
-| `npm run lint`             | ESLint (`next lint`, `next/core-web-vitals`) |
-| `npm run typecheck`        | `tsc --noEmit` (strict)                      |
-| `npm test`                 | Vitest, watch mode                           |
-| `npm run test:run`         | Vitest once (what CI runs)                   |
-| `npm run test:a11y`        | Playwright + axe accessibility suite         |
-| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script)  |
-| `npm run remove:test-auth` | Remove local test Auth users                 |
+| Command                    | What it does                                |
+| -------------------------- | ------------------------------------------- |
+| `npm run dev`              | Next dev server (http://localhost:3000)     |
+| `npm run build`            | Production build                            |
+| `npm run start`            | Serve the production build                  |
+| `npm run lint`             | ESLint CLI (`next/core-web-vitals`)         |
+| `npm run typecheck`        | `tsc --noEmit` (strict)                     |
+| `npm test`                 | Vitest, watch mode                          |
+| `npm run test:run`         | Vitest once (what CI runs)                  |
+| `npm run test:a11y`        | Playwright + axe accessibility suite        |
+| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script) |
+| `npm run remove:test-auth` | Remove local test Auth users                |
 
 - **Run a single test:** `npx vitest run path/to/file.test.ts` (add `-t "name"`
   to filter by test name).
@@ -156,58 +156,6 @@ result-returning guards (`requireAdminSession`, …) in server actions.
   unions** for outcomes (`SessionResult`, action results — switch on `kind`);
   the validate → guard → RPC pipeline; structured logging via
   `lib/observability` (`event`, `outcome`, `actor_role`, …).
-
-## Knowledge graph (graphify)
-
-The repo carries a committed [Graphify](./.agents/skills/graphify/SKILL.md)
-knowledge graph — `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md`.
-For codebase-architecture questions, reach for the graph before raw file
-searching:
-
-- `graphify query "<question>"` — first stop for focused architecture
-  questions; returns a scoped subgraph, usually far smaller than grepping or
-  reading files one by one.
-- `graphify affected "<node>"` — reverse impact: what depends on X. Run it
-  before changing a shared module.
-- `graphify path "<A>" "<B>"` — how two parts of the system connect.
-- `graphify explain "<node>"` — plain-language summary of a node and its
-  neighborhood.
-
-**Memory loop (the no-API substitute for semantic extraction):** when a
-session produces a non-obvious architecture answer, file it with
-`graphify save-result --question "…" --answer "…" --nodes <label> …`. Entries
-land in `graphify-out/memory/` (tracked, committed) and are re-ingested into
-`graph.json` on the next update, so the graph grows smarter from what gets
-asked.
-
-npm scripts (the committed outputs are refreshed by the pre-commit hook; see
-[`docs/graphify-guide.md`](./docs/graphify-guide.md)): `graph:product` rebuilds
-the clean Product Surface graph (raw extraction is an internal build step of
-`scripts/graphify.mjs`); `graph:rebuild` is an alias for it.
-
-The graph keeps itself updated:
-
-- the pre-commit hook runs `npm run graph:product` (AST-only, no API key) and
-  stages the refreshed root outputs (`graph.json`, `graph.html`,
-  `GRAPH_REPORT.md`, `GRAPH_TREE.html`, `.graphify_labels.json`,
-  `PRODUCT_SURFACE_REPORT.md`) into the same commit;
-- a Claude Code SessionStart hook (`scripts/graphify-session-start.sh`)
-  installs the CLI if needed (pinned via `.graphify-version` — bump
-  deliberately), registers the `graph.json` merge driver, and refreshes the
-  graph in the background;
-- PreToolUse hooks in `.claude/settings.json` nudge (never block) agents
-  toward `graphify query` when they reach for grep/find or read source files
-  to answer architecture questions.
-
-Corpus scope is controlled by `.graphifyignore` (tooling dirs, secrets,
-prose docs — `docs/`, root markdown, `.github/` — and, until fixed upstream,
-`*.sh` are excluded, so the graph describes the code architecture only; see
-comments there).
-
-Manual refresh: `npm run graph:product`. If a `graph.json` merge conflicts on
-a machine without graphify, take either side and regenerate. The `.graphify/`
-staging dir and `graphify-out/**/cache/` / `manifest.json` are machine-local
-and gitignored; don't commit them.
 
 ## Testing
 

@@ -177,4 +177,32 @@ describe("Care alias entries alias-render the canonical shell, not a redirect (#
     expect(CARE_WORKSPACE).toContain("<CareAccordion");
     expect(CARE_WORKSPACE).toContain("buildCareAccordion");
   });
+
+  it("passes nav visibility into Care People CTAs", () => {
+    const CARE_WORKSPACE = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../components/admin/care/care-workspace.tsx",
+          import.meta.url
+        )
+      ),
+      "utf8"
+    );
+    const CARE_ACCORDION = readFileSync(
+      fileURLToPath(
+        new URL(
+          "../../../../components/admin/care/care-accordion.tsx",
+          import.meta.url
+        )
+      ),
+      "utf8"
+    );
+
+    expect(CARE_PAGE).toContain("loadHiddenNavAreas");
+    expect(CARE_PAGE).toContain("hiddenNavAreas: [...hiddenNavAreas]");
+    expect(CARE_WORKSPACE).toContain("hiddenNavAreas={hiddenNavAreas}");
+    expect(CARE_WORKSPACE).toContain("peopleHidden");
+    expect(CARE_ACCORDION).toContain("showPeopleCta");
+    expect(CARE_ACCORDION).toContain("hiddenNavAreas");
+  });
 });

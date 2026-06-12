@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { buttonClassName } from "@/components/ui/button";
 import { formatIsoDate } from "@/lib/shared/date";
 import type { ShepherdCareDirectoryEntry } from "@/lib/supabase/read-models";
 import { ShepherdCareStatusBadge } from "./status-badge";
@@ -22,12 +23,18 @@ export type CareDirectoryExtraColumn = {
   render: (entry: ShepherdCareDirectoryEntry) => ReactNode;
 };
 
+export type CareDirectoryEmptyAction = {
+  href: string;
+  label: string;
+};
+
 export function CareDirectoryTable({
   entries,
   firstColumnLabel,
   roleLabels,
   hrefForEntry,
   emptyText,
+  emptyAction,
   extraColumn,
 }: {
   entries: ShepherdCareDirectoryEntry[];
@@ -35,12 +42,21 @@ export function CareDirectoryTable({
   roleLabels: Record<string, string>;
   hrefForEntry: (entry: ShepherdCareDirectoryEntry) => string;
   emptyText: string;
+  emptyAction?: CareDirectoryEmptyAction;
   extraColumn?: CareDirectoryExtraColumn;
 }) {
   if (entries.length === 0) {
     return (
-      <div className="px-3 py-8 text-center font-sans text-sm text-ink3">
-        {emptyText}
+      <div className="grid justify-items-center gap-3 px-3 py-8 text-center font-sans text-sm text-ink3">
+        <p className="m-0">{emptyText}</p>
+        {emptyAction ? (
+          <Link
+            href={emptyAction.href}
+            className={buttonClassName("ghost", "sm")}
+          >
+            {emptyAction.label}
+          </Link>
+        ) : null}
       </div>
     );
   }

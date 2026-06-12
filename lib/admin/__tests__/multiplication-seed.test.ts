@@ -8,7 +8,7 @@ import {
   renderMultiplicationSeedSql,
   type MultiplicationSeedEntry,
 } from "@/lib/admin/multiplication-seed";
-import { normalizeTextFixture } from "./migration-safety";
+import { normalizeTextForStaticAssertions } from "./migration-safety";
 
 // Julian #144: the seed maps Julian's Google-Doc multiplication plan
 // (docs/julian-inputs/LG_MULTIPLICATION_PLAN_2026.md) into `groups` +
@@ -252,8 +252,8 @@ describe("supabase/seed/multiplication_seed.sql — committed artifact stays in 
       new URL("../../../supabase/seed/multiplication_seed.sql", import.meta.url)
     );
     const onDisk = readFileSync(path, "utf8");
-    expect(normalizeTextFixture(onDisk)).toBe(
-      normalizeTextFixture(renderMultiplicationSeedFile())
+    expect(normalizeTextForStaticAssertions(onDisk)).toBe(
+      normalizeTextForStaticAssertions(renderMultiplicationSeedFile())
     );
   });
 });

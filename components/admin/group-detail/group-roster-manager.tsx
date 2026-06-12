@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/lg/Card";
 import { ConfirmActionButton } from "@/components/admin/forms/confirm-action-button";
 import {
@@ -34,15 +34,25 @@ const READ_ERROR_TEXT =
   "m-0 rounded-md bg-claySoft px-3.5 py-2.5 font-sans text-sm text-clayDeep";
 const LIST_RESET = "m-0 list-none p-0";
 
+function isHiddenArea(
+  hiddenNavAreas: readonly string[] | undefined,
+  href: string
+): boolean {
+  return hiddenNavAreas?.includes(href) ?? false;
+}
+
 export function GroupRosterManager({
   groupId,
   groupName,
   data,
+  hiddenNavAreas,
 }: {
   groupId: string;
   groupName: string;
   data: GroupPeopleTabData;
+  hiddenNavAreas?: readonly string[];
 }) {
+  const peopleHidden = isHiddenArea(hiddenNavAreas, "/admin/people");
   return (
     <div className="grid gap-3.5">
       {data.archived ? (
@@ -113,6 +123,7 @@ export function GroupRosterManager({
                   groupId={groupId}
                   groupName={groupName}
                   options={data.assignableLeaders}
+                  peopleHidden={peopleHidden}
                 />
               ) : null}
             </>
@@ -172,6 +183,7 @@ export function GroupRosterManager({
                   groupId={groupId}
                   groupName={groupName}
                   options={data.assignableMembers}
+                  peopleHidden={peopleHidden}
                 />
               ) : null}
             </>
@@ -234,12 +246,14 @@ export function GroupRosterManager({
       </Card>
 
       {/* People stays the cross-roster home (create people, see everyone). */}
-      <Link
-        href="/admin/people"
-        className="font-sans text-sm text-clay no-underline"
-      >
-        Manage everyone in People →
-      </Link>
+      {peopleHidden ? null : (
+        <Link
+          href="/admin/people"
+          className="font-sans text-sm text-clay no-underline"
+        >
+          Manage everyone in People →
+        </Link>
+      )}
     </div>
   );
 }
@@ -258,11 +272,13 @@ function RosterAssignRow({
   groupId,
   groupName,
   options,
+  peopleHidden,
 }: {
   kind: "leader" | "member";
   groupId: string;
   groupName: string;
   options: Array<{ id: string; name: string }> | null;
+  peopleHidden: boolean;
 }) {
   const action =
     kind === "leader" ? adminAssignLeaderToGroup : adminAssignMemberToGroup;
@@ -355,11 +371,23 @@ function RosterAssignRow({
         </div>
       </div>
       {noOptions ? (
-        <p className="m-0 font-sans text-xs text-ink3">
-          {kind === "leader"
-            ? "Every active leader and co-leader is already on this roster. Add a new leader from People."
-            : "Every active member is already on this roster. Add a new member from People."}
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <p className="m-0 font-sans text-xs text-ink3">
+            {kind === "leader"
+              ? "Every active leader and co-leader is already on this roster."
+              : "Every active member is already on this roster."}
+          </p>
+          {peopleHidden ? null : (
+            <Link
+              href="/admin/people"
+              className={buttonClassName("ghost", "sm")}
+            >
+              {kind === "leader"
+                ? "Add leader in People"
+                : "Add member in People"}
+            </Link>
+          )}
+        </div>
       ) : null}
       {state && !state.ok ? (
         <ul className="m-0 grid list-none gap-1.5 p-0">

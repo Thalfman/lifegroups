@@ -122,7 +122,6 @@ const NOT_CONFIGURED = "isn't configured in this environment yet";
 const RUBRIC_EDITOR = "Save rubric"; // HealthRubricEditor submit
 const GROUPS_EDITOR = "+ Add a group type"; // GroupsCatalogEditor create flow
 const MULTIPLY_EDITOR = "multiply-trigger-level"; // MultiplyTriggerEditor scope picker
-
 describe("buildSettingsWorkspace", () => {
   it("scopes Settings shell data into tab-specific models", () => {
     const data = shellData({

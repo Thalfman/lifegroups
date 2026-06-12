@@ -27,14 +27,15 @@ const MIGRATIONS_DIR = fileURLToPath(
 export interface MigrationSql {
   /** The migration's file name, surfaced in assertion failure messages. */
   readonly fileName: string;
-  /** SQL text normalized to LF newlines for stable fixture assertions. */
+  /** SQL text with line endings normalized for static assertions. */
   readonly raw: string;
   /** Lowercased SQL, for case-insensitive substring / regex checks. */
   readonly lower: string;
 }
 
-export function normalizeTextFixture(raw: string): string {
-  return raw.replace(/\r\n?/g, "\n");
+/** Normalize checked-out text before static SQL/seed assertions. */
+export function normalizeTextForStaticAssertions(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 /** Wrap raw SQL as a {@link MigrationSql}. Useful for unit-testing assertions. */
@@ -42,7 +43,7 @@ export function migrationFromSql(
   raw: string,
   fileName = "<inline>"
 ): MigrationSql {
-  const normalized = normalizeTextFixture(raw);
+  const normalized = normalizeTextForStaticAssertions(raw);
   return { fileName, raw: normalized, lower: normalized.toLowerCase() };
 }
 

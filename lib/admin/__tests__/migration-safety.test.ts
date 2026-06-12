@@ -11,7 +11,7 @@ import {
   functionBody,
   loadMigration,
   migrationFromSql,
-  normalizeTextFixture,
+  normalizeTextForStaticAssertions,
 } from "./migration-safety";
 
 // Direct coverage for the migration-safety assertion vocabulary itself: each
@@ -59,7 +59,7 @@ describe("migration-safety — loaders", () => {
   });
 
   it("normalizes fixture line endings before static assertions", () => {
-    expect(normalizeTextFixture("SELECT\r\n 1;\rSELECT 2;")).toBe(
+    expect(normalizeTextForStaticAssertions("SELECT\r\n 1;\rSELECT 2;")).toBe(
       "SELECT\n 1;\nSELECT 2;"
     );
     const sql = migrationFromSql("SELECT\r\n 1;", "crlf.sql");
