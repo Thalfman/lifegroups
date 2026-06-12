@@ -13,8 +13,6 @@
     "test:a11y": "playwright test",
     "seed:test-auth": "tsx scripts/seed-test-auth-users.ts",
     "remove:test-auth": "tsx scripts/remove-test-auth-users.ts",
-    "graph:product": "node scripts/graphify.mjs product",
-    "graph:rebuild": "npm run graph:product",
     "prepare": "husky"
   },
   "dependencies": {
