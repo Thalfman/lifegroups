@@ -1,14 +1,14 @@
 # Product Surface Graph Report
 
-Generated: 2026-06-12T01:28:38.500Z
+Generated: 2026-06-12T19:28:58.652Z
 
 ## Summary
 - Scope: product
-- Staged files: 488
-- Raw extraction: 3380 symbol nodes, 7740 symbol edges, 485 source files
-- Clean graph: 181 nodes, 1161 edges
+- Staged files: 489
+- Raw extraction: 3400 symbol nodes, 7775 symbol edges, 486 source files
+- Clean graph: 181 nodes, 1171 edges
 - Preserved file nodes: 122
-- Grouped lower-degree files: 363 files into 59 module buckets
+- Grouped lower-degree files: 364 files into 59 module buckets
 - Output: graphify-out
 
 ## Exclusion Audit
@@ -20,12 +20,12 @@ Generated: 2026-06-12T01:28:38.500Z
 - OK: package/lock metadata: 0
 
 ## Excluded Candidate Files
-- tests: 251
+- tests: 252
 - data-boundary-only generated types: 1
 
 ## Category Counts
-- Domain Module: 46
-- Feature Component: 36
+- Domain Module: 45
+- Feature Component: 37
 - Route/Page/Layout: 19
 - Supabase Read Adapter: 17
 - Validation: 17
@@ -39,20 +39,20 @@ Generated: 2026-06-12T01:28:38.500Z
 
 ## Product Area Counts
 - Core: 43
-- Care: 20
+- Care: 21
 - Groups: 17
 - Calendar: 16
 - Multiply: 15
-- Plan: 15
 - Home: 14
+- Plan: 14
 - Settings: 12
 - Shared: 12
 - People: 10
 - Auth: 7
 
 ## Product Hubs
-- Core Feature Component (262.85) - Feature Component, Core
-- Core Domain Module (212.1) - Domain Module, Core
+- Core Feature Component (262.5) - Feature Component, Core
+- Core Domain Module (213.1) - Domain Module, Core
 - Care Feature Component (200.75) - Feature Component, Care
 - Admin Forms Action Form (158.05) - Feature Component, Core
 - Core Server Action (140.95) - Server Action, Core
@@ -92,10 +92,10 @@ Generated: 2026-06-12T01:28:38.500Z
 
 ## Softened Shared Hubs
 - Enums Types (100.05) - Type/Vocabulary, Shared
-- Utils (44.7) - Shared Plumbing, Shared
-- Home Shared UI Primitive (38.25) - Shared UI Primitive, Home
+- Utils (45.05) - Shared Plumbing, Shared
+- Home Shared UI Primitive (39.25) - Shared UI Primitive, Home
 - Pastoral Button (35.85) - Shared UI Primitive, Shared
-- Shared Shared UI Primitive (33.3) - Shared UI Primitive, Shared
+- Shared Shared UI Primitive (34.95) - Shared UI Primitive, Shared
 - Shared Uuid (27.4) - Shared Plumbing, Shared
 - Shared Validation Primitives (27.05) - Shared Plumbing, Shared
 - Ui Button (24.5) - Shared UI Primitive, Shared
@@ -111,7 +111,7 @@ Generated: 2026-06-12T01:28:38.500Z
 - Groups Shared UI Primitive (10) - Shared UI Primitive, Groups
 
 ## Cross-Feature Coupling
-- Care <-> Core: 317 symbol links
+- Care <-> Core: 318 symbol links
   - Care Domain Module -> Core Domain Module (2)
   - Care Domain Module -> Admin Attention Reset (1)
   - Care Domain Module -> Supabase Read Core (3)
@@ -132,16 +132,16 @@ Generated: 2026-06-12T01:28:38.500Z
 - Core <-> Plan: 168 symbol links
   - Core Feature Component -> Admin Leader Pipeline Leader Pipeline Data (1)
   - Core Feature Component -> Admin Leader Pipeline (1)
+  - Plan Domain Module -> Admin Metrics (1)
   - Plan Domain Module -> Admin Validation Shared (1)
   - Plan Feature Component -> Admin Forms Action Form (14)
-  - Plan Feature Component -> Admin Forms Field Styles (9)
 - Auth <-> Core: 147 symbol links
   - Auth Auth/Session Boundary -> Core Domain Module (10)
   - Auth Auth/Session Boundary -> Core Observability/Security (13)
   - Auth Auth/Session Boundary -> Core RPC/Write Boundary (6)
   - Auth Auth/Session Boundary -> Core Server Action (1)
   - Auth Auth/Session Boundary -> Admin Super Admin Console (1)
-- Core <-> Settings: 129 symbol links
+- Core <-> Settings: 130 symbol links
   - Core Domain Module -> Settings Domain Module (3)
   - Core Domain Module -> Admin Feature Flags (7)
   - Core Feature Component -> Admin Settings Actions (4)
@@ -185,27 +185,27 @@ Generated: 2026-06-12T01:28:38.500Z
   - Dashboard Demo Seed -> Care Domain Module (2)
 
 ## Grouped Module Buckets
-- Core Feature Component: 44 files, 123 symbols, degree 262.85
+- Core Feature Component: 44 files, 124 symbols, degree 262.5
 - Care Feature Component: 37 files, 107 symbols, degree 200.75
-- Core Domain Module: 34 files, 189 symbols, degree 212.1
+- Core Domain Module: 34 files, 189 symbols, degree 213.1
 - Auth Auth/Session Boundary: 20 files, 61 symbols, degree 90.5
 - Plan Feature Component: 19 files, 90 symbols, degree 113.55
-- Shared Shared UI Primitive: 18 files, 40 symbols, degree 33.3
+- Shared Shared UI Primitive: 18 files, 41 symbols, degree 34.95
 - People Feature Component: 16 files, 73 symbols, degree 106.35
 - Core Server Action: 15 files, 75 symbols, degree 140.95
-- Home Shared UI Primitive: 14 files, 43 symbols, degree 38.25
+- Home Shared UI Primitive: 14 files, 43 symbols, degree 39.25
 - Care Domain Module: 10 files, 79 symbols, degree 92
 - Home Domain Module: 8 files, 59 symbols, degree 69.45
-- Care Route/Page/Layout: 7 files, 19 symbols, degree 56.1
-- Calendar Feature Component: 7 files, 32 symbols, degree 48.8
+- Care Route/Page/Layout: 7 files, 19 symbols, degree 57.1
+- Calendar Feature Component: 7 files, 32 symbols, degree 49.8
 - Care Server Action: 6 files, 41 symbols, degree 52
 - Groups Feature Component: 6 files, 21 symbols, degree 48.75
 - Shared Shared Plumbing: 6 files, 14 symbols, degree 18.25
 - Core Observability/Security: 5 files, 56 symbols, degree 50
 - Plan Server Action: 4 files, 57 symbols, degree 52
+- Plan Domain Module: 4 files, 36 symbols, degree 45
 - Calendar Route/Page/Layout: 4 files, 15 symbols, degree 36.4
 - Multiply Feature Component: 4 files, 19 symbols, degree 33
 - Core Validation: 4 files, 40 symbols, degree 29.25
 - Core Supabase Read Adapter: 4 files, 18 symbols, degree 28
 - Plan Route/Page/Layout: 4 files, 11 symbols, degree 22.8
-- Groups Domain Module: 4 files, 21 symbols, degree 17

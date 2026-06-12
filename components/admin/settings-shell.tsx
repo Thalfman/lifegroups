@@ -7,7 +7,7 @@ import {
   type SettingsTab,
 } from "@/components/admin/settings-tabs";
 import { PBadge } from "@/components/pastoral/atoms";
-import { SuperAdminOnlyBadge } from "@/components/admin/super-admin-only-badge";
+import { SuperAdminScopeNotice } from "@/components/admin/super-admin-only-badge";
 import { PLinkButton } from "@/components/pastoral/button";
 import {
   buildOverrideRows,
@@ -99,6 +99,91 @@ export type SettingsShellData = {
   };
 };
 
+export type SettingsCareModel = {
+  groupRubricCriteria: RubricCriterion[];
+  leaderRubricCriteria: RubricCriterion[];
+  errors: Pick<SettingsShellData["errors"], "groupRubric" | "leaderRubric">;
+};
+
+export type SettingsGroupsModel = {
+  cells: CellCoverage[];
+  categories: { id: string; label: string }[];
+  categoryIdsWithGroups: ReadonlySet<string>;
+  groups: GroupsRow[];
+  categoriesByAudience: CategoriesByAudience;
+  groupReferencesKnown: boolean;
+  error: string | null;
+};
+
+export type SettingsMultiplyModel = {
+  readiness: SettingsShellData["readiness"];
+  readinessError: string | null;
+  groupCategoriesError: string | null;
+};
+
+export type SettingsThresholdsModel = {
+  defaults: MetricDefaults;
+  groups: GroupsRow[];
+  settingsByGroupId: Map<string, GroupMetricSettingsRow>;
+  overrideRows: OverrideRow[];
+};
+
+export type SettingsWorkspaceModel = {
+  defaultsSource: SettingsShellData["defaultsSource"];
+  care: SettingsCareModel;
+  groups: SettingsGroupsModel;
+  multiply: SettingsMultiplyModel;
+  thresholds: SettingsThresholdsModel;
+  system: { isSuperAdmin: boolean };
+};
+
+export function buildSettingsWorkspace(
+  data: SettingsShellData
+): SettingsWorkspaceModel {
+  const settingsByGroupId = new Map(
+    data.groupMetricSettings.map((s) => [s.group_id, s])
+  );
+  const overrideRows = buildOverrideRows(data.groups, data.groupMetricSettings);
+  const categoryIdsWithGroups = new Set(
+    data.groups
+      .map((g) => g.category_id)
+      .filter((id): id is string => id !== null)
+  );
+
+  return {
+    defaultsSource: data.defaultsSource,
+    care: {
+      groupRubricCriteria: data.groupRubricCriteria,
+      leaderRubricCriteria: data.leaderRubricCriteria,
+      errors: {
+        groupRubric: data.errors.groupRubric,
+        leaderRubric: data.errors.leaderRubric,
+      },
+    },
+    groups: {
+      cells: data.cellCoverage,
+      categories: data.groupCategories,
+      categoryIdsWithGroups,
+      groups: data.groups,
+      categoriesByAudience: data.categoriesByAudience,
+      groupReferencesKnown: data.errors.groups === null,
+      error: data.errors.groupCategories,
+    },
+    multiply: {
+      readiness: data.readiness,
+      readinessError: data.errors.readiness,
+      groupCategoriesError: data.errors.groupCategories,
+    },
+    thresholds: {
+      defaults: data.defaults,
+      groups: data.groups,
+      settingsByGroupId,
+      overrideRows,
+    },
+    system: { isSuperAdmin: data.isSuperAdmin },
+  };
+}
+
 export function SettingsShell({
   data,
   // Optional deep-link target (from `?tab=`). SettingsTabs falls back to the
@@ -108,11 +193,7 @@ export function SettingsShell({
   data: SettingsShellData;
   initialTabId?: string;
 }) {
-  const settingsByGroupId = new Map(
-    data.groupMetricSettings.map((s) => [s.group_id, s])
-  );
-
-  const overrideRows = buildOverrideRows(data.groups, data.groupMetricSettings);
+  const workspace = buildSettingsWorkspace(data);
 
   // Settings is organized around the Care/Plan/Multiply spine (ADR 0016): Care
   // owns the rubrics that grade leaders/groups, Multiply owns the per-type
@@ -123,39 +204,33 @@ export function SettingsShell({
     {
       id: "care",
       label: "Care",
-      panel: <CarePanel data={data} />,
+      panel: <CarePanel model={workspace.care} />,
     },
     {
       id: "groups",
       label: "Groups",
-      panel: <GroupsPanel data={data} />,
+      panel: <GroupsPanel model={workspace.groups} />,
     },
     {
       id: "multiply",
       label: "Multiply",
-      panel: <MultiplyPanel data={data} />,
+      panel: <MultiplyPanel model={workspace.multiply} />,
     },
     {
       id: "thresholds",
       label: "Thresholds",
-      panel: (
-        <ThresholdsPanel
-          data={data}
-          settingsByGroupId={settingsByGroupId}
-          overrideRows={overrideRows}
-        />
-      ),
+      panel: <ThresholdsPanel model={workspace.thresholds} />,
     },
     {
       id: "system",
       label: "System",
-      panel: <SystemPanel isSuperAdmin={data.isSuperAdmin} />,
+      panel: <SystemPanel isSuperAdmin={workspace.system.isSuperAdmin} />,
     },
   ];
 
   return (
     <div className="grid gap-7">
-      {data.defaultsSource === "fallback" ? (
+      {workspace.defaultsSource === "fallback" ? (
         <div className="rounded-sm border border-line bg-bg px-3.5 py-3 font-sans text-xs italic text-ink3">
           Showing built-in defaults — the live <code>metric_defaults</code> row
           either wasn&rsquo;t loaded or hasn&rsquo;t been seeded yet. Saving
@@ -206,7 +281,7 @@ function SettingsSectionHeader({
 // empty seed could overwrite a saved rubric the admin can't see. Each section's
 // instruction copy lives once, inside the editor card — the old outer lede
 // repeated it nearly verbatim (design direction §4).
-function CarePanel({ data }: { data: SettingsShellData }) {
+function CarePanel({ model }: { model: SettingsCareModel }) {
   return (
     <div className="grid gap-9">
       {/* #374 / ADR 0018: the Group Health Rubric — Julian's weighted criteria
@@ -218,11 +293,11 @@ function CarePanel({ data }: { data: SettingsShellData }) {
           eyebrow="Group Health Rubric"
           title="How a group is graded"
         />
-        {data.errors.groupRubric ? (
+        {model.errors.groupRubric ? (
           <CouldNotLoad subject="The Group Health Rubric" />
         ) : (
           <Card>
-            <HealthRubricEditor criteria={data.groupRubricCriteria} />
+            <HealthRubricEditor criteria={model.groupRubricCriteria} />
           </Card>
         )}
       </section>
@@ -238,12 +313,12 @@ function CarePanel({ data }: { data: SettingsShellData }) {
           title="How a leader is graded"
           description="Distinct from a leader's Care Status."
         />
-        {data.errors.leaderRubric ? (
+        {model.errors.leaderRubric ? (
           <CouldNotLoad subject="The Leader Health Rubric" />
         ) : (
           <Card>
             <HealthRubricEditor
-              criteria={data.leaderRubricCriteria}
+              criteria={model.leaderRubricCriteria}
               kind="leader"
               subjectLabel="leader"
             />
@@ -262,36 +337,28 @@ function CarePanel({ data }: { data: SettingsShellData }) {
 // to the Multiply sub-tab (#411); this tab is just the types. Softens to a
 // "couldn't load" notice when its reads fail (#469) — saved group types are
 // intact, they just couldn't be read.
-function GroupsPanel({ data }: { data: SettingsShellData }) {
-  // Categories still carried by at least one group (any audience / lifecycle).
-  // Derived from the already-loaded groups, so the Delete-category cleanup never
-  // offers to archive a category whose label real groups still resolve.
-  const categoryIdsWithGroups = new Set(
-    data.groups
-      .map((g) => g.category_id)
-      .filter((id): id is string => id !== null)
-  );
+function GroupsPanel({ model }: { model: SettingsGroupsModel }) {
   return (
     <div className="grid gap-9">
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Group types"
-          title="The group types you track"
-          description="Each group type pairs an audience with a category. Add one with the + button, set its target group count, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
+          title="Group types (Audience + Category)"
+          description="Each group type pairs an Audience with a Category. Add one with the + button, set its tracking target, then rename or remove it. Expand a type to see its groups (have X of Y counts active and launching) and edit one in place."
         />
-        {data.errors.groupCategories ? (
+        {model.error ? (
           <CouldNotLoad subject="Your group types" />
         ) : (
           <Card>
             <GroupsCatalogEditor
-              cells={data.cellCoverage}
-              categories={data.groupCategories}
-              categoryIdsWithGroups={categoryIdsWithGroups}
-              groups={data.groups}
-              categoriesByAudience={data.categoriesByAudience}
+              cells={model.cells}
+              categories={model.categories}
+              categoryIdsWithGroups={model.categoryIdsWithGroups}
+              groups={model.groups}
+              categoriesByAudience={model.categoriesByAudience}
               // A failed groups read makes the reference set empty for the wrong
               // reason, so the editor must not offer deletion in that case.
-              groupReferencesKnown={data.errors.groups === null}
+              groupReferencesKnown={model.groupReferencesKnown}
             />
           </Card>
         )}
@@ -301,43 +368,44 @@ function GroupsPanel({ data }: { data: SettingsShellData }) {
 }
 
 // Multiply tab (#411 / ADR 0021): the multiplication trigger, configured through ONE
-// tiered control over the three-tier cascade — Global default → per-type (Audience)
-// → per-cell. A grouped dropdown picks which level you're configuring; the four
-// pillars then show, each either carrying its own value or inheriting its parent
-// (labelled by source) behind an Override toggle. Interest is a count at every level
+// tiered control over the three-tier cascade — Global default → per-type
+// (Audience) → per-cell. A grouped radio/search picker chooses which level
+// you're configuring; the four pillars then show, each either carrying its own
+// value or inheriting its parent (labelled by source) behind an Override toggle.
+// Interest is a count at every level
 // (never a letter). Each level saves only itself via its matching audited RPC. The
 // per-cell rows are built from the catalog + target reads, so a failure there
 // (errors.groupCategories) softens this editor too — otherwise it would render with
 // the global rule but its cell rows silently dropped. The Multiply grid
 // (/admin/multiply) reads the resolved rule; here we own the editing.
-function MultiplyPanel({ data }: { data: SettingsShellData }) {
+function MultiplyPanel({ model }: { model: SettingsMultiplyModel }) {
   return (
     <div className="grid gap-9">
       <section className="grid gap-4">
         <SettingsSectionHeader
-          eyebrow="Multiplication trigger"
-          title="When a group type is ready to multiply"
-          description="Configure the trigger across the cascade — the ministry-wide default, a whole type, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is a count of people; capacity is a derived per-group-type issue; Group and Leader Health are A–F letters."
+          eyebrow="Readiness rule"
+          title="Ready in Multiply"
+          description="Configure the readiness rule across the cascade: the ministry-wide default, an Audience rule, or a single group type. Each pillar inherits the level above unless you override it; set only what differs. Interest is the Interest Funnel people count; Watch thresholds stay in Thresholds; Capacity is a derived per-group-type issue; Group and Leader Health are A-F letters."
         />
         {/* #469: each failing read names itself — a failed trigger read and a
             failed group-types read (which feeds the per-cell rows) soften this
             editor with distinct copy, so this tab never blames the wrong read.
             Only a genuinely absent readiness shape (a build that hasn't wired
             these reads) is "not set up yet". */}
-        {data.errors.readiness ? (
+        {model.readinessError ? (
           <CouldNotLoad subject="The multiplication trigger" />
-        ) : data.errors.groupCategories ? (
+        ) : model.groupCategoriesError ? (
           <CouldNotLoad subject="The group types this trigger depends on" />
-        ) : !data.readiness ? (
+        ) : !model.readiness ? (
           <NotConfigured subject="The multiplication trigger" />
         ) : (
           <Card>
             <MultiplyTriggerEditor
-              ministryYear={data.readiness.ministryYear}
-              globalRule={data.readiness.rule}
-              storedRuleFellBack={data.readiness.ruleFellBack}
-              perType={data.readiness.perType}
-              cells={data.readiness.cells}
+              ministryYear={model.readiness.ministryYear}
+              globalRule={model.readiness.rule}
+              storedRuleFellBack={model.readiness.ruleFellBack}
+              perType={model.readiness.perType}
+              cells={model.readiness.cells}
             />
           </Card>
         )}
@@ -354,25 +422,17 @@ function MultiplyPanel({ data }: { data: SettingsShellData }) {
 // (live-driving fields always visible; the hidden-surface-only set behind the
 // "Drives hidden surfaces" disclosure). The rarely-used per-group overrides
 // stay demoted into their own collapsed disclosure below.
-function ThresholdsPanel({
-  data,
-  settingsByGroupId,
-  overrideRows,
-}: {
-  data: SettingsShellData;
-  settingsByGroupId: Map<string, GroupMetricSettingsRow>;
-  overrideRows: OverrideRow[];
-}) {
+function ThresholdsPanel({ model }: { model: SettingsThresholdsModel }) {
   return (
     <div className="grid gap-9">
       <section className="grid gap-4">
         <SettingsSectionHeader
           eyebrow="Global metric defaults"
           title="The thresholds that flag warnings"
-          description="Ministry-wide defaults, grouped by what each one drives — the Care cadence and group-health thresholds drive Care and Home today; the capacity set only drives hidden surfaces."
+          description="Ministry-wide defaults, grouped by what each one drives. The Care cadence and Watch threshold drive Care and Home today; the capacity set only drives hidden surfaces."
         />
         <Card>
-          <MetricDefaultsForm defaults={data.defaults} />
+          <MetricDefaultsForm defaults={model.defaults} />
           <div className="mt-4 flex flex-wrap items-start justify-between gap-4 border-t border-line pt-3.5">
             <div className="m-0 max-w-[380px] font-sans text-sm text-ink2">
               <strong className="font-semibold text-ink">
@@ -394,9 +454,9 @@ function ThresholdsPanel({
         <summary className="flex cursor-pointer flex-wrap items-baseline gap-2.5 font-display text-lg font-medium text-ink">
           Per-group overrides
           <span className="font-sans text-xs font-normal text-ink3">
-            {overrideRows.length === 0
+            {model.overrideRows.length === 0
               ? "none active"
-              : `${overrideRows.length} active`}
+              : `${model.overrideRows.length} active`}
           </span>
         </summary>
 
@@ -409,8 +469,8 @@ function ThresholdsPanel({
             />
             <Card>
               <GroupMetricOverridesForm
-                groups={data.groups}
-                settingsByGroupId={settingsByGroupId}
+                groups={model.groups}
+                settingsByGroupId={model.settingsByGroupId}
               />
             </Card>
           </section>
@@ -421,14 +481,14 @@ function ThresholdsPanel({
               title="Groups with active overrides"
               description="Clear an override to fall back to the global defaults."
             />
-            {overrideRows.length === 0 ? (
+            {model.overrideRows.length === 0 ? (
               <Empty
                 title="No active overrides"
                 description="Every group is following the global defaults above."
               />
             ) : (
               <ul className="m-0 grid list-none gap-3 p-0">
-                {overrideRows.map(({ group, settings }) => (
+                {model.overrideRows.map(({ group, settings }) => (
                   <li key={settings.group_id}>
                     <OverrideSummaryRow group={group} settings={settings} />
                   </li>
@@ -456,7 +516,11 @@ function SystemPanel({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         title="Bulk people import"
         description="Tools for loading people in bulk."
       />
-      {isSuperAdmin ? <SuperAdminOnlyBadge /> : null}
+      {isSuperAdmin ? (
+        <SuperAdminScopeNotice>
+          Super Admin controls in this section are hidden from every other role.
+        </SuperAdminScopeNotice>
+      ) : null}
       <Card>
         <p className="m-0 mb-3.5 font-sans text-sm text-ink2">
           Bulk import stays in the Super Admin Console.{" "}

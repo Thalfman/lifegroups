@@ -35,15 +35,17 @@ import {
   pillarInheritedText,
   resolveParent,
   seedFieldsForLevel,
+  sourceLabel,
   type ParentRule,
   type PillarFields,
   type PillarToggles,
   type TriggerLevel,
 } from "@/lib/admin/multiply-trigger";
 
-// Settings › Multiply tiered trigger editor (#411 / ADR 0021). ONE grouped dropdown
-// picks WHICH level of the three-tier cascade you're configuring — the Global
-// default, a per-type (Audience) rule, or one active cell's overrides. The four
+// Settings › Multiply tiered trigger editor (#411 / ADR 0021). ONE searchable
+// grouped radio picker chooses WHICH level of the three-tier cascade you're
+// configuring — the Global default, a per-type (Audience) rule, or one active
+// cell's overrides. The four
 // pillars (Interest, Capacity, Group Health, Leader Health) then show, each either
 // carrying its OWN value or INHERITING its parent (labelled by source) behind an
 // Override toggle — you set only what differs; the rest flows down. Each level's
@@ -68,6 +70,17 @@ export type ReadinessCellSeed = {
   categoryId: string;
   label: string;
   override: CellReadinessOverride;
+};
+
+type ReadinessLevelGroup = "global" | "audience" | "cell";
+
+type ReadinessLevelOption = {
+  value: string;
+  group: ReadinessLevelGroup;
+  title: string;
+  subtitle: string;
+  searchText: string;
+  overrideSummary: string;
 };
 
 export function MultiplyTriggerEditor({
@@ -186,40 +199,11 @@ export function MultiplyTriggerEditor({
           built-in default is shown. Saving will overwrite what&rsquo;s stored.
         </p>
       ) : null}
-      <div className="grid max-w-[420px] gap-1.5">
-        <label htmlFor="multiply-trigger-level" className={fieldLabelClassName}>
-          Configure trigger for
-        </label>
-        <select
-          id="multiply-trigger-level"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className={fieldSelectClassName}
-        >
-          <option value="global">Global default</option>
-          {/* #478: the per-type tier is named by the CONTEXT.md term for it —
-              Audience — not the internal "by type" phrasing. */}
-          <optgroup label="Audience">
-            {AUDIENCE_CATEGORIES.map((a) => (
-              <option key={a} value={`type:${a}`}>
-                {TRIGGER_TYPE_LABEL[a]} (all categories)
-              </option>
-            ))}
-          </optgroup>
-          {cells.length > 0 ? (
-            <optgroup label="By group type">
-              {cells.map((c) => (
-                <option
-                  key={`${c.audienceCategory}:${c.categoryId}`}
-                  value={`cell:${c.audienceCategory}:${c.categoryId}`}
-                >
-                  {TRIGGER_TYPE_LABEL[c.audienceCategory]} · {c.label}
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-        </select>
-      </div>
+      <TriggerLevelPicker
+        options={buildReadinessLevelOptions(perType, cells)}
+        value={encodeLevel(level)}
+        onChange={setSelected}
+      />
 
       <LevelForm
         key={formKey}
@@ -235,6 +219,175 @@ export function MultiplyTriggerEditor({
       />
     </div>
   );
+}
+
+function buildReadinessLevelOptions(
+  perType: Partial<Record<GroupAudienceCategory, PerTypeReadinessRule>>,
+  cells: ReadinessCellSeed[]
+): ReadinessLevelOption[] {
+  return [
+    {
+      value: "global",
+      group: "global",
+      title: "Global default",
+      subtitle: "Ministry-wide readiness rule for every group type.",
+      searchText: "global default ministry-wide readiness rule",
+      overrideSummary: "Global default",
+    },
+    ...AUDIENCE_CATEGORIES.map((audience): ReadinessLevelOption => {
+      const audienceLabel = TRIGGER_TYPE_LABEL[audience];
+      const summary = hasRuleOverrides(perType[audience])
+        ? "Overrides here"
+        : "Inherits from Global";
+      return {
+        value: `type:${audience}`,
+        group: "audience",
+        title: `${audienceLabel} audience rule`,
+        subtitle: "Applies to every group type under this Audience.",
+        searchText: `${audienceLabel} audience rule type readiness ${summary}`,
+        overrideSummary: summary,
+      };
+    }),
+    ...cells.map((cell): ReadinessLevelOption => {
+      const audienceLabel = TRIGGER_TYPE_LABEL[cell.audienceCategory];
+      const summary = hasRuleOverrides(cell.override)
+        ? "Overrides here"
+        : hasRuleOverrides(perType[cell.audienceCategory])
+          ? `Inherits from ${audienceLabel}`
+          : "Inherits from Global";
+      return {
+        value: `cell:${cell.audienceCategory}:${cell.categoryId}`,
+        group: "cell",
+        title: `${audienceLabel} ${cell.label}`,
+        subtitle: "One group type: Audience + Category.",
+        searchText: `${audienceLabel} ${cell.label} group type cell category readiness ${summary}`,
+        overrideSummary: summary,
+      };
+    }),
+  ];
+}
+
+function hasRuleOverrides(
+  rule: PerTypeReadinessRule | CellReadinessOverride | undefined
+): boolean {
+  return Boolean(
+    rule?.interest ?? rule?.capacity ?? rule?.groupHealth ?? rule?.leaderHealth
+  );
+}
+
+function TriggerLevelPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: ReadinessLevelOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const visible = normalized
+    ? options.filter((option) =>
+        option.searchText.toLowerCase().includes(normalized)
+      )
+    : options;
+
+  return (
+    <div className="grid gap-2.5">
+      <div className="grid max-w-[520px] gap-1.5">
+        <label
+          id="multiply-trigger-level-label"
+          className={fieldLabelClassName}
+        >
+          Readiness rule scope
+        </label>
+        <p className="m-0 font-sans text-sm text-ink2">
+          Choose where to configure Ready in Multiply: the global default, an
+          Audience rule, or one group type (Audience + Category).
+        </p>
+        <label
+          htmlFor="multiply-trigger-search"
+          className={cn(fieldLabelClassName, "mt-2")}
+        >
+          Search scopes
+        </label>
+        <input
+          id="multiply-trigger-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by Audience or group type"
+          className={fieldInputClassName}
+        />
+      </div>
+
+      <div
+        id="multiply-trigger-level"
+        role="radiogroup"
+        aria-labelledby="multiply-trigger-level-label"
+        className="grid gap-3"
+      >
+        {(["global", "audience", "cell"] as const).map((group) => {
+          const groupOptions = visible.filter(
+            (option) => option.group === group
+          );
+          if (groupOptions.length === 0) return null;
+          return (
+            <div key={group} className="grid gap-2">
+              <div className="font-sans text-xs font-semibold uppercase tracking-wide text-ink3">
+                {levelGroupLabel(group)}
+              </div>
+              <div className="grid gap-2">
+                {groupOptions.map((option) => {
+                  const checked = option.value === value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={cn(
+                        "grid cursor-pointer grid-cols-[auto_1fr_auto] items-start gap-3 rounded-sm border px-3.5 py-3 transition-colors duration-150",
+                        checked
+                          ? "border-terra bg-terraSoft/35"
+                          : "border-line bg-surface hover:bg-surfaceAlt"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="multiply-trigger-level-option"
+                        value={option.value}
+                        checked={checked}
+                        onChange={() => onChange(option.value)}
+                        className="mt-1"
+                      />
+                      <span className="grid min-w-0 gap-0.5">
+                        <span className="font-sans text-base font-semibold text-ink">
+                          {option.title}
+                        </span>
+                        <span className="font-sans text-sm text-ink2">
+                          {option.subtitle}
+                        </span>
+                      </span>
+                      <StatusChip label={option.overrideSummary} />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {visible.length === 0 ? (
+          <p className="m-0 rounded-sm border border-dashed border-line bg-surface px-3.5 py-3 font-sans text-sm text-ink2">
+            No matching readiness scopes.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function levelGroupLabel(group: ReadinessLevelGroup): string {
+  if (group === "global") return "Global default";
+  if (group === "audience") return "Audience rules";
+  return "Group type overrides";
 }
 
 // One level's editing form. Holds the four pillars' fields + override toggles, posts
@@ -309,7 +462,7 @@ function LevelForm({
 // #478: Interest is labelled as a people-count right on the pillar — it is a
 // count (≥ N people) at every level, never a letter (CONTEXT.md, ADR 0021).
 const PILLAR_META: { key: ReadinessPillarKey; label: string }[] = [
-  { key: "interest", label: "Interest (people count)" },
+  { key: "interest", label: "Interest Funnel people count" },
   { key: "capacity", label: "Capacity" },
   { key: "groupHealth", label: "Group Health" },
   { key: "leaderHealth", label: "Leader Health" },
@@ -335,12 +488,18 @@ function PillarControls({
     <div className="grid gap-3">
       {PILLAR_META.map(({ key, label }) => {
         const overridden = setToggle ? toggles[key] : true;
+        const status = pillarStatusLabel(
+          key,
+          parent,
+          overridden,
+          Boolean(setToggle)
+        );
         return (
           <div
             key={key}
             className="flex flex-wrap items-center justify-between gap-2"
           >
-            <div className="flex min-w-[150px] items-center gap-2">
+            <div className="flex min-w-[150px] flex-wrap items-center gap-2">
               {setToggle ? (
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
@@ -356,6 +515,7 @@ function PillarControls({
               ) : (
                 <span className={cn(fieldLabelClassName, "mb-0")}>{label}</span>
               )}
+              <StatusChip label={status} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {overridden ? (
@@ -370,6 +530,39 @@ function PillarControls({
         );
       })}
     </div>
+  );
+}
+
+function pillarStatusLabel(
+  pillar: ReadinessPillarKey,
+  parent: ParentRule | null,
+  overridden: boolean,
+  canInherit: boolean
+): string {
+  if (!canInherit) return "Global default";
+  if (overridden) return "Overrides here";
+  if (!parent) return "Inherits from Global";
+  return `Inherits from ${sourceLabel(parentSourceForPillar(pillar, parent))}`;
+}
+
+function parentSourceForPillar(pillar: ReadinessPillarKey, parent: ParentRule) {
+  switch (pillar) {
+    case "interest":
+      return parent.interest.source;
+    case "capacity":
+      return parent.capacity.source;
+    case "groupHealth":
+      return parent.groupHealth.source;
+    case "leaderHealth":
+      return parent.leaderHealth.source;
+  }
+}
+
+function StatusChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-pill border border-line bg-bg px-2 py-0.5 font-sans text-xs font-medium text-ink3">
+      {label}
+    </span>
   );
 }
 

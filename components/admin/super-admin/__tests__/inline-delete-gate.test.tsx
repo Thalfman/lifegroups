@@ -80,6 +80,8 @@ describe("SuperAdminOnlyMark on the inline delete", () => {
       <CareItemList items={[careItem()]} {...LIST_PROPS} isSuperAdmin />
     );
     expect(html).toContain('data-testid="super-admin-only-mark"');
+    expect(html).toContain("Super Admin only");
+    expect(html).not.toContain("hidden from other roles");
   });
 
   it("shows no mark for a non-super-admin", () => {

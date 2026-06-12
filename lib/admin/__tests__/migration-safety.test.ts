@@ -11,6 +11,7 @@ import {
   functionBody,
   loadMigration,
   migrationFromSql,
+  normalizeTextFixture,
 } from "./migration-safety";
 
 // Direct coverage for the migration-safety assertion vocabulary itself: each
@@ -55,6 +56,15 @@ describe("migration-safety — loaders", () => {
     expect(sql.raw).toBe("SELECT 1;");
     expect(sql.lower).toBe("select 1;");
     expect(sql.fileName).toBe("Mixed.sql");
+  });
+
+  it("normalizes fixture line endings before static assertions", () => {
+    expect(normalizeTextFixture("SELECT\r\n 1;\rSELECT 2;")).toBe(
+      "SELECT\n 1;\nSELECT 2;"
+    );
+    const sql = migrationFromSql("SELECT\r\n 1;", "crlf.sql");
+    expect(sql.raw).toBe("SELECT\n 1;");
+    expect(sql.lower).toBe("select\n 1;");
   });
 
   it("loadMigration reads a real migration off disk", () => {

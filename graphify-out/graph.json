@@ -4,16 +4,16 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3380,
-    "raw_edge_count": 7740,
-    "raw_source_file_count": 485,
-    "selected_file_count": 488,
+    "raw_node_count": 3400,
+    "raw_edge_count": 7775,
+    "raw_source_file_count": 486,
+    "selected_file_count": 489,
     "preserved_file_node_count": 122,
     "grouped_bucket_count": 59,
-    "grouped_file_count": 363,
+    "grouped_file_count": 364,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-12T01:28:38.472Z"
+    "generated_at": "2026-06-12T19:28:58.613Z"
   },
   "nodes": [
     {
@@ -140,21 +140,21 @@
       "feature_label": "Care",
       "color": "#4E79A7",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 2,
+      "raw_inbound_weight": 3,
       "raw_outbound_weight": 60,
-      "degree": 56.1,
-      "size": 26.61
+      "degree": 57.1,
+      "size": 26.71
     },
     {
       "id": "file_file_app_protected_admin_care_page_tsx_y68t3f",
       "label": "Admin Care Page",
-      "title": "app/(protected)/admin/care/page.tsx\nRoute/Page/Layout / Care\n1 file, 8 symbols",
+      "title": "app/(protected)/admin/care/page.tsx\nRoute/Page/Layout / Care\n1 file, 7 symbols",
       "source_file": "app/(protected)/admin/care/page.tsx",
       "source_files": [
         "app/(protected)/admin/care/page.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 8,
+      "symbol_count": 7,
       "grouped": false,
       "category": "route_page_layout",
       "category_label": "Route/Page/Layout",
@@ -165,9 +165,9 @@
       "color": "#4E79A7",
       "file_type": "code",
       "raw_inbound_weight": 3,
-      "raw_outbound_weight": 53,
-      "degree": 55,
-      "size": 24.5
+      "raw_outbound_weight": 37,
+      "degree": 39,
+      "size": 22.68
     },
     {
       "id": "file_file_app_protected_admin_shepherd_care_profileid_page_tsx_48u62k",
@@ -880,9 +880,9 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 13,
-      "raw_outbound_weight": 50,
-      "degree": 48.8,
-      "size": 25.83
+      "raw_outbound_weight": 51,
+      "degree": 49.8,
+      "size": 25.94
     },
     {
       "id": "file_file_components_admin_admin_master_calendar_shell_tsx_7zkjm1",
@@ -1017,6 +1017,30 @@
       "size": 21.91
     },
     {
+      "id": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "label": "Admin Care Care Workspace",
+      "title": "components/admin/care/care-workspace.tsx\nFeature Component / Care\n1 file, 4 symbols",
+      "source_file": "components/admin/care/care-workspace.tsx",
+      "source_files": [
+        "components/admin/care/care-workspace.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 4,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "care",
+      "feature_label": "Care",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 3,
+      "raw_outbound_weight": 24,
+      "degree": 27,
+      "size": 21.05
+    },
+    {
       "id": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
       "label": "Admin Follow Ups Follow Ups Shell",
       "title": "components/admin/follow-ups/follow-ups-shell.tsx\nFeature Component / Care\n1 file, 5 symbols",
@@ -1059,10 +1083,10 @@
       "feature_label": "Care",
       "color": "#59A14F",
       "file_type": "code",
-      "raw_inbound_weight": 2,
+      "raw_inbound_weight": 3,
       "raw_outbound_weight": 19,
-      "degree": 21,
-      "size": 20.1
+      "degree": 22,
+      "size": 20.27
     },
     {
       "id": "file_file_components_admin_care_notes_feed_data_ts_masx3c",
@@ -1083,15 +1107,15 @@
       "feature_label": "Care",
       "color": "#59A14F",
       "file_type": "code",
-      "raw_inbound_weight": 7,
+      "raw_inbound_weight": 8,
       "raw_outbound_weight": 14,
-      "degree": 21,
-      "size": 20.1
+      "degree": 22,
+      "size": 20.27
     },
     {
       "id": "bucket_bucket_core_feature_component_lncng4",
       "label": "Core Feature Component",
-      "title": "Core Feature Component bucket\nFeature Component / Core\n44 files, 123 symbols\ncomponents/admin/danger-zone-card-shell.tsx\ncomponents/admin/forms/group-edit-form.tsx\ncomponents/admin/forms/group-category-options.ts\ncomponents/admin/forms/group-create-form.tsx\ncomponents/admin/super-admin/inline-delete.tsx\ncomponents/admin/permanent-delete-card.tsx\ncomponents/admin/attention-reset-card.tsx\ncomponents/admin/clean-slate-card.tsx\ncomponents/admin/history-reset-card.tsx\ncomponents/admin/people-management-shell.tsx\ncomponents/admin/reset-all-card.tsx\ncomponents/admin/launch-prep-card.tsx\n...32 more",
+      "title": "Core Feature Component bucket\nFeature Component / Core\n44 files, 124 symbols\ncomponents/admin/danger-zone-card-shell.tsx\ncomponents/admin/forms/group-edit-form.tsx\ncomponents/admin/forms/group-category-options.ts\ncomponents/admin/forms/group-create-form.tsx\ncomponents/admin/super-admin/inline-delete.tsx\ncomponents/admin/permanent-delete-card.tsx\ncomponents/admin/attention-reset-card.tsx\ncomponents/admin/clean-slate-card.tsx\ncomponents/admin/history-reset-card.tsx\ncomponents/admin/people-management-shell.tsx\ncomponents/admin/reset-all-card.tsx\ncomponents/admin/launch-prep-card.tsx\n...32 more",
       "source_file": "module/core/feature_component",
       "source_files": [
         "components/admin/area-placeholder.tsx",
@@ -1140,7 +1164,7 @@
         "components/admin/week-selector.tsx"
       ],
       "file_count": 44,
-      "symbol_count": 123,
+      "symbol_count": 124,
       "grouped": true,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1151,8 +1175,8 @@
       "color": "#59A14F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 103,
-      "raw_outbound_weight": 271,
-      "degree": 262.85,
+      "raw_outbound_weight": 270,
+      "degree": 262.5,
       "size": 38
     },
     {
@@ -1473,6 +1497,30 @@
       "size": 22.04
     },
     {
+      "id": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
+      "label": "Admin Settings Multiply Trigger Editor",
+      "title": "components/admin/settings/multiply-trigger-editor.tsx\nFeature Component / Multiply\n1 file, 19 symbols",
+      "source_file": "components/admin/settings/multiply-trigger-editor.tsx",
+      "source_files": [
+        "components/admin/settings/multiply-trigger-editor.tsx"
+      ],
+      "file_count": 1,
+      "symbol_count": 19,
+      "grouped": false,
+      "category": "feature_component",
+      "category_label": "Feature Component",
+      "community": 2,
+      "community_name": "Feature Component",
+      "feature": "multiply",
+      "feature_label": "Multiply",
+      "color": "#59A14F",
+      "file_type": "code",
+      "raw_inbound_weight": 3,
+      "raw_outbound_weight": 33,
+      "degree": 33.4,
+      "size": 21.96
+    },
+    {
       "id": "bucket_bucket_multiply_feature_component_z3slmr",
       "label": "Multiply Feature Component",
       "title": "Multiply Feature Component bucket\nFeature Component / Multiply\n4 files, 19 symbols\ncomponents/admin/multiply/multiply-plan-data.ts\ncomponents/admin/multiply/multiply-grid.tsx\ncomponents/admin/multiply/multiply-data.ts\ncomponents/admin/multiply/multiply-shell.tsx",
@@ -1498,30 +1546,6 @@
       "raw_outbound_weight": 23,
       "degree": 33,
       "size": 23.23
-    },
-    {
-      "id": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
-      "label": "Admin Settings Multiply Trigger Editor",
-      "title": "components/admin/settings/multiply-trigger-editor.tsx\nFeature Component / Multiply\n1 file, 10 symbols",
-      "source_file": "components/admin/settings/multiply-trigger-editor.tsx",
-      "source_files": [
-        "components/admin/settings/multiply-trigger-editor.tsx"
-      ],
-      "file_count": 1,
-      "symbol_count": 10,
-      "grouped": false,
-      "category": "feature_component",
-      "category_label": "Feature Component",
-      "community": 2,
-      "community_name": "Feature Component",
-      "feature": "multiply",
-      "feature_label": "Multiply",
-      "color": "#59A14F",
-      "file_type": "code",
-      "raw_inbound_weight": 3,
-      "raw_outbound_weight": 30,
-      "degree": 31.05,
-      "size": 21.64
     },
     {
       "id": "bucket_bucket_people_feature_component_1c53f7",
@@ -1775,13 +1799,13 @@
     {
       "id": "file_file_components_admin_settings_shell_tsx_zphrh",
       "label": "Admin Settings Shell",
-      "title": "components/admin/settings-shell.tsx\nFeature Component / Settings\n1 file, 13 symbols",
+      "title": "components/admin/settings-shell.tsx\nFeature Component / Settings\n1 file, 19 symbols",
       "source_file": "components/admin/settings-shell.tsx",
       "source_files": [
         "components/admin/settings-shell.tsx"
       ],
       "file_count": 1,
-      "symbol_count": 13,
+      "symbol_count": 19,
       "grouped": false,
       "category": "feature_component",
       "category_label": "Feature Component",
@@ -1792,9 +1816,9 @@
       "color": "#59A14F",
       "file_type": "code",
       "raw_inbound_weight": 2,
-      "raw_outbound_weight": 24,
-      "degree": 26,
-      "size": 20.9
+      "raw_outbound_weight": 25,
+      "degree": 27,
+      "size": 21.05
     },
     {
       "id": "bucket_bucket_settings_feature_component_dodmi2",
@@ -2113,10 +2137,10 @@
       "feature_label": "Care",
       "color": "#B07AA1",
       "file_type": "code",
-      "raw_inbound_weight": 20,
+      "raw_inbound_weight": 21,
       "raw_outbound_weight": 1,
-      "degree": 21,
-      "size": 20.1
+      "degree": 22,
+      "size": 20.27
     },
     {
       "id": "bucket_bucket_core_domain_module_1kz81h",
@@ -2170,9 +2194,9 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 182,
+      "raw_inbound_weight": 183,
       "raw_outbound_weight": 87,
-      "degree": 212.1,
+      "degree": 213.1,
       "size": 38
     },
     {
@@ -2762,6 +2786,30 @@
       "size": 21.4
     },
     {
+      "id": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
+      "label": "Admin Multiply Trigger",
+      "title": "lib/admin/multiply-trigger.ts\nDomain Module / Multiply\n1 file, 25 symbols",
+      "source_file": "lib/admin/multiply-trigger.ts",
+      "source_files": [
+        "lib/admin/multiply-trigger.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 25,
+      "grouped": false,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "multiply",
+      "feature_label": "Multiply",
+      "color": "#B07AA1",
+      "file_type": "code",
+      "raw_inbound_weight": 14,
+      "raw_outbound_weight": 13,
+      "degree": 27,
+      "size": 21.05
+    },
+    {
       "id": "file_file_lib_admin_multiply_grid_ts_13g4b6",
       "label": "Admin Multiply Grid",
       "title": "lib/admin/multiply-grid.ts\nDomain Module / Multiply\n1 file, 12 symbols",
@@ -2782,30 +2830,6 @@
       "file_type": "code",
       "raw_inbound_weight": 6,
       "raw_outbound_weight": 19,
-      "degree": 25,
-      "size": 20.75
-    },
-    {
-      "id": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
-      "label": "Admin Multiply Trigger",
-      "title": "lib/admin/multiply-trigger.ts\nDomain Module / Multiply\n1 file, 25 symbols",
-      "source_file": "lib/admin/multiply-trigger.ts",
-      "source_files": [
-        "lib/admin/multiply-trigger.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 25,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "multiply",
-      "feature_label": "Multiply",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 12,
-      "raw_outbound_weight": 13,
       "degree": 25,
       "size": 20.75
     },
@@ -2859,6 +2883,33 @@
       "size": 26.69
     },
     {
+      "id": "bucket_bucket_plan_domain_module_1mbebr",
+      "label": "Plan Domain Module",
+      "title": "Plan Domain Module bucket\nDomain Module / Plan\n4 files, 36 symbols\nlib/dashboard/launch-planning-snapshot.ts\nlib/admin/prospect-next-step.ts\nlib/admin/prospect-funnel.ts\nlib/admin/prospect-interest.ts",
+      "source_file": "module/plan/domain_module",
+      "source_files": [
+        "lib/admin/prospect-funnel.ts",
+        "lib/admin/prospect-interest.ts",
+        "lib/admin/prospect-next-step.ts",
+        "lib/dashboard/launch-planning-snapshot.ts"
+      ],
+      "file_count": 4,
+      "symbol_count": 36,
+      "grouped": true,
+      "category": "domain_module",
+      "category_label": "Domain Module",
+      "community": 3,
+      "community_name": "Domain Module",
+      "feature": "plan",
+      "feature_label": "Plan",
+      "color": "#B07AA1",
+      "file_type": "module-bucket",
+      "raw_inbound_weight": 27,
+      "raw_outbound_weight": 19,
+      "degree": 45,
+      "size": 24.72
+    },
+    {
       "id": "file_file_lib_admin_leader_pipeline_ts_1xv79f",
       "label": "Admin Leader Pipeline",
       "title": "lib/admin/leader-pipeline.ts\nDomain Module / Plan\n1 file, 12 symbols",
@@ -2881,56 +2932,6 @@
       "raw_outbound_weight": 18,
       "degree": 34,
       "size": 22.04
-    },
-    {
-      "id": "bucket_bucket_plan_domain_module_1mbebr",
-      "label": "Plan Domain Module",
-      "title": "Plan Domain Module bucket\nDomain Module / Plan\n3 files, 33 symbols\nlib/admin/prospect-next-step.ts\nlib/admin/prospect-funnel.ts\nlib/admin/prospect-interest.ts",
-      "source_file": "module/plan/domain_module",
-      "source_files": [
-        "lib/admin/prospect-funnel.ts",
-        "lib/admin/prospect-interest.ts",
-        "lib/admin/prospect-next-step.ts"
-      ],
-      "file_count": 3,
-      "symbol_count": 33,
-      "grouped": true,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "plan",
-      "feature_label": "Plan",
-      "color": "#B07AA1",
-      "file_type": "module-bucket",
-      "raw_inbound_weight": 22,
-      "raw_outbound_weight": 4,
-      "degree": 25,
-      "size": 21.75
-    },
-    {
-      "id": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "label": "Dashboard Launch Planning Snapshot",
-      "title": "lib/dashboard/launch-planning-snapshot.ts\nDomain Module / Plan\n1 file, 3 symbols",
-      "source_file": "lib/dashboard/launch-planning-snapshot.ts",
-      "source_files": [
-        "lib/dashboard/launch-planning-snapshot.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 3,
-      "grouped": false,
-      "category": "domain_module",
-      "category_label": "Domain Module",
-      "community": 3,
-      "community_name": "Domain Module",
-      "feature": "plan",
-      "feature_label": "Plan",
-      "color": "#B07AA1",
-      "file_type": "code",
-      "raw_inbound_weight": 5,
-      "raw_outbound_weight": 15,
-      "degree": 20,
-      "size": 19.93
     },
     {
       "id": "file_file_lib_admin_feature_flags_ts_1ph5it",
@@ -3180,6 +3181,30 @@
       "size": 22.52
     },
     {
+      "id": "file_file_lib_supabase_care_accordion_reads_ts_wl89u9",
+      "label": "Supabase Care Accordion Reads",
+      "title": "lib/supabase/care-accordion-reads.ts\nSupabase Read Adapter / Core\n1 file, 13 symbols",
+      "source_file": "lib/supabase/care-accordion-reads.ts",
+      "source_files": [
+        "lib/supabase/care-accordion-reads.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 13,
+      "grouped": false,
+      "category": "supabase_read_adapter",
+      "category_label": "Supabase Read Adapter",
+      "community": 4,
+      "community_name": "Supabase Read Adapter",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#76B7B2",
+      "file_type": "code",
+      "raw_inbound_weight": 5,
+      "raw_outbound_weight": 22,
+      "degree": 26,
+      "size": 20.9
+    },
+    {
       "id": "file_file_lib_supabase_cached_config_ts_1exo3y",
       "label": "Supabase Cached Config",
       "title": "lib/supabase/cached-config.ts\nSupabase Read Adapter / Core\n1 file, 2 symbols",
@@ -3200,30 +3225,6 @@
       "file_type": "code",
       "raw_inbound_weight": 19,
       "raw_outbound_weight": 6,
-      "degree": 25,
-      "size": 20.75
-    },
-    {
-      "id": "file_file_lib_supabase_care_accordion_reads_ts_wl89u9",
-      "label": "Supabase Care Accordion Reads",
-      "title": "lib/supabase/care-accordion-reads.ts\nSupabase Read Adapter / Core\n1 file, 13 symbols",
-      "source_file": "lib/supabase/care-accordion-reads.ts",
-      "source_files": [
-        "lib/supabase/care-accordion-reads.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 13,
-      "grouped": false,
-      "category": "supabase_read_adapter",
-      "category_label": "Supabase Read Adapter",
-      "community": 4,
-      "community_name": "Supabase Read Adapter",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#76B7B2",
-      "file_type": "code",
-      "raw_inbound_weight": 4,
-      "raw_outbound_weight": 22,
       "degree": 25,
       "size": 20.75
     },
@@ -3725,10 +3726,10 @@
       "feature_label": "Shared",
       "color": "#BAB0AC",
       "file_type": "code",
-      "raw_inbound_weight": 109,
+      "raw_inbound_weight": 110,
       "raw_outbound_weight": 0,
-      "degree": 44.7,
-      "size": 23.36
+      "degree": 45.05,
+      "size": 23.4
     },
     {
       "id": "file_file_lib_shared_uuid_ts_da5eyb",
@@ -3883,7 +3884,7 @@
     {
       "id": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "label": "Home Shared UI Primitive",
-      "title": "Home Shared UI Primitive bucket\nShared UI Primitive / Home\n14 files, 43 symbols\ncomponents/lg/admin/dashboard/LaunchPlanningOverviewCard.tsx\ncomponents/lg/admin/dashboard/NeedsAttentionArea.tsx\ncomponents/lg/admin/dashboard/ActivityResetControl.tsx\ncomponents/lg/admin/dashboard/InterestFunnelOverviewCard.tsx\ncomponents/lg/admin/dashboard/VitalSignsBand.tsx\ncomponents/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx\ncomponents/lg/admin/dashboard/LeaderCareOverviewCard.tsx\ncomponents/lg/admin/dashboard/HealthDistributionCard.tsx\ncomponents/lg/admin/dashboard/PeriodSlicer.tsx\ncomponents/lg/admin/dashboard/ThisWeekCard.tsx\ncomponents/lg/admin/dashboard/CollapsibleOverview.tsx\ncomponents/lg/admin/dashboard/ActivityBand.tsx\n...2 more",
+      "title": "Home Shared UI Primitive bucket\nShared UI Primitive / Home\n14 files, 43 symbols\ncomponents/lg/admin/dashboard/LaunchPlanningOverviewCard.tsx\ncomponents/lg/admin/dashboard/NeedsAttentionArea.tsx\ncomponents/lg/admin/dashboard/ActivityResetControl.tsx\ncomponents/lg/admin/dashboard/InterestFunnelOverviewCard.tsx\ncomponents/lg/admin/dashboard/VitalSignsBand.tsx\ncomponents/lg/admin/dashboard/LeaderPipelineOverviewCard.tsx\ncomponents/lg/admin/dashboard/LeaderCareOverviewCard.tsx\ncomponents/lg/admin/dashboard/HealthDistributionCard.tsx\ncomponents/lg/admin/dashboard/PeriodSlicer.tsx\ncomponents/lg/admin/dashboard/ThisWeekCard.tsx\ncomponents/lg/admin/dashboard/CollapsibleOverview.tsx\ncomponents/pastoral/shell-nav.tsx\n...2 more",
       "source_file": "module/home/shared_ui_primitive",
       "source_files": [
         "components/lg/admin/dashboard/ActivityBand.tsx",
@@ -3913,9 +3914,9 @@
       "color": "#9C755F",
       "file_type": "module-bucket",
       "raw_inbound_weight": 28,
-      "raw_outbound_weight": 65,
-      "degree": 38.25,
-      "size": 25.49
+      "raw_outbound_weight": 66,
+      "degree": 39.25,
+      "size": 25.62
     },
     {
       "id": "file_file_components_lg_admin_dashboard_dashboardclient_tsx_hbj0o9",
@@ -4040,7 +4041,7 @@
     {
       "id": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
       "label": "Shared Shared UI Primitive",
-      "title": "Shared Shared UI Primitive bucket\nShared UI Primitive / Shared\n18 files, 40 symbols\ncomponents/lg/shell/Sidebar.tsx\ncomponents/lg/shell/LgAppShell.tsx\ncomponents/lg/Icon.tsx\ncomponents/pastoral/shell.tsx\ncomponents/lg/admin/editing-surface.tsx\ncomponents/lg/admin/use-editing-drawer.ts\ncomponents/lg/Card.tsx\ncomponents/lg/shell/MobileSidebar.tsx\ncomponents/lg/shell/TopBar.tsx\ncomponents/lg/Pill.tsx\ncomponents/lg/Avatar.tsx\ncomponents/lg/ErrorBanner.tsx\n...6 more",
+      "title": "Shared Shared UI Primitive bucket\nShared UI Primitive / Shared\n18 files, 41 symbols\ncomponents/lg/shell/Sidebar.tsx\ncomponents/lg/shell/LgAppShell.tsx\ncomponents/lg/admin/editing-surface.tsx\ncomponents/lg/Icon.tsx\ncomponents/pastoral/shell.tsx\ncomponents/lg/shell/MobileSidebar.tsx\ncomponents/lg/admin/use-editing-drawer.ts\ncomponents/lg/Card.tsx\ncomponents/lg/shell/TopBar.tsx\ncomponents/ui/dialog.tsx\ncomponents/lg/Avatar.tsx\ncomponents/lg/ErrorBanner.tsx\n...6 more",
       "source_file": "module/shared/shared_ui_primitive",
       "source_files": [
         "components/lg/Avatar.tsx",
@@ -4063,7 +4064,7 @@
         "components/ui/dialog.tsx"
       ],
       "file_count": 18,
-      "symbol_count": 40,
+      "symbol_count": 41,
       "grouped": true,
       "category": "shared_ui_primitive",
       "category_label": "Shared UI Primitive",
@@ -4073,10 +4074,10 @@
       "feature_label": "Shared",
       "color": "#9C755F",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 57,
-      "raw_outbound_weight": 45,
-      "degree": 33.3,
-      "size": 25.19
+      "raw_inbound_weight": 60,
+      "raw_outbound_weight": 47,
+      "degree": 34.95,
+      "size": 25.41
     },
     {
       "id": "file_file_components_ui_button_tsx_oeuxi6",
@@ -5170,6 +5171,21 @@
       "raw_edge_count": 1,
       "examples": [
         "components/admin/check-in-review-shell.tsx -> components/admin/week-selector.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_calendar_feature_component_1tkr9p",
+      "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/admin-master-calendar-drawer.tsx -> components/ui/dialog.tsx"
       ]
     },
     {
@@ -7321,14 +7337,14 @@
     {
       "source": "bucket_bucket_core_feature_component_lncng4",
       "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
-      "weight": 8,
-      "visual_weight": 2.8,
+      "weight": 7,
+      "visual_weight": 2.45,
       "softened": true,
       "relation": "imports",
       "relation_counts": {
-        "imports": 8
+        "imports": 7
       },
-      "raw_edge_count": 8,
+      "raw_edge_count": 7,
       "examples": [
         "components/admin/audit-workspace.tsx -> components/lg/Icon.tsx",
         "components/admin/console-status.tsx -> components/lg/Icon.tsx",
@@ -9475,6 +9491,21 @@
     },
     {
       "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
+      "target": "bucket_bucket_shared_shared_ui_primitive_j0xvfa",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": true,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/pastoral/shell-nav.tsx -> components/ui/dialog.tsx"
+      ]
+    },
+    {
+      "source": "bucket_bucket_home_shared_ui_primitive_55jz9s",
       "target": "file_file_components_admin_forms_action_form_tsx_jk4xro",
       "weight": 3,
       "visual_weight": 1.05,
@@ -11024,6 +11055,37 @@
     },
     {
       "source": "bucket_bucket_plan_domain_module_1mbebr",
+      "target": "file_file_lib_admin_launch_planning_ts_1n9kfx",
+      "weight": 10,
+      "visual_weight": 10,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 5,
+        "imports": 5
+      },
+      "raw_edge_count": 10,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/launch-planning.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_domain_module_1mbebr",
+      "target": "file_file_lib_admin_metrics_ts_pnjhin",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/metrics.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_domain_module_1mbebr",
       "target": "file_file_lib_admin_validation_prospects_ts_d5ih9v",
       "weight": 1,
       "visual_weight": 1,
@@ -11050,6 +11112,38 @@
       "raw_edge_count": 1,
       "examples": [
         "lib/admin/prospect-next-step.ts -> lib/admin/validation/shared.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_domain_module_1mbebr",
+      "target": "file_file_lib_dashboard_admin_group_model_ts_f08ewc",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/admin-group-model.ts"
+      ]
+    },
+    {
+      "source": "bucket_bucket_plan_domain_module_1mbebr",
+      "target": "file_file_lib_dashboard_types_ts_1oi588",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/types.ts"
       ]
     },
     {
@@ -12295,53 +12389,34 @@
     {
       "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
       "target": "bucket_bucket_care_feature_component_1sfwud",
-      "weight": 10,
-      "visual_weight": 10,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 9,
+        "imports": 2,
         "calls": 1
       },
-      "raw_edge_count": 10,
+      "raw_edge_count": 3,
       "examples": [
-        "app/(protected)/admin/care/page.tsx -> components/admin/care/care-item-list.tsx",
         "app/(protected)/admin/care/page.tsx -> components/admin/care/care-shell.tsx",
-        "app/(protected)/admin/care/page.tsx -> components/admin/care/notes-feed-shell.tsx",
-        "app/(protected)/admin/care/page.tsx -> components/admin/follow-ups/follow-ups-data.ts",
-        "app/(protected)/admin/care/page.tsx -> components/admin/shepherd-care/care-attention-queue.tsx"
+        "app/(protected)/admin/care/page.tsx -> components/admin/follow-ups/follow-ups-data.ts"
       ]
     },
     {
       "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 7,
-      "visual_weight": 7,
+      "weight": 3,
+      "visual_weight": 3,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 4,
-        "calls": 3
+        "imports": 2,
+        "calls": 1
       },
-      "raw_edge_count": 7,
+      "raw_edge_count": 3,
       "examples": [
-        "app/(protected)/admin/care/page.tsx -> lib/admin/care-area.ts",
         "app/(protected)/admin/care/page.tsx -> lib/admin/ministry-year.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
-      "target": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/admin/care/page.tsx -> components/admin/care/care-accordion.tsx"
       ]
     },
     {
@@ -12362,6 +12437,22 @@
     },
     {
       "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
+      "target": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 2,
+        "calls": 1
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "app/(protected)/admin/care/page.tsx -> components/admin/care/care-workspace.tsx"
+      ]
+    },
+    {
+      "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
       "target": "file_file_components_admin_care_notes_feed_data_ts_masx3c",
       "weight": 7,
       "visual_weight": 7,
@@ -12378,21 +12469,6 @@
     },
     {
       "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
-      "target": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/admin/care/page.tsx -> components/admin/follow-ups/follow-ups-shell.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
       "target": "file_file_components_lg_pageheader_tsx_l27hhv",
       "weight": 2,
       "visual_weight": 1,
@@ -12404,38 +12480,6 @@
       "raw_edge_count": 2,
       "examples": [
         "app/(protected)/admin/care/page.tsx -> components/lg/PageHeader.tsx"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
-      "target": "file_file_lib_admin_care_accordion_ts_7aazcg",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1,
-        "imports": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "app/(protected)/admin/care/page.tsx -> lib/admin/care-accordion.ts"
-      ]
-    },
-    {
-      "source": "file_file_app_protected_admin_care_page_tsx_y68t3f",
-      "target": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
-      "weight": 4,
-      "visual_weight": 4,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 2,
-        "imports": 2
-      },
-      "raw_edge_count": 4,
-      "examples": [
-        "app/(protected)/admin/care/page.tsx -> lib/admin/shepherd-care-dashboard.ts"
       ]
     },
     {
@@ -15091,6 +15135,178 @@
       ]
     },
     {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "bucket_bucket_care_feature_component_1sfwud",
+      "weight": 7,
+      "visual_weight": 7,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 7
+      },
+      "raw_edge_count": 7,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> components/admin/care/care-item-list.tsx",
+        "components/admin/care/care-workspace.tsx -> components/admin/care/care-shell.tsx",
+        "components/admin/care/care-workspace.tsx -> components/admin/care/notes-feed-shell.tsx",
+        "components/admin/care/care-workspace.tsx -> components/admin/shepherd-care/care-attention-queue.tsx",
+        "components/admin/care/care-workspace.tsx -> components/admin/shepherd-care/dashboard-summary-cards.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "bucket_bucket_care_route_page_layout_l1f7hq",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> app/(protected)/admin/follow-ups/page.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "bucket_bucket_core_domain_module_1kz81h",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 2,
+        "imports": 2
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> lib/admin/care-area.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_components_admin_care_care_accordion_tsx_o4d9ux",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> components/admin/care/care-accordion.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_components_admin_care_care_data_ts_1e69ml",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> components/admin/care/care-data.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_components_admin_care_notes_feed_data_ts_masx3c",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> components/admin/care/notes-feed-data.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_components_admin_follow_ups_follow_ups_shell_tsx_1e85cr",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> components/admin/follow-ups/follow-ups-shell.tsx"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_lib_admin_care_accordion_ts_7aazcg",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> lib/admin/care-accordion.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_lib_admin_shepherd_care_dashboard_ts_1l4y3g",
+      "weight": 4,
+      "visual_weight": 4,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 2,
+        "imports": 2
+      },
+      "raw_edge_count": 4,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> lib/admin/shepherd-care-dashboard.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_lib_admin_shepherd_care_view_ts_1wysd2",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> lib/admin/shepherd-care-view.ts"
+      ]
+    },
+    {
+      "source": "file_file_components_admin_care_care_workspace_tsx_1dch4q",
+      "target": "file_file_lib_supabase_care_accordion_reads_ts_wl89u9",
+      "weight": 1,
+      "visual_weight": 1,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1
+      },
+      "raw_edge_count": 1,
+      "examples": [
+        "components/admin/care/care-workspace.tsx -> lib/supabase/care-accordion-reads.ts"
+      ]
+    },
+    {
       "source": "file_file_components_admin_care_notes_feed_data_ts_masx3c",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
       "weight": 6,
@@ -17443,15 +17659,15 @@
     {
       "source": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
       "target": "file_file_lib_admin_multiply_trigger_ts_i90dvl",
-      "weight": 12,
-      "visual_weight": 12,
+      "weight": 14,
+      "visual_weight": 14,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 11,
-        "calls": 1
+        "imports": 12,
+        "calls": 2
       },
-      "raw_edge_count": 12,
+      "raw_edge_count": 14,
       "examples": [
         "components/admin/settings/multiply-trigger-editor.tsx -> lib/admin/multiply-trigger.ts"
       ]
@@ -17474,15 +17690,15 @@
     {
       "source": "file_file_components_admin_settings_multiply_trigger_editor_tsx_1186t3",
       "target": "file_file_lib_utils_ts_1hfszh",
-      "weight": 3,
-      "visual_weight": 1.05,
+      "weight": 4,
+      "visual_weight": 1.4,
       "softened": true,
       "relation": "calls",
       "relation_counts": {
-        "calls": 2,
+        "calls": 3,
         "imports": 1
       },
-      "raw_edge_count": 3,
+      "raw_edge_count": 4,
       "examples": [
         "components/admin/settings/multiply-trigger-editor.tsx -> lib/utils.ts"
       ]
@@ -17766,15 +17982,15 @@
     {
       "source": "file_file_components_admin_settings_shell_tsx_zphrh",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 5,
-      "visual_weight": 5,
+      "weight": 6,
+      "visual_weight": 6,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
         "imports": 4,
-        "calls": 1
+        "calls": 2
       },
-      "raw_edge_count": 5,
+      "raw_edge_count": 6,
       "examples": [
         "components/admin/settings-shell.tsx -> lib/admin/cell-coverage.ts",
         "components/admin/settings-shell.tsx -> lib/admin/group-metric-overrides.ts"
@@ -21504,6 +21720,22 @@
     },
     {
       "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
+      "target": "bucket_bucket_plan_domain_module_1mbebr",
+      "weight": 2,
+      "visual_weight": 2,
+      "softened": false,
+      "relation": "imports",
+      "relation_counts": {
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 2,
+      "examples": [
+        "lib/dashboard/demo-seed.ts -> lib/dashboard/launch-planning-snapshot.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
       "target": "file_file_lib_admin_attention_reset_ts_137ah9",
       "weight": 1,
       "visual_weight": 1,
@@ -21561,22 +21793,6 @@
       "raw_edge_count": 3,
       "examples": [
         "lib/dashboard/demo-seed.ts -> lib/dashboard/admin-group-model.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_demo_seed_ts_u7ljhm",
-      "target": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/dashboard/demo-seed.ts -> lib/dashboard/launch-planning-snapshot.ts"
       ]
     },
     {
@@ -21842,69 +22058,6 @@
       ]
     },
     {
-      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "target": "file_file_lib_admin_launch_planning_ts_1n9kfx",
-      "weight": 10,
-      "visual_weight": 10,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 5,
-        "imports": 5
-      },
-      "raw_edge_count": 10,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/launch-planning.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "target": "file_file_lib_admin_metrics_ts_pnjhin",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/admin/metrics.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "target": "file_file_lib_dashboard_admin_group_model_ts_f08ewc",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/admin-group-model.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "target": "file_file_lib_dashboard_types_ts_1oi588",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "imports",
-      "relation_counts": {
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "lib/dashboard/launch-planning-snapshot.ts -> lib/dashboard/types.ts"
-      ]
-    },
-    {
       "source": "file_file_lib_dashboard_queries_ts_13envh",
       "target": "bucket_bucket_care_domain_module_1ue8s8",
       "weight": 4,
@@ -21935,6 +22088,23 @@
       "raw_edge_count": 2,
       "examples": [
         "lib/dashboard/queries.ts -> lib/admin/overview-period.ts"
+      ]
+    },
+    {
+      "source": "file_file_lib_dashboard_queries_ts_13envh",
+      "target": "bucket_bucket_plan_domain_module_1mbebr",
+      "weight": 3,
+      "visual_weight": 3,
+      "softened": false,
+      "relation": "calls",
+      "relation_counts": {
+        "calls": 1,
+        "imports": 1,
+        "imports_from": 1
+      },
+      "raw_edge_count": 3,
+      "examples": [
+        "lib/dashboard/queries.ts -> lib/dashboard/launch-planning-snapshot.ts"
       ]
     },
     {
@@ -22031,23 +22201,6 @@
       "raw_edge_count": 3,
       "examples": [
         "lib/dashboard/queries.ts -> lib/dashboard/fallback-data.ts"
-      ]
-    },
-    {
-      "source": "file_file_lib_dashboard_queries_ts_13envh",
-      "target": "file_file_lib_dashboard_launch_planning_snapshot_ts_1hjk89",
-      "weight": 3,
-      "visual_weight": 3,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1,
-        "imports": 1,
-        "imports_from": 1
-      },
-      "raw_edge_count": 3,
-      "examples": [
-        "lib/dashboard/queries.ts -> lib/dashboard/launch-planning-snapshot.ts"
       ]
     },
     {
@@ -23100,5 +23253,5 @@
       ]
     }
   ],
-  "built_at_commit": "69666e0fb162835e7a9a4fdec7221f1abd6e2e4a"
+  "built_at_commit": "05fdeed57feafc8375660939e9c9b1fcadb0d5ca"
 }

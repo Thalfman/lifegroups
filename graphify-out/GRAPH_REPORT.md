@@ -1,16 +1,16 @@
 # Graph Report - LifeGroups Product Surface (2026-06-12)
 
 ## Summary
-- Clean graph: 181 nodes · 1161 edges
-- Raw extraction collapsed: 3380 symbol nodes · 7740 symbol edges · 485 source files
+- Clean graph: 181 nodes · 1171 edges
+- Raw extraction collapsed: 3400 symbol nodes · 7775 symbol edges · 486 source files
 - File nodes preserved: 122
-- Module buckets: 59 buckets containing 363 lower-degree files
+- Module buckets: 59 buckets containing 364 lower-degree files
 - Self-edges removed after collapse.
 - Shared plumbing, shared UI primitive, and type/vocabulary edges are visually softened.
 
 ## Categories
-- Domain Module: 46
-- Feature Component: 36
+- Domain Module: 45
+- Feature Component: 37
 - Route/Page/Layout: 19
 - Supabase Read Adapter: 17
 - Validation: 17
@@ -24,20 +24,20 @@
 
 ## Product Areas
 - Core: 43
-- Care: 20
+- Care: 21
 - Groups: 17
 - Calendar: 16
 - Multiply: 15
-- Plan: 15
 - Home: 14
+- Plan: 14
 - Settings: 12
 - Shared: 12
 - People: 10
 - Auth: 7
 
 ## Top Hubs
-- Core Feature Component (262.85) - Feature Component, Core
-- Core Domain Module (212.1) - Domain Module, Core
+- Core Feature Component (262.5) - Feature Component, Core
+- Core Domain Module (213.1) - Domain Module, Core
 - Supabase Read Models (208.45) - Supabase Read Adapter, Core
 - Care Feature Component (200.75) - Feature Component, Care
 - Admin Forms Action Form (158.05) - Feature Component, Core
