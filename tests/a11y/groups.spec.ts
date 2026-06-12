@@ -353,6 +353,28 @@ test.describe("groups directory editing surface", () => {
     ).toBeVisible();
   });
 
+  test("phone viewport renders cards without table-only controls", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await gotoHarness(page);
+    const surface = page.locator(SURFACE);
+
+    await expect(surface.getByRole("table")).toHaveCount(0);
+    await expect(
+      surface.getByRole("radiogroup", { name: "Group list layout" })
+    ).toHaveCount(0);
+    await expect(
+      surface.getByRole("radiogroup", { name: "Table density" })
+    ).toHaveCount(0);
+    await expect(surface.getByRole("button", { name: "Columns" })).toHaveCount(
+      0
+    );
+    await expect(
+      surface.getByRole("button", { name: MORE_DOWNTOWN })
+    ).toBeVisible();
+  });
+
   test("density choice persists across reload with no flash", async ({
     page,
   }) => {

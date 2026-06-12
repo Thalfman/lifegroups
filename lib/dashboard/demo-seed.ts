@@ -58,7 +58,10 @@ import type {
   SetupGaps,
   ShepherdCareDashboardSummary,
 } from "./types";
-import type { LeaderFollowUpRow } from "@/lib/supabase/read-models";
+import type {
+  GroupHealthAssessmentRatingRow,
+  LeaderFollowUpRow,
+} from "@/lib/supabase/read-models";
 import type {
   AppSettingsRow,
   AttendanceSessionsRow,
@@ -182,6 +185,13 @@ export const DEMO_GROUPS: GroupsRow[] = [
   }),
 ];
 
+export const DEMO_HEALTH_ASSESSMENT_RATINGS: GroupHealthAssessmentRatingRow[] =
+  DEMO_GROUPS.map((g) => ({
+    group_id: g.id,
+    spiritual_growth_score: 4,
+    group_question_score: 4,
+  }));
+
 export const DEMO_MEMBERSHIPS: GroupMembershipsRow[] = [
   ...memberships("fb-cap-full-1", 14),
   ...memberships("fb-cap-warn-1", 10),
@@ -271,6 +281,7 @@ export function demoAdminModelInput(
     memberships: DEMO_MEMBERSHIPS,
     sessions: DEMO_SESSIONS,
     healthUpdates: [],
+    healthAssessmentRatings: DEMO_HEALTH_ASSESSMENT_RATINGS,
     leaders: DEMO_LEADERS,
     profiles: DEMO_PROFILES,
     metricSettings: DEMO_METRIC_SETTINGS,

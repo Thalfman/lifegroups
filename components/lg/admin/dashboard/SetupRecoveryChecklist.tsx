@@ -23,12 +23,17 @@ export function SetupRecoveryChecklist({
   data,
   isSuperAdmin = false,
   degraded = false,
+  hiddenNavAreas,
 }: {
   data: AdminDashboardData;
   isSuperAdmin?: boolean;
   degraded?: boolean;
+  hiddenNavAreas?: readonly string[];
 }) {
-  const checklist = buildSetupRecoveryChecklist(data, { isSuperAdmin });
+  const checklist = buildSetupRecoveryChecklist(data, {
+    isSuperAdmin,
+    hiddenNavAreas,
+  });
   if (degraded || !checklist.show) return null;
 
   return (

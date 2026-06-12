@@ -4,6 +4,7 @@ import type {
   AttendanceSessionsRow,
   ChurchAttendanceSnapshotsRow,
   GroupCalendarEventsRow,
+  GroupHealthAssessmentsRow,
   GroupHealthUpdatesRow,
   GroupLeadersRow,
   GroupMembershipsRow,
@@ -487,6 +488,38 @@ export async function fetchOpenFollowUpsDueCount(
       error: wrapError("fetchOpenFollowUpsDueCount", error),
     };
   return { data: count ?? 0, error: null };
+}
+
+export type GroupHealthAssessmentRatingRow = Pick<
+  GroupHealthAssessmentsRow,
+  "group_id" | "spiritual_growth_score" | "group_question_score"
+>;
+
+export const GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS = [
+  "group_id",
+  "spiritual_growth_score",
+  "group_question_score",
+] as const satisfies readonly (keyof GroupHealthAssessmentsRow)[];
+
+const GROUP_HEALTH_ASSESSMENT_RATING_SELECT =
+  GROUP_HEALTH_ASSESSMENT_RATING_COLUMNS.join(", ");
+
+export async function fetchGroupHealthAssessmentRatings(
+  client: ReadClient,
+  options: { periodMonth: string }
+): Promise<ReadResult<GroupHealthAssessmentRatingRow[]>> {
+  const { data, error } = await client
+    .from("group_health_assessments")
+    .select(GROUP_HEALTH_ASSESSMENT_RATING_SELECT)
+    .eq("period_month", options.periodMonth)
+    .returns<GroupHealthAssessmentRatingRow[]>();
+  if (error) {
+    return {
+      data: null,
+      error: wrapError("fetchGroupHealthAssessmentRatings", error),
+    };
+  }
+  return { data: data ?? [], error: null };
 }
 
 // Column allowlist for the group-health-update fetcher (#495); every

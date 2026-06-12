@@ -8,6 +8,7 @@ import {
   fetchAttendanceRecordsForSessions,
   fetchAttendanceSessions,
   fetchGroupCalendarEvents,
+  fetchGroupHealthAssessmentRatings,
   fetchGroupsByIds,
   fetchGuests,
   fetchLatestHealthUpdates,
@@ -34,6 +35,7 @@ import {
   buildSurfaceBaselines,
   type AttentionBaselines,
 } from "@/lib/admin/attention-reset";
+import { currentPeriodMonthIso } from "@/lib/admin/ministry-year";
 import { bindReads, type OmitClient } from "@/lib/supabase/reads-seam";
 import type { AppSupabaseClient } from "@/lib/supabase/types";
 import type {
@@ -269,6 +271,9 @@ export type AdminDashboardReads = {
   fetchOpenFollowUpsDueCount: OmitClient<typeof fetchOpenFollowUpsDueCount>;
   fetchActiveMemberships: OmitClient<typeof fetchActiveMemberships>;
   fetchLatestHealthUpdates: OmitClient<typeof fetchLatestHealthUpdates>;
+  fetchGroupHealthAssessmentRatings: OmitClient<
+    typeof fetchGroupHealthAssessmentRatings
+  >;
   fetchAttendanceSessions: OmitClient<typeof fetchAttendanceSessions>;
   fetchAllGroupLeaders: OmitClient<typeof fetchAllGroupLeaders>;
   fetchProfilesForAdmin: OmitClient<typeof fetchProfilesForAdmin>;
@@ -307,6 +312,7 @@ export function supabaseAdminDashboardReads(
     fetchOpenFollowUpsDueCount,
     fetchActiveMemberships,
     fetchLatestHealthUpdates,
+    fetchGroupHealthAssessmentRatings,
     fetchAttendanceSessions,
     fetchAllGroupLeaders,
     fetchProfilesForAdmin,
@@ -344,6 +350,7 @@ export async function buildAdminDashboardData(
   const now = options.now ?? new Date();
   const currentWeek = isoWeekStart(now);
   const selectedWeek = options.selectedWeek ?? currentWeek;
+  const periodMonth = currentPeriodMonthIso(now);
   // Period for the "activity this period" band (default all-time). Only the
   // activity rollup is period-scoped; everything else is current-state.
   const period = overviewPeriodRange(options.grain ?? "all", now);
@@ -382,6 +389,7 @@ export async function buildAdminDashboardData(
       dueFollowUpsThisWeekCountResult,
       membershipsResult,
       healthUpdatesResult,
+      healthAssessmentRatingsResult,
       sessionsResult,
       leadersResult,
       profilesResult,
@@ -405,6 +413,7 @@ export async function buildAdminDashboardData(
       }),
       reads.fetchActiveMemberships(),
       reads.fetchLatestHealthUpdates({ updateWeek: selectedWeek }),
+      reads.fetchGroupHealthAssessmentRatings({ periodMonth }),
       reads.fetchAttendanceSessions({ meetingWeek: selectedWeek }),
       reads.fetchAllGroupLeaders({ activeOnly: true }),
       reads.fetchProfilesForAdmin(),
@@ -516,6 +525,7 @@ export async function buildAdminDashboardData(
       dueFollowUpsThisWeekCountResult.error ||
       membershipsResult.error ||
       healthUpdatesResult.error ||
+      healthAssessmentRatingsResult.error ||
       sessionsResult.error ||
       leadersResult.error ||
       profilesResult.error ||
@@ -535,6 +545,7 @@ export async function buildAdminDashboardData(
       memberships: membershipsResult.data ?? [],
       sessions: sessionsResult.data ?? [],
       healthUpdates: healthUpdatesResult.data ?? [],
+      healthAssessmentRatings: healthAssessmentRatingsResult.data ?? [],
       leaders: leadersResult.data ?? [],
       profiles: profilesResult.data ?? [],
       metricSettings: metricSettingsResult.data ?? [],

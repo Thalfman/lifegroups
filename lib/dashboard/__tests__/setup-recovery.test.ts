@@ -41,6 +41,7 @@ function launchRecoveryDashboard(): AdminDashboardData {
         needs_follow_up: 0,
         watch: 0,
         healthy: 0,
+        missing_required_ratings: 0,
       },
     },
     shepherdCare: {
@@ -77,7 +78,7 @@ function launchRecoveryDashboard(): AdminDashboardData {
 }
 
 describe("buildSetupRecoveryChecklist", () => {
-  it("turns a first-launch recovery state into five guided setup steps", () => {
+  it("turns a first-launch recovery state into six guided setup steps", () => {
     const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
       isSuperAdmin: true,
     });
@@ -89,6 +90,7 @@ describe("buildSetupRecoveryChecklist", () => {
       "import_people",
       "assign_leaders",
       "assign_members",
+      "set_capacity",
       "set_meeting_info",
       "assess_health",
     ]);
@@ -119,6 +121,12 @@ describe("buildSetupRecoveryChecklist", () => {
         label: "Assign members",
       },
       {
+        status: "complete",
+        count: 0,
+        href: "/admin/groups?tab=needs_setup",
+        label: "Set capacity",
+      },
+      {
         status: "needs_action",
         count: 9,
         href: "/admin/groups?tab=needs_setup",
@@ -142,5 +150,67 @@ describe("buildSetupRecoveryChecklist", () => {
       key: "import_people",
       href: "/admin/people",
     });
+  });
+
+  it("keeps the checklist visible when capacity is the only setup gap", () => {
+    const data = launchRecoveryDashboard();
+    data.setupGaps.counts = {
+      noCapacity: 2,
+      noLeader: 0,
+      noMeetingDayTime: 0,
+      noMembers: 0,
+    };
+    data.healthSummary.counts.missing = 0;
+    data.launchPlanning.currentParticipants = 24;
+    data.shepherdCare.totalActiveShepherds = 8;
+
+    const checklist = buildSetupRecoveryChecklist(data);
+
+    expect(checklist.show).toBe(true);
+    expect(checklist.setupGapCount).toBe(2);
+    expect(checklist.incompleteCount).toBe(1);
+    expect(
+      checklist.steps.find((step) => step.key === "set_capacity")
+    ).toMatchObject({
+      status: "needs_action",
+      count: 2,
+    });
+  });
+
+  it("includes missing required ratings in the health step count", () => {
+    const data = launchRecoveryDashboard();
+    data.setupGaps.counts = {
+      noCapacity: 0,
+      noLeader: 0,
+      noMeetingDayTime: 0,
+      noMembers: 0,
+    };
+    data.healthSummary.counts.missing = 0;
+    data.healthSummary.counts.needs_follow_up = 0;
+    data.healthSummary.counts.missing_required_ratings = 3;
+    data.launchPlanning.currentParticipants = 24;
+    data.shepherdCare.totalActiveShepherds = 8;
+
+    const checklist = buildSetupRecoveryChecklist(data);
+
+    expect(checklist.show).toBe(true);
+    expect(checklist.incompleteCount).toBe(1);
+    expect(
+      checklist.steps.find((step) => step.key === "assess_health")
+    ).toMatchObject({
+      status: "needs_action",
+      count: 3,
+    });
+  });
+
+  it("suppresses setup links for hidden Groups and People surfaces", () => {
+    const checklist = buildSetupRecoveryChecklist(launchRecoveryDashboard(), {
+      isSuperAdmin: true,
+      hiddenNavAreas: ["/admin/groups", "/admin/people"],
+    });
+
+    expect(checklist.show).toBe(false);
+    expect(checklist.steps).toEqual([]);
+    expect(checklist.setupGapCount).toBe(0);
   });
 });

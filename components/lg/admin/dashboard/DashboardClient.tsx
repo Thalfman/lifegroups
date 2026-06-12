@@ -131,6 +131,7 @@ export function DashboardClient({
             data={data}
             degraded={degraded}
             isSuperAdmin={isSuperAdmin}
+            hiddenNavAreas={hiddenNavAreas}
           />
         </section>
 

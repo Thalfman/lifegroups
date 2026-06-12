@@ -146,9 +146,8 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
 
   // Home-link hygiene (ADR 0016): with the default hidden set (Groups, People,
   // Planning hidden), the retired launch-planning and group-health surfaces stay
-  // out of Home. The setup recovery checklist is allowed to deep-link directly
-  // to hidden-but-routable Groups/People setup work.
-  it("keeps retired off-nav links out while preserving setup recovery CTAs", () => {
+  // out of Home, and setup recovery does not reintroduce dead-end setup links.
+  it("keeps retired off-nav links and setup recovery CTAs out", () => {
     const html = render({
       hiddenNavAreas: ["/admin/groups", "/admin/people", "/admin/planning"],
     });
@@ -158,10 +157,11 @@ describe("DashboardClient structure (Home de-crowding, #326)", () => {
     expect(html).not.toContain("View planning");
     // The Care-owned health link lands on the active area instead.
     expect(html).toContain("/admin/care");
-    expect(html).toContain("Setup checklist");
-    expect(html).toContain("/admin/groups?tab=needs_setup");
-    expect(html).toContain("/admin/groups?tab=needs_health_check");
-    expect(html).toContain("/admin/people");
+    expect(html).not.toContain("Setup checklist");
+    expect(html).not.toContain("/admin/groups?tab=needs_setup");
+    expect(html).not.toContain("/admin/groups?tab=needs_health_check");
+    expect(html).not.toContain("/admin/people");
+    expect(html).not.toContain("/admin/super-admin#people-import");
   });
 });
 
@@ -262,6 +262,7 @@ const QUIET_DATA: AdminDashboardData = {
       needs_follow_up: 0,
       watch: 0,
       healthy: 0,
+      missing_required_ratings: 0,
     },
   },
   setupGaps: {

@@ -7,6 +7,7 @@ import { ADMIN_FALLBACK } from "@/lib/dashboard/fallback-data";
 import {
   DEMO_FOLLOW_UPS,
   DEMO_GROUPS,
+  DEMO_HEALTH_ASSESSMENT_RATINGS,
   DEMO_LAUNCH_ASSUMPTIONS_ROW,
   DEMO_LEADERS,
   DEMO_MEMBERSHIPS,
@@ -35,6 +36,10 @@ function emptyReads(
     fetchOpenFollowUpsDueCount: async () => ({ data: 0, error: null }),
     fetchActiveMemberships: async () => ({ data: [], error: null }),
     fetchLatestHealthUpdates: async () => ({ data: [], error: null }),
+    fetchGroupHealthAssessmentRatings: async () => ({
+      data: [],
+      error: null,
+    }),
     fetchAttendanceSessions: async () => ({ data: [], error: null }),
     fetchAllGroupLeaders: async () => ({ data: [], error: null }),
     fetchProfilesForAdmin: async () => ({ data: [], error: null }),
@@ -301,6 +306,10 @@ describe("buildAdminDashboardData", () => {
         }),
         fetchAttendanceSessions: async () => ({
           data: DEMO_SESSIONS,
+          error: null,
+        }),
+        fetchGroupHealthAssessmentRatings: async () => ({
+          data: DEMO_HEALTH_ASSESSMENT_RATINGS,
           error: null,
         }),
         fetchOpenFollowUps: async () => ({

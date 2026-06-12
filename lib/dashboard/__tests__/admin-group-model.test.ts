@@ -355,6 +355,41 @@ describe("buildAdminGroupModel — latest Health Pulse by week", () => {
   });
 });
 
+describe("buildAdminGroupModel — health assessment rating gaps", () => {
+  it("counts active groups missing required health ratings", () => {
+    const rated = group({ id: "rated", name: "Rated" });
+    const partial = group({ id: "partial", name: "Partial" });
+    const unassessed = group({ id: "unassessed", name: "Unassessed" });
+    const closed = group({
+      id: "closed",
+      name: "Closed",
+      lifecycle_status: "closed",
+    });
+    const model = buildModel({
+      groups: [rated, partial, unassessed, closed],
+      healthAssessmentRatings: [
+        {
+          group_id: "rated",
+          spiritual_growth_score: 4,
+          group_question_score: 4,
+        },
+        {
+          group_id: "partial",
+          spiritual_growth_score: null,
+          group_question_score: 4,
+        },
+        {
+          group_id: "closed",
+          spiritual_growth_score: null,
+          group_question_score: null,
+        },
+      ],
+    });
+
+    expect(model.healthSummary.counts.missing_required_ratings).toBe(2);
+  });
+});
+
 describe("buildAdminGroupModel — manual health override precedence", () => {
   it("lets a manual override beat the group's own health_status", () => {
     const g = group({ id: "g", health_status: "healthy" });
@@ -630,10 +665,14 @@ describe("buildAdminGroupModel — meta and aggregate counts", () => {
       noMembers: 0,
     });
     // Health buckets skip closed groups too.
-    const totalHealth = Object.values(model.healthSummary.counts).reduce(
-      (a, b) => a + b,
-      0
-    );
+    const totalHealth =
+      model.healthSummary.counts.submitted +
+      model.healthSummary.counts.missing +
+      model.healthSummary.counts.did_not_meet +
+      model.healthSummary.counts.planned_pause +
+      model.healthSummary.counts.needs_follow_up +
+      model.healthSummary.counts.watch +
+      model.healthSummary.counts.healthy;
     expect(totalHealth).toBe(0);
   });
 });

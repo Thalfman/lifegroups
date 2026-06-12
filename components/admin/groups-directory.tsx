@@ -615,7 +615,7 @@ export function GroupsDirectory(props: GroupsDirectoryProps) {
   return (
     <section className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="hidden flex-wrap items-center gap-3 md:flex">
           <ViewModeToggle mode={mode} onModeChange={setMode} />
           {/* Density + column controls are table-only — they have no meaning for
               the card layout, so they appear once the admin switches to table. */}
