@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import {
+  expectModalDialogSemantics,
+  expectNoBlockingAxeViolations,
+  gotoHarness,
+} from "./harness";
 
 // Issue #324 — a11y hardening sweep, dialogs/destructive-actions thread. The
 // Groups calendar occurrence editor (components/calendar/calendar-occurrence-
@@ -33,6 +37,7 @@ test.describe("calendar occurrence editor dialog", () => {
       name: /Edit meeting occurrence/i,
     });
     await expect(dialog).toBeVisible();
+    await expectModalDialogSemantics(page, dialog);
 
     // Opening moved focus into the surface (focus trap precondition).
     const focusInside = await dialog.evaluate((node) =>

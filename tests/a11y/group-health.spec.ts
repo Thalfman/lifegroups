@@ -1,6 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { expectNoBlockingAxeViolations, gotoHarness } from "./harness";
+import {
+  expectModalDialogSemantics,
+  expectNoBlockingAxeViolations,
+  gotoHarness,
+} from "./harness";
 
 // Issue 259 — Admin Interaction Model req 2: Group health is a triage workflow,
 // and req 1's Editing Pattern is proven here on the reference surface. This
@@ -71,6 +75,7 @@ test.describe("group health triage + editing surface", () => {
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
+    await expectModalDialogSemantics(page, dialog);
     // The drawer is titled by the group and exposes its rating fields.
     await expect(
       dialog.getByRole("heading", { name: "Anderson" })
