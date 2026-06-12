@@ -4,8 +4,8 @@
   "graph": {
     "name": "LifeGroups Product Surface Clean File/Module Graph",
     "kind": "clean-file-module",
-    "raw_node_count": 3380,
-    "raw_edge_count": 7740,
+    "raw_node_count": 3378,
+    "raw_edge_count": 7728,
     "raw_source_file_count": 485,
     "selected_file_count": 488,
     "preserved_file_node_count": 122,
@@ -13,7 +13,7 @@
     "grouped_file_count": 363,
     "target_min_nodes": 80,
     "target_max_nodes": 200,
-    "generated_at": "2026-06-12T01:28:38.472Z"
+    "generated_at": "2026-06-12T13:27:07.586Z"
   },
   "nodes": [
     {
@@ -519,7 +519,7 @@
     {
       "id": "bucket_bucket_care_server_action_1gicso",
       "label": "Care Server Action",
-      "title": "Care Server Action bucket\nServer Action / Care\n6 files, 41 symbols\napp/(protected)/leader/follow-up-actions.ts\napp/(protected)/admin/shepherd-care/care-notes-actions.ts\napp/(protected)/admin/shepherd-care/leader-grade-actions.ts\napp/(protected)/admin/follow-ups/actions.ts\napp/(protected)/leader/[groupId]/care/actions.ts\napp/(protected)/over-shepherd/[profileId]/actions.ts",
+      "title": "Care Server Action bucket\nServer Action / Care\n6 files, 39 symbols\napp/(protected)/admin/shepherd-care/care-notes-actions.ts\napp/(protected)/admin/shepherd-care/leader-grade-actions.ts\napp/(protected)/admin/follow-ups/actions.ts\napp/(protected)/leader/[groupId]/care/actions.ts\napp/(protected)/over-shepherd/[profileId]/actions.ts\napp/(protected)/leader/follow-up-actions.ts",
       "source_file": "module/care/server_action",
       "source_files": [
         "app/(protected)/admin/follow-ups/actions.ts",
@@ -530,7 +530,7 @@
         "app/(protected)/over-shepherd/[profileId]/actions.ts"
       ],
       "file_count": 6,
-      "symbol_count": 41,
+      "symbol_count": 39,
       "grouped": true,
       "category": "server_action",
       "category_label": "Server Action",
@@ -541,9 +541,9 @@
       "color": "#F28E2B",
       "file_type": "module-bucket",
       "raw_inbound_weight": 5,
-      "raw_outbound_weight": 48,
-      "degree": 52,
-      "size": 25.98
+      "raw_outbound_weight": 41,
+      "degree": 46,
+      "size": 25.32
     },
     {
       "id": "file_file_app_protected_admin_shepherd_care_actions_ts_7k9w9h",
@@ -2170,9 +2170,9 @@
       "feature_label": "Core",
       "color": "#B07AA1",
       "file_type": "module-bucket",
-      "raw_inbound_weight": 182,
+      "raw_inbound_weight": 181,
       "raw_outbound_weight": 87,
-      "degree": 212.1,
+      "degree": 211.1,
       "size": 38
     },
     {
@@ -3075,10 +3075,10 @@
       "feature_label": "Core",
       "color": "#76B7B2",
       "file_type": "code",
-      "raw_inbound_weight": 130,
+      "raw_inbound_weight": 128,
       "raw_outbound_weight": 3,
-      "degree": 133,
-      "size": 30.88
+      "degree": 131,
+      "size": 30.74
     },
     {
       "id": "file_file_lib_supabase_read_core_ts_1eaf45",
@@ -3468,6 +3468,30 @@
       "size": 26.08
     },
     {
+      "id": "file_file_lib_leader_run_action_ts_fv5kdy",
+      "label": "Leader Run Action",
+      "title": "lib/leader/run-action.ts\nRPC/Write Boundary / Core\n1 file, 5 symbols",
+      "source_file": "lib/leader/run-action.ts",
+      "source_files": [
+        "lib/leader/run-action.ts"
+      ],
+      "file_count": 1,
+      "symbol_count": 5,
+      "grouped": false,
+      "category": "rpc_write_boundary",
+      "category_label": "RPC/Write Boundary",
+      "community": 5,
+      "community_name": "RPC/Write Boundary",
+      "feature": "core",
+      "feature_label": "Core",
+      "color": "#E15759",
+      "file_type": "code",
+      "raw_inbound_weight": 17,
+      "raw_outbound_weight": 8,
+      "degree": 25,
+      "size": 20.75
+    },
+    {
       "id": "bucket_bucket_core_rpc_write_boundary_n6grhw",
       "label": "Core RPC/Write Boundary",
       "title": "Core RPC/Write Boundary bucket\nRPC/Write Boundary / Core\n3 files, 18 symbols\nlib/leader/rpc.ts\nlib/account/rpc.ts\nlib/usage/rpc.ts",
@@ -3518,30 +3542,6 @@
       "size": 20.59
     },
     {
-      "id": "file_file_lib_leader_run_action_ts_fv5kdy",
-      "label": "Leader Run Action",
-      "title": "lib/leader/run-action.ts\nRPC/Write Boundary / Core\n1 file, 5 symbols",
-      "source_file": "lib/leader/run-action.ts",
-      "source_files": [
-        "lib/leader/run-action.ts"
-      ],
-      "file_count": 1,
-      "symbol_count": 5,
-      "grouped": false,
-      "category": "rpc_write_boundary",
-      "category_label": "RPC/Write Boundary",
-      "community": 5,
-      "community_name": "RPC/Write Boundary",
-      "feature": "core",
-      "feature_label": "Core",
-      "color": "#E15759",
-      "file_type": "code",
-      "raw_inbound_weight": 14,
-      "raw_outbound_weight": 8,
-      "degree": 22,
-      "size": 20.27
-    },
-    {
       "id": "file_file_lib_shared_run_action_ts_17wise",
       "label": "Shared Run Action",
       "title": "lib/shared/run-action.ts\nRPC/Write Boundary / Core\n1 file, 7 symbols",
@@ -3584,10 +3584,10 @@
       "feature_label": "Auth",
       "color": "#EDC948",
       "file_type": "code",
-      "raw_inbound_weight": 122,
+      "raw_inbound_weight": 120,
       "raw_outbound_weight": 9,
-      "degree": 131,
-      "size": 30.74
+      "degree": 129,
+      "size": 30.6
     },
     {
       "id": "bucket_bucket_auth_auth_session_boundary_1jxy8z",
@@ -3797,10 +3797,10 @@
       "feature_label": "Shared",
       "color": "#BAB0AC",
       "file_type": "code",
-      "raw_inbound_weight": 54,
+      "raw_inbound_weight": 52,
       "raw_outbound_weight": 0,
-      "degree": 21.15,
-      "size": 20.13
+      "degree": 20.15,
+      "size": 19.96
     },
     {
       "id": "bucket_bucket_shared_shared_plumbing_1z0gbx",
@@ -4217,10 +4217,10 @@
       "feature_label": "Care",
       "color": "#FF9DA7",
       "file_type": "code",
-      "raw_inbound_weight": 4,
+      "raw_inbound_weight": 3,
       "raw_outbound_weight": 17,
-      "degree": 16.45,
-      "size": 19.29
+      "degree": 15.45,
+      "size": 19.09
     },
     {
       "id": "bucket_bucket_care_validation_80v2ph",
@@ -4635,10 +4635,10 @@
       "feature_label": "Core",
       "color": "#8CD17D",
       "file_type": "code",
-      "raw_inbound_weight": 19,
+      "raw_inbound_weight": 17,
       "raw_outbound_weight": 7,
-      "degree": 26,
-      "size": 20.9
+      "degree": 24,
+      "size": 20.59
     },
     {
       "id": "file_file_types_enums_ts_19rgpl",
@@ -6621,20 +6621,19 @@
     {
       "source": "bucket_bucket_care_server_action_1gicso",
       "target": "bucket_bucket_core_domain_module_1kz81h",
-      "weight": 7,
-      "visual_weight": 7,
+      "weight": 6,
+      "visual_weight": 6,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 7
+        "imports": 6
       },
-      "raw_edge_count": 7,
+      "raw_edge_count": 6,
       "examples": [
         "app/(protected)/admin/shepherd-care/leader-grade-actions.ts -> lib/admin/leader-health-read.ts",
         "app/(protected)/admin/shepherd-care/leader-grade-actions.ts -> lib/admin/leader-rubric-grade.ts",
         "app/(protected)/admin/shepherd-care/leader-grade-actions.ts -> lib/admin/ministry-year.ts",
-        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/group-note-validation.ts",
-        "app/(protected)/leader/follow-up-actions.ts -> lib/leader/action-result.ts"
+        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/group-note-validation.ts"
       ]
     },
     {
@@ -6645,8 +6644,7 @@
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 2,
-        "calls": 1
+        "imports": 3
       },
       "raw_edge_count": 3,
       "examples": [
@@ -6692,98 +6690,35 @@
     },
     {
       "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_admin_validation_follow_ups_ts_18ylic",
-      "weight": 1,
-      "visual_weight": 1,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1
-      },
-      "raw_edge_count": 1,
-      "examples": [
-        "app/(protected)/leader/follow-up-actions.ts -> lib/admin/validation/follow-ups.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_server_action_1gicso",
       "target": "file_file_lib_auth_session_ts_1falso",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 2,
+      "visual_weight": 2,
       "softened": false,
       "relation": "imports",
       "relation_counts": {
-        "imports": 3,
-        "calls": 1
+        "imports": 2
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 2,
       "examples": [
         "app/(protected)/admin/shepherd-care/care-notes-actions.ts -> lib/auth/session.ts",
-        "app/(protected)/leader/follow-up-actions.ts -> lib/auth/session.ts",
         "app/(protected)/over-shepherd/[profileId]/actions.ts -> lib/auth/session.ts"
       ]
     },
     {
       "source": "bucket_bucket_care_server_action_1gicso",
       "target": "file_file_lib_leader_run_action_ts_fv5kdy",
-      "weight": 4,
-      "visual_weight": 4,
+      "weight": 7,
+      "visual_weight": 7,
       "softened": false,
-      "relation": "calls",
+      "relation": "imports",
       "relation_counts": {
-        "calls": 2,
-        "imports": 2
+        "imports": 4,
+        "calls": 3
       },
-      "raw_edge_count": 4,
+      "raw_edge_count": 7,
       "examples": [
-        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/run-action.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_observability_instrument_ts_v0qh9b",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1,
-        "imports": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "app/(protected)/leader/follow-up-actions.ts -> lib/observability/instrument.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_shared_action_result_ts_1t7duc",
-      "weight": 2,
-      "visual_weight": 1,
-      "softened": true,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 2
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "app/(protected)/leader/follow-up-actions.ts -> lib/shared/action-result.ts"
-      ]
-    },
-    {
-      "source": "bucket_bucket_care_server_action_1gicso",
-      "target": "file_file_lib_supabase_server_ts_rkv6z4",
-      "weight": 2,
-      "visual_weight": 2,
-      "softened": false,
-      "relation": "calls",
-      "relation_counts": {
-        "calls": 1,
-        "imports": 1
-      },
-      "raw_edge_count": 2,
-      "examples": [
-        "app/(protected)/leader/follow-up-actions.ts -> lib/supabase/server.ts"
+        "app/(protected)/leader/[groupId]/care/actions.ts -> lib/leader/run-action.ts",
+        "app/(protected)/leader/follow-up-actions.ts -> lib/leader/run-action.ts"
       ]
     },
     {
@@ -23100,5 +23035,5 @@
       ]
     }
   ],
-  "built_at_commit": "69666e0fb162835e7a9a4fdec7221f1abd6e2e4a"
+  "built_at_commit": "5f089d72691c6e69ee93f43d4991722ca63dd79f"
 }

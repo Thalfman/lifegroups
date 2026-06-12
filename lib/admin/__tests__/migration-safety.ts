@@ -27,10 +27,15 @@ const MIGRATIONS_DIR = fileURLToPath(
 export interface MigrationSql {
   /** The migration's file name, surfaced in assertion failure messages. */
   readonly fileName: string;
-  /** Raw SQL text, unmodified. */
+  /** SQL text with line endings normalized for static assertions. */
   readonly raw: string;
   /** Lowercased SQL, for case-insensitive substring / regex checks. */
   readonly lower: string;
+}
+
+/** Normalize checked-out text before static SQL/seed assertions. */
+export function normalizeTextForStaticAssertions(text: string): string {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 /** Wrap raw SQL as a {@link MigrationSql}. Useful for unit-testing assertions. */
@@ -38,7 +43,8 @@ export function migrationFromSql(
   raw: string,
   fileName = "<inline>"
 ): MigrationSql {
-  return { fileName, raw, lower: raw.toLowerCase() };
+  const normalized = normalizeTextForStaticAssertions(raw);
+  return { fileName, raw: normalized, lower: normalized.toLowerCase() };
 }
 
 /** Read a migration from `supabase/migrations/` by file name. */

@@ -6,3 +6,6 @@ graphify-out/GRAPH_REPORT.md linguist-generated=true
 graphify-out/GRAPH_TREE.html linguist-generated=true
 graphify-out/.graphify_labels.json linguist-generated=true
 graphify-out/PRODUCT_SURFACE_REPORT.md linguist-generated=true
+
+# Static SQL drift tests compare checked-out migration and seed text.
+*.sql text eol=lf

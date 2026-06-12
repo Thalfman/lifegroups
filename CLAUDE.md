@@ -27,18 +27,18 @@ but stay hidden behind Super-Admin nav flags (turned off, not deleted).
 
 ## Commands
 
-| Command                    | What it does                                 |
-| -------------------------- | -------------------------------------------- |
-| `npm run dev`              | Next dev server (http://localhost:3000)      |
-| `npm run build`            | Production build                             |
-| `npm run start`            | Serve the production build                   |
-| `npm run lint`             | ESLint (`next lint`, `next/core-web-vitals`) |
-| `npm run typecheck`        | `tsc --noEmit` (strict)                      |
-| `npm test`                 | Vitest, watch mode                           |
-| `npm run test:run`         | Vitest once (what CI runs)                   |
-| `npm run test:a11y`        | Playwright + axe accessibility suite         |
-| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script)  |
-| `npm run remove:test-auth` | Remove local test Auth users                 |
+| Command                    | What it does                                |
+| -------------------------- | ------------------------------------------- |
+| `npm run dev`              | Next dev server (http://localhost:3000)     |
+| `npm run build`            | Production build                            |
+| `npm run start`            | Serve the production build                  |
+| `npm run lint`             | ESLint CLI (`next/core-web-vitals`)         |
+| `npm run typecheck`        | `tsc --noEmit` (strict)                     |
+| `npm test`                 | Vitest, watch mode                          |
+| `npm run test:run`         | Vitest once (what CI runs)                  |
+| `npm run test:a11y`        | Playwright + axe accessibility suite        |
+| `npm run seed:test-auth`   | Create local test Auth users (`tsx` script) |
+| `npm run remove:test-auth` | Remove local test Auth users                |
 
 - **Run a single test:** `npx vitest run path/to/file.test.ts` (add `-t "name"`
   to filter by test name).
