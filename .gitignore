@@ -23,14 +23,3 @@ supabase/dev/link_super_admin.sql
 
 # Claude Code agent worktrees (transient, isolated)
 .claude/worktrees/
-
-# Graphify staging and local-only extraction state.
-/.graphify/
-/graphify-out/*/
-!/graphify-out/memory/
-!/graphify-out/memory/**
-/graphify-out/**/cache/
-/graphify-out/**/manifest.json
-/graphify-out/**/*.log
-/graphify-out/.update.log
-/graphify-out/.rebuild.lock
